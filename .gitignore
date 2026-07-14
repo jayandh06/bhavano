@@ -10,3 +10,8 @@ coverage/
 .expo/
 *.tsbuildinfo
 .DS_Store
+apps/bff/uploads/*
+!apps/bff/uploads/.gitkeep
+
+# Design handoff reference material, not app source
+Real Estate Marketplace Platform.zip

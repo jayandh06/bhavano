@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ListingCategory {
+  house
+  apartment
+  pg
+  storage
+  coworking
+  furniture
+}
+
+enum TransactionType {
+  buy
+  sell
+  rent
+  lease
+}
+
+enum ListingStatus {
+  active
+  sold
+  rented
+  deactivated
+}
+
+enum ListingCondition {
+  new
+  used
+}
+
+model City {
+  id        String    @id @default(cuid())
+  name      String
+  state     String
+  lat       Float
+  lng       Float
+  isPopular Boolean   @default(false)
+  listings  Listing[]
+  areas     Area[]
+
+  @@unique([name, state])
+}
+
+model Area {
+  id       String    @id @default(cuid())
+  name     String
+  cityId   String
+  city     City      @relation(fields: [cityId], references: [id])
+  lat      Float?
+  lng      Float?
+  source   String    @default("curated")
+  listings Listing[]
+
+  @@unique([name, cityId])
+  @@index([cityId])
+}
+
+model User {
+  id                    String         @id @default(cuid())
+  phone                 String?        @unique
+  phoneVerifiedAt       DateTime?
+  email                 String?        @unique
+  googleId              String?        @unique
+  name                  String?
+  createdAt             DateTime       @default(now())
+  listings              Listing[]
+  favourites            Favourite[]
+  conversationsAsPoster Conversation[] @relation("ConversationPoster")
+  conversationsAsInquirer Conversation[] @relation("ConversationInquirer")
+  messages              Message[]
+}
+
+model Listing {
+  id               String            @id @default(cuid())
+  category         ListingCategory
+  transactionType  TransactionType
+  status           ListingStatus     @default(active)
+  condition        ListingCondition?
+  price            Int
+  priceQualifier   String            @default("")
+  title            String
+  slug             String
+  areaId           String
+  area             Area              @relation(fields: [areaId], references: [id])
+  cityId           String
+  city             City              @relation(fields: [cityId], references: [id])
+  lat              Float?
+  lng              Float?
+  tag              String
+  specs            String[]          @default([])
+  photos           String[]          @default([])
+  attributes       Json              @default("{}")
+  ownerId          String
+  owner            User              @relation(fields: [ownerId], references: [id])
+  relatedListingId String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  expiresAt        DateTime
+  viewCount        Int               @default(0)
+  likeCount        Int               @default(0)
+  photoHashes      PhotoHash[]
+  views            ListingView[]
+  favourites       Favourite[]
+  conversations    Conversation[]
+
+  @@index([cityId, category])
+  @@index([cityId, transactionType])
+  @@index([expiresAt])
+}
+
+/** One row per unique viewer (logged-in user id or anonymous device key) — used to
+ * dedupe Listing.viewCount so repeat visits from the same viewer don't inflate it. */
+model ListingView {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  viewerKey String
+  createdAt DateTime @default(now())
+
+  @@unique([listingId, viewerKey])
+}
+
+model Favourite {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([listingId, userId])
+}
+
+model Conversation {
+  id          String    @id @default(cuid())
+  listingId   String
+  listing     Listing   @relation(fields: [listingId], references: [id])
+  posterId    String
+  poster      User      @relation("ConversationPoster", fields: [posterId], references: [id])
+  inquirerId  String
+  inquirer    User      @relation("ConversationInquirer", fields: [inquirerId], references: [id])
+  createdAt   DateTime  @default(now())
+  messages    Message[]
+
+  @@unique([listingId, inquirerId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  body           String
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+
+  @@index([conversationId, createdAt])
+}
+
+/** Perceptual (difference) hash of each uploaded photo — used to reject near-duplicate
+ * photo submissions at moderation time via Hamming-distance comparison. */
+model PhotoHash {
+  id        String   @id @default(cuid())
+  hash      String
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([hash])
+}
+
+model OtpChallenge {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}

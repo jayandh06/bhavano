@@ -7,7 +7,7 @@ Bhavano is a web and mobile classifieds platform where users post and browse lis
 ## 2. Functional Scope
 
 **Categories**
-- Real estate: House, Apartment, PG (Paying Guest), Storage space
+- Real estate: House, Apartment, PG (Paying Guest), Storage space, Coworking space
 - Furniture: sofas, beds, wardrobes, appliances, etc.
 
 **Transaction types (apply across categories):** Buy, Sell, Rent, Lease
@@ -19,11 +19,35 @@ Bhavano is a web and mobile classifieds platform where users post and browse lis
 - Optionally link a furniture listing to a related real-estate listing (e.g., "furniture available in this rented flat")
 - Manage own listings (edit, mark sold/rented, deactivate)
 
+### 2.1 Browsing navigation (IA)
+
+Browsing is organized around seeker intent, not a flat list of every (category × transaction type) combination — several combinations never make sense to browse (nobody looks for "Buy PG" or "Buy storage space"). Four top-level tabs:
+
+- **Buy** — House, Apartment (`transactionType` buy/sell), with a property-type sub-filter (House / Apartment / All)
+- **Rent & Lease** — House, Apartment, Storage, Coworking (`transactionType` rent/lease), with a property-type sub-filter (House / Apartment / Storage / Coworking / All)
+- **PG** — its own tab despite being rent-only, since its filters (sharing type, gender, meals) are entirely distinct from real-estate filters and PG search intent is high enough in the Indian market to deserve top billing rather than being buried under Rent
+- **Furniture** — its own tab; filters (material, dimensions, condition) have nothing in common with real-estate filters, so mixing them into Buy would clutter that page's filter UI
+
+"Sell" and "Lease" as poster actions are not browsing tabs — a visitor never browses to "sell." The poster picks category + transaction type together in the posting flow (below), fully decoupled from how buyers/renters browse.
+
+### 2.2 Posting flow
+
+Posting is a schema-driven, multi-step wizard, not a single flat form:
+
+1. **Category** — House, Apartment, PG, Storage, Coworking, or Furniture.
+2. **Transaction type** — options are constrained per category, not a fixed set: House/Apartment offer Sell, Rent out, or Lease out; PG only ever offers Rent out (this step is auto-selected/skipped); Storage/Coworking offer Rent out or Lease out; Furniture offers Sell or Rent out. `Buy` is never a postable transaction type — that's the browsing side, not the lister's action.
+3. **Category-specific details** — the field set (e.g. BHK/floor/furnishing for House & Apartment; sharing-type/gender/meals for PG; size/access-hours for Storage; seat-type/amenities for Coworking; material/dimensions/condition/brand for Furniture) is defined once as a config object, not hand-coded per category. That same config renders the dynamic form and maps directly onto the `attributes` JSONB column — adding a future category means adding a config entry, not new code paths.
+4. **Location** — city + area selection (typeahead over a curated, growable area list). Precise lat/long via address autocomplete + map pin is a known follow-up once PostGIS radius search is built out, not required for the current flow.
+5. **Photos** — uploaded via the BFF (currently local disk; swaps to S3/R2 presigned uploads without changing the API shape once a bucket is provisioned).
+6. **Review & publish** — runs auto-moderation synchronously (see 3, Trust & safety) before the listing goes live. There is currently no "pending review" queue: a submission either passes and is published immediately, or is rejected inline with a reason the poster can act on and resubmit.
+
+A phone-verification publish gate and a poster-facing dashboard (edit / mark sold or rented / deactivate, triggering on-demand ISR revalidation of the public listing page) are deferred until real posting auth is (re-)enabled — anonymous posting has no stable owner identity to scope a dashboard to.
+
 ## 3. Non-Functional Requirements
 
 - **SEO/LLM discoverability:** every listing must be server-rendered, individually URL-addressable, and expose clean structured data so both search engines and LLM/answer-engine crawlers can parse it reliably.
 - **No direct API exposure to the browser:** the browser must never call a stable, inspectable REST/GraphQL endpoint directly. All data fetching for the web app happens server-side.
-- **Security/trust & safety:** phone verification required before a user can post an ad; rate limiting and CAPTCHA on ad-posting and auth endpoints to deter spam/fake listings.
+- **Security/trust & safety:** phone verification required before a user can post an ad; rate limiting and CAPTCHA on ad-posting and auth endpoints to deter spam/fake listings. *Current interim state:* posting auth is temporarily disabled (see Open Items), so trust/safety is enforced instead by synchronous auto-moderation at submission time — banned-word scan, per-category price-sanity bounds, and duplicate-photo detection (perceptual hash). This is a stopgap, not a replacement for the phone-verification gate once posting auth is re-enabled.
 - **Performance:** good Core Web Vitals on all listing and search pages.
 - **Initial scale target:** ~250 concurrent users, architected to scale to 1,000–2,000+ without a redesign.
 
@@ -103,3 +127,6 @@ Plus, outside these two instances: S3/R2 for media (auto-scaling, not a sizing d
 - [ ] CI/CD pipeline and environment strategy (dev/staging/prod)
 - [ ] Monitoring/observability stack (logs, metrics, error tracking)
 - [ ] Terraform/CDK for the AWS infrastructure described above
+- [ ] Re-enable phone-verification publish gate for posting (currently open without login) and build the poster dashboard (edit/mark sold or rented/deactivate + ISR revalidation) that depends on it
+- [ ] Migrate photo uploads from local disk to S3/R2 presigned uploads
+- [ ] Address autocomplete + draggable map pin for precise per-listing lat/long (needed for real PostGIS radius search)

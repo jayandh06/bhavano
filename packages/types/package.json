@@ -2,9 +2,32 @@
   "name": "@bhavano/types",
   "version": "0.0.0",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tokens": {
+      "types": "./dist/tokens.d.ts",
+      "default": "./dist/tokens.js"
+    },
+    "./categoryFields": {
+      "types": "./dist/categoryFields.d.ts",
+      "default": "./dist/categoryFields.js"
+    },
+    "./postingRules": {
+      "types": "./dist/postingRules.d.ts",
+      "default": "./dist/postingRules.js"
+    },
+    "./slugify": {
+      "types": "./dist/slugify.d.ts",
+      "default": "./dist/slugify.js"
+    }
+  },
   "scripts": {
+    "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
