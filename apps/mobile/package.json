@@ -1,12 +1,28 @@
 {
   "name": "@bhavano/mobile",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "dependencies": {
+    "@bhavano/types": "workspace:*",
+    "@gorhom/bottom-sheet": "^5.2.14",
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@tanstack/react-query": "^5.101.2",
     "expo": "~57.0.4",
+    "expo-auth-session": "~57.0.2",
+    "expo-crypto": "~57.0.0",
+    "expo-image-picker": "~57.0.2",
+    "expo-location": "~57.0.2",
+    "expo-router": "~57.0.4",
+    "expo-secure-store": "~57.0.0",
     "expo-status-bar": "~57.0.0",
+    "expo-web-browser": "~57.0.0",
     "react": "19.2.3",
-    "react-native": "0.86.0"
+    "react-native": "0.86.0",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-reanimated": "~4.5.0",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.25.2",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
@@ -17,7 +33,8 @@
     "dev": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit"
   },
   "private": true
 }
