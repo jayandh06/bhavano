@@ -33,4 +33,6 @@ USER nestjs
 WORKDIR /app/apps/bff
 ENV PORT=4000
 EXPOSE 4000
-CMD ["node", "dist/main"]
+# tsc's rootDir inference includes prisma.config.ts (which sits next to src/), so the compiled
+# entrypoint lands at dist/src/main.js, not dist/main.js.
+CMD ["node", "dist/src/main"]
