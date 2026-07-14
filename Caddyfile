@@ -1,0 +1,8 @@
+{$SITE_DOMAIN} {
+	reverse_proxy web:3000
+}
+
+{$API_DOMAIN} {
+	# reverse_proxy handles the socket.io WebSocket upgrade transparently — no special config needed.
+	reverse_proxy bff:4000
+}

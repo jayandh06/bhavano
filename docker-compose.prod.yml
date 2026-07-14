@@ -1,0 +1,63 @@
+services:
+  bff:
+    build:
+      context: .
+      dockerfile: apps/bff/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY}
+      MSG91_SENDER_ID: ${MSG91_SENDER_ID}
+      MSG91_DLT_TEMPLATE_ID: ${MSG91_DLT_TEMPLATE_ID}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    volumes:
+      - bff-uploads:/app/apps/bff/uploads
+    expose:
+      - "4000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      # Server-side fetches from the web app's Next.js server go straight to the bff
+      # container over the compose network — never through the public internet.
+      BFF_INTERNAL_URL: http://bff:4000
+      # The browser talks to the bff directly only for the WebSocket (messaging) connection,
+      # so this one has to be the public bff URL, not the internal one above.
+      NEXT_PUBLIC_BFF_URL: ${NEXT_PUBLIC_BFF_URL}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      # Required behind a reverse proxy (Caddy) — otherwise NextAuth v5 rejects every
+      # request with "UntrustedHost" since the forwarded Host header isn't localhost.
+      AUTH_TRUST_HOST: "true"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    depends_on:
+      - bff
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - bff
+
+volumes:
+  bff-uploads:
+  caddy-data:
+  caddy-config:
