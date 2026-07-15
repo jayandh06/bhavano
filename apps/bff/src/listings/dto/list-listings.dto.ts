@@ -6,6 +6,7 @@ const HOME_CATEGORIES: HomeCategoryFilter[] = ['buy', 'rentLease', 'pg', 'furnit
 const PROPERTY_TYPES: PropertyTypeFilter[] = ['house', 'apartment', 'storage', 'coworking'];
 const LISTING_CATEGORIES: ListingCategory[] = ['house', 'apartment', 'pg', 'storage', 'coworking', 'furniture'];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
+const FURNISHING_VALUES = ['unfurnished', 'semi', 'furnished'] as const;
 
 export class ListListingsDto {
   @IsOptional()
@@ -39,6 +40,31 @@ export class ListListingsDto {
   @IsOptional()
   @IsString()
   q?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  minPrice?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  maxPrice?: number;
+
+  /** Matches listings with `attributes.bedrooms >= bedrooms` — a "3+" style filter, not exact match. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  bedrooms?: number;
+
+  /** Matches `attributes.furnished` exactly — same values as the posting wizard's schema
+   * (packages/types/src/categoryFields.ts). */
+  @IsOptional()
+  @IsIn(FURNISHING_VALUES)
+  furnished?: (typeof FURNISHING_VALUES)[number];
 
   @IsOptional()
   @IsString()

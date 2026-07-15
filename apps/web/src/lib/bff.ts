@@ -46,6 +46,11 @@ export interface ListingsQuery {
   cityId?: string;
   areaId?: string;
   q?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  /** "N+" style — matches attributes.bedrooms >= bedrooms, not exact match. */
+  bedrooms?: number;
+  furnished?: "unfurnished" | "semi" | "furnished";
   cursor?: string;
   limit?: number;
 }
@@ -59,6 +64,10 @@ export function fetchListings(query: ListingsQuery, accessToken?: string): Promi
   if (query.cityId) params.set("cityId", query.cityId);
   if (query.areaId) params.set("areaId", query.areaId);
   if (query.q) params.set("q", query.q);
+  if (query.minPrice !== undefined) params.set("minPrice", String(query.minPrice));
+  if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
+  if (query.bedrooms !== undefined) params.set("bedrooms", String(query.bedrooms));
+  if (query.furnished) params.set("furnished", query.furnished);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit) params.set("limit", String(query.limit));
 

@@ -59,7 +59,21 @@ export class ListingsService {
   ) {}
 
   async list(query: ListListingsDto, currentUserId?: string): Promise<ListingsPage> {
-    const { homeCategory = 'buy', propertyType, category, transactionType, cityId, areaId, q, cursor, limit } = query;
+    const {
+      homeCategory = 'buy',
+      propertyType,
+      category,
+      transactionType,
+      cityId,
+      areaId,
+      q,
+      minPrice,
+      maxPrice,
+      bedrooms,
+      furnished,
+      cursor,
+      limit,
+    } = query;
 
     // Raw category/transactionType (used only by the SEO browse-landing pages) bypasses
     // the homeCategory/propertyType tab-grouping entirely — the interactive homepage
@@ -69,6 +83,13 @@ export class ListingsService {
         ? { ...(category ? { category } : {}), ...(transactionType ? { transactionType } : {}) }
         : buildHomeCategoryWhere(homeCategory, propertyType);
 
+    // Bedrooms/furnished live in the `attributes` JSONB column, so each needs its own
+    // top-level AND entry — merging them into one `attributes` key would let the second
+    // silently overwrite the first.
+    const attributeFilters: Prisma.ListingWhereInput[] = [];
+    if (bedrooms !== undefined) attributeFilters.push({ attributes: { path: ['bedrooms'], gte: bedrooms } });
+    if (furnished) attributeFilters.push({ attributes: { path: ['furnished'], equals: furnished } });
+
     const where: Prisma.ListingWhereInput = {
       ...categoryWhere,
       status: 'active',
@@ -76,6 +97,10 @@ export class ListingsService {
       ...(cityId ? { cityId } : {}),
       ...(areaId ? { areaId } : {}),
       ...(q ? { title: { contains: q, mode: 'insensitive' } } : {}),
+      ...(minPrice !== undefined || maxPrice !== undefined
+        ? { price: { ...(minPrice !== undefined ? { gte: minPrice } : {}), ...(maxPrice !== undefined ? { lte: maxPrice } : {}) } }
+        : {}),
+      ...(attributeFilters.length > 0 ? { AND: attributeFilters } : {}),
     };
 
     const [rows, total] = await Promise.all([
