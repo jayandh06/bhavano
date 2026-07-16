@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn } from "@/auth";
+import { signIn, signOut } from "@/auth";
 import { sendOtp } from "@/lib/bff";
 
 export async function sendOtpAction(phone: string): Promise<{ success: boolean; error?: string }> {
@@ -26,4 +26,8 @@ export async function verifyOtpAction(
 
 export async function signInWithGoogleAction(): Promise<void> {
   await signIn("google");
+}
+
+export async function signOutAction(): Promise<void> {
+  await signOut({ redirectTo: "/" });
 }

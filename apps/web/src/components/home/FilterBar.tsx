@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { buildHomeUrl } from "@/lib/homeUrl";
+import { useClickOutside } from "@/lib/useClickOutside";
 
 const BEDROOM_OPTIONS = [1, 2, 3, 4];
 const FURNISHING_OPTIONS: { value: string; label: string }[] = [
@@ -61,14 +62,7 @@ export function FilterBar({
   const [minPriceInput, setMinPriceInput] = useState(activeMinPrice?.toString() ?? "");
   const [maxPriceInput, setMaxPriceInput] = useState(activeMaxPrice?.toString() ?? "");
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(null);
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
+  useClickOutside(containerRef, () => setOpen(null));
 
   function applyPrice() {
     const min = minPriceInput ? Number(minPriceInput) : undefined;

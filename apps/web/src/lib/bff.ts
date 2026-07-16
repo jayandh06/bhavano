@@ -14,6 +14,8 @@ import type {
   MessageDto,
   PropertyTypeFilter,
   TransactionType,
+  UpdateProfileInput,
+  UserProfileDto,
 } from "@bhavano/types";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
@@ -147,6 +149,14 @@ export function toggleFavourite(
 
 export function fetchFavourites(accessToken: string): Promise<ListingCardDto[]> {
   return authedBffFetch(accessToken, "/users/me/favourites", { cache: "no-store" });
+}
+
+export function fetchProfile(accessToken: string): Promise<UserProfileDto> {
+  return authedBffFetch(accessToken, "/users/me", { cache: "no-store" });
+}
+
+export function updateProfile(accessToken: string, input: UpdateProfileInput): Promise<UserProfileDto> {
+  return authedBffFetch(accessToken, "/users/me", { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export function createConversation(accessToken: string, listingId: string): Promise<{ id: string }> {

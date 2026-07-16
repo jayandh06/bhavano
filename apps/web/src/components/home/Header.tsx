@@ -11,12 +11,14 @@ export function Header({
   searchQuery,
   activeCategory,
   activePropertyType,
+  userName,
 }: {
   cityName: string;
   popularCities: City[];
   searchQuery: string;
   activeCategory: HomeCategoryFilter;
   activePropertyType?: PropertyTypeFilter;
+  userName?: string | null;
 }) {
   return (
     <>
@@ -75,7 +77,7 @@ export function Header({
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <ThemeToggle />
           </div>
-          <HeaderAuthButtons />
+          <HeaderAuthButtons userName={userName} />
         </div>
 
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 32px" }}>

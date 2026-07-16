@@ -149,3 +149,18 @@ export interface AuthSession {
   user: AuthUser;
   accessToken?: string;
 }
+
+export interface UserProfileDto {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  cityId: string | null;
+  cityName: string | null;
+  state: string | null;
+}
+
+export interface UpdateProfileInput {
+  name?: string;
+  cityId?: string;
+}

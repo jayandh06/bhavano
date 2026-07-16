@@ -94,6 +94,7 @@ export default async function HomePage({
         searchQuery={q}
         activeCategory={category}
         activePropertyType={propertyType}
+        userName={session?.user?.name}
       />
       <FilterBar
         resultsCount={listingsPage.total}

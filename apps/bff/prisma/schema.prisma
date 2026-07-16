@@ -43,6 +43,7 @@ model City {
   isPopular Boolean   @default(false)
   listings  Listing[]
   areas     Area[]
+  users     User[]
 
   @@unique([name, state])
 }
@@ -68,12 +69,16 @@ model User {
   email                 String?        @unique
   googleId              String?        @unique
   name                  String?
+  cityId                String?
+  city                  City?          @relation(fields: [cityId], references: [id])
   createdAt             DateTime       @default(now())
   listings              Listing[]
   favourites            Favourite[]
   conversationsAsPoster Conversation[] @relation("ConversationPoster")
   conversationsAsInquirer Conversation[] @relation("ConversationInquirer")
   messages              Message[]
+
+  @@index([cityId])
 }
 
 model Listing {
