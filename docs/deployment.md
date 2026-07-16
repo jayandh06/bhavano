@@ -119,9 +119,21 @@ IP** so the public address survives a stop/start.
 
 ### 6. Point DNS at the app instance
 
-`SITE_DOMAIN` / `API_DOMAIN` A records → the app instance's Elastic IP. Do this now — Caddy needs
-to complete a Let's Encrypt HTTP challenge on first boot in step 9, and DNS propagation isn't
-instant.
+`SITE_DOMAIN` / `API_DOMAIN` / `APEX_DOMAIN` records → the app instance's Elastic IP. Do this now —
+Caddy needs to complete a Let's Encrypt HTTP challenge on first boot in step 9, and DNS propagation
+isn't instant.
+
+**If DNS is managed through Cloudflare (or any other proxying CDN):** every one of these records
+must be set to **"DNS only"**, not proxied. A proxied record means Let's Encrypt's ACME challenge —
+and ordinary TLS handshakes — hit Cloudflare's edge instead of Caddy directly, which Caddy can't
+complete (shows up as a `525` error in the browser, or `NXDOMAIN`/ALPN-negotiation failures in
+Caddy's own logs, depending on exactly which record and challenge type is affected). This bit us
+for `www`, `api`, and the bare apex domain in turn — check all of them, not just the one that's
+currently broken.
+
+The bare apex (`APEX_DOMAIN`, e.g. `bhavano.com` with no `www`) doesn't serve the site itself — the
+`Caddyfile` 308-redirects it to `SITE_DOMAIN` instead, which is why it needs its own DNS record and
+its own "DNS only" toggle, same as the others, even though there's no separate container behind it.
 
 ### 7. Install Docker on the app instance
 

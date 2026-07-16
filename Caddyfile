@@ -2,6 +2,11 @@
 	reverse_proxy web:3000
 }
 
+# Bare apex domain redirects to the canonical www host rather than serving its own copy.
+{$APEX_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
 {$API_DOMAIN} {
 	# reverse_proxy handles the socket.io WebSocket upgrade transparently — no special config needed.
 	reverse_proxy bff:4000
