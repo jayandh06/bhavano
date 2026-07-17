@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { City, HomeCategoryFilter, PropertyTypeFilter } from "@bhavano/types";
 import { LocationPicker } from "./LocationPicker";
 import { SearchBar } from "./SearchBar";
@@ -71,8 +72,12 @@ export function Header({
             </span>
           </div>
 
-          <LocationPicker currentCityName={cityName} popularCities={popularCities} />
-          <SearchBar initialQuery={searchQuery} />
+          <Suspense>
+            <LocationPicker currentCityName={cityName} popularCities={popularCities} />
+          </Suspense>
+          <Suspense>
+            <SearchBar initialQuery={searchQuery} />
+          </Suspense>
 
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <ThemeToggle />
@@ -81,7 +86,9 @@ export function Header({
         </div>
 
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 32px" }}>
-          <CategoryTabs active={activeCategory} activePropertyType={activePropertyType} />
+          <Suspense>
+            <CategoryTabs active={activeCategory} activePropertyType={activePropertyType} />
+          </Suspense>
         </div>
       </header>
     </>

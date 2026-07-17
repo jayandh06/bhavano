@@ -29,7 +29,9 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const body = await res.text().catch(() => "");
     throw new Error(`BFF request failed (${res.status} ${path}): ${body}`);
   }
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text) return null as T;
+  return JSON.parse(text) as T;
 }
 
 /** For BFF endpoints behind AuthGuard — attaches the BFF accessToken carried on the

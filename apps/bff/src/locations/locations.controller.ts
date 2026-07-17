@@ -1,4 +1,5 @@
-import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, HttpCode, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import type { Area, City } from '@bhavano/types';
 import { LocationsService } from './locations.service';
 
@@ -18,12 +19,17 @@ export class LocationsController {
   }
 
   @Get('reverse')
-  reverseGeocode(@Query('lat') latRaw: string, @Query('lng') lngRaw: string): Promise<City | null> {
+  async reverseGeocode(
+    @Query('lat') latRaw: string,
+    @Query('lng') lngRaw: string,
+    @Res() res: Response,
+  ): Promise<void> {
     const lat = Number(latRaw);
     const lng = Number(lngRaw);
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
       throw new BadRequestException('lat and lng query params must be numbers');
     }
-    return this.locationsService.reverseGeocode(lat, lng);
+    const city = await this.locationsService.reverseGeocode(lat, lng);
+    res.json(city);
   }
 }

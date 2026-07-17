@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { HomeCategoryFilter, PropertyTypeFilter } from "@bhavano/types";
 import { auth } from "@/auth";
 import { fetchCities, fetchListings } from "@/lib/bff";
@@ -96,14 +97,16 @@ export default async function HomePage({
         activePropertyType={propertyType}
         userName={session?.user?.name}
       />
-      <FilterBar
-        resultsCount={listingsPage.total}
-        cityName={cityName}
-        activeMinPrice={minPrice}
-        activeMaxPrice={maxPrice}
-        activeBedrooms={bedrooms}
-        activeFurnished={furnished}
-      />
+      <Suspense>
+        <FilterBar
+          resultsCount={listingsPage.total}
+          cityName={cityName}
+          activeMinPrice={minPrice}
+          activeMaxPrice={maxPrice}
+          activeBedrooms={bedrooms}
+          activeFurnished={furnished}
+        />
+      </Suspense>
       <main style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 32px 80px" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 20 }}>
           <h1 style={{ fontFamily: "var(--font-lora)", fontSize: 26, fontWeight: 600, margin: 0, color: "var(--text)" }}>
