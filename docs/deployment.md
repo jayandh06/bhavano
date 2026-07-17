@@ -217,7 +217,88 @@ If step 10's `migrate deploy` succeeded, app→DB connectivity across the two in
 proven — no separate check needed.
 
 Future app deploys: `git pull && docker compose -f docker-compose.prod.yml --env-file .env up -d
---build` on the app instance. New migrations: re-run step 10 after deploying.
+--build` on the app instance. New migrations: re-run step 10 after deploying. See the two sections
+below for updating just the schema, or just one service, without redoing everything.
+
+## Updating the database schema (Prisma migrations)
+
+**Creating a migration during development** (on your own machine, with a real interactive
+terminal): edit `apps/bff/prisma/schema.prisma`, then from `apps/bff`:
+
+```bash
+npx prisma migrate dev --name describe_the_change
+```
+
+This generates the SQL under `apps/bff/prisma/migrations/<timestamp>_describe_the_change/`,
+applies it to your local dev database, and regenerates the Prisma client. Commit the new migration
+folder — production only ever *applies* migrations that already exist in the repo, it never
+generates them.
+
+**Gotcha hit repeatedly in this repo: `prisma migrate dev` refuses to run in a non-interactive
+shell** (CI, an agent, anything without a real TTY) — it fails with `Prisma Migrate has detected
+that the environment is non-interactive, which is not supported`. Workaround, from `apps/bff`:
+
+```bash
+# 1. Generate the SQL diff between the live dev DB and the updated schema
+npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script > /tmp/migration.sql
+
+# 2. Create the migration folder yourself (match the existing timestamp_name format)
+mkdir -p "prisma/migrations/$(date -u +%Y%m%d%H%M%S)_describe_the_change"
+mv /tmp/migration.sql "prisma/migrations/<the folder you just made>/migration.sql"
+
+# 3. Apply it (this command IS non-interactive-safe, unlike `migrate dev`)
+npx prisma migrate deploy
+npx prisma generate
+```
+
+Sanity-check the generated SQL before applying it — `migrate diff` is reliable for the additive
+changes (new column/table/index) this project has needed so far, but always read it once.
+
+**Applying migrations in production** (step 10 above, repeated whenever the schema changes):
+
+```bash
+docker compose -f docker-compose.prod.yml exec bff npx prisma migrate deploy
+```
+
+This only applies migration folders that exist in the image but haven't been recorded as applied
+yet (Prisma tracks this in a `_prisma_migrations` table) — safe to re-run, a no-op if nothing's
+pending. Always deploy the new code (`up -d --build bff`, see below) *before* or *together with*
+running this, never after — a migration that adds a column a new code path expects is harmless to
+apply early, but new code expecting a column an old, still-running container's Prisma Client
+doesn't know about will error.
+
+**Rolling back:** Prisma has no auto-generated down-migration. Reverting a bad migration means
+either writing a new forward migration that undoes it, or restoring the database from a backup —
+there's no `prisma migrate down`.
+
+## Building and deploying an individual service
+
+`docker-compose.prod.yml` has four services: `web`, `bff`, `admin`, and `caddy` (the stock
+`caddy:2-alpine` image, not built from source). Rebuilding "everything" (`up -d --build` with no
+service name) is correct after a `git pull` that touched multiple apps, but for a change scoped to
+one app, rebuild just that one — faster, and it doesn't bounce the others' connections:
+
+```bash
+# Rebuild and restart only the bff container (e.g. after a BFF-only code change or migration)
+docker compose -f docker-compose.prod.yml up -d --build bff
+
+# Same for web or admin
+docker compose -f docker-compose.prod.yml up -d --build web
+docker compose -f docker-compose.prod.yml up -d --build admin
+```
+
+- `up -d --build <service>` rebuilds that service's image and recreates+restarts just that
+  container; the others keep running untouched.
+- `docker compose -f docker-compose.prod.yml build <service>` (no `up`) builds the image without
+  restarting anything yet — useful to pre-build during a maintenance window before cutting over.
+- Turbo's remote-cache-less local build still only recompiles what changed inside that service's
+  `turbo prune` scope (see each app's `Dockerfile`), so `apps/types` changes get picked up by
+  whichever app(s) you rebuild, but only those apps' images get regenerated.
+- **`caddy` almost never needs `--build`** — it's an unmodified upstream image. If you only changed
+  the `Caddyfile` itself (e.g. adding a domain), `docker compose -f docker-compose.prod.yml restart
+  caddy` is enough (it's bind-mounted, so a restart re-reads it) — no rebuild.
+- Tail logs for just the one service you touched: `docker compose -f docker-compose.prod.yml logs
+  -f bff` (swap in `web`/`admin`/`caddy` as needed) — much less noise than `logs -f` across all four.
 
 ## Self-hosted Postgres vs RDS — the tradeoff being made here
 

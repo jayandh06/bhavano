@@ -50,7 +50,9 @@ export class AuthService {
       create: { phone, phoneVerifiedAt: new Date() },
     });
 
-    return this.issueSession(await this.promoteToAdminIfAllowlisted(user));
+    const promoted = await this.promoteToAdminIfAllowlisted(user);
+    await this.recordLogin(promoted.id, 'otp');
+    return this.issueSession(promoted);
   }
 
   /** Links a verified phone number to the currently logged-in user — e.g. a Google-login
@@ -76,7 +78,13 @@ export class AuthService {
       create: { googleId: profile.googleId, email: profile.email, name: profile.name },
     });
 
-    return this.issueSession(await this.promoteToAdminIfAllowlisted(user));
+    const promoted = await this.promoteToAdminIfAllowlisted(user);
+    await this.recordLogin(promoted.id, 'google');
+    return this.issueSession(promoted);
+  }
+
+  private recordLogin(userId: string, method: 'otp' | 'google'): Promise<unknown> {
+    return this.prisma.loginEvent.create({ data: { userId, method } });
   }
 
   /** No admin signup/invite flow exists — a phone/email matching ADMIN_PHONES/ADMIN_EMAILS

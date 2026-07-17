@@ -5,8 +5,12 @@ import type {
   ConversationSummaryDto,
   FlagListingInput,
   ListingDetailDto,
+  ListingOwnerDto,
+  LoginEventsPage,
   MessageDto,
   ModerationState,
+  RateLimitSettingsDto,
+  UserActivityDto,
 } from "@bhavano/types";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
@@ -103,4 +107,36 @@ export function sendMessage(accessToken: string, conversationId: string, body: s
     method: "POST",
     body: JSON.stringify({ body }),
   });
+}
+
+export function fetchListingOwner(accessToken: string, listingId: string): Promise<ListingOwnerDto | null> {
+  return authedBffFetch(accessToken, `/admin/listings/${listingId}/owner`, { cache: "no-store" });
+}
+
+export interface RecentLoginsQuery {
+  cursor?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
+export function fetchRecentLogins(accessToken: string, query: RecentLoginsQuery = {}): Promise<LoginEventsPage> {
+  const params = new URLSearchParams();
+  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.limit) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/logins?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchUserActivity(accessToken: string, userId: string): Promise<UserActivityDto> {
+  return authedBffFetch(accessToken, `/admin/users/${userId}/activity`, { cache: "no-store" });
+}
+
+export function fetchRateLimitSettings(accessToken: string): Promise<RateLimitSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/rate-limits", { cache: "no-store" });
+}
+
+export function updateRateLimitSettings(accessToken: string, input: RateLimitSettingsDto): Promise<RateLimitSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/rate-limits", { method: "PATCH", body: JSON.stringify(input) });
 }

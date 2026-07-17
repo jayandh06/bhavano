@@ -3,6 +3,8 @@ import type { ListingDetailDto, ListingSitemapEntry, ListingsPage } from '@bhava
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RateLimitAction } from '../rate-limit/rate-limit-kind.decorator';
 import { ListingsService } from './listings.service';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
@@ -32,7 +34,8 @@ export class ListingsController {
   }
 
   @Post()
-  @UseGuards(OptionalAuthGuard)
+  @UseGuards(OptionalAuthGuard, RateLimitGuard)
+  @RateLimitAction('publish')
   // TEMP(auth-gate): posting is open without login for now — anonymous owner used when not logged in.
   create(@Body() dto: CreateListingDto, @CurrentUser() user?: RequestUser): Promise<ListingDetailDto> {
     return this.listingsService.create(dto, user?.id);
@@ -49,7 +52,8 @@ export class ListingsController {
   }
 
   @Post(':id/view')
-  @UseGuards(OptionalAuthGuard)
+  @UseGuards(OptionalAuthGuard, RateLimitGuard)
+  @RateLimitAction('view')
   recordView(
     @Param('id') id: string,
     @Body() dto: RecordViewDto,

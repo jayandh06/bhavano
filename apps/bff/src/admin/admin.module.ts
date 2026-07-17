@@ -4,9 +4,10 @@ import { AdminService } from './admin.service';
 import { ListingsModule } from '../listings/listings.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { RateLimitModule } from '../rate-limit/rate-limit.module';
 
 @Module({
-  imports: [ListingsModule, MessagingModule, NotificationsModule],
+  imports: [ListingsModule, MessagingModule, NotificationsModule, RateLimitModule],
   controllers: [AdminController],
   providers: [AdminService],
 })

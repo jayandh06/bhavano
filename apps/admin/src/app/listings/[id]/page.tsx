@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchListingById, fetchMessages, fetchThread } from "@/lib/bff";
+import { fetchListingById, fetchListingOwner, fetchMessages, fetchThread } from "@/lib/bff";
 import { ModerationPanel } from "@/components/ModerationPanel";
 
 export default async function ListingModerationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,7 +11,10 @@ export default async function ListingModerationPage({ params }: { params: Promis
   const listing = await fetchListingById(accessToken, id).catch(() => null);
   if (!listing) notFound();
 
-  const thread = await fetchThread(accessToken, id);
+  const [thread, owner] = await Promise.all([
+    fetchThread(accessToken, id),
+    fetchListingOwner(accessToken, id),
+  ]);
   const messages = await fetchMessages(accessToken, thread.id);
 
   return (
@@ -44,6 +47,29 @@ export default async function ListingModerationPage({ params }: { params: Promis
             {listing.photos.length > 0 ? ` · ${listing.photos.length} photo(s)` : " · no photos"}
           </div>
         </div>
+
+        {owner && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: "12px 16px",
+              marginBottom: 20,
+              background: "var(--surface)",
+            }}
+          >
+            <div style={{ fontSize: 13 }}>
+              <span style={{ color: "var(--muted)" }}>Owner: </span>
+              {owner.name ?? "Unnamed"} {[owner.phone, owner.email].filter(Boolean).length > 0 && `(${[owner.phone, owner.email].filter(Boolean).join(", ")})`}
+            </div>
+            <Link href={`/users/${owner.id}`} style={{ fontSize: 13, fontWeight: 700, color: "var(--green)" }}>
+              View owner activity →
+            </Link>
+          </div>
+        )}
 
         <ModerationPanel
           listingId={listing.id}

@@ -53,6 +53,16 @@ enum ConversationType {
   moderation
 }
 
+enum LoginMethod {
+  otp
+  google
+}
+
+enum RateLimitKind {
+  publish
+  view
+}
+
 model City {
   id        String    @id @default(cuid())
   name      String
@@ -97,6 +107,7 @@ model User {
   conversationsAsPoster Conversation[] @relation("ConversationPoster")
   conversationsAsInquirer Conversation[] @relation("ConversationInquirer")
   messages              Message[]
+  loginEvents           LoginEvent[]
 
   @@index([cityId])
 }
@@ -152,6 +163,7 @@ model ListingView {
   createdAt DateTime @default(now())
 
   @@unique([listingId, viewerKey])
+  @@index([viewerKey])
 }
 
 model Favourite {
@@ -214,4 +226,37 @@ model OtpChallenge {
   createdAt DateTime @default(now())
 
   @@index([phone])
+}
+
+model LoginEvent {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  method    LoginMethod
+  createdAt DateTime    @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+/** One row per rate-limited action attempt, counted over a rolling window at check time —
+ * not pruned (same non-cleanup precedent as OtpChallenge). Anonymous requests never reach
+ * the guard that writes these, so `identity` is always "user:<id>". */
+model RateLimitHit {
+  id        String        @id @default(cuid())
+  identity  String
+  kind      RateLimitKind
+  createdAt DateTime      @default(now())
+
+  @@index([identity, kind, createdAt])
+}
+
+/** Singleton row (fixed id "singleton", upserted) — the admin-editable rate limits. */
+model RateLimitSetting {
+  id                   String   @id
+  publishLimit         Int      @default(5)
+  publishWindowMinutes Int      @default(1440)
+  viewLimit            Int      @default(200)
+  viewWindowMinutes    Int      @default(60)
+  updatedAt            DateTime @updatedAt
 }

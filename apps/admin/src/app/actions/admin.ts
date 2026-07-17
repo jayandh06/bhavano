@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { RateLimitSettingsDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { approveListing, fetchThread, flagListing, sendMessage, setReviewed } from "@/lib/bff";
+import { approveListing, fetchThread, flagListing, sendMessage, setReviewed, updateRateLimitSettings } from "@/lib/bff";
 
 export type ActionResult = { success: true } | { success: false; error: string };
 
@@ -51,5 +52,16 @@ export async function sendThreadMessageAction(listingId: string, body: string): 
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to send message" };
+  }
+}
+
+export async function updateRateLimitsAction(input: RateLimitSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateRateLimitSettings(accessToken, input);
+    revalidatePath("/settings/rate-limits");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update rate limits" };
   }
 }

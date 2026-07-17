@@ -1,5 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import type { AdminListingsPage, ListingDetailDto } from '@bhavano/types';
+import type {
+  AdminListingsPage,
+  ListingDetailDto,
+  ListingOwnerDto,
+  LoginEventsPage,
+  RateLimitSettingsDto,
+  UserActivityDto,
+} from '@bhavano/types';
 import { AdminGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
@@ -7,6 +14,8 @@ import { AdminService } from './admin.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
+import { ListLoginsDto } from './dto/list-logins.dto';
+import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -40,5 +49,30 @@ export class AdminController {
   @Get('listings/:id/thread')
   getThread(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<{ id: string }> {
     return this.adminService.getThread(id, user.id);
+  }
+
+  @Get('listings/:id/owner')
+  getListingOwner(@Param('id') id: string): Promise<ListingOwnerDto | null> {
+    return this.adminService.getListingOwner(id);
+  }
+
+  @Get('logins')
+  listRecentLogins(@Query() query: ListLoginsDto): Promise<LoginEventsPage> {
+    return this.adminService.listRecentLogins(query);
+  }
+
+  @Get('users/:id/activity')
+  getUserActivity(@Param('id') id: string): Promise<UserActivityDto> {
+    return this.adminService.getUserActivity(id);
+  }
+
+  @Get('rate-limits')
+  getRateLimitSettings(): Promise<RateLimitSettingsDto> {
+    return this.adminService.getRateLimitSettings();
+  }
+
+  @Patch('rate-limits')
+  updateRateLimitSettings(@Body() dto: UpdateRateLimitsDto): Promise<RateLimitSettingsDto> {
+    return this.adminService.updateRateLimitSettings(dto);
   }
 }

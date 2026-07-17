@@ -16,6 +16,10 @@ export type ModerationState = "approved" | "flagged";
  * flagged listing. Kept distinct so an admin's thread can't collide with a real buyer's. */
 export type ConversationType = "inquiry" | "moderation";
 
+export type LoginMethod = "otp" | "google";
+
+export type RateLimitKind = "publish" | "view";
+
 export interface GeoPoint {
   lat: number;
   lng: number;
@@ -207,3 +211,59 @@ export interface FlagListingInput {
    * moderation thread between them and the flagging admin. */
   message: string;
 }
+
+export interface LoginEventDto {
+  id: string;
+  userId: string;
+  userName: string | null;
+  userPhone: string | null;
+  userEmail: string | null;
+  method: LoginMethod;
+  createdAt: string;
+}
+
+export interface LoginEventsPage {
+  items: LoginEventDto[];
+  nextCursor: string | null;
+  total: number;
+}
+
+/** One entry in a user's merged activity timeline — sourced from several tables
+ * (logins, listings, messages, favourites, views) and returned pre-sorted, newest first. */
+export interface ActivityEventDto {
+  type: "login" | "listing_posted" | "listing_updated" | "message_sent" | "favourite_added" | "listing_viewed";
+  timestamp: string;
+  summary: string;
+  /** Id of the underlying record (listing id, message id, etc.) — not linked to anything yet,
+   * kept for future drill-down. */
+  refId?: string;
+}
+
+export interface UserActivityDto {
+  user: {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    email: string | null;
+    cityName: string | null;
+    role: UserRole;
+    createdAt: string;
+  };
+  events: ActivityEventDto[];
+}
+
+export interface ListingOwnerDto {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface RateLimitSettingsDto {
+  publishLimit: number;
+  publishWindowMinutes: number;
+  viewLimit: number;
+  viewWindowMinutes: number;
+}
+
+export type UpdateRateLimitSettingsInput = RateLimitSettingsDto;

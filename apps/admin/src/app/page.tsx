@@ -35,14 +35,22 @@ export default async function DashboardPage({
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Listing moderation</h1>
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 13, fontWeight: 700 }}
-            >
-              Logout
-            </button>
-          </form>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <Link href="/logins" style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>
+              Recent logins
+            </Link>
+            <Link href="/settings/rate-limits" style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>
+              Rate limits
+            </Link>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 13, fontWeight: 700 }}
+              >
+                Logout
+              </button>
+            </form>
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
