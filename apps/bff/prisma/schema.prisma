@@ -34,6 +34,25 @@ enum ListingCondition {
   used
 }
 
+enum UserRole {
+  user
+  admin
+}
+
+/** approved = normal/visible; flagged = an admin took it offline pending a fix from the
+ * owner (this IS the soft-delete — there's no separate deleted state). */
+enum ModerationState {
+  approved
+  flagged
+}
+
+/** inquiry = buyer/seller chat about a listing; moderation = admin↔owner thread about a
+ * flagged listing. Kept distinct so an admin's thread can't collide with a real buyer's. */
+enum ConversationType {
+  inquiry
+  moderation
+}
+
 model City {
   id        String    @id @default(cuid())
   name      String
@@ -69,6 +88,7 @@ model User {
   email                 String?        @unique
   googleId              String?        @unique
   name                  String?
+  role                  UserRole       @default(user)
   cityId                String?
   city                  City?          @relation(fields: [cityId], references: [id])
   createdAt             DateTime       @default(now())
@@ -86,6 +106,9 @@ model Listing {
   category         ListingCategory
   transactionType  TransactionType
   status           ListingStatus     @default(active)
+  moderationState  ModerationState   @default(approved)
+  adminReviewed    Boolean           @default(false)
+  moderatedAt      DateTime?
   condition        ListingCondition?
   price            Int
   priceQualifier   String            @default("")
@@ -143,17 +166,18 @@ model Favourite {
 }
 
 model Conversation {
-  id          String    @id @default(cuid())
+  id          String           @id @default(cuid())
   listingId   String
-  listing     Listing   @relation(fields: [listingId], references: [id])
+  listing     Listing          @relation(fields: [listingId], references: [id])
   posterId    String
-  poster      User      @relation("ConversationPoster", fields: [posterId], references: [id])
+  poster      User             @relation("ConversationPoster", fields: [posterId], references: [id])
   inquirerId  String
-  inquirer    User      @relation("ConversationInquirer", fields: [inquirerId], references: [id])
-  createdAt   DateTime  @default(now())
+  inquirer    User             @relation("ConversationInquirer", fields: [inquirerId], references: [id])
+  type        ConversationType @default(inquiry)
+  createdAt   DateTime         @default(now())
   messages    Message[]
 
-  @@unique([listingId, inquirerId])
+  @@unique([listingId, inquirerId, type])
 }
 
 model Message {

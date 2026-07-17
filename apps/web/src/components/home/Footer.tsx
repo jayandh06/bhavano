@@ -44,7 +44,15 @@ export function Footer() {
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
             <a href="#">About</a>
             <a href="#">Post a free ad</a>
-            <a href="#">Help centre</a>
+            <Link href="/help">Help centre</Link>
+          </div>
+        </div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 10 }}>Legal</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+            <Link href="/terms">Terms of Service</Link>
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/contact">Contact Us</Link>
           </div>
         </div>
       </div>

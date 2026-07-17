@@ -6,6 +6,16 @@ export type ListingStatus = "active" | "sold" | "rented" | "deactivated";
 
 export type ListingCondition = "new" | "used";
 
+export type UserRole = "user" | "admin";
+
+/** approved = normal/visible; flagged = an admin took it offline pending a fix from the
+ * owner — this IS the soft-delete, there's no separate "deleted" state. */
+export type ModerationState = "approved" | "flagged";
+
+/** inquiry = buyer/seller chat about a listing; moderation = admin↔owner thread about a
+ * flagged listing. Kept distinct so an admin's thread can't collide with a real buyer's. */
+export type ConversationType = "inquiry" | "moderation";
+
 export interface GeoPoint {
   lat: number;
   lng: number;
@@ -93,10 +103,24 @@ export interface ListingSitemapEntry {
 }
 
 export interface ListingDetailDto extends ListingCardDto {
+  status: ListingStatus;
+  moderationState: ModerationState;
+  adminReviewed: boolean;
+  moderatedAt: string | null;
   attributes: Record<string, unknown>;
   createdAt: string;
   expiresAt: string;
   isExpired: boolean;
+}
+
+/** Fields an owner can change after posting — from the my-listings edit form. */
+export interface UpdateListingInput {
+  price?: number;
+  priceQualifier?: string;
+  title?: string;
+  specs?: string[];
+  attributes?: Record<string, unknown>;
+  status?: ListingStatus;
 }
 
 export interface CreateListingInput {
@@ -132,6 +156,7 @@ export interface ConversationSummaryDto {
   id: string;
   listingId: string;
   listingTitle: string;
+  type: ConversationType;
   otherPartyId: string;
   otherPartyName: string;
   lastMessage: MessageDto | null;
@@ -143,6 +168,7 @@ export interface AuthUser {
   phone?: string;
   email?: string;
   name?: string;
+  role: UserRole;
 }
 
 export interface AuthSession {
@@ -163,4 +189,21 @@ export interface UserProfileDto {
 export interface UpdateProfileInput {
   name?: string;
   cityId?: string;
+  /** Only accepted when the profile doesn't already have an email — e.g. a phone-login
+   * user completing their profile. Once set, it's shown read-only. */
+  email?: string;
+}
+
+/** Admin moderation queue — same listing shape as the public/owner views, just without the
+ * `moderationState: 'approved'` filter the public browse endpoint applies. */
+export interface AdminListingsPage {
+  items: ListingDetailDto[];
+  nextCursor: string | null;
+  total: number;
+}
+
+export interface FlagListingInput {
+  /** The discrepancy explained to the owner — posted as the first message of the
+   * moderation thread between them and the flagging admin. */
+  message: string;
 }

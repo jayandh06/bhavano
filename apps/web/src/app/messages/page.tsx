@@ -9,6 +9,9 @@ export default async function MessagesPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px" }}>
+        <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+          ← Back to listings
+        </Link>
         <h1 style={{ fontFamily: "var(--font-lora)", fontSize: 26, fontWeight: 600, margin: "0 0 20px" }}>
           Messages
         </h1>

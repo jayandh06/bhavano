@@ -1,11 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
+  AdminListingsPage,
   CreateListingInput,
   HomeCategoryFilter,
   ListingCardDto,
+  ListingCategory,
   ListingDetailDto,
   ListingSitemapEntry,
   ListingsPage,
+  ModerationState,
   PropertyTypeFilter,
   TransactionType,
 } from '@bhavano/types';
@@ -16,6 +19,7 @@ import { ModerationService } from '../moderation/moderation.service';
 import { Prisma } from '@prisma/client';
 import type { Area, City, Listing } from '@prisma/client';
 import { ListListingsDto } from './dto/list-listings.dto';
+import { UpdateListingDto } from './dto/update-listing.dto';
 
 const ANONYMOUS_OWNER_EMAIL = 'anonymous@bahavano.local';
 
@@ -93,6 +97,7 @@ export class ListingsService {
     const where: Prisma.ListingWhereInput = {
       ...categoryWhere,
       status: 'active',
+      moderationState: 'approved',
       expiresAt: { gt: new Date() },
       ...(cityId ? { cityId } : {}),
       ...(areaId ? { areaId } : {}),
@@ -125,26 +130,92 @@ export class ListingsService {
     };
   }
 
+  /** Admin moderation queue — every listing regardless of status/moderationState/expiry
+   * (unlike the public `list()`, which only ever shows approved, active, unexpired ones). */
+  async listForAdmin(query: {
+    moderationState?: ModerationState;
+    adminReviewed?: boolean;
+    category?: ListingCategory;
+    cityId?: string;
+    cursor?: string;
+    limit: number;
+  }): Promise<AdminListingsPage> {
+    const { moderationState, adminReviewed, category, cityId, cursor, limit } = query;
+    const where: Prisma.ListingWhereInput = {
+      ...(moderationState ? { moderationState } : {}),
+      ...(adminReviewed !== undefined ? { adminReviewed } : {}),
+      ...(category ? { category } : {}),
+      ...(cityId ? { cityId } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.listing.findMany({
+        where,
+        include: { city: true, area: true },
+        orderBy: { createdAt: 'desc' },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      this.prisma.listing.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      items: page.map((row) => this.toDetailDto(row)),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+      total,
+    };
+  }
+
+  async setAdminReviewed(id: string, adminReviewed: boolean): Promise<ListingDetailDto> {
+    const listing = await this.prisma.listing.update({
+      where: { id },
+      data: { adminReviewed },
+      include: { city: true, area: true },
+    });
+    return this.toDetailDto(listing);
+  }
+
+  /** Takes a listing offline (this IS the soft-delete — see ModerationState) and marks it
+   * reviewed. Posting the discrepancy message to the owner is the caller's (AdminService's)
+   * job, via MessagingService, so this stays a plain listing-state mutation. */
+  async flag(id: string): Promise<ListingDetailDto> {
+    const listing = await this.prisma.listing.update({
+      where: { id },
+      data: { moderationState: 'flagged', adminReviewed: true, moderatedAt: new Date() },
+      include: { city: true, area: true },
+    });
+    return this.toDetailDto(listing);
+  }
+
+  /** Puts a previously-flagged listing back in front of buyers. */
+  async approve(id: string): Promise<ListingDetailDto> {
+    const listing = await this.prisma.listing.update({
+      where: { id },
+      data: { moderationState: 'approved', adminReviewed: true, moderatedAt: new Date() },
+      include: { city: true, area: true },
+    });
+    return this.toDetailDto(listing);
+  }
+
   async findOne(id: string, currentUserId?: string): Promise<ListingDetailDto> {
     const listing = await this.prisma.listing.findUnique({ where: { id }, include: { city: true, area: true } });
     if (!listing) throw new NotFoundException(`Listing ${id} not found`);
 
     const favouritedIds = await this.getFavouritedIds(currentUserId, [id]);
-
-    return {
-      ...this.toCardDto(listing, favouritedIds),
-      attributes: listing.attributes as Record<string, unknown>,
-      createdAt: listing.createdAt.toISOString(),
-      expiresAt: listing.expiresAt.toISOString(),
-      isExpired: listing.expiresAt.getTime() < Date.now(),
-    };
+    return this.toDetailDto(listing, favouritedIds);
   }
 
-  async create(input: CreateListingInput): Promise<ListingDetailDto> {
+  // TEMP(auth-gate): posting is open without login for now — currentUserId is set when the
+  // poster is logged in (so the listing shows up under their My Listings), otherwise it
+  // falls back to the shared anonymous owner.
+  async create(input: CreateListingInput, currentUserId?: string): Promise<ListingDetailDto> {
     const moderation = await this.moderationService.moderate(input);
     if (!moderation.ok) throw new BadRequestException(moderation.reason);
 
-    const owner = await this.ensureAnonymousOwner();
+    const ownerId = currentUserId ?? (await this.ensureAnonymousOwner()).id;
     const areaId = input.areaId ?? (await this.ensureArea(input.cityId, input.areaName)).id;
     const expiresAt = new Date(Date.now() + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
@@ -162,7 +233,7 @@ export class ListingsService {
         photos: input.photos ?? [],
         attributes: (input.attributes ?? {}) as Prisma.InputJsonValue,
         tag: deriveTag(input),
-        ownerId: owner.id,
+        ownerId,
         expiresAt,
       },
       include: { city: true, area: true },
@@ -174,19 +245,56 @@ export class ListingsService {
       });
     }
 
-    return {
-      ...this.toCardDto(listing),
-      attributes: listing.attributes as Record<string, unknown>,
-      createdAt: listing.createdAt.toISOString(),
-      expiresAt: listing.expiresAt.toISOString(),
-      isExpired: false,
-    };
+    return this.toDetailDto(listing);
+  }
+
+  async listMine(userId: string): Promise<ListingDetailDto[]> {
+    const listings = await this.prisma.listing.findMany({
+      where: { ownerId: userId },
+      include: { city: true, area: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return listings.map((listing) => this.toDetailDto(listing));
+  }
+
+  async getMine(userId: string, id: string): Promise<ListingDetailDto> {
+    const listing = await this.prisma.listing.findUnique({ where: { id }, include: { city: true, area: true } });
+    if (!listing) throw new NotFoundException(`Listing ${id} not found`);
+    if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+
+    return this.toDetailDto(listing);
+  }
+
+  async update(id: string, userId: string, dto: UpdateListingDto): Promise<ListingDetailDto> {
+    const existing = await this.prisma.listing.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Listing ${id} not found`);
+    if (existing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+
+    const listing = await this.prisma.listing.update({
+      where: { id },
+      data: {
+        ...(dto.price !== undefined ? { price: dto.price } : {}),
+        ...(dto.priceQualifier !== undefined ? { priceQualifier: dto.priceQualifier } : {}),
+        ...(dto.title !== undefined ? { title: dto.title, slug: slugify(dto.title) } : {}),
+        ...(dto.specs !== undefined ? { specs: dto.specs } : {}),
+        ...(dto.attributes !== undefined ? { attributes: dto.attributes as Prisma.InputJsonValue } : {}),
+        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        // An owner editing a flagged listing IS the resubmission — flip adminReviewed back
+        // to false so it resurfaces in the admin queue as needing another look. Approving/
+        // flagging again is still required to actually change moderationState.
+        ...(existing.moderationState === 'flagged' ? { adminReviewed: false } : {}),
+      },
+      include: { city: true, area: true },
+    });
+
+    return this.toDetailDto(listing);
   }
 
   /** Minimal fields for every active, non-expired listing — feeds the web app's sitemap.xml. */
   async findAllForSitemap(): Promise<ListingSitemapEntry[]> {
     const listings = await this.prisma.listing.findMany({
-      where: { status: 'active', expiresAt: { gt: new Date() } },
+      where: { status: 'active', moderationState: 'approved', expiresAt: { gt: new Date() } },
       include: { city: true, area: true },
       orderBy: { updatedAt: 'desc' },
       take: 5000,
@@ -285,6 +393,20 @@ export class ListingsService {
       update: {},
       create: { email: ANONYMOUS_OWNER_EMAIL, name: 'Anonymous' },
     });
+  }
+
+  private toDetailDto(listing: Listing & { city: City; area: Area }, favouritedIds?: Set<string>): ListingDetailDto {
+    return {
+      ...this.toCardDto(listing, favouritedIds),
+      status: listing.status,
+      moderationState: listing.moderationState,
+      adminReviewed: listing.adminReviewed,
+      moderatedAt: listing.moderatedAt?.toISOString() ?? null,
+      attributes: listing.attributes as Record<string, unknown>,
+      createdAt: listing.createdAt.toISOString(),
+      expiresAt: listing.expiresAt.toISOString(),
+      isExpired: listing.expiresAt.getTime() < Date.now(),
+    };
   }
 
   private toCardDto(listing: Listing & { city: City; area: Area }, favouritedIds?: Set<string>): ListingCardDto {

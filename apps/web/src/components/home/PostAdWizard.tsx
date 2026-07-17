@@ -6,6 +6,11 @@ import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
 import { searchAreasAction } from "@/app/actions/locations";
+import { useClickOutside } from "@/lib/useClickOutside";
+
+function sanitizeNonNegative(value: string): string {
+  return value.replace(/-/g, "");
+}
 
 const CATEGORIES: { value: ListingCategory; label: string; icon: string }[] = [
   { value: "house", label: "House", icon: "🏡" },
@@ -44,6 +49,14 @@ const labelStyle: React.CSSProperties = {
   display: "block",
 };
 
+function RequiredLabel({ text }: { text: string }) {
+  return (
+    <label style={labelStyle}>
+      {text} <span style={{ color: "#b3413a" }}>*</span>
+    </label>
+  );
+}
+
 const optionButtonStyle = (active: boolean): React.CSSProperties => ({
   display: "flex",
   alignItems: "center",
@@ -74,12 +87,15 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
   const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
   const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const areaFieldRef = useRef<HTMLDivElement | null>(null);
   const [specs, setSpecs] = useState("");
   const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useClickOutside(areaFieldRef, () => setShowAreaSuggestions(false));
 
   function selectCategory(next: ListingCategory) {
     setCategory(next);
@@ -133,7 +149,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
     setAreaSuggestions([]);
   }
 
-  const detailsValid = price.length > 0 && title.length > 0 && areaQuery.trim().length > 0 && !!cityId;
+  const detailsValid = Number(price) > 0 && title.length > 0 && areaQuery.trim().length > 0 && !!cityId;
 
   async function onSubmit() {
     if (!category || !transactionType) return;
@@ -220,8 +236,15 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Price (₹)</label>
-              <input type="number" required min={1} value={price} onChange={(e) => setPrice(e.target.value)} style={fieldStyle} />
+              <RequiredLabel text="Price (₹)" />
+              <input
+                type="number"
+                required
+                min={1}
+                value={price}
+                onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
+                style={fieldStyle}
+              />
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>Price qualifier (optional)</label>
@@ -235,12 +258,12 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
           </div>
 
           <div>
-            <label style={labelStyle}>Title</label>
+            <RequiredLabel text="Title" />
             <input required value={title} onChange={(e) => setTitle(e.target.value)} style={fieldStyle} />
           </div>
 
           <div>
-            <label style={labelStyle}>City</label>
+            <RequiredLabel text="City" />
             <select required value={cityId} onChange={(e) => onCityChange(e.target.value)} style={fieldStyle}>
               {cities.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -250,14 +273,13 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
             </select>
           </div>
 
-          <div style={{ position: "relative" }}>
-            <label style={labelStyle}>Area / locality</label>
+          <div ref={areaFieldRef} style={{ position: "relative" }}>
+            <RequiredLabel text="Area / locality" />
             <input
               required
               value={areaQuery}
               onChange={(e) => onAreaQueryChange(e.target.value)}
               onFocus={() => setShowAreaSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowAreaSuggestions(false), 150)}
               placeholder="Start typing a locality…"
               autoComplete="off"
               style={fieldStyle}
@@ -338,8 +360,14 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
                   ) : (
                     <input
                       type={field.type === "number" ? "number" : "text"}
+                      min={field.type === "number" ? 0 : undefined}
                       value={attributes[field.key] ?? ""}
-                      onChange={(e) => setAttributes((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      onChange={(e) =>
+                        setAttributes((prev) => ({
+                          ...prev,
+                          [field.key]: field.type === "number" ? sanitizeNonNegative(e.target.value) : e.target.value,
+                        }))
+                      }
                       placeholder={field.placeholder}
                       style={fieldStyle}
                     />

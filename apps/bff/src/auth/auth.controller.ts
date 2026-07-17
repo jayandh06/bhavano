@@ -1,6 +1,9 @@
 import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { AuthSession } from '@bhavano/types';
+import { AuthGuard } from './guards/auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
+import type { RequestUser } from './guards/auth.guard';
 import { AuthService } from './auth.service';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -29,5 +32,14 @@ export class AuthController {
   @HttpCode(200)
   loginWithGoogle(@Body() dto: GoogleLoginDto): Promise<AuthSession> {
     return this.authService.loginWithGoogle(dto.idToken);
+  }
+
+  @Post('otp/link')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async linkPhone(@Body() dto: VerifyOtpDto, @CurrentUser() user: RequestUser): Promise<{ success: true }> {
+    await this.authService.linkPhone(user.id, dto.phone, dto.code);
+    return { success: true };
   }
 }

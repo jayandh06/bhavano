@@ -26,9 +26,22 @@ export class MessagingService {
     }
 
     return this.prisma.conversation.upsert({
-      where: { listingId_inquirerId: { listingId, inquirerId } },
+      where: { listingId_inquirerId_type: { listingId, inquirerId, type: 'inquiry' } },
       update: {},
-      create: { listingId, inquirerId, posterId: listing.ownerId },
+      create: { listingId, inquirerId, posterId: listing.ownerId, type: 'inquiry' },
+    });
+  }
+
+  /** Admin↔owner thread about a flagged listing — kept as its own `type` so it can never
+   * collide with (or be mistaken for) a genuine buyer inquiry on the same listing. */
+  async getOrCreateModerationThread(listingId: string, adminId: string): Promise<Conversation> {
+    const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
+    if (!listing) throw new NotFoundException('Listing not found');
+
+    return this.prisma.conversation.upsert({
+      where: { listingId_inquirerId_type: { listingId, inquirerId: adminId, type: 'moderation' } },
+      update: {},
+      create: { listingId, inquirerId: adminId, posterId: listing.ownerId, type: 'moderation' },
     });
   }
 
@@ -54,8 +67,9 @@ export class MessagingService {
           id: c.id,
           listingId: c.listingId,
           listingTitle: c.listing.title,
+          type: c.type,
           otherPartyId: otherParty.id,
-          otherPartyName: otherParty.name ?? otherParty.phone ?? 'User',
+          otherPartyName: otherParty.name ?? otherParty.phone ?? (c.type === 'moderation' ? 'Bhavano Admin' : 'User'),
           lastMessage: c.messages[0] ? toMessageDto(c.messages[0]) : null,
           unreadCount,
         };

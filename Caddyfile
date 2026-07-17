@@ -11,3 +11,8 @@
 	# reverse_proxy handles the socket.io WebSocket upgrade transparently — no special config needed.
 	reverse_proxy bff:4000
 }
+
+# Admin moderation app — separate host so it's never reachable via the public site's domain.
+{$ADMIN_DOMAIN} {
+	reverse_proxy admin:3001
+}

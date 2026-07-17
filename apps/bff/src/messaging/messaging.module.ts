@@ -6,5 +6,6 @@ import { MessagingGateway } from './messaging.gateway';
 @Module({
   controllers: [MessagingController],
   providers: [MessagingService, MessagingGateway],
+  exports: [MessagingService],
 })
 export class MessagingModule {}

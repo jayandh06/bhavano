@@ -14,6 +14,7 @@ import type {
   MessageDto,
   PropertyTypeFilter,
   TransactionType,
+  UpdateListingInput,
   UpdateProfileInput,
   UserProfileDto,
 } from "@bhavano/types";
@@ -27,7 +28,17 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`BFF request failed (${res.status} ${path}): ${body}`);
+    // NestJS error responses are JSON ({ message, statusCode, error }) — surface the plain
+    // message when present instead of the raw JSON blob.
+    const parsedMessage = (() => {
+      try {
+        const parsed = JSON.parse(body) as { message?: string | string[] };
+        return Array.isArray(parsed.message) ? parsed.message.join(", ") : parsed.message;
+      } catch {
+        return undefined;
+      }
+    })();
+    throw new Error(parsedMessage ?? `BFF request failed (${res.status} ${path}): ${body}`);
   }
   const text = await res.text();
   if (!text) return null as T;
@@ -108,8 +119,21 @@ export function fetchListingById(id: string, accessToken?: string): Promise<List
 }
 
 // TEMP(auth-gate): posting is open without login for now — see CreateListingInput/BFF for the anonymous-owner fallback.
-export function createListing(input: CreateListingInput): Promise<ListingDetailDto> {
-  return bffFetch<ListingDetailDto>("/listings", { method: "POST", body: JSON.stringify(input) });
+export function createListing(input: CreateListingInput, accessToken?: string): Promise<ListingDetailDto> {
+  const init = { method: "POST", body: JSON.stringify(input) };
+  return accessToken ? authedBffFetch(accessToken, "/listings", init) : bffFetch<ListingDetailDto>("/listings", init);
+}
+
+export function fetchMyListings(accessToken: string): Promise<ListingDetailDto[]> {
+  return authedBffFetch(accessToken, "/users/me/listings", { cache: "no-store" });
+}
+
+export function fetchMyListing(accessToken: string, listingId: string): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/users/me/listings/${listingId}`, { cache: "no-store" });
+}
+
+export function updateListing(accessToken: string, listingId: string, input: UpdateListingInput): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export async function uploadPhoto(formData: FormData): Promise<{ url: string; hash: string }> {
@@ -134,6 +158,12 @@ export function verifyOtp(phone: string, code: string): Promise<AuthSession> {
 
 export function loginWithGoogle(idToken: string): Promise<AuthSession> {
   return bffFetch("/auth/google", { method: "POST", body: JSON.stringify({ idToken }) });
+}
+
+/** Links a verified phone number to the currently logged-in user (e.g. a Google-login user
+ * completing their profile) — distinct from verifyOtp(), which logs in/signs up by phone. */
+export function linkPhone(accessToken: string, phone: string, code: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/auth/otp/link", { method: "POST", body: JSON.stringify({ phone, code }) });
 }
 
 export function recordView(listingId: string, viewerKey: string, accessToken?: string): Promise<{ viewCount: number }> {

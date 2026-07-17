@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { sendOtpAction, signInWithGoogleAction, verifyOtpAction } from "@/app/actions/auth";
 
 type LoginStep = "choose" | "phone" | "otp";
@@ -140,7 +141,15 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                   G Continue with Google
                 </button>
                 <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 14, lineHeight: 1.5 }}>
-                  By continuing you agree to Bhavano&apos;s Terms of Service and Privacy Policy.
+                  By continuing you agree to Bhavano&apos;s{" "}
+                  <Link href="/terms" style={{ color: "var(--text-soft)", fontWeight: 700 }}>
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/privacy" style={{ color: "var(--text-soft)", fontWeight: 700 }}>
+                    Privacy Policy
+                  </Link>
+                  .
                 </p>
               </>
             )}

@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import type { City, UserProfileDto } from "@bhavano/types";
 import { autoDetectCityAction, searchCitiesAction } from "@/app/actions/locations";
 import { updateProfileAction } from "@/app/actions/users";
+import { linkPhoneAction, sendOtpAction } from "@/app/actions/auth";
+
+type PhoneStep = "idle" | "otpSent";
 
 export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   const [name, setName] = useState(profile.name ?? "");
@@ -16,6 +19,18 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [detected, setDetected] = useState(false);
+
+  const [email, setEmail] = useState(profile.email ?? "");
+
+  const [currentPhone, setCurrentPhone] = useState(profile.phone);
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>("idle");
+  const [phoneInput, setPhoneInput] = useState("");
+  const [otpInput, setOtpInput] = useState("");
+  const [phonePending, setPhonePending] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const emailMissing = !profile.email && email.trim().length === 0;
+  const canSave = !!currentPhone && !emailMissing;
 
   // No saved city yet — try to auto-detect one from the browser's geolocation so there's a
   // sensible default to review/confirm, instead of an empty required-feeling field.
@@ -54,10 +69,40 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
     setDetected(false);
   }
 
+  async function onSendPhoneOtp() {
+    setPhonePending(true);
+    setPhoneError(null);
+    const result = await sendOtpAction(phoneInput);
+    setPhonePending(false);
+    if (result.success) {
+      setPhoneStep("otpSent");
+    } else {
+      setPhoneError(result.error ?? "Failed to send OTP");
+    }
+  }
+
+  async function onVerifyPhoneOtp() {
+    setPhonePending(true);
+    setPhoneError(null);
+    const result = await linkPhoneAction(phoneInput, otpInput);
+    setPhonePending(false);
+    if (result.success) {
+      setCurrentPhone(phoneInput);
+      setPhoneStep("idle");
+      setOtpInput("");
+    } else {
+      setPhoneError(result.error ?? "Incorrect OTP");
+    }
+  }
+
   async function onSave() {
     setSaving(true);
     setMessage(null);
-    const result = await updateProfileAction({ name: name.trim() || undefined, cityId });
+    const result = await updateProfileAction({
+      name: name.trim() || undefined,
+      cityId,
+      email: !profile.email && email.trim() ? email.trim() : undefined,
+    });
     setSaving(false);
     setDetected(false);
     setMessage(
@@ -73,13 +118,89 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
       </div>
 
       <div>
-        <label style={labelStyle}>Email</label>
-        <div style={readOnlyStyle}>{profile.email ?? "—"}</div>
+        <label style={labelStyle}>
+          Email {!profile.email && <span style={{ color: "#b3413a" }}>*</span>}
+        </label>
+        {profile.email ? (
+          <div style={readOnlyStyle}>{profile.email}</div>
+        ) : (
+          <>
+            <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 8px" }}>
+              You signed in with your phone number — add an email so we have another way to reach you.
+            </p>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              style={inputStyle}
+            />
+          </>
+        )}
       </div>
 
       <div>
-        <label style={labelStyle}>Phone</label>
-        <div style={readOnlyStyle}>{profile.phone ?? "—"}</div>
+        <label style={labelStyle}>
+          Phone {!currentPhone && <span style={{ color: "#b3413a" }}>*</span>}
+        </label>
+        {currentPhone ? (
+          <div style={readOnlyStyle}>{currentPhone}</div>
+        ) : (
+          <>
+            <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 8px" }}>
+              You signed in with Google — add and verify a phone number so buyers/sellers can reach you.
+            </p>
+            {phoneStep === "idle" ? (
+              <>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <div style={countryChipStyle}>+91</div>
+                  <input
+                    value={phoneInput}
+                    onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    placeholder="10-digit mobile number"
+                    style={inputStyle}
+                  />
+                </div>
+                {phoneError && <p style={errorStyle}>{phoneError}</p>}
+                <button
+                  onClick={onSendPhoneOtp}
+                  disabled={phoneInput.length !== 10 || phonePending}
+                  style={{ ...secondaryButtonStyle, opacity: phoneInput.length === 10 ? 1 : 0.5, marginTop: 10 }}
+                >
+                  {phonePending ? "Sending…" : "Send OTP"}
+                </button>
+              </>
+            ) : (
+              <>
+                <input
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="······"
+                  style={{ ...inputStyle, textAlign: "center", letterSpacing: "0.4em" }}
+                />
+                {phoneError && <p style={errorStyle}>{phoneError}</p>}
+                <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                  <button
+                    onClick={onVerifyPhoneOtp}
+                    disabled={otpInput.length !== 6 || phonePending}
+                    style={{ ...secondaryButtonStyle, opacity: otpInput.length === 6 ? 1 : 0.5 }}
+                  >
+                    {phonePending ? "Verifying…" : "Verify & link"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPhoneStep("idle");
+                      setPhoneError(null);
+                    }}
+                    style={backButtonStyle}
+                  >
+                    ← Back
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
 
       <div style={{ position: "relative" }}>
@@ -145,7 +266,17 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
         </p>
       )}
 
-      <button onClick={onSave} disabled={saving} style={saveButtonStyle}>
+      {!canSave && (
+        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: 0 }}>
+          {!currentPhone && emailMissing
+            ? "Add your email above and verify your phone number above before saving."
+            : !currentPhone
+              ? "Verify your phone number above before saving."
+              : "Add your email above before saving."}
+        </p>
+      )}
+
+      <button onClick={onSave} disabled={saving || !canSave} style={{ ...saveButtonStyle, opacity: saving || !canSave ? 0.6 : 1 }}>
         {saving ? "Saving…" : "Save changes"}
       </button>
     </div>
@@ -192,4 +323,40 @@ const saveButtonStyle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 700,
   cursor: "pointer",
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  background: "var(--surface)",
+  color: "var(--green)",
+  border: "1.5px solid var(--green)",
+  borderRadius: 8,
+  padding: "11px 16px",
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const backButtonStyle: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  color: "var(--muted)",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const errorStyle: React.CSSProperties = {
+  color: "#b3413a",
+  fontSize: 13,
+  marginTop: 8,
+  marginBottom: 0,
+};
+
+const countryChipStyle: React.CSSProperties = {
+  background: "var(--surface-alt)",
+  border: "1px solid var(--border)",
+  borderRadius: 9,
+  padding: "12px 14px",
+  fontWeight: 700,
+  fontSize: 14,
 };

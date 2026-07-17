@@ -1,18 +1,21 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import type { CreateListingInput, ListingDetailDto } from "@bhavano/types";
+import type { CreateListingInput, ListingDetailDto, UpdateListingInput } from "@bhavano/types";
 import { auth } from "@/auth";
-import { createListing, recordView, toggleFavourite, uploadPhoto } from "@/lib/bff";
+import { createListing, fetchMyListings, recordView, toggleFavourite, updateListing, uploadPhoto } from "@/lib/bff";
 import { buildListingPath } from "@/lib/listingPath";
 
-// TEMP(auth-gate): posting is open without login for now.
+// TEMP(auth-gate): posting is open without login for now — logged-in posters are attributed
+// as the real owner (so the listing shows up under My Listings), anonymous ones fall back
+// to the shared anonymous owner on the BFF.
 export async function createListingAction(
   input: CreateListingInput,
 ): Promise<{ success: boolean; error?: string }> {
+  const session = await auth();
   let listing: ListingDetailDto;
   try {
-    listing = await createListing(input);
+    listing = await createListing(input, session?.accessToken);
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to create listing" };
   }
@@ -42,4 +45,24 @@ export async function toggleFavouriteAction(listingId: string): Promise<ToggleFa
 
   const result = await toggleFavourite(session.accessToken, listingId);
   return { requiresLogin: false, ...result };
+}
+
+export async function fetchMyListingsAction(): Promise<ListingDetailDto[]> {
+  const session = await auth();
+  if (!session?.accessToken) return [];
+  return fetchMyListings(session.accessToken);
+}
+
+export type UpdateListingResult = { success: true } | { success: false; error: string };
+
+export async function updateListingAction(listingId: string, input: UpdateListingInput): Promise<UpdateListingResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    await updateListing(session.accessToken, listingId, input);
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update listing" };
+  }
+  return { success: true };
 }

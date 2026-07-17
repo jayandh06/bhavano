@@ -97,6 +97,12 @@ function AccountMenu({ userName }: { userName: string }) {
           <Link href="/profile" onClick={() => setOpen(false)} style={menuItemStyle}>
             Profile
           </Link>
+          <Link href="/my-listings" onClick={() => setOpen(false)} style={menuItemStyle}>
+            My listings
+          </Link>
+          <Link href="/help" onClick={() => setOpen(false)} style={menuItemStyle}>
+            Help
+          </Link>
           <button onClick={() => signOutAction()} style={{ ...menuItemStyle, width: "100%", textAlign: "left", border: "none", background: "none", cursor: "pointer" }}>
             Logout
           </button>

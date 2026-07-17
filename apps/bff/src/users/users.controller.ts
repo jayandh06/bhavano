@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
-import type { ListingCardDto, UserProfileDto } from '@bhavano/types';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import type { ListingCardDto, ListingDetailDto, UserProfileDto } from '@bhavano/types';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
@@ -28,5 +28,15 @@ export class UsersController {
   @Get('favourites')
   favourites(@CurrentUser() user: RequestUser): Promise<ListingCardDto[]> {
     return this.listingsService.listFavourites(user.id);
+  }
+
+  @Get('listings')
+  myListings(@CurrentUser() user: RequestUser): Promise<ListingDetailDto[]> {
+    return this.listingsService.listMine(user.id);
+  }
+
+  @Get('listings/:id')
+  myListing(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
+    return this.listingsService.getMine(user.id, id);
   }
 }

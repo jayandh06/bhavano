@@ -8,5 +8,6 @@ import { GoogleProvider } from './providers/google.provider';
 @Module({
   controllers: [AuthController],
   providers: [AuthService, OtpService, Msg91Provider, GoogleProvider],
+  exports: [Msg91Provider],
 })
 export class AuthModule {}

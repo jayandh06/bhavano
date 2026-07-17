@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import type { ListingDetailDto, ListingSitemapEntry, ListingsPage } from '@bhavano/types';
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -6,6 +6,7 @@ import type { RequestUser } from '../auth/guards/auth.guard';
 import { ListingsService } from './listings.service';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
+import { UpdateListingDto } from './dto/update-listing.dto';
 import { RecordViewDto } from './dto/record-view.dto';
 
 @Controller('listings')
@@ -31,9 +32,20 @@ export class ListingsController {
   }
 
   @Post()
-  // TEMP(auth-gate): posting is open without login for now — anonymous owner used until auth is re-enabled.
-  create(@Body() dto: CreateListingDto): Promise<ListingDetailDto> {
-    return this.listingsService.create(dto);
+  @UseGuards(OptionalAuthGuard)
+  // TEMP(auth-gate): posting is open without login for now — anonymous owner used when not logged in.
+  create(@Body() dto: CreateListingDto, @CurrentUser() user?: RequestUser): Promise<ListingDetailDto> {
+    return this.listingsService.create(dto, user?.id);
+  }
+
+  @Patch(':id')
+  @UseGuards(AuthGuard)
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateListingDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<ListingDetailDto> {
+    return this.listingsService.update(id, user.id, dto);
   }
 
   @Post(':id/view')

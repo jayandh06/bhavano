@@ -5,8 +5,9 @@ captures decisions made and the exact commands used so they don't need re-derivi
 
 ## Topology
 
-- `apps/web` (Next.js) + `apps/bff` (NestJS) — one EC2 `t4g.medium` ("app" instance), containerized
-  via `docker-compose.prod.yml` (see root `Dockerfile`s / `docker-compose.prod.yml` / `Caddyfile` /
+- `apps/web` (Next.js, public site) + `apps/bff` (NestJS) + `apps/admin` (Next.js, moderation-only,
+  `admin.bhavano.com`) — one EC2 `t4g.medium` ("app" instance), containerized via
+  `docker-compose.prod.yml` (see root `Dockerfile`s / `docker-compose.prod.yml` / `Caddyfile` /
   `.env.production.example`).
 - Postgres — self-hosted on its own EC2 `t4g.medium` ("db" instance), rather than RDS, per current
   cost tradeoff (see below). Not containerized — installed directly on the host.
@@ -119,9 +120,9 @@ IP** so the public address survives a stop/start.
 
 ### 6. Point DNS at the app instance
 
-`SITE_DOMAIN` / `API_DOMAIN` / `APEX_DOMAIN` records → the app instance's Elastic IP. Do this now —
-Caddy needs to complete a Let's Encrypt HTTP challenge on first boot in step 9, and DNS propagation
-isn't instant.
+`SITE_DOMAIN` / `API_DOMAIN` / `APEX_DOMAIN` / `ADMIN_DOMAIN` records → the app instance's Elastic
+IP. Do this now — Caddy needs to complete a Let's Encrypt HTTP challenge on first boot in step 9,
+and DNS propagation isn't instant.
 
 **If DNS is managed through Cloudflare (or any other proxying CDN):** every one of these records
 must be set to **"DNS only"**, not proxied. A proxied record means Let's Encrypt's ACME challenge —
@@ -130,6 +131,10 @@ complete (shows up as a `525` error in the browser, or `NXDOMAIN`/ALPN-negotiati
 Caddy's own logs, depending on exactly which record and challenge type is affected). This bit us
 for `www`, `api`, and the bare apex domain in turn — check all of them, not just the one that's
 currently broken.
+
+`ADMIN_DOMAIN` (e.g. `admin.bhavano.example.com`) serves the moderation-only admin app — don't link
+to it from the public site or its sitemap/robots.txt; only people who already know the URL and have
+an allowlisted phone/email (`ADMIN_PHONES`/`ADMIN_EMAILS` in `.env`) can actually do anything there.
 
 The bare apex (`APEX_DOMAIN`, e.g. `bhavano.com` with no `www`) doesn't serve the site itself — the
 `Caddyfile` 308-redirects it to `SITE_DOMAIN` instead, which is why it needs its own DNS record and
@@ -174,8 +179,11 @@ from step 3:
 ```
 DATABASE_URL="postgresql://bhavano:REPLACE_WITH_A_REAL_PASSWORD@<db-private-ip>:5432/bhavano"
 ```
-Fill in the rest (`SITE_DOMAIN`, `API_DOMAIN`, `NEXTAUTH_SECRET`, `AUTH_JWT_SECRET`,
-`GOOGLE_CLIENT_ID`/`SECRET`, etc.) per the comments in the file.
+Fill in the rest (`SITE_DOMAIN`, `API_DOMAIN`, `ADMIN_DOMAIN`, `NEXTAUTH_SECRET`,
+`ADMIN_NEXTAUTH_SECRET`, `AUTH_JWT_SECRET`, `ADMIN_PHONES`/`ADMIN_EMAILS`, `GOOGLE_CLIENT_ID`/
+`SECRET`, etc.) per the comments in the file. `ADMIN_PHONES`/`ADMIN_EMAILS` matter before anyone
+logs in — there's no admin invite flow, a matching phone/email is promoted to admin automatically
+the moment it logs in.
 
 ### 9. Build and run
 
@@ -202,6 +210,7 @@ docker compose -f docker-compose.prod.yml exec bff npx prisma migrate deploy
 ```bash
 curl -I https://<site-domain>
 curl -I https://<api-domain>/listings/sitemap
+curl -I https://<admin-domain>/login
 ```
 
 If step 10's `migrate deploy` succeeded, app→DB connectivity across the two instances is already
