@@ -123,4 +123,20 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
     },
     { key: "brand", label: "Brand (optional)", type: "text" },
   ],
+  interiors: [
+    {
+      key: "serviceType",
+      label: "Service type",
+      type: "select",
+      options: [
+        { value: "modular-kitchen", label: "Modular Kitchen" },
+        { value: "wardrobe", label: "Wardrobe" },
+        { value: "false-ceiling", label: "False Ceiling" },
+        { value: "painting", label: "Painting" },
+        { value: "full-home", label: "Full Home Interior" },
+        { value: "other", label: "Other" },
+      ],
+      required: true,
+    },
+  ],
 };

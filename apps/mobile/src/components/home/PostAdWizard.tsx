@@ -21,6 +21,7 @@ const CATEGORIES: { value: ListingCategory; label: string; icon: string }[] = [
   { value: "storage", label: "Storage space", icon: "📦" },
   { value: "coworking", label: "Coworking", icon: "💼" },
   { value: "furniture", label: "Furniture", icon: "🛋️" },
+  { value: "interiors", label: "Interiors", icon: "🎨" },
 ];
 
 const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {

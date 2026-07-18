@@ -15,7 +15,7 @@ import {
 } from 'class-validator';
 import type { ListingCategory, TransactionType } from '@bhavano/types';
 
-const LISTING_CATEGORIES: ListingCategory[] = ['house', 'apartment', 'pg', 'storage', 'coworking', 'furniture'];
+const LISTING_CATEGORIES: ListingCategory[] = ['house', 'apartment', 'pg', 'storage', 'coworking', 'furniture', 'interiors'];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 
 export class CreatedPhotoInputDto {

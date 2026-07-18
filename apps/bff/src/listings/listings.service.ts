@@ -36,6 +36,7 @@ function deriveTag(input: Pick<CreateListingInput, 'category' | 'transactionType
   if (input.category === 'pg') return 'PG';
   if (input.category === 'furniture') return 'FURNITURE';
   if (input.category === 'storage') return 'STORAGE';
+  if (input.category === 'interiors') return 'INTERIORS';
   return input.transactionType === 'rent' || input.transactionType === 'lease' ? 'FOR RENT' : 'FOR SALE';
 }
 
@@ -46,9 +47,14 @@ const PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> =
   rentLease: ['house', 'apartment', 'storage', 'coworking'],
 };
 
-function buildHomeCategoryWhere(tab: HomeCategoryFilter, propertyType?: PropertyTypeFilter): Prisma.ListingWhereInput {
+function buildHomeCategoryWhere(tab: HomeCategoryFilter | undefined, propertyType?: PropertyTypeFilter): Prisma.ListingWhereInput {
+  // No tab and no raw category/transactionType bypass (checked by the caller before reaching
+  // here) means a genuinely unfiltered request — the SEO city-root page, which has no
+  // narrower grouping to fall back to.
+  if (!tab) return {};
   if (tab === 'pg') return { category: 'pg' };
   if (tab === 'furniture') return { category: 'furniture' };
+  if (tab === 'interiors') return { category: 'interiors' };
 
   const transactionTypes: TransactionType[] = tab === 'buy' ? ['buy', 'sell'] : ['rent', 'lease'];
   const allowedCategories = PROPERTY_TYPES_BY_TAB[tab];
@@ -71,7 +77,7 @@ export class ListingsService {
 
   async list(query: ListListingsDto, currentUserId?: string): Promise<ListingsPage> {
     const {
-      homeCategory = 'buy',
+      homeCategory,
       propertyType,
       category,
       transactionType,
@@ -82,6 +88,9 @@ export class ListingsService {
       maxPrice,
       bedrooms,
       furnished,
+      sharingType,
+      condition,
+      serviceType,
       cursor,
       limit,
     } = query;
@@ -100,6 +109,9 @@ export class ListingsService {
     const attributeFilters: Prisma.ListingWhereInput[] = [];
     if (bedrooms !== undefined) attributeFilters.push({ attributes: { path: ['bedrooms'], gte: bedrooms } });
     if (furnished) attributeFilters.push({ attributes: { path: ['furnished'], equals: furnished } });
+    if (sharingType) attributeFilters.push({ attributes: { path: ['sharingType'], equals: sharingType } });
+    if (condition) attributeFilters.push({ attributes: { path: ['condition'], equals: condition } });
+    if (serviceType) attributeFilters.push({ attributes: { path: ['serviceType'], equals: serviceType } });
 
     const where: Prisma.ListingWhereInput = {
       ...categoryWhere,

@@ -35,6 +35,7 @@ export const PRICE_QUALIFIER_OPTIONS: Record<ListingCategory, Partial<Record<Tra
   storage: { rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
   coworking: { rent: COWORKING_RENT_OPTIONS, lease: COWORKING_RENT_OPTIONS },
   furniture: { sell: SELL_OPTIONS, rent: FURNITURE_RENT_OPTIONS },
+  interiors: { sell: SELL_OPTIONS },
 };
 
 export function getPriceQualifierOptions(

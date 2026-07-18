@@ -10,4 +10,5 @@ export const POSTABLE_TRANSACTION_TYPES: Record<ListingCategory, TransactionType
   storage: ["rent", "lease"],
   coworking: ["rent", "lease"],
   furniture: ["sell", "rent"],
+  interiors: ["sell"],
 };

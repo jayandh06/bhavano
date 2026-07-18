@@ -1,4 +1,4 @@
-export type ListingCategory = "house" | "apartment" | "pg" | "storage" | "coworking" | "furniture";
+export type ListingCategory = "house" | "apartment" | "pg" | "storage" | "coworking" | "furniture" | "interiors";
 
 export type TransactionType = "buy" | "sell" | "rent" | "lease";
 
@@ -42,7 +42,7 @@ export interface Listing {
 /** Homepage top-level browsing tab — organized around seeker intent, not a flat
  * (category x transactionType) grid. "buy"/"rentLease" filter by transactionType
  * (+ an optional propertyType sub-filter); "pg"/"furniture" filter by category alone. */
-export type HomeCategoryFilter = "buy" | "rentLease" | "pg" | "furniture";
+export type HomeCategoryFilter = "buy" | "rentLease" | "pg" | "furniture" | "interiors";
 
 /** Sub-filter shown under the Buy / Rent & Lease tabs only. */
 export type PropertyTypeFilter = "house" | "apartment" | "storage" | "coworking";
