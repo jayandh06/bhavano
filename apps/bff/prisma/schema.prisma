@@ -13,6 +13,7 @@ enum ListingCategory {
   storage
   coworking
   furniture
+  interiors
 }
 
 enum TransactionType {
@@ -157,7 +158,7 @@ model Listing {
 model ListingView {
   id        String   @id @default(cuid())
   listingId String
-  listing   Listing  @relation(fields: [listingId], references: [id])
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   viewerKey String
   createdAt DateTime @default(now())
 
@@ -168,7 +169,7 @@ model ListingView {
 model Favourite {
   id        String   @id @default(cuid())
   listingId String
-  listing   Listing  @relation(fields: [listingId], references: [id])
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
@@ -179,7 +180,7 @@ model Favourite {
 model Conversation {
   id          String           @id @default(cuid())
   listingId   String
-  listing     Listing          @relation(fields: [listingId], references: [id])
+  listing     Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
   posterId    String
   poster      User             @relation("ConversationPoster", fields: [posterId], references: [id])
   inquirerId  String
@@ -194,7 +195,7 @@ model Conversation {
 model Message {
   id             String       @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   senderId       String
   sender         User         @relation(fields: [senderId], references: [id])
   body           String
@@ -210,7 +211,7 @@ model Message {
 model ListingPhoto {
   id        String   @id @default(cuid())
   listingId String
-  listing   Listing  @relation(fields: [listingId], references: [id])
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   photoNo   Int
   hash      String
   createdAt DateTime @default(now())
