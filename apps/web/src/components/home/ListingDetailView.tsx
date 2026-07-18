@@ -1,38 +1,15 @@
 import Link from "next/link";
-import { notFound, permanentRedirect } from "next/navigation";
-import { auth } from "@/auth";
-import { fetchListingById } from "@/lib/bff";
-import { buildListingPath } from "@/lib/listingPath";
-import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
-import { ListingDetailActions } from "@/components/home/ListingDetailActions";
-import { ViewTracker } from "@/components/home/ViewTracker";
+import type { ListingDetailDto } from "@bhavano/types";
+import { ListingDetailActions } from "./ListingDetailActions";
+import { ViewTracker } from "./ViewTracker";
 
 function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 }
 
-type RouteParams = { transaction: string; category: string; city: string; locality: string; slugId: string };
-
-/** cuids contain no hyphens, so the last "-"-segment of slugId is always the id. */
-function splitSlugId(slugId: string): { id: string } {
-  const lastDash = slugId.lastIndexOf("-");
-  return { id: lastDash === -1 ? slugId : slugId.slice(lastDash + 1) };
-}
-
-export default async function ListingDetailPage({ params }: { params: Promise<RouteParams> }) {
-  const { transaction, category, city, locality, slugId } = await params;
-  if (!isTransactionType(transaction) || !isListingCategory(category)) notFound();
-
-  const { id } = splitSlugId(slugId);
-
-  const session = await auth();
-  const listing = await fetchListingById(id, session?.accessToken).catch(() => null);
-  if (!listing) notFound();
-
-  const canonicalPath = buildListingPath(listing);
-  const requestedPath = `/${transaction}/${category}/${city}/${locality}/${slugId}`;
-  if (requestedPath !== canonicalPath) permanentRedirect(canonicalPath);
-
+/** The full listing-detail page body — shared by the SEO catch-all route so it renders
+ * identically regardless of which URL depth resolved to this listing. */
+export function ListingDetailView({ listing }: { listing: ListingDetailDto }) {
   const attributeEntries = Object.entries(listing.attributes);
 
   return (

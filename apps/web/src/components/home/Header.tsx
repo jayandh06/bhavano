@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import type { City, HomeCategoryFilter, PropertyTypeFilter } from "@bhavano/types";
+import type { City, HomeCategoryFilter } from "@bhavano/types";
 import { LocationPicker } from "./LocationPicker";
 import { SearchBar } from "./SearchBar";
 import { ThemeToggle } from "./ThemeToggle";
@@ -11,14 +11,12 @@ export function Header({
   popularCities,
   searchQuery,
   activeCategory,
-  activePropertyType,
   userName,
 }: {
   cityName: string;
   popularCities: City[];
   searchQuery: string;
   activeCategory: HomeCategoryFilter;
-  activePropertyType?: PropertyTypeFilter;
   userName?: string | null;
 }) {
   return (
@@ -87,7 +85,7 @@ export function Header({
 
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 32px" }}>
           <Suspense>
-            <CategoryTabs active={activeCategory} activePropertyType={activePropertyType} />
+            <CategoryTabs active={activeCategory} cityName={cityName} />
           </Suspense>
         </div>
       </header>

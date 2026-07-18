@@ -25,6 +25,14 @@
       "types": "./dist/priceQualifiers.d.ts",
       "default": "./dist/priceQualifiers.js"
     },
+    "./priceBounds": {
+      "types": "./dist/priceBounds.d.ts",
+      "default": "./dist/priceBounds.js"
+    },
+    "./cityIcons": {
+      "types": "./dist/cityIcons.d.ts",
+      "default": "./dist/cityIcons.js"
+    },
     "./slugify": {
       "types": "./dist/slugify.d.ts",
       "default": "./dist/slugify.js"

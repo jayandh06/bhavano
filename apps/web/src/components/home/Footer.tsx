@@ -25,18 +25,28 @@ export function Footer() {
         <div>
           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 10 }}>Popular searches</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-            <Link href={buildBrowsePath("rent", "house", "Bengaluru")}>Houses for rent in Bengaluru</Link>
-            <Link href={buildBrowsePath("sell", "apartment", "Pune")}>2 BHK for sale in Pune</Link>
-            <Link href={buildBrowsePath("rent", "coworking", "Bengaluru")}>Coworking spaces in Bengaluru</Link>
-            <Link href={buildBrowsePath("rent", "pg", "Hyderabad")}>PG for women in Hyderabad</Link>
+            <Link href={buildBrowsePath({ cityName: "Bengaluru", transactionGroup: "rent-lease", category: "house" })}>
+              Houses for rent in Bengaluru
+            </Link>
+            <Link href={buildBrowsePath({ cityName: "Pune", transactionGroup: "buy", category: "apartment", facetValue: 2 })}>
+              2 BHK for sale in Pune
+            </Link>
+            <Link href={buildBrowsePath({ cityName: "Bengaluru", transactionGroup: "rent-lease", category: "coworking" })}>
+              Coworking spaces in Bengaluru
+            </Link>
+            <Link href={buildBrowsePath({ cityName: "Hyderabad", transactionGroup: "rent-lease", category: "pg" })}>
+              PG for women in Hyderabad
+            </Link>
           </div>
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 10 }}>Categories</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-            <Link href={buildBrowsePath("sell", "apartment", "Bengaluru")}>Buy property</Link>
-            <Link href={buildBrowsePath("rent", "apartment", "Mumbai")}>Rent / Lease</Link>
-            <Link href={buildBrowsePath("sell", "furniture", "Bengaluru")}>Furniture &amp; appliances</Link>
+            <Link href={buildBrowsePath({ cityName: "Bengaluru", transactionGroup: "buy", category: "apartment" })}>Buy property</Link>
+            <Link href={buildBrowsePath({ cityName: "Mumbai", transactionGroup: "rent-lease", category: "apartment" })}>Rent / Lease</Link>
+            <Link href={buildBrowsePath({ cityName: "Bengaluru", transactionGroup: "buy", category: "furniture" })}>
+              Furniture &amp; appliances
+            </Link>
           </div>
         </div>
         <div>

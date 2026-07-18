@@ -56,6 +56,8 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
         {/* TEMP(auth-gate): viewing listing details is open without login for now. */}
         <Link
           href={href}
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
             position: "absolute",
             inset: 0,
@@ -121,6 +123,8 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
         {/* TEMP(auth-gate): viewing listing details is open without login for now. */}
         <Link
           href={href}
+          target="_blank"
+          rel="noopener noreferrer"
           style={{ display: "flex", flexDirection: "column", gap: 10, color: "inherit" }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>

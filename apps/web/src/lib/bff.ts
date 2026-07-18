@@ -66,6 +66,9 @@ export interface ListingsQuery {
   /** "N+" style — matches attributes.bedrooms >= bedrooms, not exact match. */
   bedrooms?: number;
   furnished?: "unfurnished" | "semi" | "furnished";
+  sharingType?: string;
+  condition?: string;
+  serviceType?: string;
   cursor?: string;
   limit?: number;
 }
@@ -83,6 +86,9 @@ export function fetchListings(query: ListingsQuery, accessToken?: string): Promi
   if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
   if (query.bedrooms !== undefined) params.set("bedrooms", String(query.bedrooms));
   if (query.furnished) params.set("furnished", query.furnished);
+  if (query.sharingType) params.set("sharingType", query.sharingType);
+  if (query.condition) params.set("condition", query.condition);
+  if (query.serviceType) params.set("serviceType", query.serviceType);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit) params.set("limit", String(query.limit));
 
@@ -96,9 +102,10 @@ export function fetchListingsSitemap(): Promise<ListingSitemapEntry[]> {
   return bffFetch<ListingSitemapEntry[]>("/listings/sitemap", { cache: "no-store" });
 }
 
-export function fetchCities(q?: string): Promise<City[]> {
+export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
+  if (all) params.set("all", "true");
   return bffFetch<City[]>(`/locations/cities?${params.toString()}`, { cache: "no-store" });
 }
 

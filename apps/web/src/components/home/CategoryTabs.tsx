@@ -1,37 +1,52 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { HomeCategoryFilter, PropertyTypeFilter } from "@bhavano/types";
+import type { HomeCategoryFilter } from "@bhavano/types";
 import { buildHomeUrl } from "@/lib/homeUrl";
 import { HOME_TABS } from "@/lib/homeCategories";
+import { useClickOutside } from "@/lib/useClickOutside";
+import { MegaMenu } from "./MegaMenu";
 
-export function CategoryTabs({
-  active,
-  activePropertyType,
-}: {
-  active: HomeCategoryFilter;
-  activePropertyType?: PropertyTypeFilter;
-}) {
+/** Query params any mega-menu link might set — cleared whenever the top-level tab itself
+ * is clicked, so switching tabs doesn't carry over a stale bedroom count/condition/etc. */
+const FILTER_PARAM_KEYS = [
+  "propertyType",
+  "bedrooms",
+  "sharingType",
+  "condition",
+  "serviceType",
+  "listingCategory",
+  "transactionType",
+];
+
+export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter; cityName: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab = HOME_TABS.find((t) => t.value === active) ?? HOME_TABS[0];
+  const [openTab, setOpenTab] = useState<HomeCategoryFilter | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  useClickOutside(containerRef, () => setOpenTab(null));
+
+  function onTabClick(tab: HomeCategoryFilter) {
+    const clearedFilters = Object.fromEntries(FILTER_PARAM_KEYS.map((key) => [key, undefined]));
+    router.push(buildHomeUrl(searchParams, { category: tab, ...clearedFilters }));
+    setOpenTab((prev) => (prev === tab ? null : tab));
+  }
 
   return (
-    <div>
+    <div ref={containerRef} style={{ position: "relative" }}>
       <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
         {HOME_TABS.map((tab) => {
           const isActive = tab.value === active;
           return (
             <button
               key={tab.value}
-              onClick={() =>
-                router.push(buildHomeUrl(searchParams, { category: tab.value, propertyType: undefined }))
-              }
+              onClick={() => onTabClick(tab.value)}
               style={{
                 background: isActive ? "var(--surface-alt)" : "transparent",
                 color: isActive ? "var(--text)" : "var(--text-soft)",
                 border: "none",
-                borderBottom: `3px solid ${isActive ? "var(--gold)" : "transparent"}`,
+                borderBottom: `3px solid ${isActive || openTab === tab.value ? "var(--gold)" : "transparent"}`,
                 padding: "12px 18px 10px",
                 fontSize: 14,
                 fontWeight: 700,
@@ -44,49 +59,14 @@ export function CategoryTabs({
             >
               <span>{tab.icon}</span>
               {tab.label}
+              <span style={{ fontSize: 10, color: "var(--muted)" }}>▾</span>
             </button>
           );
         })}
       </div>
 
-      {activeTab.propertyTypes.length > 0 && (
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 0" }}>
-          <button
-            onClick={() => router.push(buildHomeUrl(searchParams, { propertyType: undefined }))}
-            style={{
-              background: !activePropertyType ? "var(--surface-alt)" : "transparent",
-              color: "var(--text-soft)",
-              border: "1px solid var(--border)",
-              borderRadius: 20,
-              padding: "6px 14px",
-              fontSize: 12.5,
-              fontWeight: 600,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            All types
-          </button>
-          {activeTab.propertyTypes.map((pt) => (
-            <button
-              key={pt.value}
-              onClick={() => router.push(buildHomeUrl(searchParams, { propertyType: pt.value }))}
-              style={{
-                background: activePropertyType === pt.value ? "var(--surface-alt)" : "transparent",
-                color: "var(--text-soft)",
-                border: "1px solid var(--border)",
-                borderRadius: 20,
-                padding: "6px 14px",
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {pt.label}
-            </button>
-          ))}
-        </div>
+      {openTab && (
+        <MegaMenu tab={HOME_TABS.find((t) => t.value === openTab)!} cityName={cityName} onNavigate={() => setOpenTab(null)} />
       )}
     </div>
   );
