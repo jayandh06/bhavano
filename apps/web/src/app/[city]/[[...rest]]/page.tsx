@@ -1,10 +1,13 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
+import type { ListingDetailDto } from "@bhavano/types";
+import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchListingById } from "@/lib/bff";
-import { isListingCategory, isTransactionType, resolveArea, resolveCity } from "@/lib/browseRoute";
+import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity } from "@/lib/browseRoute";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import {
+  buildFacetSlug,
   buildHeading,
   buildQueryForSegments,
   extractListingId,
@@ -17,6 +20,9 @@ import {
 } from "@/lib/seoRoute";
 import { BrowseListingsView } from "@/components/home/BrowseListingsView";
 import { ListingDetailView } from "@/components/home/ListingDetailView";
+import { JsonLd } from "@/components/JsonLd";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 type RouteParams = { city: string; rest?: string[] };
 
@@ -62,6 +68,62 @@ async function headingFor(parsed: ParsedSegments, cityName: string, cityId: stri
   });
 }
 
+/** The canonical browse path for this exact resolved depth — filtered query-string variants
+ * (?minPrice=.., ?furnished=..) all canonicalize back to this same clean path. */
+function canonicalBrowsePath(city: string, rest: string[]): string {
+  return `/${city}${rest.length ? `/${rest.join("/")}` : ""}`;
+}
+
+function breadcrumbJsonLd(cityName: string, citySlug: string, parsed: ParsedSegments, areaName?: string) {
+  const items: { name: string; path: string }[] = [{ name: cityName, path: `/${citySlug}` }];
+  let path = `/${citySlug}`;
+
+  if (parsed.transactionGroup) {
+    path += `/${parsed.transactionGroup}`;
+    items.push({ name: parsed.transactionGroup === "buy" ? "Buy" : "Rent & Lease", path });
+  }
+  if (parsed.category) {
+    path += `/${parsed.category}`;
+    items.push({ name: CATEGORY_LABELS[parsed.category], path });
+  }
+  if (parsed.facetValue !== undefined && parsed.category) {
+    path += `/${buildFacetSlug(parsed.category, parsed.facetValue)}`;
+    items.push({ name: String(parsed.facetValue), path });
+  }
+  if (areaName) {
+    path += `/${slugify(areaName)}`;
+    items.push({ name: areaName, path });
+  }
+
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: `${SITE_URL}${item.path}`,
+    })),
+  };
+}
+
+function listingJsonLd(listing: ListingDetailDto) {
+  const numericPrice = listing.price.replace(/[^\d]/g, "");
+  return {
+    "@type": "Product",
+    name: listing.title,
+    description: listing.specs.join(", ") || listing.title,
+    category: listing.category,
+    image: listing.photosFull,
+    offers: {
+      "@type": "Offer",
+      price: numericPrice,
+      priceCurrency: "INR",
+      availability: listing.status === "active" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+      url: `${SITE_URL}${buildListingPath(listing)}`,
+    },
+  };
+}
+
 export async function generateMetadata({ params }: { params: Promise<RouteParams> }): Promise<Metadata> {
   const { city, rest = [] } = await params;
   if (isTransactionType(city)) return {};
@@ -73,11 +135,26 @@ export async function generateMetadata({ params }: { params: Promise<RouteParams
   if (parsed.listingSlugId) {
     const listing = await fetchListingById(extractListingId(parsed.listingSlugId)).catch(() => null);
     if (!listing) return {};
-    return { title: listing.title, description: listing.title };
+    const canonicalPath = buildListingPath(listing);
+    const description = `${listing.price} ${listing.priceQualifier} — ${listing.specs.join(", ") || listing.title} in ${listing.area}, ${listing.cityName}.`;
+    return {
+      title: listing.title,
+      description,
+      alternates: { canonical: canonicalPath },
+      openGraph: { title: listing.title, description, images: listing.photosFull.slice(0, 1) },
+      twitter: { title: listing.title, description },
+    };
   }
 
   const heading = await headingFor(parsed, cityRow.name, cityRow.id);
-  return { title: heading, description: `Browse ${heading.toLowerCase()} on Bhavano.` };
+  const description = `Browse ${heading.toLowerCase()} on Bhavano.`;
+  return {
+    title: heading,
+    description,
+    alternates: { canonical: canonicalBrowsePath(city, rest) },
+    openGraph: { title: heading, description },
+    twitter: { title: heading, description },
+  };
 }
 
 export default async function CityBrowsePage({
@@ -108,7 +185,13 @@ export default async function CityBrowsePage({
     const requestedPath = `/${city}/${rest.join("/")}`;
     if (requestedPath !== canonicalPath) permanentRedirect(canonicalPath);
 
-    return <ListingDetailView listing={listing} />;
+    return (
+      <>
+        <JsonLd data={breadcrumbJsonLd(cityRow.name, city, parsed, listing.area)} />
+        <JsonLd data={listingJsonLd(listing)} />
+        <ListingDetailView listing={listing} />
+      </>
+    );
   }
 
   const areaRow = parsed.areaSlug ? await resolveArea(cityRow.id, parsed.areaSlug) : null;
@@ -123,17 +206,20 @@ export default async function CityBrowsePage({
 
   const baseQuery = buildQueryForSegments(parsed);
   const heading = await headingFor(parsed, cityRow.name, cityRow.id);
-  const basePath = `/${city}${rest.length ? `/${rest.join("/")}` : ""}`;
+  const basePath = canonicalBrowsePath(city, rest);
 
   return (
-    <BrowseListingsView
-      query={{ ...baseQuery, cityId: cityRow.id, areaId: areaRow?.id, minPrice, maxPrice, furnished }}
-      cityName={cityRow.name}
-      heading={heading}
-      page={page}
-      basePath={basePath}
-      filterCategory={parsed.category}
-      filterIsSale={parsed.transactionGroup === "buy"}
-    />
+    <>
+      <JsonLd data={breadcrumbJsonLd(cityRow.name, city, parsed, areaRow?.name)} />
+      <BrowseListingsView
+        query={{ ...baseQuery, cityId: cityRow.id, areaId: areaRow?.id, minPrice, maxPrice, furnished }}
+        cityName={cityRow.name}
+        heading={heading}
+        page={page}
+        basePath={basePath}
+        filterCategory={parsed.category}
+        filterIsSale={parsed.transactionGroup === "buy"}
+      />
+    </>
   );
 }

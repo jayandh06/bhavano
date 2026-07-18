@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
-export const metadata = { title: "Contact Us — Bhavano" };
+export const metadata = {
+  title: "Contact Us — Bhavano",
+  description: "Get in touch with the Bhavano team for support, feedback, or partnership queries.",
+};
 
 const SUPPORT_EMAIL = "support@bhavano.com";
 

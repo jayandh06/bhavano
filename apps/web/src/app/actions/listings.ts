@@ -19,7 +19,9 @@ export async function createListingAction(
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to create listing" };
   }
-  redirect(buildListingPath(listing));
+  // `?posted=true` lets PostSuccessTracker fire a one-time GTM conversion event client-side —
+  // a server action's redirect() can't run client code itself after a successful post.
+  redirect(`${buildListingPath(listing)}?posted=true`);
 }
 
 export async function uploadPhotoAction(formData: FormData): Promise<{ hash?: string; ext?: string; error?: string }> {

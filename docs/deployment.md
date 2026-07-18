@@ -297,6 +297,22 @@ inside the running `bff` container — no separate worker process/deploy step. I
 appearing after a few seconds, `docker compose -f docker-compose.prod.yml logs bff | grep -i photo`
 and check the `PhotoVariantJob.status`/`error` columns for stuck/failed rows.
 
+## SEO: Search Console verification + analytics
+
+**Google Search Console** — verify via a DNS TXT record (not a meta tag), so the whole domain
+verifies at once: Search Console → Add property → Domain → copy the `google-site-verification=...`
+TXT value → add it as a TXT record on the bare `bhavano.com` zone in Cloudflare DNS (a TXT record
+doesn't need "DNS only" vs "proxied" — that distinction only matters for A/CNAME records serving
+traffic). Once verified, submit `https://bhavano.com/sitemap.xml` from the Sitemaps page.
+
+**Google Tag Manager** — set `NEXT_PUBLIC_GTM_ID` in `.env` to the container ID (`GTM-XXXXXXX`) from
+tagmanager.google.com, then `docker compose -f docker-compose.prod.yml up -d web` (recreate). Leave
+it blank to skip loading GTM entirely (the default locally). Two events are already pushed to
+`dataLayer` for GTM to build Google Ads conversion triggers on: `post_ad_success` (a listing was
+just posted) and `contact_owner` (a buyer started a conversation with a seller) — no code change
+needed to wire up a conversion once GTM is live, just a trigger + tag in the GTM dashboard matching
+those event names.
+
 ## Building and deploying an individual service
 
 `docker-compose.prod.yml` has four services: `web`, `bff`, `admin`, and `caddy` (the stock

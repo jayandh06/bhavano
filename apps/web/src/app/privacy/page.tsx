@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
-export const metadata = { title: "Privacy Policy — Bhavano" };
+export const metadata = {
+  title: "Privacy Policy — Bhavano",
+  description: "How Bhavano collects, uses, and protects your personal information.",
+};
 
 export default function PrivacyPage() {
   return (

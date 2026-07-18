@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthGate } from "./AuthGateProvider";
 import { toggleFavouriteAction } from "@/app/actions/listings";
 import { startConversationAction } from "@/app/actions/messaging";
+import { pushDataLayerEvent } from "@/lib/gtm";
 
 export function ListingDetailActions({
   listingId,
@@ -42,6 +43,7 @@ export function ListingDetailActions({
       setMessageError(result.error);
       return;
     }
+    pushDataLayerEvent("contact_owner", { listingId });
     router.push(`/messages/${result.conversationId}`);
   }
 

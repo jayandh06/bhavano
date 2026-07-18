@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
-export const metadata = { title: "Help Centre — Bhavano" };
+export const metadata = {
+  title: "Help Centre — Bhavano",
+  description: "Answers to common questions about posting, browsing, and managing listings on Bhavano.",
+};
 
 interface Faq {
   q: string;

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { HomeCategoryFilter } from "@bhavano/types";
 import { auth } from "@/auth";
 import { fetchCities, fetchListings } from "@/lib/bff";
@@ -24,6 +25,11 @@ function parseCategory(value: string | string[] | undefined): HomeCategoryFilter
   const v = Array.isArray(value) ? value[0] : value;
   return HOME_TABS.some((t) => t.value === v) ? (v as HomeCategoryFilter) : "buy";
 }
+
+// The homepage's own tab/query-string filtering is a UX convenience, not meant to rank
+// separately per combination the way the dedicated /{city}/... pages are — every variant
+// canonicalizes back to the plain root.
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage({
   searchParams,

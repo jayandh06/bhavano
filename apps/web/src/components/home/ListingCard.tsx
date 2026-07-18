@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { ListingCardDto } from "@bhavano/types";
 import { useAuthGate } from "./AuthGateProvider";
@@ -46,12 +47,7 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
         }}
       >
         {item.photos[0] && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.photos[0]}
-            alt={item.title}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-          />
+          <Image src={item.photos[0]} alt={item.title} fill sizes="(max-width: 768px) 100vw, 400px" style={{ objectFit: "cover" }} />
         )}
         {/* TEMP(auth-gate): viewing listing details is open without login for now. */}
         <Link

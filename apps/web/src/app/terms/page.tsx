@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
-export const metadata = { title: "Terms of Service — Bhavano" };
+export const metadata = {
+  title: "Terms of Service — Bhavano",
+  description: "The terms and conditions for buying, renting, and posting listings on Bhavano.",
+};
 
 export default function TermsPage() {
   return (

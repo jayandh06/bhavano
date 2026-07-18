@@ -1,6 +1,9 @@
+import { Suspense } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { ListingDetailDto } from "@bhavano/types";
 import { ListingDetailActions } from "./ListingDetailActions";
+import { PostSuccessTracker } from "./PostSuccessTracker";
 import { ViewTracker } from "./ViewTracker";
 
 function daysUntil(iso: string): number {
@@ -15,6 +18,9 @@ export function ListingDetailView({ listing }: { listing: ListingDetailDto }) {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       <ViewTracker listingId={listing.id} />
+      <Suspense>
+        <PostSuccessTracker listingId={listing.id} />
+      </Suspense>
       <div style={{ maxWidth: 880, margin: "0 auto", padding: "24px 32px 80px" }}>
         <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
           ← Back to listings
@@ -36,11 +42,13 @@ export function ListingDetailView({ listing }: { listing: ListingDetailDto }) {
           }}
         >
           {listing.photosFull[0] && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={listing.photosFull[0]}
               alt={listing.title}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+              fill
+              priority
+              sizes="(max-width: 880px) 100vw, 880px"
+              style={{ objectFit: "cover" }}
             />
           )}
           {listing.photosFull.length === 0 && (
@@ -94,12 +102,13 @@ export function ListingDetailView({ listing }: { listing: ListingDetailDto }) {
         {listing.photosFull.length > 1 && (
           <div style={{ display: "flex", gap: 10, marginBottom: 24, overflowX: "auto" }}>
             {listing.photosFull.map((photoUrl, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 key={photoUrl}
                 src={photoUrl}
                 alt={`${listing.title} photo ${i + 1}`}
-                style={{ height: 80, width: 80, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
+                width={80}
+                height={80}
+                style={{ objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
               />
             ))}
           </div>
