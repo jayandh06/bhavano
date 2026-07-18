@@ -22,7 +22,7 @@ export async function verifyOtpAction(phone: string, code: string): Promise<{ su
 }
 
 export async function signInWithGoogleAction(): Promise<void> {
-  await signIn("google");
+  await signIn("google", { redirectTo: "/" });
 }
 
 export async function signOutAction(): Promise<void> {
