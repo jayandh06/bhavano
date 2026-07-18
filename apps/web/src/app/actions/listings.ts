@@ -22,7 +22,7 @@ export async function createListingAction(
   redirect(buildListingPath(listing));
 }
 
-export async function uploadPhotoAction(formData: FormData): Promise<{ url?: string; hash?: string; error?: string }> {
+export async function uploadPhotoAction(formData: FormData): Promise<{ hash?: string; ext?: string; error?: string }> {
   try {
     return await uploadPhoto(formData);
   } catch (error) {

@@ -115,6 +115,9 @@ export interface ListingDetailDto extends ListingCardDto {
   createdAt: string;
   expiresAt: string;
   isExpired: boolean;
+  /** Full-size (1600px-wide) variant URLs, same order as `photos` (the preview variants) —
+   * used for the detail page gallery instead of the card-sized preview images. */
+  photosFull: string[];
 }
 
 /** Fields an owner can change after posting — from the my-listings edit form. */
@@ -127,7 +130,18 @@ export interface UpdateListingInput {
   status?: ListingStatus;
 }
 
+/** One uploaded photo's metadata as returned by `POST /uploads` — `photoNo` matches the key
+ * that upload was stored under (see apps/bff/src/uploads/photo-keys.ts). */
+export interface CreatedPhotoInput {
+  photoNo: number;
+  hash: string;
+  ext: string;
+}
+
 export interface CreateListingInput {
+  /** Client-generated (UUID) before any photo is uploaded, so upload keys and the listing's
+   * real id agree from the very first upload — no post-creation rename step needed. */
+  id: string;
   category: ListingCategory;
   transactionType: TransactionType;
   price: number;
@@ -139,9 +153,7 @@ export interface CreateListingInput {
   areaName?: string;
   cityId: string;
   specs?: string[];
-  photos?: string[];
-  /** Parallel to `photos` — the dHash of each uploaded photo, used for duplicate detection. */
-  photoHashes?: string[];
+  photos: CreatedPhotoInput[];
   /** Category-specific field values from the posting wizard's schema-driven step —
    * maps directly onto the `attributes` JSONB column. */
   attributes?: Record<string, unknown>;

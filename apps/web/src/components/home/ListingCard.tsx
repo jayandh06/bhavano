@@ -40,9 +40,19 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
         style={{
           position: "relative",
           height: 200,
-          background: `repeating-linear-gradient(135deg, ${item.imgColors[0]}, ${item.imgColors[0]} 14px, ${item.imgColors[1]} 14px, ${item.imgColors[1]} 28px)`,
+          background: item.photos[0]
+            ? undefined
+            : `repeating-linear-gradient(135deg, ${item.imgColors[0]}, ${item.imgColors[0]} 14px, ${item.imgColors[1]} 14px, ${item.imgColors[1]} 28px)`,
         }}
       >
+        {item.photos[0] && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.photos[0]}
+            alt={item.title}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        )}
         {/* TEMP(auth-gate): viewing listing details is open without login for now. */}
         <Link
           href={href}
@@ -54,19 +64,21 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
             justifyContent: "center",
           }}
         >
-          <span
-            style={{
-              fontFamily: "monospace",
-              fontSize: 11,
-              letterSpacing: "0.04em",
-              color: "#ffffffcc",
-              background: "#00000030",
-              padding: "5px 10px",
-              borderRadius: 6,
-            }}
-          >
-            {item.imgLabel}
-          </span>
+          {!item.photos[0] && (
+            <span
+              style={{
+                fontFamily: "monospace",
+                fontSize: 11,
+                letterSpacing: "0.04em",
+                color: "#ffffffcc",
+                background: "#00000030",
+                padding: "5px 10px",
+                borderRadius: 6,
+              }}
+            >
+              {item.imgLabel}
+            </span>
+          )}
         </Link>
         <span
           style={{

@@ -49,14 +49,24 @@ export default async function ListingDetailPage({ params }: { params: Promise<Ro
             height: 320,
             borderRadius: 16,
             overflow: "hidden",
-            background: `repeating-linear-gradient(135deg, ${listing.imgColors[0]}, ${listing.imgColors[0]} 14px, ${listing.imgColors[1]} 14px, ${listing.imgColors[1]} 28px)`,
+            background: listing.photosFull[0]
+              ? undefined
+              : `repeating-linear-gradient(135deg, ${listing.imgColors[0]}, ${listing.imgColors[0]} 14px, ${listing.imgColors[1]} 14px, ${listing.imgColors[1]} 28px)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            marginBottom: 24,
+            marginBottom: listing.photosFull.length > 1 ? 10 : 24,
           }}
         >
-          {listing.photos.length === 0 && (
+          {listing.photosFull[0] && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={listing.photosFull[0]}
+              alt={listing.title}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          )}
+          {listing.photosFull.length === 0 && (
             <span
               style={{
                 fontFamily: "monospace",
@@ -103,6 +113,20 @@ export default async function ListingDetailPage({ params }: { params: Promise<Ro
             </span>
           )}
         </div>
+
+        {listing.photosFull.length > 1 && (
+          <div style={{ display: "flex", gap: 10, marginBottom: 24, overflowX: "auto" }}>
+            {listing.photosFull.map((photoUrl, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={photoUrl}
+                src={photoUrl}
+                alt={`${listing.title} photo ${i + 1}`}
+                style={{ height: 80, width: 80, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
+              />
+            ))}
+          </div>
+        )}
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 8 }}>
           <div style={{ fontFamily: "var(--font-lora)", fontSize: 28, fontWeight: 700, color: "var(--green)" }}>

@@ -4,12 +4,22 @@ import { useRef, useState } from "react";
 import type { Area, City, ListingCategory, TransactionType } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
+import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
 import { searchAreasAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
 
 function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
+}
+
+const MAX_PHOTOS = 6;
+const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+interface SelectedPhoto {
+  file: File;
+  previewUrl: string;
 }
 
 const CATEGORIES: { value: ListingCategory; label: string; icon: string }[] = [
@@ -74,6 +84,7 @@ const optionButtonStyle = (active: boolean): React.CSSProperties => ({
 });
 
 export function PostAdWizard({ cities }: { cities: City[] }) {
+  const [listingId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("category");
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
@@ -90,8 +101,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
   const areaFieldRef = useRef<HTMLDivElement | null>(null);
   const [specs, setSpecs] = useState("");
   const [attributes, setAttributes] = useState<Record<string, string>>({});
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,21 +113,51 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
     const postable = POSTABLE_TRANSACTION_TYPES[next];
     if (postable.length === 1) {
       setTransactionType(postable[0]);
+      setPriceQualifier(getPriceQualifierOptions(next, postable[0])[0]?.value ?? "");
       setStep("details");
     } else {
       setTransactionType(null);
+      setPriceQualifier("");
       setStep("transactionType");
     }
   }
 
   function selectTransactionType(next: TransactionType) {
     setTransactionType(next);
+    setPriceQualifier(category ? getPriceQualifierOptions(category, next)[0]?.value ?? "" : "");
     setStep("details");
   }
 
-  function onPhotoChange(file: File | null) {
-    setPhotoFile(file);
-    setPhotoPreview(file ? URL.createObjectURL(file) : null);
+  function onPhotosSelected(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setError(null);
+
+    const room = MAX_PHOTOS - photos.length;
+    const candidates = Array.from(files).slice(0, room);
+    if (files.length > room) {
+      setError(`Up to ${MAX_PHOTOS} photos allowed — only added the first ${room}.`);
+    }
+
+    const accepted: SelectedPhoto[] = [];
+    for (const file of candidates) {
+      if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+        setError(`"${file.name}" isn't a supported format — use JPEG, PNG, WebP, or GIF.`);
+        continue;
+      }
+      if (file.size > MAX_PHOTO_SIZE_BYTES) {
+        setError(`"${file.name}" is over the 4MB limit.`);
+        continue;
+      }
+      accepted.push({ file, previewUrl: URL.createObjectURL(file) });
+    }
+    setPhotos((prev) => [...prev, ...accepted]);
+  }
+
+  function onRemovePhoto(index: number) {
+    setPhotos((prev) => {
+      URL.revokeObjectURL(prev[index].previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
   }
 
   function onAreaQueryChange(value: string) {
@@ -149,29 +189,41 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
     setAreaSuggestions([]);
   }
 
-  const detailsValid = Number(price) > 0 && title.length > 0 && areaQuery.trim().length > 0 && !!cityId;
+  const requiredAttributesFilled = category
+    ? CATEGORY_FIELD_CONFIG[category].every((field) => !field.required || (attributes[field.key] ?? "").length > 0)
+    : true;
+
+  const detailsValid =
+    Number(price) > 0 &&
+    title.length > 0 &&
+    areaQuery.trim().length > 0 &&
+    !!cityId &&
+    photos.length > 0 &&
+    requiredAttributesFilled;
 
   async function onSubmit() {
     if (!category || !transactionType) return;
     setPending(true);
     setError(null);
 
-    let photos: string[] = [];
-    let photoHashes: string[] = [];
-    if (photoFile) {
+    const uploadedPhotos: { photoNo: number; hash: string; ext: string }[] = [];
+    for (let i = 0; i < photos.length; i++) {
+      const photoNo = i + 1;
       const formData = new FormData();
-      formData.set("file", photoFile);
+      formData.set("file", photos[i].file);
+      formData.set("listingId", listingId);
+      formData.set("photoNo", String(photoNo));
       const uploadResult = await uploadPhotoAction(formData);
-      if (uploadResult.error || !uploadResult.url || !uploadResult.hash) {
-        setError(uploadResult.error ?? "Failed to upload photo");
+      if (uploadResult.error || !uploadResult.hash || !uploadResult.ext) {
+        setError(uploadResult.error ?? "Failed to upload a photo");
         setPending(false);
         return;
       }
-      photos = [uploadResult.url];
-      photoHashes = [uploadResult.hash];
+      uploadedPhotos.push({ photoNo, hash: uploadResult.hash, ext: uploadResult.ext });
     }
 
     const result = await createListingAction({
+      id: listingId,
       category,
       transactionType,
       price: Number(price),
@@ -184,8 +236,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
-      photos,
-      photoHashes,
+      photos: uploadedPhotos,
       attributes,
     });
 
@@ -247,13 +298,14 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Price qualifier (optional)</label>
-              <input
-                value={priceQualifier}
-                onChange={(e) => setPriceQualifier(e.target.value)}
-                placeholder="/month, onwards…"
-                style={fieldStyle}
-              />
+              <RequiredLabel text="Price qualifier" />
+              <select value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={fieldStyle}>
+                {getPriceQualifierOptions(category, transactionType).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -341,7 +393,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {CATEGORY_FIELD_CONFIG[category].map((field) => (
                 <div key={field.key}>
-                  <label style={labelStyle}>{field.label}</label>
+                  {field.required ? <RequiredLabel text={field.label} /> : <label style={labelStyle}>{field.label}</label>}
                   {field.type === "select" ? (
                     <select
                       value={attributes[field.key] ?? ""}
@@ -378,12 +430,53 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
           </div>
 
           <div>
-            <label style={labelStyle}>Photo (optional)</label>
-            <input type="file" accept="image/*" onChange={(e) => onPhotoChange(e.target.files?.[0] ?? null)} />
-            {photoPreview && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoPreview} alt="Preview" style={{ marginTop: 10, height: 140, borderRadius: 8 }} />
+            <RequiredLabel text={`Photos (up to ${MAX_PHOTOS})`} />
+            {photos.length < MAX_PHOTOS && (
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                onChange={(e) => {
+                  onPhotosSelected(e.target.files);
+                  e.target.value = "";
+                }}
+              />
             )}
+            {photos.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+                {photos.map((photo, i) => (
+                  <div key={photo.previewUrl} style={{ position: "relative" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.previewUrl}
+                      alt={`Photo ${i + 1}`}
+                      style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 8 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onRemovePhoto(i)}
+                      style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        width: 22,
+                        height: 22,
+                        borderRadius: "50%",
+                        border: "none",
+                        background: "var(--surface)",
+                        color: "#b3413a",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {error && <p style={{ color: "#b3413a", fontSize: 13, marginTop: 8 }}>{error}</p>}
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
@@ -95,7 +95,11 @@ export default function ListingDetailScreen() {
         ]}
       >
         <View style={[styles.imageOverlay, { backgroundColor: listing.imgColors[1] }]} />
-        {listing.photos.length === 0 && <Text style={styles.imageCaption}>{listing.imgLabel}</Text>}
+        {listing.photosFull[0] ? (
+          <Image source={{ uri: listing.photosFull[0] }} style={StyleSheet.absoluteFill} />
+        ) : (
+          <Text style={styles.imageCaption}>{listing.imgLabel}</Text>
+        )}
         <View style={[styles.tag, { backgroundColor: colors.green }]}>
           <Text style={{ color: colors.onGreen, fontSize: 11, fontWeight: "700" }}>{listing.tag}</Text>
         </View>

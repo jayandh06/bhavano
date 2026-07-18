@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type {
   AdminListingsPage,
   CreateListingInput,
@@ -14,10 +15,13 @@ import type {
 } from '@bhavano/types';
 import { categoryImagePlaceholder } from '@bhavano/types/tokens';
 import { slugify } from '@bhavano/types/slugify';
+import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
+import { getPriceQualifierOptions } from '@bhavano/types/priceQualifiers';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { Prisma } from '@prisma/client';
-import type { Area, City, Listing } from '@prisma/client';
+import type { Area, City, Listing, ListingPhoto } from '@prisma/client';
+import { PHOTO_VARIANTS, PhotoVariant, variantUrl } from '../uploads/photo-keys';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 
@@ -55,11 +59,14 @@ function buildHomeCategoryWhere(tab: HomeCategoryFilter, propertyType?: Property
 
 const priceFormatter = new Intl.NumberFormat('en-IN');
 
+const LISTING_PHOTOS_INCLUDE = { listingPhotos: { orderBy: { photoNo: 'asc' as const } } };
+
 @Injectable()
 export class ListingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderationService: ModerationService,
+    private readonly config: ConfigService,
   ) {}
 
   async list(query: ListListingsDto, currentUserId?: string): Promise<ListingsPage> {
@@ -111,7 +118,7 @@ export class ListingsService {
     const [rows, total] = await Promise.all([
       this.prisma.listing.findMany({
         where,
-        include: { city: true, area: true },
+        include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
         orderBy: { createdAt: 'desc' },
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -151,7 +158,7 @@ export class ListingsService {
     const [rows, total] = await Promise.all([
       this.prisma.listing.findMany({
         where,
-        include: { city: true, area: true },
+        include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
         orderBy: { createdAt: 'desc' },
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -173,7 +180,7 @@ export class ListingsService {
     const listing = await this.prisma.listing.update({
       where: { id },
       data: { adminReviewed },
-      include: { city: true, area: true },
+      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
     });
     return this.toDetailDto(listing);
   }
@@ -185,7 +192,7 @@ export class ListingsService {
     const listing = await this.prisma.listing.update({
       where: { id },
       data: { moderationState: 'flagged', adminReviewed: true, moderatedAt: new Date() },
-      include: { city: true, area: true },
+      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
     });
     return this.toDetailDto(listing);
   }
@@ -195,13 +202,16 @@ export class ListingsService {
     const listing = await this.prisma.listing.update({
       where: { id },
       data: { moderationState: 'approved', adminReviewed: true, moderatedAt: new Date() },
-      include: { city: true, area: true },
+      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
     });
     return this.toDetailDto(listing);
   }
 
   async findOne(id: string, currentUserId?: string): Promise<ListingDetailDto> {
-    const listing = await this.prisma.listing.findUnique({ where: { id }, include: { city: true, area: true } });
+    const listing = await this.prisma.listing.findUnique({
+      where: { id },
+      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+    });
     if (!listing) throw new NotFoundException(`Listing ${id} not found`);
 
     const favouritedIds = await this.getFavouritedIds(currentUserId, [id]);
@@ -212,6 +222,10 @@ export class ListingsService {
   // poster is logged in (so the listing shows up under their My Listings), otherwise it
   // falls back to the shared anonymous owner.
   async create(input: CreateListingInput, currentUserId?: string): Promise<ListingDetailDto> {
+    if (!input.photos.length) throw new BadRequestException('At least one photo is required');
+    this.assertRequiredAttributes(input.category, input.attributes ?? {});
+    this.assertValidPriceQualifier(input.category, input.transactionType, input.priceQualifier);
+
     const moderation = await this.moderationService.moderate(input);
     if (!moderation.ok) throw new BadRequestException(moderation.reason);
 
@@ -219,8 +233,9 @@ export class ListingsService {
     const areaId = input.areaId ?? (await this.ensureArea(input.cityId, input.areaName)).id;
     const expiresAt = new Date(Date.now() + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
-    const listing = await this.prisma.listing.create({
+    const created = await this.prisma.listing.create({
       data: {
+        id: input.id,
         category: input.category,
         transactionType: input.transactionType,
         price: input.price,
@@ -230,28 +245,34 @@ export class ListingsService {
         areaId,
         cityId: input.cityId,
         specs: input.specs ?? [],
-        photos: input.photos ?? [],
         attributes: (input.attributes ?? {}) as Prisma.InputJsonValue,
         tag: deriveTag(input),
         ownerId,
         expiresAt,
       },
-      include: { city: true, area: true },
     });
 
-    if (input.photoHashes?.length) {
-      await this.prisma.photoHash.createMany({
-        data: input.photoHashes.map((hash) => ({ hash, listingId: listing.id })),
-      });
-    }
+    await this.prisma.listingPhoto.createMany({
+      data: input.photos.map((p) => ({ listingId: created.id, photoNo: p.photoNo, hash: p.hash })),
+    });
+    const variants = Object.keys(PHOTO_VARIANTS) as PhotoVariant[];
+    await this.prisma.photoVariantJob.createMany({
+      data: input.photos.flatMap((p) =>
+        variants.map((variant) => ({ listingId: created.id, photoNo: p.photoNo, ext: p.ext, variant })),
+      ),
+    });
 
+    const listing = await this.prisma.listing.findUniqueOrThrow({
+      where: { id: created.id },
+      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+    });
     return this.toDetailDto(listing);
   }
 
   async listMine(userId: string): Promise<ListingDetailDto[]> {
     const listings = await this.prisma.listing.findMany({
       where: { ownerId: userId },
-      include: { city: true, area: true },
+      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -259,7 +280,10 @@ export class ListingsService {
   }
 
   async getMine(userId: string, id: string): Promise<ListingDetailDto> {
-    const listing = await this.prisma.listing.findUnique({ where: { id }, include: { city: true, area: true } });
+    const listing = await this.prisma.listing.findUnique({
+      where: { id },
+      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+    });
     if (!listing) throw new NotFoundException(`Listing ${id} not found`);
     if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
 
@@ -270,6 +294,11 @@ export class ListingsService {
     const existing = await this.prisma.listing.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Listing ${id} not found`);
     if (existing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+
+    if (dto.attributes !== undefined) this.assertRequiredAttributes(existing.category, dto.attributes);
+    if (dto.priceQualifier !== undefined) {
+      this.assertValidPriceQualifier(existing.category, existing.transactionType, dto.priceQualifier);
+    }
 
     const listing = await this.prisma.listing.update({
       where: { id },
@@ -285,7 +314,7 @@ export class ListingsService {
         // flagging again is still required to actually change moderationState.
         ...(existing.moderationState === 'flagged' ? { adminReviewed: false } : {}),
       },
-      include: { city: true, area: true },
+      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
     });
 
     return this.toDetailDto(listing);
@@ -358,7 +387,7 @@ export class ListingsService {
     const favourites = await this.prisma.favourite.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: { listing: { include: { city: true, area: true } } },
+      include: { listing: { include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE } } },
     });
     const favouritedIds = new Set(favourites.map((f) => f.listingId));
     return favourites.map((f) => this.toCardDto(f.listing, favouritedIds));
@@ -387,6 +416,30 @@ export class ListingsService {
     return this.prisma.area.create({ data: { name: trimmed, cityId, source: 'user-submitted' } });
   }
 
+  /** Category-specific "core" fields (bedrooms, sharing type, condition, etc.) marked
+   * `required` in CATEGORY_FIELD_CONFIG — the single source of truth also driving the
+   * posting wizard and edit form's UI. */
+  private assertRequiredAttributes(category: ListingCategory, attributes: Record<string, unknown>): void {
+    for (const field of CATEGORY_FIELD_CONFIG[category]) {
+      if (!field.required) continue;
+      const value = attributes[field.key];
+      if (value === undefined || value === null || value === '') {
+        throw new BadRequestException(`${field.label} is required for this listing category`);
+      }
+    }
+  }
+
+  private assertValidPriceQualifier(
+    category: ListingCategory,
+    transactionType: TransactionType,
+    priceQualifier: string | undefined,
+  ): void {
+    const validValues = getPriceQualifierOptions(category, transactionType).map((o) => o.value);
+    if (!validValues.includes(priceQualifier ?? '')) {
+      throw new BadRequestException('Invalid price qualifier for this category/transaction type');
+    }
+  }
+
   private ensureAnonymousOwner() {
     return this.prisma.user.upsert({
       where: { email: ANONYMOUS_OWNER_EMAIL },
@@ -395,7 +448,14 @@ export class ListingsService {
     });
   }
 
-  private toDetailDto(listing: Listing & { city: City; area: Area }, favouritedIds?: Set<string>): ListingDetailDto {
+  private cdnBase(): string {
+    return this.config.get<string>('CDN_BASE_URL') ?? '';
+  }
+
+  private toDetailDto(
+    listing: Listing & { city: City; area: Area; listingPhotos: ListingPhoto[] },
+    favouritedIds?: Set<string>,
+  ): ListingDetailDto {
     return {
       ...this.toCardDto(listing, favouritedIds),
       status: listing.status,
@@ -406,12 +466,16 @@ export class ListingsService {
       createdAt: listing.createdAt.toISOString(),
       expiresAt: listing.expiresAt.toISOString(),
       isExpired: listing.expiresAt.getTime() < Date.now(),
+      photosFull: listing.listingPhotos.map((p) => variantUrl(this.cdnBase(), listing.id, p.photoNo, 'full')),
     };
   }
 
-  private toCardDto(listing: Listing & { city: City; area: Area }, favouritedIds?: Set<string>): ListingCardDto {
+  private toCardDto(
+    listing: Listing & { city: City; area: Area; listingPhotos: ListingPhoto[] },
+    favouritedIds?: Set<string>,
+  ): ListingCardDto {
     const placeholder = categoryImagePlaceholder[listing.category];
-    const hasPhoto = listing.photos.length > 0;
+    const hasPhoto = listing.listingPhotos.length > 0;
 
     return {
       id: listing.id,
@@ -427,7 +491,7 @@ export class ListingsService {
       specs: listing.specs,
       imgLabel: hasPhoto ? '' : placeholder.imgLabel,
       imgColors: [placeholder.imgA, placeholder.imgB],
-      photos: listing.photos,
+      photos: listing.listingPhotos.map((p) => variantUrl(this.cdnBase(), listing.id, p.photoNo, 'preview')),
       viewCount: listing.viewCount,
       likeCount: listing.likeCount,
       isFavourited: favouritedIds?.has(listing.id) ?? false,

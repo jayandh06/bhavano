@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -11,10 +12,12 @@ import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { AdminModule } from './admin/admin.module';
+import { PhotoProcessingModule } from './photo-processing/photo-processing.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
     PrismaModule,
     ListingsModule,
@@ -24,6 +27,7 @@ import { AdminModule } from './admin/admin.module';
     UsersModule,
     MessagingModule,
     AdminModule,
+    PhotoProcessingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

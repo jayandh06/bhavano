@@ -1,10 +1,39 @@
-import { IsArray, IsIn, IsInt, IsObject, IsOptional, IsPositive, IsString, MaxLength, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 import type { ListingCategory, TransactionType } from '@bhavano/types';
 
 const LISTING_CATEGORIES: ListingCategory[] = ['house', 'apartment', 'pg', 'storage', 'coworking', 'furniture'];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 
+export class CreatedPhotoInputDto {
+  @IsInt()
+  @Min(1)
+  photoNo!: number;
+
+  @IsString()
+  hash!: string;
+
+  @IsString()
+  ext!: string;
+}
+
 export class CreateListingDto {
+  @IsUUID()
+  id!: string;
+
   @IsIn(LISTING_CATEGORIES)
   category!: ListingCategory;
 
@@ -42,15 +71,10 @@ export class CreateListingDto {
   @IsString({ each: true })
   specs?: string[];
 
-  @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  photos?: string[];
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  photoHashes?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => CreatedPhotoInputDto)
+  photos!: CreatedPhotoInputDto[];
 
   @IsOptional()
   @IsObject()

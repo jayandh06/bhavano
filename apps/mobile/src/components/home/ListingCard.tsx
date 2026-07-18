@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { ListingCardDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -35,7 +35,11 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
         ]}
       >
         <View style={[styles.imageOverlayA, { backgroundColor: item.imgColors[1] }]} />
-        <Text style={styles.imageCaption}>{item.imgLabel}</Text>
+        {item.photos[0] ? (
+          <Image source={{ uri: item.photos[0] }} style={StyleSheet.absoluteFill} />
+        ) : (
+          <Text style={styles.imageCaption}>{item.imgLabel}</Text>
+        )}
         <View style={[styles.tag, { backgroundColor: colors.green }]}>
           <Text style={{ color: colors.onGreen, fontSize: 10, fontWeight: "700" }}>{item.tag}</Text>
         </View>

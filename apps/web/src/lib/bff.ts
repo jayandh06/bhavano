@@ -136,13 +136,13 @@ export function updateListing(accessToken: string, listingId: string, input: Upd
   return authedBffFetch(accessToken, `/listings/${listingId}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
-export async function uploadPhoto(formData: FormData): Promise<{ url: string; hash: string }> {
+export async function uploadPhoto(formData: FormData): Promise<{ hash: string; ext: string }> {
   const res = await fetch(`${BFF_URL}/uploads`, { method: "POST", body: formData });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`BFF upload failed (${res.status}): ${body}`);
   }
-  return res.json() as Promise<{ url: string; hash: string }>;
+  return res.json() as Promise<{ hash: string; ext: string }>;
 }
 
 export function sendOtp(phone: string): Promise<{ success: true }> {

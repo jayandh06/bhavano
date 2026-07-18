@@ -119,20 +119,34 @@ export function createListing(input: CreateListingInput): Promise<ListingDetailD
   return bffFetch<ListingDetailDto>("/listings", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function uploadPhoto(fileUri: string): Promise<{ url: string; hash: string }> {
+const MIME_BY_EXT: Record<string, string> = {
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+};
+
+export async function uploadPhoto(
+  fileUri: string,
+  listingId: string,
+  photoNo: number,
+): Promise<{ hash: string; ext: string }> {
   const formData = new FormData();
   const filename = fileUri.split("/").pop() ?? "photo.jpg";
   const ext = filename.split(".").pop()?.toLowerCase();
-  const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+  const mimeType = (ext && MIME_BY_EXT[ext]) ?? "image/jpeg";
   // React Native's fetch accepts this { uri, name, type } shape for multipart file fields.
   formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
+  formData.append("listingId", listingId);
+  formData.append("photoNo", String(photoNo));
 
   const res = await fetch(`${BFF_URL}/uploads`, { method: "POST", body: formData });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`BFF upload failed (${res.status}): ${body}`);
   }
-  return res.json() as Promise<{ url: string; hash: string }>;
+  return res.json() as Promise<{ hash: string; ext: string }>;
 }
 
 export function sendOtp(phone: string): Promise<{ success: true }> {

@@ -11,10 +11,10 @@ captures decisions made and the exact commands used so they don't need re-derivi
   `.env.production.example`).
 - Postgres — self-hosted on its own EC2 `t4g.medium` ("db" instance), rather than RDS, per current
   cost tradeoff (see below). Not containerized — installed directly on the host.
-- Image uploads (`apps/bff/src/uploads/uploads.controller.ts`) currently write to local disk
-  (`apps/bff/uploads/`), flagged in code as a stand-in for S3. Plan is to swap to direct S3 SDK calls
-  (not an EC2-mounted "Mountpoint for S3" file system — that still proxies reads through the app
-  server and doesn't unlock CDN-direct serving).
+- Image uploads (`apps/bff/src/uploads/uploads.controller.ts`) go straight to Cloudflare R2
+  (S3-compatible API) and are served publicly through a CDN custom domain — see "Photo storage
+  (Cloudflare R2 + CDN)" below. Resized `preview`/`full` variants are generated asynchronously by an
+  in-process poller (`apps/bff/src/photo-processing/`), not on the upload request itself.
 
 ## End-to-end runbook: app instance + db instance
 
@@ -181,9 +181,10 @@ DATABASE_URL="postgresql://bhavano:REPLACE_WITH_A_REAL_PASSWORD@<db-private-ip>:
 ```
 Fill in the rest (`SITE_DOMAIN`, `API_DOMAIN`, `ADMIN_DOMAIN`, `NEXTAUTH_SECRET`,
 `ADMIN_NEXTAUTH_SECRET`, `AUTH_JWT_SECRET`, `ADMIN_PHONES`/`ADMIN_EMAILS`, `GOOGLE_CLIENT_ID`/
-`SECRET`, etc.) per the comments in the file. `ADMIN_PHONES`/`ADMIN_EMAILS` matter before anyone
-logs in — there's no admin invite flow, a matching phone/email is promoted to admin automatically
-the moment it logs in.
+`SECRET`, `R2_*`/`CDN_BASE_URL`, etc.) per the comments in the file. `ADMIN_PHONES`/`ADMIN_EMAILS`
+matter before anyone logs in — there's no admin invite flow, a matching phone/email is promoted to
+admin automatically the moment it logs in. `R2_*`/`CDN_BASE_URL` matter before anyone posts a
+listing with a photo — see "Photo storage (Cloudflare R2 + CDN)" below for how to create them.
 
 ### 9. Build and run
 
@@ -270,6 +271,31 @@ doesn't know about will error.
 **Rolling back:** Prisma has no auto-generated down-migration. Reverting a bad migration means
 either writing a new forward migration that undoes it, or restoring the database from a backup —
 there's no `prisma migrate down`.
+
+## Photo storage (Cloudflare R2 + CDN)
+
+Listing photos are stored in a Cloudflare R2 bucket (S3-compatible) and served publicly through a
+CDN custom domain bound to that bucket — Cloudflare's edge serves these directly, Caddy/the app
+servers are never involved in serving a photo.
+
+**One-time setup (Cloudflare dashboard):**
+1. **R2 → Create bucket** (e.g. `bhavano-photos`). Note the account id shown on the R2 overview page
+   → `R2_ACCOUNT_ID`.
+2. **R2 → Manage API tokens → Create API token** with read/write access scoped to that bucket →
+   the generated Access Key ID / Secret Access Key become `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`.
+   `R2_BUCKET` is the bucket name from step 1.
+3. **Bucket → Settings → Custom Domains → Connect Domain** — bind e.g. `cdn.bhavano.com`. Cloudflare
+   creates the DNS record and TLS cert automatically since the domain's zone is already on
+   Cloudflare; no Caddy config needed for this domain (same "DNS-only vs proxied" consideration as
+   `admin.bhavano.com`, etc. doesn't apply here — R2 custom domains are inherently Cloudflare-edge,
+   not a separate origin). `CDN_BASE_URL=https://cdn.bhavano.com` (no trailing slash).
+4. Add all five vars to `.env` on the app instance, then `docker compose -f docker-compose.prod.yml
+   up -d bff` (recreate — env changes need a new container, not just an edited file).
+
+**Async resizing:** `apps/bff/src/photo-processing/` polls a `PhotoVariantJob` DB table every ~3s
+inside the running `bff` container — no separate worker process/deploy step. If photos aren't
+appearing after a few seconds, `docker compose -f docker-compose.prod.yml logs bff | grep -i photo`
+and check the `PhotoVariantJob.status`/`error` columns for stuck/failed rows.
 
 ## Building and deploying an individual service
 

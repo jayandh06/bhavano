@@ -40,8 +40,8 @@ export class ModerationService {
     const priceIssue = checkPriceSanity(input.category, input.transactionType, input.price);
     if (priceIssue) return { ok: false, reason: priceIssue };
 
-    if (input.photoHashes?.length) {
-      const isDuplicate = await this.hasDuplicatePhoto(input.photoHashes);
+    if (input.photos.length) {
+      const isDuplicate = await this.hasDuplicatePhoto(input.photos.map((p) => p.hash));
       if (isDuplicate) {
         return { ok: false, reason: 'One of the uploaded photos appears to already be in use on another listing' };
       }
@@ -51,9 +51,9 @@ export class ModerationService {
   }
 
   /** Scans against all existing photo hashes — fine at current data volume; if the
-   * PhotoHash table grows large, scope this by city/category first. */
+   * ListingPhoto table grows large, scope this by city/category first. */
   private async hasDuplicatePhoto(hashes: string[]): Promise<boolean> {
-    const existing = await this.prisma.photoHash.findMany({ select: { hash: true } });
+    const existing = await this.prisma.listingPhoto.findMany({ select: { hash: true } });
     return hashes.some((newHash) => existing.some((row) => hammingDistanceHex(newHash, row.hash) <= DUPLICATE_HAMMING_THRESHOLD));
   }
 }

@@ -2,11 +2,17 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import * as Crypto from "expo-crypto";
 import type { Area, City, ListingCategory, TransactionType } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
+import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createListing, fetchAreas, uploadPhoto } from "../../lib/bffClient";
+
+const MAX_PHOTOS = 6;
+const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
+const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 const CATEGORIES: { value: ListingCategory; label: string; icon: string }[] = [
   { value: "house", label: "House", icon: "🏡" },
@@ -30,6 +36,7 @@ type Step = "category" | "transactionType" | "details" | "review";
 export function PostAdWizard({ cities }: { cities: City[] }) {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const [listingId] = useState(() => Crypto.randomUUID());
 
   const [step, setStep] = useState<Step>("category");
   const [category, setCategory] = useState<ListingCategory | null>(null);
@@ -45,7 +52,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [specs, setSpecs] = useState("");
   const [attributes, setAttributes] = useState<Record<string, string>>({});
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,23 +62,51 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
     const postable = POSTABLE_TRANSACTION_TYPES[next];
     if (postable.length === 1) {
       setTransactionType(postable[0]);
+      setPriceQualifier(getPriceQualifierOptions(next, postable[0])[0]?.value ?? "");
       setStep("details");
     } else {
       setTransactionType(null);
+      setPriceQualifier("");
       setStep("transactionType");
     }
   }
 
   function selectTransactionType(next: TransactionType) {
     setTransactionType(next);
+    setPriceQualifier(category ? getPriceQualifierOptions(category, next)[0]?.value ?? "" : "");
     setStep("details");
   }
 
-  async function pickPhoto() {
+  async function pickPhotos() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
-    if (!result.canceled && result.assets[0]) setPhotoUri(result.assets[0].uri);
+    const room = MAX_PHOTOS - photoUris.length;
+    if (room <= 0) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+      allowsMultipleSelection: true,
+      selectionLimit: room,
+    });
+    if (result.canceled) return;
+
+    const accepted: string[] = [];
+    for (const asset of result.assets) {
+      if (asset.mimeType && !ALLOWED_PHOTO_MIME_TYPES.includes(asset.mimeType)) {
+        setError(`One of the selected photos isn't a supported format — use JPEG, PNG, WebP, or GIF.`);
+        continue;
+      }
+      if (asset.fileSize && asset.fileSize > MAX_PHOTO_SIZE_BYTES) {
+        setError(`One of the selected photos is over the 4MB limit.`);
+        continue;
+      }
+      accepted.push(asset.uri);
+    }
+    setPhotoUris((prev) => [...prev, ...accepted]);
+  }
+
+  function removePhoto(uri: string) {
+    setPhotoUris((prev) => prev.filter((u) => u !== uri));
   }
 
   function onAreaQueryChange(value: string) {
@@ -101,22 +136,32 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
     setAreaSuggestions([]);
   }
 
-  const detailsValid = price.length > 0 && title.length > 0 && areaQuery.trim().length > 0 && !!cityId;
+  const requiredAttributesFilled = category
+    ? CATEGORY_FIELD_CONFIG[category].every((field) => !field.required || (attributes[field.key] ?? "").length > 0)
+    : true;
+
+  const detailsValid =
+    price.length > 0 &&
+    title.length > 0 &&
+    areaQuery.trim().length > 0 &&
+    !!cityId &&
+    photoUris.length > 0 &&
+    requiredAttributesFilled;
 
   async function onSubmit() {
     if (!category || !transactionType) return;
     setPending(true);
     setError(null);
     try {
-      let photos: string[] = [];
-      let photoHashes: string[] = [];
-      if (photoUri) {
-        const upload = await uploadPhoto(photoUri);
-        photos = [upload.url];
-        photoHashes = [upload.hash];
+      const uploadedPhotos: { photoNo: number; hash: string; ext: string }[] = [];
+      for (let i = 0; i < photoUris.length; i++) {
+        const photoNo = i + 1;
+        const upload = await uploadPhoto(photoUris[i], listingId, photoNo);
+        uploadedPhotos.push({ photoNo, hash: upload.hash, ext: upload.ext });
       }
 
       const listing = await createListing({
+        id: listingId,
         category,
         transactionType,
         price: Number(price),
@@ -129,8 +174,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-        photos,
-        photoHashes,
+        photos: uploadedPhotos,
         attributes,
       });
 
@@ -195,14 +239,18 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
 
-          <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier (optional)</Text>
-          <TextInput
-            value={priceQualifier}
-            onChangeText={setPriceQualifier}
-            placeholder="/month, onwards…"
-            placeholderTextColor={colors.muted}
-            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-          />
+          <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier *</Text>
+          <View style={styles.chipRow}>
+            {getPriceQualifierOptions(category, transactionType).map((opt) => (
+              <Pressable
+                key={opt.value}
+                onPress={() => setPriceQualifier(opt.value)}
+                style={[styles.chip, { borderColor: colors.border, backgroundColor: priceQualifier === opt.value ? colors.surfaceAlt : "transparent" }]}
+              >
+                <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{opt.label}</Text>
+              </Pressable>
+            ))}
+          </View>
 
           <Text style={[styles.label, { color: colors.textSoft }]}>Title</Text>
           <TextInput
@@ -262,7 +310,10 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
             </Text>
             {CATEGORY_FIELD_CONFIG[category].map((field) => (
               <View key={field.key}>
-                <Text style={[styles.label, { color: colors.textSoft }]}>{field.label}</Text>
+                <Text style={[styles.label, { color: colors.textSoft }]}>
+                  {field.label}
+                  {field.required ? " *" : ""}
+                </Text>
                 {field.type === "select" ? (
                   <View style={styles.chipRow}>
                     {field.options?.map((opt) => (
@@ -292,13 +343,30 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
             ))}
           </View>
 
-          <Text style={[styles.label, { color: colors.textSoft }]}>Photo (optional)</Text>
-          <Pressable onPress={pickPhoto} style={[styles.photoButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
-            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13 }}>
-              {photoUri ? "Change photo" : "Choose a photo"}
-            </Text>
-          </Pressable>
-          {photoUri && <Image source={{ uri: photoUri }} style={styles.photoPreview} />}
+          <Text style={[styles.label, { color: colors.textSoft }]}>Photos (up to {MAX_PHOTOS}) *</Text>
+          {photoUris.length < MAX_PHOTOS && (
+            <Pressable onPress={pickPhotos} style={[styles.photoButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13 }}>
+                {photoUris.length > 0 ? "Add more photos" : "Choose photos"}
+              </Text>
+            </Pressable>
+          )}
+          {photoUris.length > 0 && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+              {photoUris.map((uri) => (
+                <View key={uri}>
+                  <Image source={{ uri }} style={styles.photoThumb} />
+                  <Pressable
+                    onPress={() => removePhoto(uri)}
+                    style={[styles.removeBadge, { backgroundColor: colors.surface }]}
+                  >
+                    <Text style={{ color: "#c0554b", fontWeight: "700", fontSize: 13 }}>×</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
+          {error && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{error}</Text>}
 
           <View style={styles.navRow}>
             <Pressable onPress={() => setStep(POSTABLE_TRANSACTION_TYPES[category].length === 1 ? "category" : "transactionType")}>
@@ -360,7 +428,17 @@ const styles = StyleSheet.create({
   suggestionRow: { paddingVertical: 10, paddingHorizontal: 14 },
   divider: { borderTopWidth: 1, paddingTop: 12, marginTop: 8, gap: 4 },
   photoButton: { borderWidth: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
-  photoPreview: { width: "100%", height: 160, borderRadius: 10, marginTop: 10 },
+  photoThumb: { width: 90, height: 90, borderRadius: 8 },
+  removeBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   navRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 16 },
   reviewButton: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 },
   submitButton: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 28, alignItems: "center" },
