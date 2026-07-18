@@ -7,6 +7,10 @@ export async function searchCitiesAction(q: string): Promise<City[]> {
   return fetchCities(q);
 }
 
+export async function listAllCitiesAction(): Promise<City[]> {
+  return fetchCities(undefined, true);
+}
+
 export async function autoDetectCityAction(lat: number, lng: number): Promise<City | null> {
   return reverseGeocode(lat, lng);
 }

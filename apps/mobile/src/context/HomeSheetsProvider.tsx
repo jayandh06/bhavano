@@ -13,6 +13,7 @@ import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
 import type { City } from "@bhavano/types";
+import { getCityIcon } from "@bhavano/types/cityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
 import { fetchCities, loginWithGoogle, reverseGeocode, sendOtp, verifyOtp } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
@@ -68,6 +69,8 @@ export function HomeSheetsProvider({
 
   const [locationQuery, setLocationQuery] = useState("");
   const [locationResults, setLocationResults] = useState<City[]>(popularCities);
+  const [allCities, setAllCities] = useState<City[] | null>(null);
+  const [loadingAllCities, setLoadingAllCities] = useState(false);
   const [detecting, setDetecting] = useState(false);
 
   const [loginStep, setLoginStep] = useState<LoginStep>("choose");
@@ -100,8 +103,15 @@ export function HomeSheetsProvider({
   const openLocationPicker = useCallback(() => {
     setLocationQuery("");
     setLocationResults(popularCities);
+    setAllCities(null);
     locationSheetRef.current?.present();
   }, [popularCities]);
+
+  async function onShowMoreCities() {
+    setLoadingAllCities(true);
+    setAllCities(await fetchCities(undefined, true));
+    setLoadingAllCities(false);
+  }
 
   const requireLogin = useCallback(() => {
     if (isLoggedIn) return;
@@ -218,11 +228,45 @@ export function HomeSheetsProvider({
             placeholderTextColor={colors.muted}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
-          {locationResults.map((c) => (
-            <Pressable key={c.id} onPress={() => setCity(c)} style={styles.cityRow}>
-              <Text style={{ color: colors.text, fontSize: 14 }}>{c.name}</Text>
+          {locationQuery || !allCities ? (
+            locationResults.map((c) => (
+              <Pressable key={c.id} onPress={() => setCity(c)} style={styles.cityRow}>
+                <Text style={{ color: colors.text, fontSize: 14 }}>
+                  {getCityIcon(c.name)} {c.name}
+                </Text>
+              </Pressable>
+            ))
+          ) : (
+            <>
+              <Text style={[styles.sheetLabel, { color: colors.muted, marginTop: 4 }]}>POPULAR</Text>
+              {allCities
+                .filter((c) => c.isPopular)
+                .map((c) => (
+                  <Pressable key={c.id} onPress={() => setCity(c)} style={styles.cityRow}>
+                    <Text style={{ color: colors.text, fontSize: 14 }}>
+                      {getCityIcon(c.name)} {c.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              <Text style={[styles.sheetLabel, { color: colors.muted, marginTop: 10 }]}>MORE CITIES</Text>
+              {allCities
+                .filter((c) => !c.isPopular)
+                .map((c) => (
+                  <Pressable key={c.id} onPress={() => setCity(c)} style={styles.cityRow}>
+                    <Text style={{ color: colors.text, fontSize: 14 }}>
+                      {getCityIcon(c.name)} {c.name}
+                    </Text>
+                  </Pressable>
+                ))}
+            </>
+          )}
+          {!locationQuery && !allCities && (
+            <Pressable onPress={onShowMoreCities} disabled={loadingAllCities} style={{ paddingVertical: 10, paddingHorizontal: 6 }}>
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13 }}>
+                {loadingAllCities ? "Loading…" : "Show more cities ▾"}
+              </Text>
             </Pressable>
-          ))}
+          )}
         </BottomSheetView>
       </BottomSheetModal>
 

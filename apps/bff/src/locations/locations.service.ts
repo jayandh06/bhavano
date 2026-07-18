@@ -34,7 +34,14 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 export class LocationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async searchCities(q?: string): Promise<CityDto[]> {
+  async searchCities(q?: string, all?: boolean): Promise<CityDto[]> {
+    if (!q && all) {
+      const cities = await this.prisma.city.findMany({
+        orderBy: [{ isPopular: 'desc' }, { name: 'asc' }],
+      });
+      return cities.map(toDto);
+    }
+
     if (!q) {
       const popular = await this.prisma.city.findMany({
         where: { isPopular: true },

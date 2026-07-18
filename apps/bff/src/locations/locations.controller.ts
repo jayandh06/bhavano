@@ -8,8 +8,8 @@ export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}
 
   @Get('cities')
-  searchCities(@Query('q') q?: string): Promise<City[]> {
-    return this.locationsService.searchCities(q);
+  searchCities(@Query('q') q?: string, @Query('all') all?: string): Promise<City[]> {
+    return this.locationsService.searchCities(q, all === 'true');
   }
 
   @Get('areas')

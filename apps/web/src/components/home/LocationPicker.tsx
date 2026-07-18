@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { City } from "@bhavano/types";
-import { autoDetectCityAction, searchCitiesAction } from "@/app/actions/locations";
+import { getCityIcon } from "@bhavano/types/cityIcons";
+import { autoDetectCityAction, listAllCitiesAction, searchCitiesAction } from "@/app/actions/locations";
 import { buildHomeUrl } from "@/lib/homeUrl";
 
 export function LocationPicker({
@@ -18,11 +19,14 @@ export function LocationPicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<City[]>(popularCities);
+  const [allCities, setAllCities] = useState<City[] | null>(null);
+  const [loadingAll, setLoadingAll] = useState(false);
   const [detecting, setDetecting] = useState(false);
 
   function openModal() {
     setQuery("");
     setResults(popularCities);
+    setAllCities(null);
     setOpen(true);
   }
 
@@ -33,6 +37,12 @@ export function LocationPicker({
       return;
     }
     setResults(await searchCitiesAction(value));
+  }
+
+  async function onShowMoreCities() {
+    setLoadingAll(true);
+    setAllCities(await listAllCitiesAction());
+    setLoadingAll(false);
   }
 
   function selectCity(city: City) {
@@ -52,6 +62,8 @@ export function LocationPicker({
       () => setDetecting(false),
     );
   }
+
+  const tierCities = allCities ? { popular: allCities.filter((c) => c.isPopular), more: allCities.filter((c) => !c.isPopular) } : null;
 
   return (
     <>
@@ -100,6 +112,8 @@ export function LocationPicker({
               borderRadius: 16,
               width: 420,
               maxWidth: "100%",
+              maxHeight: "80vh",
+              overflowY: "auto",
               padding: 24,
               animation: "modalIn 0.2s ease both",
             }}
@@ -164,29 +178,75 @@ export function LocationPicker({
                 color: "var(--text)",
               }}
             />
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {results.map((city) => (
-                <button
-                  key={city.id}
-                  onClick={() => selectCity(city)}
-                  style={{
-                    textAlign: "left",
-                    background: "none",
-                    border: "none",
-                    padding: "10px 6px",
-                    fontSize: 14,
-                    color: "var(--text)",
-                    cursor: "pointer",
-                    borderRadius: 7,
-                  }}
-                >
-                  {city.name}
-                </button>
-              ))}
-            </div>
+
+            {query || !tierCities ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {results.map((city) => (
+                  <CityRow key={city.id} city={city} onSelect={selectCity} />
+                ))}
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 4 }}>POPULAR</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 14 }}>
+                  {tierCities.popular.map((city) => (
+                    <CityRow key={city.id} city={city} onSelect={selectCity} />
+                  ))}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 4 }}>MORE CITIES</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {tierCities.more.map((city) => (
+                    <CityRow key={city.id} city={city} onSelect={selectCity} />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {!query && !allCities && (
+              <button
+                onClick={onShowMoreCities}
+                disabled={loadingAll}
+                style={{
+                  marginTop: 8,
+                  background: "none",
+                  border: "none",
+                  color: "var(--green)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  padding: "8px 6px",
+                }}
+              >
+                {loadingAll ? "Loading…" : "Show more cities ▾"}
+              </button>
+            )}
           </div>
         </div>
       )}
     </>
+  );
+}
+
+function CityRow({ city, onSelect }: { city: City; onSelect: (city: City) => void }) {
+  return (
+    <button
+      onClick={() => onSelect(city)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        textAlign: "left",
+        background: "none",
+        border: "none",
+        padding: "10px 6px",
+        fontSize: 14,
+        color: "var(--text)",
+        cursor: "pointer",
+        borderRadius: 7,
+      }}
+    >
+      <span>{getCityIcon(city.name)}</span>
+      {city.name}
+    </button>
   );
 }

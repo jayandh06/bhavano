@@ -48,9 +48,10 @@ export function fetchListings(query: ListingsQuery, accessToken?: string | null)
   return accessToken ? authedBffFetch(accessToken, path) : bffFetch<ListingsPage>(path);
 }
 
-export function fetchCities(q?: string): Promise<City[]> {
+export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
+  if (all) params.set("all", "true");
   return bffFetch<City[]>(`/locations/cities?${params.toString()}`);
 }
 
