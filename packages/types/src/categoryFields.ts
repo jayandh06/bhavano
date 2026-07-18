@@ -11,12 +11,15 @@ export interface FieldDef {
   type: "text" | "number" | "select";
   options?: FieldOption[];
   placeholder?: string;
+  /** Must be filled in before the listing can be posted/saved — enforced in both the
+   * posting wizard/edit form (disables submit) and the BFF (`ListingsService`). */
+  required?: boolean;
 }
 
 const RESIDENTIAL_FIELDS: FieldDef[] = [
-  { key: "bedrooms", label: "Bedrooms", type: "number" },
-  { key: "bathrooms", label: "Bathrooms", type: "number" },
-  { key: "sqft", label: "Area (sqft)", type: "number" },
+  { key: "bedrooms", label: "Bedrooms", type: "number", required: true },
+  { key: "bathrooms", label: "Bathrooms", type: "number", required: true },
+  { key: "sqft", label: "Area (sqft)", type: "number", required: true },
   {
     key: "furnished",
     label: "Furnishing",
@@ -46,6 +49,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "triple", label: "Triple sharing" },
         { value: "dormitory", label: "Dormitory" },
       ],
+      required: true,
     },
     {
       key: "gender",
@@ -68,7 +72,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
     },
   ],
   storage: [
-    { key: "sizeSqft", label: "Size (sqft)", type: "number" },
+    { key: "sizeSqft", label: "Size (sqft)", type: "number", required: true },
     {
       key: "accessHours",
       label: "Access hours",
@@ -89,6 +93,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "dedicated-desk", label: "Dedicated desk" },
         { value: "private-cabin", label: "Private cabin" },
       ],
+      required: true,
     },
     { key: "amenities", label: "Amenities", type: "text", placeholder: "24/7 access, meeting rooms, high-speed wifi…" },
   ],
@@ -114,6 +119,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "new", label: "New" },
         { value: "used", label: "Used" },
       ],
+      required: true,
     },
     { key: "brand", label: "Brand (optional)", type: "text" },
   ],

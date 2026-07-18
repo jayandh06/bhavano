@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { updateListingAction } from "@/app/actions/listings";
 
 function sanitizeNonNegative(value: string): string {
@@ -38,7 +39,15 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
 
   const fieldConfig = CATEGORY_FIELD_CONFIG[listing.category];
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
-  const valid = priceValue > 0 && title.trim().length > 0;
+  const requiredAttributesFilled = fieldConfig.every((field) => !field.required || (attributes[field.key] ?? "").length > 0);
+  const valid = priceValue > 0 && title.trim().length > 0 && requiredAttributesFilled;
+
+  // The stored value may not appear in today's fixed option list (legacy free-text data from
+  // before this dropdown existed) — keep it selectable rather than silently swapping it out.
+  const priceQualifierOptions = getPriceQualifierOptions(listing.category, listing.transactionType);
+  const priceQualifierChoices = priceQualifierOptions.some((opt) => opt.value === priceQualifier)
+    ? priceQualifierOptions
+    : [{ value: priceQualifier, label: priceQualifier ? `"${priceQualifier}" (current)` : "(none)" }, ...priceQualifierOptions];
 
   async function onSave() {
     setSaving(true);
@@ -46,7 +55,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
     const result = await updateListingAction(listing.id, {
       title: title.trim(),
       price: priceValue,
-      priceQualifier: priceQualifier || undefined,
+      priceQualifier,
       specs: specs
         .split(",")
         .map((s) => s.trim())
@@ -89,8 +98,14 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Price qualifier</label>
-          <input value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={inputStyle} />
+          <label style={labelStyle}>Price qualifier *</label>
+          <select value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={inputStyle}>
+            {priceQualifierChoices.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -103,7 +118,10 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>
           {fieldConfig.map((field) => (
             <div key={field.key}>
-              <label style={labelStyle}>{field.label}</label>
+              <label style={labelStyle}>
+                {field.label}
+                {field.required ? " *" : ""}
+              </label>
               {field.type === "select" ? (
                 <select
                   value={attributes[field.key] ?? ""}

@@ -21,6 +21,10 @@
       "types": "./dist/postingRules.d.ts",
       "default": "./dist/postingRules.js"
     },
+    "./priceQualifiers": {
+      "types": "./dist/priceQualifiers.d.ts",
+      "default": "./dist/priceQualifiers.js"
+    },
     "./slugify": {
       "types": "./dist/slugify.d.ts",
       "default": "./dist/slugify.js"
