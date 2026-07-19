@@ -47,7 +47,7 @@ const POSTING: Faq[] = [
     a: (
       <>
         Ads run for 30 days by default. You can also mark a listing Sold/Rented, or deactivate it early, from{" "}
-        <Link href="/my-listings" style={{ color: "var(--green)", fontWeight: 700 }}>
+        <Link href="/my-listings" className="text-green font-bold">
           My listings
         </Link>
         .
@@ -59,7 +59,7 @@ const POSTING: Faq[] = [
     a: (
       <>
         Yes. Open{" "}
-        <Link href="/my-listings" style={{ color: "var(--green)", fontWeight: 700 }}>
+        <Link href="/my-listings" className="text-green font-bold">
           My listings
         </Link>{" "}
         and click <strong>Edit</strong> on any listing to change the price, title, specs, category details, or
@@ -84,7 +84,7 @@ const BUYING_RENTING: Faq[] = [
       <>
         Yes — tap the ♡ on any listing card to favourite it (requires login), then view everything you&apos;ve
         saved under{" "}
-        <Link href="/favourites" style={{ color: "var(--green)", fontWeight: 700 }}>
+        <Link href="/favourites" className="text-green font-bold">
           Favourites
         </Link>
         .
@@ -98,7 +98,7 @@ const BUYING_RENTING: Faq[] = [
         No — Bhavano is a marketplace that connects buyers and sellers directly; we don&apos;t verify ownership,
         condition, or legal title of anything listed. Always verify documents and inspect a property or item in
         person before paying anyone. See our{" "}
-        <Link href="/terms" style={{ color: "var(--green)", fontWeight: 700 }}>
+        <Link href="/terms" className="text-green font-bold">
           Terms of Service
         </Link>
         .
@@ -113,7 +113,7 @@ const ACCOUNT: Faq[] = [
     a: (
       <>
         Go to your{" "}
-        <Link href="/profile" style={{ color: "var(--green)", fontWeight: 700 }}>
+        <Link href="/profile" className="text-green font-bold">
           profile page
         </Link>
         . We can auto-detect your city from your browser&apos;s location, but it&apos;s only ever a suggestion to
@@ -125,7 +125,7 @@ const ACCOUNT: Faq[] = [
     q: "Where can I see everything I've posted?",
     a: (
       <>
-        <Link href="/my-listings" style={{ color: "var(--green)", fontWeight: 700 }}>
+        <Link href="/my-listings" className="text-green font-bold">
           My listings
         </Link>{" "}
         — it shows every ad you&apos;ve posted, its status (active/sold/rented/deactivated), and view/favourite
@@ -144,7 +144,7 @@ const SAFETY: Faq[] = [
     q: "How do I report a listing or a user?",
     a: (
       <>
-        <Link href="/contact" style={{ color: "var(--green)", fontWeight: 700 }}>
+        <Link href="/contact" className="text-green font-bold">
           Contact us
         </Link>{" "}
         with a link to the listing (or its title and city) and what&apos;s wrong — we&apos;ll take a look.
@@ -156,7 +156,7 @@ const SAFETY: Faq[] = [
     a: (
       <>
         See our{" "}
-        <Link href="/privacy" style={{ color: "var(--green)", fontWeight: 700 }}>
+        <Link href="/privacy" className="text-green font-bold">
           Privacy Policy
         </Link>{" "}
         for the full details — in short, your account info, anything you post, and your favourites/messages/views.
@@ -168,19 +168,11 @@ const SAFETY: Faq[] = [
 function FaqGroup({ title, items }: { title: string; items: Faq[] }) {
   return (
     <PageSection heading={title}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="flex flex-col gap-2">
         {items.map((item) => (
-          <details
-            key={item.q}
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              padding: "12px 16px",
-              background: "var(--surface)",
-            }}
-          >
-            <summary style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", cursor: "pointer" }}>{item.q}</summary>
-            <div style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6, color: "var(--text-soft)" }}>{item.a}</div>
+          <details key={item.q} className="border border-border rounded-[10px] px-4 py-3 bg-surface">
+            <summary className="font-bold text-sm text-text cursor-pointer">{item.q}</summary>
+            <div className="mt-2.5 text-sm leading-[1.6] text-text-soft">{item.a}</div>
           </details>
         ))}
       </div>
@@ -198,9 +190,9 @@ export default function HelpPage() {
       <FaqGroup title="Trust & safety" items={SAFETY} />
 
       <PageSection heading="Still need help?">
-        <p style={{ margin: 0 }}>
+        <p className="m-0">
           Can&apos;t find your answer here?{" "}
-          <Link href="/contact" style={{ color: "var(--green)", fontWeight: 700 }}>
+          <Link href="/contact" className="text-green font-bold">
             Contact us
           </Link>{" "}
           and we&apos;ll help you out.
