@@ -1,12 +1,8 @@
-/* Tailwind v4 — theme + utilities layers only. Preflight (Tailwind's global reset) is
- * intentionally NOT imported yet: this app has its own resets below and relies on some browser
- * defaults, so enabling Preflight now would change rendering. It gets turned on during the
- * component migration (docs/plans/css-performance-strategy.md, step 2), fixing any reset
- * regressions per-component. Until then, installing Tailwind is a visual no-op — only classes
- * actually used in components emit any CSS. */
-@layer theme, base, components, utilities;
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+/* Tailwind v4 — full import including Preflight (the global reset). Enabled once every component
+ * was migrated off inline styles (docs/plans/css-performance-strategy.md, step 3). The app's own
+ * base rules below still apply on top of Preflight (they win by being later in the cascade), and
+ * content-page lists carry explicit `list-disc` so Preflight's list reset doesn't strip bullets. */
+@import "tailwindcss";
 
 /* Map the existing design tokens into Tailwind's color space with `@theme inline`, so utilities
  * (bg-bg, text-green, border-border, …) compile to `var(--token)` references — which means the

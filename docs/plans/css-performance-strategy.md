@@ -88,6 +88,29 @@ on and fix any reset regressions in one final pass. Typecheck clean and no dev-l
 each batch; correctness spot-checked at the CSS-value level — a browser eyeball (light + dark) is
 the outstanding manual check.
 
+## Step 3 complete — full migration + Preflight enabled
+
+Every component migrated off inline styles (only two intentional inline styles remain app-wide:
+the data-driven `my-listings` status-badge color, and the GTM `<noscript>` iframe `display:none`).
+Final step flipped `globals.css` from the layers-only import to the full `@import "tailwindcss"`,
+enabling **Preflight**. Verified safe because:
+- the app's own base rules in `globals.css` are **unlayered**, so they win over Preflight's
+  `@layer base` reset (green links, `box-sizing`, `button{font-family:inherit}`, placeholders all
+  still apply — confirmed in the served CSS: `color: var(--green)` present and unlayered);
+- content-page lists carry explicit `list-disc` so Preflight's list reset doesn't strip bullets;
+- every heading/button/input has explicit size/color utilities, so Preflight resetting element
+  defaults changes nothing visible.
+- All routes still 200 (`/`, browse, detail, help, privacy) with no dev-log errors.
+
+Migration was committed in reviewable batches: Tailwind adopt + hot path, chrome + browse surface,
+header interactives + detail, shared layout + login modal, static content pages, authenticated
+route pages, and forms.
+
+**Outstanding:** (1) a browser eyeball in light + dark — everything was verified at the
+CSS-value/HTTP level, not visually, and Preflight is a global change worth a real look; (2) the
+production build-time + first-load-JS before/after (needs the dev server stopped to avoid `.next`
+contention) — the one measurement still deferred.
+
 ## What actually costs build/load time here (and what doesn't)
 
 **Not a real problem:** there is no runtime CSS-in-JS engine, so there's no per-render style
