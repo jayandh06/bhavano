@@ -55,7 +55,10 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
         <button
           onClick={onToggleFavourite}
           className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-[#ffffffee] border-none cursor-pointer text-[15px] z-[1] ${
-            isFavourited ? "text-[#c0554b]" : ""
+            // This circle's background is a fixed near-white overlay on the photo, not a theme
+            // color — so the icon's color must also be fixed (never `inherit`/theme text color),
+            // or it silently disappears against the circle in dark mode (near-white on near-white).
+            isFavourited ? "text-[#c0554b]" : "text-[#3a3a3a]"
           }`}
         >
           {isFavourited ? "♥" : "♡"}

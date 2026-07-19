@@ -27,14 +27,17 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpenTab(null));
 
+  // Click navigates (and always closes the dropdown, since clicking is committing to that
+  // page) — opening the dropdown is a separate, hover-only interaction below, matching how
+  // MegaMenu's own column-1 items already switch via onMouseEnter.
   function onTabClick(tab: HomeCategoryFilter) {
     const clearedFilters = Object.fromEntries(FILTER_PARAM_KEYS.map((key) => [key, undefined]));
     router.push(buildHomeUrl(searchParams, { category: tab, ...clearedFilters }));
-    setOpenTab((prev) => (prev === tab ? null : tab));
+    setOpenTab(null);
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative" onMouseLeave={() => setOpenTab(null)}>
       <div className="flex gap-1.5 overflow-x-auto">
         {HOME_TABS.map((tab) => {
           const isActive = tab.value === active;
@@ -43,6 +46,7 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
             <button
               key={tab.value}
               onClick={() => onTabClick(tab.value)}
+              onMouseEnter={() => setOpenTab(tab.value)}
               className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold cursor-pointer whitespace-nowrap ${
                 isActive ? "bg-surface-alt text-text" : "bg-transparent text-text-soft"
               } ${highlighted ? "border-b-gold" : "border-b-transparent"}`}

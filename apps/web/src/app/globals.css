@@ -52,48 +52,56 @@
   --gold: #d9b36b;
 }
 
-html {
-  height: 100%;
-}
+/* Cascade-layers rule: unlayered CSS always wins over ANY layered rule (Tailwind's utilities
+ * included), regardless of selector specificity or source order. These custom base-element
+ * styles must live in `@layer base` (same layer Preflight itself uses) so that a component's
+ * Tailwind utility classes — e.g. `text-on-green` on a Link — can still override this default
+ * `a` color instead of being silently clobbered by it. (This is the exact bug that made the
+ * active pagination link's text invisible except on hover, before this fix.) */
+@layer base {
+  html {
+    height: 100%;
+  }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
+  html,
+  body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
 
-body {
-  min-height: 100%;
-  color: var(--text);
-  background: var(--bg);
-  font-family: var(--font-manrope), sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  body {
+    min-height: 100%;
+    color: var(--text);
+    background: var(--bg);
+    font-family: var(--font-manrope), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-* {
-  box-sizing: border-box;
-}
+  * {
+    box-sizing: border-box;
+  }
 
-a {
-  color: var(--green);
-  text-decoration: none;
-}
+  a {
+    color: var(--green);
+    text-decoration: none;
+  }
 
-a:hover {
-  color: var(--gold);
-}
+  a:hover {
+    color: var(--gold);
+  }
 
-button {
-  font-family: inherit;
-}
+  button {
+    font-family: inherit;
+  }
 
-::placeholder {
-  color: var(--muted);
-}
+  ::placeholder {
+    color: var(--muted);
+  }
 
-::selection {
-  background: #c9a15a55;
+  ::selection {
+    background: #c9a15a55;
+  }
 }
 
 @keyframes fadein {
