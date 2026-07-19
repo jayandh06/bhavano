@@ -20,28 +20,18 @@ export async function Footer() {
   const searches: PopularSearchLink[] = popularSearches.length > 0 ? popularSearches : FALLBACK_SEARCHES;
 
   return (
-    <section style={{ background: "var(--surface-alt)", borderTop: "1px solid var(--border)", padding: "48px 32px" }}>
-      <div
-        style={{
-          maxWidth: 1280,
-          margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))",
-          gap: 32,
-        }}
-      >
+    <section className="bg-surface-alt border-t border-border py-12 px-8">
+      <div className="max-w-[1280px] mx-auto grid gap-8 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
         <div>
-          <div style={{ fontFamily: "var(--font-lora)", fontWeight: 700, fontSize: 18, color: "var(--green)", marginBottom: 6 }}>
-            Bhavano
-          </div>
-          <p style={{ fontSize: 13, color: "var(--text-soft)", lineHeight: 1.6, margin: 0 }}>
+          <div className="font-lora font-bold text-lg text-green mb-1.5">Bhavano</div>
+          <p className="text-[13px] text-text-soft leading-[1.6] m-0">
             Verified listings to buy, rent or lease houses, apartments, coworking desks, PG accommodation and
             furniture across India — no login needed to browse.
           </p>
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 10 }}>Popular searches</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+          <div className="font-bold text-[13px] text-text mb-2.5">Popular searches</div>
+          <div className="flex flex-col gap-2 text-[13px]">
             {searches.map((s) => (
               <Link
                 key={`${s.cityName}-${s.category}-${s.transactionType}`}
@@ -53,8 +43,8 @@ export async function Footer() {
           </div>
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 10 }}>Categories</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+          <div className="font-bold text-[13px] text-text mb-2.5">Categories</div>
+          <div className="flex flex-col gap-2 text-[13px]">
             <Link href={buildBrowsePath({ cityName: "Bengaluru", transactionGroup: "buy", category: "apartment" })}>Buy property</Link>
             <Link href={buildBrowsePath({ cityName: "Mumbai", transactionGroup: "rent-lease", category: "apartment" })}>Rent / Lease</Link>
             <Link href={buildBrowsePath({ cityName: "Bengaluru", transactionGroup: "buy", category: "furniture" })}>
@@ -63,31 +53,22 @@ export async function Footer() {
           </div>
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 10 }}>Company</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+          <div className="font-bold text-[13px] text-text mb-2.5">Company</div>
+          <div className="flex flex-col gap-2 text-[13px]">
             <Link href="/post">Post a free ad</Link>
             <Link href="/help">Help centre</Link>
           </div>
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 10 }}>Legal</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+          <div className="font-bold text-[13px] text-text mb-2.5">Legal</div>
+          <div className="flex flex-col gap-2 text-[13px]">
             <Link href="/terms">Terms of Service</Link>
             <Link href="/privacy">Privacy Policy</Link>
             <Link href="/contact">Contact Us</Link>
           </div>
         </div>
       </div>
-      <div
-        style={{
-          maxWidth: 1280,
-          margin: "32px auto 0",
-          paddingTop: 20,
-          borderTop: "1px solid var(--border)",
-          fontSize: 12,
-          color: "var(--muted)",
-        }}
-      >
+      <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border text-xs text-muted">
         © 2026 Bhavano. All rights reserved.
       </div>
     </section>

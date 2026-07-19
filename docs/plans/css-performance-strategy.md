@@ -67,6 +67,27 @@ un-migrated components (LocationPicker, SearchBar, CategoryTabs, AreaFilter, Bro
 Footer, page wrappers). Verified: typecheck clean, no dev-log errors, all utilities (token-mapped
 and arbitrary) emit correct values, borders render (solid default present).
 
+## Step 3 — in progress (chrome + browse surface migrated)
+
+Migrated the every-page chrome (`Footer`, `ThemeToggle`, `CategoryTabs`, `HeaderAuthButtons`) and
+the browse/home surface (`AreaFilter`, `BrowseFilterBar`, `BrowseListingsView`, homepage
+`page.tsx`) — 11 components total including the step-2 three. Cumulative vs the step-0 baseline:
+
+| Page | Inline-style bytes | Δ vs baseline | Total HTML | Δ |
+|---|---|---|---|---|
+| `/` | 18.2 KB → 1.6 KB | **−91%** | 76.4 → 70.1 KB | −8.3% |
+| `/bengaluru` | 27.8 KB → 2.1 KB | **−92%** | 102.6 → 93.1 KB | −9.3% |
+| `/bengaluru/buy/apartment` | 13.6 KB → 1.3 KB | **−90%** | 67.6 → 62.6 KB | −7.4% |
+
+**Still to migrate** (why Preflight stays OFF until then — it's global): header interactives
+`SearchBar` / `LocationPicker` / `MegaMenu` (the remaining ~1.3–2.1 KB on these pages), the
+listing-detail surface (`ListingDetailView`, `ListingDetailActions`), and the
+authenticated/static pages (post wizard, profile, my-listings, messages, edit form, favourites,
+and the `StaticPageLayout`-based terms/privacy/help/contact). Once those are done, flip Preflight
+on and fix any reset regressions in one final pass. Typecheck clean and no dev-log errors after
+each batch; correctness spot-checked at the CSS-value level — a browser eyeball (light + dark) is
+the outstanding manual check.
+
 ## What actually costs build/load time here (and what doesn't)
 
 **Not a real problem:** there is no runtime CSS-in-JS engine, so there's no per-render style

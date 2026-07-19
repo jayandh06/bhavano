@@ -124,7 +124,7 @@ export default async function HomePage({
   const loadMoreHref = hasMore ? `/?${loadMoreParams.toString()}` : null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+    <div className="min-h-screen bg-bg text-text">
       <Header
         cityName={cityName}
         popularCities={popularCities}
@@ -133,17 +133,13 @@ export default async function HomePage({
         userName={session?.user?.name}
         areaName={cityAreas[0]?.name}
       />
-      <main style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 32px 80px" }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 20 }}>
-          <h1 style={{ fontFamily: "var(--font-lora)", fontSize: 26, fontWeight: 600, margin: 0, color: "var(--text)" }}>
-            {heading}
-          </h1>
-          <span style={{ fontSize: 13, color: "var(--muted)" }}>
-            Ads shown without login — sign in only to respond
-          </span>
+      <main className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
+        <div className="flex items-baseline justify-between mb-5">
+          <h1 className="font-lora text-[26px] font-semibold m-0 text-text">{heading}</h1>
+          <span className="text-[13px] text-muted">Ads shown without login — sign in only to respond</span>
         </div>
         {resolvedCity && (
-          <div style={{ marginBottom: 20 }}>
+          <div className="mb-5">
             <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
           </div>
         )}

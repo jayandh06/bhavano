@@ -103,77 +103,31 @@ export function AreaFilter({
     navigate(next);
   }
 
+  const active = open || !allSelected;
+
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
+    <div ref={containerRef} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        style={{
-          background: open || !allSelected ? "var(--surface-alt)" : "var(--bg)",
-          border: `1px solid ${open || !allSelected ? "var(--green)" : "var(--border)"}`,
-          borderRadius: 8,
-          padding: "8px 14px",
-          fontSize: 13,
-          fontWeight: 600,
-          color: open || !allSelected ? "var(--green)" : "var(--text-soft)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
+        className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold cursor-pointer border ${
+          active ? "bg-surface-alt border-green text-green" : "bg-bg border-border text-text-soft"
+        }`}
       >
-        📍 {label} <span style={{ fontSize: 10, color: "var(--muted)" }}>▾</span>
+        📍 {label} <span className="text-[10px] text-muted">▾</span>
       </button>
       {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            padding: 8,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-            zIndex: 50,
-            minWidth: 220,
-            maxHeight: 320,
-            overflowY: "auto",
-          }}
-        >
+        <div className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[220px] max-h-[320px] overflow-y-auto">
           <button
             onClick={() => navigate(new Set(areas.map((a) => a.id)))}
             disabled={allSelected}
-            style={{
-              display: "block",
-              width: "100%",
-              textAlign: "left",
-              background: "none",
-              border: "none",
-              borderBottom: "1px solid var(--border)",
-              marginBottom: 6,
-              paddingBottom: 8,
-              color: "var(--green)",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: allSelected ? "default" : "pointer",
-              opacity: allSelected ? 0.5 : 1,
-            }}
+            className={`block w-full text-left bg-transparent border-0 border-b border-border mb-1.5 pb-2 text-green text-[13px] font-bold ${
+              allSelected ? "cursor-default opacity-50" : "cursor-pointer"
+            }`}
           >
             Select all
           </button>
           {areas.map((area) => (
-            <label
-              key={area.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "7px 4px",
-                fontSize: 13,
-                color: "var(--text)",
-                cursor: "pointer",
-              }}
-            >
+            <label key={area.id} className="flex items-center gap-2 px-1 py-[7px] text-[13px] text-text cursor-pointer">
               <input type="checkbox" checked={selected.has(area.id)} onChange={() => toggle(area.id)} />
               {area.name}
             </label>

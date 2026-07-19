@@ -12,19 +12,7 @@ export function ThemeToggle() {
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       title="Toggle theme"
-      style={{
-        background: "var(--surface-alt)",
-        border: "1px solid var(--border)",
-        color: "var(--text)",
-        borderRadius: 8,
-        width: 38,
-        height: 38,
-        fontSize: 16,
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      className="bg-surface-alt border border-border text-text rounded-lg w-[38px] h-[38px] text-base cursor-pointer flex items-center justify-center"
     >
       {mounted ? (theme === "dark" ? "☀️" : "🌙") : null}
     </button>

@@ -34,32 +34,22 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
   }
 
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
-      <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
+    <div ref={containerRef} className="relative">
+      <div className="flex gap-1.5 overflow-x-auto">
         {HOME_TABS.map((tab) => {
           const isActive = tab.value === active;
+          const highlighted = isActive || openTab === tab.value;
           return (
             <button
               key={tab.value}
               onClick={() => onTabClick(tab.value)}
-              style={{
-                background: isActive ? "var(--surface-alt)" : "transparent",
-                color: isActive ? "var(--text)" : "var(--text-soft)",
-                border: "none",
-                borderBottom: `3px solid ${isActive || openTab === tab.value ? "var(--gold)" : "transparent"}`,
-                padding: "12px 18px 10px",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
+              className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold cursor-pointer whitespace-nowrap ${
+                isActive ? "bg-surface-alt text-text" : "bg-transparent text-text-soft"
+              } ${highlighted ? "border-b-gold" : "border-b-transparent"}`}
             >
               <span>{tab.icon}</span>
               {tab.label}
-              <span style={{ fontSize: 10, color: "var(--muted)" }}>▾</span>
+              <span className="text-[10px] text-muted">▾</span>
             </button>
           );
         })}

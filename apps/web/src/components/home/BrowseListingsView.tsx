@@ -58,7 +58,7 @@ export async function BrowseListingsView({
   const loadMoreHref = hasMore ? `${basePath}?${loadMoreParams.toString()}` : null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+    <div className="min-h-screen bg-bg text-text">
       <Header
         cityName={cityName}
         popularCities={popularCities}
@@ -68,14 +68,12 @@ export async function BrowseListingsView({
         currentSegments={currentSegments}
         areaName={areaName}
       />
-      <main style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 32px 80px" }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 20 }}>
-          <h1 style={{ fontFamily: "var(--font-lora)", fontSize: 26, fontWeight: 600, margin: 0, color: "var(--text)" }}>
-            {heading}
-          </h1>
-          <span style={{ fontSize: 13, color: "var(--muted)" }}>{listingsPage.total} listings</span>
+      <main className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
+        <div className="flex items-baseline justify-between mb-5">
+          <h1 className="font-lora text-[26px] font-semibold m-0 text-text">{heading}</h1>
+          <span className="text-[13px] text-muted">{listingsPage.total} listings</span>
         </div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+        <div className="flex gap-2.5 mb-5 flex-wrap">
           <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
           <BrowseFilterBar
             category={filterCategory}

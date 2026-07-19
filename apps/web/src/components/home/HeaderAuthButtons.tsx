@@ -10,27 +10,18 @@ export function HeaderAuthButtons({ userName }: { userName?: string | null }) {
   const { requireLogin } = useAuthGate();
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+    <div className="flex items-center gap-3 shrink-0">
       {/* TEMP(auth-gate): posting is open without login for now. */}
       <Link
         href="/post"
-        style={{
-          background: "none",
-          border: "1.5px solid var(--green)",
-          color: "var(--green)",
-          borderRadius: 8,
-          padding: "9px 16px",
-          fontSize: 14,
-          fontWeight: 700,
-          whiteSpace: "nowrap",
-        }}
+        className="border-[1.5px] border-green text-green rounded-lg px-4 py-[9px] text-sm font-bold whitespace-nowrap"
       >
         + Post free ad
       </Link>
-      <Link href="/favourites" style={{ color: "var(--text)", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}>
+      <Link href="/favourites" className="text-text text-sm font-bold whitespace-nowrap">
         ♡ Favourites
       </Link>
-      <Link href="/messages" style={{ color: "var(--text)", fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" }}>
+      <Link href="/messages" className="text-text text-sm font-bold whitespace-nowrap">
         💬 Messages
       </Link>
       {userName ? (
@@ -38,15 +29,7 @@ export function HeaderAuthButtons({ userName }: { userName?: string | null }) {
       ) : (
         <button
           onClick={requireLogin}
-          style={{
-            background: "none",
-            border: "none",
-            color: "var(--text)",
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
+          className="bg-transparent border-0 text-text text-sm font-bold cursor-pointer whitespace-nowrap"
         >
           Login
         </button>
@@ -55,55 +38,33 @@ export function HeaderAuthButtons({ userName }: { userName?: string | null }) {
   );
 }
 
+const menuItemClass = "block px-3.5 py-2.5 text-sm font-semibold text-text";
+
 function AccountMenu({ userName }: { userName: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false));
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          background: "none",
-          border: "none",
-          color: "var(--text)",
-          fontSize: 14,
-          fontWeight: 700,
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-        }}
+        className="flex items-center gap-1.5 bg-transparent border-0 text-text text-sm font-bold cursor-pointer whitespace-nowrap"
       >
-        {userName} <span style={{ fontSize: 10, color: "var(--muted)" }}>▾</span>
+        {userName} <span className="text-[10px] text-muted">▾</span>
       </button>
       {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            right: 0,
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-            zIndex: 50,
-            minWidth: 160,
-            overflow: "hidden",
-          }}
-        >
-          <Link href="/profile" onClick={() => setOpen(false)} style={menuItemStyle}>
+        <div className="absolute top-[calc(100%+8px)] right-0 bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px] overflow-hidden">
+          <Link href="/profile" onClick={() => setOpen(false)} className={menuItemClass}>
             Profile
           </Link>
-          <Link href="/my-listings" onClick={() => setOpen(false)} style={menuItemStyle}>
+          <Link href="/my-listings" onClick={() => setOpen(false)} className={menuItemClass}>
             My listings
           </Link>
-          <Link href="/help" onClick={() => setOpen(false)} style={menuItemStyle}>
+          <Link href="/help" onClick={() => setOpen(false)} className={menuItemClass}>
             Help
           </Link>
-          <button onClick={() => signOutAction()} style={{ ...menuItemStyle, width: "100%", textAlign: "left", border: "none", background: "none", cursor: "pointer" }}>
+          <button onClick={() => signOutAction()} className={`${menuItemClass} w-full text-left border-0 bg-transparent cursor-pointer`}>
             Logout
           </button>
         </div>
@@ -111,11 +72,3 @@ function AccountMenu({ userName }: { userName: string }) {
     </div>
   );
 }
-
-const menuItemStyle: React.CSSProperties = {
-  display: "block",
-  padding: "10px 14px",
-  fontSize: 14,
-  fontWeight: 600,
-  color: "var(--text)",
-};

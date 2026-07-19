@@ -35,32 +35,13 @@ function priceBracketsFor(category: ListingCategory, isSale: boolean): PriceBrac
 
 type OpenFilter = "price" | "furnished" | null;
 
-const buttonStyle = (active: boolean): React.CSSProperties => ({
-  background: active ? "var(--surface-alt)" : "var(--bg)",
-  border: `1px solid ${active ? "var(--green)" : "var(--border)"}`,
-  borderRadius: 8,
-  padding: "8px 14px",
-  fontSize: 13,
-  fontWeight: 600,
-  color: active ? "var(--green)" : "var(--text-soft)",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-});
+const buttonClass = (active: boolean) =>
+  `flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold cursor-pointer border ${
+    active ? "bg-surface-alt border-green text-green" : "bg-bg border-border text-text-soft"
+  }`;
 
-const dropdownStyle: React.CSSProperties = {
-  position: "absolute",
-  top: "calc(100% + 6px)",
-  left: 0,
-  background: "var(--surface)",
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: 8,
-  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-  zIndex: 50,
-  minWidth: 200,
-};
+const dropdownClass =
+  "absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[200px]";
 
 /** Category-aware refinement layer for a browse results page — narrows via query params on
  * top of the clean canonical path (e.g. ?minPrice=..&furnished=..), never changing the path
@@ -114,13 +95,13 @@ export function BrowseFilterBar({
   const showFurnished = category === "house" || category === "apartment";
 
   return (
-    <div ref={containerRef} style={{ display: "flex", gap: 10, marginBottom: 20, position: "relative" }}>
-      <div style={{ position: "relative" }}>
-        <button style={buttonStyle(open === "price" || priceLabel !== "Price")} onClick={() => setOpen(open === "price" ? null : "price")}>
-          {priceLabel} <span style={{ fontSize: 10, color: "var(--muted)" }}>▾</span>
+    <div ref={containerRef} className="flex gap-2.5 mb-5 relative">
+      <div className="relative">
+        <button className={buttonClass(open === "price" || priceLabel !== "Price")} onClick={() => setOpen(open === "price" ? null : "price")}>
+          {priceLabel} <span className="text-[10px] text-muted">▾</span>
         </button>
         {open === "price" && (
-          <div style={dropdownStyle}>
+          <div className={dropdownClass}>
             <DropdownOption label="Any" active={activeMinPrice === undefined && activeMaxPrice === undefined} onClick={() => selectBracket({ label: "Any" })} />
             {brackets.map((b) => (
               <DropdownOption key={b.label} label={b.label} active={priceLabel === b.label} onClick={() => selectBracket(b)} />
@@ -130,12 +111,12 @@ export function BrowseFilterBar({
       </div>
 
       {showFurnished && (
-        <div style={{ position: "relative" }}>
-          <button style={buttonStyle(open === "furnished" || activeFurnished !== undefined)} onClick={() => setOpen(open === "furnished" ? null : "furnished")}>
-            {furnishingLabel} <span style={{ fontSize: 10, color: "var(--muted)" }}>▾</span>
+        <div className="relative">
+          <button className={buttonClass(open === "furnished" || activeFurnished !== undefined)} onClick={() => setOpen(open === "furnished" ? null : "furnished")}>
+            {furnishingLabel} <span className="text-[10px] text-muted">▾</span>
           </button>
           {open === "furnished" && (
-            <div style={dropdownStyle}>
+            <div className={dropdownClass}>
               <DropdownOption label="Any" active={activeFurnished === undefined} onClick={() => navigate({ furnished: undefined })} />
               {FURNISHING_OPTIONS.map((f) => (
                 <DropdownOption key={f.value} label={f.label} active={activeFurnished === f.value} onClick={() => navigate({ furnished: f.value })} />
@@ -152,19 +133,9 @@ function DropdownOption({ label, active, onClick }: { label: string; active: boo
   return (
     <button
       onClick={onClick}
-      style={{
-        display: "block",
-        width: "100%",
-        textAlign: "left",
-        background: active ? "var(--surface-alt)" : "transparent",
-        color: active ? "var(--green)" : "var(--text)",
-        border: "none",
-        borderRadius: 6,
-        padding: "8px 10px",
-        fontSize: 13,
-        fontWeight: active ? 700 : 500,
-        cursor: "pointer",
-      }}
+      className={`block w-full text-left border-0 rounded-md px-2.5 py-2 text-[13px] cursor-pointer ${
+        active ? "bg-surface-alt text-green font-bold" : "bg-transparent text-text font-medium"
+      }`}
     >
       {label}
     </button>
