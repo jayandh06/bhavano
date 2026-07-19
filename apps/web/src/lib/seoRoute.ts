@@ -1,6 +1,9 @@
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
+import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
+
+export { MAX_BEDROOMS, bedroomLabel };
 
 // Deliberately zero dependency on `@/lib/bff` (which starts with `import "server-only"`) or
 // anything that imports it — this file is reachable from client components too (ListingCard.tsx
@@ -44,7 +47,7 @@ export interface SegmentQuery {
   propertyType?: PropertyTypeFilter;
   category?: ListingCategory;
   transactionType?: TransactionType;
-  bedrooms?: number;
+  bedrooms?: number[];
   sharingType?: string;
   condition?: string;
   serviceType?: string;
@@ -82,6 +85,20 @@ export function parsePositiveInt(value: string | string[] | undefined): number |
   return v !== undefined && Number.isInteger(n) && n >= 0 ? n : undefined;
 }
 
+/** Parses a comma-separated list of positive integers (e.g. `?bedrooms=1,3,5`) — used by the
+ * multi-select BHK filter, which (unlike the single-value `parsePositiveInt` fields) can carry
+ * more than one bucket at once. Returns `undefined` if the param is absent or every entry is
+ * invalid, so callers can tell "not filtering" apart from "filtered to nothing valid." */
+export function parseIntList(value: string | string[] | undefined): number[] | undefined {
+  const v = Array.isArray(value) ? value[0] : value;
+  if (v === undefined) return undefined;
+  const nums = v
+    .split(",")
+    .map((s) => Number(s))
+    .filter((n) => Number.isInteger(n) && n >= 0);
+  return nums.length > 0 ? nums : undefined;
+}
+
 /** Shared by the homepage and the `[city]/[[...rest]]` route's `generateMetadata`/page body, so
  * all three can never disagree on which page a request is for (see
  * docs/plans/seo-distinct-window-pagination.md). Always ≥ 1 — invalid/missing input is page 1. */
@@ -102,6 +119,11 @@ export const SHARING_TYPE_VALUES = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key ==
 export const CONDITION_VALUES = CATEGORY_FIELD_CONFIG.furniture.find((f) => f.key === "condition")!.options!.map((o) => o.value);
 export const SERVICE_TYPE_VALUES = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")!.options!.map((o) => o.value);
 
+/** Same 4 sort dimensions for every category — all plain top-level `Listing` columns
+ * (createdAt/price/viewCount). See ListingsService.list()'s `ORDER_BY` lookup for how each maps
+ * to a Prisma `orderBy`. */
+export const SORT_VALUES = ["newest", "price_asc", "price_desc", "popular"] as const;
+
 export type FacetKind = "bedrooms" | "sharingType" | "condition" | "serviceType" | "none";
 
 export function facetKindForCategory(category: ListingCategory): FacetKind {
@@ -113,14 +135,6 @@ export function facetKindForCategory(category: ListingCategory): FacetKind {
 }
 
 const BEDROOM_SLUG_RE = /^([1-5])bhk$/;
-export const MAX_BEDROOMS = 5;
-
-/** The backend's bedroom filter is already "N or more" (`attributes.bedrooms >= n`, see
- * ListingsService.list()), so the top bucket is genuinely 5-or-more listings, not exactly 5 —
- * label it "5+" everywhere rather than implying an exact count. */
-export function bedroomLabel(n: number): string {
-  return n >= MAX_BEDROOMS ? `${MAX_BEDROOMS}+` : String(n);
-}
 
 /** Compact INR formatting for quick-pick price brackets and the search bar's live interpretation
  * preview — the two places a raw rupee amount needs to read like "₹85L"/"₹1.2Cr" instead of a
@@ -278,7 +292,7 @@ export function buildQueryForSegments(parsed: ParsedSegments): SegmentQuery {
   return {
     homeCategory: transactionGroup === "buy" ? "buy" : "rentLease",
     propertyType: category,
-    bedrooms: typeof facetValue === "number" ? facetValue : undefined,
+    bedrooms: typeof facetValue === "number" ? [facetValue] : undefined,
   };
 }
 

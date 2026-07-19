@@ -13,6 +13,15 @@ const FURNISHING_OPTIONS: { value: string; label: string }[] = [
   { value: "furnished", label: "Furnished" },
 ];
 
+/** Same 4 options for every category — all plain top-level `Listing` columns (see
+ * ListingsService's `ORDER_BY` lookup). */
+const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+  { value: "popular", label: "Most viewed" },
+];
+
 interface PriceBracket {
   label: string;
   minPrice?: number;
@@ -33,7 +42,7 @@ function priceBracketsFor(category: ListingCategory, isSale: boolean): PriceBrac
   ];
 }
 
-type OpenFilter = "price" | "furnished" | null;
+type OpenFilter = "price" | "furnished" | "sort" | null;
 
 const buttonClass = (active: boolean) =>
   `flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold cursor-pointer border ${
@@ -52,12 +61,14 @@ export function BrowseFilterBar({
   activeMinPrice,
   activeMaxPrice,
   activeFurnished,
+  activeSort,
 }: {
   category?: ListingCategory;
   isSale: boolean;
   activeMinPrice?: number;
   activeMaxPrice?: number;
   activeFurnished?: string;
+  activeSort?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -93,6 +104,7 @@ export function BrowseFilterBar({
       : "Price";
   const furnishingLabel = FURNISHING_OPTIONS.find((f) => f.value === activeFurnished)?.label ?? "Furnishing";
   const showFurnished = category === "house" || category === "apartment";
+  const sortLabel = SORT_OPTIONS.find((s) => s.value === activeSort)?.label ?? "Newest first";
 
   return (
     <div ref={containerRef} className="flex gap-2.5 mb-5 relative">
@@ -125,6 +137,24 @@ export function BrowseFilterBar({
           )}
         </div>
       )}
+
+      <div className="relative">
+        <button className={buttonClass(open === "sort" || activeSort !== undefined)} onClick={() => setOpen(open === "sort" ? null : "sort")}>
+          {sortLabel} <span className="text-[10px] text-muted">▾</span>
+        </button>
+        {open === "sort" && (
+          <div className={dropdownClass}>
+            {SORT_OPTIONS.map((s) => (
+              <DropdownOption
+                key={s.value}
+                label={s.label}
+                active={(activeSort ?? "newest") === s.value}
+                onClick={() => navigate({ sort: s.value === "newest" ? undefined : s.value })}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

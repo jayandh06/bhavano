@@ -19,6 +19,7 @@ import { slugify } from '@bhavano/types/slugify';
 import { deriveTag } from '@bhavano/types/listingTag';
 import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 import { getPriceQualifierOptions } from '@bhavano/types/priceQualifiers';
+import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { Prisma } from '@prisma/client';
@@ -56,6 +57,17 @@ function buildHomeCategoryWhere(tab: HomeCategoryFilter | undefined, propertyTyp
   return { transactionType: { in: transactionTypes }, category: { in: categories } };
 }
 
+/** Every browse page's "Sort By" control — same 4 options for every category, all plain
+ * top-level columns. `id: 'asc'` is a tie-breaker in every entry (not just the default), for the
+ * same reason it's needed on the default: without it, offset-window pagination can silently shift
+ * between requests when rows share an identical sort-key value. */
+const ORDER_BY: Record<NonNullable<ListListingsDto['sort']>, Prisma.ListingOrderByWithRelationInput[]> = {
+  newest: [{ createdAt: 'desc' }, { id: 'asc' }],
+  price_asc: [{ price: 'asc' }, { id: 'asc' }],
+  price_desc: [{ price: 'desc' }, { id: 'asc' }],
+  popular: [{ viewCount: 'desc' }, { id: 'asc' }],
+};
+
 const priceFormatter = new Intl.NumberFormat('en-IN');
 
 const LISTING_PHOTOS_INCLUDE = { listingPhotos: { orderBy: { photoNo: 'asc' as const } } };
@@ -88,6 +100,7 @@ export class ListingsService {
       cursor,
       offset,
       limit,
+      sort,
     } = query;
 
     // Raw category/transactionType (used only by the SEO browse-landing pages) bypasses
@@ -102,7 +115,16 @@ export class ListingsService {
     // top-level AND entry — merging them into one `attributes` key would let the second
     // silently overwrite the first.
     const attributeFilters: Prisma.ListingWhereInput[] = [];
-    if (bedrooms !== undefined) attributeFilters.push({ attributes: { path: ['bedrooms'], gte: bedrooms } });
+    // Multi-select BHK — an OR of per-bucket clauses (exact match for 1-4, "N or more" for the
+    // 5+ bucket), not a single `gte` — picking 1 and 3 should match exactly-1-bedroom listings
+    // too, which a single `gte: 1` would already do but a single `gte: 3` would wrongly exclude.
+    if (bedrooms && bedrooms.length > 0) {
+      attributeFilters.push({
+        OR: bedrooms.map((n) =>
+          n >= MAX_BEDROOMS ? { attributes: { path: ['bedrooms'], gte: n } } : { attributes: { path: ['bedrooms'], equals: n } },
+        ),
+      });
+    }
     if (furnished) attributeFilters.push({ attributes: { path: ['furnished'], equals: furnished } });
     if (sharingType) attributeFilters.push({ attributes: { path: ['sharingType'], equals: sharingType } });
     if (condition) attributeFilters.push({ attributes: { path: ['condition'], equals: condition } });
@@ -124,11 +146,7 @@ export class ListingsService {
       ...(attributeFilters.length > 0 ? { AND: attributeFilters } : {}),
     };
 
-    // `id` as a secondary sort key breaks ties between rows sharing an identical `createdAt`
-    // (common with bulk-seeded/bulk-imported data) — without it, Postgres can return tied rows in
-    // a different relative order on each query, which silently shifts offset-window boundaries
-    // between requests (verified: caused real overlap between ?page=1 and ?page=2 before this fix).
-    const orderBy = [{ createdAt: 'desc' as const }, { id: 'asc' as const }];
+    const orderBy = ORDER_BY[sort ?? 'newest'];
 
     // Offset mode (numbered `?page=N` pagination — see ListListingsDto.offset) fetches the exact
     // window directly, since the caller already knows the total and doesn't need a `hasMore`

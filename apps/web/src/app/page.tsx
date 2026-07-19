@@ -81,7 +81,7 @@ export default async function HomePage({
       cityId: resolvedCity?.id,
       areaIds,
       q: q || undefined,
-      bedrooms,
+      bedrooms: bedrooms !== undefined ? [bedrooms] : undefined,
       furnished,
       sharingType,
       condition,

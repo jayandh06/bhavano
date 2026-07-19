@@ -67,8 +67,10 @@ export interface ListingsQuery {
   q?: string;
   minPrice?: number;
   maxPrice?: number;
-  /** "N+" style — matches attributes.bedrooms >= bedrooms, not exact match. */
-  bedrooms?: number;
+  /** Multi-select BHK filter — one or more bedroom-count buckets (5 = "5+"), matched as an OR
+   * of exact/`gte` clauses server-side. Mutually exclusive with a single-value bucket derived
+   * from the SEO path facet in practice (the query param wins when both are present). */
+  bedrooms?: number[];
   furnished?: "unfurnished" | "semi" | "furnished";
   sharingType?: string;
   condition?: string;
@@ -78,6 +80,7 @@ export interface ListingsQuery {
    * see docs/plans/seo-distinct-window-pagination.md. Mutually exclusive with `cursor`. */
   offset?: number;
   limit?: number;
+  sort?: "newest" | "price_asc" | "price_desc" | "popular";
 }
 
 export function fetchListings(query: ListingsQuery, accessToken?: string): Promise<ListingsPage> {
@@ -92,7 +95,7 @@ export function fetchListings(query: ListingsQuery, accessToken?: string): Promi
   if (query.q) params.set("q", query.q);
   if (query.minPrice !== undefined) params.set("minPrice", String(query.minPrice));
   if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
-  if (query.bedrooms !== undefined) params.set("bedrooms", String(query.bedrooms));
+  if (query.bedrooms && query.bedrooms.length > 0) params.set("bedrooms", query.bedrooms.join(","));
   if (query.furnished) params.set("furnished", query.furnished);
   if (query.sharingType) params.set("sharingType", query.sharingType);
   if (query.condition) params.set("condition", query.condition);
@@ -100,6 +103,7 @@ export function fetchListings(query: ListingsQuery, accessToken?: string): Promi
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));
+  if (query.sort) params.set("sort", query.sort);
 
   const path = `/listings?${params.toString()}`;
   return accessToken

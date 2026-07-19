@@ -6,6 +6,7 @@ import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
 import { Header } from "./Header";
 import { ListingGrid } from "./ListingGrid";
 import { AreaFilter } from "./AreaFilter";
+import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
@@ -20,6 +21,8 @@ function buildPageHref(basePath: string, query: Omit<ListingsQuery, "limit" | "c
   if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
   if (query.furnished) params.set("furnished", query.furnished);
   if (query.areaIds && query.areaIds.length > 0) params.set("areas", query.areaIds.join(","));
+  if (query.bedrooms && query.bedrooms.length > 0) params.set("bedrooms", query.bedrooms.join(","));
+  if (query.sort) params.set("sort", query.sort);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `${basePath}?${qs}` : basePath;
@@ -86,12 +89,16 @@ export async function BrowseListingsView({
         </div>
         <div className="flex gap-2.5 mb-5 flex-wrap">
           <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
+          {(filterCategory === "house" || filterCategory === "apartment") && (
+            <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
+          )}
           <BrowseFilterBar
             category={filterCategory}
             isSale={filterIsSale ?? true}
             activeMinPrice={query.minPrice}
             activeMaxPrice={query.maxPrice}
             activeFurnished={query.furnished}
+            activeSort={query.sort}
           />
         </div>
         <ListingGrid items={listingsPage.items} cityName={cityName} />

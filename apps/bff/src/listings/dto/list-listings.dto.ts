@@ -8,6 +8,7 @@ const PROPERTY_TYPES: PropertyTypeFilter[] = ['house', 'apartment', 'storage', '
 const LISTING_CATEGORIES: ListingCategory[] = ['house', 'apartment', 'pg', 'storage', 'coworking', 'furniture', 'interiors'];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 const FURNISHING_VALUES = ['unfurnished', 'semi', 'furnished'] as const;
+const SORT_VALUES = ['newest', 'price_asc', 'price_desc', 'popular'] as const;
 
 /** Reuses the same option lists the posting wizard validates against — one source of truth
  * for what values these filters (and CATEGORY_FIELD_CONFIG's selects) can ever take. */
@@ -68,12 +69,14 @@ export class ListListingsDto {
   @Min(0)
   maxPrice?: number;
 
-  /** Matches listings with `attributes.bedrooms >= bedrooms` — a "3+" style filter, not exact match. */
+  /** Multi-select BHK filter (the browse pages' checkbox list) — wire format is a comma-separated
+   * list of bucket numbers (5 = "5+"), same transform pattern as `areaIds`. Matched as an OR of
+   * exact (1-4) / `gte` (5+) clauses in ListingsService — see `MAX_BEDROOMS`. */
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  bedrooms?: number;
+  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').filter(Boolean).map(Number) : value))
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  bedrooms?: number[];
 
   /** Matches `attributes.furnished` exactly — same values as the posting wizard's schema
    * (packages/types/src/categoryFields.ts). */
@@ -117,4 +120,10 @@ export class ListListingsDto {
   @Min(1)
   @Max(50)
   limit: number = 24;
+
+  /** Browse-page "Sort By" control — same 4 options for every category, all plain top-level
+   * columns (see ListingsService's `ORDER_BY` lookup). Defaults to `newest` when absent. */
+  @IsOptional()
+  @IsIn(SORT_VALUES)
+  sort?: (typeof SORT_VALUES)[number];
 }

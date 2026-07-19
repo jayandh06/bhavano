@@ -13,9 +13,11 @@ import {
   extractListingId,
   FURNISHING_VALUES,
   parseEnum,
+  parseIntList,
   parsePage,
   parsePositiveInt,
   parseSegments,
+  SORT_VALUES,
   transactionGroupFor,
   type ParsedSegments,
 } from "@/lib/seoRoute";
@@ -59,7 +61,7 @@ function headingFor(parsed: ParsedSegments, cityName: string, areaName?: string)
     cityName,
     areaName,
     propertyType: query.propertyType,
-    bedrooms: query.bedrooms,
+    bedrooms: query.bedrooms?.[0],
     listingCategory: query.category,
     transactionType: query.transactionType,
     sharingType: query.sharingType,
@@ -246,6 +248,12 @@ export default async function CityBrowsePage({
   const minPrice = parsePositiveInt(sp.minPrice);
   const maxPrice = parsePositiveInt(sp.maxPrice);
   const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);
+  const sort = parseEnum(sp.sort, SORT_VALUES);
+
+  // The multi-select BHK filter (`?bedrooms=1,3,5`) — when present it wins over the single
+  // bedroom bucket already resolved from the path facet (same precedence `areaIds` already has
+  // over the path-based `areaId`), since it reflects a more specific, more recent user choice.
+  const bedroomsFromQuery = parseIntList(sp.bedrooms);
 
   // Soft, best-effort locality filter for the search bar's "area in a city" case, which has no
   // path segment of its own once a category isn't also known — unlike `parsed.areaSlug` (a real
@@ -272,9 +280,11 @@ export default async function CityBrowsePage({
           cityId: cityRow.id,
           areaId: areaRow?.id ?? areaRowFromQuery?.id,
           areaIds,
+          bedrooms: bedroomsFromQuery ?? baseQuery.bedrooms,
           minPrice,
           maxPrice,
           furnished,
+          sort,
         }}
         cityName={cityRow.name}
         heading={heading}

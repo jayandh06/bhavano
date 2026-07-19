@@ -40,6 +40,10 @@
     "./slugify": {
       "types": "./dist/slugify.d.ts",
       "default": "./dist/slugify.js"
+    },
+    "./bedrooms": {
+      "types": "./dist/bedrooms.d.ts",
+      "default": "./dist/bedrooms.js"
     }
   },
   "scripts": {
