@@ -13,9 +13,13 @@ export class LocationsController {
   }
 
   @Get('areas')
-  searchAreas(@Query('cityId') cityId: string, @Query('q') q?: string): Promise<Area[]> {
+  searchAreas(
+    @Query('cityId') cityId: string,
+    @Query('q') q?: string,
+    @Query('all') all?: string,
+  ): Promise<Area[]> {
     if (!cityId) throw new BadRequestException('cityId query param is required');
-    return this.locationsService.searchAreas(cityId, q);
+    return this.locationsService.searchAreas(cityId, q, all === 'true');
   }
 
   @Get('reverse')

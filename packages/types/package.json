@@ -33,6 +33,10 @@
       "types": "./dist/cityIcons.d.ts",
       "default": "./dist/cityIcons.js"
     },
+    "./listingTag": {
+      "types": "./dist/listingTag.d.ts",
+      "default": "./dist/listingTag.js"
+    },
     "./slugify": {
       "types": "./dist/slugify.d.ts",
       "default": "./dist/slugify.js"

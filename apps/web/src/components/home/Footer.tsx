@@ -1,7 +1,24 @@
 import Link from "next/link";
+import type { PopularSearchDto } from "@bhavano/types";
+import { fetchPopularSearches } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
+import { CATEGORY_LABELS, TRANSACTION_LABELS, transactionGroupFor } from "@/lib/seoRoute";
 
-export function Footer() {
+type PopularSearchLink = Pick<PopularSearchDto, "cityName" | "category" | "transactionType">;
+
+// Only used if the popular-searches query comes back empty (e.g. a freshly-seeded dev DB with
+// no view counts yet) — real data always wins over this once there's inventory to rank.
+const FALLBACK_SEARCHES: PopularSearchLink[] = [
+  { cityName: "Bengaluru", category: "house", transactionType: "rent" },
+  { cityName: "Pune", category: "apartment", transactionType: "sell" },
+  { cityName: "Bengaluru", category: "coworking", transactionType: "rent" },
+  { cityName: "Hyderabad", category: "pg", transactionType: "rent" },
+];
+
+export async function Footer() {
+  const popularSearches = await fetchPopularSearches().catch(() => []);
+  const searches: PopularSearchLink[] = popularSearches.length > 0 ? popularSearches : FALLBACK_SEARCHES;
+
   return (
     <section style={{ background: "var(--surface-alt)", borderTop: "1px solid var(--border)", padding: "48px 32px" }}>
       <div
@@ -25,18 +42,14 @@ export function Footer() {
         <div>
           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 10 }}>Popular searches</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-            <Link href={buildBrowsePath({ cityName: "Bengaluru", transactionGroup: "rent-lease", category: "house" })}>
-              Houses for rent in Bengaluru
-            </Link>
-            <Link href={buildBrowsePath({ cityName: "Pune", transactionGroup: "buy", category: "apartment", facetValue: 2 })}>
-              2 BHK for sale in Pune
-            </Link>
-            <Link href={buildBrowsePath({ cityName: "Bengaluru", transactionGroup: "rent-lease", category: "coworking" })}>
-              Coworking spaces in Bengaluru
-            </Link>
-            <Link href={buildBrowsePath({ cityName: "Hyderabad", transactionGroup: "rent-lease", category: "pg" })}>
-              PG for women in Hyderabad
-            </Link>
+            {searches.map((s) => (
+              <Link
+                key={`${s.cityName}-${s.category}-${s.transactionType}`}
+                href={buildBrowsePath({ cityName: s.cityName, transactionGroup: transactionGroupFor(s.transactionType), category: s.category })}
+              >
+                {CATEGORY_LABELS[s.category]} {TRANSACTION_LABELS[s.transactionType]} in {s.cityName}
+              </Link>
+            ))}
           </div>
         </div>
         <div>
@@ -52,8 +65,7 @@ export function Footer() {
         <div>
           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginBottom: 10 }}>Company</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-            <a href="#">About</a>
-            <a href="#">Post a free ad</a>
+            <Link href="/post">Post a free ad</Link>
             <Link href="/help">Help centre</Link>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { HomeCategoryFilter, PropertyTypeFilter } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
@@ -45,9 +45,7 @@ export default function HomeScreen() {
           <View>
             <View style={styles.headerTop}>
               <View style={styles.brandRow}>
-                <View style={[styles.logoMark, { backgroundColor: colors.green }]}>
-                  <View style={[styles.logoGlyph, { borderColor: colors.gold }]} />
-                </View>
+                <Image source={require("../../assets/logo.png")} style={styles.logoMark} />
                 <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 19, color: colors.green }}>
                   Bhavano
                 </Text>
@@ -132,8 +130,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  logoMark: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  logoGlyph: { width: 10, height: 10, borderWidth: 2, borderBottomWidth: 0, borderRadius: 2, transform: [{ rotate: "45deg" }] },
+  logoMark: { width: 30, height: 30, borderRadius: 8 },
   iconButton: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   locationButton: {
     flexDirection: "row",

@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
@@ -82,6 +82,8 @@ export function HomeSheetsProvider({
   const googleSignIn = useGoogleSignIn();
 
   useEffect(() => {
+    // expo-secure-store has no web implementation — the browser preview simply starts logged out.
+    if (Platform.OS === "web") return;
     SecureStore.getItemAsync(TOKEN_KEY).then((token) => {
       setIsLoggedIn(!!token);
       setAccessToken(token);
@@ -145,7 +147,7 @@ export function HomeSheetsProvider({
   }
 
   async function onLoginSuccess(accessToken: string) {
-    await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+    if (Platform.OS !== "web") await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
     setIsLoggedIn(true);
     setAccessToken(accessToken);
     loginSheetRef.current?.dismiss();
@@ -281,6 +283,7 @@ export function HomeSheetsProvider({
               <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
                 <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>G  Continue with Google</Text>
               </Pressable>
+              {error && <Text style={styles.errorText}>{error}</Text>}
             </>
           )}
 

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
 import { PRICE_BOUNDS } from "@bhavano/types/priceBounds";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { formatINR } from "@/lib/seoRoute";
 
 const FURNISHING_OPTIONS: { value: string; label: string }[] = [
   { value: "unfurnished", label: "Unfurnished" },
@@ -16,13 +17,6 @@ interface PriceBracket {
   label: string;
   minPrice?: number;
   maxPrice?: number;
-}
-
-function formatINR(n: number): string {
-  if (n >= 10_000_000) return `₹${(n / 10_000_000).toFixed(n % 10_000_000 === 0 ? 0 : 1)}Cr`;
-  if (n >= 100_000) return `₹${(n / 100_000).toFixed(n % 100_000 === 0 ? 0 : 1)}L`;
-  if (n >= 1_000) return `₹${Math.round(n / 1_000)}k`;
-  return `₹${n}`;
 }
 
 /** Quick-pick price brackets sized off this category's own plausibility bounds

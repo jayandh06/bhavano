@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import type { HomeCategoryFilter } from "@bhavano/types";
 import { auth } from "@/auth";
-import { fetchCities, fetchListings } from "@/lib/bff";
+import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
 import { Header } from "@/components/home/Header";
+import { AreaFilter } from "@/components/home/AreaFilter";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { Footer } from "@/components/home/Footer";
 import { HOME_TABS } from "@/lib/homeCategories";
@@ -56,9 +57,16 @@ export default async function HomePage({
   const listingCategory = typeof sp.listingCategory === "string" && isListingCategory(sp.listingCategory) ? sp.listingCategory : undefined;
   const transactionType = typeof sp.transactionType === "string" && isTransactionType(sp.transactionType) ? sp.transactionType : undefined;
 
-  const [session, popularCities] = await Promise.all([auth(), fetchCities()]);
+  // AreaFilter's multi-select, homepage mode — always a comma-separated list of area ids.
+  const areasQueryParam = typeof sp.areas === "string" ? sp.areas : undefined;
+  const areaIds = areasQueryParam ? areasQueryParam.split(",").filter(Boolean) : undefined;
+
+  // Fetched with `all=true` (not just the popular subset) so a tier-2 "more cities" selection
+  // still resolves here instead of silently falling back to the default city.
+  const [session, allCities] = await Promise.all([auth(), fetchCities(undefined, true)]);
+  const popularCities = allCities.filter((c) => c.isPopular);
   const resolvedCity =
-    popularCities.find((c) => c.id === cityIdParam) ??
+    allCities.find((c) => c.id === cityIdParam) ??
     popularCities.find((c) => c.name === "Bengaluru") ??
     popularCities[0];
 
@@ -69,6 +77,7 @@ export default async function HomePage({
       category: listingCategory,
       transactionType,
       cityId: resolvedCity?.id,
+      areaIds,
       q: q || undefined,
       bedrooms,
       furnished,
@@ -83,6 +92,8 @@ export default async function HomePage({
   const activeTab = HOME_TABS.find((t) => t.value === category) ?? HOME_TABS[0];
   const cityName = resolvedCity?.name ?? "your city";
   const hasMore = listingsPage.items.length < listingsPage.total;
+  // Full area list for both the search bar's placeholder hint and the AreaFilter multi-select.
+  const cityAreas = resolvedCity ? await fetchAreas(resolvedCity.id, undefined, true) : [];
 
   const heading = buildHeading({
     fallbackLabel: activeTab.label,
@@ -108,6 +119,7 @@ export default async function HomePage({
   if (serviceType) loadMoreParams.set("serviceType", serviceType);
   if (listingCategory) loadMoreParams.set("listingCategory", listingCategory);
   if (transactionType) loadMoreParams.set("transactionType", transactionType);
+  if (areaIds && areaIds.length > 0) loadMoreParams.set("areas", areaIds.join(","));
   loadMoreParams.set("limit", String(limit + LOAD_MORE_STEP));
   const loadMoreHref = hasMore ? `/?${loadMoreParams.toString()}` : null;
 
@@ -119,6 +131,7 @@ export default async function HomePage({
         searchQuery={q}
         activeCategory={category}
         userName={session?.user?.name}
+        areaName={cityAreas[0]?.name}
       />
       <main style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 32px 80px" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 20 }}>
@@ -129,6 +142,11 @@ export default async function HomePage({
             Ads shown without login — sign in only to respond
           </span>
         </div>
+        {resolvedCity && (
+          <div style={{ marginBottom: 20 }}>
+            <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
+          </div>
+        )}
         <ListingGrid items={listingsPage.items} cityName={cityName} loadMoreHref={loadMoreHref} />
       </main>
       <Footer />

@@ -13,10 +13,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: listing.updatedAt,
   }));
 
-  // City-root, city+group, and city+group+category entries — one per distinct combination
-  // actually present in the data (not a combinatorial city×group×category×facet explosion) —
-  // the direct SEO payoff of the deeper city-first hierarchy.
+  // City-root, city+area, city+group, and city+group+category entries — one per distinct
+  // combination actually present in the data (not a combinatorial city×area×group×category×facet
+  // explosion) — the direct SEO payoff of the area-first city hierarchy: a real, indexable
+  // landing page per locality ("apartments for rent in Koramangala"), not just per city.
   const cityPaths = new Map<string, string>();
+  const areaPaths = new Map<string, string>();
   const groupPaths = new Map<string, string>();
   const categoryPaths = new Map<string, string>();
 
@@ -25,6 +27,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (!cityPaths.has(listing.cityName)) {
       cityPaths.set(listing.cityName, buildBrowsePath({ cityName: listing.cityName }));
+    }
+
+    const areaKey = `${listing.cityName}|${listing.area}`;
+    if (!areaPaths.has(areaKey)) {
+      areaPaths.set(areaKey, buildBrowsePath({ cityName: listing.cityName, areaName: listing.area }));
     }
 
     const groupKey = `${listing.cityName}|${group}`;
@@ -38,7 +45,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  const browseEntries: MetadataRoute.Sitemap = [...cityPaths.values(), ...groupPaths.values(), ...categoryPaths.values()].map((path) => ({
+  const browseEntries: MetadataRoute.Sitemap = [
+    ...cityPaths.values(),
+    ...areaPaths.values(),
+    ...groupPaths.values(),
+    ...categoryPaths.values(),
+  ].map((path) => ({
     url: `${SITE_URL}${path}`,
     lastModified: new Date(),
   }));

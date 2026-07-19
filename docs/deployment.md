@@ -206,6 +206,23 @@ in step 8) is already correct:
 docker compose -f docker-compose.prod.yml exec bff npx prisma migrate deploy
 ```
 
+### 10b. Seed city/area reference data
+
+`migrate deploy` only applies schema changes — it never runs seeds, so the `City`/`Area` tables
+stay empty until this is run at least once (this is why the location picker's "more cities" list
+and city switching can come up empty on a fresh prod deploy). Run this once after the first
+`migrate deploy`, and again any time `apps/bff/prisma/seedCities.ts`'s city/area list changes:
+
+```bash
+docker compose -f docker-compose.prod.yml exec bff npx tsx prisma/seedCities.ts
+```
+
+Every write it makes is an idempotent upsert (keyed on the real `name`+`state`/`name`+`cityId`
+unique constraints), so it's safe to re-run against prod at any time — running it twice never
+creates duplicates. **Don't** run the full `pnpm prisma:seed` (`prisma db seed`) against
+production instead — that also seeds ~5 obviously-fake demo listings (a Koramangala apartment, a
+PG for women, etc.) under a dedicated "Seed Owner" account, meant for local dev only.
+
 ### 11. Verify
 
 ```bash

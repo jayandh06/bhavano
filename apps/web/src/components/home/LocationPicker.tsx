@@ -6,13 +6,21 @@ import type { City } from "@bhavano/types";
 import { getCityIcon } from "@bhavano/types/cityIcons";
 import { autoDetectCityAction, listAllCitiesAction, searchCitiesAction } from "@/app/actions/locations";
 import { buildHomeUrl } from "@/lib/homeUrl";
+import { buildBrowsePath } from "@/lib/listingPath";
+import type { ParsedSegments } from "@/lib/seoRoute";
 
 export function LocationPicker({
   currentCityName,
   popularCities,
+  currentSegments,
 }: {
   currentCityName: string;
   popularCities: City[];
+  /** The current path's parsed city-first segments (transactionGroup/category/facet), when
+   * rendered on one of those pages rather than the homepage — lets switching city land on the
+   * equivalent page instead of always bouncing to `/`. Locality/listing never carry across a
+   * city switch, so only these three are preserved. */
+  currentSegments?: ParsedSegments;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,7 +55,18 @@ export function LocationPicker({
 
   function selectCity(city: City) {
     setOpen(false);
-    router.push(buildHomeUrl(searchParams, { city: city.id }));
+    if (currentSegments) {
+      router.push(
+        buildBrowsePath({
+          cityName: city.name,
+          transactionGroup: currentSegments.transactionGroup,
+          category: currentSegments.category,
+          facetValue: currentSegments.facetValue,
+        }),
+      );
+    } else {
+      router.push(buildHomeUrl(searchParams, { city: city.id }));
+    }
   }
 
   function useAutoLocation() {

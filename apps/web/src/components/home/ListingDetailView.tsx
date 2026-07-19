@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import type { ListingDetailDto } from "@bhavano/types";
+import type { City, ListingDetailDto } from "@bhavano/types";
+import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
+import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
 import { PostSuccessTracker } from "./PostSuccessTracker";
 import { ViewTracker } from "./ViewTracker";
@@ -12,11 +14,30 @@ function daysUntil(iso: string): number {
 
 /** The full listing-detail page body — shared by the SEO catch-all route so it renders
  * identically regardless of which URL depth resolved to this listing. */
-export function ListingDetailView({ listing }: { listing: ListingDetailDto }) {
+export function ListingDetailView({
+  listing,
+  popularCities,
+  userName,
+  currentSegments,
+}: {
+  listing: ListingDetailDto;
+  popularCities: City[];
+  userName?: string | null;
+  currentSegments: ParsedSegments;
+}) {
   const attributeEntries = Object.entries(listing.attributes);
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+      <Header
+        cityName={listing.cityName}
+        popularCities={popularCities}
+        searchQuery=""
+        activeCategory={homeCategoryForSegments(currentSegments)}
+        userName={userName}
+        currentSegments={currentSegments}
+        areaName={listing.area}
+      />
       <ViewTracker listingId={listing.id} />
       <Suspense>
         <PostSuccessTracker listingId={listing.id} />

@@ -63,11 +63,13 @@ export class LocationsService {
     return matches.map(toDto);
   }
 
-  async searchAreas(cityId: string, q?: string): Promise<AreaDto[]> {
+  async searchAreas(cityId: string, q?: string, all?: boolean): Promise<AreaDto[]> {
     const matches = await this.prisma.area.findMany({
       where: { cityId, ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}) },
       orderBy: { name: 'asc' },
-      take: 15,
+      // `all=true` (the multi-select area filter, which needs every area in the city) drops the
+      // cap the location-picker's autocomplete-style search otherwise wants.
+      ...(all ? {} : { take: 15 }),
     });
     return matches.map(toAreaDto);
   }

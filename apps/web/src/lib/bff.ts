@@ -12,6 +12,7 @@ import type {
   ListingSitemapEntry,
   ListingsPage,
   MessageDto,
+  PopularSearchDto,
   PropertyTypeFilter,
   TransactionType,
   UpdateListingInput,
@@ -60,6 +61,9 @@ export interface ListingsQuery {
   transactionType?: TransactionType;
   cityId?: string;
   areaId?: string;
+  /** Multi-select area filter — several areas checked in the browse-page filter (some-but-not-all
+   * of the city's areas). Mutually exclusive with `areaId` in practice. */
+  areaIds?: string[];
   q?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -81,6 +85,7 @@ export function fetchListings(query: ListingsQuery, accessToken?: string): Promi
   if (query.transactionType) params.set("transactionType", query.transactionType);
   if (query.cityId) params.set("cityId", query.cityId);
   if (query.areaId) params.set("areaId", query.areaId);
+  if (query.areaIds && query.areaIds.length > 0) params.set("areaIds", query.areaIds.join(","));
   if (query.q) params.set("q", query.q);
   if (query.minPrice !== undefined) params.set("minPrice", String(query.minPrice));
   if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
@@ -102,6 +107,10 @@ export function fetchListingsSitemap(): Promise<ListingSitemapEntry[]> {
   return bffFetch<ListingSitemapEntry[]>("/listings/sitemap", { cache: "no-store" });
 }
 
+export function fetchPopularSearches(): Promise<PopularSearchDto[]> {
+  return bffFetch<PopularSearchDto[]>("/listings/popular-searches", { cache: "no-store" });
+}
+
 export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
@@ -113,9 +122,10 @@ export function reverseGeocode(lat: number, lng: number): Promise<City | null> {
   return bffFetch<City | null>(`/locations/reverse?lat=${lat}&lng=${lng}`, { cache: "no-store" });
 }
 
-export function fetchAreas(cityId: string, q?: string): Promise<Area[]> {
+export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<Area[]> {
   const params = new URLSearchParams({ cityId });
   if (q) params.set("q", q);
+  if (all) params.set("all", "true");
   return bffFetch<Area[]>(`/locations/areas?${params.toString()}`, { cache: "no-store" });
 }
 

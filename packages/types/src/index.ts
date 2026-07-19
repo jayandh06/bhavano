@@ -106,6 +106,15 @@ export interface ListingSitemapEntry {
   updatedAt: string;
 }
 
+/** A real (category, transactionType, city) combination with active inventory — feeds the
+ * footer's "Popular searches" so it reflects actual listings instead of hardcoded examples. */
+export interface PopularSearchDto {
+  cityName: string;
+  category: ListingCategory;
+  transactionType: TransactionType;
+  count: number;
+}
+
 export interface ListingDetailDto extends ListingCardDto {
   status: ListingStatus;
   moderationState: ModerationState;

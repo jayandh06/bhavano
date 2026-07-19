@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import type { ListingDetailDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
-import { fetchListingById } from "@/lib/bff";
+import { fetchAreas, fetchCities, fetchListingById } from "@/lib/bff";
 import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity } from "@/lib/browseRoute";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import {
@@ -51,13 +51,12 @@ async function legacyRedirect(transaction: string, rest: string[]): Promise<neve
   );
 }
 
-async function headingFor(parsed: ParsedSegments, cityName: string, cityId: string): Promise<string> {
+function headingFor(parsed: ParsedSegments, cityName: string, areaName?: string): string {
   const query = buildQueryForSegments(parsed);
-  const areaRow = parsed.areaSlug ? await resolveArea(cityId, parsed.areaSlug) : null;
   return buildHeading({
     fallbackLabel: "All Listings",
     cityName,
-    areaName: areaRow?.name,
+    areaName,
     propertyType: query.propertyType,
     bedrooms: query.bedrooms,
     listingCategory: query.category,
@@ -68,16 +67,29 @@ async function headingFor(parsed: ParsedSegments, cityName: string, cityId: stri
   });
 }
 
-/** The canonical browse path for this exact resolved depth — filtered query-string variants
- * (?minPrice=.., ?furnished=..) all canonicalize back to this same clean path. */
-function canonicalBrowsePath(city: string, rest: string[]): string {
-  return `/${city}${rest.length ? `/${rest.join("/")}` : ""}`;
+/** The canonical browse path for this exact resolved depth, built fresh from the resolved city/
+ * area/segments (not the raw requested path) — so a pre-migration, area-last URL that still
+ * resolves (see `parseSegments`) always canonicalizes/redirects to the current area-first shape,
+ * never to itself. Filtered query strings (?minPrice=.., ?furnished=..) layer on top of this same
+ * clean path without changing it. */
+function resolvedCanonicalPath(cityName: string, parsed: ParsedSegments, areaName?: string): string {
+  return buildBrowsePath({
+    cityName,
+    transactionGroup: parsed.transactionGroup,
+    category: parsed.category,
+    facetValue: parsed.facetValue,
+    areaName,
+  });
 }
 
 function breadcrumbJsonLd(cityName: string, citySlug: string, parsed: ParsedSegments, areaName?: string) {
   const items: { name: string; path: string }[] = [{ name: cityName, path: `/${citySlug}` }];
   let path = `/${citySlug}`;
 
+  if (areaName) {
+    path += `/${slugify(areaName)}`;
+    items.push({ name: areaName, path });
+  }
   if (parsed.transactionGroup) {
     path += `/${parsed.transactionGroup}`;
     items.push({ name: parsed.transactionGroup === "buy" ? "Buy" : "Rent & Lease", path });
@@ -89,10 +101,6 @@ function breadcrumbJsonLd(cityName: string, citySlug: string, parsed: ParsedSegm
   if (parsed.facetValue !== undefined && parsed.category) {
     path += `/${buildFacetSlug(parsed.category, parsed.facetValue)}`;
     items.push({ name: String(parsed.facetValue), path });
-  }
-  if (areaName) {
-    path += `/${slugify(areaName)}`;
-    items.push({ name: areaName, path });
   }
 
   return {
@@ -146,12 +154,15 @@ export async function generateMetadata({ params }: { params: Promise<RouteParams
     };
   }
 
-  const heading = await headingFor(parsed, cityRow.name, cityRow.id);
+  const areaRow = parsed.areaSlug ? await resolveArea(cityRow.id, parsed.areaSlug) : null;
+  if (parsed.areaSlug && !areaRow) return {};
+
+  const heading = headingFor(parsed, cityRow.name, areaRow?.name);
   const description = `Browse ${heading.toLowerCase()} on Bhavano.`;
   return {
     title: heading,
     description,
-    alternates: { canonical: canonicalBrowsePath(city, rest) },
+    alternates: { canonical: resolvedCanonicalPath(cityRow.name, parsed, areaRow?.name) },
     openGraph: { title: heading, description },
     twitter: { title: heading, description },
   };
@@ -185,17 +196,32 @@ export default async function CityBrowsePage({
     const requestedPath = `/${city}/${rest.join("/")}`;
     if (requestedPath !== canonicalPath) permanentRedirect(canonicalPath);
 
+    const allCitiesForDetail = await fetchCities(undefined, true);
+
     return (
       <>
         <JsonLd data={breadcrumbJsonLd(cityRow.name, city, parsed, listing.area)} />
         <JsonLd data={listingJsonLd(listing)} />
-        <ListingDetailView listing={listing} />
+        <ListingDetailView
+          listing={listing}
+          popularCities={allCitiesForDetail.filter((c) => c.isPopular)}
+          userName={session?.user?.name}
+          currentSegments={parsed}
+        />
       </>
     );
   }
 
   const areaRow = parsed.areaSlug ? await resolveArea(cityRow.id, parsed.areaSlug) : null;
   if (parsed.areaSlug && !areaRow) notFound();
+
+  // A pre-migration, area-last URL that still parses (see `parseSegments`) always redirects here
+  // to the current area-first shape — the query string (minPrice/furnished/area/etc., handled
+  // below) never affects this comparison, so filtered variants of an already-canonical path are
+  // never redirected.
+  const canonicalPath = resolvedCanonicalPath(cityRow.name, parsed, areaRow?.name);
+  const requestedPath = `/${city}${rest.length ? `/${rest.join("/")}` : ""}`;
+  if (requestedPath !== canonicalPath) permanentRedirect(canonicalPath);
 
   const sp = await searchParams;
   const pageRaw = Number(Array.isArray(sp.page) ? sp.page[0] : sp.page);
@@ -204,21 +230,46 @@ export default async function CityBrowsePage({
   const maxPrice = parsePositiveInt(sp.maxPrice);
   const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);
 
+  // Soft, best-effort locality filter for the search bar's "area in a city" case, which has no
+  // path segment of its own once a category isn't also known — unlike `parsed.areaSlug` (a real
+  // path segment), an unresolved `?area=` is silently ignored rather than a 404.
+  const areaQueryParam = typeof sp.area === "string" ? sp.area : undefined;
+  const areaRowFromQuery = !areaRow && areaQueryParam ? await resolveArea(cityRow.id, areaQueryParam).catch(() => null) : null;
+
+  // `AreaFilter`'s multi-select — a comma-separated list of area ids (`?areas=`), distinct from
+  // the single-locality `?area=`/path-based cases above. No resolution needed, these ids round-trip
+  // straight into the backend's `areaIds` filter.
+  const areasQueryParam = typeof sp.areas === "string" ? sp.areas : undefined;
+  const areaIds = areasQueryParam ? areasQueryParam.split(",").filter(Boolean) : undefined;
+
   const baseQuery = buildQueryForSegments(parsed);
-  const heading = await headingFor(parsed, cityRow.name, cityRow.id);
-  const basePath = canonicalBrowsePath(city, rest);
+  const heading = headingFor(parsed, cityRow.name, areaRow?.name);
+  const [allCities, cityAreas] = await Promise.all([fetchCities(undefined, true), fetchAreas(cityRow.id, undefined, true)]);
 
   return (
     <>
       <JsonLd data={breadcrumbJsonLd(cityRow.name, city, parsed, areaRow?.name)} />
       <BrowseListingsView
-        query={{ ...baseQuery, cityId: cityRow.id, areaId: areaRow?.id, minPrice, maxPrice, furnished }}
+        query={{
+          ...baseQuery,
+          cityId: cityRow.id,
+          areaId: areaRow?.id ?? areaRowFromQuery?.id,
+          areaIds,
+          minPrice,
+          maxPrice,
+          furnished,
+        }}
         cityName={cityRow.name}
         heading={heading}
         page={page}
-        basePath={basePath}
+        basePath={canonicalPath}
         filterCategory={parsed.category}
         filterIsSale={parsed.transactionGroup === "buy"}
+        popularCities={allCities.filter((c) => c.isPopular)}
+        userName={session?.user?.name}
+        currentSegments={parsed}
+        areaName={areaRow?.name ?? cityAreas[0]?.name}
+        cityAreas={cityAreas}
       />
     </>
   );

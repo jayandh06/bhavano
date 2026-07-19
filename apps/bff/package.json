@@ -22,7 +22,9 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "prisma:seed:cities": "tsx prisma/seedCities.ts",
+    "prisma:seed:demo-listings": "tsx prisma/seedDemoListings.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",

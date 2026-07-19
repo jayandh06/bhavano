@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from '@bhavano/types';
 import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
@@ -43,6 +43,14 @@ export class ListListingsDto {
   @IsOptional()
   @IsString()
   areaId?: string;
+
+  /** Multi-select area filter (the browse pages' "Areas" filter, when some-but-not-all of the
+   * city's areas are checked) — wire format is a comma-separated list of area ids, matching how
+   * this same query string round-trips through `fetchListings`/`ListingsQuery` on the web side. */
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').filter(Boolean) : value))
+  @IsString({ each: true })
+  areaIds?: string[];
 
   @IsOptional()
   @IsString()

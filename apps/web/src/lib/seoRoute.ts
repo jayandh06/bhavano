@@ -113,6 +113,16 @@ export function bedroomLabel(n: number): string {
   return n >= MAX_BEDROOMS ? `${MAX_BEDROOMS}+` : String(n);
 }
 
+/** Compact INR formatting for quick-pick price brackets and the search bar's live interpretation
+ * preview — the two places a raw rupee amount needs to read like "₹85L"/"₹1.2Cr" instead of a
+ * long number. */
+export function formatINR(n: number): string {
+  if (n >= 10_000_000) return `₹${(n / 10_000_000).toFixed(n % 10_000_000 === 0 ? 0 : 1)}Cr`;
+  if (n >= 100_000) return `₹${(n / 100_000).toFixed(n % 100_000 === 0 ? 0 : 1)}L`;
+  if (n >= 1_000) return `₹${Math.round(n / 1_000)}k`;
+  return `₹${n}`;
+}
+
 function facetOptionValues(category: ListingCategory, key: string): string[] {
   return CATEGORY_FIELD_CONFIG[category].find((f) => f.key === key)?.options?.map((o) => o.value) ?? [];
 }
@@ -158,14 +168,31 @@ export interface ParsedSegments {
 }
 
 /** Walks the `rest` array strictly left-to-right per the grammar
- * (`/{city}/{transactionGroup}/{category}/{facet}/{locality}/{slug}-{id}`) — every level after
- * transactionGroup is optional, but levels can't be skipped out of order (so parsing never has
- * to guess which level a bare segment belongs to). Returns `null` for any invalid combination
- * (unknown group/category, a category not valid under its group, more than 2 trailing segments). */
+ * (`/{city}/{locality}/{transactionGroup}/{category}/{facet}/{slug}-{id}`) — area sits right
+ * after the city (so `/{city}/{area}` is a real, indexable landing page on its own), everything
+ * after that is optional but can't be skipped out of order. Returns `null` for any invalid
+ * combination (unknown group/category, a category not valid under its group, malformed tail).
+ *
+ * Also still parses the *old* area-last shape
+ * (`/{city}/{transactionGroup}/{category}/{facet}/{locality}/{slug}-{id}`) purely so
+ * already-indexed/bookmarked listing URLs keep resolving (by id) instead of 404ing — the page
+ * then 301s to the new canonical via `buildListingPath`. `buildBrowsePath`/`buildListingPath`
+ * never produce that shape anymore. */
 export function parseSegments(rest: string[]): ParsedSegments | null {
   const result: ParsedSegments = {};
   let i = 0;
   if (i >= rest.length) return result;
+
+  // New-shape area, right after the city — anything that isn't a transactionGroup keyword (and
+  // isn't itself a listing slug-id, which never legitimately appears this early). Whether it's a
+  // *real* locality is verified against the DB by the caller (resolveArea), same as before.
+  let areaConsumedAtFront = false;
+  if (!isTransactionGroup(rest[i]) && !looksLikeListingSlugId(rest[i])) {
+    result.areaSlug = rest[i];
+    areaConsumedAtFront = true;
+    i++;
+    if (i >= rest.length) return result;
+  }
 
   const groupCandidate = rest[i];
   if (!isTransactionGroup(groupCandidate)) return null;
@@ -191,6 +218,18 @@ export function parseSegments(rest: string[]): ParsedSegments | null {
   if (i >= rest.length) return result;
 
   const remaining = rest.slice(i);
+
+  // New shape: the area (if any) was already consumed up front, so only a terminal listing
+  // slug-id can legitimately remain here — a second trailing segment would be ambiguous.
+  if (areaConsumedAtFront) {
+    if (remaining.length === 1 && looksLikeListingSlugId(remaining[0])) {
+      result.listingSlugId = remaining[0];
+      return result;
+    }
+    return null;
+  }
+
+  // Old shape fallback (area at the end) — see the doc comment above.
   if (remaining.length > 2) return null;
 
   if (remaining.length === 1) {
@@ -232,6 +271,18 @@ export function buildQueryForSegments(parsed: ParsedSegments): SegmentQuery {
     propertyType: category,
     bedrooms: typeof facetValue === "number" ? facetValue : undefined,
   };
+}
+
+/** Maps a parsed URL onto the homepage's tab-grouped `HomeCategoryFilter` — used to highlight the
+ * right tab (and thus mega-menu) in `<Header>` when it's rendered on a path-driven SEO page rather
+ * than the homepage's own query-string-driven one. Falls back to "buy" for the bare city/group
+ * root, matching the homepage's own default tab. */
+export function homeCategoryForSegments(parsed: ParsedSegments): HomeCategoryFilter {
+  const { category, transactionGroup } = parsed;
+  if (category === "furniture") return "furniture";
+  if (category === "pg") return "pg";
+  if (category === "interiors") return "interiors";
+  return transactionGroup === "rent-lease" ? "rentLease" : "buy";
 }
 
 /** Human-readable H1 for whatever combination of filters is active — shared by the homepage

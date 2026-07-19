@@ -1,0 +1,1 @@
+- For any plan, research related task create, save and refer files within docs/plans folder

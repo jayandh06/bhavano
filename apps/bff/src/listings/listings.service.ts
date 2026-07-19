@@ -10,11 +10,13 @@ import type {
   ListingSitemapEntry,
   ListingsPage,
   ModerationState,
+  PopularSearchDto,
   PropertyTypeFilter,
   TransactionType,
 } from '@bhavano/types';
 import { categoryImagePlaceholder } from '@bhavano/types/tokens';
 import { slugify } from '@bhavano/types/slugify';
+import { deriveTag } from '@bhavano/types/listingTag';
 import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 import { getPriceQualifierOptions } from '@bhavano/types/priceQualifiers';
 import { PrismaService } from '../prisma/prisma.service';
@@ -30,15 +32,6 @@ const ANONYMOUS_OWNER_EMAIL = 'anonymous@bahavano.local';
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
 const DEFAULT_LISTING_DURATION_DAYS = 30;
-
-function deriveTag(input: Pick<CreateListingInput, 'category' | 'transactionType'>): string {
-  if (input.category === 'coworking') return 'COWORKING';
-  if (input.category === 'pg') return 'PG';
-  if (input.category === 'furniture') return 'FURNITURE';
-  if (input.category === 'storage') return 'STORAGE';
-  if (input.category === 'interiors') return 'INTERIORS';
-  return input.transactionType === 'rent' || input.transactionType === 'lease' ? 'FOR RENT' : 'FOR SALE';
-}
 
 /** Property types nested under each of the Buy / Rent & Lease browsing tabs — nobody
  * buys/sells Storage or Coworking, so those only appear under Rent & Lease. */
@@ -83,6 +76,7 @@ export class ListingsService {
       transactionType,
       cityId,
       areaId,
+      areaIds,
       q,
       minPrice,
       maxPrice,
@@ -119,7 +113,9 @@ export class ListingsService {
       moderationState: 'approved',
       expiresAt: { gt: new Date() },
       ...(cityId ? { cityId } : {}),
-      ...(areaId ? { areaId } : {}),
+      // `areaIds` (the multi-select browse filter) wins over the single `areaId` (the SEO
+      // locality path) when both are somehow present — they're never sent together in practice.
+      ...(areaIds && areaIds.length > 0 ? { areaId: { in: areaIds } } : areaId ? { areaId } : {}),
       ...(q ? { title: { contains: q, mode: 'insensitive' } } : {}),
       ...(minPrice !== undefined || maxPrice !== undefined
         ? { price: { ...(minPrice !== undefined ? { gte: minPrice } : {}), ...(maxPrice !== undefined ? { lte: maxPrice } : {}) } }
@@ -330,6 +326,35 @@ export class ListingsService {
     });
 
     return this.toDetailDto(listing);
+  }
+
+  /** Top (category, transactionType, city) combinations by real inventory — feeds the footer's
+   * "Popular searches". There's no search-query telemetry to mine (search is just a title filter,
+   * never logged), so this is the closest real signal: summed `viewCount` across active listings
+   * in each bucket, which favors combinations people actually look at over ones that merely have
+   * the most postings. */
+  async getPopularSearches(limit = 6): Promise<PopularSearchDto[]> {
+    const groups = await this.prisma.listing.groupBy({
+      by: ['category', 'transactionType', 'cityId'],
+      where: { status: 'active', moderationState: 'approved', expiresAt: { gt: new Date() } },
+      _sum: { viewCount: true },
+      _count: { _all: true },
+      orderBy: { _sum: { viewCount: 'desc' } },
+      take: limit,
+    });
+    if (groups.length === 0) return [];
+
+    const cities = await this.prisma.city.findMany({ where: { id: { in: [...new Set(groups.map((g) => g.cityId))] } } });
+    const cityNameById = new Map(cities.map((c) => [c.id, c.name]));
+
+    return groups
+      .map((g) => ({
+        cityName: cityNameById.get(g.cityId) ?? '',
+        category: g.category,
+        transactionType: g.transactionType,
+        count: g._count._all,
+      }))
+      .filter((g): g is PopularSearchDto => g.cityName !== '');
   }
 
   /** Minimal fields for every active, non-expired listing — feeds the web app's sitemap.xml. */

@@ -18,3 +18,7 @@ export async function autoDetectCityAction(lat: number, lng: number): Promise<Ci
 export async function searchAreasAction(cityId: string, q: string): Promise<Area[]> {
   return fetchAreas(cityId, q);
 }
+
+export async function listAllAreasAction(cityId: string): Promise<Area[]> {
+  return fetchAreas(cityId, undefined, true);
+}

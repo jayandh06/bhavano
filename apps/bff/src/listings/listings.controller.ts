@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import type { ListingDetailDto, ListingSitemapEntry, ListingsPage } from '@bhavano/types';
+import type { ListingDetailDto, ListingSitemapEntry, ListingsPage, PopularSearchDto } from '@bhavano/types';
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
@@ -25,6 +25,12 @@ export class ListingsController {
   @Get('sitemap')
   sitemap(): Promise<ListingSitemapEntry[]> {
     return this.listingsService.findAllForSitemap();
+  }
+
+  // Also registered before ":id" — see the comment on "sitemap" above.
+  @Get('popular-searches')
+  popularSearches(): Promise<PopularSearchDto[]> {
+    return this.listingsService.getPopularSearches();
   }
 
   @Get(':id')
