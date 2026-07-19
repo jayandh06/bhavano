@@ -88,70 +88,28 @@ export function LocationPicker({
     <>
       <button
         onClick={openModal}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          background: "var(--surface-alt)",
-          border: "1px solid var(--border)",
-          borderRadius: 10,
-          padding: "10px 14px",
-          cursor: "pointer",
-          flexShrink: 0,
-        }}
+        className="flex items-center gap-2 bg-surface-alt border border-border rounded-[10px] px-3.5 py-2.5 cursor-pointer shrink-0"
       >
-        <span style={{ fontSize: 16 }}>📍</span>
-        <div style={{ textAlign: "left" }}>
-          <div style={{ fontSize: 10, color: "var(--muted)", lineHeight: 1.2 }}>Showing ads near</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1.3 }}>
-            {currentCityName}
-          </div>
+        <span className="text-base">📍</span>
+        <div className="text-left">
+          <div className="text-[10px] text-muted leading-[1.2]">Showing ads near</div>
+          <div className="text-sm font-bold text-text leading-[1.3]">{currentCityName}</div>
         </div>
-        <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 2 }}>▾</span>
+        <span className="text-[11px] text-muted ml-0.5">▾</span>
       </button>
 
       {open && (
         <div
           onClick={() => setOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "var(--modal-scrim)",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
+          className="fixed inset-0 bg-[var(--modal-scrim)] z-[100] flex items-center justify-center p-5"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--surface)",
-              borderRadius: 16,
-              width: 420,
-              maxWidth: "100%",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              padding: 24,
-              animation: "modalIn 0.2s ease both",
-            }}
+            className="bg-surface rounded-2xl w-[420px] max-w-full max-h-[80vh] overflow-y-auto p-6 animate-[modalIn_0.2s_ease_both]"
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <div style={{ fontFamily: "var(--font-lora)", fontWeight: 700, fontSize: 19, color: "var(--text)" }}>
-                Choose your location
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted)" }}
-              >
+            <div className="flex justify-between items-center mb-4">
+              <div className="font-lora font-bold text-[19px] text-text">Choose your location</div>
+              <button onClick={() => setOpen(false)} className="bg-transparent border-0 text-xl cursor-pointer text-muted">
                 ✕
               </button>
             </div>
@@ -159,61 +117,35 @@ export function LocationPicker({
             <button
               onClick={useAutoLocation}
               disabled={detecting}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                background: "var(--surface-alt)",
-                border: "1px solid var(--border)",
-                borderRadius: 10,
-                padding: "13px 14px",
-                fontSize: 14,
-                fontWeight: 700,
-                color: "var(--green)",
-                cursor: "pointer",
-                marginBottom: 14,
-              }}
+              className="w-full flex items-center gap-2.5 bg-surface-alt border border-border rounded-[10px] px-3.5 py-[13px] text-sm font-bold text-green cursor-pointer mb-3.5"
             >
               📍 {detecting ? "Detecting…" : "Auto-detect my current location"}
             </button>
 
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 8 }}>
-              OR SEARCH CITY / AREA / PINCODE
-            </div>
+            <div className="text-xs text-muted font-bold mb-2">OR SEARCH CITY / AREA / PINCODE</div>
             <input
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
               placeholder="e.g. Koramangala, Bangalore or 560034"
-              style={{
-                width: "100%",
-                border: "1px solid var(--border)",
-                borderRadius: 9,
-                padding: "12px 14px",
-                fontSize: 14,
-                outline: "none",
-                marginBottom: 14,
-                background: "var(--surface)",
-                color: "var(--text)",
-              }}
+              className="w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none mb-3.5 bg-surface text-text"
             />
 
             {query || !tierCities ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <div className="flex flex-col gap-0.5">
                 {results.map((city) => (
                   <CityRow key={city.id} city={city} onSelect={selectCity} />
                 ))}
               </div>
             ) : (
               <>
-                <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 4 }}>POPULAR</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 14 }}>
+                <div className="text-xs text-muted font-bold mb-1">POPULAR</div>
+                <div className="flex flex-col gap-0.5 mb-3.5">
                   {tierCities.popular.map((city) => (
                     <CityRow key={city.id} city={city} onSelect={selectCity} />
                   ))}
                 </div>
-                <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 4 }}>MORE CITIES</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <div className="text-xs text-muted font-bold mb-1">MORE CITIES</div>
+                <div className="flex flex-col gap-0.5">
                   {tierCities.more.map((city) => (
                     <CityRow key={city.id} city={city} onSelect={selectCity} />
                   ))}
@@ -225,16 +157,7 @@ export function LocationPicker({
               <button
                 onClick={onShowMoreCities}
                 disabled={loadingAll}
-                style={{
-                  marginTop: 8,
-                  background: "none",
-                  border: "none",
-                  color: "var(--green)",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  padding: "8px 6px",
-                }}
+                className="mt-2 bg-transparent border-0 text-green text-[13px] font-bold cursor-pointer px-1.5 py-2"
               >
                 {loadingAll ? "Loading…" : "Show more cities ▾"}
               </button>
@@ -250,19 +173,7 @@ function CityRow({ city, onSelect }: { city: City; onSelect: (city: City) => voi
   return (
     <button
       onClick={() => onSelect(city)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        textAlign: "left",
-        background: "none",
-        border: "none",
-        padding: "10px 6px",
-        fontSize: 14,
-        color: "var(--text)",
-        cursor: "pointer",
-        borderRadius: 7,
-      }}
+      className="flex items-center gap-2.5 text-left bg-transparent border-0 px-1.5 py-2.5 text-sm text-text cursor-pointer rounded-[7px]"
     >
       <span>{getCityIcon(city.name)}</span>
       {city.name}

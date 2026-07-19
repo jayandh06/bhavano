@@ -28,7 +28,7 @@ export function ListingDetailView({
   const attributeEntries = Object.entries(listing.attributes);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+    <div className="min-h-screen bg-bg text-text">
       <Header
         cityName={listing.cityName}
         popularCities={popularCities}
@@ -42,25 +42,23 @@ export function ListingDetailView({
       <Suspense>
         <PostSuccessTracker listingId={listing.id} />
       </Suspense>
-      <div style={{ maxWidth: 880, margin: "0 auto", padding: "24px 32px 80px" }}>
-        <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+      <div className="max-w-[880px] mx-auto px-4 sm:px-8 pt-6 pb-20">
+        <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
 
         <div
-          style={{
-            position: "relative",
-            height: 320,
-            borderRadius: 16,
-            overflow: "hidden",
-            background: listing.photosFull[0]
+          className={`relative h-[320px] rounded-2xl overflow-hidden flex items-center justify-center ${
+            listing.photosFull.length > 1 ? "mb-2.5" : "mb-6"
+          }`}
+          // Dynamic per-listing placeholder gradient stays inline — it's data, not a static style.
+          style={
+            listing.photosFull[0]
               ? undefined
-              : `repeating-linear-gradient(135deg, ${listing.imgColors[0]}, ${listing.imgColors[0]} 14px, ${listing.imgColors[1]} 14px, ${listing.imgColors[1]} 28px)`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: listing.photosFull.length > 1 ? 10 : 24,
-          }}
+              : {
+                  background: `repeating-linear-gradient(135deg, ${listing.imgColors[0]}, ${listing.imgColors[0]} 14px, ${listing.imgColors[1]} 14px, ${listing.imgColors[1]} 28px)`,
+                }
+          }
         >
           {listing.photosFull[0] && (
             <Image
@@ -69,59 +67,26 @@ export function ListingDetailView({
               fill
               priority
               sizes="(max-width: 880px) 100vw, 880px"
-              style={{ objectFit: "cover" }}
+              className="object-cover"
             />
           )}
           {listing.photosFull.length === 0 && (
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: 13,
-                color: "#ffffffcc",
-                background: "#00000030",
-                padding: "6px 12px",
-                borderRadius: 6,
-              }}
-            >
+            <span className="font-mono text-[13px] text-[#ffffffcc] bg-[#00000030] px-3 py-1.5 rounded-md">
               {listing.imgLabel}
             </span>
           )}
-          <span
-            style={{
-              position: "absolute",
-              top: 16,
-              left: 16,
-              background: "var(--green)",
-              color: "var(--on-green)",
-              fontSize: 12,
-              fontWeight: 700,
-              padding: "5px 12px",
-              borderRadius: 6,
-            }}
-          >
+          <span className="absolute top-4 left-4 bg-green text-on-green text-xs font-bold px-3 py-[5px] rounded-md">
             {listing.tag}
           </span>
           {listing.isExpired && (
-            <span
-              style={{
-                position: "absolute",
-                top: 16,
-                right: 16,
-                background: "#242420",
-                color: "#F5F1E6",
-                fontSize: 12,
-                fontWeight: 700,
-                padding: "5px 12px",
-                borderRadius: 6,
-              }}
-            >
+            <span className="absolute top-4 right-4 bg-[#242420] text-[#F5F1E6] text-xs font-bold px-3 py-[5px] rounded-md">
               Expired
             </span>
           )}
         </div>
 
         {listing.photosFull.length > 1 && (
-          <div style={{ display: "flex", gap: 10, marginBottom: 24, overflowX: "auto" }}>
+          <div className="flex gap-2.5 mb-6 overflow-x-auto">
             {listing.photosFull.map((photoUrl, i) => (
               <Image
                 key={photoUrl}
@@ -129,77 +94,45 @@ export function ListingDetailView({
                 alt={`${listing.title} photo ${i + 1}`}
                 width={80}
                 height={80}
-                style={{ objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
+                className="object-cover rounded-lg shrink-0"
               />
             ))}
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 8 }}>
-          <div style={{ fontFamily: "var(--font-lora)", fontSize: 28, fontWeight: 700, color: "var(--green)" }}>
-            {listing.price}
-          </div>
+        <div className="flex justify-between items-start gap-4 mb-2">
+          <div className="font-lora text-[28px] font-bold text-green">{listing.price}</div>
           {listing.priceQualifier && (
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "var(--muted)",
-                background: "var(--surface-alt)",
-                padding: "5px 12px",
-                borderRadius: 6,
-                whiteSpace: "nowrap",
-              }}
-            >
+            <div className="text-[13px] font-bold text-muted bg-surface-alt px-3 py-[5px] rounded-md whitespace-nowrap">
               {listing.priceQualifier}
             </div>
           )}
         </div>
 
-        <h1 style={{ fontFamily: "var(--font-lora)", fontSize: 22, fontWeight: 600, margin: "0 0 8px" }}>
-          {listing.title}
-        </h1>
-        <div style={{ fontSize: 14, color: "var(--muted)", marginBottom: 8 }}>
+        <h1 className="font-lora text-[22px] font-semibold m-0 mb-2">{listing.title}</h1>
+        <div className="text-sm text-muted mb-2">
           📍 {listing.area}, {listing.cityName}
         </div>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16, display: "flex", gap: 14 }}>
+        <div className="text-xs text-muted mb-4 flex gap-3.5">
           <span>👁 {listing.viewCount} views</span>
           <span>{listing.isExpired ? "Expired" : `Expires in ${daysUntil(listing.expiresAt)} days`}</span>
         </div>
 
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
+        <div className="flex gap-4 flex-wrap mb-6">
           {listing.specs.map((spec) => (
-            <span
-              key={spec}
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--text-soft)",
-                background: "var(--surface-alt)",
-                padding: "6px 12px",
-                borderRadius: 6,
-              }}
-            >
+            <span key={spec} className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md">
               {spec}
             </span>
           ))}
         </div>
 
         {attributeEntries.length > 0 && (
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              padding: 20,
-              marginBottom: 24,
-              background: "var(--surface)",
-            }}
-          >
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Details</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+          <div className="border border-border rounded-xl p-5 mb-6 bg-surface">
+            <div className="font-bold text-sm mb-3">Details</div>
+            <div className="grid [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))] gap-2.5">
               {attributeEntries.map(([key, value]) => (
-                <div key={key} style={{ fontSize: 13, color: "var(--text-soft)" }}>
-                  <span style={{ textTransform: "capitalize", fontWeight: 600 }}>{key}</span>: {String(value)}
+                <div key={key} className="text-[13px] text-text-soft">
+                  <span className="capitalize font-semibold">{key}</span>: {String(value)}
                 </div>
               ))}
             </div>
@@ -207,14 +140,10 @@ export function ListingDetailView({
         )}
 
         {listing.isExpired ? (
-          <p style={{ fontSize: 13, color: "var(--muted)" }}>
-            This ad has expired and is no longer accepting responses.
-          </p>
+          <p className="text-[13px] text-muted">This ad has expired and is no longer accepting responses.</p>
         ) : (
           <>
-            <span style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 12 }}>
-              Ads shown without login — sign in only to respond
-            </span>
+            <span className="text-xs text-muted block mb-3">Ads shown without login — sign in only to respond</span>
             <ListingDetailActions
               listingId={listing.id}
               initialIsFavourited={listing.isFavourited}

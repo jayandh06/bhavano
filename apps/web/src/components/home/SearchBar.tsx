@@ -147,18 +147,9 @@ export function SearchBar({
   const preview = open && trimmedValue ? describe(interpret(trimmedValue, cityName, popularCities)) : null;
 
   return (
-    <div ref={containerRef} style={{ flex: 1, position: "relative", minWidth: 0 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 10,
-          padding: "0 6px 0 14px",
-        }}
-      >
-        <span style={{ color: "var(--muted)", fontSize: 15 }}>🔍</span>
+    <div ref={containerRef} className="flex-1 relative min-w-0">
+      <div className="flex items-center bg-surface border border-border rounded-[10px] pl-3.5 pr-1.5">
+        <span className="text-muted text-[15px]">🔍</span>
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -168,71 +159,32 @@ export function SearchBar({
             if (e.key === "Escape") setOpen(false);
           }}
           placeholder={placeholder}
-          style={{
-            flex: 1,
-            border: "none",
-            outline: "none",
-            padding: "12px 10px",
-            fontSize: 14,
-            background: "transparent",
-            minWidth: 0,
-            color: "var(--text)",
-          }}
+          className="flex-1 border-0 outline-none px-2.5 py-3 text-sm bg-transparent min-w-0 text-text"
         />
         <button
           onClick={submit}
-          style={{
-            background: "var(--green)",
-            color: "var(--on-green)",
-            border: "none",
-            borderRadius: 7,
-            padding: "9px 18px",
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
+          className="bg-green text-on-green border-0 rounded-[7px] px-[18px] py-[9px] text-sm font-bold cursor-pointer"
         >
           Search
         </button>
       </div>
 
       {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            right: 0,
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            padding: 14,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-            zIndex: 50,
-          }}
-        >
+        <div className="absolute top-[calc(100%+6px)] left-0 right-0 bg-surface border border-border rounded-[10px] p-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50">
           {preview ? (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>SEARCHING FOR</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--green)" }}>→ {preview.join(" · ")}</div>
+              <div className="text-[11px] font-bold text-muted mb-2">SEARCHING FOR</div>
+              <div className="text-sm font-semibold text-green">→ {preview.join(" · ")}</div>
             </>
           ) : (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>TRY SEARCHING</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div className="text-[11px] font-bold text-muted mb-2">TRY SEARCHING</div>
+              <div className="flex flex-wrap gap-2">
                 {exampleChips.map((chip) => (
                   <button
                     key={chip}
                     onClick={() => submitChip(chip)}
-                    style={{
-                      background: "var(--surface-alt)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 20,
-                      padding: "7px 14px",
-                      fontSize: 13,
-                      color: "var(--text)",
-                      cursor: "pointer",
-                    }}
+                    className="bg-surface-alt border border-border rounded-[20px] px-3.5 py-[7px] text-[13px] text-text cursor-pointer"
                   >
                     {chip}
                   </button>

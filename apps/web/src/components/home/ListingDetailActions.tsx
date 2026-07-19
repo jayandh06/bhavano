@@ -49,76 +49,36 @@ export function ListingDetailActions({
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+      <div className="flex gap-3 mt-2">
         <button
           onClick={requireLogin}
-          style={{
-            flex: 1,
-            background: "var(--green)",
-            color: "var(--on-green)",
-            border: "none",
-            borderRadius: 8,
-            padding: 13,
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
+          className="flex-1 bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer"
         >
           Contact owner
         </button>
         <button
           onClick={requireLogin}
-          style={{
-            background: "var(--surface)",
-            color: "var(--green)",
-            border: "1.5px solid var(--green)",
-            borderRadius: 8,
-            padding: "13px 20px",
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
+          className="bg-surface text-green border-[1.5px] border-green rounded-lg px-5 py-[13px] text-sm font-bold cursor-pointer"
         >
           Call
         </button>
         <button
           onClick={onToggleFavourite}
-          style={{
-            width: 60,
-            background: "var(--surface)",
-            border: "1.5px solid var(--border)",
-            borderRadius: 8,
-            fontSize: 17,
-            cursor: "pointer",
-            color: isFavourited ? "#c0554b" : "inherit",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 2,
-          }}
+          className={`w-[60px] bg-surface border-[1.5px] border-border rounded-lg text-[17px] cursor-pointer flex flex-col items-center gap-0.5 ${
+            isFavourited ? "text-[#c0554b]" : ""
+          }`}
         >
           <span>{isFavourited ? "♥" : "♡"}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)" }}>{likeCount}</span>
+          <span className="text-[10px] font-bold text-muted">{likeCount}</span>
         </button>
       </div>
       <button
         onClick={onMessage}
-        style={{
-          width: "100%",
-          marginTop: 10,
-          background: "var(--surface)",
-          color: "var(--green)",
-          border: "1.5px solid var(--green)",
-          borderRadius: 8,
-          padding: 12,
-          fontSize: 14,
-          fontWeight: 700,
-          cursor: "pointer",
-        }}
+        className="w-full mt-2.5 bg-surface text-green border-[1.5px] border-green rounded-lg p-3 text-sm font-bold cursor-pointer"
       >
         💬 Message owner
       </button>
-      {messageError && <p style={{ color: "#b3413a", fontSize: 13, marginTop: 8 }}>{messageError}</p>}
+      {messageError && <p className="text-[#b3413a] text-[13px] mt-2">{messageError}</p>}
     </div>
   );
 }
