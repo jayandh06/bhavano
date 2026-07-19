@@ -51,22 +51,16 @@ export function MessageThread({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "70vh" }}>
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+    <div className="flex flex-col h-[70vh]">
+      <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-2.5">
         {messages.map((m) => {
           const isMine = m.senderId === currentUserId;
           return (
             <div
               key={m.id}
-              style={{
-                alignSelf: isMine ? "flex-end" : "flex-start",
-                background: isMine ? "var(--green)" : "var(--surface-alt)",
-                color: isMine ? "var(--on-green)" : "var(--text)",
-                borderRadius: 12,
-                padding: "8px 14px",
-                maxWidth: "70%",
-                fontSize: 14,
-              }}
+              className={`rounded-xl px-3.5 py-2 max-w-[70%] text-sm ${
+                isMine ? "self-end bg-green text-on-green" : "self-start bg-surface-alt text-text"
+              }`}
             >
               {m.body}
             </div>
@@ -75,35 +69,17 @@ export function MessageThread({
         <div ref={bottomRef} />
       </div>
 
-      <div style={{ display: "flex", gap: 10, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+      <div className="flex gap-2.5 border-t border-border pt-3">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onSend()}
           placeholder="Type a message…"
-          style={{
-            flex: 1,
-            border: "1px solid var(--border)",
-            borderRadius: 9,
-            padding: "12px 14px",
-            fontSize: 14,
-            outline: "none",
-            background: "var(--surface)",
-            color: "var(--text)",
-          }}
+          className="flex-1 border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text"
         />
         <button
           onClick={onSend}
-          style={{
-            background: "var(--green)",
-            color: "var(--on-green)",
-            border: "none",
-            borderRadius: 8,
-            padding: "12px 20px",
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
+          className="bg-green text-on-green border-0 rounded-lg px-5 py-3 text-sm font-bold cursor-pointer"
         >
           Send
         </button>

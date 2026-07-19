@@ -111,21 +111,21 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   }
 
   return (
-    <div style={{ maxWidth: 480, display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="max-w-[480px] flex flex-col gap-5">
       <div>
-        <label style={labelStyle}>Name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" style={inputStyle} />
+        <label className={labelClass}>Name</label>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className={inputClass} />
       </div>
 
       <div>
-        <label style={labelStyle}>
-          Email {!profile.email && <span style={{ color: "#b3413a" }}>*</span>}
+        <label className={labelClass}>
+          Email {!profile.email && <span className="text-[#b3413a]">*</span>}
         </label>
         {profile.email ? (
-          <div style={readOnlyStyle}>{profile.email}</div>
+          <div className={readOnlyClass}>{profile.email}</div>
         ) : (
           <>
-            <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 8px" }}>
+            <p className="text-[12.5px] text-muted m-0 mb-2">
               You signed in with your phone number — add an email so we have another way to reach you.
             </p>
             <input
@@ -133,39 +133,39 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              style={inputStyle}
+              className={inputClass}
             />
           </>
         )}
       </div>
 
       <div>
-        <label style={labelStyle}>
-          Phone {!currentPhone && <span style={{ color: "#b3413a" }}>*</span>}
+        <label className={labelClass}>
+          Phone {!currentPhone && <span className="text-[#b3413a]">*</span>}
         </label>
         {currentPhone ? (
-          <div style={readOnlyStyle}>{currentPhone}</div>
+          <div className={readOnlyClass}>{currentPhone}</div>
         ) : (
           <>
-            <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 8px" }}>
+            <p className="text-[12.5px] text-muted m-0 mb-2">
               You signed in with Google — add and verify a phone number so buyers/sellers can reach you.
             </p>
             {phoneStep === "idle" ? (
               <>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <div style={countryChipStyle}>+91</div>
+                <div className="flex gap-2">
+                  <div className={countryChipClass}>+91</div>
                   <input
                     value={phoneInput}
                     onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     placeholder="10-digit mobile number"
-                    style={inputStyle}
+                    className={inputClass}
                   />
                 </div>
-                {phoneError && <p style={errorStyle}>{phoneError}</p>}
+                {phoneError && <p className={errorClass}>{phoneError}</p>}
                 <button
                   onClick={onSendPhoneOtp}
                   disabled={phoneInput.length !== 10 || phonePending}
-                  style={{ ...secondaryButtonStyle, opacity: phoneInput.length === 10 ? 1 : 0.5, marginTop: 10 }}
+                  className={`${secondaryButtonClass} mt-2.5 ${phoneInput.length === 10 ? "opacity-100" : "opacity-50"}`}
                 >
                   {phonePending ? "Sending…" : "Send OTP"}
                 </button>
@@ -176,14 +176,14 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
                   value={otpInput}
                   onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="······"
-                  style={{ ...inputStyle, textAlign: "center", letterSpacing: "0.4em" }}
+                  className={`${inputClass} text-center tracking-[0.4em]`}
                 />
-                {phoneError && <p style={errorStyle}>{phoneError}</p>}
-                <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                {phoneError && <p className={errorClass}>{phoneError}</p>}
+                <div className="flex gap-2.5 mt-2.5">
                   <button
                     onClick={onVerifyPhoneOtp}
                     disabled={otpInput.length !== 6 || phonePending}
-                    style={{ ...secondaryButtonStyle, opacity: otpInput.length === 6 ? 1 : 0.5 }}
+                    className={`${secondaryButtonClass} ${otpInput.length === 6 ? "opacity-100" : "opacity-50"}`}
                   >
                     {phonePending ? "Verifying…" : "Verify & link"}
                   </button>
@@ -192,7 +192,7 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
                       setPhoneStep("idle");
                       setPhoneError(null);
                     }}
-                    style={backButtonStyle}
+                    className={backButtonClass}
                   >
                     ← Back
                   </button>
@@ -203,10 +203,10 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
         )}
       </div>
 
-      <div style={{ position: "relative" }}>
-        <label style={labelStyle}>City</label>
+      <div className="relative">
+        <label className={labelClass}>City</label>
         {detected && (
-          <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 8px" }}>
+          <p className="text-[12.5px] text-muted m-0 mb-2">
             📍 We detected your location as below — confirm or search for a different city before saving.
           </p>
         )}
@@ -219,39 +219,15 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
           }}
           onFocus={() => cityResults.length > 0 && setShowCityResults(true)}
           placeholder="Search for your city"
-          style={inputStyle}
+          className={inputClass}
         />
         {showCityResults && cityResults.length > 0 && (
-          <div
-            style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              right: 0,
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-              zIndex: 20,
-              maxHeight: 220,
-              overflowY: "auto",
-            }}
-          >
+          <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-20 max-h-[220px] overflow-y-auto">
             {cityResults.map((city) => (
               <button
                 key={city.id}
                 onClick={() => selectCity(city)}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  background: "none",
-                  border: "none",
-                  padding: "10px 14px",
-                  fontSize: 14,
-                  color: "var(--text)",
-                  cursor: "pointer",
-                }}
+                className="block w-full text-left bg-transparent border-0 px-3.5 py-2.5 text-sm text-text cursor-pointer"
               >
                 {city.name}, {city.state}
               </button>
@@ -261,13 +237,11 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
       </div>
 
       {message && (
-        <p style={{ fontSize: 13, color: message.type === "success" ? "var(--green)" : "#b3413a", margin: 0 }}>
-          {message.text}
-        </p>
+        <p className={`text-[13px] m-0 ${message.type === "success" ? "text-green" : "text-[#b3413a]"}`}>{message.text}</p>
       )}
 
       {!canSave && (
-        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: 0 }}>
+        <p className="text-[12.5px] text-muted m-0">
           {!currentPhone && emailMissing
             ? "Add your email above and verify your phone number above before saving."
             : !currentPhone
@@ -276,87 +250,29 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
         </p>
       )}
 
-      <button onClick={onSave} disabled={saving || !canSave} style={{ ...saveButtonStyle, opacity: saving || !canSave ? 0.6 : 1 }}>
+      <button
+        onClick={onSave}
+        disabled={saving || !canSave}
+        className={`${saveButtonClass} ${saving || !canSave ? "opacity-60" : "opacity-100"}`}
+      >
         {saving ? "Saving…" : "Save changes"}
       </button>
     </div>
   );
 }
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: 12,
-  fontWeight: 700,
-  color: "var(--muted)",
-  marginBottom: 6,
-  textTransform: "uppercase",
-  letterSpacing: "0.02em",
-};
+const labelClass = "block text-xs font-bold text-muted mb-1.5 uppercase tracking-[0.02em]";
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "12px 14px",
-  fontSize: 14,
-  outline: "none",
-  background: "var(--surface)",
-  color: "var(--text)",
-};
+const inputClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
 
-const readOnlyStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "12px 14px",
-  fontSize: 14,
-  background: "var(--surface-alt)",
-  color: "var(--text-soft)",
-};
+const readOnlyClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm bg-surface-alt text-text-soft";
 
-const saveButtonStyle: React.CSSProperties = {
-  background: "var(--green)",
-  color: "var(--on-green)",
-  border: "none",
-  borderRadius: 8,
-  padding: 13,
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
-};
+const saveButtonClass = "bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer";
 
-const secondaryButtonStyle: React.CSSProperties = {
-  background: "var(--surface)",
-  color: "var(--green)",
-  border: "1.5px solid var(--green)",
-  borderRadius: 8,
-  padding: "11px 16px",
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
-};
+const secondaryButtonClass = "bg-surface text-green border-[1.5px] border-green rounded-lg px-4 py-[11px] text-sm font-bold cursor-pointer";
 
-const backButtonStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "var(--muted)",
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
-};
+const backButtonClass = "bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer";
 
-const errorStyle: React.CSSProperties = {
-  color: "#b3413a",
-  fontSize: 13,
-  marginTop: 8,
-  marginBottom: 0,
-};
+const errorClass = "text-[#b3413a] text-[13px] mt-2 mb-0";
 
-const countryChipStyle: React.CSSProperties = {
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "12px 14px",
-  fontWeight: 700,
-  fontSize: 14,
-};
+const countryChipClass = "bg-surface-alt border border-border rounded-[9px] px-3.5 py-3 font-bold text-sm";

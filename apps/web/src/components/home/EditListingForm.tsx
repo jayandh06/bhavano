@@ -73,33 +73,33 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
   }
 
   return (
-    <div style={{ maxWidth: 480, display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="max-w-[480px] flex flex-col gap-5">
       <div>
-        <label style={labelStyle}>Category / transaction</label>
-        <div style={readOnlyStyle}>
+        <label className={labelClass}>Category / transaction</label>
+        <div className={readOnlyClass}>
           {listing.category} · {listing.transactionType}
         </div>
       </div>
 
       <div>
-        <label style={labelStyle}>Title *</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} />
+        <label className={labelClass}>Title *</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
       </div>
 
-      <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Price (₹) *</label>
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className={labelClass}>Price (₹) *</label>
           <input
             type="number"
             min={1}
             value={price}
             onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
-            style={inputStyle}
+            className={inputClass}
           />
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Price qualifier *</label>
-          <select value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={inputStyle}>
+        <div className="flex-1">
+          <label className={labelClass}>Price qualifier *</label>
+          <select value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} className={inputClass}>
             {priceQualifierChoices.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -110,15 +110,15 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
       </div>
 
       <div>
-        <label style={labelStyle}>Specs (comma-separated)</label>
-        <input value={specs} onChange={(e) => setSpecs(e.target.value)} style={inputStyle} />
+        <label className={labelClass}>Specs (comma-separated)</label>
+        <input value={specs} onChange={(e) => setSpecs(e.target.value)} className={inputClass} />
       </div>
 
       {fieldConfig.length > 0 && (
-        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="border-t border-border pt-4 flex flex-col gap-4">
           {fieldConfig.map((field) => (
             <div key={field.key}>
-              <label style={labelStyle}>
+              <label className={labelClass}>
                 {field.label}
                 {field.required ? " *" : ""}
               </label>
@@ -126,7 +126,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
                 <select
                   value={attributes[field.key] ?? ""}
                   onChange={(e) => setAttributes((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  style={inputStyle}
+                  className={inputClass}
                 >
                   <option value="" disabled>
                     Select…
@@ -149,7 +149,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
                     }))
                   }
                   placeholder={field.placeholder}
-                  style={inputStyle}
+                  className={inputClass}
                 />
               )}
             </div>
@@ -158,8 +158,8 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
       )}
 
       <div>
-        <label style={labelStyle}>Status</label>
-        <select value={status} onChange={(e) => setStatus(e.target.value as ListingStatus)} style={inputStyle}>
+        <label className={labelClass}>Status</label>
+        <select value={status} onChange={(e) => setStatus(e.target.value as ListingStatus)} className={inputClass}>
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -169,56 +169,24 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
       </div>
 
       {message && (
-        <p style={{ fontSize: 13, color: message.type === "success" ? "var(--green)" : "#b3413a", margin: 0 }}>
-          {message.text}
-        </p>
+        <p className={`text-[13px] m-0 ${message.type === "success" ? "text-green" : "text-[#b3413a]"}`}>{message.text}</p>
       )}
 
-      <button onClick={onSave} disabled={saving || !valid} style={{ ...saveButtonStyle, opacity: saving || !valid ? 0.6 : 1 }}>
+      <button
+        onClick={onSave}
+        disabled={saving || !valid}
+        className={`${saveButtonClass} ${saving || !valid ? "opacity-60" : "opacity-100"}`}
+      >
         {saving ? "Saving…" : "Save changes"}
       </button>
     </div>
   );
 }
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: 12,
-  fontWeight: 700,
-  color: "var(--muted)",
-  marginBottom: 6,
-  textTransform: "uppercase",
-  letterSpacing: "0.02em",
-};
+const labelClass = "block text-xs font-bold text-muted mb-1.5 uppercase tracking-[0.02em]";
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "12px 14px",
-  fontSize: 14,
-  outline: "none",
-  background: "var(--surface)",
-  color: "var(--text)",
-};
+const inputClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
 
-const readOnlyStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "12px 14px",
-  fontSize: 14,
-  background: "var(--surface-alt)",
-  color: "var(--text-soft)",
-};
+const readOnlyClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm bg-surface-alt text-text-soft";
 
-const saveButtonStyle: React.CSSProperties = {
-  background: "var(--green)",
-  color: "var(--on-green)",
-  border: "none",
-  borderRadius: 8,
-  padding: 13,
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
-};
+const saveButtonClass = "bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer";

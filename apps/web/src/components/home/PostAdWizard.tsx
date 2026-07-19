@@ -41,48 +41,24 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 type Step = "category" | "transactionType" | "details" | "review";
 
-const fieldStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "12px 14px",
-  fontSize: 14,
-  outline: "none",
-  background: "var(--surface)",
-  color: "var(--text)",
-};
+const fieldClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
 
-const labelStyle: React.CSSProperties = {
-  fontSize: 13,
-  fontWeight: 700,
-  color: "var(--text-soft)",
-  marginBottom: 6,
-  display: "block",
-};
+const labelClass = "text-[13px] font-bold text-text-soft mb-1.5 block";
 
 function RequiredLabel({ text }: { text: string }) {
   return (
-    <label style={labelStyle}>
-      {text} <span style={{ color: "#b3413a" }}>*</span>
+    <label className={labelClass}>
+      {text} <span className="text-[#b3413a]">*</span>
     </label>
   );
 }
 
-const optionButtonStyle = (active: boolean): React.CSSProperties => ({
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  width: "100%",
-  textAlign: "left",
-  border: `1.5px solid ${active ? "var(--green)" : "var(--border)"}`,
-  background: active ? "var(--surface-alt)" : "var(--surface)",
-  borderRadius: 10,
-  padding: "14px 16px",
-  fontSize: 14,
-  fontWeight: 700,
-  color: "var(--text)",
-  cursor: "pointer",
-});
+const optionButtonClass = (active: boolean) =>
+  `flex items-center gap-2.5 w-full text-left border-[1.5px] rounded-[10px] px-4 py-3.5 text-sm font-bold text-text cursor-pointer ${
+    active ? "border-green bg-surface-alt" : "border-border bg-surface"
+  }`;
+
+const backButtonClass = "bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer";
 
 export function PostAdWizard({ cities }: { cities: City[] }) {
   const [listingId] = useState(() => crypto.randomUUID());
@@ -248,9 +224,9 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 6, marginBottom: 24, fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>
+      <div className="flex gap-1.5 mb-6 text-xs font-bold text-muted">
         {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
-          <span key={s} style={{ color: step === s ? "var(--green)" : "var(--muted)" }}>
+          <span key={s} className={step === s ? "text-green" : "text-muted"}>
             {i > 0 && " → "}
             {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Review"}
           </span>
@@ -258,10 +234,10 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
       </div>
 
       {step === "category" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="flex flex-col gap-2.5">
           {CATEGORIES.map((c) => (
-            <button key={c.value} onClick={() => selectCategory(c.value)} style={optionButtonStyle(category === c.value)}>
-              <span style={{ fontSize: 18 }}>{c.icon}</span>
+            <button key={c.value} onClick={() => selectCategory(c.value)} className={optionButtonClass(category === c.value)}>
+              <span className="text-lg">{c.icon}</span>
               {c.label}
             </button>
           ))}
@@ -269,25 +245,22 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
       )}
 
       {step === "transactionType" && category && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="flex flex-col gap-2.5">
           {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
-            <button key={t} onClick={() => selectTransactionType(t)} style={optionButtonStyle(transactionType === t)}>
+            <button key={t} onClick={() => selectTransactionType(t)} className={optionButtonClass(transactionType === t)}>
               {TRANSACTION_TYPE_LABELS[t]}
             </button>
           ))}
-          <button
-            onClick={() => setStep("category")}
-            style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, fontWeight: 700, cursor: "pointer", marginTop: 4 }}
-          >
+          <button onClick={() => setStep("category")} className={`${backButtonClass} mt-1`}>
             ← Back
           </button>
         </div>
       )}
 
       {step === "details" && category && transactionType && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", gap: 12 }}>
-            <div style={{ flex: 1 }}>
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-3">
+            <div className="flex-1">
               <RequiredLabel text="Price (₹)" />
               <input
                 type="number"
@@ -295,12 +268,12 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
                 min={1}
                 value={price}
                 onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
-                style={fieldStyle}
+                className={fieldClass}
               />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="flex-1">
               <RequiredLabel text="Price qualifier" />
-              <select value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={fieldStyle}>
+              <select value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} className={fieldClass}>
                 {getPriceQualifierOptions(category, transactionType).map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -312,12 +285,12 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
 
           <div>
             <RequiredLabel text="Title" />
-            <input required value={title} onChange={(e) => setTitle(e.target.value)} style={fieldStyle} />
+            <input required value={title} onChange={(e) => setTitle(e.target.value)} className={fieldClass} />
           </div>
 
           <div>
             <RequiredLabel text="City" />
-            <select required value={cityId} onChange={(e) => onCityChange(e.target.value)} style={fieldStyle}>
+            <select required value={cityId} onChange={(e) => onCityChange(e.target.value)} className={fieldClass}>
               {cities.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -326,7 +299,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
             </select>
           </div>
 
-          <div ref={areaFieldRef} style={{ position: "relative" }}>
+          <div ref={areaFieldRef} className="relative">
             <RequiredLabel text="Area / locality" />
             <input
               required
@@ -335,40 +308,16 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
               onFocus={() => setShowAreaSuggestions(true)}
               placeholder="Start typing a locality…"
               autoComplete="off"
-              style={fieldStyle}
+              className={fieldClass}
             />
             {showAreaSuggestions && areaSuggestions.length > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  left: 0,
-                  right: 0,
-                  zIndex: 10,
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 9,
-                  marginTop: 4,
-                  maxHeight: 220,
-                  overflowY: "auto",
-                }}
-              >
+              <div className="absolute top-full left-0 right-0 z-10 bg-surface border border-border rounded-[9px] mt-1 max-h-[220px] overflow-y-auto">
                 {areaSuggestions.map((a) => (
                   <button
                     key={a.id}
                     type="button"
                     onClick={() => onPickArea(a)}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      background: "none",
-                      border: "none",
-                      padding: "10px 14px",
-                      fontSize: 14,
-                      color: "var(--text)",
-                      cursor: "pointer",
-                    }}
+                    className="block w-full text-left bg-transparent border-0 px-3.5 py-2.5 text-sm text-text cursor-pointer"
                   >
                     {a.name}
                   </button>
@@ -376,30 +325,30 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
               </div>
             )}
             {!areaId && areaQuery.trim() && (
-              <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
+              <p className="text-xs text-muted mt-1.5">
                 No match selected — &quot;{areaQuery.trim()}&quot; will be added as a new area.
               </p>
             )}
           </div>
 
           <div>
-            <label style={labelStyle}>Specs (comma-separated, shown on the listing card)</label>
-            <input value={specs} onChange={(e) => setSpecs(e.target.value)} placeholder="3 Beds, 1450 sqft" style={fieldStyle} />
+            <label className={labelClass}>Specs (comma-separated, shown on the listing card)</label>
+            <input value={specs} onChange={(e) => setSpecs(e.target.value)} placeholder="3 Beds, 1450 sqft" className={fieldClass} />
           </div>
 
-          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 12 }}>
+          <div className="border-t border-border pt-4">
+            <div className="text-[13px] font-bold text-text mb-3">
               {CATEGORIES.find((c) => c.value === category)?.label} details
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="flex flex-col gap-4">
               {CATEGORY_FIELD_CONFIG[category].map((field) => (
                 <div key={field.key}>
-                  {field.required ? <RequiredLabel text={field.label} /> : <label style={labelStyle}>{field.label}</label>}
+                  {field.required ? <RequiredLabel text={field.label} /> : <label className={labelClass}>{field.label}</label>}
                   {field.type === "select" ? (
                     <select
                       value={attributes[field.key] ?? ""}
                       onChange={(e) => setAttributes((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                      style={fieldStyle}
+                      className={fieldClass}
                     >
                       <option value="" disabled>
                         Select…
@@ -422,7 +371,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
                         }))
                       }
                       placeholder={field.placeholder}
-                      style={fieldStyle}
+                      className={fieldClass}
                     />
                   )}
                 </div>
@@ -444,32 +393,15 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
               />
             )}
             {photos.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+              <div className="flex flex-wrap gap-2.5 mt-2.5">
                 {photos.map((photo, i) => (
-                  <div key={photo.previewUrl} style={{ position: "relative" }}>
+                  <div key={photo.previewUrl} className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={photo.previewUrl}
-                      alt={`Photo ${i + 1}`}
-                      style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 8 }}
-                    />
+                    <img src={photo.previewUrl} alt={`Photo ${i + 1}`} className="h-[100px] w-[100px] object-cover rounded-lg" />
                     <button
                       type="button"
                       onClick={() => onRemovePhoto(i)}
-                      style={{
-                        position: "absolute",
-                        top: -6,
-                        right: -6,
-                        width: 22,
-                        height: 22,
-                        borderRadius: "50%",
-                        border: "none",
-                        background: "var(--surface)",
-                        color: "#b3413a",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                      }}
+                      className="absolute -top-1.5 -right-1.5 w-[22px] h-[22px] rounded-full border-0 bg-surface text-[#b3413a] font-bold cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
                     >
                       ×
                     </button>
@@ -477,31 +409,22 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
                 ))}
               </div>
             )}
-            {error && <p style={{ color: "#b3413a", fontSize: 13, marginTop: 8 }}>{error}</p>}
+            {error && <p className="text-[#b3413a] text-[13px] mt-2">{error}</p>}
           </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
+          <div className="flex gap-2.5">
             <button
               onClick={() => setStep(POSTABLE_TRANSACTION_TYPES[category].length === 1 ? "category" : "transactionType")}
-              style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+              className={backButtonClass}
             >
               ← Back
             </button>
             <button
               onClick={() => setStep("review")}
               disabled={!detailsValid}
-              style={{
-                marginLeft: "auto",
-                background: "var(--green)",
-                color: "var(--on-green)",
-                border: "none",
-                borderRadius: 8,
-                padding: "12px 24px",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-                opacity: detailsValid ? 1 : 0.5,
-              }}
+              className={`ml-auto bg-green text-on-green border-0 rounded-lg px-6 py-3 text-sm font-bold cursor-pointer ${
+                detailsValid ? "opacity-100" : "opacity-50"
+              }`}
             >
               Review
             </button>
@@ -510,44 +433,35 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
       )}
 
       {step === "review" && category && transactionType && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, fontSize: 14, color: "var(--text)" }}>
-            <p style={{ margin: "0 0 6px" }}>
+        <div className="flex flex-col gap-3">
+          <div className="border border-border rounded-[10px] p-4 text-sm text-text">
+            <p className="m-0 mb-1.5">
               <strong>{CATEGORIES.find((c) => c.value === category)?.label}</strong> — {TRANSACTION_TYPE_LABELS[transactionType]}
             </p>
-            <p style={{ margin: "0 0 6px" }}>{title}</p>
-            <p style={{ margin: "0 0 6px", color: "var(--muted)" }}>
+            <p className="m-0 mb-1.5">{title}</p>
+            <p className="m-0 mb-1.5 text-muted">
               {areaQuery}, {cities.find((c) => c.id === cityId)?.name}
             </p>
-            <p style={{ margin: 0, color: "var(--green)", fontWeight: 700 }}>
+            <p className="m-0 text-green font-bold">
               ₹{price} {priceQualifier}
             </p>
           </div>
 
-          {error && <p style={{ color: "#b3413a", fontSize: 13 }}>{error}</p>}
+          {error && <p className="text-[#b3413a] text-[13px]">{error}</p>}
 
-          <div style={{ display: "flex", gap: 10 }}>
+          <div className="flex gap-2.5">
             <button
               onClick={() => setStep("details")}
-              style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+              className={backButtonClass}
             >
               ← Back
             </button>
             <button
               onClick={onSubmit}
               disabled={pending}
-              style={{
-                marginLeft: "auto",
-                background: "var(--green)",
-                color: "var(--on-green)",
-                border: "none",
-                borderRadius: 8,
-                padding: "12px 28px",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-                opacity: pending ? 0.6 : 1,
-              }}
+              className={`ml-auto bg-green text-on-green border-0 rounded-lg px-7 py-3 text-sm font-bold cursor-pointer ${
+                pending ? "opacity-60" : "opacity-100"
+              }`}
             >
               {pending ? "Posting…" : "Post ad"}
             </button>
