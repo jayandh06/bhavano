@@ -74,6 +74,9 @@ export interface ListingsQuery {
   condition?: string;
   serviceType?: string;
   cursor?: string;
+  /** Offset-based page window for numbered `?page=N` pagination (browse pages + homepage) —
+   * see docs/plans/seo-distinct-window-pagination.md. Mutually exclusive with `cursor`. */
+  offset?: number;
   limit?: number;
 }
 
@@ -95,6 +98,7 @@ export function fetchListings(query: ListingsQuery, accessToken?: string): Promi
   if (query.condition) params.set("condition", query.condition);
   if (query.serviceType) params.set("serviceType", query.serviceType);
   if (query.cursor) params.set("cursor", query.cursor);
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));
 
   const path = `/listings?${params.toString()}`;

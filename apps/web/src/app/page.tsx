@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { HomeCategoryFilter } from "@bhavano/types";
 import { auth } from "@/auth";
@@ -5,6 +6,7 @@ import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
 import { Header } from "@/components/home/Header";
 import { AreaFilter } from "@/components/home/AreaFilter";
 import { ListingGrid } from "@/components/home/ListingGrid";
+import { Pagination } from "@/components/home/Pagination";
 import { Footer } from "@/components/home/Footer";
 import { HOME_TABS } from "@/lib/homeCategories";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
@@ -13,14 +15,14 @@ import {
   CONDITION_VALUES,
   FURNISHING_VALUES,
   parseEnum,
+  parsePage,
   parsePositiveInt,
   PROPERTY_TYPE_VALUES,
   SERVICE_TYPE_VALUES,
   SHARING_TYPE_VALUES,
 } from "@/lib/seoRoute";
 
-const DEFAULT_LIMIT = 12;
-const LOAD_MORE_STEP = 12;
+const PAGE_SIZE = 12;
 
 function parseCategory(value: string | string[] | undefined): HomeCategoryFilter {
   const v = Array.isArray(value) ? value[0] : value;
@@ -42,8 +44,7 @@ export default async function HomePage({
   const propertyType = parseEnum(sp.propertyType, PROPERTY_TYPE_VALUES);
   const q = typeof sp.q === "string" ? sp.q : "";
   const cityIdParam = typeof sp.city === "string" ? sp.city : undefined;
-  const parsedLimit = typeof sp.limit === "string" ? Number(sp.limit) : NaN;
-  const limit = parsedLimit > 0 ? parsedLimit : DEFAULT_LIMIT;
+  const page = parsePage(sp.page);
 
   const bedrooms = parsePositiveInt(sp.bedrooms);
   const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);
@@ -70,6 +71,7 @@ export default async function HomePage({
     popularCities.find((c) => c.name === "Bengaluru") ??
     popularCities[0];
 
+  const offset = (page - 1) * PAGE_SIZE;
   const listingsPage = await fetchListings(
     {
       homeCategory: category,
@@ -84,14 +86,19 @@ export default async function HomePage({
       sharingType,
       condition,
       serviceType,
-      limit,
+      offset,
+      limit: PAGE_SIZE,
     },
     session?.accessToken,
   );
 
+  // Page 1 with zero results is a normal "nothing here yet" state — only pages *past* the last
+  // real page are a crawl-trap/dead-end worth 404ing (see docs/plans/seo-distinct-window-pagination.md).
+  const totalPages = Math.ceil(listingsPage.total / PAGE_SIZE);
+  if (page > 1 && page > totalPages) notFound();
+
   const activeTab = HOME_TABS.find((t) => t.value === category) ?? HOME_TABS[0];
   const cityName = resolvedCity?.name ?? "your city";
-  const hasMore = listingsPage.items.length < listingsPage.total;
   // Full area list for both the search bar's placeholder hint and the AreaFilter multi-select.
   const cityAreas = resolvedCity ? await fetchAreas(resolvedCity.id, undefined, true) : [];
 
@@ -107,21 +114,24 @@ export default async function HomePage({
     serviceType,
   });
 
-  const loadMoreParams = new URLSearchParams();
-  loadMoreParams.set("category", category);
-  if (propertyType) loadMoreParams.set("propertyType", propertyType);
-  if (q) loadMoreParams.set("q", q);
-  if (cityIdParam) loadMoreParams.set("city", cityIdParam);
-  if (bedrooms !== undefined) loadMoreParams.set("bedrooms", String(bedrooms));
-  if (furnished) loadMoreParams.set("furnished", furnished);
-  if (sharingType) loadMoreParams.set("sharingType", sharingType);
-  if (condition) loadMoreParams.set("condition", condition);
-  if (serviceType) loadMoreParams.set("serviceType", serviceType);
-  if (listingCategory) loadMoreParams.set("listingCategory", listingCategory);
-  if (transactionType) loadMoreParams.set("transactionType", transactionType);
-  if (areaIds && areaIds.length > 0) loadMoreParams.set("areas", areaIds.join(","));
-  loadMoreParams.set("limit", String(limit + LOAD_MORE_STEP));
-  const loadMoreHref = hasMore ? `/?${loadMoreParams.toString()}` : null;
+  function buildPageHref(nextPage: number): string {
+    const params = new URLSearchParams();
+    params.set("category", category);
+    if (propertyType) params.set("propertyType", propertyType);
+    if (q) params.set("q", q);
+    if (cityIdParam) params.set("city", cityIdParam);
+    if (bedrooms !== undefined) params.set("bedrooms", String(bedrooms));
+    if (furnished) params.set("furnished", furnished);
+    if (sharingType) params.set("sharingType", sharingType);
+    if (condition) params.set("condition", condition);
+    if (serviceType) params.set("serviceType", serviceType);
+    if (listingCategory) params.set("listingCategory", listingCategory);
+    if (transactionType) params.set("transactionType", transactionType);
+    if (areaIds && areaIds.length > 0) params.set("areas", areaIds.join(","));
+    if (nextPage > 1) params.set("page", String(nextPage));
+    const qs = params.toString();
+    return qs ? `/?${qs}` : "/";
+  }
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -143,7 +153,8 @@ export default async function HomePage({
             <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
           </div>
         )}
-        <ListingGrid items={listingsPage.items} cityName={cityName} loadMoreHref={loadMoreHref} />
+        <ListingGrid items={listingsPage.items} cityName={cityName} />
+        <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
       </main>
       <Footer />
     </div>

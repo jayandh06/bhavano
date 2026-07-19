@@ -13,6 +13,7 @@ import {
   extractListingId,
   FURNISHING_VALUES,
   parseEnum,
+  parsePage,
   parsePositiveInt,
   parseSegments,
   transactionGroupFor,
@@ -132,7 +133,13 @@ function listingJsonLd(listing: ListingDetailDto) {
   };
 }
 
-export async function generateMetadata({ params }: { params: Promise<RouteParams> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<RouteParams>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
   const { city, rest = [] } = await params;
   if (isTransactionType(city)) return {};
   const cityRow = await resolveCity(city);
@@ -159,12 +166,23 @@ export async function generateMetadata({ params }: { params: Promise<RouteParams
 
   const heading = headingFor(parsed, cityRow.name, areaRow?.name);
   const description = `Browse ${heading.toLowerCase()} on Bhavano.`;
+
+  // Distinct-window pagination (docs/plans/seo-distinct-window-pagination.md): page 1 is the
+  // clean canonical as before, but page N>1 is genuinely different content — self-canonical with
+  // `?page=N` (not collapsed into page 1) so each page can be indexed independently. Filter query
+  // strings (?minPrice=, ?furnished=, …) still collapse to the clean base path, unaffected.
+  const sp = await searchParams;
+  const page = parsePage(sp.page);
+  const canonicalBase = resolvedCanonicalPath(cityRow.name, parsed, areaRow?.name);
+  const canonicalPath = page > 1 ? `${canonicalBase}?page=${page}` : canonicalBase;
+  const title = page > 1 ? `${heading} — Page ${page}` : heading;
+
   return {
-    title: heading,
+    title,
     description,
-    alternates: { canonical: resolvedCanonicalPath(cityRow.name, parsed, areaRow?.name) },
-    openGraph: { title: heading, description },
-    twitter: { title: heading, description },
+    alternates: { canonical: canonicalPath },
+    openGraph: { title, description },
+    twitter: { title, description },
   };
 }
 
@@ -224,8 +242,7 @@ export default async function CityBrowsePage({
   if (requestedPath !== canonicalPath) permanentRedirect(canonicalPath);
 
   const sp = await searchParams;
-  const pageRaw = Number(Array.isArray(sp.page) ? sp.page[0] : sp.page);
-  const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  const page = parsePage(sp.page);
   const minPrice = parsePositiveInt(sp.minPrice);
   const maxPrice = parsePositiveInt(sp.maxPrice);
   const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);

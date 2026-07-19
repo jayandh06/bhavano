@@ -101,6 +101,16 @@ export class ListListingsDto {
   @IsString()
   cursor?: string;
 
+  /** Offset-based page window — used by the SEO browse pages and homepage for stable,
+   * crawlable `?page=N` URLs (see docs/plans/seo-distinct-window-pagination.md). Mutually
+   * exclusive with `cursor` in practice: `cursor` is for append-style infinite scroll (mobile),
+   * `offset` is for numbered pagination where an arbitrary page must be directly addressable. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

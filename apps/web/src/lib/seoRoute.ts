@@ -82,6 +82,15 @@ export function parsePositiveInt(value: string | string[] | undefined): number |
   return v !== undefined && Number.isInteger(n) && n >= 0 ? n : undefined;
 }
 
+/** Shared by the homepage and the `[city]/[[...rest]]` route's `generateMetadata`/page body, so
+ * all three can never disagree on which page a request is for (see
+ * docs/plans/seo-distinct-window-pagination.md). Always ≥ 1 — invalid/missing input is page 1. */
+export function parsePage(value: string | string[] | undefined): number {
+  const v = Array.isArray(value) ? value[0] : value;
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
 export function parseEnum<T extends string>(value: string | string[] | undefined, allowed: readonly T[]): T | undefined {
   const v = Array.isArray(value) ? value[0] : value;
   return allowed.includes(v as T) ? (v as T) : undefined;

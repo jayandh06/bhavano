@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import type { Area, City, ListingCategory } from "@bhavano/types";
 import { auth } from "@/auth";
 import { fetchListings, type ListingsQuery } from "@/lib/bff";
@@ -6,9 +7,23 @@ import { Header } from "./Header";
 import { ListingGrid } from "./ListingGrid";
 import { AreaFilter } from "./AreaFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
+import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
 
 const PAGE_SIZE = 12;
+
+/** Distinct-window `?page=N` href for this browse page — page 1 always omits `page` entirely so
+ * it matches the canonical (no-query) path exactly (see docs/plans/seo-distinct-window-pagination.md). */
+function buildPageHref(basePath: string, query: Omit<ListingsQuery, "limit" | "cursor" | "offset">, page: number): string {
+  const params = new URLSearchParams();
+  if (query.minPrice !== undefined) params.set("minPrice", String(query.minPrice));
+  if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
+  if (query.furnished) params.set("furnished", query.furnished);
+  if (query.areaIds && query.areaIds.length > 0) params.set("areas", query.areaIds.join(","));
+  if (page > 1) params.set("page", String(page));
+  const qs = params.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
+}
 
 /** Shared body for the SEO browse-landing pages — a filtered grid driven by an already-resolved
  * query (see apps/web/src/lib/seoRoute.ts for how a URL's segments become this), distinct from
@@ -27,7 +42,7 @@ export async function BrowseListingsView({
   areaName,
   cityAreas,
 }: {
-  query: Omit<ListingsQuery, "limit" | "cursor">;
+  query: Omit<ListingsQuery, "limit" | "cursor" | "offset">;
   cityName: string;
   heading: string;
   page: number;
@@ -45,17 +60,13 @@ export async function BrowseListingsView({
   cityAreas: Area[];
 }) {
   const session = await auth();
-  const limit = page * PAGE_SIZE;
-  const listingsPage = await fetchListings({ ...query, limit }, session?.accessToken);
-  const hasMore = listingsPage.items.length < listingsPage.total;
+  const offset = (page - 1) * PAGE_SIZE;
+  const listingsPage = await fetchListings({ ...query, offset, limit: PAGE_SIZE }, session?.accessToken);
 
-  const loadMoreParams = new URLSearchParams();
-  if (query.minPrice !== undefined) loadMoreParams.set("minPrice", String(query.minPrice));
-  if (query.maxPrice !== undefined) loadMoreParams.set("maxPrice", String(query.maxPrice));
-  if (query.furnished) loadMoreParams.set("furnished", query.furnished);
-  if (query.areaIds && query.areaIds.length > 0) loadMoreParams.set("areas", query.areaIds.join(","));
-  loadMoreParams.set("page", String(page + 1));
-  const loadMoreHref = hasMore ? `${basePath}?${loadMoreParams.toString()}` : null;
+  // Page 1 with zero results is a normal "nothing here yet" state — only pages *past* the last
+  // real page are a crawl-trap/dead-end worth 404ing (see docs/plans/seo-distinct-window-pagination.md).
+  const totalPages = Math.ceil(listingsPage.total / PAGE_SIZE);
+  if (page > 1 && page > totalPages) notFound();
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -83,7 +94,8 @@ export async function BrowseListingsView({
             activeFurnished={query.furnished}
           />
         </div>
-        <ListingGrid items={listingsPage.items} cityName={cityName} loadMoreHref={loadMoreHref} />
+        <ListingGrid items={listingsPage.items} cityName={cityName} />
+        <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
       </main>
       <Footer />
     </div>

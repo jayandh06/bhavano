@@ -86,6 +86,7 @@ export class ListingsService {
       condition,
       serviceType,
       cursor,
+      offset,
       limit,
     } = query;
 
@@ -123,16 +124,44 @@ export class ListingsService {
       ...(attributeFilters.length > 0 ? { AND: attributeFilters } : {}),
     };
 
+    // `id` as a secondary sort key breaks ties between rows sharing an identical `createdAt`
+    // (common with bulk-seeded/bulk-imported data) — without it, Postgres can return tied rows in
+    // a different relative order on each query, which silently shifts offset-window boundaries
+    // between requests (verified: caused real overlap between ?page=1 and ?page=2 before this fix).
+    const orderBy = [{ createdAt: 'desc' as const }, { id: 'asc' as const }];
+
+    // Offset mode (numbered `?page=N` pagination — see ListListingsDto.offset) fetches the exact
+    // window directly, since the caller already knows the total and doesn't need a `hasMore`
+    // look-ahead row the way cursor-based append does. Two explicit branches (rather than
+    // spreading a ternary into one `findMany` call) because Prisma's generated overloads can't
+    // resolve a call built from a union of arg shapes.
     const [rows, total] = await Promise.all([
-      this.prisma.listing.findMany({
-        where,
-        include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
-        orderBy: { createdAt: 'desc' },
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      }),
+      offset !== undefined
+        ? this.prisma.listing.findMany({
+            where,
+            include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+            orderBy,
+            skip: offset,
+            take: limit,
+          })
+        : this.prisma.listing.findMany({
+            where,
+            include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+            orderBy,
+            take: limit + 1,
+            ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+          }),
       this.prisma.listing.count({ where }),
     ]);
+
+    if (offset !== undefined) {
+      const favouritedIds = await this.getFavouritedIds(currentUserId, rows.map((r) => r.id));
+      return {
+        items: rows.map((row) => this.toCardDto(row, favouritedIds)),
+        nextCursor: null,
+        total,
+      };
+    }
 
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
