@@ -3,16 +3,14 @@ import type { ReactNode } from "react";
 
 export function StaticPageLayout({ title, updated, children }: { title: string; updated?: string; children: ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px" }}>
-        <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+    <div className="min-h-screen bg-bg text-text">
+      <div className="max-w-[720px] mx-auto p-8">
+        <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
-        <h1 style={{ fontFamily: "var(--font-lora)", fontSize: 26, fontWeight: 600, margin: "0 0 4px" }}>{title}</h1>
-        {updated && <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 28px" }}>Last updated: {updated}</p>}
-        <div style={{ display: "flex", flexDirection: "column", gap: 22, fontSize: 14, lineHeight: 1.7, color: "var(--text-soft)" }}>
-          {children}
-        </div>
+        <h1 className="font-lora text-[26px] font-semibold m-0 mb-1">{title}</h1>
+        {updated && <p className="text-[12.5px] text-muted m-0 mb-7">Last updated: {updated}</p>}
+        <div className="flex flex-col gap-[22px] text-sm leading-[1.7] text-text-soft">{children}</div>
       </div>
     </div>
   );
@@ -21,7 +19,7 @@ export function StaticPageLayout({ title, updated, children }: { title: string; 
 export function PageSection({ heading, children }: { heading: string; children: ReactNode }) {
   return (
     <section>
-      <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: "0 0 8px" }}>{heading}</h2>
+      <h2 className="text-[15px] font-bold text-text m-0 mb-2">{heading}</h2>
       {children}
     </section>
   );

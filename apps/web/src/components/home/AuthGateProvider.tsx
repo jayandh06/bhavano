@@ -86,67 +86,38 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
       {showLoginModal && (
         <div
           onClick={closeModal}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "var(--modal-scrim)",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
+          className="fixed inset-0 bg-[var(--modal-scrim)] z-[100] flex items-center justify-center p-5"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--surface)",
-              borderRadius: 16,
-              width: 400,
-              maxWidth: "100%",
-              padding: 24,
-              animation: "modalIn 0.2s ease both",
-            }}
+            className="bg-surface rounded-2xl w-[400px] max-w-full p-6 animate-[modalIn_0.2s_ease_both]"
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <div style={{ fontFamily: "var(--font-lora)", fontWeight: 700, fontSize: 19, color: "var(--text)" }}>
+            <div className="flex justify-between items-center mb-4">
+              <div className="font-lora font-bold text-[19px] text-text">
                 {loginStep === "choose" && "Log in to continue"}
                 {loginStep === "phone" && "Enter your phone number"}
                 {loginStep === "otp" && "Enter the OTP"}
               </div>
-              <button
-                onClick={closeModal}
-                style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted)" }}
-              >
+              <button onClick={closeModal} className="bg-transparent border-0 text-xl cursor-pointer text-muted">
                 ✕
               </button>
             </div>
 
             {loginStep === "choose" && (
               <>
-                <button
-                  onClick={() => setLoginStep("phone")}
-                  style={primaryButtonStyle}
-                >
+                <button onClick={() => setLoginStep("phone")} className={primaryButtonClass}>
                   Continue with Phone OTP
                 </button>
-                <button onClick={handleGoogle} disabled={pending} style={outlineButtonStyle}>
+                <button onClick={handleGoogle} disabled={pending} className={outlineButtonClass}>
                   G Continue with Google
                 </button>
-                <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 14, lineHeight: 1.5 }}>
+                <p className="text-xs text-muted mt-3.5 leading-[1.5]">
                   By continuing you agree to Bhavano&apos;s{" "}
-                  <Link href="/terms" style={{ color: "var(--text-soft)", fontWeight: 700 }}>
+                  <Link href="/terms" className="text-text-soft font-bold">
                     Terms of Service
                   </Link>{" "}
                   and{" "}
-                  <Link href="/privacy" style={{ color: "var(--text-soft)", fontWeight: 700 }}>
+                  <Link href="/privacy" className="text-text-soft font-bold">
                     Privacy Policy
                   </Link>
                   .
@@ -156,35 +127,24 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
 
             {loginStep === "phone" && (
               <>
-                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                  <div
-                    style={{
-                      background: "var(--surface-alt)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 9,
-                      padding: "12px 14px",
-                      fontWeight: 700,
-                      fontSize: 14,
-                    }}
-                  >
-                    +91
-                  </div>
+                <div className="flex gap-2 mb-3.5">
+                  <div className="bg-surface-alt border border-border rounded-[9px] px-3.5 py-3 font-bold text-sm">+91</div>
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     placeholder="10-digit mobile number"
-                    style={inputStyle}
+                    className={inputClass}
                   />
                 </div>
-                {error && <p style={errorStyle}>{error}</p>}
+                {error && <p className={errorClass}>{error}</p>}
                 <button
                   onClick={handleSendOtp}
                   disabled={phone.length !== 10 || pending}
-                  style={{ ...primaryButtonStyle, opacity: phone.length === 10 ? 1 : 0.5 }}
+                  className={`${primaryButtonClass} ${phone.length === 10 ? "opacity-100" : "opacity-50"}`}
                 >
                   Send OTP
                 </button>
-                <button onClick={() => setLoginStep("choose")} style={backButtonStyle}>
+                <button onClick={() => setLoginStep("choose")} className={backButtonClass}>
                   ← Back
                 </button>
               </>
@@ -196,17 +156,17 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="······"
-                  style={{ ...inputStyle, textAlign: "center", letterSpacing: "0.4em", marginBottom: 14 }}
+                  className={`${inputClass} text-center tracking-[0.4em] mb-3.5`}
                 />
-                {error && <p style={errorStyle}>{error}</p>}
+                {error && <p className={errorClass}>{error}</p>}
                 <button
                   onClick={handleVerifyOtp}
                   disabled={otp.length !== 6 || pending}
-                  style={{ ...primaryButtonStyle, opacity: otp.length === 6 ? 1 : 0.5 }}
+                  className={`${primaryButtonClass} ${otp.length === 6 ? "opacity-100" : "opacity-50"}`}
                 >
                   Verify &amp; continue
                 </button>
-                <button onClick={() => setLoginStep("phone")} style={backButtonStyle}>
+                <button onClick={() => setLoginStep("phone")} className={backButtonClass}>
                   ← Back
                 </button>
               </>
@@ -216,22 +176,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
       )}
 
       {showToast && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 24,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "var(--toast-bg)",
-            color: "var(--toast-text)",
-            padding: "12px 22px",
-            borderRadius: 9999,
-            fontSize: 14,
-            fontWeight: 600,
-            zIndex: 200,
-            animation: "fadein 0.2s ease both",
-          }}
-        >
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[var(--toast-bg)] text-[var(--toast-text)] px-[22px] py-3 rounded-full text-sm font-semibold z-[200] animate-[fadein_0.2s_ease_both]">
           ✓ Logged in successfully
         </div>
       )}
@@ -239,55 +184,14 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   );
 }
 
-const primaryButtonStyle: React.CSSProperties = {
-  width: "100%",
-  background: "var(--green)",
-  color: "var(--on-green)",
-  border: "none",
-  borderRadius: 8,
-  padding: 13,
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
-  marginBottom: 10,
-};
+const primaryButtonClass =
+  "w-full bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer mb-2.5";
 
-const outlineButtonStyle: React.CSSProperties = {
-  width: "100%",
-  background: "var(--surface)",
-  color: "var(--text)",
-  border: "1.5px solid var(--border)",
-  borderRadius: 8,
-  padding: 13,
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
-};
+const outlineButtonClass =
+  "w-full bg-surface text-text border-[1.5px] border-border rounded-lg p-[13px] text-sm font-bold cursor-pointer";
 
-const inputStyle: React.CSSProperties = {
-  flex: 1,
-  width: "100%",
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "12px 14px",
-  fontSize: 14,
-  outline: "none",
-  background: "var(--surface)",
-  color: "var(--text)",
-};
+const inputClass = "flex-1 w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
 
-const backButtonStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "var(--muted)",
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
-  marginTop: 4,
-};
+const backButtonClass = "bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer mt-1";
 
-const errorStyle: React.CSSProperties = {
-  color: "#b3413a",
-  fontSize: 13,
-  marginBottom: 10,
-};
+const errorClass = "text-[#b3413a] text-[13px] mb-2.5";

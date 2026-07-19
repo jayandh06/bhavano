@@ -6,20 +6,11 @@ export function RequireLoginPrompt({ message }: { message: string }) {
   const { requireLogin } = useAuthGate();
 
   return (
-    <div style={{ textAlign: "center", padding: "60px 20px" }}>
-      <p style={{ fontSize: 14, color: "var(--text-soft)", marginBottom: 16 }}>{message}</p>
+    <div className="text-center px-5 py-[60px]">
+      <p className="text-sm text-text-soft mb-4">{message}</p>
       <button
         onClick={requireLogin}
-        style={{
-          background: "var(--green)",
-          color: "var(--on-green)",
-          border: "none",
-          borderRadius: 8,
-          padding: "12px 28px",
-          fontSize: 14,
-          fontWeight: 700,
-          cursor: "pointer",
-        }}
+        className="bg-green text-on-green border-0 rounded-lg px-7 py-3 text-sm font-bold cursor-pointer"
       >
         Log in
       </button>

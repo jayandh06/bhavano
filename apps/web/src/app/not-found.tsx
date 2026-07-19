@@ -15,7 +15,7 @@ export default function NotFound() {
         The page you&apos;re looking for doesn&apos;t exist, or may have moved. Try one of these
         instead:
       </p>
-      <ul style={{ display: "flex", flexDirection: "column", gap: 10, paddingLeft: 20 }}>
+      <ul className="flex flex-col gap-2.5 pl-5">
         <li>
           <Link href="/">Browse homes, rentals, PG, coworking, furniture &amp; interiors</Link>
         </li>
