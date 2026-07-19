@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { fetchProfile } from "@/lib/bff";
+import { Footer } from "@/components/home/Footer";
+import { PageHeader } from "@/components/home/PageHeader";
 import { ProfileForm } from "@/components/home/ProfileForm";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 
@@ -9,6 +11,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-bg text-text">
+      <PageHeader />
       <div className="max-w-[1280px] mx-auto p-8">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
@@ -27,6 +30,7 @@ export default async function ProfilePage() {
           <ProfileFields accessToken={session.accessToken} />
         )}
       </div>
+      <Footer />
     </div>
   );
 }

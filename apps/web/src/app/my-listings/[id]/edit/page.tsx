@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { fetchMyListing } from "@/lib/bff";
 import { EditListingForm } from "@/components/home/EditListingForm";
+import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 
 export default async function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,6 +12,7 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
 
   return (
     <div className="min-h-screen bg-bg text-text">
+      <PageHeader />
       <div className="max-w-[640px] mx-auto p-8">
         <Link href="/my-listings" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to your listings

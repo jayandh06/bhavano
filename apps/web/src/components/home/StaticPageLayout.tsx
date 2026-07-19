@@ -1,9 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Footer } from "./Footer";
+import { PageHeader } from "./PageHeader";
 
-export function StaticPageLayout({ title, updated, children }: { title: string; updated?: string; children: ReactNode }) {
+export async function StaticPageLayout({ title, updated, children }: { title: string; updated?: string; children: ReactNode }) {
   return (
     <div className="min-h-screen bg-bg text-text">
+      <PageHeader />
       <div className="max-w-[720px] mx-auto p-8">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
@@ -12,6 +15,7 @@ export function StaticPageLayout({ title, updated, children }: { title: string; 
         {updated && <p className="text-[12.5px] text-muted m-0 mb-7">Last updated: {updated}</p>}
         <div className="flex flex-col gap-[22px] text-sm leading-[1.7] text-text-soft">{children}</div>
       </div>
+      <Footer />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { fetchFavourites } from "@/lib/bff";
+import { Footer } from "@/components/home/Footer";
 import { ListingCard } from "@/components/home/ListingCard";
+import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 
 export default async function FavouritesPage() {
@@ -9,6 +11,7 @@ export default async function FavouritesPage() {
 
   return (
     <div className="min-h-screen bg-bg text-text">
+      <PageHeader />
       <div className="max-w-[1280px] mx-auto p-8">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
@@ -21,6 +24,7 @@ export default async function FavouritesPage() {
           <FavouritesGrid accessToken={session.accessToken} />
         )}
       </div>
+      <Footer />
     </div>
   );
 }

@@ -3,6 +3,8 @@ import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { auth } from "@/auth";
 import { fetchMyListings } from "@/lib/bff";
 import { buildListingPath } from "@/lib/listingPath";
+import { Footer } from "@/components/home/Footer";
+import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
@@ -24,6 +26,7 @@ export default async function MyListingsPage() {
 
   return (
     <div className="min-h-screen bg-bg text-text">
+      <PageHeader />
       <div className="max-w-[960px] mx-auto p-8">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
@@ -36,6 +39,7 @@ export default async function MyListingsPage() {
           <MyListingsGrid accessToken={session.accessToken} />
         )}
       </div>
+      <Footer />
     </div>
   );
 }

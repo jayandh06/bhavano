@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { fetchConversations } from "@/lib/bff";
+import { Footer } from "@/components/home/Footer";
+import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 
 export default async function MessagesPage() {
@@ -8,6 +10,7 @@ export default async function MessagesPage() {
 
   return (
     <div className="min-h-screen bg-bg text-text">
+      <PageHeader />
       <div className="max-w-[720px] mx-auto p-8">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
@@ -20,6 +23,7 @@ export default async function MessagesPage() {
           <ConversationList accessToken={session.accessToken} />
         )}
       </div>
+      <Footer />
     </div>
   );
 }
