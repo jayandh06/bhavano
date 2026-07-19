@@ -234,7 +234,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
       </div>
 
       {step === "category" && (
-        <div className="flex flex-col gap-2.5">
+        <div className="grid grid-cols-3 gap-2.5">
           {CATEGORIES.map((c) => (
             <button key={c.value} onClick={() => selectCategory(c.value)} className={optionButtonClass(category === c.value)}>
               <span className="text-lg">{c.icon}</span>
@@ -246,11 +246,13 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
 
       {step === "transactionType" && category && (
         <div className="flex flex-col gap-2.5">
-          {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
-            <button key={t} onClick={() => selectTransactionType(t)} className={optionButtonClass(transactionType === t)}>
-              {TRANSACTION_TYPE_LABELS[t]}
-            </button>
-          ))}
+          <div className="grid grid-cols-3 gap-2.5">
+            {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
+              <button key={t} onClick={() => selectTransactionType(t)} className={optionButtonClass(transactionType === t)}>
+                {TRANSACTION_TYPE_LABELS[t]}
+              </button>
+            ))}
+          </div>
           <button onClick={() => setStep("category")} className={`${backButtonClass} mt-1`}>
             ← Back
           </button>

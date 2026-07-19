@@ -9,9 +9,9 @@ export default async function PostAdPage() {
   const cities = await fetchCities();
 
   return (
-    <div className="min-h-screen bg-bg text-text">
+    <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader />
-      <div className="max-w-[560px] mx-auto px-8 pt-6 pb-20">
+      <div className="flex-1 w-full max-w-[780px] mx-auto px-8 pt-6 pb-20">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>

@@ -76,7 +76,7 @@ export async function BrowseListingsView({
   if (page > 1 && page > totalPages) notFound();
 
   return (
-    <div className="min-h-screen bg-bg text-text">
+    <div className="min-h-screen flex flex-col bg-bg text-text">
       <Header
         cityName={cityName}
         popularCities={popularCities}
@@ -87,7 +87,7 @@ export async function BrowseListingsView({
         areaName={areaName}
         popularSearches={popularSearches}
       />
-      <main className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
+      <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
         <div className="flex items-baseline justify-between mb-5">
           <h1 className="font-lora text-[26px] font-semibold m-0 text-text">{heading}</h1>
           <span className="text-[13px] text-muted">{listingsPage.total} listings</span>

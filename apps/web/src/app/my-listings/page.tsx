@@ -25,9 +25,9 @@ export default async function MyListingsPage() {
   const session = await auth();
 
   return (
-    <div className="min-h-screen bg-bg text-text">
+    <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader />
-      <div className="max-w-[960px] mx-auto p-8">
+      <div className="flex-1 w-full max-w-[960px] mx-auto p-8">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
