@@ -1,3 +1,31 @@
+/* Tailwind v4 — theme + utilities layers only. Preflight (Tailwind's global reset) is
+ * intentionally NOT imported yet: this app has its own resets below and relies on some browser
+ * defaults, so enabling Preflight now would change rendering. It gets turned on during the
+ * component migration (docs/plans/css-performance-strategy.md, step 2), fixing any reset
+ * regressions per-component. Until then, installing Tailwind is a visual no-op — only classes
+ * actually used in components emit any CSS. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Map the existing design tokens into Tailwind's color space with `@theme inline`, so utilities
+ * (bg-bg, text-green, border-border, …) compile to `var(--token)` references — which means the
+ * runtime data-theme dark-mode swap below keeps working with no per-utility dark variants. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-soft: var(--text-soft);
+  --color-muted: var(--muted);
+  --color-green: var(--green);
+  --color-on-green: var(--on-green);
+  --color-gold: var(--gold);
+  --font-lora: var(--font-lora);
+  --font-manrope: var(--font-manrope);
+}
+
 :root {
   --bg: #fbf7f0;
   --surface: #ffffff;

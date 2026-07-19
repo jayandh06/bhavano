@@ -32,36 +32,26 @@ export function Header({
 }) {
   return (
     <>
-      <div style={{ background: "var(--green)", color: "var(--on-green)", fontSize: 13, padding: "6px 0" }}>
-        <div
-          style={{
-            maxWidth: 1280,
-            margin: "0 auto",
-            padding: "0 32px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span style={{ opacity: 0.85 }}>India&apos;s home for Buy · Rent · Coworking · PG · Furniture</span>
-          <div style={{ display: "flex", gap: 20, opacity: 0.85 }}>
-            <Link href="/post" style={{ color: "inherit" }}>
+      <div className="bg-green text-on-green text-[13px] py-1.5">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex justify-between items-center">
+          {/* Long tagline is decorative — hidden on phones so the utility links keep their room. */}
+          <span className="hidden sm:inline opacity-[0.85]">India&apos;s home for Buy · Rent · Coworking · PG · Furniture</span>
+          <div className="flex gap-5 opacity-[0.85]">
+            <Link href="/post" className="text-inherit">
               For Owners
             </Link>
-            <Link href="/help" style={{ color: "inherit" }}>
+            <Link href="/help" className="text-inherit">
               Help
             </Link>
           </div>
         </div>
       </div>
 
-      <header style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 40 }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "18px 32px", display: "flex", alignItems: "center", gap: 28 }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <Image src="/logo.png" alt="" width={38} height={38} style={{ borderRadius: 10 }} priority />
-            <span style={{ fontFamily: "var(--font-lora)", fontWeight: 700, fontSize: 24, letterSpacing: "-0.01em", color: "var(--green)" }}>
-              Bhavano
-            </span>
+      <header className="bg-bg border-b border-border sticky top-0 z-40">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8 py-[18px] flex items-center gap-3 sm:gap-7">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+            <Image src="/logo.png" alt="" width={38} height={38} className="rounded-[10px]" priority />
+            <span className="font-lora font-bold text-2xl tracking-[-0.01em] text-green">Bhavano</span>
           </Link>
 
           <Suspense>
@@ -71,13 +61,13 @@ export function Header({
             <SearchBar initialQuery={searchQuery} cityName={cityName} areaName={areaName} popularCities={popularCities} />
           </Suspense>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div className="flex items-center gap-3 shrink-0">
             <ThemeToggle />
           </div>
           <HeaderAuthButtons userName={userName} />
         </div>
 
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 32px" }}>
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
           <Suspense>
             <CategoryTabs active={activeCategory} cityName={cityName} />
           </Suspense>

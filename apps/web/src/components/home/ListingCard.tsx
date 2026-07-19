@@ -26,166 +26,77 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
   }
 
   return (
-    <div
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: 16,
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        animation: "fadein 0.4s ease both",
-      }}
-    >
+    <div className="bg-surface border border-border rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both]">
       <div
-        style={{
-          position: "relative",
-          height: 200,
-          background: item.photos[0]
+        className="relative h-[200px]"
+        // Dynamic per-listing placeholder gradient stays inline — it's data, not a static style.
+        style={
+          item.photos[0]
             ? undefined
-            : `repeating-linear-gradient(135deg, ${item.imgColors[0]}, ${item.imgColors[0]} 14px, ${item.imgColors[1]} 14px, ${item.imgColors[1]} 28px)`,
-        }}
+            : {
+                background: `repeating-linear-gradient(135deg, ${item.imgColors[0]}, ${item.imgColors[0]} 14px, ${item.imgColors[1]} 14px, ${item.imgColors[1]} 28px)`,
+              }
+        }
       >
         {item.photos[0] && (
-          <Image src={item.photos[0]} alt={item.title} fill sizes="(max-width: 768px) 100vw, 400px" style={{ objectFit: "cover" }} />
+          <Image src={item.photos[0]} alt={item.title} fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
         )}
         {/* TEMP(auth-gate): viewing listing details is open without login for now. */}
-        <Link
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <Link href={href} target="_blank" rel="noopener noreferrer" className="absolute inset-0 flex items-center justify-center">
           {!item.photos[0] && (
-            <span
-              style={{
-                fontFamily: "monospace",
-                fontSize: 11,
-                letterSpacing: "0.04em",
-                color: "#ffffffcc",
-                background: "#00000030",
-                padding: "5px 10px",
-                borderRadius: 6,
-              }}
-            >
+            <span className="font-mono text-[11px] tracking-[0.04em] text-[#ffffffcc] bg-[#00000030] px-2.5 py-[5px] rounded-md">
               {item.imgLabel}
             </span>
           )}
         </Link>
-        <span
-          style={{
-            position: "absolute",
-            top: 12,
-            left: 12,
-            background: "var(--green)",
-            color: "var(--on-green)",
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "4px 10px",
-            borderRadius: 6,
-            pointerEvents: "none",
-          }}
-        >
+        <span className="absolute top-3 left-3 bg-green text-on-green text-[11px] font-bold px-2.5 py-1 rounded-md pointer-events-none">
           {item.tag}
         </span>
         <button
           onClick={onToggleFavourite}
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            background: "#ffffffee",
-            border: "none",
-            cursor: "pointer",
-            fontSize: 15,
-            zIndex: 1,
-            color: isFavourited ? "#c0554b" : "inherit",
-          }}
+          className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-[#ffffffee] border-none cursor-pointer text-[15px] z-[1] ${
+            isFavourited ? "text-[#c0554b]" : ""
+          }`}
         >
           {isFavourited ? "♥" : "♡"}
         </button>
       </div>
 
-      <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+      <div className="p-[18px] flex flex-col gap-2.5 flex-1">
         {/* TEMP(auth-gate): viewing listing details is open without login for now. */}
-        <Link
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ display: "flex", flexDirection: "column", gap: 10, color: "inherit" }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-            <div style={{ fontFamily: "var(--font-lora)", fontSize: 20, fontWeight: 700, color: "var(--green)" }}>
-              {item.price}
-            </div>
+        <Link href={href} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-2.5 text-inherit">
+          <div className="flex justify-between items-start gap-2.5">
+            <div className="font-lora text-xl font-bold text-green">{item.price}</div>
             {item.priceQualifier && (
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "var(--muted)",
-                  background: "var(--surface-alt)",
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <div className="text-xs font-bold text-muted bg-surface-alt px-2.5 py-1 rounded-md whitespace-nowrap">
                 {item.priceQualifier}
               </div>
             )}
           </div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", lineHeight: 1.35 }}>{item.title}</div>
-          <div style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 5 }}>
+          <div className="text-[15px] font-bold text-text leading-[1.35]">{item.title}</div>
+          <div className="text-[13px] text-muted flex items-center gap-[5px]">
             📍 {item.area}, {cityName}
           </div>
-          <div style={{ display: "flex", gap: 14, fontSize: 13, color: "var(--text-soft)", fontWeight: 600, paddingTop: 2 }}>
+          <div className="flex gap-3.5 text-[13px] text-text-soft font-semibold pt-0.5">
             {item.specs.map((spec) => (
               <span key={spec}>{spec}</span>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 12, fontSize: 11.5, color: "var(--muted)" }}>
+          <div className="flex gap-3 text-[11.5px] text-muted">
             <span>👁 {item.viewCount}</span>
             <span>♥ {likeCount}</span>
           </div>
         </Link>
-        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+        <div className="flex gap-2.5 mt-2">
           <button
             onClick={requireLogin}
-            style={{
-              flex: 1,
-              background: "var(--green)",
-              color: "var(--on-green)",
-              border: "none",
-              borderRadius: 8,
-              padding: 11,
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
+            className="flex-1 bg-green text-on-green border-none rounded-lg p-[11px] text-sm font-bold cursor-pointer"
           >
             Contact owner
           </button>
           <button
             onClick={requireLogin}
-            style={{
-              background: "var(--surface)",
-              color: "var(--green)",
-              border: "1.5px solid var(--green)",
-              borderRadius: 8,
-              padding: "11px 16px",
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
+            className="bg-surface text-green border-[1.5px] border-green rounded-lg px-4 py-[11px] text-sm font-bold cursor-pointer"
           >
             Call
           </button>
