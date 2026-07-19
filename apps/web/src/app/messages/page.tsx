@@ -7,14 +7,12 @@ export default async function MessagesPage() {
   const session = await auth();
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px" }}>
-        <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+    <div className="min-h-screen bg-bg text-text">
+      <div className="max-w-[720px] mx-auto p-8">
+        <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
-        <h1 style={{ fontFamily: "var(--font-lora)", fontSize: 26, fontWeight: 600, margin: "0 0 20px" }}>
-          Messages
-        </h1>
+        <h1 className="font-lora text-[26px] font-semibold m-0 mb-5">Messages</h1>
 
         {!session?.accessToken ? (
           <RequireLoginPrompt message="Log in to see your conversations." />
@@ -30,45 +28,24 @@ async function ConversationList({ accessToken }: { accessToken: string }) {
   const conversations = await fetchConversations(accessToken);
 
   if (conversations.length === 0) {
-    return <p style={{ color: "var(--muted)", fontSize: 14 }}>No conversations yet.</p>;
+    return <p className="text-muted text-sm">No conversations yet.</p>;
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div className="flex flex-col gap-2">
       {conversations.map((c) => (
         <Link
           key={c.id}
           href={`/messages/${c.id}`}
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            padding: 14,
-            color: "inherit",
-          }}
+          className="flex justify-between items-center border border-border rounded-[10px] p-3.5 text-inherit"
         >
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{c.otherPartyName}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{c.listingTitle}</div>
-            {c.lastMessage && (
-              <div style={{ fontSize: 13, color: "var(--text-soft)", marginTop: 4 }}>{c.lastMessage.body}</div>
-            )}
+            <div className="font-bold text-sm">{c.otherPartyName}</div>
+            <div className="text-xs text-muted">{c.listingTitle}</div>
+            {c.lastMessage && <div className="text-[13px] text-text-soft mt-1">{c.lastMessage.body}</div>}
           </div>
           {c.unreadCount > 0 && (
-            <span
-              style={{
-                background: "var(--green)",
-                color: "var(--on-green)",
-                borderRadius: 9999,
-                fontSize: 11,
-                fontWeight: 700,
-                padding: "3px 8px",
-              }}
-            >
-              {c.unreadCount}
-            </span>
+            <span className="bg-green text-on-green rounded-full text-[11px] font-bold px-2 py-[3px]">{c.unreadCount}</span>
           )}
         </Link>
       ))}

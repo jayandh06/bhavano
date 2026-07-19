@@ -7,14 +7,12 @@ export default async function PostAdPage() {
   const cities = await fetchCities();
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: "24px 32px 80px" }}>
-        <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+    <div className="min-h-screen bg-bg text-text">
+      <div className="max-w-[560px] mx-auto px-8 pt-6 pb-20">
+        <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
-        <h1 style={{ fontFamily: "var(--font-lora)", fontSize: 24, fontWeight: 600, margin: "0 0 20px" }}>
-          Post a free ad
-        </h1>
+        <h1 className="font-lora text-2xl font-semibold m-0 mb-5">Post a free ad</h1>
         <PostAdWizard cities={cities} />
       </div>
     </div>

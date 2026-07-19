@@ -10,14 +10,12 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
   const session = await auth();
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 640, margin: "0 auto", padding: "32px" }}>
-        <Link href="/my-listings" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+    <div className="min-h-screen bg-bg text-text">
+      <div className="max-w-[640px] mx-auto p-8">
+        <Link href="/my-listings" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to your listings
         </Link>
-        <h1 style={{ fontFamily: "var(--font-lora)", fontSize: 26, fontWeight: 600, margin: "0 0 20px" }}>
-          Edit listing
-        </h1>
+        <h1 className="font-lora text-[26px] font-semibold m-0 mb-5">Edit listing</h1>
 
         {!session?.accessToken ? (
           <RequireLoginPrompt message="Log in to edit this listing." />

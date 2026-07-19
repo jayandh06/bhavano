@@ -12,9 +12,9 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   const messages = await fetchMessages(session.accessToken, id);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px" }}>
-        <Link href="/messages" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+    <div className="min-h-screen bg-bg text-text">
+      <div className="max-w-[720px] mx-auto p-8">
+        <Link href="/messages" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to messages
         </Link>
         <MessageThread
