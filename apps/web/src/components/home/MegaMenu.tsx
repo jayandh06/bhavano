@@ -11,10 +11,11 @@ export function MegaMenu({ tab, cityName, onNavigate }: { tab: HomeTab; cityName
   const links = activeItem ? activeItem.links(cityName) : [];
 
   return (
-    // No gap (mt) between this and the tab row above it — CategoryTabs opens/closes this on
-    // hover, and any gap becomes a dead zone where the pointer briefly hovers neither element,
-    // firing mouseleave and slamming the menu shut before the user can reach it.
-    <div className="absolute top-full left-0 z-50 flex bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] min-w-[480px] max-h-[360px]">
+    // Positioning (absolute/top/left) is applied by the caller, which places this under
+    // whichever tab is open — no gap between this and the tab row above it, since CategoryTabs
+    // opens/closes this on hover and any gap becomes a dead zone where the pointer briefly hovers
+    // neither element, firing mouseleave and slamming the menu shut before the user can reach it.
+    <div className="z-50 flex bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] min-w-[480px] max-h-[360px]">
       <div className="w-[200px] border-r border-border overflow-y-auto p-1.5">
         {tab.column1.map((item) => (
           <button

@@ -24,6 +24,7 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [openTab, setOpenTab] = useState<HomeCategoryFilter | null>(null);
+  const [menuLeft, setMenuLeft] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpenTab(null));
 
@@ -36,6 +37,17 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
     setOpenTab(null);
   }
 
+  // The tab row itself scrolls horizontally on narrow screens (overflow-x-auto), which would
+  // clip the mega menu if it lived inside that row — so it's rendered as a sibling instead,
+  // positioned under whichever tab is open via this offset (measured at hover time).
+  function onTabHover(tab: HomeCategoryFilter, el: HTMLButtonElement) {
+    const container = containerRef.current;
+    if (container) setMenuLeft(el.getBoundingClientRect().left - container.getBoundingClientRect().left);
+    setOpenTab(tab);
+  }
+
+  const openTabData = HOME_TABS.find((t) => t.value === openTab);
+
   return (
     <div ref={containerRef} className="relative" onMouseLeave={() => setOpenTab(null)}>
       <div className="flex gap-1.5 overflow-x-auto">
@@ -46,7 +58,7 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
             <button
               key={tab.value}
               onClick={() => onTabClick(tab.value)}
-              onMouseEnter={() => setOpenTab(tab.value)}
+              onMouseEnter={(e) => onTabHover(tab.value, e.currentTarget)}
               className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold cursor-pointer whitespace-nowrap ${
                 isActive ? "bg-surface-alt text-text" : "bg-transparent text-text-soft"
               } ${highlighted ? "border-b-gold" : "border-b-transparent"}`}
@@ -59,8 +71,10 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
         })}
       </div>
 
-      {openTab && (
-        <MegaMenu tab={HOME_TABS.find((t) => t.value === openTab)!} cityName={cityName} onNavigate={() => setOpenTab(null)} />
+      {openTabData && (
+        <div className="absolute top-full" style={{ left: menuLeft }}>
+          <MegaMenu tab={openTabData} cityName={cityName} onNavigate={() => setOpenTab(null)} />
+        </div>
       )}
     </div>
   );
