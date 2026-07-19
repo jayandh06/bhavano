@@ -63,9 +63,10 @@ export function AreaFilter({
       : `${selected.size} areas`;
 
   function navigate(nextSelected: Set<string>) {
-    // Unchecking every box would mean "match nothing" — instead keep at least one checked, same
-    // idea as a radio group that can't be fully cleared; "Select all" is one click away regardless.
-    if (nextSelected.size === 0) return;
+    // Unchecking every box would mean "match nothing" — instead of blocking the click, fall back
+    // to the first area rather than leaving the previous selection in place, so the control
+    // always lands somewhere concrete; "Select all" is one click away regardless.
+    if (nextSelected.size === 0) nextSelected = new Set([areas[0].id]);
     const nextAllSelected = nextSelected.size === areas.length;
     const params = new URLSearchParams(searchParams.toString());
     params.delete("areas");
