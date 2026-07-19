@@ -1,12 +1,22 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { City, ListingCategory } from "@bhavano/types";
+import type { City, ListingCategory, PopularSearchDto } from "@bhavano/types";
 import { buildHomeUrl } from "@/lib/homeUrl";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { parseSearchQuery } from "@/lib/parseSearchQuery";
-import { CATEGORY_LABELS, bedroomLabel, categoryGroupsFor, facetKindForCategory, formatINR, type TransactionGroup } from "@/lib/seoRoute";
+import {
+  CATEGORY_LABELS,
+  TRANSACTION_LABELS,
+  bedroomLabel,
+  categoryGroupsFor,
+  facetKindForCategory,
+  formatINR,
+  transactionGroupFor,
+  type TransactionGroup,
+} from "@/lib/seoRoute";
 import { useClickOutside } from "@/lib/useClickOutside";
 
 function removeCaseInsensitive(haystack: string, needle: string): string {
@@ -75,6 +85,7 @@ export function SearchBar({
   cityName,
   areaName,
   popularCities,
+  popularSearches,
 }: {
   initialQuery: string;
   /** The city currently being browsed — used as the search target when no other city is named
@@ -84,6 +95,11 @@ export function SearchBar({
    * chips in the search help dialog. */
   areaName?: string;
   popularCities: City[];
+  /** This city's top (category, transactionType) combinations by view count — shown as a real,
+   * directly-navigable "Popular searches" section in the same help dialog, above the free-text
+   * "Try searching" examples. Omitted (e.g. the listing-detail page) means that section just
+   * doesn't render. */
+  popularSearches?: PopularSearchDto[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -178,6 +194,23 @@ export function SearchBar({
             </>
           ) : (
             <>
+              {popularSearches && popularSearches.length > 0 && (
+                <div className="mb-3">
+                  <div className="text-[11px] font-bold text-muted mb-2">POPULAR SEARCHES</div>
+                  <div className="flex flex-wrap gap-2">
+                    {popularSearches.map((s) => (
+                      <Link
+                        key={`${s.cityName}-${s.category}-${s.transactionType}`}
+                        href={buildBrowsePath({ cityName: s.cityName, transactionGroup: transactionGroupFor(s.transactionType), category: s.category })}
+                        onClick={() => setOpen(false)}
+                        className="bg-surface-alt border border-border rounded-[20px] px-3.5 py-[7px] text-[13px] text-text no-underline"
+                      >
+                        {CATEGORY_LABELS[s.category]} {TRANSACTION_LABELS[s.transactionType]} in {s.cityName}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="text-[11px] font-bold text-muted mb-2">TRY SEARCHING</div>
               <div className="flex flex-wrap gap-2">
                 {exampleChips.map((chip) => (

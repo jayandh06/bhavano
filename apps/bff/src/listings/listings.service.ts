@@ -375,15 +375,17 @@ export class ListingsService {
     return this.toDetailDto(listing);
   }
 
-  /** Top (category, transactionType, city) combinations by real inventory — feeds the footer's
-   * "Popular searches". There's no search-query telemetry to mine (search is just a title filter,
-   * never logged), so this is the closest real signal: summed `viewCount` across active listings
-   * in each bucket, which favors combinations people actually look at over ones that merely have
-   * the most postings. */
-  async getPopularSearches(limit = 6): Promise<PopularSearchDto[]> {
+  /** Top (category, transactionType, city) combinations by real inventory — feeds the
+   * "Popular searches" section below the search bar. There's no search-query telemetry to mine
+   * (search is just a title filter, never logged), so this is the closest real signal: summed
+   * `viewCount` across active listings in each bucket, which favors combinations people actually
+   * look at over ones that merely have the most postings. `cityId` narrows this to one city's own
+   * popular combinations (still grouped by cityId regardless, so this is just an extra `where`
+   * clause, not a different query shape) — omit it for the site-wide ranking. */
+  async getPopularSearches(limit = 6, cityId?: string): Promise<PopularSearchDto[]> {
     const groups = await this.prisma.listing.groupBy({
       by: ['category', 'transactionType', 'cityId'],
-      where: { status: 'active', moderationState: 'approved', expiresAt: { gt: new Date() } },
+      where: { status: 'active', moderationState: 'approved', expiresAt: { gt: new Date() }, ...(cityId ? { cityId } : {}) },
       _sum: { viewCount: true },
       _count: { _all: true },
       orderBy: { _sum: { viewCount: 'desc' } },

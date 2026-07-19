@@ -29,8 +29,8 @@ export class ListingsController {
 
   // Also registered before ":id" — see the comment on "sitemap" above.
   @Get('popular-searches')
-  popularSearches(): Promise<PopularSearchDto[]> {
-    return this.listingsService.getPopularSearches();
+  popularSearches(@Query('cityId') cityId?: string): Promise<PopularSearchDto[]> {
+    return this.listingsService.getPopularSearches(undefined, cityId);
   }
 
   @Get(':id')

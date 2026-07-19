@@ -8,6 +8,7 @@ import { AreaFilter } from "@/components/home/AreaFilter";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { Pagination } from "@/components/home/Pagination";
 import { Footer } from "@/components/home/Footer";
+import { resolvePopularSearches } from "@/lib/popularSearches";
 import { HOME_TABS } from "@/lib/homeCategories";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
 import {
@@ -101,6 +102,7 @@ export default async function HomePage({
   const cityName = resolvedCity?.name ?? "your city";
   // Full area list for both the search bar's placeholder hint and the AreaFilter multi-select.
   const cityAreas = resolvedCity ? await fetchAreas(resolvedCity.id, undefined, true) : [];
+  const popularSearches = await resolvePopularSearches(cityName, resolvedCity?.id);
 
   const heading = buildHeading({
     fallbackLabel: activeTab.label,
@@ -142,6 +144,7 @@ export default async function HomePage({
         activeCategory={category}
         userName={session?.user?.name}
         areaName={cityAreas[0]?.name}
+        popularSearches={popularSearches}
       />
       <main className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
         <div className="flex items-baseline justify-between mb-5">
@@ -156,7 +159,7 @@ export default async function HomePage({
         <ListingGrid items={listingsPage.items} cityName={cityName} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
       </main>
-      <Footer />
+      <Footer allCities={allCities} />
     </div>
   );
 }

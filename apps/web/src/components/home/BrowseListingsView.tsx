@@ -10,6 +10,7 @@ import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
+import { resolvePopularSearches } from "@/lib/popularSearches";
 
 const PAGE_SIZE = 12;
 
@@ -64,7 +65,10 @@ export async function BrowseListingsView({
 }) {
   const session = await auth();
   const offset = (page - 1) * PAGE_SIZE;
-  const listingsPage = await fetchListings({ ...query, offset, limit: PAGE_SIZE }, session?.accessToken);
+  const [listingsPage, popularSearches] = await Promise.all([
+    fetchListings({ ...query, offset, limit: PAGE_SIZE }, session?.accessToken),
+    resolvePopularSearches(cityName, query.cityId),
+  ]);
 
   // Page 1 with zero results is a normal "nothing here yet" state — only pages *past* the last
   // real page are a crawl-trap/dead-end worth 404ing (see docs/plans/seo-distinct-window-pagination.md).
@@ -81,6 +85,7 @@ export async function BrowseListingsView({
         userName={userName}
         currentSegments={currentSegments}
         areaName={areaName}
+        popularSearches={popularSearches}
       />
       <main className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
         <div className="flex items-baseline justify-between mb-5">
@@ -104,7 +109,7 @@ export async function BrowseListingsView({
         <ListingGrid items={listingsPage.items} cityName={cityName} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
       </main>
-      <Footer />
+      <Footer currentCityName={cityName} cityAreas={cityAreas} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import type { City, HomeCategoryFilter } from "@bhavano/types";
+import type { City, HomeCategoryFilter, PopularSearchDto } from "@bhavano/types";
 import type { ParsedSegments } from "@/lib/seoRoute";
 import { LocationPicker } from "./LocationPicker";
 import { SearchBar } from "./SearchBar";
@@ -17,6 +17,7 @@ export function Header({
   userName,
   currentSegments,
   areaName,
+  popularSearches,
 }: {
   cityName: string;
   popularCities: City[];
@@ -29,6 +30,8 @@ export function Header({
   /** A representative area name for the current city, used only to make the search bar's
    * placeholder feel dynamic (e.g. "2BHK in Koramangala, Bengaluru…"). */
   areaName?: string;
+  /** Passed straight through to `SearchBar`'s "Popular searches" section — see its own prop doc. */
+  popularSearches?: PopularSearchDto[];
 }) {
   return (
     <>
@@ -58,7 +61,13 @@ export function Header({
             <LocationPicker currentCityName={cityName} popularCities={popularCities} currentSegments={currentSegments} />
           </Suspense>
           <Suspense>
-            <SearchBar initialQuery={searchQuery} cityName={cityName} areaName={areaName} popularCities={popularCities} />
+            <SearchBar
+              initialQuery={searchQuery}
+              cityName={cityName}
+              areaName={areaName}
+              popularCities={popularCities}
+              popularSearches={popularSearches}
+            />
           </Suspense>
 
           <div className="flex items-center gap-3 shrink-0">

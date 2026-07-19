@@ -115,8 +115,9 @@ export function fetchListingsSitemap(): Promise<ListingSitemapEntry[]> {
   return bffFetch<ListingSitemapEntry[]>("/listings/sitemap", { cache: "no-store" });
 }
 
-export function fetchPopularSearches(): Promise<PopularSearchDto[]> {
-  return bffFetch<PopularSearchDto[]>("/listings/popular-searches", { cache: "no-store" });
+export function fetchPopularSearches(cityId?: string): Promise<PopularSearchDto[]> {
+  const path = cityId ? `/listings/popular-searches?cityId=${cityId}` : "/listings/popular-searches";
+  return bffFetch<PopularSearchDto[]>(path, { cache: "no-store" });
 }
 
 export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
