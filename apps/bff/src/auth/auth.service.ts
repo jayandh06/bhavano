@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import type { AuthSession, AuthUser } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import type { User } from '@prisma/client';
@@ -34,6 +35,7 @@ export class AuthService {
     private readonly otpService: OtpService,
     private readonly msg91: Msg91Provider,
     private readonly googleProvider: GoogleProvider,
+    @InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
   ) {}
 
   async sendOtp(phone: string): Promise<void> {
@@ -96,7 +98,18 @@ export class AuthService {
   }
 
   private recordLogin(userId: string, method: 'otp' | 'google'): Promise<unknown> {
+    // Alongside the DB row (used by the admin logins page), also emit a structured log line so
+    // login shows up in the same Loki stream as everything else — bounding a user's session
+    // together with the `logout` event below (see docs/plans/bff-loki-grafana-logging.md).
+    this.logger.info({ event: 'login', userId, method }, 'User logged in');
     return this.prisma.loginEvent.create({ data: { userId, method } });
+  }
+
+  /** No token invalidation happens here — JWTs are short-lived (1h) and stateless by design, so
+   * there's nothing server-side to revoke. This exists purely so the BFF has *any* visibility
+   * into logout at all, since it's otherwise a frontend-only NextAuth event the BFF never sees. */
+  logout(userId: string): void {
+    this.logger.info({ event: 'logout', userId }, 'User logged out');
   }
 
   /** No admin signup/invite flow exists — a phone/email matching ADMIN_PHONES/ADMIN_EMAILS

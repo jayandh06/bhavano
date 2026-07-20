@@ -192,6 +192,13 @@ export function linkPhone(accessToken: string, phone: string, code: string): Pro
   return authedBffFetch(accessToken, "/auth/otp/link", { method: "POST", body: JSON.stringify({ phone, code }) });
 }
 
+/** No server-side session to end — this only exists so the BFF gets a logout signal to log
+ * (see docs/plans/bff-loki-grafana-logging.md), since NextAuth's own signOut() never calls the
+ * BFF on its own. */
+export function logout(accessToken: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/auth/logout", { method: "POST" });
+}
+
 export function recordView(listingId: string, viewerKey: string, accessToken?: string): Promise<{ viewCount: number }> {
   const path = `/listings/${listingId}/view`;
   const init = { method: "POST", body: JSON.stringify({ viewerKey }) };

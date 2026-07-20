@@ -26,6 +26,10 @@ services:
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
       R2_BUCKET: ${R2_BUCKET}
       CDN_BASE_URL: ${CDN_BASE_URL}
+    volumes:
+      # Rotating request/response logs, shared read-only with the alloy container below —
+      # see docs/plans/bff-loki-grafana-logging.md.
+      - bff_logs:/app/apps/bff/logs
     expose:
       - "4000"
 
@@ -72,6 +76,49 @@ services:
     expose:
       - "3001"
 
+  # --- Logging / observability (docs/plans/bff-loki-grafana-logging.md) ---
+  # Alloy tails the BFF's rotating log files off the shared `bff_logs` volume and ships them
+  # into Loki. (Promtail is in Grafana's own maintenance mode now — Alloy is the recommended
+  # replacement for any new log-shipping setup.)
+  alloy:
+    image: grafana/alloy:latest
+    restart: unless-stopped
+    volumes:
+      - bff_logs:/var/log/bff:ro
+      - ./observability/alloy-config.alloy:/etc/alloy/config.alloy:ro
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    depends_on:
+      - loki
+
+  loki:
+    image: grafana/loki:latest
+    restart: unless-stopped
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    expose:
+      - "3100"
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: https://${LOGS_DOMAIN}
+      # Every dashboard/Explore view reads in IST regardless of who's looking or from where —
+      # this is an India-only platform, timestamps should never silently show UTC/browser-local.
+      GF_DATE_FORMATS_DEFAULT_TIMEZONE: Asia/Kolkata
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - loki
+    expose:
+      - "3000"
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -80,6 +127,7 @@ services:
       API_DOMAIN: ${API_DOMAIN}
       APEX_DOMAIN: ${APEX_DOMAIN}
       ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      LOGS_DOMAIN: ${LOGS_DOMAIN}
     ports:
       - "80:80"
       - "443:443"
@@ -91,7 +139,11 @@ services:
       - web
       - bff
       - admin
+      - grafana
 
 volumes:
   caddy-data:
   caddy-config:
+  bff_logs:
+  loki_data:
+  grafana_data:

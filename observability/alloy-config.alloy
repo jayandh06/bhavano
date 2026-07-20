@@ -1,0 +1,44 @@
+// Grafana Alloy config — tails the BFF's rotating log files (written to a Docker volume shared
+// with the bff container, see docker-compose.prod.yml) and ships them into Loki.
+//
+// Promtail (the older, simpler log shipper) is in maintenance mode — Grafana recommends Alloy,
+// their unified collector, for any new setup. This does the same job: tail files, parse JSON,
+// push to Loki. See docs/plans/bff-loki-grafana-logging.md for the full design.
+
+local.file_match "bff_logs" {
+  path_targets = [
+    {"__path__" = "/var/log/bff/*.log", "job" = "bff"},
+  ]
+}
+
+loki.source.file "bff" {
+  targets    = local.file_match.bff_logs.targets
+  forward_to = [loki.process.bff.receiver]
+}
+
+loki.process "bff" {
+  forward_to = [loki.write.default.receiver]
+
+  // Only promote low-cardinality fields to real Loki labels — userId/ip/url/reqId stay in the
+  // JSON body, queried with `| json | field="value"` in Grafana. A label per user would blow up
+  // Loki's index; this is the one rule that matters most for it to stay fast and cheap.
+  stage.json {
+    expressions = {
+      level   = "level",
+      service = "service",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level   = "",
+      service = "",
+    }
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

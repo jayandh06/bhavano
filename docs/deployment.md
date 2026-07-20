@@ -332,10 +332,11 @@ those event names.
 
 ## Building and deploying an individual service
 
-`docker-compose.prod.yml` has four services: `web`, `bff`, `admin`, and `caddy` (the stock
-`caddy:2-alpine` image, not built from source). Rebuilding "everything" (`up -d --build` with no
-service name) is correct after a `git pull` that touched multiple apps, but for a change scoped to
-one app, rebuild just that one — faster, and it doesn't bounce the others' connections:
+`docker-compose.prod.yml` has seven services: `web`, `bff`, `admin`, `caddy` (the stock
+`caddy:2-alpine` image, not built from source), and `alloy`/`loki`/`grafana` (logging — see below,
+also stock upstream images). Rebuilding "everything" (`up -d --build` with no service name) is
+correct after a `git pull` that touched multiple apps, but for a change scoped to one app, rebuild
+just that one — faster, and it doesn't bounce the others' connections:
 
 ```bash
 # Rebuild and restart only the bff container (e.g. after a BFF-only code change or migration)
@@ -358,6 +359,39 @@ docker compose -f docker-compose.prod.yml up -d --build admin
   caddy` is enough (it's bind-mounted, so a restart re-reads it) — no rebuild.
 - Tail logs for just the one service you touched: `docker compose -f docker-compose.prod.yml logs
   -f bff` (swap in `web`/`admin`/`caddy` as needed) — much less noise than `logs -f` across all four.
+
+## Logging & observability (Loki + Grafana)
+
+Every BFF request/response gets a structured JSON log line (method, path, status, duration,
+userId, ip, user-agent, and an explicit `login`/`logout` event pair bounding each user's session) —
+written asynchronously to a rotating file, shipped by Grafana Alloy into Loki, searchable/filterable
+in Grafana at its own subdomain. Full design in `docs/plans/bff-loki-grafana-logging.md`. Scoped to
+the BFF only — `web`/`admin` have no equivalent request logging.
+
+**One-time setup:**
+1. Add `LOGS_DOMAIN` (DNS A record pointed at the app instance, same as the other three domains)
+   and `GRAFANA_ADMIN_PASSWORD` (a long random string) to `.env` on the app instance.
+2. `docker compose -f docker-compose.prod.yml up -d --build` (or just `alloy loki grafana bff` if
+   the other services are already current) — this also picks up the `bff_logs` volume the `bff`
+   service now mounts.
+3. Visit `https://{LOGS_DOMAIN}`, log in as `admin` / `GRAFANA_ADMIN_PASSWORD`. The Loki datasource
+   and a starter "BFF Overview" dashboard are both auto-provisioned from
+   `observability/grafana/provisioning/` — nothing to click-ops here.
+4. **Pin image versions before relying on this.** `docker-compose.prod.yml` currently pins
+   `grafana/alloy`, `grafana/loki`, `grafana/grafana` to `:latest` — fine to get started, but
+   `:latest` can change under you on a future `--build`. Check
+   [hub.docker.com](https://hub.docker.com) for the current stable tags, pin them explicitly, and
+   confirm the tag publishes a `linux/arm64` image (the app instance is `t4g.medium`/arm64) before
+   using it in anything you depend on.
+
+**Everyday use:**
+- Grafana → Explore, filter by user: `{service="bff"} | json | userId="<uuid>"`, sorted by time —
+  bounded by that user's `event="login"` and `event="logout"` log lines.
+- Errors only: `{service="bff", level="error"}`. The provisioned dashboard's "Recent errors" panel
+  is the same query, always visible without typing anything.
+- `docker compose -f docker-compose.prod.yml logs alloy` if log lines aren't showing up in
+  Grafana — confirms Alloy is actually tailing/shipping (no scrape/parse errors).
+- All timestamps — pino's own log lines and Grafana's display — are IST (`Asia/Kolkata`), not UTC.
 
 ## Self-hosted Postgres vs RDS — the tradeoff being made here
 

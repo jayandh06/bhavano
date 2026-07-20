@@ -28,6 +28,9 @@ RUN addgroup --system --gid 1001 nestjs && adduser --system --uid 1001 nestjs
 
 COPY --from=installer --chown=nestjs:nestjs /app .
 RUN mkdir -p /app/apps/bff/uploads && chown nestjs:nestjs /app/apps/bff/uploads
+# Rotating request/response logs (see docs/plans/bff-loki-grafana-logging.md) — shared with the
+# alloy container via a Docker volume mounted at this same path.
+RUN mkdir -p /app/apps/bff/logs && chown nestjs:nestjs /app/apps/bff/logs
 
 USER nestjs
 WORKDIR /app/apps/bff

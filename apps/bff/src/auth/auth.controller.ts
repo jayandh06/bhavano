@@ -56,4 +56,15 @@ export class AuthController {
     await this.authService.linkPhone(user.id, dto.phone, dto.code);
     return { success: true };
   }
+
+  /** No server-side session to end (JWTs are stateless/short-lived) — this exists purely to give
+   * the BFF a logout signal to log, since apps/web|admin's own signOutAction otherwise clears the
+   * NextAuth cookie without ever calling the BFF. See docs/plans/bff-loki-grafana-logging.md. */
+  @Post('logout')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  logout(@CurrentUser() user: RequestUser): { success: true } {
+    this.authService.logout(user.id);
+    return { success: true };
+  }
 }

@@ -55,6 +55,13 @@ export function loginWithGoogle(idToken: string): Promise<AuthSession> {
   return bffFetch("/auth/google", { method: "POST", body: JSON.stringify({ idToken }) });
 }
 
+/** No server-side session to end — this only exists so the BFF gets a logout signal to log
+ * (see docs/plans/bff-loki-grafana-logging.md), since NextAuth's own signOut() never calls the
+ * BFF on its own. */
+export function logout(accessToken: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/auth/logout", { method: "POST" });
+}
+
 export interface AdminListingsQuery {
   moderationState?: ModerationState;
   adminReviewed?: boolean;

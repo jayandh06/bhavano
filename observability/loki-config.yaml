@@ -1,0 +1,32 @@
+# Minimal single-binary Loki config — filesystem storage, no S3/GCS, no multi-tenant auth.
+# This scale (one BFF instance) needs nothing fancier. See docs/plans/bff-loki-grafana-logging.md.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # 30 days — adjust to taste; this is disk space on the app EC2 instance, not a managed service.
+  retention_period: 720h

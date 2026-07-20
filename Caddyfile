@@ -16,3 +16,8 @@
 {$ADMIN_DOMAIN} {
 	reverse_proxy admin:3001
 }
+
+# Grafana — logging/observability dashboard, admin-auth-protected, not linked from public nav.
+{$LOGS_DOMAIN} {
+	reverse_proxy grafana:3000
+}

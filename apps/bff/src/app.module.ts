@@ -13,9 +13,11 @@ import { UsersModule } from './users/users.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { AdminModule } from './admin/admin.module';
 import { PhotoProcessingModule } from './photo-processing/photo-processing.module';
+import { LoggingModule } from './logging/logging.module';
 
 @Module({
   imports: [
+    LoggingModule,
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),

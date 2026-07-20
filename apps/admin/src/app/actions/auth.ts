@@ -1,7 +1,7 @@
 "use server";
 
-import { signIn, signOut } from "@/auth";
-import { sendOtp } from "@/lib/bff";
+import { auth, signIn, signOut } from "@/auth";
+import { logout, sendOtp } from "@/lib/bff";
 
 export async function sendOtpAction(phone: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -26,5 +26,9 @@ export async function signInWithGoogleAction(): Promise<void> {
 }
 
 export async function signOutAction(): Promise<void> {
+  // Best-effort — a failed logout log call should never block the user from actually signing
+  // out (e.g. an already-expired token would 401 here, which is fine to ignore).
+  const session = await auth();
+  if (session?.accessToken) await logout(session.accessToken).catch(() => {});
   await signOut({ redirectTo: "/login" });
 }
