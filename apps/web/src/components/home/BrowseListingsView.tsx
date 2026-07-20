@@ -45,6 +45,7 @@ export async function BrowseListingsView({
   currentSegments,
   areaName,
   cityAreas,
+  allCities,
 }: {
   query: Omit<ListingsQuery, "limit" | "cursor" | "offset">;
   cityName: string;
@@ -62,6 +63,9 @@ export async function BrowseListingsView({
   /** Every area in this city, for the multi-select `AreaFilter` — distinct from `areaName`
    * (just a placeholder hint for the search bar). */
   cityAreas: Area[];
+  /** Every city, passed through to the footer's all-cities block — the caller already fetches
+   * this for `popularCities`, so reuse it instead of Footer fetching it again. */
+  allCities: City[];
 }) {
   const session = await auth();
   const offset = (page - 1) * PAGE_SIZE;
@@ -109,7 +113,7 @@ export async function BrowseListingsView({
         <ListingGrid items={listingsPage.items} cityName={cityName} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
       </main>
-      <Footer currentCityName={cityName} cityAreas={cityAreas} />
+      <Footer currentCityName={cityName} cityAreas={cityAreas} allCities={allCities} />
     </div>
   );
 }

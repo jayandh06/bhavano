@@ -297,6 +297,7 @@ export default async function CityBrowsePage({
         currentSegments={parsed}
         areaName={areaRow?.name ?? cityAreas[0]?.name}
         cityAreas={cityAreas}
+        allCities={allCities}
       />
     </>
   );

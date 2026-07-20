@@ -4,14 +4,15 @@ import { fetchCities } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
 
 // Today's largest seeded city has 20 curated areas — this is a defensive ceiling against a
-// future city accumulating far more user-added areas, not an active truncation.
+// future city accumulating far more user-added areas, not an active truncation. Cities are a
+// fixed, admin-curated set (no user-growth path), so the city list itself is never capped.
 const MAX_FOOTER_AREAS = 24;
 
-const CITY_AREA_COLUMNS = 4;
+const LOCATION_COLUMNS = 4;
 
 /** Splits into at most `numColumns` roughly-even columns (fewer if there aren't enough items to
- * fill them) — used for the city/area list, which reads as one wide block of tightly-packed
- * sub-columns rather than separate footer sections. */
+ * fill them) — used for the city/area lists, each of which reads as one wide block of
+ * tightly-packed sub-columns rather than separate footer sections. */
 function chunkIntoColumns<T>(items: T[], numColumns: number): T[][] {
   if (items.length === 0) return [];
   const perColumn = Math.ceil(items.length / numColumns);
@@ -20,36 +21,57 @@ function chunkIntoColumns<T>(items: T[], numColumns: number): T[][] {
   return columns;
 }
 
-/** Site-wide footer. The location block has two modes: every one of this city's areas when a
- * specific city is in context (any `/{city}/...` browse page), or every city when it isn't
- * (homepage, static/account pages) — both real `<Link>`s via `buildBrowsePath`, closing the gap
- * left by `sitemap.ts` (which only lists a city/area once it already has a listing) and by
- * `MegaMenu`/`LocationPicker` (which never produce crawlable links to a city/area on their own).
- * Laid out as a single flex row (not a uniform grid) so the city/area block — one heading over 4
- * tightly-spaced sub-columns — reads as one wide unit, distinct from the normal wider gap between
- * it and the Brand/Company/Legal sections either side. */
+function LocationBlock({ heading, items }: { heading: string; items: { key: string; label: string; href: string }[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <div className="font-bold text-[13px] text-text mb-2.5">{heading}</div>
+      <div className="flex gap-3">
+        {chunkIntoColumns(items, LOCATION_COLUMNS).map((column, i) => (
+          <div key={i} className="flex flex-col gap-2 text-[13px]">
+            {column.map((item) => (
+              <Link key={item.key} href={item.href}>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Site-wide footer. On a `/{city}/...` browse page, shows **both** that city's areas (primary —
+ * the more topically-relevant drill-down for someone already browsing that city, and the main
+ * link source area pages have) **and** a full city list (secondary) — every page links to every
+ * city hub, not just the homepage, so no city page is an internal-linking island reachable only
+ * from Home (see docs/plans/seo-all-cities-footer-links.md). Elsewhere (homepage, static/account
+ * pages), only the full city list applies. Both close the gap left by `sitemap.ts` (which only
+ * lists a city/area once it already has a listing) and by `MegaMenu`/`LocationPicker` (which never
+ * produce crawlable links to a city/area on their own). */
 export async function Footer({
   currentCityName,
   cityAreas,
   allCities,
 }: {
-  /** Present on the `/{city}/...` browse pages — switches the location block to that city's
-   * areas instead of the full city list. */
+  /** Present on the `/{city}/...` browse pages — adds the "Areas in {City}" block above the
+   * full city list, instead of the city list being the only location block. */
   currentCityName?: string;
   cityAreas?: Area[];
-  /** Every city, for the no-specific-city case. Fetched here if the caller doesn't already have
-   * it in scope, so every bare `<Footer />` call site still gets a populated location block. */
+  /** Every city. Fetched here if the caller doesn't already have it in scope, so every bare
+   * `<Footer />` call site still gets a populated location block. */
   allCities?: City[];
 }) {
-  const cities = currentCityName ? [] : (allCities ?? (await fetchCities(undefined, true).catch(() => [])));
+  const cities = allCities ?? (await fetchCities(undefined, true).catch(() => []));
 
-  const locationHeading = currentCityName ? `Areas in ${currentCityName}` : "Browse Cities";
-  const locationItems: { key: string; label: string; href: string }[] = currentCityName
-    ? (cityAreas ?? [])
-        .slice(0, MAX_FOOTER_AREAS)
-        .map((area) => ({ key: area.id, label: area.name, href: buildBrowsePath({ cityName: currentCityName, areaName: area.name }) }))
-    : cities.map((city) => ({ key: city.id, label: city.name, href: buildBrowsePath({ cityName: city.name }) }));
-  const locationColumns = chunkIntoColumns(locationItems, CITY_AREA_COLUMNS);
+  const areaItems = (cityAreas ?? [])
+    .slice(0, MAX_FOOTER_AREAS)
+    .map((area) => ({ key: area.id, label: area.name, href: buildBrowsePath({ cityName: currentCityName!, areaName: area.name }) }));
+  // Excludes the current city — linking a city page to itself under "Browse Cities" would be a
+  // no-op link a user (or crawler) has no reason to follow from a page already there.
+  const cityItems = cities
+    .filter((city) => city.name !== currentCityName)
+    .map((city) => ({ key: city.id, label: city.name, href: buildBrowsePath({ cityName: city.name }) }));
 
   return (
     <section className="bg-surface-alt border-t border-border py-12 px-8">
@@ -61,20 +83,8 @@ export async function Footer({
             furniture across India — no login needed to browse.
           </p>
         </div>
-        <div>
-          <div className="font-bold text-[13px] text-text mb-2.5">{locationHeading}</div>
-          <div className="flex gap-3">
-            {locationColumns.map((column, i) => (
-              <div key={i} className="flex flex-col gap-2 text-[13px]">
-                {column.map((item) => (
-                  <Link key={item.key} href={item.href}>
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
+        {currentCityName && <LocationBlock heading={`Areas in ${currentCityName}`} items={areaItems} />}
+        <LocationBlock heading="Browse Cities" items={cityItems} />
         <div>
           <div className="font-bold text-[13px] text-text mb-2.5">Company</div>
           <div className="flex flex-col gap-2 text-[13px]">
