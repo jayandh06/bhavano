@@ -159,7 +159,7 @@ export default async function HomePage({
         <ListingGrid items={listingsPage.items} cityName={cityName} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
       </main>
-      <Footer allCities={allCities} />
+      <Footer currentCityName={resolvedCity?.name} cityAreas={cityAreas} allCities={allCities} />
     </div>
   );
 }
