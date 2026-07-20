@@ -23,4 +23,10 @@ export const PRICE_BOUNDS: Record<ListingCategory, CategoryPriceBounds> = {
   furniture: { sale: { min: 50, max: 1_000_000 }, rental: { min: 50, max: 50_000 } },
   // Sell-only (see POSTABLE_TRANSACTION_TYPES) — the `rental` bound is never actually reached.
   interiors: { sale: { min: 500, max: 5_000_000 }, rental: { min: 500, max: 5_000_000 } },
+  // Sell-only — land spans the same price range as built residential property. `rental` mirrors
+  // `sale` (never reached), same pattern as `interiors` above.
+  plot: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 100_000, max: 500_000_000 } },
+  // Rent/lease-only — a small shop and a large warehouse are both "commercial", hence the wide
+  // rental band. `sale` is an unreached placeholder (never postable, see POSTABLE_TRANSACTION_TYPES).
+  commercial: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 5_000, max: 2_000_000 } },
 };

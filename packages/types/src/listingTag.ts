@@ -10,5 +10,7 @@ export function deriveTag(input: { category: ListingCategory; transactionType: T
   if (input.category === "furniture") return "FURNITURE";
   if (input.category === "storage") return "STORAGE";
   if (input.category === "interiors") return "INTERIORS";
+  if (input.category === "plot") return "PLOT";
+  if (input.category === "commercial") return "COMMERCIAL";
   return input.transactionType === "rent" || input.transactionType === "lease" ? "FOR RENT" : "FOR SALE";
 }

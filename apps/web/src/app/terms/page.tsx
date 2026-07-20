@@ -19,7 +19,8 @@ export default function TermsPage() {
       <PageSection heading="2. What Bhavano is">
         <p className="m-0">
           Bhavano is a classifieds marketplace where users can browse, post, buy, sell, rent or lease real estate
-          (houses, apartments, PG accommodation, storage space, coworking desks) and furniture. Listings can be
+          (houses, apartments, plots, PG accommodation, storage space, coworking desks, commercial spaces) and
+          furniture. Listings can be
           browsed without an account; logging in is required to post an ad, favourite a listing, or message another
           user. Bhavano is not a party to any transaction between a buyer and a seller — we provide the platform
           that connects them.

@@ -43,6 +43,8 @@ const CATEGORY_STYLE: Record<ListingCategory, { label: string; bg: string; fg: s
   coworking: { label: 'Coworking', bg: '#5a3a86', fg: '#f2ecfb' },
   furniture: { label: 'Furniture', bg: '#8f6b1d', fg: '#fbf5e6' },
   interiors: { label: 'Interiors', bg: '#8f2f4b', fg: '#fbe9ef' },
+  plot: { label: 'Plot / Land', bg: '#6b5a2f', fg: '#f7f2e6' },
+  commercial: { label: 'Commercial Space', bg: '#37505f', fg: '#e9f2f5' },
 };
 
 /** 64-bit difference-hash — mirrors `computeDHash` in uploads.controller.ts so the stored hash
@@ -210,6 +212,31 @@ function deriveFields(category: ListingCategory, transactionType: TransactionTyp
         title: `${service.title} in ${areaName}`,
         specs: ['Design + installation', '10-year warranty'],
         attributes: { serviceType: service.value },
+      };
+    }
+    case 'plot': {
+      const plotAreaSqft = [1200, 2400, 4800][i];
+      const facing = ['east', 'north', 'north-east'][i];
+      const boundaryWall = (['yes', 'yes', 'no'] as const)[i];
+      return {
+        title: `${plotAreaSqft} sqft Plot ${suffix} in ${areaName}`,
+        specs: [`${plotAreaSqft} sqft`, `${facing} facing`, boundaryWall === 'yes' ? 'Boundary wall' : 'Open plot'],
+        attributes: { plotAreaSqft, facing, boundaryWall, approvedBy: 'BDA' },
+      };
+    }
+    case 'commercial': {
+      const PURPOSES = [
+        { value: 'office', label: 'Office Space' },
+        { value: 'retail', label: 'Retail Space' },
+        { value: 'warehouse', label: 'Warehouse' },
+      ];
+      const purpose = PURPOSES[i];
+      const sqft = [500, 1200, 3000][i];
+      const floor = ['Ground floor', '2nd floor', 'Ground floor'][i];
+      return {
+        title: `${purpose.label} ${suffix} in ${areaName}`,
+        specs: [`${sqft} sqft`, purpose.label, floor],
+        attributes: { sqft, purpose: purpose.value, floor },
       };
     }
   }

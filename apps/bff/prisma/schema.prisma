@@ -14,6 +14,8 @@ enum ListingCategory {
   coworking
   furniture
   interiors
+  plot
+  commercial
 }
 
 enum TransactionType {

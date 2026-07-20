@@ -17,7 +17,7 @@ export default function NotFound() {
       </p>
       <ul className="flex flex-col gap-2.5 pl-5">
         <li>
-          <Link href="/">Browse homes, rentals, PG, coworking, furniture &amp; interiors</Link>
+          <Link href="/">Browse homes, rentals, plots, PG, coworking, commercial spaces, furniture &amp; interiors</Link>
         </li>
         <li>
           <Link href={buildBrowsePath({ cityName: "Bengaluru", transactionGroup: "buy", category: "apartment" })}>

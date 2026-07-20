@@ -4,8 +4,18 @@ import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, Transacti
 import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 
 const HOME_CATEGORIES: HomeCategoryFilter[] = ['buy', 'rentLease', 'pg', 'furniture', 'interiors'];
-const PROPERTY_TYPES: PropertyTypeFilter[] = ['house', 'apartment', 'storage', 'coworking'];
-const LISTING_CATEGORIES: ListingCategory[] = ['house', 'apartment', 'pg', 'storage', 'coworking', 'furniture', 'interiors'];
+const PROPERTY_TYPES: PropertyTypeFilter[] = ['house', 'apartment', 'storage', 'coworking', 'plot', 'commercial'];
+const LISTING_CATEGORIES: ListingCategory[] = [
+  'house',
+  'apartment',
+  'pg',
+  'storage',
+  'coworking',
+  'furniture',
+  'interiors',
+  'plot',
+  'commercial',
+];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 const FURNISHING_VALUES = ['unfurnished', 'semi', 'furnished'] as const;
 const SORT_VALUES = ['newest', 'price_asc', 'price_desc', 'popular'] as const;

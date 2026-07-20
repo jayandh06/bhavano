@@ -17,6 +17,7 @@ export const HOME_TABS: HomeTab[] = [
     propertyTypes: [
       { value: "house", label: "House" },
       { value: "apartment", label: "Apartment" },
+      { value: "plot", label: "Plot" },
     ],
   },
   {
@@ -28,6 +29,7 @@ export const HOME_TABS: HomeTab[] = [
       { value: "apartment", label: "Apartment" },
       { value: "storage", label: "Storage" },
       { value: "coworking", label: "Coworking" },
+      { value: "commercial", label: "Commercial" },
     ],
   },
   { value: "pg", label: "PG", icon: "🛏️", propertyTypes: [] },

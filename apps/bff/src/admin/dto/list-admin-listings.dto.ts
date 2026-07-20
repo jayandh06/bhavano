@@ -2,7 +2,17 @@ import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type { ListingCategory, ModerationState } from '@bhavano/types';
 
-const LISTING_CATEGORIES: ListingCategory[] = ['house', 'apartment', 'pg', 'storage', 'coworking', 'furniture', 'interiors'];
+const LISTING_CATEGORIES: ListingCategory[] = [
+  'house',
+  'apartment',
+  'pg',
+  'storage',
+  'coworking',
+  'furniture',
+  'interiors',
+  'plot',
+  'commercial',
+];
 const MODERATION_STATES: ModerationState[] = ['approved', 'flagged'];
 
 export class ListAdminListingsDto {

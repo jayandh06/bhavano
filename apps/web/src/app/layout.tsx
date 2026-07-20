@@ -22,9 +22,9 @@ const manrope = Manrope({
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 const SITE_NAME = "Bhavano";
-const SITE_TITLE = "Bhavano — Buy, Rent, Coworking, PG & Furniture";
+const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
 const SITE_DESCRIPTION =
-  "India's home for Buy, Rent, Coworking, PG and Furniture listings — browse without login, verified listings across India.";
+  "India's home for Buy, Rent, Plots, Commercial Spaces, Coworking, PG and Furniture listings — browse without login, verified listings across India.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

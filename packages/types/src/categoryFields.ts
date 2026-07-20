@@ -139,4 +139,60 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       required: true,
     },
   ],
+  plot: [
+    { key: "plotAreaSqft", label: "Plot Area (sqft)", type: "number", required: true },
+    {
+      key: "facing",
+      label: "Facing",
+      type: "select",
+      options: [
+        { value: "north", label: "North" },
+        { value: "south", label: "South" },
+        { value: "east", label: "East" },
+        { value: "west", label: "West" },
+        { value: "north-east", label: "North-East" },
+        { value: "north-west", label: "North-West" },
+        { value: "south-east", label: "South-East" },
+        { value: "south-west", label: "South-West" },
+      ],
+    },
+    {
+      key: "boundaryWall",
+      label: "Boundary wall",
+      type: "select",
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+    },
+    { key: "approvedBy", label: "Approved by", type: "text", placeholder: "e.g. BDA, Panchayat, DTCP" },
+  ],
+  commercial: [
+    { key: "sqft", label: "Area (sqft)", type: "number", required: true },
+    {
+      key: "purpose",
+      label: "Purpose",
+      type: "select",
+      options: [
+        { value: "office", label: "Office" },
+        { value: "retail", label: "Retail" },
+        { value: "warehouse", label: "Warehouse" },
+        { value: "showroom", label: "Showroom" },
+        { value: "restaurant", label: "Restaurant" },
+        { value: "other", label: "Other" },
+      ],
+      required: true,
+    },
+    { key: "floor", label: "Floor", type: "text", placeholder: "e.g. Ground, 2nd floor" },
+    {
+      key: "furnished",
+      label: "Furnishing",
+      type: "select",
+      options: [
+        { value: "unfurnished", label: "Unfurnished" },
+        { value: "semi", label: "Semi-furnished" },
+        { value: "furnished", label: "Furnished" },
+      ],
+    },
+  ],
 };

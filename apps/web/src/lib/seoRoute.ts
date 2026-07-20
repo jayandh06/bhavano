@@ -12,7 +12,17 @@ export { MAX_BEDROOMS, bedroomLabel };
 // resolveCity/resolveArea callers, rather than this file depending on that one.
 
 export const TRANSACTION_TYPES: TransactionType[] = ["buy", "sell", "rent", "lease"];
-export const LISTING_CATEGORIES: ListingCategory[] = ["house", "apartment", "pg", "storage", "coworking", "furniture", "interiors"];
+export const LISTING_CATEGORIES: ListingCategory[] = [
+  "house",
+  "apartment",
+  "pg",
+  "storage",
+  "coworking",
+  "furniture",
+  "interiors",
+  "plot",
+  "commercial",
+];
 
 export function isTransactionType(value: string): value is TransactionType {
   return (TRANSACTION_TYPES as string[]).includes(value);
@@ -30,6 +40,8 @@ export const CATEGORY_LABELS: Record<ListingCategory, string> = {
   coworking: "Coworking Desks",
   furniture: "Furniture",
   interiors: "Interiors",
+  plot: "Plots",
+  commercial: "Commercial Spaces",
 };
 
 export const TRANSACTION_LABELS: Record<TransactionType, string> = {

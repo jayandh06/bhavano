@@ -38,7 +38,9 @@ export function Header({
       <div className="bg-green text-on-green text-[13px] py-1.5">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex justify-between items-center">
           {/* Long tagline is decorative — hidden on phones so the utility links keep their room. */}
-          <span className="hidden sm:inline opacity-[0.85]">India&apos;s home for Buy · Rent · Coworking · PG · Furniture</span>
+          <span className="hidden sm:inline opacity-[0.85]">
+            India&apos;s home for Buy · Rent · Plots · Coworking · PG · Commercial · Furniture
+          </span>
           <div className="flex gap-5 opacity-[0.85]">
             <Link href="/post" className="text-inherit">
               For Owners

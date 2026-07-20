@@ -98,4 +98,6 @@ export const categoryImagePlaceholder: Record<
   coworking: { imgA: "#BFCBC2", imgB: "#A3B4A8", imgLabel: "photo: coworking desk" },
   furniture: { imgA: "#D6C6B3", imgB: "#C2AC90", imgLabel: "photo: furniture item" },
   interiors: { imgA: "#DCCFC1", imgB: "#C9B49E", imgLabel: "photo: interior work" },
+  plot: { imgA: "#C4B896", imgB: "#A89968", imgLabel: "photo: plot/land" },
+  commercial: { imgA: "#9FB0BD", imgB: "#7E93A3", imgLabel: "photo: commercial space" },
 };

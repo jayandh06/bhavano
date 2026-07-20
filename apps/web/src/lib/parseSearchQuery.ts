@@ -25,6 +25,11 @@ const CATEGORY_PATTERNS: [RegExp, ListingCategory][] = [
   [/\bwardrobes?\b/i, "furniture"],
   [/\binterior\s*design\b/i, "interiors"],
   [/\binteriors?\b/i, "interiors"],
+  [/\bplots?\b/i, "plot"],
+  [/\blands?\b/i, "plot"],
+  [/\bcommercial\b/i, "commercial"],
+  [/\bshops?\b/i, "commercial"],
+  [/\boffice\s*spaces?\b/i, "commercial"],
 ];
 
 const TRANSACTION_PATTERNS: [RegExp, TransactionGroup][] = [
