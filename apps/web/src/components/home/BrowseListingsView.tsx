@@ -8,6 +8,7 @@ import { ListingGrid } from "./ListingGrid";
 import { AreaFilter } from "./AreaFilter";
 import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
+import { SortDropdown } from "./SortDropdown";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
 import { resolvePopularSearches } from "@/lib/popularSearches";
@@ -96,19 +97,21 @@ export async function BrowseListingsView({
           <h1 className="font-lora text-[26px] font-semibold m-0 text-text">{heading}</h1>
           <span className="text-[13px] text-muted">{listingsPage.total} listings</span>
         </div>
-        <div className="flex gap-2.5 mb-5 flex-wrap">
-          <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
-          {(filterCategory === "house" || filterCategory === "apartment") && (
-            <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
-          )}
-          <BrowseFilterBar
-            category={filterCategory}
-            isSale={filterIsSale ?? true}
-            activeMinPrice={query.minPrice}
-            activeMaxPrice={query.maxPrice}
-            activeFurnished={query.furnished}
-            activeSort={query.sort}
-          />
+        <div className="flex gap-2.5 mb-5 flex-wrap justify-between items-start">
+          <div className="flex gap-2.5 flex-wrap">
+            <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
+            {(filterCategory === "house" || filterCategory === "apartment") && (
+              <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
+            )}
+            <BrowseFilterBar
+              category={filterCategory}
+              isSale={filterIsSale ?? true}
+              activeMinPrice={query.minPrice}
+              activeMaxPrice={query.maxPrice}
+              activeFurnished={query.furnished}
+            />
+          </div>
+          <SortDropdown activeSort={query.sort} />
         </div>
         <ListingGrid items={listingsPage.items} cityName={cityName} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
