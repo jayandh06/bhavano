@@ -92,17 +92,14 @@ export async function Footer({
             <Link href="/help">Help centre</Link>
           </div>
         </div>
-        <div>
-          <div className="font-bold text-[13px] text-text mb-2.5">Legal</div>
-          <div className="flex flex-col gap-2 text-[13px]">
-            <Link href="/terms">Terms of Service</Link>
-            <Link href="/privacy">Privacy Policy</Link>
-            <Link href="/contact">Contact Us</Link>
-          </div>
-        </div>
       </div>
-      <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border text-xs text-muted">
-        © 2026 Bhavano. All rights reserved.
+      <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-4">
+        <span className="text-xs text-muted">© 2026 Bhavano. All rights reserved.</span>
+        <div className="flex gap-5 text-xs">
+          <Link href="/terms">Terms of Service</Link>
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/contact">Contact Us</Link>
+        </div>
       </div>
     </section>
   );
