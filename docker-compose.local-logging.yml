@@ -1,0 +1,37 @@
+# Local-only override for running the real BFF (same image as prod, NODE_ENV=production) plus
+# the logging stack (alloy/loki/grafana) against your local dev Postgres — so real request logs
+# flow through the actual pipeline instead of a synthetic test. Not used in production; run
+# alongside docker-compose.prod.yml with an extra `-f`, see docs/deployment.md.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.local-logging.yml up -d --build bff alloy loki grafana
+#
+# Requires the dev docker-compose.yml's postgres container already running (`docker compose up -d
+# postgres`) — reached here via host.docker.internal since these are two separate compose projects.
+services:
+  bff:
+    environment:
+      DATABASE_URL: postgresql://bhavano:bhavano@host.docker.internal:5432/bhavano
+      AUTH_JWT_SECRET: dev-only-change-me
+      GOOGLE_CLIENT_ID: ""
+      GOOGLE_CLIENT_SECRET: ""
+      ADMIN_PHONES: ""
+      ADMIN_EMAILS: ""
+    ports:
+      - "4001:4000"
+
+  loki:
+    ports:
+      - "3100:3100"
+
+  grafana:
+    environment:
+      # Falls back to "devpassword" if you don't export GRAFANA_ADMIN_PASSWORD yourself. Only
+      # takes effect on Grafana's *first-ever* boot against a fresh grafana_data volume — changing
+      # this later and restarting/recreating does nothing, since Grafana only sets the admin
+      # password once, when its internal DB is first initialized (wipe the volume to reset it).
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-devpassword}
+      # Overrides docker-compose.prod.yml's `https://${LOGS_DOMAIN}` — there's no Caddy/TLS/real
+      # domain in this local setup, so that would otherwise resolve to just "https://".
+      GF_SERVER_ROOT_URL: http://localhost:3002
+    ports:
+      - "3002:3000"
