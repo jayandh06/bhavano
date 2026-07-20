@@ -39,7 +39,7 @@ export function MegaMenu({ tab, cityName, onNavigate }: { tab: HomeTab; cityName
             target="_blank"
             rel="noopener noreferrer"
             onClick={onNavigate}
-            className="block px-3 py-2.5 text-[13.5px] text-text-soft no-underline rounded-md"
+            className="block px-3 py-2.5 text-[13.5px] text-text-soft no-underline rounded-md transition-colors hover:bg-surface-alt hover:text-green focus-visible:bg-surface-alt focus-visible:text-green focus-visible:outline-none"
           >
             {link.label}
           </Link>
