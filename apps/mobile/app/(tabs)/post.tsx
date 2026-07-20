@@ -20,5 +20,8 @@ export default function PostScreen() {
     );
   }
 
-  return <PostAdWizard cities={cities} defaultCityId={city?.id} />;
+  // Keyed on the selected city: the tab navigator keeps this screen mounted across tab
+  // switches, so without a key change, React would reuse the wizard instance and its stale
+  // `useState(defaultCityId)` init instead of picking up a city switch made on the Home tab.
+  return <PostAdWizard key={city?.id ?? "none"} cities={cities} defaultCityId={city?.id} />;
 }

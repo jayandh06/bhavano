@@ -9,25 +9,28 @@ import { useClickOutside } from "@/lib/useClickOutside";
 
 export function HeaderAuthButtons({ userName, cityName }: { userName?: string | null; cityName: string }) {
   const { requireLogin } = useAuthGate();
+  // Carries the currently-selected city through to every account/static page below — without
+  // it, PageHeader/Footer on those pages fall back to their own generic defaults (Bengaluru, no
+  // footer area links) regardless of what the user actually had selected here.
+  const citySlug = slugify(cityName);
 
   return (
     <div className="flex items-center gap-3 shrink-0">
-      {/* TEMP(auth-gate): posting is open without login for now. Carries the currently-selected
-          city through so the wizard defaults to it instead of an arbitrary alphabetical city. */}
+      {/* TEMP(auth-gate): posting is open without login for now. */}
       <Link
-        href={`/post?city=${slugify(cityName)}`}
+        href={`/post?city=${citySlug}`}
         className="border-[1.5px] border-green text-green rounded-lg px-4 py-[9px] text-sm font-bold whitespace-nowrap"
       >
         + Post free ad
       </Link>
-      <Link href="/favourites" className="text-text text-sm font-bold whitespace-nowrap">
+      <Link href={`/favourites?city=${citySlug}`} className="text-text text-sm font-bold whitespace-nowrap">
         ♡ Favourites
       </Link>
-      <Link href="/messages" className="text-text text-sm font-bold whitespace-nowrap">
+      <Link href={`/messages?city=${citySlug}`} className="text-text text-sm font-bold whitespace-nowrap">
         💬 Messages
       </Link>
       {userName ? (
-        <AccountMenu userName={userName} />
+        <AccountMenu userName={userName} citySlug={citySlug} />
       ) : (
         <button
           onClick={requireLogin}
@@ -42,7 +45,7 @@ export function HeaderAuthButtons({ userName, cityName }: { userName?: string | 
 
 const menuItemClass = "block px-3.5 py-2.5 text-sm font-semibold text-text";
 
-function AccountMenu({ userName }: { userName: string }) {
+function AccountMenu({ userName, citySlug }: { userName: string; citySlug: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false));
@@ -57,10 +60,10 @@ function AccountMenu({ userName }: { userName: string }) {
       </button>
       {open && (
         <div className="absolute top-[calc(100%+8px)] right-0 bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px] overflow-hidden">
-          <Link href="/profile" onClick={() => setOpen(false)} className={menuItemClass}>
+          <Link href={`/profile?city=${citySlug}`} onClick={() => setOpen(false)} className={menuItemClass}>
             Profile
           </Link>
-          <Link href="/my-listings" onClick={() => setOpen(false)} className={menuItemClass}>
+          <Link href={`/my-listings?city=${citySlug}`} onClick={() => setOpen(false)} className={menuItemClass}>
             My listings
           </Link>
           <Link href="/help" onClick={() => setOpen(false)} className={menuItemClass}>

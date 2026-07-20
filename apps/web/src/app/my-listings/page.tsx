@@ -3,6 +3,7 @@ import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { auth } from "@/auth";
 import { fetchMyListings } from "@/lib/bff";
 import { buildListingPath } from "@/lib/listingPath";
+import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
@@ -21,12 +22,18 @@ const STATUS_COLORS: Record<ListingStatus, string> = {
   deactivated: "#b3413a",
 };
 
-export default async function MyListingsPage() {
-  const session = await auth();
+export default async function MyListingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const citySlug = typeof sp.city === "string" ? sp.city : undefined;
+  const [session, { city, cityAreas, allCities }] = await Promise.all([auth(), resolvePageCityContext(citySlug)]);
 
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
-      <PageHeader />
+      <PageHeader cityName={city?.name} />
       <div className="flex-1 w-full max-w-[960px] mx-auto p-8">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
@@ -39,7 +46,7 @@ export default async function MyListingsPage() {
           <MyListingsGrid accessToken={session.accessToken} />
         )}
       </div>
-      <Footer />
+      <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
     </div>
   );
 }
