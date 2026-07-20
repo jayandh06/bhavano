@@ -7,7 +7,7 @@ export async function StaticPageLayout({ title, updated, children }: { title: st
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader />
-      <div className="flex-1 w-full max-w-[720px] mx-auto p-8">
+      <div className="flex-1 w-full max-w-[1280px] mx-auto p-8">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
