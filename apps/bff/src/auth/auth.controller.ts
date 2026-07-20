@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, NotFoundException, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { AuthSession } from '@bhavano/types';
 import { AuthGuard } from './guards/auth.guard';
@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { DevLoginDto } from './dto/dev-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -32,6 +33,19 @@ export class AuthController {
   @HttpCode(200)
   loginWithGoogle(@Body() dto: GoogleLoginDto): Promise<AuthSession> {
     return this.authService.loginWithGoogle(dto.idToken);
+  }
+
+  /** Test-only: mints a real session for an existing (seeded) user without going through OTP
+   * or Google — used by the web app's Playwright smoke suite (see docs/plans/web-smoke-tests.md).
+   * Double-gated so it can never be reachable outside a local/test run, even on a misconfigured
+   * non-prod deploy. */
+  @Post('dev-login')
+  @HttpCode(200)
+  devLogin(@Body() dto: DevLoginDto): Promise<AuthSession> {
+    if (process.env.NODE_ENV === 'production' || process.env.ALLOW_DEV_LOGIN !== 'true') {
+      throw new NotFoundException();
+    }
+    return this.authService.devLogin(dto.phone);
   }
 
   @Post('otp/link')

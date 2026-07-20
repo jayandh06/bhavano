@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import type { AuthSession, AuthUser } from '@bhavano/types';
@@ -81,6 +81,18 @@ export class AuthService {
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.recordLogin(promoted.id, 'google');
     return this.issueSession(promoted);
+  }
+
+  /** Test-only login used by the web app's Playwright smoke suite to bypass real OTP/Google
+   * login (which can't be automated locally — MSG91 throws without real credentials, and
+   * Google's OAuth flow has no dev bypass). The controller gates this behind NODE_ENV and
+   * ALLOW_DEV_LOGIN before it ever reaches here; this just reuses issueSession() as-is rather
+   * than duplicating its jwt.sign(...) logic. Looks up an existing (seeded) user only — never
+   * creates one, so a typo'd phone fails loudly instead of silently minting a throwaway account. */
+  async devLogin(phone: string): Promise<AuthSession> {
+    const user = await this.prisma.user.findUnique({ where: { phone } });
+    if (!user) throw new NotFoundException(`No user found for phone ${phone}`);
+    return this.issueSession(user);
   }
 
   private recordLogin(userId: string, method: 'otp' | 'google'): Promise<unknown> {

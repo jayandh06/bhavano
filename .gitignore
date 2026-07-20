@@ -25,3 +25,8 @@ Bhavano icon design.zip
 
 # Claude Code per-user local settings (permissions etc.) — machine-specific, not shared
 .claude/settings.local.json
+
+# Playwright smoke suite (apps/web/e2e) — local run artifacts, not app source
+apps/web/e2e/.auth/
+apps/web/playwright-report/
+apps/web/test-results/
