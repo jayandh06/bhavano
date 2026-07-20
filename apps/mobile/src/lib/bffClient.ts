@@ -33,8 +33,19 @@ export interface ListingsQuery {
   homeCategory?: HomeCategoryFilter;
   propertyType?: PropertyTypeFilter;
   cityId?: string;
+  /** Multi-select area filter — comma-joined area ids, same wire format as the web app's
+   * AreaFilter (see docs/plans/mobile-filters-and-sort.md). */
+  areaIds?: string[];
   q?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  /** Multi-select BHK filter — one or more bedroom-count buckets (5 = "5+"). */
+  bedrooms?: number[];
+  furnished?: "unfurnished" | "semi" | "furnished";
+  /** Append-style infinite-scroll cursor — pass back the previous page's `nextCursor`. */
+  cursor?: string;
   limit?: number;
+  sort?: "newest" | "price_asc" | "price_desc" | "popular";
 }
 
 export function fetchListings(query: ListingsQuery, accessToken?: string | null): Promise<ListingsPage> {
@@ -42,8 +53,15 @@ export function fetchListings(query: ListingsQuery, accessToken?: string | null)
   if (query.homeCategory) params.set("homeCategory", query.homeCategory);
   if (query.propertyType) params.set("propertyType", query.propertyType);
   if (query.cityId) params.set("cityId", query.cityId);
+  if (query.areaIds && query.areaIds.length > 0) params.set("areaIds", query.areaIds.join(","));
   if (query.q) params.set("q", query.q);
+  if (query.minPrice !== undefined) params.set("minPrice", String(query.minPrice));
+  if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
+  if (query.bedrooms && query.bedrooms.length > 0) params.set("bedrooms", query.bedrooms.join(","));
+  if (query.furnished) params.set("furnished", query.furnished);
+  if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit) params.set("limit", String(query.limit));
+  if (query.sort) params.set("sort", query.sort);
   const path = `/listings?${params.toString()}`;
   return accessToken ? authedBffFetch(accessToken, path) : bffFetch<ListingsPage>(path);
 }
@@ -59,9 +77,10 @@ export function reverseGeocode(lat: number, lng: number): Promise<City | null> {
   return bffFetch<City | null>(`/locations/reverse?lat=${lat}&lng=${lng}`);
 }
 
-export function fetchAreas(cityId: string, q?: string): Promise<Area[]> {
+export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<Area[]> {
   const params = new URLSearchParams({ cityId });
   if (q) params.set("q", q);
+  if (all) params.set("all", "true");
   return bffFetch<Area[]>(`/locations/areas?${params.toString()}`);
 }
 

@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
+  fetchAreas,
   fetchCities,
   fetchConversations,
   fetchFavourites,
@@ -9,10 +10,15 @@ import {
   type ListingsQuery,
 } from "./bffClient";
 
-export function useListingsQuery(query: ListingsQuery, accessToken?: string | null) {
-  return useQuery({
+/** Cursor-based infinite scroll (FlatList `onEndReached` → `fetchNextPage`) — mobile has no
+ * SEO/crawlable-URL reason to use numbered pages the way the web app's browse pages do (see
+ * docs/plans/mobile-filters-and-sort.md), so this is the natural fit instead. */
+export function useInfiniteListingsQuery(query: Omit<ListingsQuery, "cursor">, accessToken?: string | null) {
+  return useInfiniteQuery({
     queryKey: ["listings", query, accessToken],
-    queryFn: () => fetchListings(query, accessToken),
+    queryFn: ({ pageParam }: { pageParam: string | undefined }) => fetchListings({ ...query, cursor: pageParam }, accessToken),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }
 
@@ -27,6 +33,16 @@ export function useCitiesQuery(q?: string) {
   return useQuery({
     queryKey: ["cities", q ?? ""],
     queryFn: () => fetchCities(q),
+  });
+}
+
+/** The city's full area list, for FilterSheet's Areas section — `all=true` mirrors the web
+ * AreaFilter's own fetch (see docs/plans/mobile-filters-and-sort.md). */
+export function useAreasQuery(cityId: string | undefined) {
+  return useQuery({
+    queryKey: ["areas", cityId],
+    queryFn: () => fetchAreas(cityId!, undefined, true),
+    enabled: !!cityId,
   });
 }
 

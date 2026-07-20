@@ -1,42 +1,99 @@
-import { useState } from "react";
-import { FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useRef, useState } from "react";
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
+import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { HomeCategoryFilter, PropertyTypeFilter } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
-import { useListingsQuery } from "../../src/lib/queries";
+import { useAreasQuery, useInfiniteListingsQuery } from "../../src/lib/queries";
 import { CategoryChips } from "../../src/components/home/CategoryChips";
 import { ListingCard } from "../../src/components/home/ListingCard";
+import { FilterSheet, EMPTY_FILTERS, activeFilterCount, type AppliedFilters } from "../../src/components/home/FilterSheet";
+import { SortSheet, SORT_OPTIONS, type SortValue } from "../../src/components/home/SortSheet";
 import { HOME_TABS } from "../../src/components/home/categories";
+
+/** Below this width, `FlatList` renders one column; at/above it, two — comfortably below every
+ * iPad's portrait width (744pt+) and above every phone's, including large phones in portrait. */
+const WIDE_SCREEN_BREAKPOINT = 700;
 
 export default function HomeScreen() {
   const { colors, theme, toggleTheme } = useAppTheme();
   const { city, openLocationPicker, requireLogin, accessToken } = useHomeSheets();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 2 : 1;
+
   const [category, setCategory] = useState<HomeCategoryFilter>("buy");
   const [propertyType, setPropertyType] = useState<PropertyTypeFilter | undefined>(undefined);
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
+  const [sort, setSort] = useState<SortValue>("newest");
 
-  const { data } = useListingsQuery(
+  const filterSheetRef = useRef<BottomSheetModal>(null);
+  const sortSheetRef = useRef<BottomSheetModal>(null);
+
+  const { data: cityAreas = [] } = useAreasQuery(city?.id);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteListingsQuery(
     {
       homeCategory: category,
       propertyType,
       cityId: city?.id,
       q: query || undefined,
+      areaIds: filters.areaIds,
+      bedrooms: filters.bedrooms,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      furnished: filters.furnished,
+      sort,
       limit: 20,
     },
     accessToken,
   );
+  const items = data?.pages.flatMap((p) => p.items) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
   const categoryLabel = HOME_TABS.find((t) => t.value === category)?.label ?? "Buy";
+  const sortLabel = SORT_OPTIONS.find((s) => s.value === sort)?.label ?? "Newest first";
+  const filterCount = activeFilterCount(filters);
+
+  // Switching tabs/property-type clears stale filters — a leftover BHK/price selection from
+  // House shouldn't silently apply once the user switches to PG (same rule the web app's
+  // CategoryTabs already enforces).
+  function onSelectCategory(next: HomeCategoryFilter) {
+    setCategory(next);
+    setPropertyType(undefined);
+    setFilters(EMPTY_FILTERS);
+  }
+  function onSelectPropertyType(next: PropertyTypeFilter | undefined) {
+    setPropertyType(next);
+    setFilters(EMPTY_FILTERS);
+  }
+
+  function onApplyFilters(next: AppliedFilters) {
+    setFilters(next);
+    filterSheetRef.current?.dismiss();
+  }
+  function onSelectSort(value: SortValue) {
+    setSort(value);
+    sortSheetRef.current?.dismiss();
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <FlatList
-        data={data?.items ?? []}
+        // FlatList's numColumns can't change on an already-mounted list without a forced
+        // remount — this key makes rotating an iPad (or resizing a split-view window) between
+        // 1- and 2-column widths work instead of warning/breaking.
+        key={`cols-${numColumns}`}
+        numColumns={numColumns}
+        columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
+        data={items}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 100 }}
+        onEndReached={() => hasNextPage && fetchNextPage()}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 20 }} color={colors.green} /> : null}
         renderItem={({ item }) => (
-          <View style={{ paddingHorizontal: 16 }}>
+          <View style={numColumns > 1 ? styles.gridItem : styles.singleItem}>
             <ListingCard item={item} cityName={city?.name ?? ""} />
           </View>
         )}
@@ -91,26 +148,53 @@ export default function HomeScreen() {
             <View style={{ marginTop: 12 }}>
               <CategoryChips
                 active={category}
-                onSelect={(next) => {
-                  setCategory(next);
-                  setPropertyType(undefined);
-                }}
+                onSelect={onSelectCategory}
                 activePropertyType={propertyType}
-                onSelectPropertyType={setPropertyType}
+                onSelectPropertyType={onSelectPropertyType}
               />
+            </View>
+
+            <View style={styles.filterSortRow}>
+              <Pressable
+                onPress={() => filterSheetRef.current?.present()}
+                style={[styles.pillButton, { backgroundColor: colors.surfaceAlt, borderColor: filterCount > 0 ? colors.green : colors.border }]}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "700", color: filterCount > 0 ? colors.green : colors.text }}>Filters</Text>
+                {filterCount > 0 && (
+                  <View style={[styles.badge, { backgroundColor: colors.green }]}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.onGreen }}>{filterCount}</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => sortSheetRef.current?.present()}
+                style={[styles.pillButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }} numberOfLines={1}>
+                  Sort: {sortLabel}
+                </Text>
+              </Pressable>
             </View>
 
             <View style={styles.sectionHeading}>
               <Text style={{ fontFamily: "serif", fontSize: 17, fontWeight: "600", color: colors.text }}>
                 {categoryLabel}
               </Text>
-              <Text style={{ fontSize: 11.5, color: colors.muted, fontWeight: "600" }}>
-                {data?.total ?? 0} results
-              </Text>
+              <Text style={{ fontSize: 11.5, color: colors.muted, fontWeight: "600" }}>{total} results</Text>
             </View>
           </View>
         }
       />
+
+      <FilterSheet
+        ref={filterSheetRef}
+        cityAreas={cityAreas}
+        category={category}
+        propertyType={propertyType}
+        applied={filters}
+        onApply={onApplyFilters}
+      />
+      <SortSheet ref={sortSheetRef} active={sort} onSelect={onSelectSort} />
 
       {/* TEMP(auth-gate): posting is open without login for now. */}
       <Pressable onPress={() => router.push("/post")} style={[styles.fab, { backgroundColor: colors.gold }]}>
@@ -151,14 +235,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginHorizontal: 16,
   },
+  filterSortRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginTop: 12,
+    gap: 10,
+  },
+  pillButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexShrink: 1,
+  },
+  badge: { minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
   sectionHeading: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
     paddingHorizontal: 16,
     paddingBottom: 10,
-    paddingTop: 4,
+    paddingTop: 14,
   },
+  singleItem: { paddingHorizontal: 16 },
+  gridItem: { flex: 1 },
+  columnWrapper: { gap: 12, paddingHorizontal: 16 },
   fab: {
     position: "absolute",
     right: 16,

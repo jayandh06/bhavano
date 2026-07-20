@@ -87,7 +87,10 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 16, overflow: "hidden" },
-  imageArea: { height: 150, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  // aspectRatio (not a fixed height) so the image scales proportionally at whatever card width
+  // results from the grid's column count — a hardcoded height would look squashed at the
+  // narrower width a 2-column (tablet) card ends up with (see mobile-filters-and-sort.md).
+  imageArea: { aspectRatio: 4 / 3, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   imageOverlayA: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.5 },
   imageCaption: {
     fontSize: 10,
