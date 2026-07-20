@@ -36,7 +36,7 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 type Step = "category" | "transactionType" | "details" | "review";
 
 // TEMP(auth-gate): posting is open without login for now.
-export function PostAdWizard({ cities }: { cities: City[] }) {
+export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaultCityId?: string }) {
   const { colors } = useAppTheme();
   const router = useRouter();
   const [listingId] = useState(() => Crypto.randomUUID());
@@ -45,7 +45,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
 
-  const [cityId, setCityId] = useState(cities[0]?.id ?? "");
+  const [cityId, setCityId] = useState(defaultCityId ?? cities[0]?.id ?? "");
   const [price, setPrice] = useState("");
   const [priceQualifier, setPriceQualifier] = useState("");
   const [title, setTitle] = useState("");

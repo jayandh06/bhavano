@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { City, HomeCategoryFilter, PopularSearchDto } from "@bhavano/types";
+import { slugify } from "@bhavano/types/slugify";
 import type { ParsedSegments } from "@/lib/seoRoute";
 import { LocationPicker } from "./LocationPicker";
 import { SearchBar } from "./SearchBar";
@@ -42,7 +43,7 @@ export function Header({
             India&apos;s home for Buy · Rent · Plots · Coworking · PG · Commercial · Furniture
           </span>
           <div className="flex gap-5 opacity-[0.85]">
-            <Link href="/post" className="text-inherit">
+            <Link href={`/post?city=${slugify(cityName)}`} className="text-inherit">
               For Owners
             </Link>
             <Link href="/help" className="text-inherit">
@@ -75,7 +76,7 @@ export function Header({
           <div className="flex items-center gap-3 shrink-0">
             <ThemeToggle />
           </div>
-          <HeaderAuthButtons userName={userName} />
+          <HeaderAuthButtons userName={userName} cityName={cityName} />
         </div>
 
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8">

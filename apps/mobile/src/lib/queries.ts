@@ -29,10 +29,10 @@ export function useListingQuery(id: string, accessToken?: string | null) {
   });
 }
 
-export function useCitiesQuery(q?: string) {
+export function useCitiesQuery(q?: string, all?: boolean) {
   return useQuery({
-    queryKey: ["cities", q ?? ""],
-    queryFn: () => fetchCities(q),
+    queryKey: ["cities", q ?? "", !!all],
+    queryFn: () => fetchCities(q, all),
   });
 }
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Area, City } from "@bhavano/types";
+import { slugify } from "@bhavano/types/slugify";
 import { fetchCities } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
 
@@ -88,7 +89,7 @@ export async function Footer({
         <div>
           <div className="font-bold text-[13px] text-text mb-2.5">Company</div>
           <div className="flex flex-col gap-2 text-[13px]">
-            <Link href="/post">Post a free ad</Link>
+            <Link href={currentCityName ? `/post?city=${slugify(currentCityName)}` : "/post"}>Post a free ad</Link>
             <Link href="/help">Help centre</Link>
           </div>
         </div>

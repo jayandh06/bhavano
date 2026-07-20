@@ -2,18 +2,20 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { slugify } from "@bhavano/types/slugify";
 import { useAuthGate } from "./AuthGateProvider";
 import { signOutAction } from "@/app/actions/auth";
 import { useClickOutside } from "@/lib/useClickOutside";
 
-export function HeaderAuthButtons({ userName }: { userName?: string | null }) {
+export function HeaderAuthButtons({ userName, cityName }: { userName?: string | null; cityName: string }) {
   const { requireLogin } = useAuthGate();
 
   return (
     <div className="flex items-center gap-3 shrink-0">
-      {/* TEMP(auth-gate): posting is open without login for now. */}
+      {/* TEMP(auth-gate): posting is open without login for now. Carries the currently-selected
+          city through so the wizard defaults to it instead of an arbitrary alphabetical city. */}
       <Link
-        href="/post"
+        href={`/post?city=${slugify(cityName)}`}
         className="border-[1.5px] border-green text-green rounded-lg px-4 py-[9px] text-sm font-bold whitespace-nowrap"
       >
         + Post free ad

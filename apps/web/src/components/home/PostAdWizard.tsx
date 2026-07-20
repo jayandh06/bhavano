@@ -62,7 +62,7 @@ const optionButtonClass = (active: boolean) =>
 
 const backButtonClass = "bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer";
 
-export function PostAdWizard({ cities }: { cities: City[] }) {
+export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaultCityId?: string }) {
   const [listingId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("category");
   const [category, setCategory] = useState<ListingCategory | null>(null);
@@ -71,7 +71,7 @@ export function PostAdWizard({ cities }: { cities: City[] }) {
   const [price, setPrice] = useState("");
   const [priceQualifier, setPriceQualifier] = useState("");
   const [title, setTitle] = useState("");
-  const [cityId, setCityId] = useState(cities[0]?.id ?? "");
+  const [cityId, setCityId] = useState(defaultCityId ?? cities[0]?.id ?? "");
   const [areaQuery, setAreaQuery] = useState("");
   const [areaId, setAreaId] = useState<string | null>(null);
   const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
