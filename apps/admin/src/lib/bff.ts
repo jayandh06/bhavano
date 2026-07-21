@@ -4,6 +4,7 @@ import type {
   AuthSession,
   ConversationSummaryDto,
   FlagListingInput,
+  ListingBoostsPage,
   ListingDetailDto,
   ListingOwnerDto,
   LoginEventsPage,
@@ -146,4 +147,20 @@ export function fetchRateLimitSettings(accessToken: string): Promise<RateLimitSe
 
 export function updateRateLimitSettings(accessToken: string, input: RateLimitSettingsDto): Promise<RateLimitSettingsDto> {
   return authedBffFetch(accessToken, "/admin/rate-limits", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export interface ListBoostsQuery {
+  cursor?: string;
+  limit?: number;
+}
+
+export function fetchBoosts(accessToken: string, query: ListBoostsQuery = {}): Promise<ListingBoostsPage> {
+  const params = new URLSearchParams();
+  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.limit) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/boosts?${params.toString()}`, { cache: "no-store" });
+}
+
+export function revokeBoost(accessToken: string, listingId: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, `/admin/listings/${listingId}/revoke-boost`, { method: "POST" });
 }

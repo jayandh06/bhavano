@@ -29,6 +29,10 @@
       "types": "./dist/priceBounds.d.ts",
       "default": "./dist/priceBounds.js"
     },
+    "./boostPricing": {
+      "types": "./dist/boostPricing.d.ts",
+      "default": "./dist/boostPricing.js"
+    },
     "./cityIcons": {
       "types": "./dist/cityIcons.d.ts",
       "default": "./dist/cityIcons.js"

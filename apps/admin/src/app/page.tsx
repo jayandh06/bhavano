@@ -36,6 +36,9 @@ export default async function DashboardPage({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Listing moderation</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <Link href="/boosts" style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>
+              Boosts
+            </Link>
             <Link href="/logins" style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>
               Recent logins
             </Link>

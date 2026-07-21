@@ -146,7 +146,14 @@ export class ListingsService {
       ...(attributeFilters.length > 0 ? { AND: attributeFilters } : {}),
     };
 
-    const orderBy = ORDER_BY[sort ?? 'newest'];
+    // Boosted listings (non-null boostRank) always sort ahead of unboosted ones, regardless of
+    // the chosen sort — but *among* boosted listings, order is whatever BoostRotationService's
+    // periodic reshuffle last set, not purchase recency/duration, so nobody permanently squats
+    // the top slot (see docs/plans/monetization-boosted-listings-premium-tiers.md).
+    const orderBy: Prisma.ListingOrderByWithRelationInput[] = [
+      { boostRank: { sort: 'desc', nulls: 'last' } },
+      ...ORDER_BY[sort ?? 'newest'],
+    ];
 
     // Offset mode (numbered `?page=N` pagination — see ListListingsDto.offset) fetches the exact
     // window directly, since the caller already knows the total and doesn't need a `hasMore`
@@ -581,6 +588,7 @@ export class ListingsService {
       viewCount: listing.viewCount,
       likeCount: listing.likeCount,
       isFavourited: favouritedIds?.has(listing.id) ?? false,
+      isBoosted: (listing.boostedUntil?.getTime() ?? 0) > Date.now(),
     };
   }
 }

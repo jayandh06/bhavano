@@ -7,6 +7,7 @@ import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
+import { BoostButton } from "@/components/home/BoostButton";
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
   active: "Active",
@@ -87,6 +88,9 @@ function MyListingRow({ item }: { item: ListingDetailDto }) {
           >
             {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
           </span>
+          {item.isBoosted && (
+            <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-gold text-gold">⭐ Featured</span>
+          )}
         </div>
         <div className="text-[13px] text-muted mt-1">
           {item.price} {item.priceQualifier} · {item.area}, {item.cityName}
@@ -96,7 +100,10 @@ function MyListingRow({ item }: { item: ListingDetailDto }) {
           <span>♥ {item.likeCount}</span>
         </div>
       </div>
-      <div className="flex gap-2.5 shrink-0">
+      <div className="flex items-center gap-2.5 shrink-0">
+        {item.status === "active" && !item.isExpired && !item.isBoosted && (
+          <BoostButton listingId={item.id} category={item.category} />
+        )}
         <Link href={buildListingPath(item)} className="text-[13px] font-bold text-text whitespace-nowrap">
           View
         </Link>

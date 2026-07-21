@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import type {
   ActivityEventDto,
   AdminListingsPage,
+  ListingBoostsPage,
   ListingDetailDto,
   ListingOwnerDto,
   LoginEventsPage,
@@ -16,6 +17,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
+import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
@@ -222,5 +224,46 @@ export class AdminService {
 
   updateRateLimitSettings(dto: UpdateRateLimitsDto): Promise<RateLimitSettingsDto> {
     return this.rateLimitService.updateSettings(dto);
+  }
+
+  /** Every purchased boost, newest first — lets support see what a listing's owner actually
+   * paid for, alongside `revokeBoost` below for the manual-grant/refund-support case. */
+  async listBoosts(query: ListBoostsDto): Promise<ListingBoostsPage> {
+    const { cursor, limit } = query;
+
+    const [rows, total] = await Promise.all([
+      this.prisma.listingBoost.findMany({
+        include: { listing: { include: { owner: { select: { name: true } } } }, payment: true },
+        orderBy: { boostedFrom: 'desc' },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      this.prisma.listingBoost.count(),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      items: page.map((row) => ({
+        id: row.id,
+        listingId: row.listingId,
+        listingTitle: row.listing.title,
+        ownerName: row.listing.owner.name,
+        boostedFrom: row.boostedFrom.toISOString(),
+        boostedUntil: row.boostedUntil.toISOString(),
+        amount: row.payment.amount,
+        currency: row.payment.currency,
+      })),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+      total,
+    };
+  }
+
+  /** Manual override for support cases (e.g. a payment that should still get the boost, or a
+   * refund) — just clears the denormalized fields the browse query actually reads; the
+   * ListingBoost/Payment audit rows are left untouched. */
+  async revokeBoost(listingId: string): Promise<void> {
+    await this.prisma.listing.update({ where: { id: listingId }, data: { boostedUntil: null, boostRank: null } });
   }
 }

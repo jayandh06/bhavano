@@ -49,9 +49,12 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
             </span>
           )}
         </Link>
-        <span className="absolute top-3 left-3 bg-green text-on-green text-[11px] font-bold px-2.5 py-1 rounded-md pointer-events-none">
-          {item.tag}
-        </span>
+        <div className="absolute top-3 left-3 flex gap-1.5 pointer-events-none">
+          <span className="bg-green text-on-green text-[11px] font-bold px-2.5 py-1 rounded-md">{item.tag}</span>
+          {item.isBoosted && (
+            <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md">⭐ Featured</span>
+          )}
+        </div>
         <button
           onClick={onToggleFavourite}
           className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-[#ffffffee] border-none cursor-pointer text-[15px] z-[1] ${

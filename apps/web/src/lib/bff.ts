@@ -4,6 +4,7 @@ import type {
   AuthSession,
   City,
   ConversationSummaryDto,
+  CreateBoostOrderResponseDto,
   CreateListingInput,
   HomeCategoryFilter,
   ListingCardDto,
@@ -19,6 +20,7 @@ import type {
   UpdateProfileInput,
   UserProfileDto,
 } from "@bhavano/types";
+import type { BoostDurationDays } from "@bhavano/types/boostPricing";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
@@ -197,6 +199,17 @@ export function linkPhone(accessToken: string, phone: string, code: string): Pro
  * BFF on its own. */
 export function logout(accessToken: string): Promise<{ success: true }> {
   return authedBffFetch(accessToken, "/auth/logout", { method: "POST" });
+}
+
+/** Creates a Razorpay order for boosting a listing — the boost itself only activates once the
+ * BFF's webhook confirms payment, not from this call alone. See
+ * docs/plans/monetization-boosted-listings-premium-tiers.md. */
+export function createBoostOrder(
+  accessToken: string,
+  listingId: string,
+  boostDays: BoostDurationDays,
+): Promise<CreateBoostOrderResponseDto> {
+  return authedBffFetch(accessToken, "/payments/orders", { method: "POST", body: JSON.stringify({ listingId, boostDays }) });
 }
 
 export function recordView(listingId: string, viewerKey: string, accessToken?: string): Promise<{ viewCount: number }> {

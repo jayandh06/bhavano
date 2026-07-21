@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import type {
   AdminListingsPage,
+  ListingBoostsPage,
   ListingDetailDto,
   ListingOwnerDto,
   LoginEventsPage,
@@ -15,6 +16,7 @@ import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
+import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 
 @Controller('admin')
@@ -74,5 +76,16 @@ export class AdminController {
   @Patch('rate-limits')
   updateRateLimitSettings(@Body() dto: UpdateRateLimitsDto): Promise<RateLimitSettingsDto> {
     return this.adminService.updateRateLimitSettings(dto);
+  }
+
+  @Get('boosts')
+  listBoosts(@Query() query: ListBoostsDto): Promise<ListingBoostsPage> {
+    return this.adminService.listBoosts(query);
+  }
+
+  @Post('listings/:id/revoke-boost')
+  async revokeBoost(@Param('id') id: string): Promise<{ success: true }> {
+    await this.adminService.revokeBoost(id);
+    return { success: true };
   }
 }

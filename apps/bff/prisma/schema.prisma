@@ -66,6 +66,20 @@ enum RateLimitKind {
   view
 }
 
+enum PaymentStatus {
+  created
+  paid
+  failed
+  refunded
+}
+
+/** Only "listing_boost" exists today — buyer/seller subscription purposes are a planned
+ * follow-on (see docs/plans/monetization-boosted-listings-premium-tiers.md), to be added here
+ * once those flows are actually built, not preemptively. */
+enum PaymentPurpose {
+  listing_boost
+}
+
 model City {
   id        String    @id @default(cuid())
   name      String
@@ -111,6 +125,7 @@ model User {
   conversationsAsInquirer Conversation[] @relation("ConversationInquirer")
   messages              Message[]
   loginEvents           LoginEvent[]
+  payments              Payment[]
 
   @@index([cityId])
 }
@@ -145,14 +160,23 @@ model Listing {
   expiresAt        DateTime
   viewCount        Int               @default(0)
   likeCount        Int               @default(0)
+  // Denormalized from ListingBoost (the audit trail) so the hot-path browse query never needs
+  // a join just to check boost status — null means not currently boosted. boostRank is bumped
+  // by a periodic job to rotate tie-order among simultaneously-boosted listings, rather than
+  // whoever paid first/most permanently squatting the top slot.
+  boostedUntil     DateTime?
+  boostRank        Float?
   listingPhotos    ListingPhoto[]
   views            ListingView[]
   favourites       Favourite[]
   conversations    Conversation[]
+  payments         Payment[]
+  listingBoosts    ListingBoost[]
 
   @@index([cityId, category])
   @@index([cityId, transactionType])
   @@index([expiresAt])
+  @@index([boostedUntil])
 }
 
 /** One row per unique viewer (logged-in user id or anonymous device key) — used to
@@ -294,4 +318,46 @@ model RateLimitSetting {
   viewLimit            Int      @default(200)
   viewWindowMinutes    Int      @default(60)
   updatedAt            DateTime @updatedAt
+}
+
+/** Central payment ledger — the single source of truth for whether a purchase actually
+ * succeeded. The Razorpay webhook (never a client-side "payment succeeded" callback) is what
+ * flips a row to `paid`; `razorpayPaymentId` is unique so webhook redelivery is always a safe
+ * no-op. `listingId`/`boostDays` are purpose-specific fields (only meaningful for
+ * `listing_boost`) — left nullable rather than modeled generically, same pattern as
+ * `Listing.condition` being furniture-only; future purposes add their own nullable fields in
+ * their own migration instead of retrofitting a generic column now. */
+model Payment {
+  id                String         @id @default(cuid())
+  userId            String
+  user              User           @relation(fields: [userId], references: [id])
+  razorpayOrderId   String         @unique
+  razorpayPaymentId String?        @unique
+  amount            Int
+  currency          String         @default("INR")
+  status            PaymentStatus  @default(created)
+  purpose           PaymentPurpose
+  listingId         String?
+  listing           Listing?       @relation(fields: [listingId], references: [id])
+  boostDays         Int?
+  createdAt         DateTime       @default(now())
+  paidAt            DateTime?
+  listingBoost      ListingBoost?
+
+  @@index([userId, createdAt])
+}
+
+/** One row per activated boost — the history/audit trail. `Listing.boostedUntil` is the
+ * denormalized field the hot-path browse query actually reads, kept in sync here so listing
+ * queries never need a join just to check boost status. */
+model ListingBoost {
+  id           String   @id @default(cuid())
+  listingId    String
+  listing      Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  paymentId    String   @unique
+  payment      Payment  @relation(fields: [paymentId], references: [id])
+  boostedFrom  DateTime @default(now())
+  boostedUntil DateTime
+
+  @@index([listingId])
 }

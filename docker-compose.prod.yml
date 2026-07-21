@@ -26,6 +26,10 @@ services:
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
       R2_BUCKET: ${R2_BUCKET}
       CDN_BASE_URL: ${CDN_BASE_URL}
+      # Razorpay — listing boosts (see docs/plans/monetization-boosted-listings-premium-tiers.md).
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
     volumes:
       # Rotating request/response logs, shared read-only with the alloy container below —
       # see docs/plans/bff-loki-grafana-logging.md.

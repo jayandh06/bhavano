@@ -29,6 +29,12 @@ export type LoginMethod = "otp" | "google";
 
 export type RateLimitKind = "publish" | "view";
 
+export type PaymentStatus = "created" | "paid" | "failed" | "refunded";
+
+/** Only "listing_boost" exists today — see docs/plans/monetization-boosted-listings-premium-tiers.md
+ * for the planned buyer/seller subscription purposes, not yet built. */
+export type PaymentPurpose = "listing_boost";
+
 export interface GeoPoint {
   lat: number;
   lng: number;
@@ -96,6 +102,9 @@ export interface ListingCardDto {
   /** Whether the requesting (logged-in) viewer has favourited this listing — always
    * false for anonymous requests, since favouriting requires login. */
   isFavourited: boolean;
+  /** True while `Listing.boostedUntil` is in the future — drives the "⭐ Featured" badge and
+   * the boosted-first sort. See docs/plans/monetization-boosted-listings-premium-tiers.md. */
+  isBoosted: boolean;
 }
 
 export interface ListingsPage {
@@ -297,3 +306,36 @@ export interface RateLimitSettingsDto {
 }
 
 export type UpdateRateLimitSettingsInput = RateLimitSettingsDto;
+
+export interface CreateBoostOrderInput {
+  listingId: string;
+  boostDays: 7 | 15;
+}
+
+/** Everything the web app's Razorpay Checkout needs to open the payment sheet — `razorpayKeyId`
+ * is the public key (safe to expose to the client), never the secret. */
+export interface CreateBoostOrderResponseDto {
+  paymentId: string;
+  razorpayOrderId: string;
+  razorpayKeyId: string;
+  amount: number;
+  currency: string;
+}
+
+/** Admin's boost-management list — who bought it, for how long, on which listing. */
+export interface ListingBoostDto {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  ownerName: string | null;
+  boostedFrom: string;
+  boostedUntil: string;
+  amount: number;
+  currency: string;
+}
+
+export interface ListingBoostsPage {
+  items: ListingBoostDto[];
+  nextCursor: string | null;
+  total: number;
+}

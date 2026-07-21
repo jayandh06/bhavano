@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { RateLimitSettingsDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { approveListing, fetchThread, flagListing, sendMessage, setReviewed, updateRateLimitSettings } from "@/lib/bff";
+import { approveListing, fetchThread, flagListing, revokeBoost, sendMessage, setReviewed, updateRateLimitSettings } from "@/lib/bff";
 
 export type ActionResult = { success: true } | { success: false; error: string };
 
@@ -63,5 +63,16 @@ export async function updateRateLimitsAction(input: RateLimitSettingsDto): Promi
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update rate limits" };
+  }
+}
+
+export async function revokeBoostAction(listingId: string): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await revokeBoost(accessToken, listingId);
+    revalidatePath("/boosts");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to revoke boost" };
   }
 }
