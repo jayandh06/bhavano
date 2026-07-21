@@ -38,6 +38,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
 export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
   house: RESIDENTIAL_FIELDS,
   apartment: RESIDENTIAL_FIELDS,
+  villa: RESIDENTIAL_FIELDS,
   pg: [
     {
       key: "sharingType",

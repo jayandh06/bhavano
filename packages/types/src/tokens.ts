@@ -93,6 +93,7 @@ export const categoryImagePlaceholder: Record<
 > = {
   house: { imgA: "#D8CBA8", imgB: "#C7B78C", imgLabel: "photo: house exterior" },
   apartment: { imgA: "#CFC2B0", imgB: "#B9A98D", imgLabel: "photo: living room" },
+  villa: { imgA: "#DED0B6", imgB: "#C9B587", imgLabel: "photo: villa exterior" },
   pg: { imgA: "#C9BFA5", imgB: "#B3A681", imgLabel: "photo: PG room" },
   storage: { imgA: "#C2C2B8", imgB: "#A9A99A", imgLabel: "photo: storage space" },
   coworking: { imgA: "#BFCBC2", imgB: "#A3B4A8", imgLabel: "photo: coworking desk" },

@@ -25,6 +25,7 @@ interface SelectedPhoto {
 const CATEGORIES: { value: ListingCategory; label: string; icon: string }[] = [
   { value: "house", label: "House", icon: "🏡" },
   { value: "apartment", label: "Apartment", icon: "🏢" },
+  { value: "villa", label: "Villa", icon: "🏘️" },
   { value: "plot", label: "Plot", icon: "🗺️" },
   { value: "pg", label: "PG / Hostel", icon: "🛏️" },
   { value: "storage", label: "Storage space", icon: "📦" },

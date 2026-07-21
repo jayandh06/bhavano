@@ -40,7 +40,7 @@ const POSTING: Faq[] = [
   },
   {
     q: "What can I list?",
-    a: "Houses, apartments, plots, PG/hostel accommodation, storage space, coworking desks, commercial spaces, and furniture — each with its own set of relevant fields (bedrooms, sharing type, seat type, and so on).",
+    a: "Houses, apartments, villas, plots, PG/hostel accommodation, storage space, coworking desks, commercial spaces, and furniture — each with its own set of relevant fields (bedrooms, sharing type, seat type, and so on).",
   },
   {
     q: "How long does my ad stay live?",

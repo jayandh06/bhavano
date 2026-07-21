@@ -37,8 +37,8 @@ const DEFAULT_LISTING_DURATION_DAYS = 30;
 /** Property types nested under each of the Buy / Rent & Lease browsing tabs — nobody
  * buys/sells Storage or Coworking, so those only appear under Rent & Lease. */
 const PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> = {
-  buy: ['house', 'apartment', 'plot'],
-  rentLease: ['house', 'apartment', 'storage', 'coworking', 'commercial'],
+  buy: ['house', 'apartment', 'villa', 'plot', 'commercial'],
+  rentLease: ['house', 'apartment', 'villa', 'storage', 'coworking', 'commercial'],
 };
 
 function buildHomeCategoryWhere(tab: HomeCategoryFilter | undefined, propertyType?: PropertyTypeFilter): Prisma.ListingWhereInput {

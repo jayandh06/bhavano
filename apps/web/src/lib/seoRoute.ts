@@ -15,6 +15,7 @@ export const TRANSACTION_TYPES: TransactionType[] = ["buy", "sell", "rent", "lea
 export const LISTING_CATEGORIES: ListingCategory[] = [
   "house",
   "apartment",
+  "villa",
   "pg",
   "storage",
   "coworking",
@@ -35,6 +36,7 @@ export function isListingCategory(value: string): value is ListingCategory {
 export const CATEGORY_LABELS: Record<ListingCategory, string> = {
   house: "Houses",
   apartment: "Apartments",
+  villa: "Villas",
   pg: "PG Accommodation",
   storage: "Storage Spaces",
   coworking: "Coworking Desks",
@@ -126,7 +128,7 @@ export function parseEnum<T extends string>(value: string | string[] | undefined
 }
 
 export const FURNISHING_VALUES = ["unfurnished", "semi", "furnished"] as const;
-export const PROPERTY_TYPE_VALUES: PropertyTypeFilter[] = ["house", "apartment", "storage", "coworking"];
+export const PROPERTY_TYPE_VALUES: PropertyTypeFilter[] = ["house", "apartment", "villa", "storage", "coworking"];
 export const SHARING_TYPE_VALUES = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key === "sharingType")!.options!.map((o) => o.value);
 export const CONDITION_VALUES = CATEGORY_FIELD_CONFIG.furniture.find((f) => f.key === "condition")!.options!.map((o) => o.value);
 export const SERVICE_TYPE_VALUES = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")!.options!.map((o) => o.value);
@@ -139,7 +141,7 @@ export const SORT_VALUES = ["newest", "price_asc", "price_desc", "popular"] as c
 export type FacetKind = "bedrooms" | "sharingType" | "condition" | "serviceType" | "none";
 
 export function facetKindForCategory(category: ListingCategory): FacetKind {
-  if (category === "house" || category === "apartment") return "bedrooms";
+  if (category === "house" || category === "apartment" || category === "villa") return "bedrooms";
   if (category === "pg") return "sharingType";
   if (category === "furniture") return "condition";
   if (category === "interiors") return "serviceType";

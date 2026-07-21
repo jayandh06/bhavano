@@ -38,6 +38,7 @@ const PHOTO_DIR = path.resolve(__dirname, '../../web/public/photos');
 const CATEGORY_STYLE: Record<ListingCategory, { label: string; bg: string; fg: string }> = {
   house: { label: 'House', bg: '#1f6f54', fg: '#eafaf2' },
   apartment: { label: 'Apartment', bg: '#1d5b8f', fg: '#e8f2fb' },
+  villa: { label: 'Villa', bg: '#2f6b4f', fg: '#eaf7ef' },
   pg: { label: 'PG / Co-living', bg: '#8a4b1f', fg: '#fdf0e6' },
   storage: { label: 'Storage', bg: '#4a4f57', fg: '#f0f2f5' },
   coworking: { label: 'Coworking', bg: '#5a3a86', fg: '#f2ecfb' },
@@ -157,12 +158,13 @@ function deriveFields(category: ListingCategory, transactionType: TransactionTyp
 
   switch (category) {
     case 'house':
-    case 'apartment': {
+    case 'apartment':
+    case 'villa': {
       const bedrooms = [2, 3, 4][i];
       const bathrooms = [2, 2, 3][i];
       const sqft = [950, 1450, 2200][i];
       const furnished = ['unfurnished', 'semi', 'furnished'][i];
-      const noun = category === 'house' ? 'Independent House' : 'Apartment';
+      const noun = category === 'house' ? 'Independent House' : category === 'apartment' ? 'Apartment' : 'Villa';
       return {
         title: `${bedrooms} BHK ${noun} ${suffix} in ${areaName}`,
         specs: [`${bedrooms} Beds`, `${bathrooms} Bath`, `${sqft} sqft`],

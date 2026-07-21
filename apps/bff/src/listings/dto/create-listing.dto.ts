@@ -18,6 +18,7 @@ import type { ListingCategory, TransactionType } from '@bhavano/types';
 const LISTING_CATEGORIES: ListingCategory[] = [
   'house',
   'apartment',
+  'villa',
   'pg',
   'storage',
   'coworking',

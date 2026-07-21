@@ -31,13 +31,14 @@ const FURNITURE_RENT_OPTIONS: PriceQualifierOption[] = [
 export const PRICE_QUALIFIER_OPTIONS: Record<ListingCategory, Partial<Record<TransactionType, PriceQualifierOption[]>>> = {
   house: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
   apartment: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
+  villa: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
   pg: { rent: MONTHLY_OPTIONS },
   storage: { rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
   coworking: { rent: COWORKING_RENT_OPTIONS, lease: COWORKING_RENT_OPTIONS },
   furniture: { sell: SELL_OPTIONS, rent: FURNITURE_RENT_OPTIONS },
   interiors: { sell: SELL_OPTIONS },
   plot: { sell: SELL_OPTIONS },
-  commercial: { rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
+  commercial: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
 };
 
 export function getPriceQualifierOptions(

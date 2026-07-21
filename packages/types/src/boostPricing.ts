@@ -13,9 +13,10 @@ export interface BoostPriceTier {
  * categories or too cheap to matter for expensive ones. See
  * docs/plans/monetization-boosted-listings-premium-tiers.md. Tune as real usage comes in. */
 export const BOOST_PRICE_TIERS: Record<ListingCategory, BoostPriceTier> = {
-  // High-value: house, apartment, plot, commercial
+  // High-value: house, apartment, villa, plot, commercial
   house: { prices: { 7: 199, 15: 349 } },
   apartment: { prices: { 7: 199, 15: 349 } },
+  villa: { prices: { 7: 199, 15: 349 } },
   plot: { prices: { 7: 199, 15: 349 } },
   commercial: { prices: { 7: 199, 15: 349 } },
   // Mid-value: coworking, pg, storage

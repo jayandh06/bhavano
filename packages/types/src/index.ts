@@ -1,6 +1,7 @@
 export type ListingCategory =
   | "house"
   | "apartment"
+  | "villa"
   | "pg"
   | "storage"
   | "coworking"
@@ -60,7 +61,7 @@ export interface Listing {
 export type HomeCategoryFilter = "buy" | "rentLease" | "pg" | "furniture" | "interiors";
 
 /** Sub-filter shown under the Buy / Rent & Lease tabs only. */
-export type PropertyTypeFilter = "house" | "apartment" | "storage" | "coworking" | "plot" | "commercial";
+export type PropertyTypeFilter = "house" | "apartment" | "villa" | "storage" | "coworking" | "plot" | "commercial";
 
 export interface City {
   id: string;

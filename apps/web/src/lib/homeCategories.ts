@@ -62,9 +62,14 @@ export const HOME_TABS: HomeTab[] = [
     column1: [
       bhkColumn1Item("buy", "Buy", "house", "House"),
       bhkColumn1Item("buy", "Buy", "apartment", "Apartment"),
+      bhkColumn1Item("buy", "Buy", "villa", "Villa"),
       singleLinkColumn1Item("plot", "Plots", (city) => `Plots for Sale in ${city}`, {
         transactionGroup: "buy",
         category: "plot",
+      }),
+      singleLinkColumn1Item("commercial", "Commercial", (city) => `Commercial Spaces for Sale in ${city}`, {
+        transactionGroup: "buy",
+        category: "commercial",
       }),
     ],
   },
@@ -75,6 +80,7 @@ export const HOME_TABS: HomeTab[] = [
     column1: [
       bhkColumn1Item("rent-lease", "Rent", "house", "House"),
       bhkColumn1Item("rent-lease", "Rent", "apartment", "Apartment"),
+      bhkColumn1Item("rent-lease", "Rent", "villa", "Villa"),
       singleLinkColumn1Item("storage", "Storage", (city) => `Storage Spaces for Rent in ${city}`, {
         transactionGroup: "rent-lease",
         category: "storage",

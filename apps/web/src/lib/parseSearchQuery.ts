@@ -11,7 +11,7 @@ const CATEGORY_PATTERNS: [RegExp, ListingCategory][] = [
   [/\b(apartments?|flats?)\b/i, "apartment"],
   [/\b(independent\s+)?houses?\b/i, "house"],
   [/\bhomes?\b/i, "house"],
-  [/\bvillas?\b/i, "house"],
+  [/\bvillas?\b/i, "villa"],
   [/\bpaying\s+guests?\b/i, "pg"],
   [/\bpgs?\b/i, "pg"],
   [/\bhostels?\b/i, "pg"],

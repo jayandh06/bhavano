@@ -24,7 +24,7 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 const SITE_NAME = "Bhavano";
 const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
 const SITE_DESCRIPTION =
-  "India's home for Buy, Rent, Plots, Commercial Spaces, Coworking, PG and Furniture listings — browse without login, verified listings across India.";
+  "India's home for Buy, Rent, Villas, Plots, Commercial Spaces, Coworking, PG and Furniture listings — browse without login, verified listings across India.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

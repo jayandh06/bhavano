@@ -6,11 +6,12 @@ import type { ListingCategory, TransactionType } from "./index";
 export const POSTABLE_TRANSACTION_TYPES: Record<ListingCategory, TransactionType[]> = {
   house: ["sell", "rent", "lease"],
   apartment: ["sell", "rent", "lease"],
+  villa: ["sell", "rent", "lease"],
   pg: ["rent"],
   storage: ["rent", "lease"],
   coworking: ["rent", "lease"],
   furniture: ["sell", "rent"],
   interiors: ["sell"],
   plot: ["sell"],
-  commercial: ["rent", "lease"],
+  commercial: ["sell", "rent", "lease"],
 };

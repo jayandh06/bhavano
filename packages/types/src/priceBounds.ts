@@ -17,6 +17,7 @@ export interface CategoryPriceBounds {
 export const PRICE_BOUNDS: Record<ListingCategory, CategoryPriceBounds> = {
   house: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
   apartment: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
+  villa: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
   pg: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 100_000 } },
   storage: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 200, max: 100_000 } },
   coworking: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 500, max: 200_000 } },
@@ -26,7 +27,7 @@ export const PRICE_BOUNDS: Record<ListingCategory, CategoryPriceBounds> = {
   // Sell-only — land spans the same price range as built residential property. `rental` mirrors
   // `sale` (never reached), same pattern as `interiors` above.
   plot: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 100_000, max: 500_000_000 } },
-  // Rent/lease-only — a small shop and a large warehouse are both "commercial", hence the wide
-  // rental band. `sale` is an unreached placeholder (never postable, see POSTABLE_TRANSACTION_TYPES).
+  // A small shop and a large warehouse are both "commercial", hence the wide rental band. `sale`
+  // shares the standard real-estate-sale band used by every other sellable category.
   commercial: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 5_000, max: 2_000_000 } },
 };

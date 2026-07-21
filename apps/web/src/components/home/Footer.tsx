@@ -80,8 +80,8 @@ export async function Footer({
         <div className="max-w-[260px]">
           <div className="font-lora font-bold text-lg text-green mb-1.5">Bhavano</div>
           <p className="text-[13px] text-text-soft leading-[1.6] m-0">
-            Verified listings to buy, rent or lease houses, apartments, plots, coworking desks, commercial spaces,
-            PG accommodation and furniture across India — no login needed to browse.
+            Verified listings to buy, rent or lease houses, apartments, villas, plots, coworking desks, commercial
+            spaces, PG accommodation and furniture across India — no login needed to browse.
           </p>
         </div>
         {currentCityName && <LocationBlock heading={`Areas in ${currentCityName}`} items={areaItems} />}
