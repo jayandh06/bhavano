@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { fetchMessages } from "@/lib/bff";
+import { BffAuthError, fetchMessages } from "@/lib/bff";
 import { MessageThread } from "@/components/home/MessageThread";
 import { PageHeader } from "@/components/home/PageHeader";
 
@@ -10,7 +10,13 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   const session = await auth();
   if (!session?.accessToken || !session.user?.id) redirect("/messages");
 
-  const messages = await fetchMessages(session.accessToken, id);
+  let messages;
+  try {
+    messages = await fetchMessages(session.accessToken, id);
+  } catch (error) {
+    if (error instanceof BffAuthError) redirect("/messages");
+    throw error;
+  }
 
   return (
     <div className="min-h-screen bg-bg text-text">

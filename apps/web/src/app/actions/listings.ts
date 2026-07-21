@@ -3,7 +3,15 @@
 import { redirect } from "next/navigation";
 import type { CreateListingInput, ListingDetailDto, UpdateListingInput } from "@bhavano/types";
 import { auth } from "@/auth";
-import { createListing, fetchMyListings, recordView, toggleFavourite, updateListing, uploadPhoto } from "@/lib/bff";
+import {
+  BffAuthError,
+  createListing,
+  fetchMyListings,
+  recordView,
+  toggleFavourite,
+  updateListing,
+  uploadPhoto,
+} from "@/lib/bff";
 import { buildListingPath } from "@/lib/listingPath";
 
 // TEMP(auth-gate): posting is open without login for now — logged-in posters are attributed
@@ -52,7 +60,12 @@ export async function toggleFavouriteAction(listingId: string): Promise<ToggleFa
 export async function fetchMyListingsAction(): Promise<ListingDetailDto[]> {
   const session = await auth();
   if (!session?.accessToken) return [];
-  return fetchMyListings(session.accessToken);
+  try {
+    return await fetchMyListings(session.accessToken);
+  } catch (error) {
+    if (error instanceof BffAuthError) return [];
+    throw error;
+  }
 }
 
 export type UpdateListingResult = { success: true } | { success: false; error: string };

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { auth } from "@/auth";
-import { fetchMyListings } from "@/lib/bff";
+import { BffAuthError, fetchMyListings } from "@/lib/bff";
 import { buildListingPath } from "@/lib/listingPath";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
@@ -53,7 +53,15 @@ export default async function MyListingsPage({
 }
 
 async function MyListingsGrid({ accessToken }: { accessToken: string }) {
-  const listings = await fetchMyListings(accessToken);
+  let listings;
+  try {
+    listings = await fetchMyListings(accessToken);
+  } catch (error) {
+    if (error instanceof BffAuthError) {
+      return <RequireLoginPrompt message="Log in to view and edit the ads you've posted." />;
+    }
+    throw error;
+  }
 
   if (listings.length === 0) {
     return (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { fetchFavourites } from "@/lib/bff";
+import { BffAuthError, fetchFavourites } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { ListingCard } from "@/components/home/ListingCard";
@@ -37,7 +37,15 @@ export default async function FavouritesPage({
 }
 
 async function FavouritesGrid({ accessToken }: { accessToken: string }) {
-  const favourites = await fetchFavourites(accessToken);
+  let favourites;
+  try {
+    favourites = await fetchFavourites(accessToken);
+  } catch (error) {
+    if (error instanceof BffAuthError) {
+      return <RequireLoginPrompt message="Log in to see the listings you've favourited." />;
+    }
+    throw error;
+  }
 
   if (favourites.length === 0) {
     return <p className="text-muted text-sm">No favourites yet — tap ♡ on a listing to save it here.</p>;

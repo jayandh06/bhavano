@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { fetchConversations } from "@/lib/bff";
+import { BffAuthError, fetchConversations } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
@@ -36,7 +36,15 @@ export default async function MessagesPage({
 }
 
 async function ConversationList({ accessToken }: { accessToken: string }) {
-  const conversations = await fetchConversations(accessToken);
+  let conversations;
+  try {
+    conversations = await fetchConversations(accessToken);
+  } catch (error) {
+    if (error instanceof BffAuthError) {
+      return <RequireLoginPrompt message="Log in to see your conversations." />;
+    }
+    throw error;
+  }
 
   if (conversations.length === 0) {
     return <p className="text-muted text-sm">No conversations yet.</p>;

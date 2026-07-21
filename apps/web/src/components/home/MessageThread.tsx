@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { MessageDto } from "@bhavano/types";
 import { getSocket } from "@/lib/socket";
 import { markReadAction, sendMessageAction } from "@/app/actions/messaging";
+import { useAuthGate } from "./AuthGateProvider";
 
 export function MessageThread({
   conversationId,
@@ -19,6 +20,7 @@ export function MessageThread({
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { requireLogin } = useAuthGate();
 
   useEffect(() => {
     const socket = getSocket(accessToken);
@@ -47,7 +49,8 @@ export function MessageThread({
     setDraft("");
     // The message arrives back over the socket (sender's own connection is also in the
     // room), so no separate optimistic-append is needed.
-    await sendMessageAction(conversationId, body);
+    const result = await sendMessageAction(conversationId, body);
+    if (result.requiresLogin) requireLogin();
   }
 
   return (

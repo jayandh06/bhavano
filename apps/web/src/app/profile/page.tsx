@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { fetchProfile } from "@/lib/bff";
+import { BffAuthError, fetchProfile } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
@@ -43,6 +43,14 @@ export default async function ProfilePage({
 }
 
 async function ProfileFields({ accessToken }: { accessToken: string }) {
-  const profile = await fetchProfile(accessToken);
+  let profile;
+  try {
+    profile = await fetchProfile(accessToken);
+  } catch (error) {
+    if (error instanceof BffAuthError) {
+      return <RequireLoginPrompt message="Log in to view and edit your profile." />;
+    }
+    throw error;
+  }
   return <ProfileForm profile={profile} />;
 }

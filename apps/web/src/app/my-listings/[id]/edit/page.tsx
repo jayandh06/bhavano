@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { fetchMyListing } from "@/lib/bff";
+import { BffAuthError, fetchMyListing } from "@/lib/bff";
 import { EditListingForm } from "@/components/home/EditListingForm";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
@@ -30,10 +30,14 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
 }
 
 async function EditListingFields({ accessToken, id }: { accessToken: string; id: string }) {
+  let listing;
   try {
-    const listing = await fetchMyListing(accessToken, id);
-    return <EditListingForm listing={listing} />;
-  } catch {
+    listing = await fetchMyListing(accessToken, id);
+  } catch (error) {
+    if (error instanceof BffAuthError) {
+      return <RequireLoginPrompt message="Log in to edit this listing." />;
+    }
     notFound();
   }
+  return <EditListingForm listing={listing} />;
 }

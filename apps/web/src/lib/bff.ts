@@ -24,6 +24,17 @@ import type { BoostDurationDays } from "@bhavano/types/boostPricing";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
+/** Thrown when the BFF rejects a request with 401 — e.g. the accessToken embedded in the
+ * NextAuth session has expired (1h TTL) even though NextAuth's own session cookie is still
+ * valid. Callers on authed pages/actions should catch this and prompt re-login instead of
+ * letting it crash the render. */
+export class BffAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BffAuthError";
+  }
+}
+
 async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BFF_URL}${path}`, {
     ...init,
@@ -41,6 +52,7 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
         return undefined;
       }
     })();
+    if (res.status === 401) throw new BffAuthError(parsedMessage ?? "Login required");
     throw new Error(parsedMessage ?? `BFF request failed (${res.status} ${path}): ${body}`);
   }
   const text = await res.text();
