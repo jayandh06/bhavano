@@ -183,15 +183,23 @@ export function buildFacetSlug(category: ListingCategory, value: string | number
   return kind === "bedrooms" ? `${value}bhk` : String(value);
 }
 
-/** cuids contain no hyphens, so a real listing slug-id always ends in `-` + a long alnum
- * blob — no real locality name looks like that, so this reliably disambiguates a terminal
- * "is this a listing or a locality" segment without needing a DB round-trip. */
+/** A listing's `id` is either a cuid (no hyphens — Prisma's default, used by seed/admin-created
+ * rows) or a real UUID (client-generated via `crypto.randomUUID()` in `PostAdWizard` so photo
+ * uploads have a stable key before the listing row exists — required by `CreateListingDto`'s
+ * `@IsUUID()`, so every normally-posted listing has one of these, hyphens and all). The UUID's
+ * shape is fully fixed-width, so it's matched explicitly rather than folded into the cuid case's
+ * "last dash" heuristic below, which would otherwise only catch the trailing 12 hex chars. */
+const UUID_SUFFIX_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** No real locality name looks like either an id shape below, so this reliably disambiguates a
+ * terminal "is this a listing or a locality" segment without needing a DB round-trip. */
 export function looksLikeListingSlugId(segment: string): boolean {
-  return /-[a-z0-9]{20,}$/i.test(segment);
+  return UUID_SUFFIX_RE.test(segment) || /-[a-z0-9]{20,}$/i.test(segment);
 }
 
-/** cuids contain no hyphens, so the last "-"-segment of a slug-id is always the id. */
 export function extractListingId(slugId: string): string {
+  const uuidMatch = slugId.match(UUID_SUFFIX_RE);
+  if (uuidMatch) return uuidMatch[0];
   const lastDash = slugId.lastIndexOf("-");
   return lastDash === -1 ? slugId : slugId.slice(lastDash + 1);
 }
