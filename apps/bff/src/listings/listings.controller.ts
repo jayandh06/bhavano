@@ -36,7 +36,7 @@ export class ListingsController {
   @Get(':id')
   @UseGuards(OptionalAuthGuard)
   findOne(@Param('id') id: string, @CurrentUser() user?: RequestUser): Promise<ListingDetailDto> {
-    return this.listingsService.findOne(id, user?.id);
+    return this.listingsService.findOne(id, user);
   }
 
   @Post()

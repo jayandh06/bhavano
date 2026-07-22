@@ -12,6 +12,7 @@ import type {
   PopularSearchDto,
   PropertyTypeFilter,
   TransactionType,
+  UserRole,
 } from '@bhavano/types';
 import { categoryImagePlaceholder } from '@bhavano/types/tokens';
 import { slugify } from '@bhavano/types/slugify';
@@ -295,14 +296,23 @@ export class ListingsService {
     return this.toDetailDto(listing);
   }
 
-  async findOne(id: string, currentUserId?: string): Promise<ListingDetailDto> {
+  /** A flagged listing (taken down for review — see `flag()`) 404s for everyone except its own
+   * owner and admins, same as if it didn't exist — otherwise anyone who already had the direct
+   * link (e.g. shared before moderation caught it) could keep viewing the flagged photos/content
+   * even though it's been pulled from browse/search. */
+  async findOne(id: string, currentUser?: { id: string; role: UserRole }): Promise<ListingDetailDto> {
     const listing = await this.prisma.listing.findUnique({
       where: { id },
       include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
     });
     if (!listing) throw new NotFoundException(`Listing ${id} not found`);
 
-    const favouritedIds = await this.getFavouritedIds(currentUserId, [id]);
+    const isOwnerOrAdmin = currentUser?.id === listing.ownerId || currentUser?.role === 'admin';
+    if (listing.moderationState === 'flagged' && !isOwnerOrAdmin) {
+      throw new NotFoundException(`Listing ${id} not found`);
+    }
+
+    const favouritedIds = await this.getFavouritedIds(currentUser?.id, [id]);
     return this.toDetailDto(listing, favouritedIds);
   }
 

@@ -42,10 +42,27 @@ export default async function ListingModerationPage({ params }: { params: Promis
                 .join(" · ")}
             </div>
           )}
-          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: listing.photosFull.length > 0 ? 12 : 0 }}>
             Status: {listing.status} · Posted {new Date(listing.createdAt).toLocaleDateString()}
-            {listing.photos.length > 0 ? ` · ${listing.photos.length} photo(s)` : " · no photos"}
+            {listing.photosFull.length > 0 ? ` · ${listing.photosFull.length} photo(s)` : " · no photos"}
           </div>
+
+          {listing.photosFull.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
+              {listing.photosFull.map((url, i) => (
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                  {/* Plain <img>, not next/image — these are moderation targets, not
+                      site content, so no optimization/caching pipeline should sit in front of
+                      whatever the admin is trying to actually inspect. */}
+                  <img
+                    src={url}
+                    alt={`${listing.title} photo ${i + 1}`}
+                    style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }}
+                  />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         {owner && (
