@@ -3,6 +3,7 @@ import { Lora, Manrope } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "next-themes";
 import { AuthGateProvider } from "@/components/home/AuthGateProvider";
+import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
 import { JsonLd } from "@/components/JsonLd";
 import "./globals.css";
 
@@ -75,7 +76,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </noscript>
         )}
         <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
-          <AuthGateProvider>{children}</AuthGateProvider>
+          <AuthGateProvider>
+            <ProfileCompletionBanner />
+            {children}
+          </AuthGateProvider>
         </ThemeProvider>
       </body>
     </html>

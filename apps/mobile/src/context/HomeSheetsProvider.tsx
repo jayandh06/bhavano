@@ -12,10 +12,10 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, Vi
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
-import type { City } from "@bhavano/types";
+import type { City, UserProfileDto } from "@bhavano/types";
 import { getCityIcon } from "@bhavano/types/cityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
-import { fetchCities, loginWithGoogle, reverseGeocode, sendOtp, verifyOtp } from "../lib/bffClient";
+import { fetchCities, fetchProfile, loginWithGoogle, reverseGeocode, sendOtp, verifyOtp } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
 
 const TOKEN_KEY = "bhavano.accessToken";
@@ -39,6 +39,11 @@ interface HomeSheetsContextValue {
   isLoggedIn: boolean;
   accessToken: string | null;
   userId: string | null;
+  /** Null until fetched (or if logged out). Account screen re-triggers a refetch via
+   * refreshProfile() after a successful save, so the global completion banner updates
+   * immediately without waiting for a remount. */
+  profile: UserProfileDto | null;
+  refreshProfile: () => Promise<void>;
 }
 
 const HomeSheetsContext = createContext<HomeSheetsContextValue | null>(null);
@@ -65,6 +70,7 @@ export function HomeSheetsProvider({
   const [city, setCityState] = useState<City | null>(popularCities[0] ?? null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfileDto | null>(null);
   const [showToast, setShowToast] = useState(false);
 
   const [locationQuery, setLocationQuery] = useState("");
@@ -114,6 +120,23 @@ export function HomeSheetsProvider({
     setAllCities(await fetchCities(undefined, true));
     setLoadingAllCities(false);
   }
+
+  const refreshProfile = useCallback(async () => {
+    if (!accessToken) {
+      setProfile(null);
+      return;
+    }
+    try {
+      setProfile(await fetchProfile(accessToken));
+    } catch {
+      // Best-effort — a stale/invalid token here just means the completion banner won't show;
+      // the user will hit the normal auth handling wherever they next use the token.
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
 
   const requireLogin = useCallback(() => {
     if (isLoggedIn) return;
@@ -199,13 +222,22 @@ export function HomeSheetsProvider({
   const userId = useMemo(() => (accessToken ? decodeUserId(accessToken) : null), [accessToken]);
 
   const value = useMemo(
-    () => ({ city, setCity, openLocationPicker, requireLogin, isLoggedIn, accessToken, userId }),
-    [city, setCity, openLocationPicker, requireLogin, isLoggedIn, accessToken, userId],
+    () => ({ city, setCity, openLocationPicker, requireLogin, isLoggedIn, accessToken, userId, profile, refreshProfile }),
+    [city, setCity, openLocationPicker, requireLogin, isLoggedIn, accessToken, userId, profile, refreshProfile],
   );
 
   return (
     <HomeSheetsContext.Provider value={value}>
       {children}
+
+      {profile && (!profile.email || !profile.phone) && (
+        <View style={[styles.completionBanner, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+          <Text style={{ color: colors.textSoft, fontSize: 12.5, textAlign: "center" }}>
+            Add your {[!profile.email && "email", !profile.phone && "phone number"].filter(Boolean).join(" and ")} to
+            your profile so we can keep you updated.
+          </Text>
+        </View>
+      )}
 
       <BottomSheetModal ref={locationSheetRef} snapPoints={["70%"]} backgroundStyle={{ backgroundColor: colors.surface }}>
         <BottomSheetView style={styles.sheetContent}>
@@ -390,5 +422,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 22,
     alignItems: "center",
+  },
+  completionBanner: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    borderBottomWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
 });

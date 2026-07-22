@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -6,8 +10,9 @@ import type { AuthSession, AuthUser } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import type { User } from '@prisma/client';
 import { OtpService } from './otp.service';
-import { Msg91Provider } from './providers/msg91.provider';
+import { Msg91Provider } from '../notifications/providers/msg91.provider';
 import { GoogleProvider } from './providers/google.provider';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const ACCESS_TOKEN_TTL = '1h';
 
@@ -24,7 +29,12 @@ function toAuthUser(user: User): AuthUser {
 /** Comma-separated allowlist env vars — there's no admin invite/signup flow, so matching
  * one of these on login is how the first (and any subsequent) admin accounts get created. */
 function parseAllowlist(raw: string | undefined): Set<string> {
-  return new Set((raw ?? '').split(',').map((s) => s.trim()).filter(Boolean));
+  return new Set(
+    (raw ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
 }
 
 @Injectable()
@@ -35,6 +45,7 @@ export class AuthService {
     private readonly otpService: OtpService,
     private readonly msg91: Msg91Provider,
     private readonly googleProvider: GoogleProvider,
+    private readonly notificationsService: NotificationsService,
     @InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
   ) {}
 
@@ -53,6 +64,7 @@ export class AuthService {
     });
 
     const promoted = await this.promoteToAdminIfAllowlisted(user);
+    await this.welcomeIfFirstLogin(promoted);
     await this.recordLogin(promoted.id, 'otp');
     return this.issueSession(promoted);
   }
@@ -65,10 +77,15 @@ export class AuthService {
 
     const existing = await this.prisma.user.findUnique({ where: { phone } });
     if (existing && existing.id !== userId) {
-      throw new ConflictException('This phone number is already linked to another account');
+      throw new ConflictException(
+        'This phone number is already linked to another account',
+      );
     }
 
-    await this.prisma.user.update({ where: { id: userId }, data: { phone, phoneVerifiedAt: new Date() } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { phone, phoneVerifiedAt: new Date() },
+    });
   }
 
   async loginWithGoogle(idToken: string): Promise<AuthSession> {
@@ -77,10 +94,15 @@ export class AuthService {
     const user = await this.prisma.user.upsert({
       where: { googleId: profile.googleId },
       update: { email: profile.email, name: profile.name },
-      create: { googleId: profile.googleId, email: profile.email, name: profile.name },
+      create: {
+        googleId: profile.googleId,
+        email: profile.email,
+        name: profile.name,
+      },
     });
 
     const promoted = await this.promoteToAdminIfAllowlisted(user);
+    await this.welcomeIfFirstLogin(promoted);
     await this.recordLogin(promoted.id, 'google');
     return this.issueSession(promoted);
   }
@@ -97,7 +119,24 @@ export class AuthService {
     return this.issueSession(user);
   }
 
-  private recordLogin(userId: string, method: 'otp' | 'google'): Promise<unknown> {
+  /** Fires the first-login welcome email/SMS/WhatsApp exactly once per user — `welcomedAt` is
+   * marked immediately (before the send even starts) so a concurrent duplicate login request
+   * can't double-send, and the dispatch itself is fire-and-forget (not awaited) so three
+   * external network calls never add latency to the login response. Best-effort, matching the
+   * rest of NotificationsService: a failed send is logged, not retried. */
+  private async welcomeIfFirstLogin(user: User): Promise<void> {
+    if (user.welcomedAt) return;
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { welcomedAt: new Date() },
+    });
+    void this.notificationsService.notifyWelcome(user);
+  }
+
+  private recordLogin(
+    userId: string,
+    method: 'otp' | 'google',
+  ): Promise<unknown> {
     // Alongside the DB row (used by the admin logins page), also emit a structured log line so
     // login shows up in the same Loki stream as everything else — bounding a user's session
     // together with the `logout` event below (see docs/plans/bff-loki-grafana-logging.md).
@@ -119,17 +158,26 @@ export class AuthService {
 
     const adminPhones = parseAllowlist(this.config.get<string>('ADMIN_PHONES'));
     const adminEmails = parseAllowlist(this.config.get<string>('ADMIN_EMAILS'));
-    const isAllowlisted = (user.phone && adminPhones.has(user.phone)) || (user.email && adminEmails.has(user.email));
+    const isAllowlisted =
+      (user.phone && adminPhones.has(user.phone)) ||
+      (user.email && adminEmails.has(user.email));
     if (!isAllowlisted) return user;
 
-    return this.prisma.user.update({ where: { id: user.id }, data: { role: 'admin' } });
+    return this.prisma.user.update({
+      where: { id: user.id },
+      data: { role: 'admin' },
+    });
   }
 
   private issueSession(user: User): AuthSession {
     const secret = this.config.get<string>('AUTH_JWT_SECRET');
-    const accessToken = jwt.sign({ sub: user.id, role: user.role }, secret ?? 'dev-only-change-me', {
-      expiresIn: ACCESS_TOKEN_TTL,
-    });
+    const accessToken = jwt.sign(
+      { sub: user.id, role: user.role },
+      secret ?? 'dev-only-change-me',
+      {
+        expiresIn: ACCESS_TOKEN_TTL,
+      },
+    );
     return { user: toAuthUser(user), accessToken };
   }
 }

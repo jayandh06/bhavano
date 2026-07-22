@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { ListingDetailDto } from '@bhavano/types';
-import { Msg91Provider } from '../auth/providers/msg91.provider';
+import { Msg91Provider } from './providers/msg91.provider';
 import { EmailProvider } from './providers/email.provider';
 
 interface NotifiableUser {
@@ -15,7 +15,11 @@ export class NotificationsService {
     private readonly msg91: Msg91Provider,
   ) {}
 
-  async notifyListingFlagged(user: NotifiableUser, listing: ListingDetailDto, message: string): Promise<void> {
+  async notifyListingFlagged(
+    user: NotifiableUser,
+    listing: ListingDetailDto,
+    message: string,
+  ): Promise<void> {
     const subject = `Action needed: your listing "${listing.title}" has been taken offline`;
     const body =
       `Hi, one of your listings ("${listing.title}") has been taken offline by a Bhavano moderator:\n\n` +
@@ -26,17 +30,56 @@ export class NotificationsService {
     await this.dispatch(user, subject, body);
   }
 
-  async notifyListingApproved(user: NotifiableUser, listing: ListingDetailDto): Promise<void> {
+  async notifyListingApproved(
+    user: NotifiableUser,
+    listing: ListingDetailDto,
+  ): Promise<void> {
     const subject = `Your listing "${listing.title}" is live again`;
     const body = `Good news — your listing "${listing.title}" has been reviewed and is live again on Bhavano.`;
 
     await this.dispatch(user, subject, body);
   }
 
-  private async dispatch(user: NotifiableUser, subject: string, body: string): Promise<void> {
+  /** Fired once, on a user's first-ever login (see AuthService.verifyOtp/loginWithGoogle) —
+   * across whichever of email/phone the user has on file, since a phone-OTP signup has no
+   * email and a Google signup has no phone. */
+  async notifyWelcome(user: {
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+  }): Promise<void> {
+    const greeting = user.name ? `Hi ${user.name}` : 'Hi';
+    const emailBody =
+      `${greeting},\n\nWelcome to Bhavano! We're glad you're here.\n\n` +
+      `Browse verified listings, post your own ad, and message buyers/sellers directly — all free.\n\n` +
+      `— Team Bhavano`;
+    const smsBody = `${greeting}, welcome to Bhavano! Browse verified listings or post your own ad — all free.`;
+
     await Promise.all([
-      user.email ? this.emailProvider.send(user.email, subject, body) : Promise.resolve(),
-      user.phone ? this.msg91.sendTransactionalSms(user.phone, body) : Promise.resolve(),
+      user.email
+        ? this.emailProvider.send(user.email, 'Welcome to Bhavano!', emailBody)
+        : Promise.resolve(),
+      user.phone
+        ? this.msg91.sendTransactionalSms(user.phone, smsBody)
+        : Promise.resolve(),
+      user.phone
+        ? this.msg91.sendWhatsapp(user.phone, smsBody)
+        : Promise.resolve(),
+    ]);
+  }
+
+  private async dispatch(
+    user: NotifiableUser,
+    subject: string,
+    body: string,
+  ): Promise<void> {
+    await Promise.all([
+      user.email
+        ? this.emailProvider.send(user.email, subject, body)
+        : Promise.resolve(),
+      user.phone
+        ? this.msg91.sendTransactionalSms(user.phone, body)
+        : Promise.resolve(),
     ]);
   }
 }

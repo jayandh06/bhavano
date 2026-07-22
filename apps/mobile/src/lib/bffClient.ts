@@ -9,6 +9,8 @@ import type {
   ListingsPage,
   MessageDto,
   PropertyTypeFilter,
+  UpdateProfileInput,
+  UserProfileDto,
 } from "@bhavano/types";
 
 const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
@@ -184,4 +186,18 @@ export function loginWithGoogle(
   idToken: string,
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/google", { method: "POST", body: JSON.stringify({ idToken }) });
+}
+
+export function fetchProfile(accessToken: string): Promise<UserProfileDto> {
+  return authedBffFetch(accessToken, "/users/me");
+}
+
+export function updateProfile(accessToken: string, input: UpdateProfileInput): Promise<UserProfileDto> {
+  return authedBffFetch(accessToken, "/users/me", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+/** Links a verified phone number to the currently logged-in user (e.g. a Google-login user
+ * completing their profile) — distinct from verifyOtp() (login/signup by phone). */
+export function linkPhone(accessToken: string, phone: string, code: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/auth/otp/link", { method: "POST", body: JSON.stringify({ phone, code }) });
 }

@@ -120,6 +120,10 @@ model User {
   cityId                String?
   city                  City?          @relation(fields: [cityId], references: [id])
   createdAt             DateTime       @default(now())
+  /** Non-null once the first-login welcome email/SMS/WhatsApp has been dispatched — gates
+   * AuthService from sending it again. Backfilled to createdAt for pre-existing users so they
+   * don't retroactively get a "Welcome!" message. */
+  welcomedAt            DateTime?
   listings              Listing[]
   favourites            Favourite[]
   conversationsAsPoster Conversation[] @relation("ConversationPoster")
