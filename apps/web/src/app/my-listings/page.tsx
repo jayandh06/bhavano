@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
+import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { BffAuthError, fetchMyListings } from "@/lib/bff";
 import { buildListingPath } from "@/lib/listingPath";
@@ -44,7 +45,7 @@ export default async function MyListingsPage({
         {!session?.accessToken ? (
           <RequireLoginPrompt message="Log in to view and edit the ads you've posted." />
         ) : (
-          <MyListingsGrid accessToken={session.accessToken} />
+          <MyListingsGrid accessToken={session.accessToken} cityName={city?.name} />
         )}
       </div>
       <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
@@ -52,7 +53,7 @@ export default async function MyListingsPage({
   );
 }
 
-async function MyListingsGrid({ accessToken }: { accessToken: string }) {
+async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; cityName?: string }) {
   let listings;
   try {
     listings = await fetchMyListings(accessToken);
@@ -67,7 +68,7 @@ async function MyListingsGrid({ accessToken }: { accessToken: string }) {
     return (
       <p className="text-muted text-sm">
         You haven&apos;t posted anything yet —{" "}
-        <Link href="/post" className="text-green font-bold">
+        <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} className="text-green font-bold">
           post your first ad
         </Link>
         .
