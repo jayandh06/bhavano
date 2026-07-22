@@ -33,8 +33,14 @@ export class RateLimitService {
   }
 
   /** Counts this user's hits of `kind` within the currently-configured window; throws
-   * ThrottlerException (429) at/over the limit, otherwise records this attempt and allows it. */
+   * ThrottlerException (429) at/over the limit, otherwise records this attempt and allows it.
+   * An active Agent Pro subscription bypasses the publish cap entirely (its whole point). */
   async checkAndRecordHit(userId: string, kind: RateLimitKind): Promise<void> {
+    if (kind === 'publish') {
+      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { agentProUntil: true } });
+      if (user?.agentProUntil && user.agentProUntil.getTime() > Date.now()) return;
+    }
+
     const settings = await this.getSettings();
     const limit = kind === 'publish' ? settings.publishLimit : settings.viewLimit;
     const windowMinutes = kind === 'publish' ? settings.publishWindowMinutes : settings.viewWindowMinutes;

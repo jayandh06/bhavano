@@ -33,6 +33,10 @@
       "types": "./dist/boostPricing.d.ts",
       "default": "./dist/boostPricing.js"
     },
+    "./subscriptionPricing": {
+      "types": "./dist/subscriptionPricing.d.ts",
+      "default": "./dist/subscriptionPricing.js"
+    },
     "./cityIcons": {
       "types": "./dist/cityIcons.d.ts",
       "default": "./dist/cityIcons.js"

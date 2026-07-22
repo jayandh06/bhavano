@@ -29,6 +29,7 @@ import { PHOTO_VARIANTS, PhotoVariant, variantUrl } from '../uploads/photo-keys'
 import { ListListingsDto } from './dto/list-listings.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { AdminListingSort, ListAdminListingsDto } from '../admin/dto/list-admin-listings.dto';
+import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
@@ -88,6 +89,7 @@ export class ListingsService {
     private readonly moderationService: ModerationService,
     private readonly config: ConfigService,
     private readonly notificationsService: NotificationsService,
+    private readonly savedSearchesService: SavedSearchesService,
   ) {}
 
   async list(query: ListListingsDto, currentUserId?: string): Promise<ListingsPage> {
@@ -97,6 +99,7 @@ export class ListingsService {
       category,
       transactionType,
       cityId,
+      ownerId,
       areaId,
       areaIds,
       q,
@@ -146,6 +149,7 @@ export class ListingsService {
       moderationState: 'approved',
       expiresAt: { gt: new Date() },
       ...(cityId ? { cityId } : {}),
+      ...(ownerId ? { ownerId } : {}),
       // `areaIds` (the multi-select browse filter) wins over the single `areaId` (the SEO
       // locality path) when both are somehow present — they're never sent together in practice.
       ...(areaIds && areaIds.length > 0 ? { areaId: { in: areaIds } } : areaId ? { areaId } : {}),
@@ -360,6 +364,11 @@ export class ListingsService {
       where: { id: created.id },
       include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
     });
+
+    // Fire-and-forget — Bhavano Plus's early-access alerts should never add latency to (or
+    // break) the poster's own submission.
+    this.savedSearchesService.notifyMatchingBuyers(created).catch(() => undefined);
+
     return this.toDetailDto(listing);
   }
 

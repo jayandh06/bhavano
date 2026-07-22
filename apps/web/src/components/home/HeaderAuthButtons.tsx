@@ -66,6 +66,12 @@ function AccountMenu({ userName, citySlug }: { userName: string; citySlug: strin
           <Link href={`/my-listings?city=${citySlug}`} onClick={() => setOpen(false)} className={menuItemClass}>
             My listings
           </Link>
+          <Link href={`/premium?city=${citySlug}`} onClick={() => setOpen(false)} className={menuItemClass}>
+            ⭐ Bhavano Plus
+          </Link>
+          <Link href={`/saved-searches?city=${citySlug}`} onClick={() => setOpen(false)} className={menuItemClass}>
+            🔔 Saved searches
+          </Link>
           <Link href="/help" onClick={() => setOpen(false)} className={menuItemClass}>
             Help
           </Link>

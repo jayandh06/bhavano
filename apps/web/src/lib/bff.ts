@@ -1,11 +1,14 @@
 import "server-only";
 import type {
+  AgentStorefrontDto,
   Area,
   AuthSession,
   City,
   ConversationSummaryDto,
   CreateBoostOrderResponseDto,
   CreateListingInput,
+  CreateSavedSearchInput,
+  CreateSubscriptionOrderResponseDto,
   HomeCategoryFilter,
   ListingCardDto,
   ListingCategory,
@@ -15,6 +18,8 @@ import type {
   MessageDto,
   PopularSearchDto,
   PropertyTypeFilter,
+  SavedSearchDto,
+  SubscriptionTier,
   TransactionType,
   UpdateListingInput,
   UpdateProfileInput,
@@ -228,6 +233,33 @@ export function createBoostOrder(
   boostDays: BoostDurationDays,
 ): Promise<CreateBoostOrderResponseDto> {
   return authedBffFetch(accessToken, "/payments/orders", { method: "POST", body: JSON.stringify({ listingId, boostDays }) });
+}
+
+/** Same pattern as createBoostOrder — buyerPremium ("Bhavano Plus") and agentPro
+ * ("Agent/Broker Pro") both activate via the webhook, not from this call alone. */
+export function createSubscriptionOrder(
+  accessToken: string,
+  tier: SubscriptionTier,
+  months: number,
+): Promise<CreateSubscriptionOrderResponseDto> {
+  return authedBffFetch(accessToken, "/payments/subscriptions", { method: "POST", body: JSON.stringify({ tier, months }) });
+}
+
+/** Public — no accessToken, anyone can view an agent's storefront. */
+export function fetchAgentStorefront(userId: string): Promise<AgentStorefrontDto> {
+  return bffFetch<AgentStorefrontDto>(`/agents/${userId}`, { cache: "no-store" });
+}
+
+export function fetchSavedSearches(accessToken: string): Promise<SavedSearchDto[]> {
+  return authedBffFetch(accessToken, "/saved-searches", { cache: "no-store" });
+}
+
+export function createSavedSearch(accessToken: string, input: CreateSavedSearchInput): Promise<SavedSearchDto> {
+  return authedBffFetch(accessToken, "/saved-searches", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function deleteSavedSearch(accessToken: string, id: string): Promise<void> {
+  return authedBffFetch(accessToken, `/saved-searches/${id}`, { method: "DELETE" });
 }
 
 export function recordView(listingId: string, viewerKey: string, accessToken?: string): Promise<{ viewCount: number }> {

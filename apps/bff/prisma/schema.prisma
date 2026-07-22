@@ -74,11 +74,15 @@ enum PaymentStatus {
   refunded
 }
 
-/** Only "listing_boost" exists today — buyer/seller subscription purposes are a planned
- * follow-on (see docs/plans/monetization-boosted-listings-premium-tiers.md), to be added here
- * once those flows are actually built, not preemptively. */
 enum PaymentPurpose {
   listing_boost
+  buyer_premium
+  agent_pro
+}
+
+enum SubscriptionTier {
+  buyerPremium
+  agentPro
 }
 
 model City {
@@ -91,6 +95,7 @@ model City {
   listings  Listing[]
   areas     Area[]
   users     User[]
+  savedSearches SavedSearch[]
 
   @@unique([name, state])
 }
@@ -104,6 +109,7 @@ model Area {
   lng      Float?
   source   String    @default("curated")
   listings Listing[]
+  savedSearches SavedSearch[]
 
   @@unique([name, cityId])
   @@index([cityId])
@@ -131,6 +137,15 @@ model User {
   messages              Message[]
   loginEvents           LoginEvent[]
   payments              Payment[]
+  subscriptions         UserSubscription[]
+  savedSearches         SavedSearch[]
+  /** Denormalized from the latest active UserSubscription (tier: buyerPremium) — cheap reads
+   * everywhere else in the app (header/messaging badge, profile page); UserSubscription is
+   * the audit trail. Null means never subscribed or lapsed. */
+  premiumUntil          DateTime?
+  /** Same denormalization for tier: agentPro — checked by RateLimitService to bypass the
+   * posting-frequency cap, and by the agent storefront page for the "Bhavano Pro" badge. */
+  agentProUntil         DateTime?
 
   @@index([cityId])
 }
@@ -210,6 +225,31 @@ model Favourite {
   createdAt DateTime @default(now())
 
   @@unique([listingId, userId])
+}
+
+/** Bhavano Plus's early-access alerts — a Plus-gated buyer sets criteria here, and every
+ * newly-created listing matching them fires a notification immediately (see
+ * ListingsService.create() -> SavedSearchesService.notifyMatchingBuyers), instead of the buyer
+ * having to keep re-checking browse pages themselves. All filter fields are optional/nullable —
+ * an unset field means "don't filter on this", not "must be null". */
+model SavedSearch {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id])
+  name            String
+  category        ListingCategory?
+  transactionType TransactionType?
+  cityId          String?
+  city            City?            @relation(fields: [cityId], references: [id])
+  areaId          String?
+  area            Area?            @relation(fields: [areaId], references: [id])
+  minPrice        Int?
+  maxPrice        Int?
+  bedrooms        Int?
+  createdAt       DateTime         @default(now())
+  lastNotifiedAt  DateTime?
+
+  @@index([userId])
 }
 
 model Conversation {
@@ -349,11 +389,31 @@ model Payment {
   listingId         String?
   listing           Listing?       @relation(fields: [listingId], references: [id])
   boostDays         Int?
+  /** Only meaningful for buyer_premium/agent_pro — same "purpose-specific nullable field"
+   * convention as boostDays above. */
+  subscriptionMonths Int?
   createdAt         DateTime       @default(now())
   paidAt            DateTime?
   listingBoost      ListingBoost?
+  subscription      UserSubscription?
 
   @@index([userId, createdAt])
+}
+
+/** One row per activated buyer_premium/agent_pro purchase — the audit trail; User.premiumUntil/
+ * agentProUntil are the cheap denormalized reads used everywhere else (same pattern as
+ * ListingBoost/Listing.boostedUntil below). */
+model UserSubscription {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  tier      SubscriptionTier
+  startsAt  DateTime         @default(now())
+  endsAt    DateTime
+  paymentId String           @unique
+  payment   Payment          @relation(fields: [paymentId], references: [id])
+
+  @@index([userId])
 }
 
 /** One row per activated boost — the history/audit trail. `Listing.boostedUntil` is the

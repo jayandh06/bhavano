@@ -51,7 +51,7 @@ export class MessagingService {
       include: {
         listing: { select: { title: true } },
         poster: { select: { id: true, name: true, phone: true } },
-        inquirer: { select: { id: true, name: true, phone: true } },
+        inquirer: { select: { id: true, name: true, phone: true, premiumUntil: true } },
         messages: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
       orderBy: { createdAt: 'desc' },
@@ -59,10 +59,15 @@ export class MessagingService {
 
     return Promise.all(
       conversations.map(async (c) => {
-        const otherParty = c.posterId === userId ? c.inquirer : c.poster;
+        const viewerIsPoster = c.posterId === userId;
+        const otherParty = viewerIsPoster ? c.inquirer : c.poster;
         const unreadCount = await this.prisma.message.count({
           where: { conversationId: c.id, senderId: { not: userId }, readAt: null },
         });
+        // Only the poster (seller) sees this — the badge is about the *inquirer* being a
+        // premium buyer, so it never makes sense on the seller's own side of the thread.
+        const otherPartyIsVerifiedBuyer =
+          viewerIsPoster && (c.inquirer.premiumUntil?.getTime() ?? 0) > Date.now();
         return {
           id: c.id,
           listingId: c.listingId,
@@ -70,6 +75,7 @@ export class MessagingService {
           type: c.type,
           otherPartyId: otherParty.id,
           otherPartyName: otherParty.name ?? otherParty.phone ?? (c.type === 'moderation' ? 'Bhavano Admin' : 'User'),
+          otherPartyIsVerifiedBuyer,
           lastMessage: c.messages[0] ? toMessageDto(c.messages[0]) : null,
           unreadCount,
         };

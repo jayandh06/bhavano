@@ -15,6 +15,8 @@ import { AdminModule } from './admin/admin.module';
 import { PhotoProcessingModule } from './photo-processing/photo-processing.module';
 import { LoggingModule } from './logging/logging.module';
 import { PaymentsModule } from './payments/payments.module';
+import { AgentsModule } from './agents/agents.module';
+import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { PaymentsModule } from './payments/payments.module';
     AdminModule,
     PhotoProcessingModule,
     PaymentsModule,
+    AgentsModule,
+    SavedSearchesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

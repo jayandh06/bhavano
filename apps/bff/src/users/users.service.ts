@@ -58,5 +58,7 @@ function toProfileDto(user: User & { city: City | null }): UserProfileDto {
     cityId: user.cityId,
     cityName: user.city?.name ?? null,
     state: user.city?.state ?? null,
+    premiumUntil: user.premiumUntil?.toISOString() ?? null,
+    agentProUntil: user.agentProUntil?.toISOString() ?? null,
   };
 }

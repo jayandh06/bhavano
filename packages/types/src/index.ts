@@ -32,9 +32,12 @@ export type RateLimitKind = "publish" | "view";
 
 export type PaymentStatus = "created" | "paid" | "failed" | "refunded";
 
-/** Only "listing_boost" exists today — see docs/plans/monetization-boosted-listings-premium-tiers.md
- * for the planned buyer/seller subscription purposes, not yet built. */
-export type PaymentPurpose = "listing_boost";
+export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro";
+
+/** buyerPremium = "Bhavano Plus" (Verified Buyer badge, priority inbox visibility);
+ * agentPro = raised posting cap + branded storefront badge. See
+ * docs/plans/monetization-boosted-listings-premium-tiers.md. */
+export type SubscriptionTier = "buyerPremium" | "agentPro";
 
 export interface GeoPoint {
   lat: number;
@@ -204,6 +207,9 @@ export interface ConversationSummaryDto {
   type: ConversationType;
   otherPartyId: string;
   otherPartyName: string;
+  /** True when the other party is the inquirer (not this listing's owner) and holds an active
+   * buyerPremium subscription — shown as a "✓ Verified Buyer" badge so sellers notice it. */
+  otherPartyIsVerifiedBuyer: boolean;
   lastMessage: MessageDto | null;
   unreadCount: number;
 }
@@ -229,6 +235,9 @@ export interface UserProfileDto {
   cityId: string | null;
   cityName: string | null;
   state: string | null;
+  /** ISO timestamp, null if never subscribed or lapsed — see User.premiumUntil/agentProUntil. */
+  premiumUntil: string | null;
+  agentProUntil: string | null;
 }
 
 export interface UpdateProfileInput {
@@ -340,4 +349,59 @@ export interface ListingBoostsPage {
   items: ListingBoostDto[];
   nextCursor: string | null;
   total: number;
+}
+
+export interface CreateSubscriptionOrderInput {
+  tier: SubscriptionTier;
+  /** buyerPremium supports 1 or 12; agentPro is monthly-only (1) for now. */
+  months: number;
+}
+
+/** Same shape as CreateBoostOrderResponseDto — kept as its own named type since callers read
+ * more clearly as "a subscription order", not "a boost order". */
+export interface CreateSubscriptionOrderResponseDto {
+  paymentId: string;
+  razorpayOrderId: string;
+  razorpayKeyId: string;
+  amount: number;
+  currency: string;
+}
+
+/** A public, unauthenticated storefront for any user with active listings — Agent Pro
+ * subscribers additionally get the "isAgentPro" badge shown on it. */
+export interface AgentStorefrontDto {
+  id: string;
+  name: string;
+  isAgentPro: boolean;
+  memberSince: string;
+  listings: ListingCardDto[];
+  total: number;
+}
+
+/** Bhavano Plus's early-access alerts — Plus-gated (see SavedSearchesService). All filter
+ * fields undefined means "don't filter on this dimension", not "must be empty". */
+export interface SavedSearchDto {
+  id: string;
+  name: string;
+  category?: ListingCategory;
+  transactionType?: TransactionType;
+  cityId?: string;
+  cityName?: string;
+  areaId?: string;
+  areaName?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  bedrooms?: number;
+  createdAt: string;
+}
+
+export interface CreateSavedSearchInput {
+  name: string;
+  category?: ListingCategory;
+  transactionType?: TransactionType;
+  cityId?: string;
+  areaId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  bedrooms?: number;
 }

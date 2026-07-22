@@ -8,8 +8,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
-import type { CreateBoostOrderResponseDto } from '@bhavano/types';
+import type { CreateBoostOrderResponseDto, CreateSubscriptionOrderResponseDto, SubscriptionTier } from '@bhavano/types';
 import { boostPriceFor, type BoostDurationDays } from '@bhavano/types/boostPricing';
+import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface RazorpayWebhookPayload {
@@ -87,6 +88,44 @@ export class PaymentsService {
     };
   }
 
+  /** Same order-then-webhook-confirms pattern as createBoostOrder — buyerPremium ("Bhavano
+   * Plus") and agentPro ("Agent/Broker Pro") both go through this one method since they only
+   * differ in price lookup, not in flow. */
+  async createSubscriptionOrder(
+    userId: string,
+    tier: SubscriptionTier,
+    months: number,
+  ): Promise<CreateSubscriptionOrderResponseDto> {
+    const amountInPaise = subscriptionPriceFor(tier, months) * 100;
+    const purpose = tier === 'buyerPremium' ? 'buyer_premium' : 'agent_pro';
+
+    const order = await this.getRazorpay().orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `${purpose}_${userId}_${Date.now()}`,
+      notes: { purpose, tier, months: String(months) },
+    });
+
+    const payment = await this.prisma.payment.create({
+      data: {
+        userId,
+        razorpayOrderId: order.id,
+        amount: amountInPaise,
+        currency: 'INR',
+        purpose,
+        subscriptionMonths: months,
+      },
+    });
+
+    return {
+      paymentId: payment.id,
+      razorpayOrderId: order.id,
+      razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
+      amount: amountInPaise,
+      currency: 'INR',
+    };
+  }
+
   /** The only source of truth for a boost actually being paid for — never a client-side
    * "payment succeeded" callback. Idempotent: Razorpay redelivers webhooks, and the `status
    * === 'paid'` check below (checked before any write) makes a redelivery a safe no-op.
@@ -125,6 +164,19 @@ export class PaymentsService {
         data: { boostedUntil, boostRank: Math.random() },
       });
       this.logger.log(`Boost activated for listing ${payment.listingId} until ${boostedUntil.toISOString()}`);
+    }
+
+    if ((payment.purpose === 'buyer_premium' || payment.purpose === 'agent_pro') && payment.subscriptionMonths) {
+      const tier: SubscriptionTier = payment.purpose === 'buyer_premium' ? 'buyerPremium' : 'agentPro';
+      const endsAt = new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
+      await this.prisma.userSubscription.create({
+        data: { userId: payment.userId, tier, endsAt, paymentId: payment.id },
+      });
+      await this.prisma.user.update({
+        where: { id: payment.userId },
+        data: tier === 'buyerPremium' ? { premiumUntil: endsAt } : { agentProUntil: endsAt },
+      });
+      this.logger.log(`${tier} subscription activated for user ${payment.userId} until ${endsAt.toISOString()}`);
     }
   }
 }

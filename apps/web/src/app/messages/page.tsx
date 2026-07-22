@@ -59,7 +59,14 @@ async function ConversationList({ accessToken }: { accessToken: string }) {
           className="flex justify-between items-center border border-border rounded-[10px] p-3.5 text-inherit"
         >
           <div>
-            <div className="font-bold text-sm">{c.otherPartyName}</div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-bold text-sm">{c.otherPartyName}</span>
+              {c.otherPartyIsVerifiedBuyer && (
+                <span className="text-[10.5px] font-bold text-green border border-green rounded-md px-1.5 py-[1px] whitespace-nowrap">
+                  ✓ Verified Buyer
+                </span>
+              )}
+            </div>
             <div className="text-xs text-muted">{c.listingTitle}</div>
             {c.lastMessage && <div className="text-[13px] text-text-soft mt-1">{c.lastMessage.body}</div>}
           </div>

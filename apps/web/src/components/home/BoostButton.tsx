@@ -5,37 +5,9 @@ import { useRouter } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
 import { boostPriceFor, type BoostDurationDays } from "@bhavano/types/boostPricing";
 import { createBoostOrderAction } from "@/app/actions/payments";
+import { loadRazorpayScript } from "@/lib/razorpay";
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayCheckoutOptions) => { open: () => void };
-  }
-}
-
-interface RazorpayCheckoutOptions {
-  key: string;
-  amount: number;
-  currency: string;
-  order_id: string;
-  name: string;
-  description: string;
-  handler: () => void;
-  modal?: { ondismiss?: () => void };
-}
-
-const CHECKOUT_SCRIPT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
-
-function loadRazorpayScript(): Promise<void> {
-  if (window.Razorpay) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = CHECKOUT_SCRIPT_SRC;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Razorpay checkout"));
-    document.body.appendChild(script);
-  });
-}
 
 /** "🚀 Boost this ad" — opens a small duration/price picker, then Razorpay Checkout. The boost
  * itself only activates once the BFF's webhook confirms payment (not this click), so success

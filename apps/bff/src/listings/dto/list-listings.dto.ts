@@ -51,6 +51,12 @@ export class ListListingsDto {
   @IsString()
   cityId?: string;
 
+  /** Filters to one seller's own listings — backs the public agent/broker storefront page
+   * (any active listing, no auth needed to view). */
+  @IsOptional()
+  @IsString()
+  ownerId?: string;
+
   /** Raw locality filter — used only by the SEO locality browse-landing pages. */
   @IsOptional()
   @IsString()

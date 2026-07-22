@@ -55,6 +55,21 @@ export class NotificationsService {
     await this.dispatch(user, subject, body);
   }
 
+  /** Bhavano Plus's early-access alerts — the proactive counterpart to a buyer having to keep
+   * re-checking browse pages themselves. See SavedSearchesService.notifyMatchingBuyers. */
+  async notifySavedSearchMatch(
+    user: NotifiableUser,
+    listingTitle: string,
+    savedSearchName: string,
+  ): Promise<void> {
+    const subject = `New match for your saved search "${savedSearchName}"`;
+    const body =
+      `A new listing just went up matching your saved search "${savedSearchName}": "${listingTitle}". ` +
+      `Check it out on Bhavano before anyone else does.`;
+
+    await this.dispatch(user, subject, body);
+  }
+
   /** Fired once, on a user's first-ever login (see AuthService.verifyOtp/loginWithGoogle) —
    * across whichever of email/phone the user has on file, since a phone-OTP signup has no
    * email and a Google signup has no phone. */
