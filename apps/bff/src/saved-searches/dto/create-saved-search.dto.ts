@@ -38,6 +38,10 @@ export class CreateSavedSearchDto {
   areaId?: string;
 
   @IsOptional()
+  @IsString()
+  areaName?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)

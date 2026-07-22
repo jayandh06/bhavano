@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type { Area as AreaDto, City as CityDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Area, City } from '@prisma/client';
@@ -72,6 +72,22 @@ export class LocationsService {
       ...(all ? {} : { take: 15 }),
     });
     return matches.map(toAreaDto);
+  }
+
+  /** Case-insensitive match against existing areas in the city first, so casing/whitespace
+   * variants of an already-known area ("koramangala" vs "Koramangala") don't create a duplicate.
+   * Shared by ListingsService (posting a new ad) and SavedSearchesService (saving a search with
+   * an area not yet in the curated list). */
+  async ensureArea(cityId: string, name?: string): Promise<Area> {
+    if (!name?.trim()) throw new BadRequestException('Either areaId or areaName is required');
+    const trimmed = name.trim();
+
+    const existing = await this.prisma.area.findFirst({
+      where: { cityId, name: { equals: trimmed, mode: 'insensitive' } },
+    });
+    if (existing) return existing;
+
+    return this.prisma.area.create({ data: { name: trimmed, cityId, source: 'user-submitted' } });
   }
 
   /** Nearest-city lookup for "Auto-detect" — plain distance calc over all cities;

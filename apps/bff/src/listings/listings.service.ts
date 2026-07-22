@@ -30,6 +30,7 @@ import { ListListingsDto } from './dto/list-listings.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { AdminListingSort, ListAdminListingsDto } from '../admin/dto/list-admin-listings.dto';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
+import { LocationsService } from '../locations/locations.service';
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
@@ -90,6 +91,7 @@ export class ListingsService {
     private readonly config: ConfigService,
     private readonly notificationsService: NotificationsService,
     private readonly savedSearchesService: SavedSearchesService,
+    private readonly locationsService: LocationsService,
   ) {}
 
   async list(query: ListListingsDto, currentUserId?: string): Promise<ListingsPage> {
@@ -328,7 +330,7 @@ export class ListingsService {
     const moderation = await this.moderationService.moderate(input);
     if (!moderation.ok) throw new BadRequestException(moderation.reason);
 
-    const areaId = input.areaId ?? (await this.ensureArea(input.cityId, input.areaName)).id;
+    const areaId = input.areaId ?? (await this.locationsService.ensureArea(input.cityId, input.areaName)).id;
     const expiresAt = new Date(Date.now() + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
     const created = await this.prisma.listing.create({
@@ -553,20 +555,6 @@ export class ListingsService {
       select: { listingId: true },
     });
     return new Set(rows.map((r) => r.listingId));
-  }
-
-  /** Case-insensitive match against existing areas in the city first, so casing/whitespace
-   * variants of an already-known area ("koramangala" vs "Koramangala") don't create a duplicate. */
-  private async ensureArea(cityId: string, name?: string): Promise<Area> {
-    if (!name?.trim()) throw new BadRequestException('Either areaId or areaName is required');
-    const trimmed = name.trim();
-
-    const existing = await this.prisma.area.findFirst({
-      where: { cityId, name: { equals: trimmed, mode: 'insensitive' } },
-    });
-    if (existing) return existing;
-
-    return this.prisma.area.create({ data: { name: trimmed, cityId, source: 'user-submitted' } });
   }
 
   /** Category-specific "core" fields (bedrooms, sharing type, condition, etc.) marked

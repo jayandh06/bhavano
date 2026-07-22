@@ -401,6 +401,9 @@ export interface CreateSavedSearchInput {
   transactionType?: TransactionType;
   cityId?: string;
   areaId?: string;
+  /** A typed area name not found in the existing list — resolved (case-insensitive match, or
+   * created) the same way posting a new ad does. Ignored if areaId is also set. */
+  areaName?: string;
   minPrice?: number;
   maxPrice?: number;
   bedrooms?: number;

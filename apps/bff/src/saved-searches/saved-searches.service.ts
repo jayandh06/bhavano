@@ -1,8 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Area, City, Listing, SavedSearch } from '@prisma/client';
 import type { SavedSearchDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { LocationsService } from '../locations/locations.service';
 import { CreateSavedSearchDto } from './dto/create-saved-search.dto';
 
 function toDto(saved: SavedSearch & { city: City | null; area: Area | null }): SavedSearchDto {
@@ -27,6 +28,7 @@ export class SavedSearchesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly locationsService: LocationsService,
   ) {}
 
   /** Bhavano Plus-gated — the whole point of this feature is a Plus perk, not a free-tier one. */
@@ -36,8 +38,14 @@ export class SavedSearchesService {
       throw new ForbiddenException('Bhavano Plus is required to create saved search alerts');
     }
 
+    const { areaName, ...rest } = dto;
+    if (areaName && !rest.areaId) {
+      if (!rest.cityId) throw new BadRequestException('cityId is required to add a new area');
+      rest.areaId = (await this.locationsService.ensureArea(rest.cityId, areaName)).id;
+    }
+
     const saved = await this.prisma.savedSearch.create({
-      data: { userId, ...dto },
+      data: { userId, ...rest },
       include: { city: true, area: true },
     });
     return toDto(saved);

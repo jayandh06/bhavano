@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { City, ListingCategory, SavedSearchDto, TransactionType } from "@bhavano/types";
+import type { Area, City, ListingCategory, SavedSearchDto, TransactionType } from "@bhavano/types";
 import { createSavedSearchAction, deleteSavedSearchAction } from "@/app/actions/saved-searches";
+import { listAllAreasAction } from "@/app/actions/locations";
+
+const ADD_NEW_AREA_VALUE = "__new__";
 
 const CATEGORY_OPTIONS: { value: ListingCategory; label: string }[] = [
   { value: "house", label: "House" },
@@ -34,15 +37,43 @@ export function SavedSearchesManager({ initial, cities }: { initial: SavedSearch
   const [category, setCategory] = useState("");
   const [transactionType, setTransactionType] = useState("");
   const [cityId, setCityId] = useState("");
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [areaId, setAreaId] = useState("");
+  const [addingNewArea, setAddingNewArea] = useState(false);
+  const [newAreaName, setNewAreaName] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [bedrooms, setBedrooms] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  async function onCityChange(newCityId: string) {
+    setCityId(newCityId);
+    setAreaId("");
+    setAddingNewArea(false);
+    setNewAreaName("");
+    // Prepopulate every existing area for this city — the dropdown below shows them upfront,
+    // not just as you type, so there's no need to already know an area's exact name.
+    setAreas(newCityId ? await listAllAreasAction(newCityId) : []);
+  }
+
+  function onAreaSelectChange(value: string) {
+    if (value === ADD_NEW_AREA_VALUE) {
+      setAddingNewArea(true);
+      setAreaId("");
+    } else {
+      setAddingNewArea(false);
+      setAreaId(value);
+    }
+  }
+
   async function onCreate() {
     if (!name.trim()) {
       setError("Give this saved search a name.");
+      return;
+    }
+    if (addingNewArea && !newAreaName.trim()) {
+      setError("Type a name for the new area, or pick an existing one.");
       return;
     }
     setPending(true);
@@ -53,6 +84,8 @@ export function SavedSearchesManager({ initial, cities }: { initial: SavedSearch
       category: (category || undefined) as ListingCategory | undefined,
       transactionType: (transactionType || undefined) as TransactionType | undefined,
       cityId: cityId || undefined,
+      areaId: areaId || undefined,
+      areaName: addingNewArea ? newAreaName.trim() : undefined,
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       bedrooms: bedrooms ? Number(bedrooms) : undefined,
@@ -143,7 +176,7 @@ export function SavedSearchesManager({ initial, cities }: { initial: SavedSearch
           </div>
           <div>
             <label className={labelClass}>City</label>
-            <select value={cityId} onChange={(e) => setCityId(e.target.value)} className={fieldClass}>
+            <select value={cityId} onChange={(e) => onCityChange(e.target.value)} className={fieldClass}>
               <option value="">Any city</option>
               {cities.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -152,6 +185,35 @@ export function SavedSearchesManager({ initial, cities }: { initial: SavedSearch
               ))}
             </select>
           </div>
+
+          {cityId && (
+            <div>
+              <label className={labelClass}>Area / locality</label>
+              <select
+                value={addingNewArea ? ADD_NEW_AREA_VALUE : areaId}
+                onChange={(e) => onAreaSelectChange(e.target.value)}
+                className={fieldClass}
+              >
+                <option value="">Any area</option>
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+                <option value={ADD_NEW_AREA_VALUE}>+ Add new area…</option>
+              </select>
+              {addingNewArea && (
+                <input
+                  value={newAreaName}
+                  onChange={(e) => setNewAreaName(e.target.value)}
+                  placeholder="Type the new area's name"
+                  autoFocus
+                  className={`${fieldClass} mt-2`}
+                />
+              )}
+            </div>
+          )}
+
           <div className="flex gap-3">
             <div className="flex-1">
               <label className={labelClass}>Min price (₹)</label>
