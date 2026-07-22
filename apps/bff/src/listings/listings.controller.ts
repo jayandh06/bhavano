@@ -40,11 +40,10 @@ export class ListingsController {
   }
 
   @Post()
-  @UseGuards(OptionalAuthGuard, RateLimitGuard)
+  @UseGuards(AuthGuard, RateLimitGuard)
   @RateLimitAction('publish')
-  // TEMP(auth-gate): posting is open without login for now — anonymous owner used when not logged in.
-  create(@Body() dto: CreateListingDto, @CurrentUser() user?: RequestUser): Promise<ListingDetailDto> {
-    return this.listingsService.create(dto, user?.id);
+  create(@Body() dto: CreateListingDto, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
+    return this.listingsService.create(dto, user.id);
   }
 
   @Patch(':id')

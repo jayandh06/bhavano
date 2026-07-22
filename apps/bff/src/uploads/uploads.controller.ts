@@ -1,7 +1,8 @@
-import { BadRequestException, Body, Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post, UseGuards, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import sharp from 'sharp';
+import { AuthGuard } from '../auth/guards/auth.guard';
 import { R2StorageService } from '../storage/r2-storage.service';
 import { UploadPhotoDto } from './dto/upload-photo.dto';
 import { extFromMimeType, originalKey } from './photo-keys';
@@ -35,6 +36,7 @@ export class UploadsController {
   constructor(private readonly storage: R2StorageService) {}
 
   @Post()
+  @UseGuards(AuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),

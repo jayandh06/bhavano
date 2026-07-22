@@ -29,8 +29,6 @@ import { ListListingsDto } from './dto/list-listings.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { AdminListingSort, ListAdminListingsDto } from '../admin/dto/list-admin-listings.dto';
 
-const ANONYMOUS_OWNER_EMAIL = 'anonymous@bahavano.local';
-
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
 const DEFAULT_LISTING_DURATION_DAYS = 30;
@@ -316,10 +314,7 @@ export class ListingsService {
     return this.toDetailDto(listing, favouritedIds);
   }
 
-  // TEMP(auth-gate): posting is open without login for now — currentUserId is set when the
-  // poster is logged in (so the listing shows up under their My Listings), otherwise it
-  // falls back to the shared anonymous owner.
-  async create(input: CreateListingInput, currentUserId?: string): Promise<ListingDetailDto> {
+  async create(input: CreateListingInput, ownerId: string): Promise<ListingDetailDto> {
     if (!input.photos.length) throw new BadRequestException('At least one photo is required');
     this.assertRequiredAttributes(input.category, input.attributes ?? {});
     this.assertValidPriceQualifier(input.category, input.transactionType, input.priceQualifier);
@@ -327,7 +322,6 @@ export class ListingsService {
     const moderation = await this.moderationService.moderate(input);
     if (!moderation.ok) throw new BadRequestException(moderation.reason);
 
-    const ownerId = currentUserId ?? (await this.ensureAnonymousOwner()).id;
     const areaId = input.areaId ?? (await this.ensureArea(input.cityId, input.areaName)).id;
     const expiresAt = new Date(Date.now() + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000);
 
@@ -567,14 +561,6 @@ export class ListingsService {
     if (!validValues.includes(priceQualifier ?? '')) {
       throw new BadRequestException('Invalid price qualifier for this category/transaction type');
     }
-  }
-
-  private ensureAnonymousOwner() {
-    return this.prisma.user.upsert({
-      where: { email: ANONYMOUS_OWNER_EMAIL },
-      update: {},
-      create: { email: ANONYMOUS_OWNER_EMAIL, name: 'Anonymous' },
-    });
   }
 
   private cdnBase(): string {

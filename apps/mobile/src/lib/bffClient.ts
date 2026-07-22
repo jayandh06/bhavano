@@ -137,8 +137,8 @@ export function markConversationRead(accessToken: string, conversationId: string
 }
 
 // TEMP(auth-gate): posting is open without login for now.
-export function createListing(input: CreateListingInput): Promise<ListingDetailDto> {
-  return bffFetch<ListingDetailDto>("/listings", { method: "POST", body: JSON.stringify(input) });
+export function createListing(input: CreateListingInput, accessToken: string): Promise<ListingDetailDto> {
+  return authedBffFetch<ListingDetailDto>(accessToken, "/listings", { method: "POST", body: JSON.stringify(input) });
 }
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -153,6 +153,7 @@ export async function uploadPhoto(
   fileUri: string,
   listingId: string,
   photoNo: number,
+  accessToken: string,
 ): Promise<{ hash: string; ext: string }> {
   const formData = new FormData();
   const filename = fileUri.split("/").pop() ?? "photo.jpg";
@@ -163,7 +164,13 @@ export async function uploadPhoto(
   formData.append("listingId", listingId);
   formData.append("photoNo", String(photoNo));
 
-  const res = await fetch(`${BFF_URL}/uploads`, { method: "POST", body: formData });
+  // Not routed through bffFetch/authedBffFetch — those force a JSON Content-Type, which would
+  // strip the multipart boundary fetch otherwise auto-generates for a FormData body.
+  const res = await fetch(`${BFF_URL}/uploads`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`BFF upload failed (${res.status}): ${body}`);

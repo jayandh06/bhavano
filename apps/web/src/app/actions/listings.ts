@@ -13,17 +13,19 @@ import {
   uploadPhoto,
 } from "@/lib/bff";
 import { buildListingPath } from "@/lib/listingPath";
+import { isAccessTokenValid } from "@/lib/session";
 
-// TEMP(auth-gate): posting is open without login for now — logged-in posters are attributed
-// as the real owner (so the listing shows up under My Listings), anonymous ones fall back
-// to the shared anonymous owner on the BFF.
 export async function createListingAction(
   input: CreateListingInput,
 ): Promise<{ success: boolean; error?: string }> {
   const session = await auth();
+  if (!session || !isAccessTokenValid(session.accessToken)) {
+    return { success: false, error: "You must be logged in to post an ad." };
+  }
+
   let listing: ListingDetailDto;
   try {
-    listing = await createListing(input, session?.accessToken);
+    listing = await createListing(input, session.accessToken);
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to create listing" };
   }
@@ -33,8 +35,13 @@ export async function createListingAction(
 }
 
 export async function uploadPhotoAction(formData: FormData): Promise<{ hash?: string; ext?: string; error?: string }> {
+  const session = await auth();
+  if (!session || !isAccessTokenValid(session.accessToken)) {
+    return { error: "You must be logged in to post an ad." };
+  }
+
   try {
-    return await uploadPhoto(formData);
+    return await uploadPhoto(formData, session.accessToken);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Failed to upload photo" };
   }

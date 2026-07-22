@@ -17,7 +17,10 @@ function decodeJwtExpiryMs(token: string): number | null {
   }
 }
 
-export function isAccessTokenValid(accessToken?: string | null): boolean {
+/** A type predicate (not just `boolean`) so `if (!isAccessTokenValid(session.accessToken)) return;`
+ * narrows `session.accessToken` itself to `string` afterwards — needed at call sites that pass it
+ * straight into a function expecting a required `string` (e.g. `uploadPhoto`). */
+export function isAccessTokenValid(accessToken?: string | null): accessToken is string {
   if (!accessToken) return false;
   const expiresAtMs = decodeJwtExpiryMs(accessToken);
   return expiresAtMs !== null && expiresAtMs > Date.now();

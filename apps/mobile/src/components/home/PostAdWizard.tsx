@@ -36,8 +36,15 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 type Step = "category" | "transactionType" | "details" | "review";
 
-// TEMP(auth-gate): posting is open without login for now.
-export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaultCityId?: string }) {
+export function PostAdWizard({
+  cities,
+  defaultCityId,
+  accessToken,
+}: {
+  cities: City[];
+  defaultCityId?: string;
+  accessToken: string;
+}) {
   const { colors } = useAppTheme();
   const router = useRouter();
   const [listingId] = useState(() => Crypto.randomUUID());
@@ -160,27 +167,30 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
       const uploadedPhotos: { photoNo: number; hash: string; ext: string }[] = [];
       for (let i = 0; i < photoUris.length; i++) {
         const photoNo = i + 1;
-        const upload = await uploadPhoto(photoUris[i], listingId, photoNo);
+        const upload = await uploadPhoto(photoUris[i], listingId, photoNo, accessToken);
         uploadedPhotos.push({ photoNo, hash: upload.hash, ext: upload.ext });
       }
 
-      const listing = await createListing({
-        id: listingId,
-        category,
-        transactionType,
-        price: Number(price),
-        priceQualifier: priceQualifier || undefined,
-        title,
-        areaId: areaId ?? undefined,
-        areaName: areaId ? undefined : areaQuery.trim(),
-        cityId,
-        specs: specs
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        photos: uploadedPhotos,
-        attributes,
-      });
+      const listing = await createListing(
+        {
+          id: listingId,
+          category,
+          transactionType,
+          price: Number(price),
+          priceQualifier: priceQualifier || undefined,
+          title,
+          areaId: areaId ?? undefined,
+          areaName: areaId ? undefined : areaQuery.trim(),
+          cityId,
+          specs: specs
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+          photos: uploadedPhotos,
+          attributes,
+        },
+        accessToken,
+      );
 
       router.replace(`/listing/${listing.id}`);
     } catch (e) {

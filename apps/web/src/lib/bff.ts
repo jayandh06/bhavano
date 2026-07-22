@@ -176,8 +176,14 @@ export function updateListing(accessToken: string, listingId: string, input: Upd
   return authedBffFetch(accessToken, `/listings/${listingId}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
-export async function uploadPhoto(formData: FormData): Promise<{ hash: string; ext: string }> {
-  const res = await fetch(`${BFF_URL}/uploads`, { method: "POST", body: formData });
+export async function uploadPhoto(formData: FormData, accessToken: string): Promise<{ hash: string; ext: string }> {
+  // Not routed through bffFetch/authedBffFetch — those force a JSON Content-Type, which would
+  // strip the multipart boundary fetch otherwise auto-generates for a FormData body.
+  const res = await fetch(`${BFF_URL}/uploads`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`BFF upload failed (${res.status}): ${body}`);
