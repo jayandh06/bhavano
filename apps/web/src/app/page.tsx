@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import type { HomeCategoryFilter } from "@bhavano/types";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
+import { sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
 import { AreaFilter } from "@/components/home/AreaFilter";
 import { ListingGrid } from "@/components/home/ListingGrid";
@@ -142,7 +143,7 @@ export default async function HomePage({
         popularCities={popularCities}
         searchQuery={q}
         activeCategory={category}
-        userName={session?.user?.name}
+        userName={sessionHeaderName(session)}
         areaName={cityAreas[0]?.name}
         popularSearches={popularSearches}
       />

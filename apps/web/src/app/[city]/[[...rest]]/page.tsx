@@ -4,6 +4,7 @@ import type { ListingDetailDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListingById } from "@/lib/bff";
+import { sessionHeaderName } from "@/lib/session";
 import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity } from "@/lib/browseRoute";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import {
@@ -225,7 +226,7 @@ export default async function CityBrowsePage({
         <ListingDetailView
           listing={listing}
           popularCities={allCitiesForDetail.filter((c) => c.isPopular)}
-          userName={session?.user?.name}
+          userName={sessionHeaderName(session)}
           currentSegments={parsed}
         />
       </>
@@ -293,7 +294,7 @@ export default async function CityBrowsePage({
         filterCategory={parsed.category}
         filterIsSale={parsed.transactionGroup === "buy"}
         popularCities={allCities.filter((c) => c.isPopular)}
-        userName={session?.user?.name}
+        userName={sessionHeaderName(session)}
         currentSegments={parsed}
         areaName={areaRow?.name ?? cityAreas[0]?.name}
         cityAreas={cityAreas}

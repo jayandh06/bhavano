@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { fetchCities } from "@/lib/bff";
+import { sessionHeaderName } from "@/lib/session";
 import { Header } from "./Header";
 
 /** Drop-in `Header` for pages that aren't a browse/listing view (account pages, static pages) —
@@ -19,6 +20,6 @@ export async function PageHeader({
   const cityName = cityNameOverride ?? popularCities.find((c) => c.name === "Bengaluru")?.name ?? popularCities[0]?.name ?? "your city";
 
   return (
-    <Header cityName={cityName} popularCities={popularCities} searchQuery="" activeCategory="buy" userName={session?.user?.name} />
+    <Header cityName={cityName} popularCities={popularCities} searchQuery="" activeCategory="buy" userName={sessionHeaderName(session)} />
   );
 }
