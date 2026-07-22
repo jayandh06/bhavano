@@ -16,13 +16,19 @@ import { MessagingService } from '../messaging/messaging.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
-import { ListLoginsDto } from './dto/list-logins.dto';
+import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
 const ACTIVITY_TIMELINE_CAP = 100;
+
+/** Same tie-breaker convention as ListingsService's ORDER_BY tables. */
+const LOGIN_ORDER_BY: Record<LoginSort, Prisma.LoginEventOrderByWithRelationInput[]> = {
+  createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
+  createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
+};
 
 @Injectable()
 export class AdminService {
@@ -85,19 +91,42 @@ export class AdminService {
     return listing?.owner ?? null;
   }
 
+  /** Backs the admin filter bars' UserId picker — type-ahead by name/phone/email, resolving
+   * to a userId to filter listings/logins by. Empty/whitespace query short-circuits to no
+   * results rather than returning an arbitrary page of users. */
+  async searchUsers(q: string, limit: number): Promise<ListingOwnerDto[]> {
+    const query = q.trim();
+    if (!query) return [];
+
+    return this.prisma.user.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { phone: { contains: query } },
+          { email: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true, name: true, phone: true, email: true },
+      orderBy: { name: 'asc' },
+      take: limit,
+    });
+  }
+
   async listRecentLogins(query: ListLoginsDto): Promise<LoginEventsPage> {
-    const { cursor, from, to, limit } = query;
+    const { cursor, from, to, userId, method, sort, limit } = query;
     const where: Prisma.LoginEventWhereInput = {
       ...(from || to
         ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
         : {}),
+      ...(userId ? { userId } : {}),
+      ...(method ? { method } : {}),
     };
 
     const [rows, total] = await Promise.all([
       this.prisma.loginEvent.findMany({
         where,
         include: { user: { select: { name: true, phone: true, email: true } } },
-        orderBy: { createdAt: 'desc' },
+        orderBy: LOGIN_ORDER_BY[sort ?? 'createdAt_desc'],
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       }),

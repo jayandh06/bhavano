@@ -182,6 +182,10 @@ model Listing {
   @@index([cityId, transactionType])
   @@index([expiresAt])
   @@index([boostedUntil])
+  @@index([ownerId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([areaId])
 }
 
 /** One row per unique viewer (logged-in user id or anonymous device key) — used to

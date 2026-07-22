@@ -1,18 +1,31 @@
 import "server-only";
 import type {
   AdminListingsPage,
+  Area,
   AuthSession,
+  City,
   ConversationSummaryDto,
   FlagListingInput,
   ListingBoostsPage,
+  ListingCategory,
   ListingDetailDto,
   ListingOwnerDto,
   LoginEventsPage,
+  LoginMethod,
   MessageDto,
   ModerationState,
   RateLimitSettingsDto,
+  TransactionType,
   UserActivityDto,
 } from "@bhavano/types";
+
+/** Mirrors the BFF's ADMIN_LISTING_SORT_VALUES (apps/bff/src/admin/dto/list-admin-listings.dto.ts)
+ * — sort-key unions aren't shared via @bhavano/types in this codebase, kept in sync by convention
+ * (same pattern as the public site's ListingsQuery.sort). */
+export type AdminListingSort = "createdAt_desc" | "createdAt_asc" | "updatedAt_desc" | "updatedAt_asc";
+
+/** Mirrors the BFF's LOGIN_SORT_VALUES (apps/bff/src/admin/dto/list-logins.dto.ts). */
+export type AdminLoginSort = "createdAt_desc" | "createdAt_asc";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
@@ -66,6 +79,16 @@ export function logout(accessToken: string): Promise<{ success: true }> {
 export interface AdminListingsQuery {
   moderationState?: ModerationState;
   adminReviewed?: boolean;
+  category?: ListingCategory;
+  transactionType?: TransactionType;
+  cityId?: string;
+  areaId?: string;
+  userId?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+  sort?: AdminListingSort;
   cursor?: string;
   limit?: number;
 }
@@ -74,9 +97,38 @@ export function fetchAdminListings(accessToken: string, query: AdminListingsQuer
   const params = new URLSearchParams();
   if (query.moderationState) params.set("moderationState", query.moderationState);
   if (query.adminReviewed !== undefined) params.set("adminReviewed", String(query.adminReviewed));
+  if (query.category) params.set("category", query.category);
+  if (query.transactionType) params.set("transactionType", query.transactionType);
+  if (query.cityId) params.set("cityId", query.cityId);
+  if (query.areaId) params.set("areaId", query.areaId);
+  if (query.userId) params.set("userId", query.userId);
+  if (query.createdFrom) params.set("createdFrom", query.createdFrom);
+  if (query.createdTo) params.set("createdTo", query.createdTo);
+  if (query.updatedFrom) params.set("updatedFrom", query.updatedFrom);
+  if (query.updatedTo) params.set("updatedTo", query.updatedTo);
+  if (query.sort) params.set("sort", query.sort);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/listings?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (all) params.set("all", "true");
+  return bffFetch<City[]>(`/locations/cities?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<Area[]> {
+  const params = new URLSearchParams({ cityId });
+  if (q) params.set("q", q);
+  if (all) params.set("all", "true");
+  return bffFetch<Area[]>(`/locations/areas?${params.toString()}`, { cache: "no-store" });
+}
+
+export function searchUsers(accessToken: string, q: string, limit = 10): Promise<ListingOwnerDto[]> {
+  const params = new URLSearchParams({ q, limit: String(limit) });
+  return authedBffFetch(accessToken, `/admin/users/search?${params.toString()}`, { cache: "no-store" });
 }
 
 export function fetchListingById(accessToken: string, id: string): Promise<ListingDetailDto> {
@@ -125,6 +177,9 @@ export interface RecentLoginsQuery {
   cursor?: string;
   from?: string;
   to?: string;
+  userId?: string;
+  method?: LoginMethod;
+  sort?: AdminLoginSort;
   limit?: number;
 }
 
@@ -133,6 +188,9 @@ export function fetchRecentLogins(accessToken: string, query: RecentLoginsQuery 
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
+  if (query.userId) params.set("userId", query.userId);
+  if (query.method) params.set("method", query.method);
+  if (query.sort) params.set("sort", query.sort);
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/logins?${params.toString()}`, { cache: "no-store" });
 }

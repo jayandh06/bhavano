@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import type { LoginMethod } from '@bhavano/types';
+
+const LOGIN_METHODS: LoginMethod[] = ['otp', 'google'];
+const LOGIN_SORT_VALUES = ['createdAt_desc', 'createdAt_asc'] as const;
+
+export type LoginSort = (typeof LOGIN_SORT_VALUES)[number];
 
 export class ListLoginsDto {
   @IsOptional()
@@ -13,6 +19,18 @@ export class ListLoginsDto {
   @IsOptional()
   @IsDateString()
   to?: string;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
+  @IsOptional()
+  @IsIn(LOGIN_METHODS)
+  method?: LoginMethod;
+
+  @IsOptional()
+  @IsIn(LOGIN_SORT_VALUES)
+  sort?: LoginSort;
 
   @IsOptional()
   @Type(() => Number)

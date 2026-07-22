@@ -141,6 +141,7 @@ export interface ListingDetailDto extends ListingCardDto {
   moderatedAt: string | null;
   attributes: Record<string, unknown>;
   createdAt: string;
+  updatedAt: string;
   expiresAt: string;
   isExpired: boolean;
   /** Full-size (1600px-wide) variant URLs, same order as `photos` (the preview variants) —

@@ -18,6 +18,7 @@ import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
+import { SearchUsersDto } from './dto/search-users.dto';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -61,6 +62,11 @@ export class AdminController {
   @Get('logins')
   listRecentLogins(@Query() query: ListLoginsDto): Promise<LoginEventsPage> {
     return this.adminService.listRecentLogins(query);
+  }
+
+  @Get('users/search')
+  searchUsers(@Query() query: SearchUsersDto): Promise<ListingOwnerDto[]> {
+    return this.adminService.searchUsers(query.q, query.limit);
   }
 
   @Get('users/:id/activity')

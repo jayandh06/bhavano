@@ -9,7 +9,6 @@ import type {
   ListingDetailDto,
   ListingSitemapEntry,
   ListingsPage,
-  ModerationState,
   PopularSearchDto,
   PropertyTypeFilter,
   TransactionType,
@@ -27,6 +26,7 @@ import type { Area, City, Listing, ListingPhoto } from '@prisma/client';
 import { PHOTO_VARIANTS, PhotoVariant, variantUrl } from '../uploads/photo-keys';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
+import { AdminListingSort, ListAdminListingsDto } from '../admin/dto/list-admin-listings.dto';
 
 const ANONYMOUS_OWNER_EMAIL = 'anonymous@bahavano.local';
 
@@ -66,6 +66,15 @@ const ORDER_BY: Record<NonNullable<ListListingsDto['sort']>, Prisma.ListingOrder
   price_asc: [{ price: 'asc' }, { id: 'asc' }],
   price_desc: [{ price: 'desc' }, { id: 'asc' }],
   popular: [{ viewCount: 'desc' }, { id: 'asc' }],
+};
+
+/** Same tie-breaker convention as ORDER_BY above, for the admin listings screen's own
+ * (smaller) set of sort options. */
+const ADMIN_ORDER_BY: Record<AdminListingSort, Prisma.ListingOrderByWithRelationInput[]> = {
+  createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
+  createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
+  updatedAt_desc: [{ updatedAt: 'desc' }, { id: 'asc' }],
+  updatedAt_asc: [{ updatedAt: 'asc' }, { id: 'asc' }],
 };
 
 const priceFormatter = new Intl.NumberFormat('en-IN');
@@ -201,27 +210,44 @@ export class ListingsService {
 
   /** Admin moderation queue — every listing regardless of status/moderationState/expiry
    * (unlike the public `list()`, which only ever shows approved, active, unexpired ones). */
-  async listForAdmin(query: {
-    moderationState?: ModerationState;
-    adminReviewed?: boolean;
-    category?: ListingCategory;
-    cityId?: string;
-    cursor?: string;
-    limit: number;
-  }): Promise<AdminListingsPage> {
-    const { moderationState, adminReviewed, category, cityId, cursor, limit } = query;
+  async listForAdmin(query: ListAdminListingsDto): Promise<AdminListingsPage> {
+    const {
+      moderationState,
+      adminReviewed,
+      category,
+      transactionType,
+      cityId,
+      areaId,
+      userId,
+      createdFrom,
+      createdTo,
+      updatedFrom,
+      updatedTo,
+      sort,
+      cursor,
+      limit,
+    } = query;
     const where: Prisma.ListingWhereInput = {
       ...(moderationState ? { moderationState } : {}),
       ...(adminReviewed !== undefined ? { adminReviewed } : {}),
       ...(category ? { category } : {}),
+      ...(transactionType ? { transactionType } : {}),
       ...(cityId ? { cityId } : {}),
+      ...(areaId ? { areaId } : {}),
+      ...(userId ? { ownerId: userId } : {}),
+      ...(createdFrom || createdTo
+        ? { createdAt: { ...(createdFrom ? { gte: new Date(createdFrom) } : {}), ...(createdTo ? { lte: new Date(createdTo) } : {}) } }
+        : {}),
+      ...(updatedFrom || updatedTo
+        ? { updatedAt: { ...(updatedFrom ? { gte: new Date(updatedFrom) } : {}), ...(updatedTo ? { lte: new Date(updatedTo) } : {}) } }
+        : {}),
     };
 
     const [rows, total] = await Promise.all([
       this.prisma.listing.findMany({
         where,
         include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
-        orderBy: { createdAt: 'desc' },
+        orderBy: ADMIN_ORDER_BY[sort ?? 'createdAt_desc'],
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       }),
@@ -557,6 +583,7 @@ export class ListingsService {
       moderatedAt: listing.moderatedAt?.toISOString() ?? null,
       attributes: listing.attributes as Record<string, unknown>,
       createdAt: listing.createdAt.toISOString(),
+      updatedAt: listing.updatedAt.toISOString(),
       expiresAt: listing.expiresAt.toISOString(),
       isExpired: listing.expiresAt.getTime() < Date.now(),
       photosFull: listing.listingPhotos.map((p) => variantUrl(this.cdnBase(), listing.id, p.photoNo, 'full')),
