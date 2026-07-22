@@ -1,11 +1,9 @@
-import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { City, ListingDetailDto } from "@bhavano/types";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
 import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
-import { PostSuccessTracker } from "./PostSuccessTracker";
 import { ViewTracker } from "./ViewTracker";
 
 function daysUntil(iso: string): number {
@@ -39,9 +37,6 @@ export function ListingDetailView({
         areaName={listing.area}
       />
       <ViewTracker listingId={listing.id} />
-      <Suspense>
-        <PostSuccessTracker listingId={listing.id} />
-      </Suspense>
       <div className="max-w-[880px] mx-auto px-4 sm:px-8 pt-6 pb-20">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings

@@ -40,6 +40,21 @@ export class NotificationsService {
     await this.dispatch(user, subject, body);
   }
 
+  /** A boost perk, not a universal notification — see ListingsService.toggleFavourite, which
+   * only fires this while the listing is currently boosted. Unboosted listings can rack up many
+   * casual likes with no real intent behind most of them; boosted ads are a much smaller, more
+   * engaged set where "someone just liked your ad" is a meaningful, non-spammy signal. */
+  async notifyListingLiked(
+    user: NotifiableUser,
+    listingTitle: string,
+    likerName: string,
+  ): Promise<void> {
+    const subject = `${likerName} liked your boosted ad`;
+    const body = `${likerName} just added your listing "${listingTitle}" to their favourites on Bhavano.`;
+
+    await this.dispatch(user, subject, body);
+  }
+
   /** Fired once, on a user's first-ever login (see AuthService.verifyOtp/loginWithGoogle) —
    * across whichever of email/phone the user has on file, since a phone-OTP signup has no
    * email and a Google signup has no phone. */

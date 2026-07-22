@@ -22,6 +22,7 @@ import { getPriceQualifierOptions } from '@bhavano/types/priceQualifiers';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
 import type { Area, City, Listing, ListingPhoto } from '@prisma/client';
 import { PHOTO_VARIANTS, PhotoVariant, variantUrl } from '../uploads/photo-keys';
@@ -86,6 +87,7 @@ export class ListingsService {
     private readonly prisma: PrismaService,
     private readonly moderationService: ModerationService,
     private readonly config: ConfigService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async list(query: ListListingsDto, currentUserId?: string): Promise<ListingsPage> {
@@ -501,9 +503,28 @@ export class ListingsService {
     const listing = await this.prisma.listing.update({
       where: { id: listingId },
       data: { likeCount: { increment: 1 } },
-      select: { likeCount: true },
+      select: { likeCount: true, title: true, ownerId: true, boostedUntil: true },
     });
+
+    // Fire-and-forget — a slow/failed notification should never add latency to (or break)
+    // the favouriter's own click. Boost-only (see NotificationsService.notifyListingLiked):
+    // an unboosted listing can rack up many low-intent likes, a boosted one is a smaller,
+    // more engaged set where this is a meaningful signal instead of notification noise.
+    const isBoosted = (listing.boostedUntil?.getTime() ?? 0) > Date.now();
+    if (isBoosted && listing.ownerId !== userId) {
+      this.notifyOwnerOfLike(listing.ownerId, userId, listing.title).catch(() => undefined);
+    }
+
     return { favourited: true, likeCount: listing.likeCount };
+  }
+
+  private async notifyOwnerOfLike(ownerId: string, likerId: string, listingTitle: string): Promise<void> {
+    const [owner, liker] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: ownerId }, select: { email: true, phone: true } }),
+      this.prisma.user.findUnique({ where: { id: likerId }, select: { name: true } }),
+    ]);
+    if (!owner) return;
+    await this.notificationsService.notifyListingLiked(owner, listingTitle, liker?.name ?? 'Someone');
   }
 
   async listFavourites(userId: string): Promise<ListingCardDto[]> {

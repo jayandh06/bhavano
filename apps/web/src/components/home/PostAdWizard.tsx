@@ -1,13 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { Area, City, ListingCategory, TransactionType } from "@bhavano/types";
+import Link from "next/link";
+import type { Area, City, ListingCategory, ListingDetailDto, TransactionType } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
 import { searchAreasAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { pushDataLayerEvent } from "@/lib/gtm";
+import { buildListingPath } from "@/lib/listingPath";
+import { BoostButton } from "./BoostButton";
 
 function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
@@ -42,7 +46,7 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   lease: "Lease out",
 };
 
-type Step = "category" | "transactionType" | "details" | "review";
+type Step = "category" | "transactionType" | "details" | "review" | "success";
 
 const fieldClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
 
@@ -84,6 +88,7 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(null);
 
   useClickOutside(areaFieldRef, () => setShowAreaSuggestions(false));
 
@@ -220,21 +225,30 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
       attributes,
     });
 
-    // createListingAction redirects on success; reaching here means it failed.
     setPending(false);
-    if (result && !result.success) setError(result.error ?? "Failed to create listing");
+    if (!result.success) {
+      setError(result.error ?? "Failed to create listing");
+      return;
+    }
+    // Fired here (not on the listing page) so it's guaranteed to happen exactly once, even if
+    // the user boosts, skips, or closes the tab without ever navigating to their new listing.
+    pushDataLayerEvent("post_ad_success", { listingId: result.listing.id });
+    setCreatedListing(result.listing);
+    setStep("success");
   }
 
   return (
     <div>
-      <div className="flex gap-1.5 mb-6 text-xs font-bold text-muted">
-        {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
-          <span key={s} className={step === s ? "text-green" : "text-muted"}>
-            {i > 0 && " → "}
-            {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Review"}
-          </span>
-        ))}
-      </div>
+      {step !== "success" && (
+        <div className="flex gap-1.5 mb-6 text-xs font-bold text-muted">
+          {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
+            <span key={s} className={step === s ? "text-green" : "text-muted"}>
+              {i > 0 && " → "}
+              {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Review"}
+            </span>
+          ))}
+        </div>
+      )}
 
       {step === "category" && (
         <div className="grid grid-cols-3 gap-2.5">
@@ -470,6 +484,27 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
             >
               {pending ? "Posting…" : "Post ad"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {step === "success" && createdListing && (
+        <div className="flex flex-col gap-4 text-center py-4">
+          <div className="text-3xl">🎉</div>
+          <div>
+            <div className="font-lora text-xl font-bold text-text mb-1.5">Your ad is live!</div>
+            <p className="text-[13px] text-muted m-0">
+              Want it seen faster? Boosted ads get a gold ⭐ Featured badge, rank ahead of regular
+              listings, and rotate fairly through the top slots — plus we&apos;ll notify you the
+              moment someone likes it.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-3 mt-1">
+            <BoostButton listingId={createdListing.id} category={createdListing.category} />
+            <Link href={buildListingPath(createdListing)} className="text-[13px] font-bold text-text-soft">
+              Skip for now — view my ad →
+            </Link>
           </div>
         </div>
       )}

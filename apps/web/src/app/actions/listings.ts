@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import type { CreateListingInput, ListingDetailDto, UpdateListingInput } from "@bhavano/types";
 import { auth } from "@/auth";
 import {
@@ -12,26 +11,24 @@ import {
   updateListing,
   uploadPhoto,
 } from "@/lib/bff";
-import { buildListingPath } from "@/lib/listingPath";
 import { isAccessTokenValid } from "@/lib/session";
 
-export async function createListingAction(
-  input: CreateListingInput,
-): Promise<{ success: boolean; error?: string }> {
+export type CreateListingResult = { success: true; listing: ListingDetailDto } | { success: false; error: string };
+
+// Doesn't redirect on success — PostAdWizard shows a boost-benefits step first, so the client
+// decides when to navigate to the listing, not the server action.
+export async function createListingAction(input: CreateListingInput): Promise<CreateListingResult> {
   const session = await auth();
   if (!session || !isAccessTokenValid(session.accessToken)) {
     return { success: false, error: "You must be logged in to post an ad." };
   }
 
-  let listing: ListingDetailDto;
   try {
-    listing = await createListing(input, session.accessToken);
+    const listing = await createListing(input, session.accessToken);
+    return { success: true, listing };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to create listing" };
   }
-  // `?posted=true` lets PostSuccessTracker fire a one-time GTM conversion event client-side —
-  // a server action's redirect() can't run client code itself after a successful post.
-  redirect(`${buildListingPath(listing)}?posted=true`);
 }
 
 export async function uploadPhotoAction(formData: FormData): Promise<{ hash?: string; ext?: string; error?: string }> {
