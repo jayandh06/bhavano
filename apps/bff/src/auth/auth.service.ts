@@ -13,8 +13,33 @@ import { OtpService } from './otp.service';
 import { Msg91Provider } from '../notifications/providers/msg91.provider';
 import { GoogleProvider } from './providers/google.provider';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 const ACCESS_TOKEN_TTL = '1h';
+
+/** Visit context passed up from the web app at signup — see AuthService.verifyOtp /
+ * loginWithGoogle. All fields optional since anonymous/API callers (e.g. dev-login) never send
+ * this and pre-existing users never had it captured. */
+export interface VisitContext {
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  /** The visitor's per-session id (web's `bhavano_sid` cookie) — used to link the anonymous
+   * Visit row logged for this session to the now-known user, not persisted onto User itself. */
+  sessionId?: string;
+}
+
+/** Only include acquisition columns in a Prisma `create` payload when a source was actually
+ * captured — keeps the upsert's `update` branch untouched (it never mentions these fields), so a
+ * returning user's original attribution is never overwritten. */
+function acquisitionCreateFields(visit?: VisitContext) {
+  if (!visit?.source) return {};
+  return {
+    acquisitionSource: visit.source,
+    acquisitionMedium: visit.medium,
+    acquisitionCampaign: visit.campaign,
+  };
+}
 
 function toAuthUser(user: User): AuthUser {
   return {
@@ -46,6 +71,7 @@ export class AuthService {
     private readonly msg91: Msg91Provider,
     private readonly googleProvider: GoogleProvider,
     private readonly notificationsService: NotificationsService,
+    private readonly analyticsService: AnalyticsService,
     @InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
   ) {}
 
@@ -54,18 +80,27 @@ export class AuthService {
     await this.msg91.sendOtp(phone, code);
   }
 
-  async verifyOtp(phone: string, code: string): Promise<AuthSession> {
+  async verifyOtp(
+    phone: string,
+    code: string,
+    visit?: VisitContext,
+  ): Promise<AuthSession> {
     await this.otpService.verifyChallenge(phone, code);
 
     const user = await this.prisma.user.upsert({
       where: { phone },
       update: { phoneVerifiedAt: new Date() },
-      create: { phone, phoneVerifiedAt: new Date() },
+      create: {
+        phone,
+        phoneVerifiedAt: new Date(),
+        ...acquisitionCreateFields(visit),
+      },
     });
 
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.welcomeIfFirstLogin(promoted);
     await this.recordLogin(promoted.id, 'otp');
+    this.linkVisitToUser(visit?.sessionId, promoted.id);
     return this.issueSession(promoted);
   }
 
@@ -88,7 +123,10 @@ export class AuthService {
     });
   }
 
-  async loginWithGoogle(idToken: string): Promise<AuthSession> {
+  async loginWithGoogle(
+    idToken: string,
+    visit?: VisitContext,
+  ): Promise<AuthSession> {
     const profile = await this.googleProvider.verifyIdToken(idToken);
 
     const user = await this.prisma.user.upsert({
@@ -98,12 +136,14 @@ export class AuthService {
         googleId: profile.googleId,
         email: profile.email,
         name: profile.name,
+        ...acquisitionCreateFields(visit),
       },
     });
 
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.welcomeIfFirstLogin(promoted);
     await this.recordLogin(promoted.id, 'google');
+    this.linkVisitToUser(visit?.sessionId, promoted.id);
     return this.issueSession(promoted);
   }
 
@@ -131,6 +171,22 @@ export class AuthService {
       data: { welcomedAt: new Date() },
     });
     void this.notificationsService.notifyWelcome(user);
+  }
+
+  /** Best-effort, fire-and-forget: attaches the now-known user to the anonymous Visit row logged
+   * for this browser session, if any. Not awaited — a failed/slow link should never add latency
+   * to the login response, and a missing sessionId (cookies blocked, very old client) just means
+   * no attribution, not an error. */
+  private linkVisitToUser(sessionId: string | undefined, userId: string): void {
+    if (!sessionId) return;
+    void this.analyticsService
+      .linkVisitToUser(sessionId, userId)
+      .catch((err: unknown) =>
+        this.logger.warn(
+          { err, sessionId, userId },
+          'Failed to link visit to user',
+        ),
+      );
   }
 
   private recordLogin(

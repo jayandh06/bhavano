@@ -146,6 +146,16 @@ model User {
   /** Same denormalization for tier: agentPro — checked by RateLimitService to bypass the
    * posting-frequency cap, and by the agent storefront page for the "Bhavano Pro" badge. */
   agentProUntil         DateTime?
+  /** First-touch attribution: the UTM source/medium/campaign of the link the user first landed
+   * on, or the external Referer hostname with medium "referral" if untagged, or source "direct"
+   * if neither was present. Captured by apps/web's middleware.ts on the user's very first visit
+   * and written here only when this row is first created (see AuthService.verifyOtp /
+   * loginWithGoogle) — never overwritten afterward, so it reflects how the user originally found
+   * Bhavano rather than the source of their most recent login. */
+  acquisitionSource     String?
+  acquisitionMedium     String?
+  acquisitionCampaign   String?
+  visits                Visit[]
 
   @@index([cityId])
 }
@@ -344,6 +354,28 @@ model LoginEvent {
   createdAt DateTime    @default(now())
 
   @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+/** One row per browser session (not per page load) — apps/web's middleware.ts fires this the
+ * first time it sees a request without a `bhavano_sid` cookie, i.e. once per "sitting" (a new
+ * session starts after the browser/tab is closed and reopened). `userId` starts null for an
+ * anonymous visitor and is filled in later by AuthService if that same session goes on to log in
+ * — never reattributed once set. Distinct from `User.acquisition*` (a permanent, 30-day-cookie
+ * first-ever-touch summary): this is the full per-session audit log, covering every visit
+ * including ones that never convert to a signup. */
+model Visit {
+  id          String   @id @default(cuid())
+  sessionId   String   @unique
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  source      String?
+  medium      String?
+  campaign    String?
+  landingPath String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
   @@index([createdAt])
 }
 

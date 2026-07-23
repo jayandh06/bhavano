@@ -17,6 +17,7 @@ import { LoggingModule } from './logging/logging.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AgentsModule } from './agents/agents.module';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { SavedSearchesModule } from './saved-searches/saved-searches.module';
     PaymentsModule,
     AgentsModule,
     SavedSearchesModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
