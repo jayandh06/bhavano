@@ -18,6 +18,7 @@ interface GoogleGeocodeResult {
 interface GoogleGeocodeResponse {
   status: string;
   results: GoogleGeocodeResult[];
+  error_message?: string;
 }
 
 function toDto(city: City): CityDto {
@@ -157,6 +158,9 @@ export class LocationsService {
     const data = (await res.json()) as GoogleGeocodeResponse;
     const result = data.results[0];
     if (data.status !== 'OK' || !result) {
+      this.logger.warn(
+        `Google Geocoding API returned ${data.status} for ${lat},${lng}${data.error_message ? `: ${data.error_message}` : ''}`,
+      );
       return { formattedAddress: '', resolvedLocality: '' };
     }
 

@@ -1,0 +1,13 @@
+# Local-only reverse proxy: local.bhavano.com -> the web app's dev server (`pnpm dev`,
+# running natively on the Windows host, not in a container). Requires 127.0.0.1
+# local.bhavano.com in the hosts file (already set up). `tls internal` issues a
+# self-signed cert from Caddy's own local CA — see docs/plans/ for the one-time steps to
+# trust that CA in Windows so the browser doesn't warn. Not used by docker-compose.prod.yml
+# (that's the real Caddyfile, for real domains) — run this one standalone, e.g.:
+#   docker run -d --name bhavano-caddy-local -p 80:80 -p 443:443 \
+#     -v ./Caddyfile.local:/etc/caddy/Caddyfile:ro \
+#     -v caddy-local-data:/data -v caddy-local-config:/config caddy:2-alpine
+local.bhavano.com {
+	tls internal
+	reverse_proxy host.docker.internal:3000
+}

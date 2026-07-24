@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   // Produces a self-contained .next/standalone server (only the deps actually
   // used at runtime) — keeps the production Docker image small.
   output: "standalone",
+  // Lets the dev server accept requests (including the HMR websocket) fronted by the local
+  // Caddy reverse proxy at https://local.bhavano.com — without this, Next.js's cross-site-dev
+  // protection 403s any /_next/* request whose Origin isn't localhost or the bound host.
+  allowedDevOrigins: ["local.bhavano.com"],
   images: {
     // Listing photos are served from the R2-backed CDN (see docs/plans/photo-uploads-r2-cdn.md).
     // Hardcoded rather than read from an env var here — next.config.ts's `images` option is

@@ -28,6 +28,12 @@ function staticMapUrl(lat: number, lng: number): string {
   return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
 }
 
+/** Plain Google Maps URL scheme (no API key involved) — omitting `origin` tells Google Maps to
+ * route from the visitor's current location, prompting for geolocation permission itself. */
+function directionsUrl(lat: number, lng: number): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+}
+
 /** The full listing-detail page body — shared by the SEO catch-all route so it renders
  * identically regardless of which URL depth resolved to this listing. */
 export function ListingDetailView({
@@ -127,12 +133,22 @@ export function ListingDetailView({
           📍 {listing.area}, {listing.cityName}
         </div>
         {listing.lat !== undefined && listing.lng !== undefined && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={staticMapUrl(listing.lat, listing.lng)}
-            alt={`Approximate location of ${listing.title}`}
-            className="w-full h-[180px] object-cover rounded-xl mb-4"
-          />
+          <div className="mb-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={staticMapUrl(listing.lat, listing.lng)}
+              alt={`Approximate location of ${listing.title}`}
+              className="w-full h-[180px] object-cover rounded-xl"
+            />
+            <a
+              href={directionsUrl(listing.lat, listing.lng)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-2 text-[13px] font-semibold text-green"
+            >
+              🧭 Get directions
+            </a>
+          </div>
         )}
         <div className="text-xs text-muted mb-4 flex gap-3.5">
           <span>👁 {listing.viewCount} views</span>
