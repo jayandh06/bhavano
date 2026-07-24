@@ -3,12 +3,13 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, Text
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
-import type { Area, City, ListingCategory, TransactionType } from "@bhavano/types";
+import type { Area, City, ListingCategory, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createListing, fetchAreas, uploadPhoto } from "../../lib/bffClient";
+import { LocationMapPicker } from "./LocationMapPicker";
 
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
@@ -62,6 +63,7 @@ export function PostAdWizard({
   const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [specs, setSpecs] = useState("");
+  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
@@ -147,6 +149,19 @@ export function PostAdWizard({
     setAreaSuggestions([]);
   }
 
+  /** Google's City/Area resolution is a suggestion, never auto-locked — the user can still
+   * change the City chip / Area field manually after the map pre-fills them. */
+  function onPinChange(nextPin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) {
+    setPin(nextPin);
+    if (!suggestion) return;
+    if (suggestion.cityId) onCityChange(suggestion.cityId);
+    if (suggestion.areaId && suggestion.resolvedLocality) {
+      setAreaId(suggestion.areaId);
+      setAreaQuery(suggestion.resolvedLocality);
+      setAreaSuggestions([]);
+    }
+  }
+
   const requiredAttributesFilled = category
     ? CATEGORY_FIELD_CONFIG[category].every((field) => !field.required || (attributes[field.key] ?? "").length > 0)
     : true;
@@ -188,6 +203,8 @@ export function PostAdWizard({
             .filter(Boolean),
           photos: uploadedPhotos,
           attributes,
+          lat: pin?.lat,
+          lng: pin?.lng,
         },
         accessToken,
       );
@@ -271,6 +288,14 @@ export function PostAdWizard({
             value={title}
             onChangeText={setTitle}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+          />
+
+          <Text style={[styles.label, { color: colors.textSoft }]}>
+            Pin your exact location (optional — helps buyers find you, and auto-fills City/Area below)
+          </Text>
+          <LocationMapPicker
+            defaultCenter={cities.find((c) => c.id === cityId) ?? cities[0] ?? { lat: 20.5937, lng: 78.9629 }}
+            onPinChange={onPinChange}
           />
 
           <Text style={[styles.label, { color: colors.textSoft }]}>City</Text>

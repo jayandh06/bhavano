@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import type { Area, City, ListingCategory, ListingDetailDto, TransactionType } from "@bhavano/types";
+import type { Area, City, ListingCategory, ListingDetailDto, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
@@ -12,6 +12,7 @@ import { useClickOutside } from "@/lib/useClickOutside";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { buildListingPath } from "@/lib/listingPath";
 import { BoostButton } from "./BoostButton";
+import { LocationMapPicker } from "./LocationMapPicker";
 
 function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
@@ -83,6 +84,7 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
   const [showAreaSuggestions, setShowAreaSuggestions] = useState(false);
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const areaFieldRef = useRef<HTMLDivElement | null>(null);
+  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [specs, setSpecs] = useState("");
   const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
@@ -174,6 +176,19 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
     setAreaSuggestions([]);
   }
 
+  /** Google's City/Area resolution is a suggestion, never auto-locked — the user can still
+   * change the City select / Area field manually after the map pre-fills them. */
+  function onPinChange(nextPin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) {
+    setPin(nextPin);
+    if (!suggestion) return;
+    if (suggestion.cityId) onCityChange(suggestion.cityId);
+    if (suggestion.areaId && suggestion.resolvedLocality) {
+      setAreaId(suggestion.areaId);
+      setAreaQuery(suggestion.resolvedLocality);
+      setAreaSuggestions([]);
+    }
+  }
+
   const requiredAttributesFilled = category
     ? CATEGORY_FIELD_CONFIG[category].every((field) => !field.required || (attributes[field.key] ?? "").length > 0)
     : true;
@@ -223,6 +238,8 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
         .filter(Boolean),
       photos: uploadedPhotos,
       attributes,
+      lat: pin?.lat,
+      lng: pin?.lng,
     });
 
     setPending(false);
@@ -305,6 +322,18 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
           <div>
             <RequiredLabel text="Title" />
             <input required value={title} onChange={(e) => setTitle(e.target.value)} className={fieldClass} />
+          </div>
+
+          <div>
+            <label className={labelClass}>
+              Pin your exact location (optional — helps buyers find you, and auto-fills City/Area below)
+            </label>
+            <LocationMapPicker
+              defaultCenter={
+                cities.find((c) => c.id === cityId) ?? cities[0] ?? { lat: 20.5937, lng: 78.9629 }
+              }
+              onPinChange={onPinChange}
+            />
           </div>
 
           <div>

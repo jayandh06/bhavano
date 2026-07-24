@@ -1,7 +1,8 @@
-import { BadRequestException, Controller, Get, HttpCode, Query, Res } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import type { Area, City } from '@bhavano/types';
+import type { Area, City, ReverseGeocodeResultDto } from '@bhavano/types';
 import { LocationsService } from './locations.service';
+import { ReverseGeocodeDto } from './dto/reverse-geocode.dto';
 
 @Controller('locations')
 export class LocationsController {
@@ -35,5 +36,13 @@ export class LocationsController {
     }
     const city = await this.locationsService.reverseGeocode(lat, lng);
     res.json(city);
+  }
+
+  /** Real Google-backed reverse geocoding for the map pin-picker (posting flow) — distinct from
+   * `GET /reverse` above, which stays the plain haversine nearest-city lookup for the homepage's
+   * unrelated "auto-detect my location" button. */
+  @Post('reverse-geocode')
+  reverseGeocodeGoogle(@Body() dto: ReverseGeocodeDto): Promise<ReverseGeocodeResultDto> {
+    return this.locationsService.reverseGeocodeGoogle(dto.lat, dto.lng);
   }
 }

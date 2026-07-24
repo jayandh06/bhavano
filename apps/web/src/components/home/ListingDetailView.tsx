@@ -10,6 +10,24 @@ function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 }
 
+/** A plain cached image, not the interactive Maps JavaScript API — this page is by far the
+ * highest-traffic surface in the product, so cost here scales with page *views*, unlike the
+ * posting flow's map which loads once per post. `listing.lat`/`lng` are already a jittered
+ * approximation of the seller's real pin (computed server-side in ListingsService), never the
+ * exact location — see docs/plans/google-maps-location-picker.md. Same NEXT_PUBLIC_ key as the
+ * posting flow's map; enable "Maps Static API" alongside "Maps JavaScript API" for it in Google
+ * Cloud Console. */
+function staticMapUrl(lat: number, lng: number): string {
+  const params = new URLSearchParams({
+    center: `${lat},${lng}`,
+    zoom: "15",
+    size: "880x220",
+    markers: `color:0x0b3d2e|${lat},${lng}`,
+    key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY ?? "",
+  });
+  return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
+}
+
 /** The full listing-detail page body — shared by the SEO catch-all route so it renders
  * identically regardless of which URL depth resolved to this listing. */
 export function ListingDetailView({
@@ -108,6 +126,14 @@ export function ListingDetailView({
         <div className="text-sm text-muted mb-2">
           📍 {listing.area}, {listing.cityName}
         </div>
+        {listing.lat !== undefined && listing.lng !== undefined && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={staticMapUrl(listing.lat, listing.lng)}
+            alt={`Approximate location of ${listing.title}`}
+            className="w-full h-[180px] object-cover rounded-xl mb-4"
+          />
+        )}
         <div className="text-xs text-muted mb-4 flex gap-3.5">
           <span>👁 {listing.viewCount} views</span>
           <span>{listing.isExpired ? "Expired" : `Expires in ${daysUntil(listing.expiresAt)} days`}</span>

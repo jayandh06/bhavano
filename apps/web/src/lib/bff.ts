@@ -18,6 +18,7 @@ import type {
   MessageDto,
   PopularSearchDto,
   PropertyTypeFilter,
+  ReverseGeocodeResultDto,
   SavedSearchDto,
   SubscriptionTier,
   TransactionType,
@@ -148,6 +149,16 @@ export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
 
 export function reverseGeocode(lat: number, lng: number): Promise<City | null> {
   return bffFetch<City | null>(`/locations/reverse?lat=${lat}&lng=${lng}`, { cache: "no-store" });
+}
+
+/** Real Google-backed reverse geocoding for the posting flow's map pin-picker — distinct from
+ * `reverseGeocode` above (the homepage's unrelated haversine "auto-detect my location"). */
+export function reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseGeocodeResultDto> {
+  return bffFetch<ReverseGeocodeResultDto>("/locations/reverse-geocode", {
+    method: "POST",
+    body: JSON.stringify({ lat, lng }),
+    cache: "no-store",
+  });
 }
 
 export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<Area[]> {

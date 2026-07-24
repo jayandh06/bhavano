@@ -9,6 +9,7 @@ import type {
   ListingsPage,
   MessageDto,
   PropertyTypeFilter,
+  ReverseGeocodeResultDto,
   UpdateProfileInput,
   UserProfileDto,
 } from "@bhavano/types";
@@ -77,6 +78,19 @@ export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
 
 export function reverseGeocode(lat: number, lng: number): Promise<City | null> {
   return bffFetch<City | null>(`/locations/reverse?lat=${lat}&lng=${lng}`);
+}
+
+/** Real Google-backed reverse geocoding for the posting flow's map pin-picker — distinct from
+ * `reverseGeocode` above (the "auto-detect my location" haversine lookup). Proxied through the
+ * BFF (server-side GOOGLE_MAPS_SERVER_KEY), not called directly from the device — an
+ * Android-app-restricted API key doesn't reliably work for a plain fetch() call the way it does
+ * for the native Maps SDK's own rendering, so this avoids needing a second, awkwardly-restricted
+ * Google key in the mobile bundle. See docs/plans/google-maps-location-picker.md. */
+export function reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseGeocodeResultDto> {
+  return bffFetch<ReverseGeocodeResultDto>("/locations/reverse-geocode", {
+    method: "POST",
+    body: JSON.stringify({ lat, lng }),
+  });
 }
 
 export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<Area[]> {

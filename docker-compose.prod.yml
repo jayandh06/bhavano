@@ -30,6 +30,9 @@ services:
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+      # Google Maps — server-side reverse geocoding for the map pin-picker (see
+      # docs/plans/google-maps-location-picker.md). Never sent to any client.
+      GOOGLE_MAPS_SERVER_KEY: ${GOOGLE_MAPS_SERVER_KEY}
     volumes:
       # Rotating request/response logs, shared read-only with the alloy container below —
       # see docs/plans/bff-loki-grafana-logging.md.
@@ -51,6 +54,10 @@ services:
       NEXT_PUBLIC_BFF_URL: ${NEXT_PUBLIC_BFF_URL}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
       NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
+      # Google Maps JavaScript API + Places — the posting flow's map pin-picker (see
+      # docs/plans/google-maps-location-picker.md). HTTP-referrer restricted, safe for the
+      # browser — never reuse GOOGLE_MAPS_SERVER_KEY (bff, above) here.
+      NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       # Required behind a reverse proxy (Caddy) — otherwise NextAuth v5 rejects every

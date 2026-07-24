@@ -39,25 +39,6 @@ export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro";
  * docs/plans/monetization-boosted-listings-premium-tiers.md. */
 export type SubscriptionTier = "buyerPremium" | "agentPro";
 
-export interface GeoPoint {
-  lat: number;
-  lng: number;
-}
-
-export interface Listing {
-  id: string;
-  category: ListingCategory;
-  transactionType: TransactionType;
-  price: number;
-  location: GeoPoint;
-  ownerId: string;
-  status: ListingStatus;
-  condition?: ListingCondition;
-  relatedListingId?: string;
-  attributes: Record<string, unknown>;
-  createdAt: string;
-}
-
 /** Homepage top-level browsing tab — organized around seeker intent, not a flat
  * (category x transactionType) grid. "buy"/"rentLease" filter by transactionType
  * (+ an optional propertyType sub-filter); "pg"/"furniture" filter by category alone. */
@@ -150,6 +131,12 @@ export interface ListingDetailDto extends ListingCardDto {
   /** Full-size (1600px-wide) variant URLs, same order as `photos` (the preview variants) —
    * used for the detail page gallery instead of the card-sized preview images. */
   photosFull: string[];
+  /** Always a jittered/snapped approximation of the real pin (computed server-side in
+   * ListingsService.toDetailDto — see docs/plans/google-maps-location-picker.md), never the
+   * seller's exact dropped location, regardless of who's asking. Undefined if no pin was set
+   * at posting time. */
+  lat?: number;
+  lng?: number;
 }
 
 /** Fields an owner can change after posting — from the my-listings edit form. */
@@ -189,6 +176,21 @@ export interface CreateListingInput {
   /** Category-specific field values from the posting wizard's schema-driven step —
    * maps directly onto the `attributes` JSONB column. */
   attributes?: Record<string, unknown>;
+  /** The exact pin dropped on the map at posting time — optional (a "skip the map" path stays
+   * possible). Never returned as-is; see ListingDetailDto.lat/lng for why. */
+  lat?: number;
+  lng?: number;
+}
+
+/** Response from reverse-geocoding a dropped map pin — a suggestion the poster can accept or
+ * override, never an auto-locked value (Google's locality boundaries won't line up perfectly
+ * with Bhavano's own City/Area curation). `cityId`/`areaId` are null when Google's resolved
+ * locality doesn't match any city Bhavano currently supports. */
+export interface ReverseGeocodeResultDto {
+  cityId?: string;
+  areaId?: string;
+  formattedAddress: string;
+  resolvedLocality: string;
 }
 
 export interface MessageDto {

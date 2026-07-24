@@ -349,6 +349,8 @@ export class ListingsService {
         tag: deriveTag(input),
         ownerId,
         expiresAt,
+        lat: input.lat,
+        lng: input.lng,
       },
     });
 
@@ -601,6 +603,28 @@ export class ListingsService {
       expiresAt: listing.expiresAt.toISOString(),
       isExpired: listing.expiresAt.getTime() < Date.now(),
       photosFull: listing.listingPhotos.map((p) => variantUrl(this.cdnBase(), listing.id, p.photoNo, 'full')),
+      ...this.jitteredLocation(listing),
+    };
+  }
+
+  /** The public-facing pin is always an approximation of the real one — randomly offset within
+   * ~150m, or the area centroid if no pin was ever dropped at posting time. Computed here (not
+   * on the client) so the seller's exact coordinates never round-trip to the browser at all, for
+   * anyone. See docs/plans/google-maps-location-picker.md. */
+  private jitteredLocation(listing: Listing & { area: Area }): { lat?: number; lng?: number } {
+    if (listing.lat == null || listing.lng == null) {
+      return { lat: listing.area.lat ?? undefined, lng: listing.area.lng ?? undefined };
+    }
+
+    const JITTER_METERS = 150;
+    const metersPerDegreeLat = 111_320;
+    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((listing.lat * Math.PI) / 180);
+    const angle = Math.random() * 2 * Math.PI;
+    const distance = Math.random() * JITTER_METERS;
+
+    return {
+      lat: listing.lat + (Math.sin(angle) * distance) / metersPerDegreeLat,
+      lng: listing.lng + (Math.cos(angle) * distance) / metersPerDegreeLng,
     };
   }
 

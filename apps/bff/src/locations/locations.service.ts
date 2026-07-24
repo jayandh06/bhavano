@@ -1,7 +1,24 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import type { Area as AreaDto, City as CityDto } from '@bhavano/types';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Area as AreaDto, City as CityDto, ReverseGeocodeResultDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Area, City } from '@prisma/client';
+
+interface GoogleGeocodeAddressComponent {
+  long_name: string;
+  short_name: string;
+  types: string[];
+}
+
+interface GoogleGeocodeResult {
+  formatted_address: string;
+  address_components: GoogleGeocodeAddressComponent[];
+}
+
+interface GoogleGeocodeResponse {
+  status: string;
+  results: GoogleGeocodeResult[];
+}
 
 function toDto(city: City): CityDto {
   return {
@@ -32,7 +49,12 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 
 @Injectable()
 export class LocationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(LocationsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   async searchCities(q?: string, all?: boolean): Promise<CityDto[]> {
     if (!q && all) {
@@ -106,5 +128,55 @@ export class LocationsService {
       }
     }
     return toDto(nearest);
+  }
+
+  /** Real Google-backed reverse geocoding for the map pin-picker (posting flow) — distinct from
+   * `reverseGeocode` above, which stays a plain haversine nearest-city scan for the homepage's
+   * unrelated "auto-detect my location" button. Uses a server-side, IP-restricted API key —
+   * never call Google's Geocoding API directly from a browser/app with this key.
+   *
+   * City is matched against the existing curated table only, never auto-created (City is
+   * load-bearing for SEO URL structure and routing, and is deliberately kept small) — if Google's
+   * resolved locality doesn't match an existing City, `cityId` comes back undefined and the
+   * client should tell the user Bhavano isn't live there yet. Area, once a City match is found,
+   * reuses `ensureArea` directly — the same match-or-create semantics already shared with
+   * ListingsService and SavedSearchesService. See docs/plans/google-maps-location-picker.md. */
+  async reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseGeocodeResultDto> {
+    const apiKey = this.config.get<string>('GOOGLE_MAPS_SERVER_KEY');
+    if (!apiKey) {
+      throw new ServiceUnavailableException('Location lookup is not configured on this server yet');
+    }
+
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      this.logger.warn(`Google Geocoding API request failed: ${res.status}`);
+      throw new ServiceUnavailableException('Failed to look up that location');
+    }
+
+    const data = (await res.json()) as GoogleGeocodeResponse;
+    const result = data.results[0];
+    if (data.status !== 'OK' || !result) {
+      return { formattedAddress: '', resolvedLocality: '' };
+    }
+
+    const locality = result.address_components.find((c) => c.types.includes('locality'));
+    const sublocality = result.address_components.find(
+      (c) => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'),
+    );
+    const resolvedLocality = sublocality?.long_name ?? locality?.long_name ?? '';
+
+    const city = locality
+      ? await this.prisma.city.findFirst({ where: { name: { equals: locality.long_name, mode: 'insensitive' } } })
+      : null;
+
+    const area = city && resolvedLocality ? await this.ensureArea(city.id, resolvedLocality) : null;
+
+    return {
+      cityId: city?.id,
+      areaId: area?.id,
+      formattedAddress: result.formatted_address,
+      resolvedLocality,
+    };
   }
 }

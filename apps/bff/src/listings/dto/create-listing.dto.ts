@@ -3,6 +3,8 @@ import {
   IsArray,
   IsIn,
   IsInt,
+  IsLatitude,
+  IsLongitude,
   IsObject,
   IsOptional,
   IsPositive,
@@ -90,4 +92,12 @@ export class CreateListingDto {
   @IsOptional()
   @IsObject()
   attributes?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsLatitude()
+  lat?: number;
+
+  @IsOptional()
+  @IsLongitude()
+  lng?: number;
 }
