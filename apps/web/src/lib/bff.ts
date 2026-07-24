@@ -1,4 +1,5 @@
 import "server-only";
+import { cookies } from "next/headers";
 import type {
   AgentStorefrontDto,
   Area,
@@ -211,15 +212,50 @@ export function sendOtp(phone: string): Promise<{ success: true }> {
   return bffFetch("/auth/otp/send", { method: "POST", body: JSON.stringify({ phone }) });
 }
 
-export function verifyOtp(phone: string, code: string): Promise<AuthSession> {
+const ACQUISITION_COOKIE = "bhavano_acq";
+const SESSION_COOKIE = "bhavano_sid";
+
+/** Reads the two cookies middleware.ts sets on a visitor's first request — the permanent
+ * first-touch acquisition source (UTM params, external referrer hostname, or "direct") and the
+ * current session id — and forwards both on signup so AuthService can persist the acquisition
+ * source onto the new User row and link the session's Visit log entry to it. A missing/malformed
+ * cookie just means no attribution/linking is available — never blocks login. */
+async function getVisitContext(): Promise<{
+  acquisitionSource?: string;
+  acquisitionMedium?: string;
+  acquisitionCampaign?: string;
+  sessionId?: string;
+}> {
+  const jar = await cookies();
+  const sessionId = jar.get(SESSION_COOKIE)?.value;
+
+  const raw = jar.get(ACQUISITION_COOKIE)?.value;
+  if (!raw) return { sessionId };
+  try {
+    const parsed = JSON.parse(raw) as { source?: string; medium?: string; campaign?: string };
+    return {
+      acquisitionSource: parsed.source,
+      acquisitionMedium: parsed.medium,
+      acquisitionCampaign: parsed.campaign,
+      sessionId,
+    };
+  } catch {
+    return { sessionId };
+  }
+}
+
+export async function verifyOtp(phone: string, code: string): Promise<AuthSession> {
   return bffFetch("/auth/otp/verify", {
     method: "POST",
-    body: JSON.stringify({ phone, code }),
+    body: JSON.stringify({ phone, code, ...(await getVisitContext()) }),
   });
 }
 
-export function loginWithGoogle(idToken: string): Promise<AuthSession> {
-  return bffFetch("/auth/google", { method: "POST", body: JSON.stringify({ idToken }) });
+export async function loginWithGoogle(idToken: string): Promise<AuthSession> {
+  return bffFetch("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ idToken, ...(await getVisitContext()) }),
+  });
 }
 
 /** Links a verified phone number to the currently logged-in user (e.g. a Google-login user

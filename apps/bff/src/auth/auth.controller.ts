@@ -26,13 +26,23 @@ export class AuthController {
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   verifyOtp(@Body() dto: VerifyOtpDto): Promise<AuthSession> {
-    return this.authService.verifyOtp(dto.phone, dto.code);
+    return this.authService.verifyOtp(dto.phone, dto.code, {
+      source: dto.acquisitionSource,
+      medium: dto.acquisitionMedium,
+      campaign: dto.acquisitionCampaign,
+      sessionId: dto.sessionId,
+    });
   }
 
   @Post('google')
   @HttpCode(200)
   loginWithGoogle(@Body() dto: GoogleLoginDto): Promise<AuthSession> {
-    return this.authService.loginWithGoogle(dto.idToken);
+    return this.authService.loginWithGoogle(dto.idToken, {
+      source: dto.acquisitionSource,
+      medium: dto.acquisitionMedium,
+      campaign: dto.acquisitionCampaign,
+      sessionId: dto.sessionId,
+    });
   }
 
   /** Test-only: mints a real session for an existing (seeded) user without going through OTP

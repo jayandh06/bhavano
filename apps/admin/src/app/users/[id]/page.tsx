@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ActivityEventDto } from "@bhavano/types";
+import type { ActivityEventDto, VisitDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchUserActivity } from "@/lib/bff";
 
@@ -13,6 +13,12 @@ const EVENT_ICONS: Record<ActivityEventDto["type"], string> = {
   listing_viewed: "👁",
 };
 
+/** Renders a visit/acquisition source as e.g. "google · cpc · summer_sale" or "facebook.com ·
+ * referral" or plain "direct" — trailing parts are only shown when present. */
+function formatSource(source: string | null, medium?: string | null, campaign?: string | null): string {
+  return [source ?? "unknown", medium, campaign].filter(Boolean).join(" · ");
+}
+
 export default async function UserActivityPage({ params }: { params: Promise<{ id: string }> }) {
   const { accessToken } = await requireAdmin();
   const { id } = await params;
@@ -20,7 +26,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
   const activity = await fetchUserActivity(accessToken, id).catch(() => null);
   if (!activity) notFound();
 
-  const { user, events } = activity;
+  const { user, events, visits } = activity;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -37,6 +43,12 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
           <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
             {user.cityName ? `${user.cityName} · ` : ""}
             {user.role === "admin" ? "Admin" : "User"} · joined {new Date(user.createdAt).toLocaleDateString()}
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
+            Found via:{" "}
+            {user.acquisitionSource
+              ? formatSource(user.acquisitionSource, user.acquisitionMedium, user.acquisitionCampaign)
+              : "unknown (predates acquisition tracking)"}
           </div>
         </div>
 
@@ -64,6 +76,41 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
                   <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
                     {new Date(event.timestamp).toLocaleString()}
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: "24px 0 12px" }}>Visit history</h2>
+        {visits.length === 0 ? (
+          <p style={{ color: "var(--muted)", fontSize: 14 }}>No recorded visits yet.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {visits.map((visit: VisitDto) => (
+              <div
+                key={visit.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  border: "1px solid var(--border)",
+                  borderRadius: 9,
+                  padding: "10px 14px",
+                  background: "var(--surface)",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13.5 }}>{formatSource(visit.source, visit.medium, visit.campaign)}</div>
+                  {visit.landingPath && (
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                      Landed on {visit.landingPath}
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", flexShrink: 0 }}>
+                  {new Date(visit.createdAt).toLocaleString()}
                 </div>
               </div>
             ))}

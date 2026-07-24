@@ -291,6 +291,17 @@ export interface ActivityEventDto {
   refId?: string;
 }
 
+/** One browser session's worth of acquisition data — see the BFF's `Visit` model. `userId` isn't
+ * included here since these are always fetched already scoped to one user. */
+export interface VisitDto {
+  id: string;
+  source: string | null;
+  medium: string | null;
+  campaign: string | null;
+  landingPath: string | null;
+  createdAt: string;
+}
+
 export interface UserActivityDto {
   user: {
     id: string;
@@ -300,8 +311,16 @@ export interface UserActivityDto {
     cityName: string | null;
     role: UserRole;
     createdAt: string;
+    /** First-touch attribution — how this user originally found Bhavano. Null for pre-existing
+     * users whose signup predates this being captured. */
+    acquisitionSource: string | null;
+    acquisitionMedium: string | null;
+    acquisitionCampaign: string | null;
   };
   events: ActivityEventDto[];
+  /** Recent browsing sessions (not page loads) for this user, newest first — includes sessions
+   * from before they ever signed up/logged in, once linked. */
+  visits: VisitDto[];
 }
 
 export interface ListingOwnerDto {

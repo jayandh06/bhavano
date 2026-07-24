@@ -158,37 +158,43 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { city: true } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-    const [logins, listings, messages, favourites, views] = await Promise.all([
-      this.prisma.loginEvent.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        take: ACTIVITY_LIMIT_PER_SOURCE,
-      }),
-      this.prisma.listing.findMany({
-        where: { ownerId: userId },
-        orderBy: { createdAt: 'desc' },
-        take: ACTIVITY_LIMIT_PER_SOURCE,
-        select: { id: true, title: true, createdAt: true, updatedAt: true },
-      }),
-      this.prisma.message.findMany({
-        where: { senderId: userId },
-        orderBy: { createdAt: 'desc' },
-        take: ACTIVITY_LIMIT_PER_SOURCE,
-        select: { id: true, body: true, createdAt: true },
-      }),
-      this.prisma.favourite.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        take: ACTIVITY_LIMIT_PER_SOURCE,
-        include: { listing: { select: { title: true } } },
-      }),
-      this.prisma.listingView.findMany({
-        where: { viewerKey: `user:${userId}` },
-        orderBy: { createdAt: 'desc' },
-        take: ACTIVITY_LIMIT_PER_SOURCE,
-        include: { listing: { select: { title: true } } },
-      }),
-    ]);
+    const [logins, listings, messages, favourites, views, visits] =
+      await Promise.all([
+        this.prisma.loginEvent.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: ACTIVITY_LIMIT_PER_SOURCE,
+        }),
+        this.prisma.listing.findMany({
+          where: { ownerId: userId },
+          orderBy: { createdAt: 'desc' },
+          take: ACTIVITY_LIMIT_PER_SOURCE,
+          select: { id: true, title: true, createdAt: true, updatedAt: true },
+        }),
+        this.prisma.message.findMany({
+          where: { senderId: userId },
+          orderBy: { createdAt: 'desc' },
+          take: ACTIVITY_LIMIT_PER_SOURCE,
+          select: { id: true, body: true, createdAt: true },
+        }),
+        this.prisma.favourite.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: ACTIVITY_LIMIT_PER_SOURCE,
+          include: { listing: { select: { title: true } } },
+        }),
+        this.prisma.listingView.findMany({
+          where: { viewerKey: `user:${userId}` },
+          orderBy: { createdAt: 'desc' },
+          take: ACTIVITY_LIMIT_PER_SOURCE,
+          include: { listing: { select: { title: true } } },
+        }),
+        this.prisma.visit.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: ACTIVITY_LIMIT_PER_SOURCE,
+        }),
+      ]);
 
     const events: ActivityEventDto[] = [
       ...logins.map((l) => ({
@@ -242,8 +248,19 @@ export class AdminService {
         cityName: user.city?.name ?? null,
         role: user.role,
         createdAt: user.createdAt.toISOString(),
+        acquisitionSource: user.acquisitionSource,
+        acquisitionMedium: user.acquisitionMedium,
+        acquisitionCampaign: user.acquisitionCampaign,
       },
       events,
+      visits: visits.map((v) => ({
+        id: v.id,
+        source: v.source,
+        medium: v.medium,
+        campaign: v.campaign,
+        landingPath: v.landingPath,
+        createdAt: v.createdAt.toISOString(),
+      })),
     };
   }
 

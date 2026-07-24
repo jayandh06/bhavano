@@ -4,9 +4,10 @@ import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { GoogleProvider } from './providers/google.provider';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, AnalyticsModule],
   controllers: [AuthController],
   providers: [AuthService, OtpService, GoogleProvider],
 })
