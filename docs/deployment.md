@@ -323,12 +323,19 @@ doesn't need "DNS only" vs "proxied" — that distinction only matters for A/CNA
 traffic). Once verified, submit `https://bhavano.com/sitemap.xml` from the Sitemaps page.
 
 **Google Tag Manager** — set `NEXT_PUBLIC_GTM_ID` in `.env` to the container ID (`GTM-XXXXXXX`) from
-tagmanager.google.com, then `docker compose -f docker-compose.prod.yml up -d web` (recreate). Leave
-it blank to skip loading GTM entirely (the default locally). Two events are already pushed to
-`dataLayer` for GTM to build Google Ads conversion triggers on: `post_ad_success` (a listing was
-just posted) and `contact_owner` (a buyer started a conversation with a seller) — no code change
+tagmanager.google.com, then `docker compose -f docker-compose.prod.yml up -d --build web` (rebuild —
+see below). Leave it blank to skip loading GTM entirely (the default locally). Two events are already
+pushed to `dataLayer` for GTM to build Google Ads conversion triggers on: `post_ad_success` (a listing
+was just posted) and `contact_owner` (a buyer started a conversation with a seller) — no code change
 needed to wire up a conversion once GTM is live, just a trigger + tag in the GTM dashboard matching
 those event names.
+
+**`NEXT_PUBLIC_*` on `web` (Maps, BFF URL, site URL, GTM)** — values used in the browser bundle
+(e.g. `NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY` for the post-ad map) are baked in at **`docker build`**, not
+when you only restart the running container. `docker-compose.prod.yml` passes them as `web.build.args`;
+after adding or changing any of them in `.env`, run `docker compose -f docker-compose.prod.yml up -d
+--build web` so `next build` inside the image sees the new values. Runtime `environment:` alone is
+not enough for those client-inlined vars.
 
 ## Building and deploying an individual service
 

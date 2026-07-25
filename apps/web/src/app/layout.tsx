@@ -22,6 +22,7 @@ const manrope = Manrope({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
+const GOOGLE_MAPS_JS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY;
 const SITE_NAME = "Bhavano";
 const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
 const SITE_DESCRIPTION =
@@ -58,6 +59,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             description: SITE_DESCRIPTION,
           }}
         />
+        {GOOGLE_MAPS_JS_KEY && (
+          <Script id="google-maps-api-key" strategy="beforeInteractive">
+            {`window.__BHAVANO_GOOGLE_MAPS_JS_KEY__=${JSON.stringify(GOOGLE_MAPS_JS_KEY)};`}
+          </Script>
+        )}
         {GTM_ID && (
           <Script id="gtm-loader" strategy="afterInteractive">
             {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${GTM_ID}');`}

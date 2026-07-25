@@ -11,6 +11,16 @@ RUN npx turbo prune @bhavano/web --docker
 # --- Install deps and build ---
 FROM base AS installer
 WORKDIR /app
+# NEXT_PUBLIC_* used in client bundles are inlined at `next build` time — pass them as build
+# args (see docker-compose.prod.yml `web.build.args`), not only as runtime `environment:`.
+ARG NEXT_PUBLIC_BFF_URL
+ARG NEXT_PUBLIC_SITE_URL
+ARG NEXT_PUBLIC_GTM_ID
+ARG NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY
+ENV NEXT_PUBLIC_BFF_URL=$NEXT_PUBLIC_BFF_URL
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_GTM_ID=$NEXT_PUBLIC_GTM_ID
+ENV NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY
 COPY --from=pruner /app/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
