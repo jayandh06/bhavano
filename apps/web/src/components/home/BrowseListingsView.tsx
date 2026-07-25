@@ -21,15 +21,28 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com"
 
 /** ItemList schema for the current page's result grid — `position` is the listing's rank across
  * the whole result set (not just this page), so paginated pages describe a coherent single list. */
-function browseItemListJsonLd(items: ListingCardDto[], offset: number) {
+function browseItemListJsonLd(items: ListingCardDto[], offset: number, total: number) {
   return {
     "@type": "ItemList",
+    numberOfItems: total,
     itemListElement: items.map((item, i) => ({
       "@type": "ListItem",
       position: offset + i + 1,
       url: `${SITE_URL}${buildListingPath(item)}`,
       name: item.title,
+      ...(item.photos[0] ? { image: item.photos[0] } : {}),
     })),
+  };
+}
+
+/** Wraps the result `ItemList` in a `CollectionPage` — schema.org's convention for a search-
+ * results/browse page, distinct from the `ItemList` alone which just describes the list itself. */
+function browseCollectionPageJsonLd(params: { heading: string; url: string; itemList: ReturnType<typeof browseItemListJsonLd> }) {
+  return {
+    "@type": "CollectionPage",
+    name: params.heading,
+    url: params.url,
+    mainEntity: params.itemList,
   };
 }
 
@@ -144,7 +157,15 @@ export async function BrowseListingsView({
           </div>
           <SortDropdown activeSort={query.sort} />
         </div>
-        {listingsPage.items.length > 0 && <JsonLd data={browseItemListJsonLd(listingsPage.items, offset)} />}
+        {listingsPage.items.length > 0 && (
+          <JsonLd
+            data={browseCollectionPageJsonLd({
+              heading,
+              url: `${SITE_URL}${page > 1 ? `${basePath}?page=${page}` : basePath}`,
+              itemList: browseItemListJsonLd(listingsPage.items, offset, listingsPage.total),
+            })}
+          />
+        )}
         <ListingGrid items={listingsPage.items} cityName={cityName} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
       </main>

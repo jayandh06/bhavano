@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import type { ListingCategory, ListingDetailDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
-import { fetchAreas, fetchCities, fetchListingById } from "@/lib/bff";
+import { fetchAreas, fetchCities, fetchListingById, fetchListings } from "@/lib/bff";
 import { sessionHeaderName } from "@/lib/session";
 import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity } from "@/lib/browseRoute";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
@@ -215,7 +215,15 @@ export async function generateMetadata({
   if (parsed.areaSlug && !areaRow) return {};
 
   const heading = headingFor(parsed, cityRow.name, areaRow?.name);
-  const description = `Browse ${heading.toLowerCase()} on Bhavano.`;
+
+  // Count-driven description — matches the canonical (filter-stripped) page's actual result count,
+  // since query-string filters (?minPrice=, ?furnished=, …) always collapse to this same canonical
+  // URL (see `resolvedCanonicalPath` below) and never get their own indexable description.
+  const baseQuery = buildQueryForSegments(parsed);
+  const { total } = await fetchListings({ ...baseQuery, cityId: cityRow.id, areaId: areaRow?.id, limit: 1 }).catch(
+    () => ({ total: 0, items: [], nextCursor: null }),
+  );
+  const description = total > 0 ? `${total} ${heading.toLowerCase()} on Bhavano.` : `Browse ${heading.toLowerCase()} on Bhavano.`;
 
   // Distinct-window pagination (docs/plans/seo-distinct-window-pagination.md): page 1 is the
   // clean canonical as before, but page N>1 is genuinely different content — self-canonical with
