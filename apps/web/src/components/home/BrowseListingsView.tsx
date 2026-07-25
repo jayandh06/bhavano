@@ -11,6 +11,7 @@ import { BrowseFilterBar } from "./BrowseFilterBar";
 import { SortDropdown } from "./SortDropdown";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
+import { BrowseSeoIntro } from "./BrowseSeoIntro";
 import { resolvePopularSearches } from "@/lib/popularSearches";
 
 const PAGE_SIZE = 12;
@@ -45,6 +46,7 @@ export async function BrowseListingsView({
   userName,
   currentSegments,
   areaName,
+  pathAreaName,
   cityAreas,
   allCities,
 }: {
@@ -61,6 +63,8 @@ export async function BrowseListingsView({
   userName?: string | null;
   currentSegments: ParsedSegments;
   areaName?: string;
+  /** Locality from the URL path (`/{city}/{area}/…`), when present — not the search-bar placeholder. */
+  pathAreaName?: string;
   /** Every area in this city, for the multi-select `AreaFilter` — distinct from `areaName`
    * (just a placeholder hint for the search bar). */
   cityAreas: Area[];
@@ -97,6 +101,16 @@ export async function BrowseListingsView({
           <h1 className="font-lora text-[26px] font-semibold m-0 text-text">{heading}</h1>
           <span className="text-[13px] text-muted">{listingsPage.total} listings</span>
         </div>
+        {page === 1 && (
+          <BrowseSeoIntro
+            heading={heading}
+            cityName={cityName}
+            areaName={pathAreaName}
+            segments={currentSegments}
+            listingTotal={listingsPage.total}
+            cityAreas={cityAreas}
+          />
+        )}
         <div className="flex gap-2.5 mb-5 flex-wrap justify-between items-start">
           <div className="flex gap-2.5 flex-wrap">
             <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />

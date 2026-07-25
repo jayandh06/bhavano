@@ -296,6 +296,7 @@ export default async function CityBrowsePage({
         popularCities={allCities.filter((c) => c.isPopular)}
         userName={sessionHeaderName(session)}
         currentSegments={parsed}
+        pathAreaName={areaRow?.name}
         areaName={areaRow?.name ?? cityAreas[0]?.name}
         cityAreas={cityAreas}
         allCities={allCities}
