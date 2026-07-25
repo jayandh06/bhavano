@@ -80,6 +80,15 @@ New reusable component, `apps/web/src/components/JsonLd.tsx`, rendering a
     client code placed after an awaited server action never runs on success — the query-param +
     mount-effect tracker is the standard workaround, mirroring the existing `ViewTracker.tsx`
     pattern.)
+  - **`boost_purchase`** / **`subscription_purchase`** — the paid-conversion events, added after the
+    above shipped and it became clear neither premium purchase flow (boosts, Bhavano Plus/Agent Pro
+    subscriptions) fired anything. Both go through Razorpay Checkout
+    (`BoostButton.tsx`/`SubscribeButton.tsx`), where actual activation is confirmed asynchronously by
+    the BFF's webhook, not the client `handler` callback — but GTM/Ads can't observe a server-side
+    webhook at all, and Razorpay's `handler` only runs once payment succeeded, so that's where the
+    event fires. Each includes `transactionId` (the BFF payment id), `value` (rupees — `order.amount`
+    from the BFF is in paise, converted for Ads value-based bidding), and `currency`, plus
+    purchase-specific fields (`listingId`/`category`/`boostDays`, or `tier`/`months`).
 
 ## Robots + 404
 

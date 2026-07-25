@@ -6,6 +6,7 @@ import type { SubscriptionTier } from "@bhavano/types";
 import { subscriptionPriceFor } from "@bhavano/types/subscriptionPricing";
 import { createSubscriptionOrderAction } from "@/app/actions/payments";
 import { loadRazorpayScript } from "@/lib/razorpay";
+import { pushDataLayerEvent } from "@/lib/gtm";
 
 const DURATIONS_BY_TIER: Record<SubscriptionTier, number[]> = {
   buyerPremium: [1, 12],
@@ -49,6 +50,16 @@ export function SubscribeButton({ tier }: { tier: SubscriptionTier }) {
         description: `${TIER_LABELS[tier]} — ${months} month${months > 1 ? "s" : ""}`,
         handler: () => {
           setPendingActivation(true);
+          // Fired here rather than after the webhook activates the subscription — Razorpay only
+          // calls this once payment succeeded, and GTM/Ads has no way to observe the server-side
+          // webhook anyway. amount is in paise; Ads conversion value wants the rupee amount.
+          pushDataLayerEvent("subscription_purchase", {
+            transactionId: order.paymentId,
+            tier,
+            months,
+            value: order.amount / 100,
+            currency: order.currency,
+          });
           // The webhook (not this callback) is what actually activates the subscription — give
           // it a few seconds, then refresh so the page reflects the new status.
           setTimeout(() => router.refresh(), 4000);

@@ -6,6 +6,7 @@ import type { ListingCategory } from "@bhavano/types";
 import { boostPriceFor, type BoostDurationDays } from "@bhavano/types/boostPricing";
 import { createBoostOrderAction } from "@/app/actions/payments";
 import { loadRazorpayScript } from "@/lib/razorpay";
+import { pushDataLayerEvent } from "@/lib/gtm";
 
 const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 
@@ -44,6 +45,17 @@ export function BoostButton({ listingId, category }: { listingId: string; catego
         handler: () => {
           setOpen(false);
           setPendingActivation(true);
+          // Fired here rather than after the webhook activates the boost — Razorpay only calls
+          // this once payment succeeded, and GTM/Ads has no way to observe the server-side
+          // webhook anyway. amount is in paise; Ads conversion value wants the rupee amount.
+          pushDataLayerEvent("boost_purchase", {
+            transactionId: order.paymentId,
+            listingId,
+            category,
+            boostDays: days,
+            value: order.amount / 100,
+            currency: order.currency,
+          });
           // The webhook (not this callback) is what actually activates the boost — give it a
           // few seconds, then refresh so the "Featured" badge/sort position reflects it.
           setTimeout(() => router.refresh(), 4000);
