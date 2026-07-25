@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Area, City, ListingCategory, SavedSearchDto, TransactionType } from "@bhavano/types";
 import { createSavedSearchAction, deleteSavedSearchAction } from "@/app/actions/saved-searches";
 import { listAllAreasAction } from "@/app/actions/locations";
+import { pushDataLayerEvent } from "@/lib/gtm";
 
 const ADD_NEW_AREA_VALUE = "__new__";
 
@@ -96,6 +97,7 @@ export function SavedSearchesManager({ initial, cities }: { initial: SavedSearch
       setError(result.error);
       return;
     }
+    pushDataLayerEvent("save_search", { category: category || undefined, transactionType: transactionType || undefined });
     // The list itself only updates on next page load (this component doesn't refetch), so a
     // full reload keeps things simple rather than reconstructing the server-computed
     // cityName/areaName labels client-side.

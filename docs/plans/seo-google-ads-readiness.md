@@ -89,6 +89,27 @@ New reusable component, `apps/web/src/components/JsonLd.tsx`, rendering a
     event fires. Each includes `transactionId` (the BFF payment id), `value` (rupees — `order.amount`
     from the BFF is in paise, converted for Ads value-based bidding), and `currency`, plus
     purchase-specific fields (`listingId`/`category`/`boostDays`, or `tier`/`months`).
+  - **`begin_checkout_boost`** / **`begin_checkout_subscription`** — fired right after
+    `createBoostOrderAction`/`createSubscriptionOrderAction` return successfully (order created),
+    before Razorpay Checkout even opens. A funnel-entry signal distinct from the purchase events
+    above, so checkout-started vs. checkout-completed drop-off is visible, and so Ads has an
+    earlier, higher-volume signal to train on if purchase volume alone is too sparse.
+  - **`save_search`** — fired in `SavedSearchesManager.tsx` right before the page reload that
+    follows a successful `createSavedSearchAction`. A buyer-intent micro-conversion — not a
+    purchase, but a strong repeat-engagement signal worth its own (likely "secondary") Ads
+    conversion action rather than being mixed into the primary ones.
+  - **`signup_complete`** — fired in `AuthGateProvider.tsx` after a successful phone-OTP login,
+    gated on a new `isNewUser` flag threaded from the BFF: `AuthService.verifyOtp`/`loginWithGoogle`
+    already had a `welcomedAt`-based first-login check (for the welcome notification); this reuses
+    that same check (`!user.welcomedAt`, captured before it gets marked), plumbed through
+    `AuthSession` → NextAuth's `jwt`/`session` callbacks → `verifyOtpAction`'s return value, so the
+    event fires only on a genuine new signup, not every repeat login. **Only wired for the
+    phone-OTP path.** Google sign-in (`signInWithGoogleAction`) redirects through Google's OAuth
+    consent screen and NextAuth's own callback route, so the client code after
+    `await signInWithGoogleAction()` in `AuthGateProvider` never actually runs on a fresh sign-in —
+    tracking that path would need the same query-param + mount-effect-tracker pattern as
+    `post_ad_success`, applied to wherever Google sign-in redirects back to. Left as a follow-up
+    since it's meaningfully more work than the other events here.
 
 ## Robots + 404
 

@@ -97,11 +97,12 @@ export class AuthService {
       },
     });
 
+    const isNewUser = !user.welcomedAt;
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.welcomeIfFirstLogin(promoted);
     await this.recordLogin(promoted.id, 'otp');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
-    return this.issueSession(promoted);
+    return this.issueSession(promoted, isNewUser);
   }
 
   /** Links a verified phone number to the currently logged-in user — e.g. a Google-login
@@ -140,11 +141,12 @@ export class AuthService {
       },
     });
 
+    const isNewUser = !user.welcomedAt;
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.welcomeIfFirstLogin(promoted);
     await this.recordLogin(promoted.id, 'google');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
-    return this.issueSession(promoted);
+    return this.issueSession(promoted, isNewUser);
   }
 
   /** Test-only login used by the web app's Playwright smoke suite to bypass real OTP/Google
@@ -225,7 +227,7 @@ export class AuthService {
     });
   }
 
-  private issueSession(user: User): AuthSession {
+  private issueSession(user: User, isNewUser?: boolean): AuthSession {
     const secret = this.config.get<string>('AUTH_JWT_SECRET');
     const accessToken = jwt.sign(
       { sub: user.id, role: user.role },
@@ -234,6 +236,6 @@ export class AuthService {
         expiresIn: ACCESS_TOKEN_TTL,
       },
     );
-    return { user: toAuthUser(user), accessToken };
+    return { user: toAuthUser(user), accessToken, isNewUser };
   }
 }

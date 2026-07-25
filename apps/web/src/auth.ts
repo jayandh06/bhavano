@@ -6,15 +6,20 @@ import { loginWithGoogle, verifyOtp } from "@/lib/bff";
 declare module "next-auth" {
   interface Session {
     accessToken?: string;
+    // Only meaningful immediately after the sign-in that set it — read via auth() right after
+    // signIn() resolves (see verifyOtpAction), not as a general "is this account new" check on
+    // later requests, since the JWT (and this flag with it) persists across the whole session.
+    isNewUser?: boolean;
   }
   interface User {
     accessToken?: string;
+    isNewUser?: boolean;
   }
 }
 
 // The "next-auth/jwt" subpath's types pull in a currently-mismatched @auth/core
 // version in this workspace — avoid importing it and just extend the token shape locally.
-type TokenWithAccessToken = { sub?: string; accessToken?: string };
+type TokenWithAccessToken = { sub?: string; accessToken?: string; isNewUser?: boolean };
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
@@ -38,6 +43,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: session.user.email,
           // Carried through to the jwt() callback below via the `user` param.
           accessToken: session.accessToken,
+          isNewUser: session.isNewUser,
         };
       },
     }),
@@ -54,6 +60,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user?.accessToken) {
         t.accessToken = user.accessToken;
         t.sub = user.id;
+        t.isNewUser = user.isNewUser;
         return token;
       }
 
@@ -65,6 +72,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const bffSession = await loginWithGoogle(account.id_token);
         t.accessToken = bffSession.accessToken;
         t.sub = bffSession.user.id;
+        t.isNewUser = bffSession.isNewUser;
       }
 
       return token;
@@ -72,6 +80,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       const t = token as TokenWithAccessToken;
       session.accessToken = t.accessToken;
+      session.isNewUser = t.isNewUser;
       if (t.sub) session.user.id = t.sub;
       return session;
     },

@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { sendOtpAction, signInWithGoogleAction, verifyOtpAction } from "@/app/actions/auth";
+import { pushDataLayerEvent } from "@/lib/gtm";
 
 type LoginStep = "choose" | "phone" | "otp";
 
@@ -63,6 +64,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     const result = await verifyOtpAction(phone, otp);
     setPending(false);
     if (result.success) {
+      if (result.isNewUser) pushDataLayerEvent("signup_complete", { method: "phone" });
       onLoginSuccess();
     } else {
       setError(result.error ?? "Incorrect OTP");

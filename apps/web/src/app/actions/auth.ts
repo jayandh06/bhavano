@@ -16,10 +16,13 @@ export async function sendOtpAction(phone: string): Promise<{ success: boolean; 
 export async function verifyOtpAction(
   phone: string,
   code: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; isNewUser?: boolean }> {
   try {
     await signIn("phone-otp", { phone, code, redirect: false });
-    return { success: true };
+    // isNewUser only reflects this login (see the Session type's isNewUser doc comment) — read
+    // it now, right after signing in, rather than expecting callers to trust it on future reads.
+    const session = await auth();
+    return { success: true, isNewUser: session?.isNewUser };
   } catch {
     return { success: false, error: "Incorrect OTP" };
   }

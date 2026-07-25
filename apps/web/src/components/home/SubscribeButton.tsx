@@ -38,6 +38,14 @@ export function SubscribeButton({ tier }: { tier: SubscriptionTier }) {
       return;
     }
 
+    pushDataLayerEvent("begin_checkout_subscription", {
+      transactionId: result.order.paymentId,
+      tier,
+      months,
+      value: result.order.amount / 100,
+      currency: result.order.currency,
+    });
+
     try {
       await loadRazorpayScript();
       const { order } = result;

@@ -32,6 +32,15 @@ export function BoostButton({ listingId, category }: { listingId: string; catego
       return;
     }
 
+    pushDataLayerEvent("begin_checkout_boost", {
+      transactionId: result.order.paymentId,
+      listingId,
+      category,
+      boostDays: days,
+      value: result.order.amount / 100,
+      currency: result.order.currency,
+    });
+
     try {
       await loadRazorpayScript();
       const { order } = result;

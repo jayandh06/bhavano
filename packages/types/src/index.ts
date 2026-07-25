@@ -227,6 +227,9 @@ export interface AuthUser {
 export interface AuthSession {
   user: AuthUser;
   accessToken?: string;
+  /** True only on the login that first creates/welcomes this user — for signup-conversion
+   * tracking, not meant as a general-purpose "new account" flag past that one login. */
+  isNewUser?: boolean;
 }
 
 export interface UserProfileDto {
