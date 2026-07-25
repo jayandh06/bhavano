@@ -1,6 +1,6 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
-import type { ListingDetailDto } from "@bhavano/types";
+import type { ListingCategory, ListingDetailDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListingById } from "@/lib/bff";
@@ -26,7 +26,7 @@ import { BrowseListingsView } from "@/components/home/BrowseListingsView";
 import { ListingDetailView } from "@/components/home/ListingDetailView";
 import { JsonLd } from "@/components/JsonLd";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
 type RouteParams = { city: string; rest?: string[] };
 
@@ -118,21 +118,68 @@ function breadcrumbJsonLd(cityName: string, citySlug: string, parsed: ParsedSegm
   };
 }
 
+// Categories with real property/land, as opposed to rentable space, goods, or services — these
+// get a location-aware `RealEstateListing` instead of the generic `Product` schema.
+const REAL_ESTATE_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "plot", "commercial"]);
+
+// `attributes` values arrive as sanitized strings from PostAdWizard's number inputs, never numbers.
+const SQFT_ATTRIBUTE_KEY: Partial<Record<ListingCategory, string>> = {
+  house: "sqft",
+  apartment: "sqft",
+  villa: "sqft",
+  commercial: "sqft",
+  plot: "plotAreaSqft",
+};
+
+function numericAttribute(value: unknown): number | undefined {
+  if (value === undefined || value === "") return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function listingJsonLd(listing: ListingDetailDto) {
   const numericPrice = listing.price.replace(/[^\d]/g, "");
+  const offers = {
+    "@type": "Offer",
+    price: numericPrice,
+    priceCurrency: "INR",
+    availability: listing.status === "active" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+    url: `${SITE_URL}${buildListingPath(listing)}`,
+  };
+
+  if (!REAL_ESTATE_CATEGORIES.has(listing.category)) {
+    return {
+      "@type": "Product",
+      name: listing.title,
+      description: listing.specs.join(", ") || listing.title,
+      category: listing.category,
+      image: listing.photosFull,
+      offers,
+    };
+  }
+
+  const sqftKey = SQFT_ATTRIBUTE_KEY[listing.category];
+  const sqft = sqftKey ? numericAttribute(listing.attributes[sqftKey]) : undefined;
+  const bedrooms = numericAttribute(listing.attributes.bedrooms);
+
   return {
-    "@type": "Product",
+    "@type": "RealEstateListing",
     name: listing.title,
     description: listing.specs.join(", ") || listing.title,
-    category: listing.category,
+    url: offers.url,
     image: listing.photosFull,
-    offers: {
-      "@type": "Offer",
-      price: numericPrice,
-      priceCurrency: "INR",
-      availability: listing.status === "active" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
-      url: `${SITE_URL}${buildListingPath(listing)}`,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: listing.area,
+      addressRegion: listing.cityName,
+      addressCountry: "IN",
     },
+    ...(listing.lat !== undefined && listing.lng !== undefined
+      ? { geo: { "@type": "GeoCoordinates", latitude: listing.lat, longitude: listing.lng } }
+      : {}),
+    ...(bedrooms !== undefined ? { numberOfRooms: bedrooms } : {}),
+    ...(sqft !== undefined ? { floorSize: { "@type": "QuantitativeValue", value: sqft, unitCode: "FTK" } } : {}),
+    offers,
   };
 }
 

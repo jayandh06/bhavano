@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
-import type { Area, City, ListingCategory } from "@bhavano/types";
+import type { Area, City, ListingCardDto, ListingCategory } from "@bhavano/types";
 import { auth } from "@/auth";
 import { fetchListings, type ListingsQuery } from "@/lib/bff";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
+import { buildListingPath } from "@/lib/listingPath";
 import { Header } from "./Header";
 import { ListingGrid } from "./ListingGrid";
 import { AreaFilter } from "./AreaFilter";
@@ -12,9 +13,25 @@ import { SortDropdown } from "./SortDropdown";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
 import { BrowseSeoIntro } from "./BrowseSeoIntro";
+import { JsonLd } from "@/components/JsonLd";
 import { resolvePopularSearches } from "@/lib/popularSearches";
 
 const PAGE_SIZE = 12;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
+
+/** ItemList schema for the current page's result grid — `position` is the listing's rank across
+ * the whole result set (not just this page), so paginated pages describe a coherent single list. */
+function browseItemListJsonLd(items: ListingCardDto[], offset: number) {
+  return {
+    "@type": "ItemList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: offset + i + 1,
+      url: `${SITE_URL}${buildListingPath(item)}`,
+      name: item.title,
+    })),
+  };
+}
 
 /** Distinct-window `?page=N` href for this browse page — page 1 always omits `page` entirely so
  * it matches the canonical (no-query) path exactly (see docs/plans/seo-distinct-window-pagination.md). */
@@ -127,6 +144,7 @@ export async function BrowseListingsView({
           </div>
           <SortDropdown activeSort={query.sort} />
         </div>
+        {listingsPage.items.length > 0 && <JsonLd data={browseItemListJsonLd(listingsPage.items, offset)} />}
         <ListingGrid items={listingsPage.items} cityName={cityName} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
       </main>

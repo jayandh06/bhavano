@@ -3,7 +3,7 @@ import { fetchListingsSitemap } from "@/lib/bff";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import { transactionGroupFor } from "@/lib/seoRoute";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const listings = await fetchListingsSitemap();
