@@ -92,6 +92,7 @@ model City {
   lat       Float
   lng       Float
   isPopular Boolean   @default(false)
+  source    String    @default("curated")
   listings  Listing[]
   areas     Area[]
   users     User[]

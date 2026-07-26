@@ -191,6 +191,12 @@ export interface ReverseGeocodeResultDto {
   areaId?: string;
   formattedAddress: string;
   resolvedLocality: string;
+  /** Display name for `cityId` — the poster's initially-fetched city list won't contain a
+   * just-created city, so the client needs this to render/select it without a second round trip. */
+  cityName?: string;
+  /** True when this call just created `cityId` (never existed before) — drives the "we've added
+   * this city" note in the posting wizard, instead of silently leaving the seller unsure. */
+  isNewCity?: boolean;
 }
 
 export interface MessageDto {

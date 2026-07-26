@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Area as AreaDto, City as CityDto, ReverseGeocodeResultDto } from '@bhavano/types';
+import { slugify } from '@bhavano/types/slugify';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Area, City } from '@prisma/client';
 
@@ -113,6 +114,30 @@ export class LocationsService {
     return this.prisma.area.create({ data: { name: trimmed, cityId, source: 'user-submitted' } });
   }
 
+  /** Case-insensitive match on (name, state) first, so casing variants of an already-known city
+   * don't create a duplicate — mirrors `ensureArea`'s semantics. Unlike `ensureArea`, City can
+   * come back `null`: a same-slug collision with an existing city in a *different* state would be
+   * permanently unreachable via `resolveCity` (apps/web/src/lib/browseRoute.ts matches purely on
+   * slugify(name), no state disambiguation in the URL) — the caller treats `null` the same as an
+   * unmatched location today, rather than creating an unroutable duplicate. Only called from
+   * `reverseGeocodeGoogle` for now; City is otherwise still a curated/seed-only set. */
+  async ensureCity(name: string, state: string, lat: number, lng: number): Promise<City | null> {
+    const trimmedName = name.trim();
+    const trimmedState = state.trim();
+
+    const existing = await this.prisma.city.findFirst({
+      where: { name: { equals: trimmedName, mode: 'insensitive' }, state: { equals: trimmedState, mode: 'insensitive' } },
+    });
+    if (existing) return existing;
+
+    const allCities = await this.prisma.city.findMany();
+    if (allCities.some((c) => slugify(c.name) === slugify(trimmedName))) return null;
+
+    return this.prisma.city.create({
+      data: { name: trimmedName, state: trimmedState, lat, lng, source: 'user-submitted' },
+    });
+  }
+
   /** Nearest-city lookup for "Auto-detect" — plain distance calc over all cities;
    * swap for a real PostGIS ST_Distance query once city count grows past a full scan. */
   async reverseGeocode(lat: number, lng: number): Promise<CityDto | null> {
@@ -136,12 +161,14 @@ export class LocationsService {
    * unrelated "auto-detect my location" button. Uses a server-side, IP-restricted API key —
    * never call Google's Geocoding API directly from a browser/app with this key.
    *
-   * City is matched against the existing curated table only, never auto-created (City is
-   * load-bearing for SEO URL structure and routing, and is deliberately kept small) — if Google's
-   * resolved locality doesn't match an existing City, `cityId` comes back undefined and the
-   * client should tell the user Bhavano isn't live there yet. Area, once a City match is found,
-   * reuses `ensureArea` directly — the same match-or-create semantics already shared with
-   * ListingsService and SavedSearchesService. See docs/plans/google-maps-location-picker.md. */
+   * City is matched against the existing table first, then auto-created via `ensureCity` (using
+   * the dropped pin's own coordinates as the new city's lat/lng — the best approximation available
+   * without a second API call) if Google resolved a locality+state that doesn't match one yet, the
+   * same match-or-create semantics `ensureArea` already established for Area. `cityId` only stays
+   * undefined for the residual cases `ensureCity` itself declines (no state component in Google's
+   * response, or a same-slug collision with an existing city in another state) — the client treats
+   * that the same as "couldn't confidently place this pin". See
+   * docs/plans/support-uncovered-city-area-map-picker.md. */
   async reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseGeocodeResultDto> {
     const apiKey = this.config.get<string>('GOOGLE_MAPS_SERVER_KEY');
     if (!apiKey) {
@@ -168,11 +195,18 @@ export class LocationsService {
     const sublocality = result.address_components.find(
       (c) => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'),
     );
+    const state = result.address_components.find((c) => c.types.includes('administrative_area_level_1'));
     const resolvedLocality = sublocality?.long_name ?? locality?.long_name ?? '';
 
-    const city = locality
+    let city = locality
       ? await this.prisma.city.findFirst({ where: { name: { equals: locality.long_name, mode: 'insensitive' } } })
       : null;
+    let isNewCity = false;
+
+    if (!city && locality && state) {
+      city = await this.ensureCity(locality.long_name, state.long_name, lat, lng);
+      isNewCity = city !== null;
+    }
 
     const area = city && resolvedLocality ? await this.ensureArea(city.id, resolvedLocality) : null;
 
@@ -181,6 +215,8 @@ export class LocationsService {
       areaId: area?.id,
       formattedAddress: result.formatted_address,
       resolvedLocality,
+      cityName: city?.name,
+      isNewCity,
     };
   }
 }
