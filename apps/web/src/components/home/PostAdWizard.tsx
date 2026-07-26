@@ -11,6 +11,7 @@ import { searchAreasAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { buildListingPath } from "@/lib/listingPath";
+import { fieldClass, labelClass, primaryButtonClass, secondaryButtonClass } from "@/lib/formStyles";
 import { BoostButton } from "./BoostButton";
 import { LocationMapPicker } from "./LocationMapPicker";
 
@@ -49,10 +50,6 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 type Step = "category" | "transactionType" | "details" | "review" | "success";
 
-const fieldClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
-
-const labelClass = "text-[13px] font-bold text-text-soft mb-1.5 block";
-
 function RequiredLabel({ text }: { text: string }) {
   return (
     <label className={labelClass}>
@@ -66,9 +63,7 @@ const optionButtonClass = (active: boolean) =>
     active ? "border-green bg-surface-alt" : "border-border bg-surface"
   }`;
 
-const backButtonClass = "bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer";
-
-export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaultCityId?: string }) {
+export function PostAdWizard({ cities: initialCities, defaultCityId }: { cities: City[]; defaultCityId?: string }) {
   const [listingId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("category");
   const [category, setCategory] = useState<ListingCategory | null>(null);
@@ -77,7 +72,10 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
   const [price, setPrice] = useState("");
   const [priceQualifier, setPriceQualifier] = useState("");
   const [title, setTitle] = useState("");
-  const [cityId, setCityId] = useState(defaultCityId ?? cities[0]?.id ?? "");
+  // Grows when the map picker's reverse-geocode resolves to a just-created city (not in this
+  // initially-fetched list) — see `onPinChange` below.
+  const [cities, setCities] = useState<City[]>(initialCities);
+  const [cityId, setCityId] = useState(defaultCityId ?? initialCities[0]?.id ?? "");
   const [areaQuery, setAreaQuery] = useState("");
   const [areaId, setAreaId] = useState<string | null>(null);
   const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
@@ -91,6 +89,9 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(null);
+  // Informational, non-blocking note about the map pin's reverse-geocode result — either "we
+  // added this city for you" or "couldn't confidently place this pin" (see `onPinChange`).
+  const [pinLookupNote, setPinLookupNote] = useState<string | null>(null);
 
   useClickOutside(areaFieldRef, () => setShowAreaSuggestions(false));
 
@@ -177,11 +178,38 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
   }
 
   /** Google's City/Area resolution is a suggestion, never auto-locked — the user can still
-   * change the City select / Area field manually after the map pre-fills them. */
+   * change the City select / Area field manually after the map pre-fills them. A city/area with
+   * no existing match gets created on the fly (see LocationsService.ensureCity/ensureArea in the
+   * BFF) rather than silently left unresolved — this list only needs to grow to *display* one
+   * that's not in the initially-fetched set, since it already exists in the DB by this point. */
   function onPinChange(nextPin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) {
     setPin(nextPin);
     if (!suggestion) return;
-    if (suggestion.cityId) onCityChange(suggestion.cityId);
+
+    if (suggestion.cityId) {
+      setCities((prev) =>
+        prev.some((c) => c.id === suggestion.cityId)
+          ? prev
+          : [
+              ...prev,
+              {
+                id: suggestion.cityId!,
+                name: suggestion.cityName ?? suggestion.resolvedLocality,
+                state: "",
+                lat: nextPin.lat,
+                lng: nextPin.lng,
+                isPopular: false,
+              },
+            ],
+      );
+      onCityChange(suggestion.cityId);
+      setPinLookupNote(
+        suggestion.isNewCity ? `We've added ${suggestion.cityName ?? "this city"} as a new city on Bhavano!` : null,
+      );
+    } else {
+      setPinLookupNote("Couldn't confidently match a city here — please pick City/Area manually below.");
+    }
+
     if (suggestion.areaId && suggestion.resolvedLocality) {
       setAreaId(suggestion.areaId);
       setAreaQuery(suggestion.resolvedLocality);
@@ -287,7 +315,7 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
               </button>
             ))}
           </div>
-          <button onClick={() => setStep("category")} className={`${backButtonClass} mt-1`}>
+          <button onClick={() => setStep("category")} className={`${secondaryButtonClass} mt-1`}>
             ← Back
           </button>
         </div>
@@ -334,6 +362,7 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
               }
               onPinChange={onPinChange}
             />
+            {pinLookupNote && <p className="text-xs text-muted mt-1.5">{pinLookupNote}</p>}
           </div>
 
           <div>
@@ -463,16 +492,14 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
           <div className="flex gap-2.5">
             <button
               onClick={() => setStep(POSTABLE_TRANSACTION_TYPES[category].length === 1 ? "category" : "transactionType")}
-              className={backButtonClass}
+              className={secondaryButtonClass}
             >
               ← Back
             </button>
             <button
               onClick={() => setStep("review")}
               disabled={!detailsValid}
-              className={`ml-auto bg-green text-on-green border-0 rounded-lg px-6 py-3 text-sm font-bold cursor-pointer ${
-                detailsValid ? "opacity-100" : "opacity-50"
-              }`}
+              className={`ml-auto ${primaryButtonClass}`}
             >
               Review
             </button>
@@ -500,16 +527,14 @@ export function PostAdWizard({ cities, defaultCityId }: { cities: City[]; defaul
           <div className="flex gap-2.5">
             <button
               onClick={() => setStep("details")}
-              className={backButtonClass}
+              className={secondaryButtonClass}
             >
               ← Back
             </button>
             <button
               onClick={onSubmit}
               disabled={pending}
-              className={`ml-auto bg-green text-on-green border-0 rounded-lg px-7 py-3 text-sm font-bold cursor-pointer ${
-                pending ? "opacity-60" : "opacity-100"
-              }`}
+              className={`ml-auto ${primaryButtonClass}`}
             >
               {pending ? "Posting…" : "Post ad"}
             </button>

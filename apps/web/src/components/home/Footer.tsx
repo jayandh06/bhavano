@@ -90,6 +90,7 @@ export async function Footer({
           <div className="font-bold text-[13px] text-text mb-2.5">Company</div>
           <div className="flex flex-col gap-2 text-[13px]">
             <Link href={currentCityName ? `/post?city=${slugify(currentCityName)}` : "/post"}>Post a free ad</Link>
+            <Link href="/tools">Tools</Link>
             <Link href="/help">Help centre</Link>
           </div>
         </div>

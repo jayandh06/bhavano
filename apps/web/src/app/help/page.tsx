@@ -1,15 +1,11 @@
 import Link from "next/link";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
+import { FaqGroup, type Faq } from "@/components/home/FaqGroup";
 
 export const metadata = {
   title: "Help Centre — Bhavano",
   description: "Answers to common questions about posting, browsing, and managing listings on Bhavano.",
 };
-
-interface Faq {
-  q: string;
-  a: React.ReactNode;
-}
 
 const GETTING_STARTED: Faq[] = [
   {
@@ -164,21 +160,6 @@ const SAFETY: Faq[] = [
     ),
   },
 ];
-
-function FaqGroup({ title, items }: { title: string; items: Faq[] }) {
-  return (
-    <PageSection heading={title}>
-      <div className="flex flex-col gap-2">
-        {items.map((item) => (
-          <details key={item.q} className="border border-border rounded-[10px] px-4 py-3 bg-surface">
-            <summary className="font-bold text-sm text-text cursor-pointer">{item.q}</summary>
-            <div className="mt-2.5 text-sm leading-[1.6] text-text-soft">{item.a}</div>
-          </details>
-        ))}
-      </div>
-    </PageSection>
-  );
-}
 
 export default function HelpPage() {
   return (

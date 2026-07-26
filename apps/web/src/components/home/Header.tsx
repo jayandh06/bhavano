@@ -46,6 +46,9 @@ export function Header({
             <Link href={`/post?city=${slugify(cityName)}`} className="text-inherit">
               For Owners
             </Link>
+            <Link href="/tools" className="text-inherit">
+              Tools
+            </Link>
             <Link href="/help" className="text-inherit">
               Help
             </Link>

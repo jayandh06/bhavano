@@ -5,6 +5,7 @@ import type { Area, City, ListingCategory, SavedSearchDto, TransactionType } fro
 import { createSavedSearchAction, deleteSavedSearchAction } from "@/app/actions/saved-searches";
 import { listAllAreasAction } from "@/app/actions/locations";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { fieldClass, labelClass, outlineButtonClass, primaryButtonClass, secondaryButtonClass } from "@/lib/formStyles";
 
 const ADD_NEW_AREA_VALUE = "__new__";
 
@@ -27,9 +28,6 @@ const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }[] = [
   { value: "rent", label: "Rent" },
   { value: "lease", label: "Lease" },
 ];
-
-const fieldClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
-const labelClass = "text-[13px] font-bold text-text-soft mb-1.5 block";
 
 export function SavedSearchesManager({ initial, cities }: { initial: SavedSearchDto[]; cities: City[] }) {
   const [searches, setSearches] = useState(initial);
@@ -232,27 +230,16 @@ export function SavedSearchesManager({ initial, cities }: { initial: SavedSearch
           </div>
           {error && <p className="text-[#b3413a] text-[13px] m-0">{error}</p>}
           <div className="flex gap-2.5">
-            <button
-              onClick={() => setShowForm(false)}
-              disabled={pending}
-              className="bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer"
-            >
+            <button onClick={() => setShowForm(false)} disabled={pending} className={secondaryButtonClass}>
               Cancel
             </button>
-            <button
-              onClick={onCreate}
-              disabled={pending}
-              className="ml-auto bg-green text-on-green border-0 rounded-lg px-5 py-2.5 text-sm font-bold cursor-pointer disabled:opacity-60"
-            >
+            <button onClick={onCreate} disabled={pending} className={`ml-auto ${primaryButtonClass}`}>
               {pending ? "Saving…" : "Save search"}
             </button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setShowForm(true)}
-          className="self-start text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-4 py-2.5 cursor-pointer bg-transparent"
-        >
+        <button onClick={() => setShowForm(true)} className={`self-start ${outlineButtonClass}`}>
           + New saved search
         </button>
       )}
