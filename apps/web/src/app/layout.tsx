@@ -4,6 +4,7 @@ import Script from "next/script";
 import { ThemeProvider } from "next-themes";
 import { AuthGateProvider } from "@/components/home/AuthGateProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
+import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
 import { JsonLd } from "@/components/JsonLd";
 import "./globals.css";
 
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         )}
         <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <AuthGateProvider>
+            <SignupConversionTracker />
             <ProfileCompletionBanner />
             {children}
           </AuthGateProvider>

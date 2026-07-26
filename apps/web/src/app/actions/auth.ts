@@ -32,6 +32,15 @@ export async function signInWithGoogleAction(): Promise<void> {
   await signIn("google");
 }
 
+/** Google sign-in is a full-page redirect through NextAuth — there's no synchronous "it just
+ * succeeded" moment on the client the way phone-OTP has (see verifyOtpAction), so
+ * SignupConversionTracker calls this once the app reloads after the redirect back, to check
+ * whether that login was a brand-new Google signup. */
+export async function checkNewSignupAction(): Promise<{ isNewUser: boolean; provider?: string }> {
+  const session = await auth();
+  return { isNewUser: !!session?.isNewUser, provider: session?.provider };
+}
+
 export async function signOutAction(): Promise<void> {
   // Best-effort — a failed logout log call should never block the user from actually signing
   // out (e.g. an already-expired token would 401 here, which is fine to ignore).

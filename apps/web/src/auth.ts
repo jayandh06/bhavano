@@ -10,6 +10,11 @@ declare module "next-auth" {
     // signIn() resolves (see verifyOtpAction), not as a general "is this account new" check on
     // later requests, since the JWT (and this flag with it) persists across the whole session.
     isNewUser?: boolean;
+    // Which provider authenticated the current session ("phone-otp" or "google") — lets a caller
+    // distinguish signups that already fire their own analytics event synchronously (phone-OTP,
+    // in AuthGateProvider) from ones that don't (Google's redirect flow has no such moment on the
+    // client — see SignupConversionTracker).
+    provider?: string;
   }
   interface User {
     accessToken?: string;
@@ -19,7 +24,7 @@ declare module "next-auth" {
 
 // The "next-auth/jwt" subpath's types pull in a currently-mismatched @auth/core
 // version in this workspace — avoid importing it and just extend the token shape locally.
-type TokenWithAccessToken = { sub?: string; accessToken?: string; isNewUser?: boolean };
+type TokenWithAccessToken = { sub?: string; accessToken?: string; isNewUser?: boolean; provider?: string };
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
@@ -55,6 +60,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user, account }) {
       const t = token as TokenWithAccessToken;
+      // `account` is only present on the actual sign-in call, not on later token reads/refreshes —
+      // recorded here so it survives on the token for every subsequent request in the session.
+      if (account?.provider) t.provider = account.provider;
 
       // Phone-OTP sign-in: the accessToken came straight from the BFF via authorize().
       if (user?.accessToken) {
@@ -81,6 +89,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       const t = token as TokenWithAccessToken;
       session.accessToken = t.accessToken;
       session.isNewUser = t.isNewUser;
+      session.provider = t.provider;
       if (t.sub) session.user.id = t.sub;
       return session;
     },
