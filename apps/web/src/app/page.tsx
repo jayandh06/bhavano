@@ -148,10 +148,15 @@ export default async function HomePage({
         popularSearches={popularSearches}
       />
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
-        <div className="flex items-baseline justify-between mb-5">
+        <div className="flex items-baseline justify-between mb-2">
           <h1 className="font-lora text-[26px] font-semibold m-0 text-text">{heading}</h1>
           <span className="text-[13px] text-muted">Ads shown without login — sign in only to respond</span>
         </div>
+        <p className="text-[14px] text-text-soft mb-5 max-w-[720px]">
+          Bhavano is India&apos;s classifieds marketplace for buying, selling, renting and leasing
+          homes, plots, commercial space, coworking desks, PG stays and furniture — browse freely,
+          no sign-in required.
+        </p>
         {resolvedCity && (
           <div className="mb-5">
             <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
