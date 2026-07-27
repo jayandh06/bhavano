@@ -154,7 +154,9 @@ export default async function HomePage({
         </div>
         <p className="text-[14px] text-text-soft mb-5 max-w-[720px]">
           Bhavano is India&apos;s classifieds marketplace for buying, selling, renting and leasing
-          homes, plots, commercial space, coworking desks, PG stays and furniture.
+          homes, plots, commercial space, coworking desks, PG stays and furniture. Sign in with
+          Google or your phone number only when you want to post a listing, save a favourite, or
+          message a seller — we use your account solely to power those features.
         </p>
         {resolvedCity && (
           <div className="mb-5">
