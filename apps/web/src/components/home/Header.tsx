@@ -37,9 +37,11 @@ export function Header({
   return (
     <>
       <div className="bg-green text-on-green text-[13px] py-1.5">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex justify-between items-center">
-          {/* Long tagline is decorative — hidden on phones so the utility links keep their room. */}
-          <span className="hidden sm:inline opacity-[0.85]">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 sm:gap-0">
+          {/* Kept visible on every screen size — this is the earliest, most reliably-crawled
+           * statement of what Bhavano is on any page, so it stays on even on phones instead of
+           * being dropped for the utility links' benefit. */}
+          <span className="opacity-[0.85]">
             India&apos;s home for Buy · Rent · Villas · Plots · Coworking · PG · Commercial · Furniture
           </span>
           <div className="flex gap-5 opacity-[0.85]">
