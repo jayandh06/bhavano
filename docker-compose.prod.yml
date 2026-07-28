@@ -44,6 +44,18 @@ services:
       - bff_video_tmp:/app/apps/bff/uploads
     expose:
       - "4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   web:
     build:
@@ -76,7 +88,8 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     depends_on:
-      - bff
+      bff:
+        condition: service_healthy
     expose:
       - "3000"
 
@@ -93,7 +106,8 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     depends_on:
-      - bff
+      bff:
+        condition: service_healthy
     expose:
       - "3001"
 
