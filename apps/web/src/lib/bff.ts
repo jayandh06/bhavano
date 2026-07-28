@@ -28,6 +28,7 @@ import type {
   UserProfileDto,
 } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { isListingSlotCapErrorBody, ListingSlotCapError } from "@/lib/listingSlotErrors";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
@@ -53,9 +54,23 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
     // message when present instead of the raw JSON blob.
     const parsedMessage = (() => {
       try {
-        const parsed = JSON.parse(body) as { message?: string | string[] };
-        return Array.isArray(parsed.message) ? parsed.message.join(", ") : parsed.message;
-      } catch {
+        const parsed = JSON.parse(body) as {
+          message?: string | string[] | Record<string, unknown>;
+          code?: string;
+          activeCount?: number;
+        };
+        if (res.status === 403) {
+          const nested =
+            parsed.message && typeof parsed.message === "object" && !Array.isArray(parsed.message)
+              ? parsed.message
+              : parsed;
+          if (isListingSlotCapErrorBody(nested)) {
+            throw new ListingSlotCapError(nested);
+          }
+        }
+        return Array.isArray(parsed.message) ? parsed.message.join(", ") : typeof parsed.message === "string" ? parsed.message : undefined;
+      } catch (error) {
+        if (error instanceof ListingSlotCapError) throw error;
         return undefined;
       }
     })();
@@ -295,8 +310,12 @@ export function createSubscriptionOrder(
   accessToken: string,
   tier: SubscriptionTier,
   months: number,
+  agentProUnits?: number,
 ): Promise<CreateSubscriptionOrderResponseDto> {
-  return authedBffFetch(accessToken, "/payments/subscriptions", { method: "POST", body: JSON.stringify({ tier, months }) });
+  return authedBffFetch(accessToken, "/payments/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({ tier, months, ...(agentProUnits !== undefined ? { agentProUnits } : {}) }),
+  });
 }
 
 /** Public — no accessToken, anyone can view an agent's storefront. */

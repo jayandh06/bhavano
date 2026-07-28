@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
-import { BffAuthError, fetchMyListings } from "@/lib/bff";
+import { BffAuthError, fetchMyListings, fetchProfile } from "@/lib/bff";
+import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { buildListingPath } from "@/lib/listingPath";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
@@ -56,8 +57,9 @@ export default async function MyListingsPage({
 
 async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; cityName?: string }) {
   let listings;
+  let profile;
   try {
-    listings = await fetchMyListings(accessToken);
+    [listings, profile] = await Promise.all([fetchMyListings(accessToken), fetchProfile(accessToken)]);
   } catch (error) {
     if (error instanceof BffAuthError) {
       return <RequireLoginPrompt message="Log in to view and edit the ads you've posted." />;
@@ -67,18 +69,22 @@ async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; 
 
   if (listings.length === 0) {
     return (
-      <p className="text-muted text-sm">
+      <>
+        <ListingSlotMeter profile={profile} />
+        <p className="text-muted text-sm">
         You haven&apos;t posted anything yet —{" "}
         <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} className="text-green font-bold">
           post your first ad
         </Link>
         .
       </p>
+      </>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
+      <ListingSlotMeter profile={profile} />
       {listings.map((item) => (
         <MyListingRow key={item.id} item={item} accessToken={accessToken} />
       ))}

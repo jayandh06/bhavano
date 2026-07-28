@@ -9,19 +9,30 @@ import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
 
 const DURATIONS_BY_TIER: Record<SubscriptionTier, number[]> = {
-  buyerPremium: [1, 12],
+  buyerPremium: [1, 6, 12],
   agentPro: [1],
+  sellerSlotPack: [1],
+};
+
+const BUYER_PREMIUM_DURATION_LABELS: Record<number, string> = {
+  1: "1 month",
+  6: "6 months",
+  12: "12 months — best value",
 };
 
 const TIER_LABELS: Record<SubscriptionTier, string> = {
   buyerPremium: "Bhavano Plus",
   agentPro: "Agent/Broker Pro",
+  sellerSlotPack: "Seller slot pack",
 };
 
-/** Duration/price picker + Razorpay Checkout for a subscription tier — same order-then-webhook-
- * confirms pattern as BoostButton, just inline rather than in a modal since the /premium page
- * already gives each tier its own dedicated section for context. */
-export function SubscribeButton({ tier }: { tier: SubscriptionTier }) {
+export function SubscribeButton({
+  tier,
+  agentProUnits = 1,
+}: {
+  tier: SubscriptionTier;
+  agentProUnits?: number;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +42,7 @@ export function SubscribeButton({ tier }: { tier: SubscriptionTier }) {
     setPending(true);
     setError(null);
 
-    const result = await createSubscriptionOrderAction(tier, months);
+    const result = await createSubscriptionOrderAction(tier, months, tier === "agentPro" ? agentProUnits : undefined);
     if (!result.success) {
       setPending(false);
       setError(result.error);
@@ -49,6 +60,11 @@ export function SubscribeButton({ tier }: { tier: SubscriptionTier }) {
     try {
       await loadRazorpayScript();
       const { order } = result;
+      if (!order.razorpayOrderId || !order.razorpayKeyId) {
+        setPending(false);
+        setError("Couldn't open checkout — please try again.");
+        return;
+      }
       const razorpay = new window.Razorpay({
         key: order.razorpayKeyId,
         amount: order.amount,
@@ -58,9 +74,6 @@ export function SubscribeButton({ tier }: { tier: SubscriptionTier }) {
         description: `${TIER_LABELS[tier]} — ${months} month${months > 1 ? "s" : ""}`,
         handler: () => {
           setPendingActivation(true);
-          // Fired here rather than after the webhook activates the subscription — Razorpay only
-          // calls this once payment succeeded, and GTM/Ads has no way to observe the server-side
-          // webhook anyway. amount is in paise; Ads conversion value wants the rupee amount.
           pushDataLayerEvent("subscription_purchase", {
             transactionId: order.paymentId,
             tier,
@@ -68,8 +81,6 @@ export function SubscribeButton({ tier }: { tier: SubscriptionTier }) {
             value: order.amount / 100,
             currency: order.currency,
           });
-          // The webhook (not this callback) is what actually activates the subscription — give
-          // it a few seconds, then refresh so the page reflects the new status.
           setTimeout(() => router.refresh(), 4000);
         },
         modal: { ondismiss: () => setPending(false) },
@@ -90,12 +101,21 @@ export function SubscribeButton({ tier }: { tier: SubscriptionTier }) {
       {DURATIONS_BY_TIER[tier].map((months) => (
         <button
           key={months}
+          type="button"
           onClick={() => onSelectDuration(months)}
           disabled={pending}
           className="flex justify-between items-center border-[1.5px] border-border rounded-[10px] px-4 py-3 text-sm font-bold text-text cursor-pointer bg-surface-alt disabled:opacity-50"
         >
-          <span>{months === 1 ? "1 month" : `${months} months`}</span>
-          <span className="text-green">₹{subscriptionPriceFor(tier, months)}</span>
+          <span>
+            {tier === "buyerPremium"
+              ? (BUYER_PREMIUM_DURATION_LABELS[months] ?? `${months} months`)
+              : tier === "sellerSlotPack"
+                ? "10 active listings — 1 month"
+                : months === 1
+                  ? `1 month — ${agentProUnits * 20} listings`
+                  : `${months} months`}
+          </span>
+          <span className="text-green">₹{subscriptionPriceFor(tier, months, agentProUnits)}</span>
         </button>
       ))}
       {error && <p className="text-[#b3413a] text-[13px] m-0">{error}</p>}

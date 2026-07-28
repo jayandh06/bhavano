@@ -32,14 +32,13 @@ export type LoginMethod = "otp" | "google";
 
 export type RateLimitKind = "publish" | "view";
 
-export type PaymentStatus = "created" | "paid" | "failed" | "refunded";
+export type ListingSlotUpsell = import("./listingSlots").ListingSlotUpsell;
+export type { ListingSlotCapErrorBody } from "./listingSlots";
 
-export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro";
+export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro" | "seller_slot_pack";
 
-/** buyerPremium = "Bhavano Plus" (Verified Buyer badge, priority inbox visibility);
- * agentPro = raised posting cap + branded storefront badge. See
- * docs/plans/monetization-boosted-listings-premium-tiers.md. */
-export type SubscriptionTier = "buyerPremium" | "agentPro";
+/** buyerPremium = Bhavano Plus; agentPro = broker slots + storefront; sellerSlotPack = +5 slots (10 total). */
+export type SubscriptionTier = "buyerPremium" | "agentPro" | "sellerSlotPack";
 
 /** Homepage top-level browsing tab — organized around seeker intent, not a flat
  * (category x transactionType) grid. "buy"/"rentLease" filter by transactionType
@@ -289,6 +288,10 @@ export interface UserProfileDto {
   /** ISO timestamp, null if never subscribed or lapsed — see User.premiumUntil/agentProUntil. */
   premiumUntil: string | null;
   agentProUntil: string | null;
+  sellerSlotPackUntil: string | null;
+  agentProUnits: number;
+  activeListingCount: number;
+  listingSlotAllowance: number;
 }
 
 export interface UpdateProfileInput {
@@ -397,10 +400,12 @@ export interface CreateBoostOrderInput {
  * is the public key (safe to expose to the client), never the secret. */
 export interface CreateBoostOrderResponseDto {
   paymentId: string;
-  razorpayOrderId: string;
-  razorpayKeyId: string;
+  razorpayOrderId?: string;
+  razorpayKeyId?: string;
   amount: number;
   currency: string;
+  /** Agent Pro monthly credit — boost applied server-side, no Razorpay checkout. */
+  activated?: boolean;
 }
 
 /** Admin's boost-management list — who bought it, for how long, on which listing. */
@@ -423,8 +428,10 @@ export interface ListingBoostsPage {
 
 export interface CreateSubscriptionOrderInput {
   tier: SubscriptionTier;
-  /** buyerPremium supports 1 or 12; agentPro is monthly-only (1) for now. */
+  /** buyerPremium: 1, 6, or 12; sellerSlotPack and agentPro: 1 month only. */
   months: number;
+  /** agentPro only — each unit is 20 slots at ₹499 (default 1). */
+  agentProUnits?: number;
 }
 
 /** Same shape as CreateBoostOrderResponseDto — kept as its own named type since callers read

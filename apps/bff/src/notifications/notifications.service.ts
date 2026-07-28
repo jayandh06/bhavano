@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { ListingDetailDto } from '@bhavano/types';
 import { Msg91Provider } from './providers/msg91.provider';
 import { EmailProvider } from './providers/email.provider';
@@ -13,6 +14,7 @@ export class NotificationsService {
   constructor(
     private readonly emailProvider: EmailProvider,
     private readonly msg91: Msg91Provider,
+    private readonly config: ConfigService,
   ) {}
 
   async notifyListingFlagged(
@@ -96,6 +98,46 @@ export class NotificationsService {
         ? this.msg91.sendWhatsapp(user.phone, smsBody)
         : Promise.resolve(),
     ]);
+  }
+
+  /** Listing expiry reminder — email when the user has one; SMS only when email is missing. */
+  async notifyListingExpiryReminder(
+    user: NotifiableUser & { name?: string | null },
+    listingTitle: string,
+    expiresAt: Date,
+    daysLeft: number,
+  ): Promise<'email' | 'sms' | null> {
+    const siteUrl = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://bhavano.com';
+    const expiryDate = expiresAt.toLocaleDateString('en-IN', { dateStyle: 'medium' });
+    const subject = `Your listing "${listingTitle}" expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
+    const body =
+      `${user.name ? `Hi ${user.name}` : 'Hi'},\n\n` +
+      `Your Bhavano listing "${listingTitle}" will expire on ${expiryDate} ` +
+      `(${daysLeft} day${daysLeft === 1 ? '' : 's'} from now). After that it will stop appearing in search and your listing slot will free up.\n\n` +
+      `Manage your ads: ${siteUrl}/my-listings\n\n` +
+      `— Team Bhavano`;
+    const smsBody =
+      `Bhavano: "${listingTitle}" expires in ${daysLeft}d (${expiryDate}). Manage: ${siteUrl}/my-listings`;
+
+    return this.dispatchEmailPreferSms(user, subject, body, smsBody);
+  }
+
+  /** Email if available; otherwise SMS (no duplicate SMS when email exists). */
+  private async dispatchEmailPreferSms(
+    user: NotifiableUser,
+    subject: string,
+    emailBody: string,
+    smsBody: string,
+  ): Promise<'email' | 'sms' | null> {
+    if (user.email) {
+      await this.emailProvider.send(user.email, subject, emailBody);
+      return 'email';
+    }
+    if (user.phone) {
+      await this.msg91.sendTransactionalSms(user.phone, smsBody);
+      return 'sms';
+    }
+    return null;
   }
 
   private async dispatch(

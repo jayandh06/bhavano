@@ -9,6 +9,8 @@ import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
+import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
+import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { searchAreasAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { pushDataLayerEvent } from "@/lib/gtm";
@@ -134,6 +136,7 @@ export function PostAdWizard({
   const [videoError, setVideoError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [slotCap, setSlotCap] = useState<ListingSlotCapErrorBody | null>(null);
   const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(null);
   // Informational, non-blocking note about the map pin's reverse-geocode result — either "we
   // added this city for you" or "couldn't confidently place this pin" (see `onPinChange`).
@@ -379,9 +382,11 @@ export function PostAdWizard({
 
     setPending(false);
     if (!result.success) {
+      setSlotCap(result.slotCap ?? null);
       setError(result.error ?? "Failed to create listing");
       return;
     }
+    setSlotCap(null);
     // Fired here (not on the listing page) so it's guaranteed to happen exactly once, even if
     // the user boosts, skips, or closes the tab without ever navigating to their new listing.
     pushDataLayerEvent("post_ad_success", { listingId: result.listing.id });
@@ -665,7 +670,7 @@ export function PostAdWizard({
             </p>
           </div>
 
-          {error && <p className="text-[#b3413a] text-[13px]">{error}</p>}
+          {slotCap ? <ListingSlotCapPrompt slotCap={slotCap} /> : error ? <p className="text-[#b3413a] text-[13px]">{error}</p> : null}
 
           <div className="flex gap-2.5">
             <button

@@ -62,8 +62,7 @@ export class ListingsController {
   }
 
   @Post()
-  @UseGuards(AuthGuard, RateLimitGuard)
-  @RateLimitAction('publish')
+  @UseGuards(AuthGuard)
   create(@Body() dto: CreateListingDto, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
     return this.listingsService.create(dto, user.id);
   }

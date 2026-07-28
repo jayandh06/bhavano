@@ -36,6 +36,7 @@ import { UpdateListingDto } from './dto/update-listing.dto';
 import { AdminListingSort, ListAdminListingsDto } from '../admin/dto/list-admin-listings.dto';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { LocationsService } from '../locations/locations.service';
+import { ListingSlotsService } from '../listing-slots/listing-slots.service';
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
@@ -106,6 +107,7 @@ export class ListingsService {
     private readonly savedSearchesService: SavedSearchesService,
     private readonly locationsService: LocationsService,
     private readonly storage: R2StorageService,
+    private readonly listingSlotsService: ListingSlotsService,
   ) {}
 
   async list(query: ListListingsDto, currentUserId?: string): Promise<ListingsPage> {
@@ -339,6 +341,7 @@ export class ListingsService {
 
   async create(input: CreateListingInput, ownerId: string): Promise<ListingDetailDto> {
     if (!input.photos.length) throw new BadRequestException('At least one photo is required');
+    await this.listingSlotsService.assertCanPublish(ownerId);
     this.assertRequiredAttributes(input.category, input.attributes ?? {});
     this.assertValidPriceQualifier(input.category, input.transactionType, input.priceQualifier);
 

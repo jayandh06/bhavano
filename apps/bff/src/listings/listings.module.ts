@@ -6,10 +6,11 @@ import { RateLimitModule } from '../rate-limit/rate-limit.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SavedSearchesModule } from '../saved-searches/saved-searches.module';
 import { LocationsModule } from '../locations/locations.module';
+import { ListingSlotsModule } from '../listing-slots/listing-slots.module';
 import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule],
+  imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule],
   controllers: [ListingsController],
   providers: [ListingsService],
   exports: [ListingsService],

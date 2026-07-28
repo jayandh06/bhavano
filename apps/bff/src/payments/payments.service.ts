@@ -25,14 +25,13 @@ interface RazorpayWebhookPayload {
   };
 }
 
+function utcMonthKey(date = new Date()): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  // Lazily constructed — the Razorpay SDK throws synchronously if key_id/key_secret are blank,
-  // which would otherwise crash the *entire* BFF at boot (Nest eagerly instantiates every
-  // provider), not just the payments feature, on any environment without real Razorpay
-  // credentials configured yet (e.g. local dev). Constructed on first real use instead, so a
-  // missing third-party API key only fails the one request that actually needs it.
   private razorpay: Razorpay | null = null;
 
   constructor(
@@ -51,12 +50,70 @@ export class PaymentsService {
     return this.razorpay;
   }
 
-  /** Creates a Razorpay order for boosting a listing — the order isn't "paid" until the
-   * webhook below confirms it, this just gives the frontend what it needs to open Checkout. */
+  private async activateListingBoost(listingId: string, boostDays: number, paymentId: string): Promise<void> {
+    const boostedUntil = new Date(Date.now() + boostDays * 24 * 60 * 60 * 1000);
+    await this.prisma.listingBoost.create({
+      data: { listingId, paymentId, boostedUntil },
+    });
+    await this.prisma.listing.update({
+      where: { id: listingId },
+      data: { boostedUntil, boostRank: Math.random() },
+    });
+  }
+
+  private async ensureProBoostCreditForMonth(userId: string): Promise<void> {
+    const monthKey = utcMonthKey();
+    await this.prisma.proBoostCredit.upsert({
+      where: { userId_monthKey: { userId, monthKey } },
+      create: { userId, monthKey },
+      update: {},
+    });
+  }
+
   async createBoostOrder(userId: string, listingId: string, boostDays: BoostDurationDays): Promise<CreateBoostOrderResponseDto> {
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
     if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+
+    if (boostDays === 7) {
+      const owner = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { agentProUntil: true },
+      });
+      const isPro = (owner?.agentProUntil?.getTime() ?? 0) > Date.now();
+      if (isPro) {
+        const monthKey = utcMonthKey();
+        const credit = await this.prisma.proBoostCredit.findUnique({
+          where: { userId_monthKey: { userId, monthKey } },
+        });
+        if (credit && !credit.redeemedAt) {
+          const payment = await this.prisma.payment.create({
+            data: {
+              userId,
+              razorpayOrderId: `pro_credit_${userId}_${Date.now()}`,
+              amount: 0,
+              currency: 'INR',
+              purpose: 'listing_boost',
+              listingId,
+              boostDays,
+              status: 'paid',
+              paidAt: new Date(),
+            },
+          });
+          await this.activateListingBoost(listingId, boostDays, payment.id);
+          await this.prisma.proBoostCredit.update({
+            where: { id: credit.id },
+            data: { redeemedAt: new Date(), listingId },
+          });
+          return {
+            paymentId: payment.id,
+            amount: 0,
+            currency: 'INR',
+            activated: true,
+          };
+        }
+      }
+    }
 
     const amountInPaise = boostPriceFor(listing.category, boostDays) * 100;
 
@@ -88,22 +145,28 @@ export class PaymentsService {
     };
   }
 
-  /** Same order-then-webhook-confirms pattern as createBoostOrder — buyerPremium ("Bhavano
-   * Plus") and agentPro ("Agent/Broker Pro") both go through this one method since they only
-   * differ in price lookup, not in flow. */
   async createSubscriptionOrder(
     userId: string,
     tier: SubscriptionTier,
     months: number,
+    agentProUnits = 1,
   ): Promise<CreateSubscriptionOrderResponseDto> {
-    const amountInPaise = subscriptionPriceFor(tier, months) * 100;
-    const purpose = tier === 'buyerPremium' ? 'buyer_premium' : 'agent_pro';
+    if (tier === 'agentPro') {
+      if (months !== 1) throw new BadRequestException('Agent/Broker Pro is available as a monthly subscription only');
+    } else if (tier === 'sellerSlotPack') {
+      if (months !== 1) throw new BadRequestException('Seller slot pack is monthly only');
+    }
+
+    const units = tier === 'agentPro' ? Math.max(1, Math.min(agentProUnits, 20)) : 1;
+    const amountInPaise = subscriptionPriceFor(tier, months, units) * 100;
+    const purpose =
+      tier === 'buyerPremium' ? 'buyer_premium' : tier === 'agentPro' ? 'agent_pro' : 'seller_slot_pack';
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
       currency: 'INR',
       receipt: `${purpose}_${userId}_${Date.now()}`,
-      notes: { purpose, tier, months: String(months) },
+      notes: { purpose, tier, months: String(months), agentProUnits: String(units) },
     });
 
     const payment = await this.prisma.payment.create({
@@ -114,6 +177,7 @@ export class PaymentsService {
         currency: 'INR',
         purpose,
         subscriptionMonths: months,
+        agentProUnits: tier === 'agentPro' ? units : null,
       },
     });
 
@@ -126,11 +190,6 @@ export class PaymentsService {
     };
   }
 
-  /** The only source of truth for a boost actually being paid for — never a client-side
-   * "payment succeeded" callback. Idempotent: Razorpay redelivers webhooks, and the `status
-   * === 'paid'` check below (checked before any write) makes a redelivery a safe no-op.
-   * Only handles `payment.captured` for now — refund/failure events aren't acted on yet
-   * (Phase 1 scope, see docs/plans/monetization-boosted-listings-premium-tiers.md). */
   async handleWebhook(rawBody: Buffer, signature: string | undefined): Promise<void> {
     const secret = this.config.get<string>('RAZORPAY_WEBHOOK_SECRET') ?? '';
     if (!signature || !Razorpay.validateWebhookSignature(rawBody.toString(), signature, secret)) {
@@ -155,28 +214,46 @@ export class PaymentsService {
     });
 
     if (payment.purpose === 'listing_boost' && payment.listingId && payment.boostDays) {
-      const boostedUntil = new Date(Date.now() + payment.boostDays * 24 * 60 * 60 * 1000);
-      await this.prisma.listingBoost.create({
-        data: { listingId: payment.listingId, paymentId: payment.id, boostedUntil },
-      });
-      await this.prisma.listing.update({
-        where: { id: payment.listingId },
-        data: { boostedUntil, boostRank: Math.random() },
-      });
-      this.logger.log(`Boost activated for listing ${payment.listingId} until ${boostedUntil.toISOString()}`);
+      await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
+      this.logger.log(`Boost activated for listing ${payment.listingId}`);
     }
 
-    if ((payment.purpose === 'buyer_premium' || payment.purpose === 'agent_pro') && payment.subscriptionMonths) {
-      const tier: SubscriptionTier = payment.purpose === 'buyer_premium' ? 'buyerPremium' : 'agentPro';
+    if (payment.purpose === 'buyer_premium' && payment.subscriptionMonths) {
       const endsAt = new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
       await this.prisma.userSubscription.create({
-        data: { userId: payment.userId, tier, endsAt, paymentId: payment.id },
+        data: { userId: payment.userId, tier: 'buyerPremium', endsAt, paymentId: payment.id },
       });
       await this.prisma.user.update({
         where: { id: payment.userId },
-        data: tier === 'buyerPremium' ? { premiumUntil: endsAt } : { agentProUntil: endsAt },
+        data: { premiumUntil: endsAt },
       });
-      this.logger.log(`${tier} subscription activated for user ${payment.userId} until ${endsAt.toISOString()}`);
+      this.logger.log(`buyerPremium activated for user ${payment.userId} until ${endsAt.toISOString()}`);
+    }
+
+    if (payment.purpose === 'seller_slot_pack' && payment.subscriptionMonths) {
+      const endsAt = new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
+      await this.prisma.userSubscription.create({
+        data: { userId: payment.userId, tier: 'sellerSlotPack', endsAt, paymentId: payment.id },
+      });
+      await this.prisma.user.update({
+        where: { id: payment.userId },
+        data: { sellerSlotPackUntil: endsAt },
+      });
+      this.logger.log(`sellerSlotPack activated for user ${payment.userId} until ${endsAt.toISOString()}`);
+    }
+
+    if (payment.purpose === 'agent_pro' && payment.subscriptionMonths) {
+      const endsAt = new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
+      const units = Math.max(1, payment.agentProUnits ?? 1);
+      await this.prisma.userSubscription.create({
+        data: { userId: payment.userId, tier: 'agentPro', endsAt, paymentId: payment.id },
+      });
+      await this.prisma.user.update({
+        where: { id: payment.userId },
+        data: { agentProUntil: endsAt, agentProUnits: units },
+      });
+      await this.ensureProBoostCreditForMonth(payment.userId);
+      this.logger.log(`agentPro (${units} units) for user ${payment.userId} until ${endsAt.toISOString()}`);
     }
   }
 }

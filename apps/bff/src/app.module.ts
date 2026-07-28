@@ -19,6 +19,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { AgentsModule } from './agents/agents.module';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { SellerJobsModule } from './seller-jobs/seller-jobs.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     AgentsModule,
     SavedSearchesModule,
     AnalyticsModule,
+    SellerJobsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
