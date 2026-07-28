@@ -51,6 +51,9 @@ export function Header({
             <Link href="/tools" className="text-inherit">
               Tools
             </Link>
+            <Link href={`/premium?city=${slugify(cityName)}`} className="text-inherit">
+              Plans
+            </Link>
             <Link href="/help" className="text-inherit">
               Help
             </Link>
