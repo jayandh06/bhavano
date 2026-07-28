@@ -77,10 +77,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // token NextAuth just verified) so every web session — phone or Google — has a
       // real BFF user id + accessToken, needed for favourites/messaging.
       if (account?.provider === "google" && account.id_token) {
-        const bffSession = await loginWithGoogle(account.id_token);
-        t.accessToken = bffSession.accessToken;
-        t.sub = bffSession.user.id;
-        t.isNewUser = bffSession.isNewUser;
+        try {
+          const bffSession = await loginWithGoogle(account.id_token);
+          t.accessToken = bffSession.accessToken;
+          t.sub = bffSession.user.id;
+          t.isNewUser = bffSession.isNewUser;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Google sign-in failed";
+          console.error("[auth] BFF loginWithGoogle failed:", message);
+          throw new Error(message);
+        }
       }
 
       return token;

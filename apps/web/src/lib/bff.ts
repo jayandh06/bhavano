@@ -274,9 +274,15 @@ export async function verifyOtp(phone: string, code: string): Promise<AuthSessio
 }
 
 export async function loginWithGoogle(idToken: string): Promise<AuthSession> {
+  let visit: Awaited<ReturnType<typeof getVisitContext>> = {};
+  try {
+    visit = await getVisitContext();
+  } catch {
+    // Best-effort — OAuth callback should still mint a BFF session without attribution cookies.
+  }
   return bffFetch("/auth/google", {
     method: "POST",
-    body: JSON.stringify({ idToken, ...(await getVisitContext()) }),
+    body: JSON.stringify({ idToken, ...visit }),
   });
 }
 

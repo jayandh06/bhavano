@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { HomeCategoryFilter } from "@bhavano/types";
 import { buildHomeUrl } from "@/lib/homeUrl";
 import { HOME_TABS } from "@/lib/homeCategories";
+import { slugify } from "@bhavano/types/slugify";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { MegaMenu } from "./MegaMenu";
 
@@ -26,6 +27,8 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const toolsActive = pathname.startsWith("/tools");
+  const plansActive = pathname.startsWith("/premium");
+  const plansHref = `/premium?city=${slugify(cityName)}`;
   const [openTab, setOpenTab] = useState<HomeCategoryFilter | null>(null);
   const [menuLeft, setMenuLeft] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,6 +75,15 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
             </button>
           );
         })}
+        <Link
+          href={plansHref}
+          className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
+            plansActive ? "bg-surface-alt text-text border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
+          }`}
+        >
+          <span>✨</span>
+          Plans
+        </Link>
         <Link
           href="/tools"
           className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
