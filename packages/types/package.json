@@ -52,6 +52,10 @@
     "./bedrooms": {
       "types": "./dist/bedrooms.d.ts",
       "default": "./dist/bedrooms.js"
+    },
+    "./videoLimits": {
+      "types": "./dist/videoLimits.d.ts",
+      "default": "./dist/videoLimits.js"
     }
   },
   "scripts": {

@@ -42,13 +42,14 @@ export default async function ListingModerationPage({ params }: { params: Promis
                 .join(" · ")}
             </div>
           )}
-          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: listing.photosFull.length > 0 ? 12 : 0 }}>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: listing.photosFull.length > 0 || listing.videos.length > 0 ? 12 : 0 }}>
             Status: {listing.status} · Posted {new Date(listing.createdAt).toLocaleDateString()}
             {listing.photosFull.length > 0 ? ` · ${listing.photosFull.length} photo(s)` : " · no photos"}
+            {listing.videos.length > 0 && ` · ${listing.videos.length} video(s)`}
           </div>
 
           {listing.photosFull.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10, marginBottom: listing.videos.length > 0 ? 10 : 0 }}>
               {listing.photosFull.map((url, i) => (
                 <a key={url} href={url} target="_blank" rel="noopener noreferrer">
                   {/* Plain <img>, not next/image — these are moderation targets, not
@@ -60,6 +61,38 @@ export default async function ListingModerationPage({ params }: { params: Promis
                     style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }}
                   />
                 </a>
+              ))}
+            </div>
+          )}
+
+          {listing.videos.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+              {listing.videos.map((video) => (
+                <div key={video.id} style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                  {video.status === "done" ? (
+                    // Plain <video>, same reasoning as the photo grid above — a moderation
+                    // target, not site content.
+                    <video src={video.url} poster={video.posterUrl} controls style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: 140,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12.5,
+                        color: "var(--muted)",
+                        background: "var(--surface-alt)",
+                      }}
+                    >
+                      {video.status === "failed" ? "Processing failed" : "Processing…"}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "4px 8px" }}>
+                    Video {video.videoNo} · {video.durationSec}s · {video.status}
+                  </div>
+                </div>
               ))}
             </div>
           )}

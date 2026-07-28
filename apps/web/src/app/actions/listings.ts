@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import {
   BffAuthError,
   createListing,
+  deleteListingVideo,
   fetchMyListings,
   recordView,
   toggleFavourite,
@@ -84,4 +85,20 @@ export async function updateListingAction(listingId: string, input: UpdateListin
     return { success: false, error: error instanceof Error ? error.message : "Failed to update listing" };
   }
   return { success: true };
+}
+
+export type DeleteVideoResult = { success: true; listing: ListingDetailDto } | { success: false; error: string };
+
+// Deleting a video carries no file/body, so — unlike adding one (see lib/videoUpload.ts, which
+// must bypass Server Actions' 1MB body limit) — this can be a normal server action.
+export async function deleteVideoAction(listingId: string, videoId: string): Promise<DeleteVideoResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const listing = await deleteListingVideo(session.accessToken, listingId, videoId);
+    return { success: true, listing };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete video" };
+  }
 }

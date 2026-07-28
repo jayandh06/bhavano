@@ -193,6 +193,13 @@ export function updateListing(accessToken: string, listingId: string, input: Upd
   return authedBffFetch(accessToken, `/listings/${listingId}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
+/** Unlike adding a video (which uploads a file and so must bypass Server Actions' 1MB body limit
+ * — see lib/videoUpload.ts), deleting one carries no body and can go through the normal
+ * server-action path like any other mutation here. */
+export function deleteListingVideo(accessToken: string, listingId: string, videoId: string): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/videos/${videoId}`, { method: "DELETE" });
+}
+
 export async function uploadPhoto(formData: FormData, accessToken: string): Promise<{ hash: string; ext: string }> {
   // Not routed through bffFetch/authedBffFetch — those force a JSON Content-Type, which would
   // strip the multipart boundary fetch otherwise auto-generates for a FormData body.

@@ -9,6 +9,7 @@ import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { BoostButton } from "@/components/home/BoostButton";
+import { VideoManager } from "@/components/home/VideoManager";
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
   active: "Active",
@@ -79,15 +80,15 @@ async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; 
   return (
     <div className="flex flex-col gap-3">
       {listings.map((item) => (
-        <MyListingRow key={item.id} item={item} />
+        <MyListingRow key={item.id} item={item} accessToken={accessToken} />
       ))}
     </div>
   );
 }
 
-function MyListingRow({ item }: { item: ListingDetailDto }) {
+function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessToken: string }) {
   return (
-    <div className="flex justify-between items-center gap-4 border border-border rounded-[10px] p-4">
+    <div className="flex flex-wrap justify-between items-center gap-4 border border-border rounded-[10px] p-4">
       <div className="min-w-0">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="font-bold text-[15px]">{item.title}</span>
@@ -123,6 +124,11 @@ function MyListingRow({ item }: { item: ListingDetailDto }) {
           Edit
         </Link>
       </div>
+      {item.status === "active" && !item.isExpired && (
+        <div className="basis-full border-t border-border pt-3 mt-1">
+          <VideoManager listing={item} accessToken={accessToken} />
+        </div>
+      )}
     </div>
   );
 }

@@ -198,6 +198,7 @@ model Listing {
   boostedUntil     DateTime?
   boostRank        Float?
   listingPhotos    ListingPhoto[]
+  listingVideos    ListingVideo[]
   views            ListingView[]
   favourites       Favourite[]
   conversations    Conversation[]
@@ -334,6 +335,45 @@ model PhotoVariantJob {
   updatedAt DateTime         @updatedAt
 
   @@index([status, createdAt])
+}
+
+enum VideoStatus {
+  pending
+  processing
+  done
+  failed
+}
+
+/** One uploaded video per row, carrying its own processing state — deliberately NOT split into a
+ * separate job table the way ListingPhoto/PhotoVariantJob are. That split exists for photos
+ * because the upload step runs before the listing exists; every video attach path (the wizard, or
+ * the post-creation add-video endpoint) runs after the Listing row already exists, so there's
+ * nothing to decouple — and splitting would mean downloading + decoding the (large) original once
+ * per output variant instead of once. See docs/plans/listing-video-uploads.md. */
+model ListingVideo {
+  id        String      @id @default(cuid())
+  listingId String
+  listing   Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  /** Display order only — never appears in a storage key, so reusing a videoNo after a delete
+   * (e.g. via `max(videoNo)+1`) is harmless. */
+  videoNo   Int
+  /** Opaque, server-minted, the ONLY identifier in the R2 key (see video-keys.ts) — keeps keys
+   * write-once even though videos are deletable, so a delete + re-add can never resolve to a key
+   * Cloudflare's edge cache still has a stale copy of (there's no app-level cache-purge hook). */
+  storageId String      @unique
+  ext       String
+  /** ffprobe-verified server-side, never client-reported — this is the tier-enforcement value. */
+  durationSec Int
+  sizeBytes Int
+  status    VideoStatus @default(pending)
+  attempts  Int         @default(0)
+  error     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([listingId, videoNo])
+  @@index([status, createdAt])
+  @@index([listingId])
 }
 
 model OtpChallenge {

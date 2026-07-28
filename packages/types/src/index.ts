@@ -1,3 +1,5 @@
+import type { VideoEntitlement } from "./videoLimits";
+
 export type ListingCategory =
   | "house"
   | "apartment"
@@ -90,6 +92,10 @@ export interface ListingCardDto {
   /** True while `Listing.boostedUntil` is in the future — drives the "⭐ Featured" badge and
    * the boosted-first sort. See docs/plans/monetization-boosted-listings-premium-tiers.md. */
   isBoosted: boolean;
+  /** Whether at least one processed (status "done") video exists — drives a "▶ Video" browse-card
+   * badge. Deliberately not the full `videos[]` array here (see ListingDetailDto.videos) since
+   * browse pages render 20+ cards and none of them play video. See docs/plans/listing-video-uploads.md. */
+  hasVideo: boolean;
 }
 
 export interface ListingsPage {
@@ -131,6 +137,14 @@ export interface ListingDetailDto extends ListingCardDto {
   /** Full-size (1600px-wide) variant URLs, same order as `photos` (the preview variants) —
    * used for the detail page gallery instead of the card-sized preview images. */
   photosFull: string[];
+  /** Only ever `status: "done"` entries for a non-owner/non-admin viewer — filtered server-side
+   * in ListingsService.toDetailDto so a <video> tag never points at an object that doesn't exist
+   * yet. Owners/admins see every status so the UI can show a "Processing…" state. */
+  videos: ListingVideoDto[];
+  /** Only populated when the requester owns the listing (or is an admin) — resolved server-side
+   * by resolveVideoEntitlement() so the client never re-derives tier from agentProUntil/
+   * boostedUntil itself and can never disagree with what the write path will accept. */
+  videoEntitlement?: VideoEntitlement;
   /** Always a jittered/snapped approximation of the real pin (computed server-side in
    * ListingsService.toDetailDto — see docs/plans/google-maps-location-picker.md), never the
    * seller's exact dropped location, regardless of who's asking. Undefined if no pin was set
@@ -157,6 +171,28 @@ export interface CreatedPhotoInput {
   ext: string;
 }
 
+/** One uploaded video's metadata as returned by `POST /uploads/video` — no `videoNo` here (unlike
+ * `CreatedPhotoInput`): the wizard's array order becomes `videoNo` server-side in
+ * ListingsService.create(). `storageId` is the opaque, server-minted identifier used in the R2
+ * key — see apps/bff/src/uploads/video-keys.ts for why it's not `videoNo`. */
+export interface CreatedVideoInput {
+  storageId: string;
+  ext: string;
+  /** ffprobe-verified server-side at upload time, never client-reported. */
+  durationSec: number;
+  sizeBytes: number;
+}
+
+/** One video attached to a listing — see docs/plans/listing-video-uploads.md. */
+export interface ListingVideoDto {
+  id: string;
+  videoNo: number;
+  url: string;
+  posterUrl: string;
+  durationSec: number;
+  status: "pending" | "processing" | "done" | "failed";
+}
+
 export interface CreateListingInput {
   /** Client-generated (UUID) before any photo is uploaded, so upload keys and the listing's
    * real id agree from the very first upload — no post-creation rename step needed. */
@@ -173,6 +209,10 @@ export interface CreateListingInput {
   cityId: string;
   specs?: string[];
   photos: CreatedPhotoInput[];
+  /** Optional — video is additive, never required. Entitlement (Agent Pro only, since the
+   * listing doesn't exist yet to be boosted) is re-checked and silently trimmed in
+   * ListingsService.create(), which never rejects a listing over video. */
+  videos?: CreatedVideoInput[];
   /** Category-specific field values from the posting wizard's schema-driven step —
    * maps directly onto the `attributes` JSONB column. */
   attributes?: Record<string, unknown>;

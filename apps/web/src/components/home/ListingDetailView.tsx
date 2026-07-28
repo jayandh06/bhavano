@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { City, ListingDetailDto } from "@bhavano/types";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
 import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
+import { ListingMediaGallery } from "./ListingMediaGallery";
 import { ViewTracker } from "./ViewTracker";
 
 function daysUntil(iso: string): number {
@@ -66,58 +66,15 @@ export function ListingDetailView({
           ← Back to listings
         </Link>
 
-        <div
-          className={`relative h-[320px] rounded-2xl overflow-hidden flex items-center justify-center ${
-            listing.photosFull.length > 1 ? "mb-2.5" : "mb-6"
-          }`}
-          // Dynamic per-listing placeholder gradient stays inline — it's data, not a static style.
-          style={
-            listing.photosFull[0]
-              ? undefined
-              : {
-                  background: `repeating-linear-gradient(135deg, ${listing.imgColors[0]}, ${listing.imgColors[0]} 14px, ${listing.imgColors[1]} 14px, ${listing.imgColors[1]} 28px)`,
-                }
-          }
-        >
-          {listing.photosFull[0] && (
-            <Image
-              src={listing.photosFull[0]}
-              alt={listing.title}
-              fill
-              priority
-              sizes="(max-width: 880px) 100vw, 880px"
-              className="object-cover"
-            />
-          )}
-          {listing.photosFull.length === 0 && (
-            <span className="font-mono text-[13px] text-[#ffffffcc] bg-[#00000030] px-3 py-1.5 rounded-md">
-              {listing.imgLabel}
-            </span>
-          )}
-          <span className="absolute top-4 left-4 bg-green text-on-green text-xs font-bold px-3 py-[5px] rounded-md">
-            {listing.tag}
-          </span>
-          {listing.isExpired && (
-            <span className="absolute top-4 right-4 bg-[#242420] text-[#F5F1E6] text-xs font-bold px-3 py-[5px] rounded-md">
-              Expired
-            </span>
-          )}
-        </div>
-
-        {listing.photosFull.length > 1 && (
-          <div className="flex gap-2.5 mb-6 overflow-x-auto">
-            {listing.photosFull.map((photoUrl, i) => (
-              <Image
-                key={photoUrl}
-                src={photoUrl}
-                alt={`${listing.title} photo ${i + 1}`}
-                width={80}
-                height={80}
-                className="object-cover rounded-lg shrink-0"
-              />
-            ))}
-          </div>
-        )}
+        <ListingMediaGallery
+          photosFull={listing.photosFull}
+          videos={listing.videos}
+          title={listing.title}
+          tag={listing.tag}
+          isExpired={listing.isExpired}
+          imgColors={listing.imgColors}
+          imgLabel={listing.imgLabel}
+        />
 
         <div className="flex justify-between items-start gap-4 mb-2">
           <div className="font-lora text-[28px] font-bold text-green">{listing.price}</div>

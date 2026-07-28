@@ -33,10 +33,15 @@ services:
       # Google Maps — server-side reverse geocoding for the map pin-picker (see
       # docs/plans/google-maps-location-picker.md). Never sent to any client.
       GOOGLE_MAPS_SERVER_KEY: ${GOOGLE_MAPS_SERVER_KEY}
+      # Video upload/transcode temp storage (see docs/plans/listing-video-uploads.md) — reuses
+      # the image's existing /app/apps/bff/uploads dir, given its own volume below so a container
+      # restart mid-upload/transcode doesn't strand temp files in the writable layer.
+      VIDEO_TMP_DIR: /app/apps/bff/uploads
     volumes:
       # Rotating request/response logs, shared read-only with the alloy container below —
       # see docs/plans/bff-loki-grafana-logging.md.
       - bff_logs:/app/apps/bff/logs
+      - bff_video_tmp:/app/apps/bff/uploads
     expose:
       - "4000"
 
@@ -161,5 +166,6 @@ volumes:
   caddy-data:
   caddy-config:
   bff_logs:
+  bff_video_tmp:
   loki_data:
   grafana_data:
