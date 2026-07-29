@@ -4,15 +4,20 @@ import type { User, City } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ListingSlotsService } from '../listing-slots/listing-slots.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly listingSlotsService: ListingSlotsService,
+  ) {}
 
   async getProfile(userId: string): Promise<UserProfileDto> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { city: true } });
     if (!user) throw new NotFoundException('User not found');
-    return toProfileDto(user);
+    const { activeCount, allowance } = await this.listingSlotsService.getSummary(userId);
+    return toProfileDto(user, activeCount, allowance);
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserProfileDto> {
@@ -39,7 +44,8 @@ export class UsersService {
         },
         include: { city: true },
       });
-      return toProfileDto(user);
+      const { activeCount, allowance } = await this.listingSlotsService.getSummary(userId);
+      return toProfileDto(user, activeCount, allowance);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException('This email is already associated with another account');
@@ -49,7 +55,11 @@ export class UsersService {
   }
 }
 
-function toProfileDto(user: User & { city: City | null }): UserProfileDto {
+function toProfileDto(
+  user: User & { city: City | null },
+  activeListingCount: number,
+  listingSlotAllowanceValue: number,
+): UserProfileDto {
   return {
     id: user.id,
     name: user.name,
@@ -60,5 +70,9 @@ function toProfileDto(user: User & { city: City | null }): UserProfileDto {
     state: user.city?.state ?? null,
     premiumUntil: user.premiumUntil?.toISOString() ?? null,
     agentProUntil: user.agentProUntil?.toISOString() ?? null,
+    sellerSlotPackUntil: user.sellerSlotPackUntil?.toISOString() ?? null,
+    agentProUnits: user.agentProUnits,
+    activeListingCount,
+    listingSlotAllowance: listingSlotAllowanceValue,
   };
 }

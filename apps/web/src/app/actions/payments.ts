@@ -27,6 +27,7 @@ export type CreateSubscriptionOrderResult =
 export async function createSubscriptionOrderAction(
   tier: SubscriptionTier,
   months: number,
+  agentProUnits?: number,
 ): Promise<CreateSubscriptionOrderResult> {
   const session = await auth();
   if (!session || !isAccessTokenValid(session.accessToken)) {
@@ -34,7 +35,7 @@ export async function createSubscriptionOrderAction(
   }
 
   try {
-    const order = await createSubscriptionOrder(session.accessToken, tier, months);
+    const order = await createSubscriptionOrder(session.accessToken, tier, months, agentProUnits);
     return { success: true, order };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to start checkout" };

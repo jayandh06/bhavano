@@ -32,6 +32,20 @@ export function BoostButton({ listingId, category }: { listingId: string; catego
       return;
     }
 
+    if (result.order.activated) {
+      setOpen(false);
+      setPending(false);
+      setPendingActivation(true);
+      setTimeout(() => router.refresh(), 1500);
+      return;
+    }
+
+    if (!result.order.razorpayOrderId || !result.order.razorpayKeyId) {
+      setPending(false);
+      setError("Couldn't open checkout — please try again.");
+      return;
+    }
+
     pushDataLayerEvent("begin_checkout_boost", {
       transactionId: result.order.paymentId,
       listingId,
@@ -44,11 +58,13 @@ export function BoostButton({ listingId, category }: { listingId: string; catego
     try {
       await loadRazorpayScript();
       const { order } = result;
+      const key = order.razorpayKeyId!;
+      const orderId = order.razorpayOrderId!;
       const razorpay = new window.Razorpay({
-        key: order.razorpayKeyId,
+        key,
         amount: order.amount,
         currency: order.currency,
-        order_id: order.razorpayOrderId,
+        order_id: orderId,
         name: "Bhavano",
         description: `Boost this ad for ${days} days`,
         handler: () => {

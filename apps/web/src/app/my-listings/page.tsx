@@ -2,13 +2,15 @@ import Link from "next/link";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
-import { BffAuthError, fetchMyListings } from "@/lib/bff";
+import { BffAuthError, fetchMyListings, fetchProfile } from "@/lib/bff";
+import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { buildListingPath } from "@/lib/listingPath";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { BoostButton } from "@/components/home/BoostButton";
+import { VideoManager } from "@/components/home/VideoManager";
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
   active: "Active",
@@ -55,8 +57,9 @@ export default async function MyListingsPage({
 
 async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; cityName?: string }) {
   let listings;
+  let profile;
   try {
-    listings = await fetchMyListings(accessToken);
+    [listings, profile] = await Promise.all([fetchMyListings(accessToken), fetchProfile(accessToken)]);
   } catch (error) {
     if (error instanceof BffAuthError) {
       return <RequireLoginPrompt message="Log in to view and edit the ads you've posted." />;
@@ -66,28 +69,32 @@ async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; 
 
   if (listings.length === 0) {
     return (
-      <p className="text-muted text-sm">
+      <>
+        <ListingSlotMeter profile={profile} />
+        <p className="text-muted text-sm">
         You haven&apos;t posted anything yet —{" "}
         <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} className="text-green font-bold">
           post your first ad
         </Link>
         .
       </p>
+      </>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
+      <ListingSlotMeter profile={profile} />
       {listings.map((item) => (
-        <MyListingRow key={item.id} item={item} />
+        <MyListingRow key={item.id} item={item} accessToken={accessToken} />
       ))}
     </div>
   );
 }
 
-function MyListingRow({ item }: { item: ListingDetailDto }) {
+function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessToken: string }) {
   return (
-    <div className="flex justify-between items-center gap-4 border border-border rounded-[10px] p-4">
+    <div className="flex flex-wrap justify-between items-center gap-4 border border-border rounded-[10px] p-4">
       <div className="min-w-0">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="font-bold text-[15px]">{item.title}</span>
@@ -123,6 +130,11 @@ function MyListingRow({ item }: { item: ListingDetailDto }) {
           Edit
         </Link>
       </div>
+      {item.status === "active" && !item.isExpired && (
+        <div className="basis-full border-t border-border pt-3 mt-1">
+          <VideoManager listing={item} accessToken={accessToken} />
+        </div>
+      )}
     </div>
   );
 }

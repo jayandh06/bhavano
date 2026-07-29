@@ -9,6 +9,12 @@
 
 {$API_DOMAIN} {
 	# reverse_proxy handles the socket.io WebSocket upgrade transparently — no special config needed.
+	# Slightly above MAX_VIDEO_BYTES (200MB, packages/types/src/videoLimits.ts) — rejects an
+	# oversized video upload at the edge with a 413 instead of streaming the whole thing into the
+	# bff container first, where multer would reject it anyway.
+	request_body {
+		max_size 210MB
+	}
 	reverse_proxy bff:4000
 }
 

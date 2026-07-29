@@ -43,6 +43,22 @@ export class CreatedPhotoInputDto {
   ext!: string;
 }
 
+export class CreatedVideoInputDto {
+  @IsString()
+  storageId!: string;
+
+  @IsString()
+  ext!: string;
+
+  @IsInt()
+  @Min(1)
+  durationSec!: number;
+
+  @IsInt()
+  @Min(1)
+  sizeBytes!: number;
+}
+
 export class CreateListingDto {
   @IsUUID()
   id!: string;
@@ -88,6 +104,12 @@ export class CreateListingDto {
   @ValidateNested({ each: true })
   @Type(() => CreatedPhotoInputDto)
   photos!: CreatedPhotoInputDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreatedVideoInputDto)
+  videos?: CreatedVideoInputDto[];
 
   @IsOptional()
   @IsObject()

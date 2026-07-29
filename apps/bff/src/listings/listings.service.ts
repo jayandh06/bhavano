@@ -3,11 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import type {
   AdminListingsPage,
   CreateListingInput,
+  CreatedVideoInput,
   HomeCategoryFilter,
   ListingCardDto,
   ListingCategory,
   ListingDetailDto,
   ListingSitemapEntry,
+  ListingVideoDto,
   ListingsPage,
   PopularSearchDto,
   PropertyTypeFilter,
@@ -20,17 +22,21 @@ import { deriveTag } from '@bhavano/types/listingTag';
 import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 import { getPriceQualifierOptions } from '@bhavano/types/priceQualifiers';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
+import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
-import type { Area, City, Listing, ListingPhoto } from '@prisma/client';
+import type { Area, City, Listing, ListingPhoto, ListingVideo } from '@prisma/client';
 import { PHOTO_VARIANTS, PhotoVariant, variantUrl } from '../uploads/photo-keys';
+import { videoPosterKey, videoPosterUrl, videoTranscodedKey, videoUrl } from '../uploads/video-keys';
+import { R2StorageService } from '../storage/r2-storage.service';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { AdminListingSort, ListAdminListingsDto } from '../admin/dto/list-admin-listings.dto';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { LocationsService } from '../locations/locations.service';
+import { ListingSlotsService } from '../listing-slots/listing-slots.service';
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
@@ -81,7 +87,15 @@ const ADMIN_ORDER_BY: Record<AdminListingSort, Prisma.ListingOrderByWithRelation
 
 const priceFormatter = new Intl.NumberFormat('en-IN');
 
-const LISTING_PHOTOS_INCLUDE = { listingPhotos: { orderBy: { photoNo: 'asc' as const } } };
+// `owner` (just agentProUntil) is included here too, alongside every photo/video, since it's
+// needed to resolve the poster's video entitlement on every read that also needs videos — folding
+// it into this one shared constant (spread at every call site already) avoids special-casing the
+// handful of owner/admin-only call sites that actually need it.
+const LISTING_MEDIA_INCLUDE = {
+  listingPhotos: { orderBy: { photoNo: 'asc' as const } },
+  listingVideos: { orderBy: { videoNo: 'asc' as const } },
+  owner: { select: { agentProUntil: true } },
+};
 
 @Injectable()
 export class ListingsService {
@@ -92,6 +106,8 @@ export class ListingsService {
     private readonly notificationsService: NotificationsService,
     private readonly savedSearchesService: SavedSearchesService,
     private readonly locationsService: LocationsService,
+    private readonly storage: R2StorageService,
+    private readonly listingSlotsService: ListingSlotsService,
   ) {}
 
   async list(query: ListListingsDto, currentUserId?: string): Promise<ListingsPage> {
@@ -180,14 +196,14 @@ export class ListingsService {
       offset !== undefined
         ? this.prisma.listing.findMany({
             where,
-            include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+            include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
             orderBy,
             skip: offset,
             take: limit,
           })
         : this.prisma.listing.findMany({
             where,
-            include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+            include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
             orderBy,
             take: limit + 1,
             ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -253,7 +269,7 @@ export class ListingsService {
     const [rows, total] = await Promise.all([
       this.prisma.listing.findMany({
         where,
-        include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+        include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
         orderBy: ADMIN_ORDER_BY[sort ?? 'createdAt_desc'],
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -264,8 +280,9 @@ export class ListingsService {
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
 
+    // Admin queue — every viewer here is an admin, so full video status/entitlement visibility.
     return {
-      items: page.map((row) => this.toDetailDto(row)),
+      items: page.map((row) => this.toDetailDto(row, undefined, true)),
       nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
@@ -275,9 +292,9 @@ export class ListingsService {
     const listing = await this.prisma.listing.update({
       where: { id },
       data: { adminReviewed },
-      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
-    return this.toDetailDto(listing);
+    return this.toDetailDto(listing, undefined, true);
   }
 
   /** Takes a listing offline (this IS the soft-delete — see ModerationState) and marks it
@@ -287,9 +304,9 @@ export class ListingsService {
     const listing = await this.prisma.listing.update({
       where: { id },
       data: { moderationState: 'flagged', adminReviewed: true, moderatedAt: new Date() },
-      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
-    return this.toDetailDto(listing);
+    return this.toDetailDto(listing, undefined, true);
   }
 
   /** Puts a previously-flagged listing back in front of buyers. */
@@ -297,9 +314,9 @@ export class ListingsService {
     const listing = await this.prisma.listing.update({
       where: { id },
       data: { moderationState: 'approved', adminReviewed: true, moderatedAt: new Date() },
-      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
-    return this.toDetailDto(listing);
+    return this.toDetailDto(listing, undefined, true);
   }
 
   /** A flagged listing (taken down for review — see `flag()`) 404s for everyone except its own
@@ -309,7 +326,7 @@ export class ListingsService {
   async findOne(id: string, currentUser?: { id: string; role: UserRole }): Promise<ListingDetailDto> {
     const listing = await this.prisma.listing.findUnique({
       where: { id },
-      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
     if (!listing) throw new NotFoundException(`Listing ${id} not found`);
 
@@ -319,11 +336,12 @@ export class ListingsService {
     }
 
     const favouritedIds = await this.getFavouritedIds(currentUser?.id, [id]);
-    return this.toDetailDto(listing, favouritedIds);
+    return this.toDetailDto(listing, favouritedIds, isOwnerOrAdmin);
   }
 
   async create(input: CreateListingInput, ownerId: string): Promise<ListingDetailDto> {
     if (!input.photos.length) throw new BadRequestException('At least one photo is required');
+    await this.listingSlotsService.assertCanPublish(ownerId);
     this.assertRequiredAttributes(input.category, input.attributes ?? {});
     this.assertValidPriceQualifier(input.category, input.transactionType, input.priceQualifier);
 
@@ -364,37 +382,148 @@ export class ListingsService {
       ),
     });
 
+    // Video never blocks a post — trim silently rather than reject the whole listing, since
+    // entitlement (agentProUntil) can lapse between the uploads and this call and video is
+    // optional (unlike photos, required above). No listing exists yet at this point, so only an
+    // active Agent Pro subscription can elevate the limit — a boost is impossible pre-creation.
+    const acceptedVideos = this.acceptVideosForOwner(ownerId, input.videos ?? []);
+    const videos = await acceptedVideos;
+    if (videos.length > 0) {
+      await this.prisma.listingVideo.createMany({
+        data: videos.map((v, index) => ({
+          listingId: created.id,
+          videoNo: index + 1,
+          storageId: v.storageId,
+          ext: v.ext,
+          durationSec: v.durationSec,
+          sizeBytes: v.sizeBytes,
+        })),
+      });
+    }
+
     const listing = await this.prisma.listing.findUniqueOrThrow({
       where: { id: created.id },
-      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
 
     // Fire-and-forget — Bhavano Plus's early-access alerts should never add latency to (or
     // break) the poster's own submission.
     this.savedSearchesService.notifyMatchingBuyers(created).catch(() => undefined);
 
-    return this.toDetailDto(listing);
+    return this.toDetailDto(listing, undefined, true);
+  }
+
+  /** Trims a wizard-submitted videos array down to what the owner is currently entitled to
+   * (agentPro-only, since no listing exists yet to check a boost against) — never throws, so a
+   * lapsed entitlement between upload and submit degrades to fewer videos, not a rejected post. */
+  private async acceptVideosForOwner(ownerId: string, videos: CreatedVideoInput[]): Promise<CreatedVideoInput[]> {
+    if (videos.length === 0) return [];
+    const owner = await this.prisma.user.findUniqueOrThrow({ where: { id: ownerId }, select: { agentProUntil: true } });
+    const entitlement = resolveVideoEntitlement(owner);
+    return videos.filter((v) => v.durationSec <= entitlement.maxDurationSec).slice(0, entitlement.maxVideos);
+  }
+
+  /** Adds a video to an already-existing listing — the one place a seller can attach media to a
+   * listing after the fact, unlike photos (fully immutable post-creation). Exists because
+   * boosting (which can elevate the video entitlement) only ever happens after a listing already
+   * exists. `videoNo` is server-computed (existing max + 1); a P2002 unique-constraint retry
+   * covers the one realistic race (two concurrent adds from a double-click), no transaction
+   * needed. See docs/plans/listing-video-uploads.md. */
+  async addVideo(listingId: string, ownerId: string, input: CreatedVideoInput): Promise<ListingDetailDto> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      include: { listingVideos: true },
+    });
+    if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+    if (listing.ownerId !== ownerId) throw new ForbiddenException("You don't own this listing");
+
+    const owner = await this.prisma.user.findUniqueOrThrow({ where: { id: ownerId }, select: { agentProUntil: true } });
+    const entitlement = resolveVideoEntitlement(owner, listing);
+    if (listing.listingVideos.length >= entitlement.maxVideos) {
+      throw new BadRequestException(
+        entitlement.canUpgradeByBoosting
+          ? 'Boost this listing to add up to 3 videos, up to 2 minutes each.'
+          : `You've added the maximum of ${entitlement.maxVideos} videos. Delete one to add another.`,
+      );
+    }
+    if (input.durationSec > entitlement.maxDurationSec) {
+      throw new BadRequestException(`This video is longer than the ${entitlement.maxDurationSec}s limit for this listing`);
+    }
+
+    const nextVideoNo = Math.max(0, ...listing.listingVideos.map((v) => v.videoNo)) + 1;
+    try {
+      await this.prisma.listingVideo.create({
+        data: {
+          listingId,
+          videoNo: nextVideoNo,
+          storageId: input.storageId,
+          ext: input.ext,
+          durationSec: input.durationSec,
+          sizeBytes: input.sizeBytes,
+        },
+      });
+    } catch (error) {
+      // Concurrent add from a double-click landed first on the same videoNo — retry once with a
+      // freshly-recomputed number rather than failing the request outright.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        await this.prisma.listingVideo.create({
+          data: {
+            listingId,
+            videoNo: nextVideoNo + 1,
+            storageId: input.storageId,
+            ext: input.ext,
+            durationSec: input.durationSec,
+            sizeBytes: input.sizeBytes,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
+
+    return this.getMine(ownerId, listingId);
+  }
+
+  /** Always allowed regardless of current entitlement — an owner who's over quota after a lapsed
+   * boost/subscription must still be able to remove a video. Deletes the row immediately (that's
+   * what the user sees); the R2 objects are best-effort fire-and-forget, harmless if it fails
+   * since storage keys are opaque and write-once (see ListingVideo.storageId). */
+  async deleteVideo(listingId: string, ownerId: string, videoId: string): Promise<ListingDetailDto> {
+    const video = await this.prisma.listingVideo.findUnique({ where: { id: videoId } });
+    if (!video || video.listingId !== listingId) throw new NotFoundException(`Video ${videoId} not found`);
+
+    const listing = await this.prisma.listing.findUnique({ where: { id: listingId }, select: { ownerId: true } });
+    if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+    if (listing.ownerId !== ownerId) throw new ForbiddenException("You don't own this listing");
+
+    await this.prisma.listingVideo.delete({ where: { id: videoId } });
+    Promise.all([
+      this.storage.deleteObject(videoTranscodedKey(listingId, video.storageId)),
+      this.storage.deleteObject(videoPosterKey(listingId, video.storageId)),
+    ]).catch(() => undefined);
+
+    return this.getMine(ownerId, listingId);
   }
 
   async listMine(userId: string): Promise<ListingDetailDto[]> {
     const listings = await this.prisma.listing.findMany({
       where: { ownerId: userId },
-      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
       orderBy: { createdAt: 'desc' },
     });
 
-    return listings.map((listing) => this.toDetailDto(listing));
+    return listings.map((listing) => this.toDetailDto(listing, undefined, true));
   }
 
   async getMine(userId: string, id: string): Promise<ListingDetailDto> {
     const listing = await this.prisma.listing.findUnique({
       where: { id },
-      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
     if (!listing) throw new NotFoundException(`Listing ${id} not found`);
     if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
 
-    return this.toDetailDto(listing);
+    return this.toDetailDto(listing, undefined, true);
   }
 
   async update(id: string, userId: string, dto: UpdateListingDto): Promise<ListingDetailDto> {
@@ -421,10 +550,10 @@ export class ListingsService {
         // flagging again is still required to actually change moderationState.
         ...(existing.moderationState === 'flagged' ? { adminReviewed: false } : {}),
       },
-      include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
 
-    return this.toDetailDto(listing);
+    return this.toDetailDto(listing, undefined, true);
   }
 
   /** Top (category, transactionType, city) combinations by real inventory — feeds the
@@ -544,7 +673,7 @@ export class ListingsService {
     const favourites = await this.prisma.favourite.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: { listing: { include: { city: true, area: true, ...LISTING_PHOTOS_INCLUDE } } },
+      include: { listing: { include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE } } },
     });
     const favouritedIds = new Set(favourites.map((f) => f.listingId));
     return favourites.map((f) => this.toCardDto(f.listing, favouritedIds));
@@ -588,9 +717,32 @@ export class ListingsService {
   }
 
   private toDetailDto(
-    listing: Listing & { city: City; area: Area; listingPhotos: ListingPhoto[] },
+    listing: Listing & {
+      city: City;
+      area: Area;
+      listingPhotos: ListingPhoto[];
+      listingVideos: ListingVideo[];
+      owner: { agentProUntil: Date | null };
+    },
     favouritedIds?: Set<string>,
+    // Only true for the owner's own view or an admin's — gates both which video statuses are
+    // visible (a public/other-user viewer must never see a pending/processing/failed video, since
+    // its <video> src wouldn't resolve to a real object yet) and whether videoEntitlement is
+    // populated at all (the client must never recompute tier itself — see resolveVideoEntitlement's
+    // doc comment in packages/types/src/videoLimits.ts).
+    isOwnerOrAdmin = false,
   ): ListingDetailDto {
+    const videos = (isOwnerOrAdmin ? listing.listingVideos : listing.listingVideos.filter((v) => v.status === 'done')).map(
+      (v): ListingVideoDto => ({
+        id: v.id,
+        videoNo: v.videoNo,
+        url: videoUrl(this.cdnBase(), listing.id, v.storageId),
+        posterUrl: videoPosterUrl(this.cdnBase(), listing.id, v.storageId),
+        durationSec: v.durationSec,
+        status: v.status,
+      }),
+    );
+
     return {
       ...this.toCardDto(listing, favouritedIds),
       status: listing.status,
@@ -603,6 +755,8 @@ export class ListingsService {
       expiresAt: listing.expiresAt.toISOString(),
       isExpired: listing.expiresAt.getTime() < Date.now(),
       photosFull: listing.listingPhotos.map((p) => variantUrl(this.cdnBase(), listing.id, p.photoNo, 'full')),
+      videos,
+      videoEntitlement: isOwnerOrAdmin ? resolveVideoEntitlement(listing.owner, listing) : undefined,
       ...this.jitteredLocation(listing),
     };
   }
@@ -629,7 +783,7 @@ export class ListingsService {
   }
 
   private toCardDto(
-    listing: Listing & { city: City; area: Area; listingPhotos: ListingPhoto[] },
+    listing: Listing & { city: City; area: Area; listingPhotos: ListingPhoto[]; listingVideos: ListingVideo[] },
     favouritedIds?: Set<string>,
   ): ListingCardDto {
     const placeholder = categoryImagePlaceholder[listing.category];
@@ -654,6 +808,9 @@ export class ListingsService {
       likeCount: listing.likeCount,
       isFavourited: favouritedIds?.has(listing.id) ?? false,
       isBoosted: (listing.boostedUntil?.getTime() ?? 0) > Date.now(),
+      // Browse-card badge only — not gated on isOwnerOrAdmin like toDetailDto's `videos` array,
+      // since "does this listing have a playable video at all" is fine as public info once done.
+      hasVideo: listing.listingVideos.some((v) => v.status === 'done'),
     };
   }
 }

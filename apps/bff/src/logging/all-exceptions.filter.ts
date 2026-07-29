@@ -1,4 +1,4 @@
-import { ArgumentsHost, Catch, Injectable } from '@nestjs/common';
+import { ArgumentsHost, Catch, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { BaseExceptionFilter, HttpAdapterHost } from '@nestjs/core';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import type { Request } from 'express';
@@ -28,6 +28,26 @@ export class AllExceptionsFilter extends BaseExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const request = host.switchToHttp().getRequest<Request & { user?: RequestUser; id?: string }>();
+
+    const prismaCode = prismaCodeOf(exception);
+    if (prismaCode === 'P2021' || prismaCode === 'P2022') {
+      const migrationHint = new ServiceUnavailableException(
+        'Database schema is out of date — run `npx prisma migrate deploy` on the BFF service.',
+      );
+      this.logger.error(
+        {
+          err: exception,
+          reqId: request.id,
+          userId: request.user?.id ?? null,
+          method: request.method,
+          path: request.url,
+          prismaCode,
+        },
+        'Prisma schema mismatch',
+      );
+      super.catch(migrationHint, host);
+      return;
+    }
 
     this.logger.error(
       {

@@ -78,11 +78,13 @@ enum PaymentPurpose {
   listing_boost
   buyer_premium
   agent_pro
+  seller_slot_pack
 }
 
 enum SubscriptionTier {
   buyerPremium
   agentPro
+  sellerSlotPack
 }
 
 model City {
@@ -144,9 +146,13 @@ model User {
    * everywhere else in the app (header/messaging badge, profile page); UserSubscription is
    * the audit trail. Null means never subscribed or lapsed. */
   premiumUntil          DateTime?
-  /** Same denormalization for tier: agentPro — checked by RateLimitService to bypass the
-   * posting-frequency cap, and by the agent storefront page for the "Bhavano Pro" badge. */
+  /** Same denormalization for tier: agentPro — listing slot allowance + storefront badge. */
   agentProUntil         DateTime?
+  /** Stacked Agent Pro blocks (each ₹499/month → +20 slots) while agentProUntil is active. */
+  agentProUnits         Int            @default(1)
+  /** Denormalized seller add-on (10 concurrent slots) — see sellerSlotPack subscription tier. */
+  sellerSlotPackUntil   DateTime?
+  proBoostCredits       ProBoostCredit[]
   /** First-touch attribution: the UTM source/medium/campaign of the link the user first landed
    * on, or the external Referer hostname with medium "referral" if untagged, or source "direct"
    * if neither was present. Captured by apps/web's middleware.ts on the user's very first visit
@@ -198,11 +204,13 @@ model Listing {
   boostedUntil     DateTime?
   boostRank        Float?
   listingPhotos    ListingPhoto[]
+  listingVideos    ListingVideo[]
   views            ListingView[]
   favourites       Favourite[]
   conversations    Conversation[]
   payments         Payment[]
   listingBoosts    ListingBoost[]
+  notificationLogs ListingNotificationLog[]
 
   @@index([cityId, category])
   @@index([cityId, transactionType])
@@ -336,6 +344,45 @@ model PhotoVariantJob {
   @@index([status, createdAt])
 }
 
+enum VideoStatus {
+  pending
+  processing
+  done
+  failed
+}
+
+/** One uploaded video per row, carrying its own processing state — deliberately NOT split into a
+ * separate job table the way ListingPhoto/PhotoVariantJob are. That split exists for photos
+ * because the upload step runs before the listing exists; every video attach path (the wizard, or
+ * the post-creation add-video endpoint) runs after the Listing row already exists, so there's
+ * nothing to decouple — and splitting would mean downloading + decoding the (large) original once
+ * per output variant instead of once. See docs/plans/listing-video-uploads.md. */
+model ListingVideo {
+  id        String      @id @default(cuid())
+  listingId String
+  listing   Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  /** Display order only — never appears in a storage key, so reusing a videoNo after a delete
+   * (e.g. via `max(videoNo)+1`) is harmless. */
+  videoNo   Int
+  /** Opaque, server-minted, the ONLY identifier in the R2 key (see video-keys.ts) — keeps keys
+   * write-once even though videos are deletable, so a delete + re-add can never resolve to a key
+   * Cloudflare's edge cache still has a stale copy of (there's no app-level cache-purge hook). */
+  storageId String      @unique
+  ext       String
+  /** ffprobe-verified server-side, never client-reported — this is the tier-enforcement value. */
+  durationSec Int
+  sizeBytes Int
+  status    VideoStatus @default(pending)
+  attempts  Int         @default(0)
+  error     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([listingId, videoNo])
+  @@index([status, createdAt])
+  @@index([listingId])
+}
+
 model OtpChallenge {
   id        String   @id @default(cuid())
   phone     String
@@ -425,6 +472,8 @@ model Payment {
   /** Only meaningful for buyer_premium/agent_pro — same "purpose-specific nullable field"
    * convention as boostDays above. */
   subscriptionMonths Int?
+  /** agent_pro orders only — number of ₹499 blocks purchased (20 slots each). */
+  agentProUnits     Int?
   createdAt         DateTime       @default(now())
   paidAt            DateTime?
   listingBoost      ListingBoost?
@@ -462,4 +511,30 @@ model ListingBoost {
   boostedUntil DateTime
 
   @@index([listingId])
+}
+
+/** Idempotent send log for listing expiry reminders (7d / 1d before expiresAt). */
+model ListingNotificationLog {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  kind      String
+  channel   String
+  sentAt    DateTime @default(now())
+
+  @@unique([listingId, kind])
+  @@index([sentAt])
+}
+
+/** One unredeemed row per Agent Pro user per calendar month (UTC) — 7-day boost credit. */
+model ProBoostCredit {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthKey   String
+  redeemedAt DateTime?
+  listingId  String?
+  createdAt  DateTime  @default(now())
+
+  @@unique([userId, monthKey])
 }

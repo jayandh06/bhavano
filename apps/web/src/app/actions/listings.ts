@@ -1,10 +1,13 @@
 "use server";
 
 import type { CreateListingInput, ListingDetailDto, UpdateListingInput } from "@bhavano/types";
+import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
+import { ListingSlotCapError } from "@/lib/listingSlotErrors";
 import { auth } from "@/auth";
 import {
   BffAuthError,
   createListing,
+  deleteListingVideo,
   fetchMyListings,
   recordView,
   toggleFavourite,
@@ -13,7 +16,9 @@ import {
 } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 
-export type CreateListingResult = { success: true; listing: ListingDetailDto } | { success: false; error: string };
+export type CreateListingResult =
+  | { success: true; listing: ListingDetailDto }
+  | { success: false; error: string; slotCap?: ListingSlotCapErrorBody };
 
 // Doesn't redirect on success — PostAdWizard shows a boost-benefits step first, so the client
 // decides when to navigate to the listing, not the server action.
@@ -27,6 +32,9 @@ export async function createListingAction(input: CreateListingInput): Promise<Cr
     const listing = await createListing(input, session.accessToken);
     return { success: true, listing };
   } catch (error) {
+    if (error instanceof ListingSlotCapError) {
+      return { success: false, error: error.message, slotCap: error.body };
+    }
     return { success: false, error: error instanceof Error ? error.message : "Failed to create listing" };
   }
 }
@@ -84,4 +92,20 @@ export async function updateListingAction(listingId: string, input: UpdateListin
     return { success: false, error: error instanceof Error ? error.message : "Failed to update listing" };
   }
   return { success: true };
+}
+
+export type DeleteVideoResult = { success: true; listing: ListingDetailDto } | { success: false; error: string };
+
+// Deleting a video carries no file/body, so — unlike adding one (see lib/videoUpload.ts, which
+// must bypass Server Actions' 1MB body limit) — this can be a normal server action.
+export async function deleteVideoAction(listingId: string, videoId: string): Promise<DeleteVideoResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const listing = await deleteListingVideo(session.accessToken, listingId, videoId);
+    return { success: true, listing };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete video" };
+  }
 }

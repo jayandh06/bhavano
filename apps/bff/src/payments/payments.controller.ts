@@ -25,7 +25,7 @@ export class PaymentsController {
     @Body() dto: CreateSubscriptionOrderDto,
     @CurrentUser() user: RequestUser,
   ): Promise<CreateSubscriptionOrderResponseDto> {
-    return this.paymentsService.createSubscriptionOrder(user.id, dto.tier, dto.months);
+    return this.paymentsService.createSubscriptionOrder(user.id, dto.tier, dto.months, dto.agentProUnits);
   }
 
   /** Public (no AuthGuard) — Razorpay calls this server-to-server, authenticated by HMAC
