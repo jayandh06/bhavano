@@ -87,6 +87,58 @@ enum SubscriptionTier {
   sellerSlotPack
 }
 
+/** Where an outreach contact came from — kept as provenance so a bad import batch can be
+ * identified and undone. See docs/plans/outreach-campaign-contacts.md. */
+enum ContactSource {
+  google_maps
+  scrape
+  manual_upload
+  referral
+}
+
+enum ContactStatus {
+  new
+  enriched
+  contacted
+  engaged
+  converted
+  invalid
+  bounced
+}
+
+/** Consent basis for contacting someone. `opted_out` is terminal — the send path refuses it,
+ * and a matching SuppressionEntry keeps the opt-out alive even if the contact row is deleted
+ * and re-imported by a later scrape. */
+enum ConsentState {
+  none
+  implied
+  explicit
+  opted_out
+}
+
+enum OutreachChannel {
+  sms
+  whatsapp
+  email
+}
+
+enum CampaignStatus {
+  draft
+  scheduled
+  running
+  paused
+  completed
+}
+
+enum SendStatus {
+  queued
+  sent
+  delivered
+  failed
+  suppressed
+  opted_out
+}
+
 model City {
   id        String    @id @default(cuid())
   name      String
@@ -99,6 +151,7 @@ model City {
   areas     Area[]
   users     User[]
   savedSearches SavedSearch[]
+  outreachContacts OutreachContact[]
 
   @@unique([name, state])
 }
@@ -113,6 +166,7 @@ model Area {
   source   String    @default("curated")
   listings Listing[]
   savedSearches SavedSearch[]
+  outreachContacts OutreachContact[]
 
   @@unique([name, cityId])
   @@index([cityId])
@@ -163,6 +217,10 @@ model User {
   acquisitionMedium     String?
   acquisitionCampaign   String?
   visits                Visit[]
+  /** Set when this user was first reached as an outreach prospect — the attribution link back
+   * to a campaign. Null for organic signups. */
+  outreachContact       OutreachContact?
+  outreachCampaigns     OutreachCampaign[]
 
   @@index([cityId])
 }
@@ -551,4 +609,147 @@ model ProBoostCredit {
   createdAt  DateTime  @default(now())
 
   @@unique([userId, monthKey])
+}
+
+/// ---------------------------------------------------------------------------
+/// Outreach / marketing campaigns — see docs/plans/outreach-campaign-contacts.md
+/// ---------------------------------------------------------------------------
+
+/** A prospective customer sourced externally (Google Maps, scraping, CSV upload) — deliberately
+ * NOT a User row: these never authenticate, and mixing them into User would leak marketing
+ * prospects into every auth/listing/payment query. `userId` links a prospect to the User they
+ * eventually become, which is the only way to attribute a signup back to outreach spend. */
+model OutreachContact {
+  id                String         @id @default(cuid())
+  name              String
+  phone             String?
+  /** E.164 (+91XXXXXXXXXX), derived from `phone` on write. Dedupe and suppression key off this,
+   * never the raw string — the same number arrives formatted a dozen different ways. */
+  phoneE164         String?
+  email             String?
+  address           String?
+  lat               Float?
+  lng               Float?
+  /** Reuses the existing City/Area geography so campaigns can target "agents in Pune" with the
+   * same vocabulary the listing side already uses, instead of substring-matching `address`. */
+  cityId            String?
+  city              City?          @relation(fields: [cityId], references: [id])
+  areaId            String?
+  area              Area?          @relation(fields: [areaId], references: [id])
+
+  googleRating      Float?
+  googleReviewCount Int?
+  /** Ratings drift, so a bare rating with no as-of date is unreadable months later. */
+  googleRatingAt    DateTime?
+  /** The natural dedupe key for anything Maps-sourced — unique so re-running a scrape upserts
+   * instead of duplicating the same business. */
+  googlePlaceId     String?        @unique
+  /** e.g. "real_estate_agency" — the primary targeting dimension alongside city. */
+  businessCategory  String?
+  website           String?
+
+  source            ContactSource
+  /** The query/URL/filename that produced this row, so a bad import can be traced and undone. */
+  sourceRef         String?
+  status            ContactStatus  @default(new)
+  tags              String[]       @default([])
+  notes             String?
+
+  consentState      ConsentState   @default(none)
+  consentSource     String?
+  consentAt         DateTime?
+  optedOutAt        DateTime?
+
+  /** Denormalized from CampaignSend for list views and the "don't contact more often than every
+   * N days" check — CampaignSend stays the audit trail. Same pattern as Listing.boostedUntil
+   * vs ListingBoost. */
+  lastContactedAt   DateTime?
+  contactedCount    Int            @default(0)
+
+  /** Set once a prospect signs up — the link between outreach and a real user. */
+  userId            String?        @unique
+  user              User?          @relation(fields: [userId], references: [id])
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  sends             CampaignSend[]
+
+  @@index([cityId, businessCategory])
+  @@index([phoneE164])
+  @@index([status])
+}
+
+/** A promotional campaign. The audience is stored as a *filter*, not a frozen contact list, so a
+ * recurring campaign automatically picks up contacts imported after it was created. */
+model OutreachCampaign {
+  id                  String           @id @default(cuid())
+  name                String
+  channel             OutreachChannel
+  status              CampaignStatus   @default(draft)
+  /** Body with {{name}}/{{city}} placeholders, resolved per contact at send time. */
+  bodyTemplate        String
+  subject             String?
+  /** DLT-registered template id. Indian marketing SMS/WhatsApp is rejected without one (see
+   * Msg91Provider's note), so activation refuses to proceed if this is missing on sms/whatsapp. */
+  dltTemplateId       String?
+  /** { cityIds, businessCategories, tags, minRating, status } — resolved by OutreachService. */
+  audienceFilter      Json             @default("{}")
+  /** Cron expression for a recurring campaign; null means one-shot at scheduledAt. */
+  cadenceCron         String?
+  scheduledAt         DateTime?
+  lastRunAt           DateTime?
+  /** Guard rails against burning an entire audience on a bad template. */
+  maxSendsPerRun      Int              @default(200)
+  minDaysBetweenSends Int              @default(14)
+  /** When true the runner records what it *would* have sent without calling the provider —
+   * the default, so a new campaign can never blast real messages on its first tick. */
+  dryRun              Boolean          @default(true)
+  createdById         String
+  createdBy           User             @relation(fields: [createdById], references: [id])
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  sends               CampaignSend[]
+
+  @@index([status, scheduledAt])
+}
+
+/** One row per contact per campaign run — the audit trail answering "who was sent what, when".
+ * Suppressed/opted-out contacts get a row too (rather than being silently skipped) so a campaign
+ * report can explain the gap between audience size and messages actually delivered. */
+model CampaignSend {
+  id            String           @id @default(cuid())
+  campaignId    String
+  campaign      OutreachCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId     String
+  contact       OutreachContact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  channel       OutreachChannel
+  status        SendStatus       @default(queued)
+  /** Identifies one scheduled run of a recurring campaign (e.g. "2026-07-30", or "once"). Part
+   * of the unique key below, which is what makes a crashed/retried run idempotent — the same
+   * guarantee ListingNotificationLog gets from @@unique([listingId, kind]). */
+  runKey        String
+  /** Provider message id, for reconciling delivery webhooks back to this row. */
+  providerRef   String?
+  /** The body actually sent, after placeholder resolution — kept for audit/disputes. */
+  renderedBody  String
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  failureReason String?
+  createdAt     DateTime         @default(now())
+
+  @@unique([campaignId, contactId, runKey])
+  @@index([contactId, sentAt])
+  @@index([campaignId, status])
+}
+
+/** Opt-out keyed on the phone/email itself rather than on a contact row, so it survives the
+ * contact being deleted and re-imported by a later scrape — without this, the next Google Maps
+ * pull would resurrect someone who unsubscribed and start messaging them again. */
+model SuppressionEntry {
+  id        String           @id @default(cuid())
+  /** phoneE164 or lowercased email. */
+  value     String           @unique
+  channel   OutreachChannel?
+  reason    String
+  createdAt DateTime         @default(now())
 }

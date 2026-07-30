@@ -496,3 +496,178 @@ export interface CreateSavedSearchInput {
   maxPrice?: number;
   bedrooms?: number;
 }
+
+// ---------------------------------------------------------------------------
+// Outreach / marketing campaigns — see docs/plans/outreach-campaign-contacts.md
+// ---------------------------------------------------------------------------
+
+export type ContactSource = "google_maps" | "scrape" | "manual_upload" | "referral";
+export type ContactStatus = "new" | "enriched" | "contacted" | "engaged" | "converted" | "invalid" | "bounced";
+export type ConsentState = "none" | "implied" | "explicit" | "opted_out";
+export type OutreachChannel = "sms" | "whatsapp" | "email";
+export type CampaignStatus = "draft" | "scheduled" | "running" | "paused" | "completed";
+export type SendStatus = "queued" | "sent" | "delivered" | "failed" | "suppressed" | "opted_out";
+
+export interface OutreachContactDto {
+  id: string;
+  name: string;
+  phone: string | null;
+  phoneE164: string | null;
+  email: string | null;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+  cityId: string | null;
+  cityName: string | null;
+  areaName: string | null;
+  googleRating: number | null;
+  googleReviewCount: number | null;
+  googleRatingAt: string | null;
+  googlePlaceId: string | null;
+  businessCategory: string | null;
+  website: string | null;
+  source: ContactSource;
+  sourceRef: string | null;
+  status: ContactStatus;
+  tags: string[];
+  notes: string | null;
+  consentState: ConsentState;
+  /** Null until the contact has been messaged at least once. */
+  lastContactedAt: string | null;
+  contactedCount: number;
+  /** Set once this prospect signed up — outreach → real-user attribution. */
+  userId: string | null;
+  createdAt: string;
+}
+
+export interface OutreachContactsPage {
+  items: OutreachContactDto[];
+  nextCursor: string | null;
+  total: number;
+}
+
+/** Audience is a filter, not a frozen list, so a recurring campaign picks up contacts imported
+ * after it was created. Every field is optional — an empty filter matches every contact. */
+export interface CampaignAudienceFilter {
+  cityIds?: string[];
+  businessCategories?: string[];
+  tags?: string[];
+  /** Google rating floor, e.g. 4 — excludes unrated contacts when set. */
+  minRating?: number;
+  statuses?: ContactStatus[];
+}
+
+export interface OutreachCampaignDto {
+  id: string;
+  name: string;
+  channel: OutreachChannel;
+  status: CampaignStatus;
+  bodyTemplate: string;
+  subject: string | null;
+  dltTemplateId: string | null;
+  audienceFilter: CampaignAudienceFilter;
+  cadenceCron: string | null;
+  scheduledAt: string | null;
+  lastRunAt: string | null;
+  maxSendsPerRun: number;
+  minDaysBetweenSends: number;
+  dryRun: boolean;
+  createdAt: string;
+  /** Per-status send tallies across every run of this campaign. */
+  stats: Record<SendStatus, number>;
+}
+
+export interface OutreachCampaignsPage {
+  items: OutreachCampaignDto[];
+  nextCursor: string | null;
+  total: number;
+}
+
+export interface CampaignSendDto {
+  id: string;
+  campaignId: string;
+  campaignName: string;
+  contactId: string;
+  contactName: string;
+  channel: OutreachChannel;
+  status: SendStatus;
+  runKey: string;
+  renderedBody: string;
+  sentAt: string | null;
+  failureReason: string | null;
+  createdAt: string;
+}
+
+export interface CampaignSendsPage {
+  items: CampaignSendDto[];
+  nextCursor: string | null;
+  total: number;
+}
+
+export interface CreateOutreachContactInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  cityId?: string;
+  areaId?: string;
+  googleRating?: number;
+  googleReviewCount?: number;
+  googlePlaceId?: string;
+  businessCategory?: string;
+  website?: string;
+  source: ContactSource;
+  sourceRef?: string;
+  tags?: string[];
+  notes?: string;
+  consentState?: ConsentState;
+  consentSource?: string;
+}
+
+export interface ImportOutreachContactsInput {
+  source: ContactSource;
+  sourceRef?: string;
+  contacts: CreateOutreachContactInput[];
+}
+
+export interface ImportOutreachContactsResult {
+  created: number;
+  /** Matched an existing googlePlaceId and were updated in place rather than duplicated. */
+  updated: number;
+  /** Rejected for having neither a usable phone nor email. */
+  skipped: number;
+}
+
+export interface CreateOutreachCampaignInput {
+  name: string;
+  channel: OutreachChannel;
+  bodyTemplate: string;
+  subject?: string;
+  dltTemplateId?: string;
+  audienceFilter?: CampaignAudienceFilter;
+  cadenceCron?: string;
+  scheduledAt?: string;
+  maxSendsPerRun?: number;
+  minDaysBetweenSends?: number;
+  dryRun?: boolean;
+}
+
+export type UpdateOutreachCampaignInput = Partial<CreateOutreachCampaignInput> & {
+  status?: CampaignStatus;
+};
+
+/** What a campaign would send right now, without sending it — powers the admin's pre-flight
+ * audience preview. */
+export interface CampaignPreviewDto {
+  /** Contacts matching the audience filter, before eligibility rules. */
+  audienceSize: number;
+  /** How many would actually be messaged on the next run (after suppression, opt-out,
+   * minDaysBetweenSends and maxSendsPerRun). */
+  eligibleCount: number;
+  suppressedCount: number;
+  recentlyContactedCount: number;
+  /** A handful of resolved message bodies, so a bad placeholder is caught before sending. */
+  sampleBodies: string[];
+}
