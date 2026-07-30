@@ -10,6 +10,7 @@ import {
   deleteListingVideo,
   fetchMyListings,
   recordView,
+  renewListing,
   toggleFavourite,
   updateListing,
   uploadPhoto,
@@ -92,6 +93,25 @@ export async function updateListingAction(listingId: string, input: UpdateListin
     return { success: false, error: error instanceof Error ? error.message : "Failed to update listing" };
   }
   return { success: true };
+}
+
+export type RenewListingResult =
+  | { success: true; listing: ListingDetailDto }
+  | { success: false; error: string; slotCap?: ListingSlotCapErrorBody };
+
+export async function renewListingAction(listingId: string): Promise<RenewListingResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const listing = await renewListing(session.accessToken, listingId);
+    return { success: true, listing };
+  } catch (error) {
+    if (error instanceof ListingSlotCapError) {
+      return { success: false, error: error.message, slotCap: error.body };
+    }
+    return { success: false, error: error instanceof Error ? error.message : "Failed to renew listing" };
+  }
 }
 
 export type DeleteVideoResult = { success: true; listing: ListingDetailDto } | { success: false; error: string };

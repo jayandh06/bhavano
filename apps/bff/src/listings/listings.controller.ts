@@ -77,6 +77,12 @@ export class ListingsController {
     return this.listingsService.update(id, user.id, dto);
   }
 
+  @Patch(':id/renew')
+  @UseGuards(AuthGuard)
+  renew(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
+    return this.listingsService.renew(id, user.id);
+  }
+
   @Post(':id/view')
   @UseGuards(OptionalAuthGuard, RateLimitGuard)
   @RateLimitAction('view')
