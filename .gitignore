@@ -30,3 +30,9 @@ Bhavano icon design.zip
 apps/web/e2e/.auth/
 apps/web/playwright-report/
 apps/web/test-results/
+
+# Payment provider keys — never commit; rotate immediately if this was ever pushed
+rzp-key.csv
+
+# Locally generated Caddy root CA (machine-specific, regenerated per dev box)
+caddy-local-root.crt
