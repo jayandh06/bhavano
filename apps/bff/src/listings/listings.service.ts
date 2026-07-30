@@ -27,7 +27,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
-import type { Area, City, Listing, ListingPhoto, ListingVideo } from '@prisma/client';
+import type { Area, City, Listing, ListingPhoto, ListingRenewal, ListingVideo } from '@prisma/client';
 import { PHOTO_VARIANTS, PhotoVariant, variantUrl } from '../uploads/photo-keys';
 import { videoPosterKey, videoPosterUrl, videoTranscodedKey, videoUrl } from '../uploads/video-keys';
 import { R2StorageService } from '../storage/r2-storage.service';
@@ -95,6 +95,7 @@ const LISTING_MEDIA_INCLUDE = {
   listingPhotos: { orderBy: { photoNo: 'asc' as const } },
   listingVideos: { orderBy: { videoNo: 'asc' as const } },
   owner: { select: { agentProUntil: true } },
+  listingRenewals: { orderBy: { renewedAt: 'desc' as const } },
 };
 
 @Injectable()
@@ -556,6 +557,42 @@ export class ListingsService {
     return this.toDetailDto(listing, undefined, true);
   }
 
+  /** Pushes expiresAt forward by the same duration a fresh post gets — available from 7 days
+   * before expiry (an early renewal stacks onto the remaining time) through any time after it has
+   * already lapsed (where `max(now, expiresAt)` falls back to counting from today instead of the
+   * past date). Gated by assertCanRenew rather than assertCanPublish: renewing a still-active
+   * listing must not be blocked by a cap that listing is already counted inside. See
+   * docs/plans/listing-expiry-renew-past-listings.md. */
+  async renew(id: string, ownerId: string): Promise<ListingDetailDto> {
+    const existing = await this.prisma.listing.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Listing ${id} not found`);
+    if (existing.ownerId !== ownerId) throw new ForbiddenException("You don't own this listing");
+    if (existing.status !== 'active') {
+      throw new BadRequestException('Only an active listing can be renewed');
+    }
+
+    await this.listingSlotsService.assertCanRenew(ownerId, id);
+
+    const newExpiresAt = new Date(
+      Math.max(Date.now(), existing.expiresAt.getTime()) + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000,
+    );
+    // Transactional so the audit row can never diverge from the expiry it claims to record.
+    // The create is sequenced first so the update's include picks it up — otherwise the returned
+    // DTO's renewCount would lag one behind the renewal that just happened.
+    const [, listing] = await this.prisma.$transaction([
+      this.prisma.listingRenewal.create({
+        data: { listingId: id, previousExpiresAt: existing.expiresAt, newExpiresAt },
+      }),
+      this.prisma.listing.update({
+        where: { id },
+        data: { expiresAt: newExpiresAt },
+        include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+      }),
+    ]);
+
+    return this.toDetailDto(listing, undefined, true);
+  }
+
   /** Top (category, transactionType, city) combinations by real inventory — feeds the
    * "Popular searches" section below the search bar. There's no search-query telemetry to mine
    * (search is just a title filter, never logged), so this is the closest real signal: summed
@@ -723,6 +760,7 @@ export class ListingsService {
       listingPhotos: ListingPhoto[];
       listingVideos: ListingVideo[];
       owner: { agentProUntil: Date | null };
+      listingRenewals: ListingRenewal[];
     },
     favouritedIds?: Set<string>,
     // Only true for the owner's own view or an admin's — gates both which video statuses are
@@ -757,6 +795,14 @@ export class ListingsService {
       photosFull: listing.listingPhotos.map((p) => variantUrl(this.cdnBase(), listing.id, p.photoNo, 'full')),
       videos,
       videoEntitlement: isOwnerOrAdmin ? resolveVideoEntitlement(listing.owner, listing) : undefined,
+      renewCount: listing.listingRenewals.length,
+      renewalHistory: isOwnerOrAdmin
+        ? listing.listingRenewals.map((r) => ({
+            from: r.previousExpiresAt.toISOString(),
+            to: r.newExpiresAt.toISOString(),
+            renewedAt: r.renewedAt.toISOString(),
+          }))
+        : undefined,
       ...this.jitteredLocation(listing),
     };
   }

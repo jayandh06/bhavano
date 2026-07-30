@@ -208,6 +208,10 @@ export function updateListing(accessToken: string, listingId: string, input: Upd
   return authedBffFetch(accessToken, `/listings/${listingId}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
+export function renewListing(accessToken: string, listingId: string): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/renew`, { method: "PATCH" });
+}
+
 /** Unlike adding a video (which uploads a file and so must bypass Server Actions' 1MB body limit
  * — see lib/videoUpload.ts), deleting one carries no body and can go through the normal
  * server-action path like any other mutation here. */

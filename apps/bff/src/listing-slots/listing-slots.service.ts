@@ -18,8 +18,12 @@ export class ListingSlotsService {
     };
   }
 
-  async countActiveListings(ownerId: string): Promise<number> {
-    return this.prisma.listing.count({ where: this.activeListingWhere(ownerId) });
+  /** `excludeListingId` matters for renewal: a not-yet-expired listing being renewed early is
+   * already counted here, so renewing it shouldn't be blocked by a cap it isn't adding to. */
+  async countActiveListings(ownerId: string, excludeListingId?: string): Promise<number> {
+    return this.prisma.listing.count({
+      where: { ...this.activeListingWhere(ownerId), ...(excludeListingId ? { id: { not: excludeListingId } } : {}) },
+    });
   }
 
   async getEntitlement(userId: string): Promise<ListingSlotEntitlementInput & { id: string }> {
@@ -49,8 +53,21 @@ export class ListingSlotsService {
     const allowance = listingSlotAllowance(user);
     const activeCount = await this.countActiveListings(ownerId);
     if (activeCount < allowance) return;
+    throw new ForbiddenException(this.capErrorBody(activeCount, allowance));
+  }
 
-    const body: ListingSlotCapErrorBody = {
+  /** Same cap as `assertCanPublish`, but excludes the listing being renewed from its own count —
+   * renewing doesn't add a new slot, so it shouldn't be blocked by the cap it's already inside. */
+  async assertCanRenew(ownerId: string, listingId: string): Promise<void> {
+    const user = await this.getEntitlement(ownerId);
+    const allowance = listingSlotAllowance(user);
+    const activeCount = await this.countActiveListings(ownerId, listingId);
+    if (activeCount < allowance) return;
+    throw new ForbiddenException(this.capErrorBody(activeCount, allowance));
+  }
+
+  private capErrorBody(activeCount: number, allowance: number): ListingSlotCapErrorBody {
+    return {
       code: 'LISTING_SLOT_CAP_REACHED',
       message:
         `You have ${activeCount} active listings and your plan allows ${allowance}. ` +
@@ -59,6 +76,5 @@ export class ListingSlotsService {
       allowance,
       upsell: allowance < 10 ? ['sellerSlotPack', 'agentPro'] : ['agentPro'],
     };
-    throw new ForbiddenException(body);
   }
 }

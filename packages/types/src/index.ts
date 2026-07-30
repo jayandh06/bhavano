@@ -144,12 +144,23 @@ export interface ListingDetailDto extends ListingCardDto {
    * by resolveVideoEntitlement() so the client never re-derives tier from agentProUntil/
    * boostedUntil itself and can never disagree with what the write path will accept. */
   videoEntitlement?: VideoEntitlement;
+  /** How many times the owner has renewed this listing (pushed `expiresAt` forward). */
+  renewCount: number;
+  /** Newest-first renewal audit trail — each entry's `from`/`to` are the expiry dates either
+   * side of that renewal. Only populated for the owner (or an admin), like `videoEntitlement`. */
+  renewalHistory?: ListingRenewalDto[];
   /** Always a jittered/snapped approximation of the real pin (computed server-side in
    * ListingsService.toDetailDto — see docs/plans/google-maps-location-picker.md), never the
    * seller's exact dropped location, regardless of who's asking. Undefined if no pin was set
    * at posting time. */
   lat?: number;
   lng?: number;
+}
+
+export interface ListingRenewalDto {
+  from: string;
+  to: string;
+  renewedAt: string;
 }
 
 /** Fields an owner can change after posting — from the my-listings edit form. */

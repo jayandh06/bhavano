@@ -1,14 +1,11 @@
 import Link from "next/link";
 import type { City, ListingDetailDto } from "@bhavano/types";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
+import { daysUntil } from "@/lib/listingExpiry";
 import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
 import { ListingMediaGallery } from "./ListingMediaGallery";
 import { ViewTracker } from "./ViewTracker";
-
-function daysUntil(iso: string): number {
-  return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-}
 
 /** A plain cached image, not the interactive Maps JavaScript API — this page is by far the
  * highest-traffic surface in the product, so cost here scales with page *views*, unlike the

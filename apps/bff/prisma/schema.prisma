@@ -211,6 +211,7 @@ model Listing {
   payments         Payment[]
   listingBoosts    ListingBoost[]
   notificationLogs ListingNotificationLog[]
+  listingRenewals  ListingRenewal[]
 
   @@index([cityId, category])
   @@index([cityId, transactionType])
@@ -509,6 +510,19 @@ model ListingBoost {
   payment      Payment  @relation(fields: [paymentId], references: [id])
   boostedFrom  DateTime @default(now())
   boostedUntil DateTime
+
+  @@index([listingId])
+}
+
+/** One row per renewal — the audit trail for "how many times, and from what date to what date"
+ * a listing was renewed. See docs/plans/finish-listing-renewal-ui-and-history.md. */
+model ListingRenewal {
+  id                String   @id @default(cuid())
+  listingId         String
+  listing           Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  previousExpiresAt DateTime
+  newExpiresAt      DateTime
+  renewedAt         DateTime @default(now())
 
   @@index([listingId])
 }

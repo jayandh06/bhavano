@@ -10,7 +10,15 @@ import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { BoostButton } from "@/components/home/BoostButton";
+import { RenewButton } from "@/components/home/RenewButton";
 import { VideoManager } from "@/components/home/VideoManager";
+import { daysUntil } from "@/lib/listingExpiry";
+
+/** How far ahead of expiry the Renew affordance appears — mirrors the BFF's expiry-reminder
+ * job, so the in-app action shows up at the same time the reminder email/SMS goes out. */
+const RENEW_WINDOW_DAYS = 7;
+
+const renewedAtFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
   active: "Active",
@@ -82,17 +90,37 @@ async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; 
     );
   }
 
+  const activeListings = listings.filter((item) => !item.isExpired);
+  const pastListings = listings.filter((item) => item.isExpired);
+
   return (
     <div className="flex flex-col gap-3">
       <ListingSlotMeter profile={profile} />
-      {listings.map((item) => (
+      {activeListings.map((item) => (
         <MyListingRow key={item.id} item={item} accessToken={accessToken} />
       ))}
+      {pastListings.length > 0 && (
+        <>
+          <h2 className="font-lora text-[19px] font-semibold m-0 mt-5">Past listings</h2>
+          <p className="text-[13px] text-muted m-0 -mt-1">
+            These have expired and are no longer visible to buyers. Renew one to put it back up.
+          </p>
+          {pastListings.map((item) => (
+            <MyListingRow key={item.id} item={item} accessToken={accessToken} />
+          ))}
+        </>
+      )}
     </div>
   );
 }
 
 function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessToken: string }) {
+  const daysLeft = daysUntil(item.expiresAt);
+  // A negative value still satisfies <= 7, so this covers both the pre-expiry window and any
+  // time after it lapsed — a listing never becomes un-renewable just by sitting expired.
+  const canRenew = item.status === "active" && daysLeft <= RENEW_WINDOW_DAYS;
+  const lastRenewedAt = item.renewalHistory?.[0]?.renewedAt;
+
   return (
     <div className="flex flex-wrap justify-between items-center gap-4 border border-border rounded-[10px] p-4">
       <div className="min-w-0">
@@ -114,9 +142,17 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
         <div className="flex gap-3 text-[11.5px] text-muted mt-1.5">
           <span>👁 {item.viewCount}</span>
           <span>♥ {item.likeCount}</span>
+          {canRenew && <span>{item.isExpired ? "Expired" : `Expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}</span>}
         </div>
+        {item.renewCount > 0 && (
+          <div className="text-[11.5px] text-muted mt-1">
+            Renewed {item.renewCount} time{item.renewCount === 1 ? "" : "s"}
+            {lastRenewedAt && ` · last on ${renewedAtFormatter.format(new Date(lastRenewedAt))}`}
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-2.5 shrink-0">
+        {canRenew && <RenewButton listingId={item.id} />}
         {item.status === "active" && !item.isExpired && !item.isBoosted && (
           <BoostButton listingId={item.id} category={item.category} />
         )}
