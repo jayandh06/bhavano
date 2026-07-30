@@ -17,6 +17,15 @@ import type {
   RateLimitSettingsDto,
   TransactionType,
   UserActivityDto,
+  OutreachContactsPage,
+  OutreachCampaignsPage,
+  OutreachCampaignDto,
+  CampaignPreviewDto,
+  CampaignSendsPage,
+  CreateOutreachCampaignInput,
+  UpdateOutreachCampaignInput,
+  ImportOutreachContactsInput,
+  ImportOutreachContactsResult,
 } from "@bhavano/types";
 
 /** Mirrors the BFF's ADMIN_LISTING_SORT_VALUES (apps/bff/src/admin/dto/list-admin-listings.dto.ts)
@@ -221,4 +230,99 @@ export function fetchBoosts(accessToken: string, query: ListBoostsQuery = {}): P
 
 export function revokeBoost(accessToken: string, listingId: string): Promise<{ success: true }> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/revoke-boost`, { method: "POST" });
+}
+
+// --- Outreach / campaigns ---------------------------------------------------
+
+export interface ListOutreachContactsQuery {
+  cursor?: string;
+  limit?: number;
+  search?: string;
+  cityId?: string;
+  status?: string;
+}
+
+export function fetchOutreachContacts(
+  accessToken: string,
+  query: ListOutreachContactsQuery = {},
+): Promise<OutreachContactsPage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value != null && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/outreach/contacts?${params.toString()}`, { cache: "no-store" });
+}
+
+export function importOutreachContacts(
+  accessToken: string,
+  input: ImportOutreachContactsInput,
+): Promise<ImportOutreachContactsResult> {
+  return authedBffFetch(accessToken, "/admin/outreach/contacts/import", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function optOutContact(accessToken: string, contactId: string, reason?: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, `/admin/outreach/contacts/${contactId}/opt-out`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function fetchCampaigns(
+  accessToken: string,
+  query: { cursor?: string; limit?: number } = {},
+): Promise<OutreachCampaignsPage> {
+  const params = new URLSearchParams();
+  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.limit) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/outreach/campaigns?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchCampaign(accessToken: string, id: string): Promise<OutreachCampaignDto> {
+  return authedBffFetch(accessToken, `/admin/outreach/campaigns/${id}`, { cache: "no-store" });
+}
+
+export function createCampaign(
+  accessToken: string,
+  input: CreateOutreachCampaignInput,
+): Promise<OutreachCampaignDto> {
+  return authedBffFetch(accessToken, "/admin/outreach/campaigns", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateCampaign(
+  accessToken: string,
+  id: string,
+  input: UpdateOutreachCampaignInput,
+): Promise<OutreachCampaignDto> {
+  return authedBffFetch(accessToken, `/admin/outreach/campaigns/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function previewCampaign(accessToken: string, id: string): Promise<CampaignPreviewDto> {
+  return authedBffFetch(accessToken, `/admin/outreach/campaigns/${id}/preview`, { cache: "no-store" });
+}
+
+export function runCampaign(
+  accessToken: string,
+  id: string,
+): Promise<{ sent: number; failed: number; skipped: number }> {
+  return authedBffFetch(accessToken, `/admin/outreach/campaigns/${id}/run`, { method: "POST" });
+}
+
+export function fetchCampaignSends(
+  accessToken: string,
+  query: { cursor?: string; limit?: number; campaignId?: string; contactId?: string } = {},
+): Promise<CampaignSendsPage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value != null && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/outreach/sends?${params.toString()}`, { cache: "no-store" });
 }

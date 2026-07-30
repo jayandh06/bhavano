@@ -7,6 +7,8 @@ import { signOutAction } from "@/app/actions/auth";
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/", label: "Listings" },
   { href: "/boosts", label: "Boosts" },
+  { href: "/outreach/contacts", label: "Contacts" },
+  { href: "/outreach/campaigns", label: "Campaigns" },
   { href: "/logins", label: "Recent logins" },
   { href: "/settings/rate-limits", label: "Rate limits" },
 ];

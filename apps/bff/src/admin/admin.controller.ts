@@ -1,10 +1,17 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import type {
   AdminListingsPage,
+  CampaignPreviewDto,
+  CampaignSendsPage,
+  ImportOutreachContactsResult,
   ListingBoostsPage,
   ListingDetailDto,
   ListingOwnerDto,
   LoginEventsPage,
+  OutreachCampaignDto,
+  OutreachCampaignsPage,
+  OutreachContactDto,
+  OutreachContactsPage,
   RateLimitSettingsDto,
   UserActivityDto,
 } from '@bhavano/types';
@@ -19,11 +26,27 @@ import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
+import {
+  CreateOutreachCampaignDto,
+  CreateOutreachContactDto,
+  ImportOutreachContactsDto,
+  ListCampaignSendsDto,
+  ListOutreachCampaignsDto,
+  ListOutreachContactsDto,
+  OptOutDto,
+  UpdateOutreachCampaignDto,
+} from './dto/outreach.dto';
+import { OutreachService } from '../outreach/outreach.service';
+import { OutreachCampaignJob } from '../outreach/outreach-campaign.job';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly outreachService: OutreachService,
+    private readonly outreachCampaignJob: OutreachCampaignJob,
+  ) {}
 
   @Get('listings')
   listListings(@Query() query: ListAdminListingsDto): Promise<AdminListingsPage> {
@@ -93,5 +116,79 @@ export class AdminController {
   async revokeBoost(@Param('id') id: string): Promise<{ success: true }> {
     await this.adminService.revokeBoost(id);
     return { success: true };
+  }
+
+  // --- Outreach contacts --------------------------------------------------
+
+  @Get('outreach/contacts')
+  listOutreachContacts(@Query() query: ListOutreachContactsDto): Promise<OutreachContactsPage> {
+    return this.outreachService.listContacts(query);
+  }
+
+  @Post('outreach/contacts')
+  createOutreachContact(@Body() dto: CreateOutreachContactDto): Promise<OutreachContactDto> {
+    return this.outreachService.createContact(dto);
+  }
+
+  @Post('outreach/contacts/import')
+  importOutreachContacts(@Body() dto: ImportOutreachContactsDto): Promise<ImportOutreachContactsResult> {
+    return this.outreachService.importContacts({
+      source: dto.source,
+      sourceRef: dto.sourceRef,
+      contacts: dto.contacts.map((c) => ({ ...c, source: c.source ?? dto.source })),
+    });
+  }
+
+  @Post('outreach/contacts/:id/opt-out')
+  async optOutContact(@Param('id') id: string, @Body() dto: OptOutDto): Promise<{ success: true }> {
+    await this.outreachService.optOut(id, dto.reason);
+    return { success: true };
+  }
+
+  // --- Campaigns ----------------------------------------------------------
+
+  @Get('outreach/campaigns')
+  listCampaigns(@Query() query: ListOutreachCampaignsDto): Promise<OutreachCampaignsPage> {
+    return this.outreachService.listCampaigns(query);
+  }
+
+  @Get('outreach/campaigns/:id')
+  getCampaign(@Param('id') id: string): Promise<OutreachCampaignDto> {
+    return this.outreachService.getCampaign(id);
+  }
+
+  @Post('outreach/campaigns')
+  createCampaign(
+    @Body() dto: CreateOutreachCampaignDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<OutreachCampaignDto> {
+    return this.outreachService.createCampaign(dto, user.id);
+  }
+
+  @Patch('outreach/campaigns/:id')
+  updateCampaign(
+    @Param('id') id: string,
+    @Body() dto: UpdateOutreachCampaignDto,
+  ): Promise<OutreachCampaignDto> {
+    return this.outreachService.updateCampaign(id, dto);
+  }
+
+  /** Pre-flight: what the next run would do, without doing it. */
+  @Get('outreach/campaigns/:id/preview')
+  previewCampaign(@Param('id') id: string): Promise<CampaignPreviewDto> {
+    return this.outreachService.previewCampaign(id);
+  }
+
+  /** Fire a campaign immediately instead of waiting for the hourly tick. Still honours the
+   * campaign's own dryRun flag — this is "run now", not "bypass the safety". */
+  @Post('outreach/campaigns/:id/run')
+  async runCampaign(@Param('id') id: string): Promise<{ sent: number; failed: number; skipped: number }> {
+    const campaign = await this.outreachService.requireCampaignRow(id);
+    return this.outreachCampaignJob.runCampaign(campaign);
+  }
+
+  @Get('outreach/sends')
+  listSends(@Query() query: ListCampaignSendsDto): Promise<CampaignSendsPage> {
+    return this.outreachService.listSends(query);
   }
 }
