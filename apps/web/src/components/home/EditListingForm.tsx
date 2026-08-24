@@ -3,7 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
-import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import {
+  CATEGORY_FIELD_CONFIG,
+  SECTION_LABELS,
+  fieldIsVisible,
+  pruneHiddenAttributes,
+} from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { updateListingAction } from "@/app/actions/listings";
 
@@ -23,19 +28,6 @@ function attributesToStrings(
         : String(value);
   }
   return result;
-}
-
-function fieldIsVisible(
-  field: (typeof CATEGORY_FIELD_CONFIG)[keyof typeof CATEGORY_FIELD_CONFIG][number],
-  transactionType: ListingDetailDto["transactionType"],
-  attributes: Record<string, string | string[]>,
-): boolean {
-  return (
-    (!field.transactionTypes ||
-      field.transactionTypes.includes(transactionType)) &&
-    (!field.dependsOn ||
-      attributes[field.dependsOn.key] === field.dependsOn.value)
-  );
 }
 
 const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
@@ -68,7 +60,9 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
     fieldIsVisible(field, listing.transactionType, attributes),
   );
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
-  const requiredAttributesFilled = fieldConfig.every((field) => {
+  // Only currently-visible required fields block saving — a required field hidden behind an
+  // unmet `dependsOn` (none today, but the config allows it) can't be filled in anyway.
+  const requiredAttributesFilled = visibleFields.every((field) => {
     if (!field.required) return true;
     const value = attributes[field.key];
     return Array.isArray(value) ? value.length > 0 : (value ?? "").length > 0;
@@ -179,9 +173,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
                 (index === 0 ||
                   visibleFields[index - 1].section !== field.section) && (
                   <div className="text-[13px] font-bold text-text mt-2">
-                    {field.section === "amenities"
-                      ? "Amenities"
-                      : "Furnishing details"}
+                    {SECTION_LABELS[field.section]}
                   </div>
                 )}
               <label className={labelClass}>
@@ -221,20 +213,13 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
                       : ""
                   }
                   onChange={(e) =>
-                    setAttributes((prev) => {
-                      const next = { ...prev, [field.key]: e.target.value };
-                      if (
-                        field.key === "furnished" &&
-                        e.target.value !== "furnished"
-                      ) {
-                        for (const furnishingField of fieldConfig.filter(
-                          (item) => item.section === "furnishing",
-                        )) {
-                          delete next[furnishingField.key];
-                        }
-                      }
-                      return next;
-                    })
+                    setAttributes((prev) =>
+                      pruneHiddenAttributes(
+                        listing.category,
+                        listing.transactionType,
+                        { ...prev, [field.key]: e.target.value },
+                      ),
+                    )
                   }
                   className={inputClass}
                 >

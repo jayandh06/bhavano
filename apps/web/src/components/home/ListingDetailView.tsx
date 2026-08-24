@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Fragment } from "react";
 import type { City, ListingDetailDto } from "@bhavano/types";
-import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import {
+  CATEGORY_FIELD_CONFIG,
+  fieldIsVisible,
+  groupFieldsBySection,
+} from "@bhavano/types/categoryFields";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
 import { daysUntil } from "@/lib/listingExpiry";
 import { Header } from "./Header";
@@ -46,24 +50,17 @@ export function ListingDetailView({
   userName?: string | null;
   currentSegments: ParsedSegments;
 }) {
-  const attributeEntries = Object.entries(listing.attributes);
-  const fieldLabels = new Map(
-    CATEGORY_FIELD_CONFIG[listing.category].map((field) => [
-      field.key,
-      field.label,
-    ]),
+  const attributes = listing.attributes as Record<string, string | string[]>;
+  // A field's stored value only makes sense to show once its `dependsOn` condition (if any) is
+  // currently met — e.g. a brokerage fee shouldn't display for a listing where "posted by
+  // broker" has since been edited back to "no". Same visibility rule the posting/edit forms use
+  // (see `fieldIsVisible` in @bhavano/types/categoryFields), so all three agree.
+  const visibleFields = CATEGORY_FIELD_CONFIG[listing.category].filter(
+    (field) =>
+      field.key in attributes &&
+      fieldIsVisible(field, listing.transactionType, attributes),
   );
-  const fieldSections = new Map(
-    CATEGORY_FIELD_CONFIG[listing.category].map((field) => [
-      field.key,
-      field.section,
-    ]),
-  );
-  const displayEntries = attributeEntries.filter(
-    ([key]) =>
-      fieldSections.get(key) !== "furnishing" ||
-      listing.attributes.furnished === "furnished",
-  );
+  const displaySections = groupFieldsBySection(visibleFields);
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -147,29 +144,23 @@ export function ListingDetailView({
           ))}
         </div>
 
-        {displayEntries.length > 0 && (
+        {visibleFields.length > 0 && (
           <div className="border border-border rounded-xl p-5 mb-6 bg-surface">
             <div className="font-bold text-sm mb-3">Property details</div>
             <div className="grid [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))] gap-2.5">
-              {displayEntries.map(([key, value], index) => (
-                <Fragment key={key}>
-                  {fieldSections.get(key) &&
-                    (index === 0 ||
-                      fieldSections.get(displayEntries[index - 1][0]) !==
-                        fieldSections.get(key)) && (
-                      <div className="col-span-full font-bold text-text mt-2 mb-1">
-                        {fieldSections.get(key) === "amenities"
-                          ? "Amenities"
-                          : "Furnishing"}
-                      </div>
-                    )}
-                  <div className="text-[13px] text-text-soft">
-                    <span className="font-semibold">
-                      {fieldLabels.get(key) ??
-                        (key === "sqft" ? "Area (sqft)" : key)}
-                    </span>
-                    : {formatAttributeValue(value)}
-                  </div>
+              {displaySections.map(({ section, label, fields }) => (
+                <Fragment key={section}>
+                  {section !== "basics" && (
+                    <div className="col-span-full font-bold text-text mt-2 mb-1">
+                      {label}
+                    </div>
+                  )}
+                  {fields.map((field) => (
+                    <div key={field.key} className="text-[13px] text-text-soft">
+                      <span className="font-semibold">{field.label}</span>:{" "}
+                      {formatAttributeValue(attributes[field.key])}
+                    </div>
+                  ))}
                 </Fragment>
               ))}
             </div>

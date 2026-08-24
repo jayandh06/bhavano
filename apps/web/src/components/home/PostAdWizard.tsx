@@ -10,12 +10,13 @@ import type {
   ReverseGeocodeResultDto,
   TransactionType,
 } from "@bhavano/types";
-import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
+import { CategoryFieldsAccordion } from "@/components/home/CategoryFieldsAccordion";
 import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { searchAreasAction } from "@/app/actions/locations";
@@ -112,19 +113,6 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 };
 
 type Step = "category" | "transactionType" | "details" | "review" | "success";
-
-function fieldIsVisible(
-  field: (typeof CATEGORY_FIELD_CONFIG)[keyof typeof CATEGORY_FIELD_CONFIG][number],
-  transactionType: TransactionType,
-  attributes: Record<string, string | string[]>,
-): boolean {
-  return (
-    (!field.transactionTypes ||
-      field.transactionTypes.includes(transactionType)) &&
-    (!field.dependsOn ||
-      attributes[field.dependsOn.key] === field.dependsOn.value)
-  );
-}
 
 function RequiredLabel({ text }: { text: string }) {
   return (
@@ -385,20 +373,20 @@ export function PostAdWizard({
     }
   }
 
-  const requiredAttributesFilled = category
-    ? CATEGORY_FIELD_CONFIG[category].every((field) => {
-        if (!field.required) return true;
-        const value = attributes[field.key];
-        return Array.isArray(value)
-          ? value.length > 0
-          : (value ?? "").length > 0;
-      })
-    : true;
   const visibleFields = category
     ? CATEGORY_FIELD_CONFIG[category].filter((field) =>
         fieldIsVisible(field, transactionType!, attributes),
       )
     : [];
+  // Only currently-visible required fields block submission — a required field hidden behind
+  // an unmet `dependsOn` (none today, but the config allows it) can't be filled in anyway.
+  const requiredAttributesFilled = visibleFields.every((field) => {
+    if (!field.required) return true;
+    const value = attributes[field.key];
+    return Array.isArray(value)
+      ? value.length > 0
+      : (value ?? "").length > 0;
+  });
 
   const detailsValid =
     Number(price) > 0 &&
@@ -678,109 +666,12 @@ export function PostAdWizard({
             <div className="text-[13px] font-bold text-text mb-3">
               {CATEGORIES.find((c) => c.value === category)?.label} details
             </div>
-            <div className="flex flex-col gap-4">
-              {visibleFields.map((field, index) => (
-                <div key={field.key}>
-                  {field.section &&
-                    (index === 0 ||
-                      visibleFields[index - 1].section !== field.section) && (
-                      <div className="text-[13px] font-bold text-text mt-2">
-                        {field.section === "amenities"
-                          ? "Amenities"
-                          : "Furnishing details"}
-                      </div>
-                    )}
-                  {field.required ? (
-                    <RequiredLabel text={field.label} />
-                  ) : (
-                    <label className={labelClass}>{field.label}</label>
-                  )}
-                  {field.type === "multi-select" ? (
-                    <select
-                      multiple
-                      value={
-                        Array.isArray(attributes[field.key])
-                          ? attributes[field.key]
-                          : []
-                      }
-                      onChange={(e) =>
-                        setAttributes((prev) => ({
-                          ...prev,
-                          [field.key]: Array.from(
-                            e.target.selectedOptions,
-                            (option) => option.value,
-                          ),
-                        }))
-                      }
-                      className={fieldClass}
-                    >
-                      {field.options?.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : field.type === "select" ? (
-                    <select
-                      value={
-                        typeof attributes[field.key] === "string"
-                          ? attributes[field.key]
-                          : ""
-                      }
-                      onChange={(e) =>
-                        setAttributes((prev) => {
-                          const next = { ...prev, [field.key]: e.target.value };
-                          if (
-                            field.key === "furnished" &&
-                            e.target.value !== "furnished"
-                          ) {
-                            for (const furnishingField of CATEGORY_FIELD_CONFIG[
-                              category
-                            ].filter((item) => item.section === "furnishing")) {
-                              delete next[furnishingField.key];
-                            }
-                          }
-                          return next;
-                        })
-                      }
-                      className={fieldClass}
-                    >
-                      <option value="" disabled>
-                        Select…
-                      </option>
-                      {field.options?.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={field.type === "number" ? "number" : "text"}
-                      min={
-                        field.type === "number" ? (field.min ?? 0) : undefined
-                      }
-                      value={
-                        typeof attributes[field.key] === "string"
-                          ? attributes[field.key]
-                          : ""
-                      }
-                      onChange={(e) =>
-                        setAttributes((prev) => ({
-                          ...prev,
-                          [field.key]:
-                            field.type === "number"
-                              ? sanitizeNonNegative(e.target.value)
-                              : e.target.value,
-                        }))
-                      }
-                      placeholder={field.placeholder}
-                      className={fieldClass}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+            <CategoryFieldsAccordion
+              category={category}
+              transactionType={transactionType}
+              attributes={attributes}
+              onAttributesChange={setAttributes}
+            />
           </div>
 
           <div>

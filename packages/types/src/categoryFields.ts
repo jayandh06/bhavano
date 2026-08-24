@@ -5,6 +5,53 @@ export interface FieldOption {
   label: string;
 }
 
+/** Section a field is grouped under in the posting/editing UI — each renders as its own
+ * accordion with a header from `SECTION_LABELS`. Order of display follows `SECTION_ORDER`,
+ * not declaration order in a category's field list. */
+export type FieldSection =
+  | "basics"
+  | "pricing"
+  | "preferences"
+  | "furnishing"
+  | "amenities"
+  | "roomDetails"
+  | "spaceDetails"
+  | "workspaceDetails"
+  | "itemDetails"
+  | "serviceDetails"
+  | "plotDetails";
+
+export const SECTION_LABELS: Record<FieldSection, string> = {
+  basics: "Property details",
+  pricing: "Pricing & fees",
+  preferences: "Tenant preferences",
+  furnishing: "Furnishing details",
+  amenities: "Amenities",
+  roomDetails: "Room details",
+  spaceDetails: "Space details",
+  workspaceDetails: "Workspace details",
+  itemDetails: "Item details",
+  serviceDetails: "Service details",
+  plotDetails: "Plot details",
+};
+
+/** Fixed display order for sections — independent of the order fields are declared in a
+ * category's array, so a field can be added anywhere without reshuffling its section's
+ * position in the UI. */
+export const SECTION_ORDER: FieldSection[] = [
+  "basics",
+  "roomDetails",
+  "spaceDetails",
+  "workspaceDetails",
+  "itemDetails",
+  "serviceDetails",
+  "plotDetails",
+  "pricing",
+  "preferences",
+  "furnishing",
+  "amenities",
+];
+
 export interface FieldDef {
   key: string;
   label: string;
@@ -13,50 +60,144 @@ export interface FieldDef {
   placeholder?: string;
   min?: number;
   transactionTypes?: TransactionType[];
-  section?: "amenities" | "furnishing";
+  section?: FieldSection;
+  /** Field is only shown once `attributes[dependsOn.key] === dependsOn.value` — e.g. a
+   * broker-fee amount only makes sense once "brokerage fee applicable" is answered "yes".
+   * Chains are supported (A gates B gates C); `pruneHiddenAttributes` below keeps a
+   * hidden link's stale value from leaking into a still-visible descendant. */
   dependsOn?: { key: string; value: string };
   /** Must be filled in before the listing can be posted/saved — enforced in both the
    * posting wizard/edit form (disables submit) and the BFF (`ListingsService`). */
   required?: boolean;
 }
 
+/** Single source of truth for whether a field should be shown, given the current transaction
+ * type and in-progress attribute values — used by the posting wizard, the edit form, and the
+ * listing detail page so all three agree on what's visible. */
+export function fieldIsVisible(
+  field: FieldDef,
+  transactionType: TransactionType,
+  attributes: Record<string, string | string[]>,
+): boolean {
+  return (
+    (!field.transactionTypes ||
+      field.transactionTypes.includes(transactionType)) &&
+    (!field.dependsOn ||
+      attributes[field.dependsOn.key] === field.dependsOn.value)
+  );
+}
+
+/** Groups an already-visibility-filtered field list into sections, ordered per
+ * `SECTION_ORDER` (fields without a `section` land in a trailing "other" bucket). Generic so
+ * it works over plain `FieldDef`s (the forms) or `{ section, ... }` display tuples (the
+ * listing detail page). */
+export function groupFieldsBySection<F extends { section?: FieldSection }>(
+  fields: F[],
+): { section: FieldSection | "other"; label: string; fields: F[] }[] {
+  const buckets = new Map<FieldSection | "other", F[]>();
+  for (const field of fields) {
+    const section = field.section ?? "other";
+    const bucket = buckets.get(section);
+    if (bucket) bucket.push(field);
+    else buckets.set(section, [field]);
+  }
+  const ordered: (FieldSection | "other")[] = [...SECTION_ORDER, "other"];
+  return ordered
+    .filter((section) => buckets.has(section))
+    .map((section) => ({
+      section,
+      label: section === "other" ? "Other details" : SECTION_LABELS[section],
+      fields: buckets.get(section)!,
+    }));
+}
+
+/** Strips any attribute whose field is no longer visible (its `dependsOn` condition broke,
+ * possibly several links back in a chain) — run after every attribute/transaction-type change
+ * so a hidden field's stale value can't linger and reappear if a descendant field depends on
+ * it. Iterates to a fixpoint since hiding one field can cascade to hide the next. */
+export function pruneHiddenAttributes(
+  category: ListingCategory,
+  transactionType: TransactionType,
+  attributes: Record<string, string | string[]>,
+): Record<string, string | string[]> {
+  const next = { ...attributes };
+  const fields = CATEGORY_FIELD_CONFIG[category];
+  let removedAny = true;
+  while (removedAny) {
+    removedAny = false;
+    for (const field of fields) {
+      if (
+        field.key in next &&
+        !fieldIsVisible(field, transactionType, next)
+      ) {
+        delete next[field.key];
+        removedAny = true;
+      }
+    }
+  }
+  return next;
+}
+
 const RESIDENTIAL_FIELDS: FieldDef[] = [
-  { key: "bedrooms", label: "Bedrooms", type: "number", required: true },
-  { key: "bathrooms", label: "Bathrooms", type: "number", required: true },
+  {
+    key: "bedrooms",
+    label: "Bedrooms",
+    type: "number",
+    required: true,
+    section: "basics",
+  },
+  {
+    key: "bathrooms",
+    label: "Bathrooms",
+    type: "number",
+    required: true,
+    section: "basics",
+  },
   {
     key: "carpetAreaSqft",
     label: "Carpet area (sqft)",
     type: "number",
     min: 1,
     required: true,
+    section: "basics",
   },
   {
     key: "furnished",
     label: "Furnishing",
     type: "select",
+    section: "basics",
     options: [
       { value: "unfurnished", label: "Unfurnished" },
       { value: "semi", label: "Semi-furnished" },
       { value: "furnished", label: "Furnished" },
     ],
   },
-  { key: "balconyCount", label: "Balcony count", type: "number", min: 0 },
+  {
+    key: "balconyCount",
+    label: "Balcony count",
+    type: "number",
+    min: 0,
+    section: "basics",
+  },
   {
     key: "openParkingCount",
     label: "Open parking spaces",
     type: "number",
     min: 0,
+    section: "basics",
   },
   {
     key: "closedParkingCount",
     label: "Closed parking spaces",
     type: "number",
     min: 0,
+    section: "basics",
   },
   {
     key: "entranceFacing",
     label: "Main entrance facing",
     type: "select",
+    section: "basics",
     options: [
       { value: "north", label: "North" },
       { value: "south", label: "South" },
@@ -72,6 +213,17 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     key: "gatedCommunity",
     label: "Gated community",
     type: "select",
+    section: "basics",
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  },
+  {
+    key: "gasPipeline",
+    label: "Gas pipeline",
+    type: "select",
+    section: "basics",
     options: [
       { value: "yes", label: "Yes" },
       { value: "no", label: "No" },
@@ -81,26 +233,17 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     key: "priceNegotiable",
     label: "Price negotiable",
     type: "select",
+    section: "pricing",
     options: [
       { value: "yes", label: "Yes" },
       { value: "no", label: "No" },
     ],
   },
   {
-    key: "preferredTenantTypes",
-    label: "Preferred tenant type",
-    type: "multi-select",
-    transactionTypes: ["rent", "lease"],
-    options: [
-      { value: "family", label: "Family" },
-      { value: "company", label: "Company" },
-      { value: "bachelor", label: "Bachelor" },
-    ],
-  },
-  {
     key: "fromBroker",
     label: "Posted by broker",
     type: "select",
+    section: "pricing",
     options: [
       { value: "yes", label: "Yes" },
       { value: "no", label: "No" },
@@ -110,7 +253,9 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     key: "brokerageFeeApplicable",
     label: "Brokerage fee applicable",
     type: "select",
+    section: "pricing",
     transactionTypes: ["rent", "lease"],
+    dependsOn: { key: "fromBroker", value: "yes" },
     options: [
       { value: "yes", label: "Yes" },
       { value: "no", label: "No" },
@@ -121,12 +266,15 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Brokerage fee (INR)",
     type: "number",
     min: 0,
+    section: "pricing",
     transactionTypes: ["rent", "lease"],
+    dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
   },
   {
     key: "maintenanceFeeApplicable",
     label: "Monthly maintenance fee applicable",
     type: "select",
+    section: "pricing",
     options: [
       { value: "yes", label: "Yes" },
       { value: "no", label: "No" },
@@ -137,14 +285,19 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Monthly maintenance fee (INR)",
     type: "number",
     min: 0,
+    section: "pricing",
+    dependsOn: { key: "maintenanceFeeApplicable", value: "yes" },
   },
   {
-    key: "gasPipeline",
-    label: "Gas pipeline",
-    type: "select",
+    key: "preferredTenantTypes",
+    label: "Preferred tenant type",
+    type: "multi-select",
+    section: "preferences",
+    transactionTypes: ["rent", "lease"],
     options: [
-      { value: "yes", label: "Yes" },
-      { value: "no", label: "No" },
+      { value: "family", label: "Family" },
+      { value: "company", label: "Company" },
+      { value: "bachelor", label: "Bachelor" },
     ],
   },
   {
@@ -276,6 +429,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "sharingType",
       label: "Sharing type",
       type: "select",
+      section: "roomDetails",
       options: [
         { value: "single", label: "Single" },
         { value: "double", label: "Double sharing" },
@@ -288,6 +442,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "gender",
       label: "Preferred for",
       type: "select",
+      section: "roomDetails",
       options: [
         { value: "men", label: "Men" },
         { value: "women", label: "Women" },
@@ -298,6 +453,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "meals",
       label: "Meals included",
       type: "select",
+      section: "roomDetails",
       options: [
         { value: "yes", label: "Yes" },
         { value: "no", label: "No" },
@@ -305,11 +461,18 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
     },
   ],
   storage: [
-    { key: "sizeSqft", label: "Size (sqft)", type: "number", required: true },
+    {
+      key: "sizeSqft",
+      label: "Size (sqft)",
+      type: "number",
+      required: true,
+      section: "spaceDetails",
+    },
     {
       key: "accessHours",
       label: "Access hours",
       type: "select",
+      section: "spaceDetails",
       options: [
         { value: "24x7", label: "24/7" },
         { value: "business", label: "Business hours only" },
@@ -321,6 +484,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "seatType",
       label: "Seat type",
       type: "select",
+      section: "workspaceDetails",
       options: [
         { value: "hot-desk", label: "Hot desk" },
         { value: "dedicated-desk", label: "Dedicated desk" },
@@ -332,6 +496,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "amenities",
       label: "Amenities",
       type: "text",
+      section: "workspaceDetails",
       placeholder: "24/7 access, meeting rooms, high-speed wifi…",
     },
   ],
@@ -340,6 +505,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "material",
       label: "Material",
       type: "select",
+      section: "itemDetails",
       options: [
         { value: "wood", label: "Wood" },
         { value: "metal", label: "Metal" },
@@ -352,25 +518,33 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "dimensions",
       label: "Dimensions",
       type: "text",
+      section: "itemDetails",
       placeholder: "e.g. 72in x 36in x 30in",
     },
     {
       key: "condition",
       label: "Condition",
       type: "select",
+      section: "itemDetails",
       options: [
         { value: "new", label: "New" },
         { value: "used", label: "Used" },
       ],
       required: true,
     },
-    { key: "brand", label: "Brand (optional)", type: "text" },
+    {
+      key: "brand",
+      label: "Brand (optional)",
+      type: "text",
+      section: "itemDetails",
+    },
   ],
   interiors: [
     {
       key: "serviceType",
       label: "Service type",
       type: "select",
+      section: "serviceDetails",
       options: [
         { value: "modular-kitchen", label: "Modular Kitchen" },
         { value: "wardrobe", label: "Wardrobe" },
@@ -388,11 +562,13 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       label: "Plot Area (sqft)",
       type: "number",
       required: true,
+      section: "plotDetails",
     },
     {
       key: "facing",
       label: "Facing",
       type: "select",
+      section: "plotDetails",
       options: [
         { value: "north", label: "North" },
         { value: "south", label: "South" },
@@ -408,6 +584,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "boundaryWall",
       label: "Boundary wall",
       type: "select",
+      section: "plotDetails",
       options: [
         { value: "yes", label: "Yes" },
         { value: "no", label: "No" },
@@ -417,15 +594,23 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "approvedBy",
       label: "Approved by",
       type: "text",
+      section: "plotDetails",
       placeholder: "e.g. BDA, Panchayat, DTCP",
     },
   ],
   commercial: [
-    { key: "sqft", label: "Area (sqft)", type: "number", required: true },
+    {
+      key: "sqft",
+      label: "Area (sqft)",
+      type: "number",
+      required: true,
+      section: "spaceDetails",
+    },
     {
       key: "purpose",
       label: "Purpose",
       type: "select",
+      section: "spaceDetails",
       options: [
         { value: "office", label: "Office" },
         { value: "retail", label: "Retail" },
@@ -440,12 +625,14 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "floor",
       label: "Floor",
       type: "text",
+      section: "spaceDetails",
       placeholder: "e.g. Ground, 2nd floor",
     },
     {
       key: "furnished",
       label: "Furnishing",
       type: "select",
+      section: "spaceDetails",
       options: [
         { value: "unfurnished", label: "Unfurnished" },
         { value: "semi", label: "Semi-furnished" },
