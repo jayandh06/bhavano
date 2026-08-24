@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import type { City, ListingDetailDto } from "@bhavano/types";
+import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
 import { daysUntil } from "@/lib/listingExpiry";
 import { Header } from "./Header";
@@ -45,6 +47,23 @@ export function ListingDetailView({
   currentSegments: ParsedSegments;
 }) {
   const attributeEntries = Object.entries(listing.attributes);
+  const fieldLabels = new Map(
+    CATEGORY_FIELD_CONFIG[listing.category].map((field) => [
+      field.key,
+      field.label,
+    ]),
+  );
+  const fieldSections = new Map(
+    CATEGORY_FIELD_CONFIG[listing.category].map((field) => [
+      field.key,
+      field.section,
+    ]),
+  );
+  const displayEntries = attributeEntries.filter(
+    ([key]) =>
+      fieldSections.get(key) !== "furnishing" ||
+      listing.attributes.furnished === "furnished",
+  );
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -74,7 +93,9 @@ export function ListingDetailView({
         />
 
         <div className="flex justify-between items-start gap-4 mb-2">
-          <div className="font-lora text-[28px] font-bold text-green">{listing.price}</div>
+          <div className="font-lora text-[28px] font-bold text-green">
+            {listing.price}
+          </div>
           {listing.priceQualifier && (
             <div className="text-[13px] font-bold text-muted bg-surface-alt px-3 py-[5px] rounded-md whitespace-nowrap">
               {listing.priceQualifier}
@@ -82,7 +103,9 @@ export function ListingDetailView({
           )}
         </div>
 
-        <h1 className="font-lora text-[22px] font-semibold m-0 mb-2">{listing.title}</h1>
+        <h1 className="font-lora text-[22px] font-semibold m-0 mb-2">
+          {listing.title}
+        </h1>
         <div className="text-sm text-muted mb-2">
           📍 {listing.area}, {listing.cityName}
         </div>
@@ -106,35 +129,62 @@ export function ListingDetailView({
         )}
         <div className="text-xs text-muted mb-4 flex gap-3.5">
           <span>👁 {listing.viewCount} views</span>
-          <span>{listing.isExpired ? "Expired" : `Expires in ${daysUntil(listing.expiresAt)} days`}</span>
+          <span>
+            {listing.isExpired
+              ? "Expired"
+              : `Expires in ${daysUntil(listing.expiresAt)} days`}
+          </span>
         </div>
 
         <div className="flex gap-4 flex-wrap mb-6">
           {listing.specs.map((spec) => (
-            <span key={spec} className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md">
+            <span
+              key={spec}
+              className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md"
+            >
               {spec}
             </span>
           ))}
         </div>
 
-        {attributeEntries.length > 0 && (
+        {displayEntries.length > 0 && (
           <div className="border border-border rounded-xl p-5 mb-6 bg-surface">
-            <div className="font-bold text-sm mb-3">Details</div>
+            <div className="font-bold text-sm mb-3">Property details</div>
             <div className="grid [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))] gap-2.5">
-              {attributeEntries.map(([key, value]) => (
-                <div key={key} className="text-[13px] text-text-soft">
-                  <span className="capitalize font-semibold">{key}</span>: {String(value)}
-                </div>
+              {displayEntries.map(([key, value], index) => (
+                <Fragment key={key}>
+                  {fieldSections.get(key) &&
+                    (index === 0 ||
+                      fieldSections.get(displayEntries[index - 1][0]) !==
+                        fieldSections.get(key)) && (
+                      <div className="col-span-full font-bold text-text mt-2 mb-1">
+                        {fieldSections.get(key) === "amenities"
+                          ? "Amenities"
+                          : "Furnishing"}
+                      </div>
+                    )}
+                  <div className="text-[13px] text-text-soft">
+                    <span className="font-semibold">
+                      {fieldLabels.get(key) ??
+                        (key === "sqft" ? "Area (sqft)" : key)}
+                    </span>
+                    : {formatAttributeValue(value)}
+                  </div>
+                </Fragment>
               ))}
             </div>
           </div>
         )}
 
         {listing.isExpired ? (
-          <p className="text-[13px] text-muted">This ad has expired and is no longer accepting responses.</p>
+          <p className="text-[13px] text-muted">
+            This ad has expired and is no longer accepting responses.
+          </p>
         ) : (
           <>
-            <span className="text-xs text-muted block mb-3">Ads shown without login — sign in only to respond</span>
+            <span className="text-xs text-muted block mb-3">
+              Ads shown without login — sign in only to respond
+            </span>
             <ListingDetailActions
               listingId={listing.id}
               initialIsFavourited={listing.isFavourited}
@@ -145,4 +195,11 @@ export function ListingDetailView({
       </div>
     </div>
   );
+}
+
+function formatAttributeValue(value: unknown): string {
+  if (Array.isArray(value)) return value.join(", ");
+  if (value === "yes") return "Yes";
+  if (value === "no") return "No";
+  return String(value);
 }

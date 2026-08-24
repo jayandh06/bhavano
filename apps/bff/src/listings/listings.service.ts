@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
   AdminListingsPage,
@@ -27,13 +32,32 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
-import type { Area, City, Listing, ListingPhoto, ListingRenewal, ListingVideo } from '@prisma/client';
-import { PHOTO_VARIANTS, PhotoVariant, variantUrl } from '../uploads/photo-keys';
-import { videoPosterKey, videoPosterUrl, videoTranscodedKey, videoUrl } from '../uploads/video-keys';
+import type {
+  Area,
+  City,
+  Listing,
+  ListingPhoto,
+  ListingRenewal,
+  ListingVideo,
+} from '@prisma/client';
+import {
+  PHOTO_VARIANTS,
+  PhotoVariant,
+  variantUrl,
+} from '../uploads/photo-keys';
+import {
+  videoPosterKey,
+  videoPosterUrl,
+  videoTranscodedKey,
+  videoUrl,
+} from '../uploads/video-keys';
 import { R2StorageService } from '../storage/r2-storage.service';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
-import { AdminListingSort, ListAdminListingsDto } from '../admin/dto/list-admin-listings.dto';
+import {
+  AdminListingSort,
+  ListAdminListingsDto,
+} from '../admin/dto/list-admin-listings.dto';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { LocationsService } from '../locations/locations.service';
 import { ListingSlotsService } from '../listing-slots/listing-slots.service';
@@ -44,12 +68,23 @@ const DEFAULT_LISTING_DURATION_DAYS = 30;
 
 /** Property types nested under each of the Buy / Rent & Lease browsing tabs — nobody
  * buys/sells Storage or Coworking, so those only appear under Rent & Lease. */
-const PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> = {
-  buy: ['house', 'apartment', 'villa', 'plot', 'commercial'],
-  rentLease: ['house', 'apartment', 'villa', 'storage', 'coworking', 'commercial'],
-};
+const PROPERTY_TYPES_BY_TAB: Record<'buy' | 'rentLease', PropertyTypeFilter[]> =
+  {
+    buy: ['house', 'apartment', 'villa', 'plot', 'commercial'],
+    rentLease: [
+      'house',
+      'apartment',
+      'villa',
+      'storage',
+      'coworking',
+      'commercial',
+    ],
+  };
 
-function buildHomeCategoryWhere(tab: HomeCategoryFilter | undefined, propertyType?: PropertyTypeFilter): Prisma.ListingWhereInput {
+function buildHomeCategoryWhere(
+  tab: HomeCategoryFilter | undefined,
+  propertyType?: PropertyTypeFilter,
+): Prisma.ListingWhereInput {
   // No tab and no raw category/transactionType bypass (checked by the caller before reaching
   // here) means a genuinely unfiltered request — the SEO city-root page, which has no
   // narrower grouping to fall back to.
@@ -58,18 +93,28 @@ function buildHomeCategoryWhere(tab: HomeCategoryFilter | undefined, propertyTyp
   if (tab === 'furniture') return { category: 'furniture' };
   if (tab === 'interiors') return { category: 'interiors' };
 
-  const transactionTypes: TransactionType[] = tab === 'buy' ? ['buy', 'sell'] : ['rent', 'lease'];
+  const transactionTypes: TransactionType[] =
+    tab === 'buy' ? ['buy', 'sell'] : ['rent', 'lease'];
   const allowedCategories = PROPERTY_TYPES_BY_TAB[tab];
-  const categories = propertyType && allowedCategories.includes(propertyType) ? [propertyType] : allowedCategories;
+  const categories =
+    propertyType && allowedCategories.includes(propertyType)
+      ? [propertyType]
+      : allowedCategories;
 
-  return { transactionType: { in: transactionTypes }, category: { in: categories } };
+  return {
+    transactionType: { in: transactionTypes },
+    category: { in: categories },
+  };
 }
 
 /** Every browse page's "Sort By" control — same 4 options for every category, all plain
  * top-level columns. `id: 'asc'` is a tie-breaker in every entry (not just the default), for the
  * same reason it's needed on the default: without it, offset-window pagination can silently shift
  * between requests when rows share an identical sort-key value. */
-const ORDER_BY: Record<NonNullable<ListListingsDto['sort']>, Prisma.ListingOrderByWithRelationInput[]> = {
+const ORDER_BY: Record<
+  NonNullable<ListListingsDto['sort']>,
+  Prisma.ListingOrderByWithRelationInput[]
+> = {
   newest: [{ createdAt: 'desc' }, { id: 'asc' }],
   price_asc: [{ price: 'asc' }, { id: 'asc' }],
   price_desc: [{ price: 'desc' }, { id: 'asc' }],
@@ -78,7 +123,10 @@ const ORDER_BY: Record<NonNullable<ListListingsDto['sort']>, Prisma.ListingOrder
 
 /** Same tie-breaker convention as ORDER_BY above, for the admin listings screen's own
  * (smaller) set of sort options. */
-const ADMIN_ORDER_BY: Record<AdminListingSort, Prisma.ListingOrderByWithRelationInput[]> = {
+const ADMIN_ORDER_BY: Record<
+  AdminListingSort,
+  Prisma.ListingOrderByWithRelationInput[]
+> = {
   createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
   updatedAt_desc: [{ updatedAt: 'desc' }, { id: 'asc' }],
@@ -111,7 +159,10 @@ export class ListingsService {
     private readonly listingSlotsService: ListingSlotsService,
   ) {}
 
-  async list(query: ListListingsDto, currentUserId?: string): Promise<ListingsPage> {
+  async list(
+    query: ListListingsDto,
+    currentUserId?: string,
+  ): Promise<ListingsPage> {
     const {
       homeCategory,
       propertyType,
@@ -140,7 +191,10 @@ export class ListingsService {
     // never sends these, so its behavior is unchanged.
     const categoryWhere: Prisma.ListingWhereInput =
       category || transactionType
-        ? { ...(category ? { category } : {}), ...(transactionType ? { transactionType } : {}) }
+        ? {
+            ...(category ? { category } : {}),
+            ...(transactionType ? { transactionType } : {}),
+          }
         : buildHomeCategoryWhere(homeCategory, propertyType);
 
     // Bedrooms/furnished live in the `attributes` JSONB column, so each needs its own
@@ -153,14 +207,28 @@ export class ListingsService {
     if (bedrooms && bedrooms.length > 0) {
       attributeFilters.push({
         OR: bedrooms.map((n) =>
-          n >= MAX_BEDROOMS ? { attributes: { path: ['bedrooms'], gte: n } } : { attributes: { path: ['bedrooms'], equals: n } },
+          n >= MAX_BEDROOMS
+            ? { attributes: { path: ['bedrooms'], gte: n } }
+            : { attributes: { path: ['bedrooms'], equals: n } },
         ),
       });
     }
-    if (furnished) attributeFilters.push({ attributes: { path: ['furnished'], equals: furnished } });
-    if (sharingType) attributeFilters.push({ attributes: { path: ['sharingType'], equals: sharingType } });
-    if (condition) attributeFilters.push({ attributes: { path: ['condition'], equals: condition } });
-    if (serviceType) attributeFilters.push({ attributes: { path: ['serviceType'], equals: serviceType } });
+    if (furnished)
+      attributeFilters.push({
+        attributes: { path: ['furnished'], equals: furnished },
+      });
+    if (sharingType)
+      attributeFilters.push({
+        attributes: { path: ['sharingType'], equals: sharingType },
+      });
+    if (condition)
+      attributeFilters.push({
+        attributes: { path: ['condition'], equals: condition },
+      });
+    if (serviceType)
+      attributeFilters.push({
+        attributes: { path: ['serviceType'], equals: serviceType },
+      });
 
     const where: Prisma.ListingWhereInput = {
       ...categoryWhere,
@@ -171,10 +239,19 @@ export class ListingsService {
       ...(ownerId ? { ownerId } : {}),
       // `areaIds` (the multi-select browse filter) wins over the single `areaId` (the SEO
       // locality path) when both are somehow present — they're never sent together in practice.
-      ...(areaIds && areaIds.length > 0 ? { areaId: { in: areaIds } } : areaId ? { areaId } : {}),
+      ...(areaIds && areaIds.length > 0
+        ? { areaId: { in: areaIds } }
+        : areaId
+          ? { areaId }
+          : {}),
       ...(q ? { title: { contains: q, mode: 'insensitive' } } : {}),
       ...(minPrice !== undefined || maxPrice !== undefined
-        ? { price: { ...(minPrice !== undefined ? { gte: minPrice } : {}), ...(maxPrice !== undefined ? { lte: maxPrice } : {}) } }
+        ? {
+            price: {
+              ...(minPrice !== undefined ? { gte: minPrice } : {}),
+              ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+            },
+          }
         : {}),
       ...(attributeFilters.length > 0 ? { AND: attributeFilters } : {}),
     };
@@ -213,7 +290,10 @@ export class ListingsService {
     ]);
 
     if (offset !== undefined) {
-      const favouritedIds = await this.getFavouritedIds(currentUserId, rows.map((r) => r.id));
+      const favouritedIds = await this.getFavouritedIds(
+        currentUserId,
+        rows.map((r) => r.id),
+      );
       return {
         items: rows.map((row) => this.toCardDto(row, favouritedIds)),
         nextCursor: null,
@@ -223,7 +303,10 @@ export class ListingsService {
 
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
-    const favouritedIds = await this.getFavouritedIds(currentUserId, page.map((r) => r.id));
+    const favouritedIds = await this.getFavouritedIds(
+      currentUserId,
+      page.map((r) => r.id),
+    );
 
     return {
       items: page.map((row) => this.toCardDto(row, favouritedIds)),
@@ -260,10 +343,20 @@ export class ListingsService {
       ...(areaId ? { areaId } : {}),
       ...(userId ? { ownerId: userId } : {}),
       ...(createdFrom || createdTo
-        ? { createdAt: { ...(createdFrom ? { gte: new Date(createdFrom) } : {}), ...(createdTo ? { lte: new Date(createdTo) } : {}) } }
+        ? {
+            createdAt: {
+              ...(createdFrom ? { gte: new Date(createdFrom) } : {}),
+              ...(createdTo ? { lte: new Date(createdTo) } : {}),
+            },
+          }
         : {}),
       ...(updatedFrom || updatedTo
-        ? { updatedAt: { ...(updatedFrom ? { gte: new Date(updatedFrom) } : {}), ...(updatedTo ? { lte: new Date(updatedTo) } : {}) } }
+        ? {
+            updatedAt: {
+              ...(updatedFrom ? { gte: new Date(updatedFrom) } : {}),
+              ...(updatedTo ? { lte: new Date(updatedTo) } : {}),
+            },
+          }
         : {}),
     };
 
@@ -289,7 +382,10 @@ export class ListingsService {
     };
   }
 
-  async setAdminReviewed(id: string, adminReviewed: boolean): Promise<ListingDetailDto> {
+  async setAdminReviewed(
+    id: string,
+    adminReviewed: boolean,
+  ): Promise<ListingDetailDto> {
     const listing = await this.prisma.listing.update({
       where: { id },
       data: { adminReviewed },
@@ -304,7 +400,11 @@ export class ListingsService {
   async flag(id: string): Promise<ListingDetailDto> {
     const listing = await this.prisma.listing.update({
       where: { id },
-      data: { moderationState: 'flagged', adminReviewed: true, moderatedAt: new Date() },
+      data: {
+        moderationState: 'flagged',
+        adminReviewed: true,
+        moderatedAt: new Date(),
+      },
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
     return this.toDetailDto(listing, undefined, true);
@@ -314,7 +414,11 @@ export class ListingsService {
   async approve(id: string): Promise<ListingDetailDto> {
     const listing = await this.prisma.listing.update({
       where: { id },
-      data: { moderationState: 'approved', adminReviewed: true, moderatedAt: new Date() },
+      data: {
+        moderationState: 'approved',
+        adminReviewed: true,
+        moderatedAt: new Date(),
+      },
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
     return this.toDetailDto(listing, undefined, true);
@@ -324,14 +428,18 @@ export class ListingsService {
    * owner and admins, same as if it didn't exist — otherwise anyone who already had the direct
    * link (e.g. shared before moderation caught it) could keep viewing the flagged photos/content
    * even though it's been pulled from browse/search. */
-  async findOne(id: string, currentUser?: { id: string; role: UserRole }): Promise<ListingDetailDto> {
+  async findOne(
+    id: string,
+    currentUser?: { id: string; role: UserRole },
+  ): Promise<ListingDetailDto> {
     const listing = await this.prisma.listing.findUnique({
       where: { id },
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
     if (!listing) throw new NotFoundException(`Listing ${id} not found`);
 
-    const isOwnerOrAdmin = currentUser?.id === listing.ownerId || currentUser?.role === 'admin';
+    const isOwnerOrAdmin =
+      currentUser?.id === listing.ownerId || currentUser?.role === 'admin';
     if (listing.moderationState === 'flagged' && !isOwnerOrAdmin) {
       throw new NotFoundException(`Listing ${id} not found`);
     }
@@ -340,17 +448,33 @@ export class ListingsService {
     return this.toDetailDto(listing, favouritedIds, isOwnerOrAdmin);
   }
 
-  async create(input: CreateListingInput, ownerId: string): Promise<ListingDetailDto> {
-    if (!input.photos.length) throw new BadRequestException('At least one photo is required');
+  async create(
+    input: CreateListingInput,
+    ownerId: string,
+  ): Promise<ListingDetailDto> {
+    if (!input.photos.length)
+      throw new BadRequestException('At least one photo is required');
     await this.listingSlotsService.assertCanPublish(ownerId);
-    this.assertRequiredAttributes(input.category, input.attributes ?? {});
-    this.assertValidPriceQualifier(input.category, input.transactionType, input.priceQualifier);
+    this.assertValidAttributes(
+      input.category,
+      input.transactionType,
+      input.attributes ?? {},
+    );
+    this.assertValidPriceQualifier(
+      input.category,
+      input.transactionType,
+      input.priceQualifier,
+    );
 
     const moderation = await this.moderationService.moderate(input);
     if (!moderation.ok) throw new BadRequestException(moderation.reason);
 
-    const areaId = input.areaId ?? (await this.locationsService.ensureArea(input.cityId, input.areaName)).id;
-    const expiresAt = new Date(Date.now() + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000);
+    const areaId =
+      input.areaId ??
+      (await this.locationsService.ensureArea(input.cityId, input.areaName)).id;
+    const expiresAt = new Date(
+      Date.now() + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000,
+    );
 
     const created = await this.prisma.listing.create({
       data: {
@@ -374,12 +498,21 @@ export class ListingsService {
     });
 
     await this.prisma.listingPhoto.createMany({
-      data: input.photos.map((p) => ({ listingId: created.id, photoNo: p.photoNo, hash: p.hash })),
+      data: input.photos.map((p) => ({
+        listingId: created.id,
+        photoNo: p.photoNo,
+        hash: p.hash,
+      })),
     });
     const variants = Object.keys(PHOTO_VARIANTS) as PhotoVariant[];
     await this.prisma.photoVariantJob.createMany({
       data: input.photos.flatMap((p) =>
-        variants.map((variant) => ({ listingId: created.id, photoNo: p.photoNo, ext: p.ext, variant })),
+        variants.map((variant) => ({
+          listingId: created.id,
+          photoNo: p.photoNo,
+          ext: p.ext,
+          variant,
+        })),
       ),
     });
 
@@ -387,7 +520,10 @@ export class ListingsService {
     // entitlement (agentProUntil) can lapse between the uploads and this call and video is
     // optional (unlike photos, required above). No listing exists yet at this point, so only an
     // active Agent Pro subscription can elevate the limit — a boost is impossible pre-creation.
-    const acceptedVideos = this.acceptVideosForOwner(ownerId, input.videos ?? []);
+    const acceptedVideos = this.acceptVideosForOwner(
+      ownerId,
+      input.videos ?? [],
+    );
     const videos = await acceptedVideos;
     if (videos.length > 0) {
       await this.prisma.listingVideo.createMany({
@@ -409,7 +545,9 @@ export class ListingsService {
 
     // Fire-and-forget — Bhavano Plus's early-access alerts should never add latency to (or
     // break) the poster's own submission.
-    this.savedSearchesService.notifyMatchingBuyers(created).catch(() => undefined);
+    this.savedSearchesService
+      .notifyMatchingBuyers(created)
+      .catch(() => undefined);
 
     return this.toDetailDto(listing, undefined, true);
   }
@@ -417,11 +555,19 @@ export class ListingsService {
   /** Trims a wizard-submitted videos array down to what the owner is currently entitled to
    * (agentPro-only, since no listing exists yet to check a boost against) — never throws, so a
    * lapsed entitlement between upload and submit degrades to fewer videos, not a rejected post. */
-  private async acceptVideosForOwner(ownerId: string, videos: CreatedVideoInput[]): Promise<CreatedVideoInput[]> {
+  private async acceptVideosForOwner(
+    ownerId: string,
+    videos: CreatedVideoInput[],
+  ): Promise<CreatedVideoInput[]> {
     if (videos.length === 0) return [];
-    const owner = await this.prisma.user.findUniqueOrThrow({ where: { id: ownerId }, select: { agentProUntil: true } });
+    const owner = await this.prisma.user.findUniqueOrThrow({
+      where: { id: ownerId },
+      select: { agentProUntil: true },
+    });
     const entitlement = resolveVideoEntitlement(owner);
-    return videos.filter((v) => v.durationSec <= entitlement.maxDurationSec).slice(0, entitlement.maxVideos);
+    return videos
+      .filter((v) => v.durationSec <= entitlement.maxDurationSec)
+      .slice(0, entitlement.maxVideos);
   }
 
   /** Adds a video to an already-existing listing — the one place a seller can attach media to a
@@ -430,15 +576,23 @@ export class ListingsService {
    * exists. `videoNo` is server-computed (existing max + 1); a P2002 unique-constraint retry
    * covers the one realistic race (two concurrent adds from a double-click), no transaction
    * needed. See docs/plans/listing-video-uploads.md. */
-  async addVideo(listingId: string, ownerId: string, input: CreatedVideoInput): Promise<ListingDetailDto> {
+  async addVideo(
+    listingId: string,
+    ownerId: string,
+    input: CreatedVideoInput,
+  ): Promise<ListingDetailDto> {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       include: { listingVideos: true },
     });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
-    if (listing.ownerId !== ownerId) throw new ForbiddenException("You don't own this listing");
+    if (listing.ownerId !== ownerId)
+      throw new ForbiddenException("You don't own this listing");
 
-    const owner = await this.prisma.user.findUniqueOrThrow({ where: { id: ownerId }, select: { agentProUntil: true } });
+    const owner = await this.prisma.user.findUniqueOrThrow({
+      where: { id: ownerId },
+      select: { agentProUntil: true },
+    });
     const entitlement = resolveVideoEntitlement(owner, listing);
     if (listing.listingVideos.length >= entitlement.maxVideos) {
       throw new BadRequestException(
@@ -448,10 +602,13 @@ export class ListingsService {
       );
     }
     if (input.durationSec > entitlement.maxDurationSec) {
-      throw new BadRequestException(`This video is longer than the ${entitlement.maxDurationSec}s limit for this listing`);
+      throw new BadRequestException(
+        `This video is longer than the ${entitlement.maxDurationSec}s limit for this listing`,
+      );
     }
 
-    const nextVideoNo = Math.max(0, ...listing.listingVideos.map((v) => v.videoNo)) + 1;
+    const nextVideoNo =
+      Math.max(0, ...listing.listingVideos.map((v) => v.videoNo)) + 1;
     try {
       await this.prisma.listingVideo.create({
         data: {
@@ -466,7 +623,10 @@ export class ListingsService {
     } catch (error) {
       // Concurrent add from a double-click landed first on the same videoNo — retry once with a
       // freshly-recomputed number rather than failing the request outright.
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
         await this.prisma.listingVideo.create({
           data: {
             listingId,
@@ -489,13 +649,24 @@ export class ListingsService {
    * boost/subscription must still be able to remove a video. Deletes the row immediately (that's
    * what the user sees); the R2 objects are best-effort fire-and-forget, harmless if it fails
    * since storage keys are opaque and write-once (see ListingVideo.storageId). */
-  async deleteVideo(listingId: string, ownerId: string, videoId: string): Promise<ListingDetailDto> {
-    const video = await this.prisma.listingVideo.findUnique({ where: { id: videoId } });
-    if (!video || video.listingId !== listingId) throw new NotFoundException(`Video ${videoId} not found`);
+  async deleteVideo(
+    listingId: string,
+    ownerId: string,
+    videoId: string,
+  ): Promise<ListingDetailDto> {
+    const video = await this.prisma.listingVideo.findUnique({
+      where: { id: videoId },
+    });
+    if (!video || video.listingId !== listingId)
+      throw new NotFoundException(`Video ${videoId} not found`);
 
-    const listing = await this.prisma.listing.findUnique({ where: { id: listingId }, select: { ownerId: true } });
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { ownerId: true },
+    });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
-    if (listing.ownerId !== ownerId) throw new ForbiddenException("You don't own this listing");
+    if (listing.ownerId !== ownerId)
+      throw new ForbiddenException("You don't own this listing");
 
     await this.prisma.listingVideo.delete({ where: { id: videoId } });
     Promise.all([
@@ -513,7 +684,9 @@ export class ListingsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return listings.map((listing) => this.toDetailDto(listing, undefined, true));
+    return listings.map((listing) =>
+      this.toDetailDto(listing, undefined, true),
+    );
   }
 
   async getMine(userId: string, id: string): Promise<ListingDetailDto> {
@@ -522,34 +695,57 @@ export class ListingsService {
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
     if (!listing) throw new NotFoundException(`Listing ${id} not found`);
-    if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+    if (listing.ownerId !== userId)
+      throw new ForbiddenException("You don't own this listing");
 
     return this.toDetailDto(listing, undefined, true);
   }
 
-  async update(id: string, userId: string, dto: UpdateListingDto): Promise<ListingDetailDto> {
+  async update(
+    id: string,
+    userId: string,
+    dto: UpdateListingDto,
+  ): Promise<ListingDetailDto> {
     const existing = await this.prisma.listing.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Listing ${id} not found`);
-    if (existing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+    if (existing.ownerId !== userId)
+      throw new ForbiddenException("You don't own this listing");
 
-    if (dto.attributes !== undefined) this.assertRequiredAttributes(existing.category, dto.attributes);
+    if (dto.attributes !== undefined)
+      this.assertValidAttributes(
+        existing.category,
+        existing.transactionType,
+        dto.attributes,
+      );
     if (dto.priceQualifier !== undefined) {
-      this.assertValidPriceQualifier(existing.category, existing.transactionType, dto.priceQualifier);
+      this.assertValidPriceQualifier(
+        existing.category,
+        existing.transactionType,
+        dto.priceQualifier,
+      );
     }
 
     const listing = await this.prisma.listing.update({
       where: { id },
       data: {
         ...(dto.price !== undefined ? { price: dto.price } : {}),
-        ...(dto.priceQualifier !== undefined ? { priceQualifier: dto.priceQualifier } : {}),
-        ...(dto.title !== undefined ? { title: dto.title, slug: slugify(dto.title) } : {}),
+        ...(dto.priceQualifier !== undefined
+          ? { priceQualifier: dto.priceQualifier }
+          : {}),
+        ...(dto.title !== undefined
+          ? { title: dto.title, slug: slugify(dto.title) }
+          : {}),
         ...(dto.specs !== undefined ? { specs: dto.specs } : {}),
-        ...(dto.attributes !== undefined ? { attributes: dto.attributes as Prisma.InputJsonValue } : {}),
+        ...(dto.attributes !== undefined
+          ? { attributes: dto.attributes as Prisma.InputJsonValue }
+          : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
         // An owner editing a flagged listing IS the resubmission — flip adminReviewed back
         // to false so it resurfaces in the admin queue as needing another look. Approving/
         // flagging again is still required to actually change moderationState.
-        ...(existing.moderationState === 'flagged' ? { adminReviewed: false } : {}),
+        ...(existing.moderationState === 'flagged'
+          ? { adminReviewed: false }
+          : {}),
       },
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
@@ -566,7 +762,8 @@ export class ListingsService {
   async renew(id: string, ownerId: string): Promise<ListingDetailDto> {
     const existing = await this.prisma.listing.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Listing ${id} not found`);
-    if (existing.ownerId !== ownerId) throw new ForbiddenException("You don't own this listing");
+    if (existing.ownerId !== ownerId)
+      throw new ForbiddenException("You don't own this listing");
     if (existing.status !== 'active') {
       throw new BadRequestException('Only an active listing can be renewed');
     }
@@ -574,14 +771,19 @@ export class ListingsService {
     await this.listingSlotsService.assertCanRenew(ownerId, id);
 
     const newExpiresAt = new Date(
-      Math.max(Date.now(), existing.expiresAt.getTime()) + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000,
+      Math.max(Date.now(), existing.expiresAt.getTime()) +
+        DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000,
     );
     // Transactional so the audit row can never diverge from the expiry it claims to record.
     // The create is sequenced first so the update's include picks it up — otherwise the returned
     // DTO's renewCount would lag one behind the renewal that just happened.
     const [, listing] = await this.prisma.$transaction([
       this.prisma.listingRenewal.create({
-        data: { listingId: id, previousExpiresAt: existing.expiresAt, newExpiresAt },
+        data: {
+          listingId: id,
+          previousExpiresAt: existing.expiresAt,
+          newExpiresAt,
+        },
       }),
       this.prisma.listing.update({
         where: { id },
@@ -600,10 +802,18 @@ export class ListingsService {
    * look at over ones that merely have the most postings. `cityId` narrows this to one city's own
    * popular combinations (still grouped by cityId regardless, so this is just an extra `where`
    * clause, not a different query shape) — omit it for the site-wide ranking. */
-  async getPopularSearches(limit = 6, cityId?: string): Promise<PopularSearchDto[]> {
+  async getPopularSearches(
+    limit = 6,
+    cityId?: string,
+  ): Promise<PopularSearchDto[]> {
     const groups = await this.prisma.listing.groupBy({
       by: ['category', 'transactionType', 'cityId'],
-      where: { status: 'active', moderationState: 'approved', expiresAt: { gt: new Date() }, ...(cityId ? { cityId } : {}) },
+      where: {
+        status: 'active',
+        moderationState: 'approved',
+        expiresAt: { gt: new Date() },
+        ...(cityId ? { cityId } : {}),
+      },
       _sum: { viewCount: true },
       _count: { _all: true },
       orderBy: { _sum: { viewCount: 'desc' } },
@@ -611,7 +821,9 @@ export class ListingsService {
     });
     if (groups.length === 0) return [];
 
-    const cities = await this.prisma.city.findMany({ where: { id: { in: [...new Set(groups.map((g) => g.cityId))] } } });
+    const cities = await this.prisma.city.findMany({
+      where: { id: { in: [...new Set(groups.map((g) => g.cityId))] } },
+    });
     const cityNameById = new Map(cities.map((c) => [c.id, c.name]));
 
     return groups
@@ -627,7 +839,11 @@ export class ListingsService {
   /** Minimal fields for every active, non-expired listing — feeds the web app's sitemap.xml. */
   async findAllForSitemap(): Promise<ListingSitemapEntry[]> {
     const listings = await this.prisma.listing.findMany({
-      where: { status: 'active', moderationState: 'approved', expiresAt: { gt: new Date() } },
+      where: {
+        status: 'active',
+        moderationState: 'approved',
+        expiresAt: { gt: new Date() },
+      },
       include: { city: true, area: true },
       orderBy: { updatedAt: 'desc' },
       take: 5000,
@@ -645,7 +861,10 @@ export class ListingsService {
   }
 
   /** Records a unique-viewer hit — a no-op if this viewerKey already viewed this listing. */
-  async recordView(listingId: string, viewerKey: string): Promise<{ viewCount: number }> {
+  async recordView(
+    listingId: string,
+    viewerKey: string,
+  ): Promise<{ viewCount: number }> {
     try {
       await this.prisma.listingView.create({ data: { listingId, viewerKey } });
       const listing = await this.prisma.listing.update({
@@ -655,15 +874,24 @@ export class ListingsService {
       });
       return { viewCount: listing.viewCount };
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        const listing = await this.prisma.listing.findUniqueOrThrow({ where: { id: listingId }, select: { viewCount: true } });
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const listing = await this.prisma.listing.findUniqueOrThrow({
+          where: { id: listingId },
+          select: { viewCount: true },
+        });
         return { viewCount: listing.viewCount };
       }
       throw error;
     }
   }
 
-  async toggleFavourite(listingId: string, userId: string): Promise<{ favourited: boolean; likeCount: number }> {
+  async toggleFavourite(
+    listingId: string,
+    userId: string,
+  ): Promise<{ favourited: boolean; likeCount: number }> {
     const existing = await this.prisma.favourite.findUnique({
       where: { listingId_userId: { listingId, userId } },
     });
@@ -682,7 +910,12 @@ export class ListingsService {
     const listing = await this.prisma.listing.update({
       where: { id: listingId },
       data: { likeCount: { increment: 1 } },
-      select: { likeCount: true, title: true, ownerId: true, boostedUntil: true },
+      select: {
+        likeCount: true,
+        title: true,
+        ownerId: true,
+        boostedUntil: true,
+      },
     });
 
     // Fire-and-forget — a slow/failed notification should never add latency to (or break)
@@ -691,32 +924,55 @@ export class ListingsService {
     // more engaged set where this is a meaningful signal instead of notification noise.
     const isBoosted = (listing.boostedUntil?.getTime() ?? 0) > Date.now();
     if (isBoosted && listing.ownerId !== userId) {
-      this.notifyOwnerOfLike(listing.ownerId, userId, listing.title).catch(() => undefined);
+      this.notifyOwnerOfLike(listing.ownerId, userId, listing.title).catch(
+        () => undefined,
+      );
     }
 
     return { favourited: true, likeCount: listing.likeCount };
   }
 
-  private async notifyOwnerOfLike(ownerId: string, likerId: string, listingTitle: string): Promise<void> {
+  private async notifyOwnerOfLike(
+    ownerId: string,
+    likerId: string,
+    listingTitle: string,
+  ): Promise<void> {
     const [owner, liker] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: ownerId }, select: { email: true, phone: true } }),
-      this.prisma.user.findUnique({ where: { id: likerId }, select: { name: true } }),
+      this.prisma.user.findUnique({
+        where: { id: ownerId },
+        select: { email: true, phone: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: likerId },
+        select: { name: true },
+      }),
     ]);
     if (!owner) return;
-    await this.notificationsService.notifyListingLiked(owner, listingTitle, liker?.name ?? 'Someone');
+    await this.notificationsService.notifyListingLiked(
+      owner,
+      listingTitle,
+      liker?.name ?? 'Someone',
+    );
   }
 
   async listFavourites(userId: string): Promise<ListingCardDto[]> {
     const favourites = await this.prisma.favourite.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: { listing: { include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE } } },
+      include: {
+        listing: {
+          include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+        },
+      },
     });
     const favouritedIds = new Set(favourites.map((f) => f.listingId));
     return favourites.map((f) => this.toCardDto(f.listing, favouritedIds));
   }
 
-  private async getFavouritedIds(userId: string | undefined, listingIds: string[]): Promise<Set<string>> {
+  private async getFavouritedIds(
+    userId: string | undefined,
+    listingIds: string[],
+  ): Promise<Set<string>> {
     if (!userId || listingIds.length === 0) return new Set();
     const rows = await this.prisma.favourite.findMany({
       where: { userId, listingId: { in: listingIds } },
@@ -725,16 +981,123 @@ export class ListingsService {
     return new Set(rows.map((r) => r.listingId));
   }
 
-  /** Category-specific "core" fields (bedrooms, sharing type, condition, etc.) marked
-   * `required` in CATEGORY_FIELD_CONFIG — the single source of truth also driving the
-   * posting wizard and edit form's UI. */
-  private assertRequiredAttributes(category: ListingCategory, attributes: Record<string, unknown>): void {
+  private assertValidAttributes(
+    category: ListingCategory,
+    transactionType: TransactionType,
+    attributes: Record<string, unknown>,
+  ): void {
     for (const field of CATEGORY_FIELD_CONFIG[category]) {
-      if (!field.required) continue;
       const value = attributes[field.key];
-      if (value === undefined || value === null || value === '') {
-        throw new BadRequestException(`${field.label} is required for this listing category`);
+      const appliesToTransaction =
+        !field.transactionTypes ||
+        field.transactionTypes.includes(transactionType);
+      const meetsDependency =
+        !field.dependsOn ||
+        attributes[field.dependsOn.key] === field.dependsOn.value;
+      if (!appliesToTransaction || !meetsDependency) {
+        if (value !== undefined)
+          throw new BadRequestException(`${field.label} is not applicable`);
+        continue;
       }
+
+      if (value !== undefined && value !== null && value !== '') {
+        if (field.type === 'number') {
+          const numberValue =
+            typeof value === 'number'
+              ? value
+              : typeof value === 'string' && value.trim() !== ''
+                ? Number(value)
+                : NaN;
+          if (
+            !Number.isInteger(numberValue) ||
+            numberValue < (field.min ?? 0)
+          ) {
+            throw new BadRequestException(
+              `${field.label} must be a whole number of at least ${field.min ?? 0}`,
+            );
+          }
+        } else if (field.type === 'multi-select') {
+          if (
+            !Array.isArray(value) ||
+            value.some((item) => typeof item !== 'string')
+          ) {
+            throw new BadRequestException(
+              `${field.label} must contain valid selections`,
+            );
+          }
+          const allowed = new Set(field.options?.map((option) => option.value));
+          if (value.some((item) => !allowed.has(item)))
+            throw new BadRequestException(
+              `Invalid ${field.label.toLowerCase()}`,
+            );
+        } else if (field.type === 'select') {
+          const allowed = field.options?.map((option) => option.value) ?? [];
+          if (typeof value !== 'string' || !allowed.includes(value))
+            throw new BadRequestException(
+              `Invalid ${field.label.toLowerCase()}`,
+            );
+        }
+      }
+
+      if (!field.required) continue;
+      const legacyValue =
+        field.key === 'carpetAreaSqft' ? attributes.sqft : undefined;
+      if (
+        (value === undefined || value === null || value === '') &&
+        (legacyValue === undefined ||
+          legacyValue === null ||
+          legacyValue === '')
+      ) {
+        throw new BadRequestException(
+          `${field.label} is required for this listing category`,
+        );
+      }
+    }
+
+    this.assertConditionalFee(
+      attributes,
+      'brokerageFeeApplicable',
+      'brokerageFee',
+      'Brokerage fee',
+    );
+    this.assertConditionalFee(
+      attributes,
+      'maintenanceFeeApplicable',
+      'monthlyMaintenanceFee',
+      'Monthly maintenance fee',
+    );
+  }
+
+  private assertConditionalFee(
+    attributes: Record<string, unknown>,
+    applicableKey: string,
+    amountKey: string,
+    label: string,
+  ): void {
+    const applicable = attributes[applicableKey];
+    const amount = attributes[amountKey];
+    if (
+      applicable !== undefined &&
+      applicable !== 'yes' &&
+      applicable !== 'no'
+    ) {
+      throw new BadRequestException(
+        `Invalid ${label.toLowerCase()} applicability`,
+      );
+    }
+    if (applicable === 'yes') {
+      const numericAmount =
+        typeof amount === 'number'
+          ? amount
+          : typeof amount === 'string' && amount.trim() !== ''
+            ? Number(amount)
+            : NaN;
+      if (!Number.isInteger(numericAmount) || numericAmount < 0)
+        throw new BadRequestException(`${label} amount is required`);
+    } else if (amount !== undefined && amount !== null && amount !== '') {
+      throw new BadRequestException(
+        `${label} amount requires applicability to be Yes`,
+      );
     }
   }
 
@@ -743,9 +1106,13 @@ export class ListingsService {
     transactionType: TransactionType,
     priceQualifier: string | undefined,
   ): void {
-    const validValues = getPriceQualifierOptions(category, transactionType).map((o) => o.value);
+    const validValues = getPriceQualifierOptions(category, transactionType).map(
+      (o) => o.value,
+    );
     if (!validValues.includes(priceQualifier ?? '')) {
-      throw new BadRequestException('Invalid price qualifier for this category/transaction type');
+      throw new BadRequestException(
+        'Invalid price qualifier for this category/transaction type',
+      );
     }
   }
 
@@ -770,16 +1137,18 @@ export class ListingsService {
     // doc comment in packages/types/src/videoLimits.ts).
     isOwnerOrAdmin = false,
   ): ListingDetailDto {
-    const videos = (isOwnerOrAdmin ? listing.listingVideos : listing.listingVideos.filter((v) => v.status === 'done')).map(
-      (v): ListingVideoDto => ({
-        id: v.id,
-        videoNo: v.videoNo,
-        url: videoUrl(this.cdnBase(), listing.id, v.storageId),
-        posterUrl: videoPosterUrl(this.cdnBase(), listing.id, v.storageId),
-        durationSec: v.durationSec,
-        status: v.status,
-      }),
-    );
+    const videos = (
+      isOwnerOrAdmin
+        ? listing.listingVideos
+        : listing.listingVideos.filter((v) => v.status === 'done')
+    ).map((v): ListingVideoDto => ({
+      id: v.id,
+      videoNo: v.videoNo,
+      url: videoUrl(this.cdnBase(), listing.id, v.storageId),
+      posterUrl: videoPosterUrl(this.cdnBase(), listing.id, v.storageId),
+      durationSec: v.durationSec,
+      status: v.status,
+    }));
 
     return {
       ...this.toCardDto(listing, favouritedIds),
@@ -792,9 +1161,13 @@ export class ListingsService {
       updatedAt: listing.updatedAt.toISOString(),
       expiresAt: listing.expiresAt.toISOString(),
       isExpired: listing.expiresAt.getTime() < Date.now(),
-      photosFull: listing.listingPhotos.map((p) => variantUrl(this.cdnBase(), listing.id, p.photoNo, 'full')),
+      photosFull: listing.listingPhotos.map((p) =>
+        variantUrl(this.cdnBase(), listing.id, p.photoNo, 'full'),
+      ),
       videos,
-      videoEntitlement: isOwnerOrAdmin ? resolveVideoEntitlement(listing.owner, listing) : undefined,
+      videoEntitlement: isOwnerOrAdmin
+        ? resolveVideoEntitlement(listing.owner, listing)
+        : undefined,
       renewCount: listing.listingRenewals.length,
       renewalHistory: isOwnerOrAdmin
         ? listing.listingRenewals.map((r) => ({
@@ -811,14 +1184,21 @@ export class ListingsService {
    * ~150m, or the area centroid if no pin was ever dropped at posting time. Computed here (not
    * on the client) so the seller's exact coordinates never round-trip to the browser at all, for
    * anyone. See docs/plans/google-maps-location-picker.md. */
-  private jitteredLocation(listing: Listing & { area: Area }): { lat?: number; lng?: number } {
+  private jitteredLocation(listing: Listing & { area: Area }): {
+    lat?: number;
+    lng?: number;
+  } {
     if (listing.lat == null || listing.lng == null) {
-      return { lat: listing.area.lat ?? undefined, lng: listing.area.lng ?? undefined };
+      return {
+        lat: listing.area.lat ?? undefined,
+        lng: listing.area.lng ?? undefined,
+      };
     }
 
     const JITTER_METERS = 150;
     const metersPerDegreeLat = 111_320;
-    const metersPerDegreeLng = metersPerDegreeLat * Math.cos((listing.lat * Math.PI) / 180);
+    const metersPerDegreeLng =
+      metersPerDegreeLat * Math.cos((listing.lat * Math.PI) / 180);
     const angle = Math.random() * 2 * Math.PI;
     const distance = Math.random() * JITTER_METERS;
 
@@ -829,7 +1209,12 @@ export class ListingsService {
   }
 
   private toCardDto(
-    listing: Listing & { city: City; area: Area; listingPhotos: ListingPhoto[]; listingVideos: ListingVideo[] },
+    listing: Listing & {
+      city: City;
+      area: Area;
+      listingPhotos: ListingPhoto[];
+      listingVideos: ListingVideo[];
+    },
     favouritedIds?: Set<string>,
   ): ListingCardDto {
     const placeholder = categoryImagePlaceholder[listing.category];
@@ -849,7 +1234,9 @@ export class ListingsService {
       specs: listing.specs,
       imgLabel: hasPhoto ? '' : placeholder.imgLabel,
       imgColors: [placeholder.imgA, placeholder.imgB],
-      photos: listing.listingPhotos.map((p) => variantUrl(this.cdnBase(), listing.id, p.photoNo, 'preview')),
+      photos: listing.listingPhotos.map((p) =>
+        variantUrl(this.cdnBase(), listing.id, p.photoNo, 'preview'),
+      ),
       viewCount: listing.viewCount,
       likeCount: listing.likeCount,
       isFavourited: favouritedIds?.has(listing.id) ?? false,

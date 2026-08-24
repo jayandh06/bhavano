@@ -11,12 +11,31 @@ function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
 }
 
-function attributesToStrings(attributes: Record<string, unknown>): Record<string, string> {
-  const result: Record<string, string> = {};
+function attributesToStrings(
+  attributes: Record<string, unknown>,
+): Record<string, string | string[]> {
+  const result: Record<string, string | string[]> = {};
   for (const [key, value] of Object.entries(attributes)) {
-    result[key] = value === null || value === undefined ? "" : String(value);
+    result[key] = Array.isArray(value)
+      ? value.map(String)
+      : value === null || value === undefined
+        ? ""
+        : String(value);
   }
   return result;
+}
+
+function fieldIsVisible(
+  field: (typeof CATEGORY_FIELD_CONFIG)[keyof typeof CATEGORY_FIELD_CONFIG][number],
+  transactionType: ListingDetailDto["transactionType"],
+  attributes: Record<string, string | string[]>,
+): boolean {
+  return (
+    (!field.transactionTypes ||
+      field.transactionTypes.includes(transactionType)) &&
+    (!field.dependsOn ||
+      attributes[field.dependsOn.key] === field.dependsOn.value)
+  );
 }
 
 const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
@@ -29,25 +48,51 @@ const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
 export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
   const router = useRouter();
   const [title, setTitle] = useState(listing.title);
-  const [price, setPrice] = useState(String(listing.price).replace(/[^0-9]/g, ""));
+  const [price, setPrice] = useState(
+    String(listing.price).replace(/[^0-9]/g, ""),
+  );
   const [priceQualifier, setPriceQualifier] = useState(listing.priceQualifier);
   const [specs, setSpecs] = useState(listing.specs.join(", "));
-  const [attributes, setAttributes] = useState<Record<string, string>>(attributesToStrings(listing.attributes));
+  const [attributes, setAttributes] = useState<
+    Record<string, string | string[]>
+  >(attributesToStrings(listing.attributes));
   const [status, setStatus] = useState<ListingStatus>(listing.status);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const fieldConfig = CATEGORY_FIELD_CONFIG[listing.category];
+  const visibleFields = fieldConfig.filter((field) =>
+    fieldIsVisible(field, listing.transactionType, attributes),
+  );
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
-  const requiredAttributesFilled = fieldConfig.every((field) => !field.required || (attributes[field.key] ?? "").length > 0);
-  const valid = priceValue > 0 && title.trim().length > 0 && requiredAttributesFilled;
+  const requiredAttributesFilled = fieldConfig.every((field) => {
+    if (!field.required) return true;
+    const value = attributes[field.key];
+    return Array.isArray(value) ? value.length > 0 : (value ?? "").length > 0;
+  });
+  const valid =
+    priceValue > 0 && title.trim().length > 0 && requiredAttributesFilled;
 
   // The stored value may not appear in today's fixed option list (legacy free-text data from
   // before this dropdown existed) — keep it selectable rather than silently swapping it out.
-  const priceQualifierOptions = getPriceQualifierOptions(listing.category, listing.transactionType);
-  const priceQualifierChoices = priceQualifierOptions.some((opt) => opt.value === priceQualifier)
+  const priceQualifierOptions = getPriceQualifierOptions(
+    listing.category,
+    listing.transactionType,
+  );
+  const priceQualifierChoices = priceQualifierOptions.some(
+    (opt) => opt.value === priceQualifier,
+  )
     ? priceQualifierOptions
-    : [{ value: priceQualifier, label: priceQualifier ? `"${priceQualifier}" (current)` : "(none)" }, ...priceQualifierOptions];
+    : [
+        {
+          value: priceQualifier,
+          label: priceQualifier ? `"${priceQualifier}" (current)` : "(none)",
+        },
+        ...priceQualifierOptions,
+      ];
 
   async function onSave() {
     setSaving(true);
@@ -83,7 +128,11 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
 
       <div>
         <label className={labelClass}>Title *</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className={inputClass}
+        />
       </div>
 
       <div className="flex gap-3">
@@ -99,7 +148,11 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
         </div>
         <div className="flex-1">
           <label className={labelClass}>Price qualifier *</label>
-          <select value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} className={inputClass}>
+          <select
+            value={priceQualifier}
+            onChange={(e) => setPriceQualifier(e.target.value)}
+            className={inputClass}
+          >
             {priceQualifierChoices.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -111,21 +164,78 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
 
       <div>
         <label className={labelClass}>Specs (comma-separated)</label>
-        <input value={specs} onChange={(e) => setSpecs(e.target.value)} className={inputClass} />
+        <input
+          value={specs}
+          onChange={(e) => setSpecs(e.target.value)}
+          className={inputClass}
+        />
       </div>
 
       {fieldConfig.length > 0 && (
         <div className="border-t border-border pt-4 flex flex-col gap-4">
-          {fieldConfig.map((field) => (
+          {visibleFields.map((field, index) => (
             <div key={field.key}>
+              {field.section &&
+                (index === 0 ||
+                  visibleFields[index - 1].section !== field.section) && (
+                  <div className="text-[13px] font-bold text-text mt-2">
+                    {field.section === "amenities"
+                      ? "Amenities"
+                      : "Furnishing details"}
+                  </div>
+                )}
               <label className={labelClass}>
                 {field.label}
                 {field.required ? " *" : ""}
               </label>
-              {field.type === "select" ? (
+              {field.type === "multi-select" ? (
                 <select
-                  value={attributes[field.key] ?? ""}
-                  onChange={(e) => setAttributes((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  multiple
+                  value={
+                    Array.isArray(attributes[field.key])
+                      ? attributes[field.key]
+                      : []
+                  }
+                  onChange={(e) =>
+                    setAttributes((prev) => ({
+                      ...prev,
+                      [field.key]: Array.from(
+                        e.target.selectedOptions,
+                        (option) => option.value,
+                      ),
+                    }))
+                  }
+                  className={inputClass}
+                >
+                  {field.options?.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : field.type === "select" ? (
+                <select
+                  value={
+                    typeof attributes[field.key] === "string"
+                      ? attributes[field.key]
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setAttributes((prev) => {
+                      const next = { ...prev, [field.key]: e.target.value };
+                      if (
+                        field.key === "furnished" &&
+                        e.target.value !== "furnished"
+                      ) {
+                        for (const furnishingField of fieldConfig.filter(
+                          (item) => item.section === "furnishing",
+                        )) {
+                          delete next[furnishingField.key];
+                        }
+                      }
+                      return next;
+                    })
+                  }
                   className={inputClass}
                 >
                   <option value="" disabled>
@@ -140,12 +250,19 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
               ) : (
                 <input
                   type={field.type === "number" ? "number" : "text"}
-                  min={field.type === "number" ? 0 : undefined}
-                  value={attributes[field.key] ?? ""}
+                  min={field.type === "number" ? (field.min ?? 0) : undefined}
+                  value={
+                    typeof attributes[field.key] === "string"
+                      ? attributes[field.key]
+                      : ""
+                  }
                   onChange={(e) =>
                     setAttributes((prev) => ({
                       ...prev,
-                      [field.key]: field.type === "number" ? sanitizeNonNegative(e.target.value) : e.target.value,
+                      [field.key]:
+                        field.type === "number"
+                          ? sanitizeNonNegative(e.target.value)
+                          : e.target.value,
                     }))
                   }
                   placeholder={field.placeholder}
@@ -159,7 +276,11 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
 
       <div>
         <label className={labelClass}>Status</label>
-        <select value={status} onChange={(e) => setStatus(e.target.value as ListingStatus)} className={inputClass}>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as ListingStatus)}
+          className={inputClass}
+        >
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -169,7 +290,11 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
       </div>
 
       {message && (
-        <p className={`text-[13px] m-0 ${message.type === "success" ? "text-green" : "text-[#b3413a]"}`}>{message.text}</p>
+        <p
+          className={`text-[13px] m-0 ${message.type === "success" ? "text-green" : "text-[#b3413a]"}`}
+        >
+          {message.text}
+        </p>
       )}
 
       <button
@@ -183,10 +308,14 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
   );
 }
 
-const labelClass = "block text-xs font-bold text-muted mb-1.5 uppercase tracking-[0.02em]";
+const labelClass =
+  "block text-xs font-bold text-muted mb-1.5 uppercase tracking-[0.02em]";
 
-const inputClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
+const inputClass =
+  "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
 
-const readOnlyClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm bg-surface-alt text-text-soft";
+const readOnlyClass =
+  "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm bg-surface-alt text-text-soft";
 
-const saveButtonClass = "bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer";
+const saveButtonClass =
+  "bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer";

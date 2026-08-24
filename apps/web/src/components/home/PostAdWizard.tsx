@@ -2,7 +2,14 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import type { Area, City, ListingCategory, ListingDetailDto, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
+import type {
+  Area,
+  City,
+  ListingCategory,
+  ListingDetailDto,
+  ReverseGeocodeResultDto,
+  TransactionType,
+} from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
@@ -15,7 +22,12 @@ import { searchAreasAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { buildListingPath } from "@/lib/listingPath";
-import { fieldClass, labelClass, primaryButtonClass, secondaryButtonClass } from "@/lib/formStyles";
+import {
+  fieldClass,
+  labelClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "@/lib/formStyles";
 import { uploadVideoDirect } from "@/lib/videoUpload";
 import { BoostButton } from "./BoostButton";
 import { LocationMapPicker } from "./LocationMapPicker";
@@ -27,8 +39,19 @@ function sanitizeNonNegative(value: string): string {
 
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
-const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
+const ALLOWED_PHOTO_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+const ALLOWED_VIDEO_TYPES = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/3gpp",
+  "video/x-matroska",
+];
 
 interface SelectedPhoto {
   file: File;
@@ -54,7 +77,11 @@ function readVideoDuration(file: File): Promise<number | undefined> {
     el.preload = "metadata";
     el.onloadedmetadata = () => {
       URL.revokeObjectURL(url);
-      resolve(Number.isFinite(el.duration) && el.duration > 0 ? el.duration : undefined);
+      resolve(
+        Number.isFinite(el.duration) && el.duration > 0
+          ? el.duration
+          : undefined,
+      );
     };
     el.onerror = () => {
       URL.revokeObjectURL(url);
@@ -86,6 +113,19 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 type Step = "category" | "transactionType" | "details" | "review" | "success";
 
+function fieldIsVisible(
+  field: (typeof CATEGORY_FIELD_CONFIG)[keyof typeof CATEGORY_FIELD_CONFIG][number],
+  transactionType: TransactionType,
+  attributes: Record<string, string | string[]>,
+): boolean {
+  return (
+    (!field.transactionTypes ||
+      field.transactionTypes.includes(transactionType)) &&
+    (!field.dependsOn ||
+      attributes[field.dependsOn.key] === field.dependsOn.value)
+  );
+}
+
 function RequiredLabel({ text }: { text: string }) {
   return (
     <label className={labelClass}>
@@ -113,7 +153,8 @@ export function PostAdWizard({
   const [listingId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("category");
   const [category, setCategory] = useState<ListingCategory | null>(null);
-  const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
+  const [transactionType, setTransactionType] =
+    useState<TransactionType | null>(null);
 
   const [price, setPrice] = useState("");
   const [priceQualifier, setPriceQualifier] = useState("");
@@ -121,7 +162,9 @@ export function PostAdWizard({
   // Grows when the map picker's reverse-geocode resolves to a just-created city (not in this
   // initially-fetched list) — see `onPinChange` below.
   const [cities, setCities] = useState<City[]>(initialCities);
-  const [cityId, setCityId] = useState(defaultCityId ?? initialCities[0]?.id ?? "");
+  const [cityId, setCityId] = useState(
+    defaultCityId ?? initialCities[0]?.id ?? "",
+  );
   const [areaQuery, setAreaQuery] = useState("");
   const [areaId, setAreaId] = useState<string | null>(null);
   const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
@@ -130,14 +173,18 @@ export function PostAdWizard({
   const areaFieldRef = useRef<HTMLDivElement | null>(null);
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [specs, setSpecs] = useState("");
-  const [attributes, setAttributes] = useState<Record<string, string>>({});
+  const [attributes, setAttributes] = useState<
+    Record<string, string | string[]>
+  >({});
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [videos, setVideos] = useState<SelectedVideo[]>([]);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slotCap, setSlotCap] = useState<ListingSlotCapErrorBody | null>(null);
-  const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(null);
+  const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(
+    null,
+  );
   // Informational, non-blocking note about the map pin's reverse-geocode result — either "we
   // added this city for you" or "couldn't confidently place this pin" (see `onPinChange`).
   const [pinLookupNote, setPinLookupNote] = useState<string | null>(null);
@@ -150,7 +197,9 @@ export function PostAdWizard({
     const postable = POSTABLE_TRANSACTION_TYPES[next];
     if (postable.length === 1) {
       setTransactionType(postable[0]);
-      setPriceQualifier(getPriceQualifierOptions(next, postable[0])[0]?.value ?? "");
+      setPriceQualifier(
+        getPriceQualifierOptions(next, postable[0])[0]?.value ?? "",
+      );
       setStep("details");
     } else {
       setTransactionType(null);
@@ -161,7 +210,11 @@ export function PostAdWizard({
 
   function selectTransactionType(next: TransactionType) {
     setTransactionType(next);
-    setPriceQualifier(category ? getPriceQualifierOptions(category, next)[0]?.value ?? "" : "");
+    setPriceQualifier(
+      category
+        ? (getPriceQualifierOptions(category, next)[0]?.value ?? "")
+        : "",
+    );
     setStep("details");
   }
 
@@ -172,13 +225,17 @@ export function PostAdWizard({
     const room = MAX_PHOTOS - photos.length;
     const candidates = Array.from(files).slice(0, room);
     if (files.length > room) {
-      setError(`Up to ${MAX_PHOTOS} photos allowed — only added the first ${room}.`);
+      setError(
+        `Up to ${MAX_PHOTOS} photos allowed — only added the first ${room}.`,
+      );
     }
 
     const accepted: SelectedPhoto[] = [];
     for (const file of candidates) {
       if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
-        setError(`"${file.name}" isn't a supported format — use JPEG, PNG, WebP, or GIF.`);
+        setError(
+          `"${file.name}" isn't a supported format — use JPEG, PNG, WebP, or GIF.`,
+        );
         continue;
       }
       if (file.size > MAX_PHOTO_SIZE_BYTES) {
@@ -219,13 +276,18 @@ export function PostAdWizard({
         continue;
       }
       if (file.size > MAX_VIDEO_BYTES) {
-        setVideoError(`"${file.name}" is over the ${Math.round(MAX_VIDEO_BYTES / (1024 * 1024))}MB limit.`);
+        setVideoError(
+          `"${file.name}" is over the ${Math.round(MAX_VIDEO_BYTES / (1024 * 1024))}MB limit.`,
+        );
         continue;
       }
       // A courtesy check only — the server verifies actual duration via ffprobe regardless (see
       // readVideoDuration's doc comment for why an indeterminate result doesn't block the file).
       const durationSec = await readVideoDuration(file);
-      if (durationSec !== undefined && durationSec > videoEntitlement.maxDurationSec) {
+      if (
+        durationSec !== undefined &&
+        durationSec > videoEntitlement.maxDurationSec
+      ) {
         setVideoError(
           videoEntitlement.canUpgradeByBoosting
             ? `"${file.name}" is longer than ${videoEntitlement.maxDurationSec}s. Boost this listing after posting to add longer videos.`
@@ -233,7 +295,10 @@ export function PostAdWizard({
         );
         continue;
       }
-      setVideos((prev) => [...prev, { file, previewUrl: URL.createObjectURL(file), durationSec }]);
+      setVideos((prev) => [
+        ...prev,
+        { file, previewUrl: URL.createObjectURL(file), durationSec },
+      ]);
     }
   }
 
@@ -278,7 +343,10 @@ export function PostAdWizard({
    * no existing match gets created on the fly (see LocationsService.ensureCity/ensureArea in the
    * BFF) rather than silently left unresolved — this list only needs to grow to *display* one
    * that's not in the initially-fetched set, since it already exists in the DB by this point. */
-  function onPinChange(nextPin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) {
+  function onPinChange(
+    nextPin: { lat: number; lng: number },
+    suggestion: ReverseGeocodeResultDto | null,
+  ) {
     setPin(nextPin);
     if (!suggestion) return;
 
@@ -300,10 +368,14 @@ export function PostAdWizard({
       );
       onCityChange(suggestion.cityId);
       setPinLookupNote(
-        suggestion.isNewCity ? `We've added ${suggestion.cityName ?? "this city"} as a new city on Bhavano!` : null,
+        suggestion.isNewCity
+          ? `We've added ${suggestion.cityName ?? "this city"} as a new city on Bhavano!`
+          : null,
       );
     } else {
-      setPinLookupNote("Couldn't confidently match a city here — please pick City/Area manually below.");
+      setPinLookupNote(
+        "Couldn't confidently match a city here — please pick City/Area manually below.",
+      );
     }
 
     if (suggestion.areaId && suggestion.resolvedLocality) {
@@ -314,8 +386,19 @@ export function PostAdWizard({
   }
 
   const requiredAttributesFilled = category
-    ? CATEGORY_FIELD_CONFIG[category].every((field) => !field.required || (attributes[field.key] ?? "").length > 0)
+    ? CATEGORY_FIELD_CONFIG[category].every((field) => {
+        if (!field.required) return true;
+        const value = attributes[field.key];
+        return Array.isArray(value)
+          ? value.length > 0
+          : (value ?? "").length > 0;
+      })
     : true;
+  const visibleFields = category
+    ? CATEGORY_FIELD_CONFIG[category].filter((field) =>
+        fieldIsVisible(field, transactionType!, attributes),
+      )
+    : [];
 
   const detailsValid =
     Number(price) > 0 &&
@@ -343,19 +426,34 @@ export function PostAdWizard({
         setPending(false);
         return;
       }
-      uploadedPhotos.push({ photoNo, hash: uploadResult.hash, ext: uploadResult.ext });
+      uploadedPhotos.push({
+        photoNo,
+        hash: uploadResult.hash,
+        ext: uploadResult.ext,
+      });
     }
 
     // Video never blocks the post — if a single upload fails, drop it and continue rather than
     // aborting the whole submission the way a failed photo upload does (photos are required,
     // video is additive). ListingsService.create() also re-validates and silently trims against
     // the caller's current entitlement, so this array is best-effort even before it gets there.
-    const uploadedVideos: { storageId: string; ext: string; durationSec: number; sizeBytes: number }[] = [];
+    const uploadedVideos: {
+      storageId: string;
+      ext: string;
+      durationSec: number;
+      sizeBytes: number;
+    }[] = [];
     for (const video of videos) {
       try {
-        uploadedVideos.push(await uploadVideoDirect(video.file, listingId, accessToken));
+        uploadedVideos.push(
+          await uploadVideoDirect(video.file, listingId, accessToken),
+        );
       } catch (uploadError) {
-        setError(uploadError instanceof Error ? uploadError.message : "Failed to upload a video");
+        setError(
+          uploadError instanceof Error
+            ? uploadError.message
+            : "Failed to upload a video",
+        );
       }
     }
 
@@ -398,19 +496,35 @@ export function PostAdWizard({
     <div>
       {step !== "success" && (
         <div className="flex gap-1.5 mb-6 text-xs font-bold text-muted">
-          {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
-            <span key={s} className={step === s ? "text-green" : "text-muted"}>
-              {i > 0 && " → "}
-              {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Review"}
-            </span>
-          ))}
+          {(["category", "transactionType", "details", "review"] as Step[]).map(
+            (s, i) => (
+              <span
+                key={s}
+                className={step === s ? "text-green" : "text-muted"}
+              >
+                {i > 0 && " → "}
+                {i + 1}.{" "}
+                {s === "category"
+                  ? "Category"
+                  : s === "transactionType"
+                    ? "Transaction"
+                    : s === "details"
+                      ? "Details"
+                      : "Review"}
+              </span>
+            ),
+          )}
         </div>
       )}
 
       {step === "category" && (
         <div className="grid grid-cols-3 gap-2.5">
           {CATEGORIES.map((c) => (
-            <button key={c.value} onClick={() => selectCategory(c.value)} className={optionButtonClass(category === c.value)}>
+            <button
+              key={c.value}
+              onClick={() => selectCategory(c.value)}
+              className={optionButtonClass(category === c.value)}
+            >
               <span className="text-lg">{c.icon}</span>
               {c.label}
             </button>
@@ -422,12 +536,19 @@ export function PostAdWizard({
         <div className="flex flex-col gap-2.5">
           <div className="grid grid-cols-3 gap-2.5">
             {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
-              <button key={t} onClick={() => selectTransactionType(t)} className={optionButtonClass(transactionType === t)}>
+              <button
+                key={t}
+                onClick={() => selectTransactionType(t)}
+                className={optionButtonClass(transactionType === t)}
+              >
                 {TRANSACTION_TYPE_LABELS[t]}
               </button>
             ))}
           </div>
-          <button onClick={() => setStep("category")} className={`${secondaryButtonClass} mt-1`}>
+          <button
+            onClick={() => setStep("category")}
+            className={`${secondaryButtonClass} mt-1`}
+          >
             ← Back
           </button>
         </div>
@@ -449,37 +570,57 @@ export function PostAdWizard({
             </div>
             <div className="flex-1">
               <RequiredLabel text="Price qualifier" />
-              <select value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} className={fieldClass}>
-                {getPriceQualifierOptions(category, transactionType).map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
+              <select
+                value={priceQualifier}
+                onChange={(e) => setPriceQualifier(e.target.value)}
+                className={fieldClass}
+              >
+                {getPriceQualifierOptions(category, transactionType).map(
+                  (opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ),
+                )}
               </select>
             </div>
           </div>
 
           <div>
             <RequiredLabel text="Title" />
-            <input required value={title} onChange={(e) => setTitle(e.target.value)} className={fieldClass} />
+            <input
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={fieldClass}
+            />
           </div>
 
           <div>
             <label className={labelClass}>
-              Pin your exact location (optional — helps buyers find you, and auto-fills City/Area below)
+              Pin your exact location (optional — helps buyers find you, and
+              auto-fills City/Area below)
             </label>
             <LocationMapPicker
               defaultCenter={
-                cities.find((c) => c.id === cityId) ?? cities[0] ?? { lat: 20.5937, lng: 78.9629 }
+                cities.find((c) => c.id === cityId) ??
+                cities[0] ?? { lat: 20.5937, lng: 78.9629 }
               }
               onPinChange={onPinChange}
             />
-            {pinLookupNote && <p className="text-xs text-muted mt-1.5">{pinLookupNote}</p>}
+            {pinLookupNote && (
+              <p className="text-xs text-muted mt-1.5">{pinLookupNote}</p>
+            )}
           </div>
 
           <div>
             <RequiredLabel text="City" />
-            <select required value={cityId} onChange={(e) => onCityChange(e.target.value)} className={fieldClass}>
+            <select
+              required
+              value={cityId}
+              onChange={(e) => onCityChange(e.target.value)}
+              className={fieldClass}
+            >
               {cities.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -515,14 +656,22 @@ export function PostAdWizard({
             )}
             {!areaId && areaQuery.trim() && (
               <p className="text-xs text-muted mt-1.5">
-                No match selected — &quot;{areaQuery.trim()}&quot; will be added as a new area.
+                No match selected — &quot;{areaQuery.trim()}&quot; will be added
+                as a new area.
               </p>
             )}
           </div>
 
           <div>
-            <label className={labelClass}>Specs (comma-separated, shown on the listing card)</label>
-            <input value={specs} onChange={(e) => setSpecs(e.target.value)} placeholder="3 Beds, 1450 sqft" className={fieldClass} />
+            <label className={labelClass}>
+              Specs (comma-separated, shown on the listing card)
+            </label>
+            <input
+              value={specs}
+              onChange={(e) => setSpecs(e.target.value)}
+              placeholder="3 Beds, 1450 sqft"
+              className={fieldClass}
+            />
           </div>
 
           <div className="border-t border-border pt-4">
@@ -530,13 +679,70 @@ export function PostAdWizard({
               {CATEGORIES.find((c) => c.value === category)?.label} details
             </div>
             <div className="flex flex-col gap-4">
-              {CATEGORY_FIELD_CONFIG[category].map((field) => (
+              {visibleFields.map((field, index) => (
                 <div key={field.key}>
-                  {field.required ? <RequiredLabel text={field.label} /> : <label className={labelClass}>{field.label}</label>}
-                  {field.type === "select" ? (
+                  {field.section &&
+                    (index === 0 ||
+                      visibleFields[index - 1].section !== field.section) && (
+                      <div className="text-[13px] font-bold text-text mt-2">
+                        {field.section === "amenities"
+                          ? "Amenities"
+                          : "Furnishing details"}
+                      </div>
+                    )}
+                  {field.required ? (
+                    <RequiredLabel text={field.label} />
+                  ) : (
+                    <label className={labelClass}>{field.label}</label>
+                  )}
+                  {field.type === "multi-select" ? (
                     <select
-                      value={attributes[field.key] ?? ""}
-                      onChange={(e) => setAttributes((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      multiple
+                      value={
+                        Array.isArray(attributes[field.key])
+                          ? attributes[field.key]
+                          : []
+                      }
+                      onChange={(e) =>
+                        setAttributes((prev) => ({
+                          ...prev,
+                          [field.key]: Array.from(
+                            e.target.selectedOptions,
+                            (option) => option.value,
+                          ),
+                        }))
+                      }
+                      className={fieldClass}
+                    >
+                      {field.options?.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : field.type === "select" ? (
+                    <select
+                      value={
+                        typeof attributes[field.key] === "string"
+                          ? attributes[field.key]
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setAttributes((prev) => {
+                          const next = { ...prev, [field.key]: e.target.value };
+                          if (
+                            field.key === "furnished" &&
+                            e.target.value !== "furnished"
+                          ) {
+                            for (const furnishingField of CATEGORY_FIELD_CONFIG[
+                              category
+                            ].filter((item) => item.section === "furnishing")) {
+                              delete next[furnishingField.key];
+                            }
+                          }
+                          return next;
+                        })
+                      }
                       className={fieldClass}
                     >
                       <option value="" disabled>
@@ -551,12 +757,21 @@ export function PostAdWizard({
                   ) : (
                     <input
                       type={field.type === "number" ? "number" : "text"}
-                      min={field.type === "number" ? 0 : undefined}
-                      value={attributes[field.key] ?? ""}
+                      min={
+                        field.type === "number" ? (field.min ?? 0) : undefined
+                      }
+                      value={
+                        typeof attributes[field.key] === "string"
+                          ? attributes[field.key]
+                          : ""
+                      }
                       onChange={(e) =>
                         setAttributes((prev) => ({
                           ...prev,
-                          [field.key]: field.type === "number" ? sanitizeNonNegative(e.target.value) : e.target.value,
+                          [field.key]:
+                            field.type === "number"
+                              ? sanitizeNonNegative(e.target.value)
+                              : e.target.value,
                         }))
                       }
                       placeholder={field.placeholder}
@@ -586,7 +801,11 @@ export function PostAdWizard({
                 {photos.map((photo, i) => (
                   <div key={photo.previewUrl} className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo.previewUrl} alt={`Photo ${i + 1}`} className="h-[100px] w-[100px] object-cover rounded-lg" />
+                    <img
+                      src={photo.previewUrl}
+                      alt={`Photo ${i + 1}`}
+                      className="h-[100px] w-[100px] object-cover rounded-lg"
+                    />
                     <button
                       type="button"
                       onClick={() => onRemovePhoto(i)}
@@ -598,14 +817,19 @@ export function PostAdWizard({
                 ))}
               </div>
             )}
-            {error && <p className="text-[#b3413a] text-[13px] mt-2">{error}</p>}
+            {error && (
+              <p className="text-[#b3413a] text-[13px] mt-2">{error}</p>
+            )}
           </div>
 
           <div>
-            <label className={labelClass}>Video (optional, up to {videoEntitlement.maxVideos})</label>
+            <label className={labelClass}>
+              Video (optional, up to {videoEntitlement.maxVideos})
+            </label>
             <p className="text-xs text-muted mt-0.5 mb-1.5">
               Up to {videoEntitlement.maxDurationSec}s each.
-              {videoEntitlement.canUpgradeByBoosting && " Boost this listing after posting to add up to 3 videos, up to 2 minutes each."}
+              {videoEntitlement.canUpgradeByBoosting &&
+                " Boost this listing after posting to add up to 3 videos, up to 2 minutes each."}
             </p>
             {videos.length < videoEntitlement.maxVideos && (
               <input
@@ -622,7 +846,11 @@ export function PostAdWizard({
               <div className="flex flex-wrap gap-2.5 mt-2.5">
                 {videos.map((video, i) => (
                   <div key={video.previewUrl} className="relative">
-                    <video src={video.previewUrl} className="h-[100px] w-[100px] object-cover rounded-lg bg-black" muted />
+                    <video
+                      src={video.previewUrl}
+                      className="h-[100px] w-[100px] object-cover rounded-lg bg-black"
+                      muted
+                    />
                     <button
                       type="button"
                       onClick={() => onRemoveVideo(i)}
@@ -634,12 +862,20 @@ export function PostAdWizard({
                 ))}
               </div>
             )}
-            {videoError && <p className="text-[#b3413a] text-[13px] mt-2">{videoError}</p>}
+            {videoError && (
+              <p className="text-[#b3413a] text-[13px] mt-2">{videoError}</p>
+            )}
           </div>
 
           <div className="flex gap-2.5">
             <button
-              onClick={() => setStep(POSTABLE_TRANSACTION_TYPES[category].length === 1 ? "category" : "transactionType")}
+              onClick={() =>
+                setStep(
+                  POSTABLE_TRANSACTION_TYPES[category].length === 1
+                    ? "category"
+                    : "transactionType",
+                )
+              }
               className={secondaryButtonClass}
             >
               ← Back
@@ -659,7 +895,10 @@ export function PostAdWizard({
         <div className="flex flex-col gap-3">
           <div className="border border-border rounded-[10px] p-4 text-sm text-text">
             <p className="m-0 mb-1.5">
-              <strong>{CATEGORIES.find((c) => c.value === category)?.label}</strong> — {TRANSACTION_TYPE_LABELS[transactionType]}
+              <strong>
+                {CATEGORIES.find((c) => c.value === category)?.label}
+              </strong>{" "}
+              — {TRANSACTION_TYPE_LABELS[transactionType]}
             </p>
             <p className="m-0 mb-1.5">{title}</p>
             <p className="m-0 mb-1.5 text-muted">
@@ -670,7 +909,11 @@ export function PostAdWizard({
             </p>
           </div>
 
-          {slotCap ? <ListingSlotCapPrompt slotCap={slotCap} /> : error ? <p className="text-[#b3413a] text-[13px]">{error}</p> : null}
+          {slotCap ? (
+            <ListingSlotCapPrompt slotCap={slotCap} />
+          ) : error ? (
+            <p className="text-[#b3413a] text-[13px]">{error}</p>
+          ) : null}
 
           <div className="flex gap-2.5">
             <button
@@ -694,18 +937,26 @@ export function PostAdWizard({
         <div className="flex flex-col gap-4 text-center py-4">
           <div className="text-3xl">🎉</div>
           <div>
-            <div className="font-lora text-xl font-bold text-text mb-1.5">Your ad is live!</div>
+            <div className="font-lora text-xl font-bold text-text mb-1.5">
+              Your ad is live!
+            </div>
             <p className="text-[13px] text-muted m-0">
-              Want it seen faster? Boosted ads get a gold ⭐ Featured badge, rank ahead of regular
-              listings, and rotate fairly through the top slots — plus we&apos;ll notify you the
-              moment someone likes it.
+              Want it seen faster? Boosted ads get a gold ⭐ Featured badge,
+              rank ahead of regular listings, and rotate fairly through the top
+              slots — plus we&apos;ll notify you the moment someone likes it.
             </p>
           </div>
 
           <div className="flex flex-col items-center gap-3 mt-1">
-            <BoostButton listingId={createdListing.id} category={createdListing.category} />
+            <BoostButton
+              listingId={createdListing.id}
+              category={createdListing.category}
+            />
             <VideoManager listing={createdListing} accessToken={accessToken} />
-            <Link href={buildListingPath(createdListing)} className="text-[13px] font-bold text-text-soft">
+            <Link
+              href={buildListingPath(createdListing)}
+              className="text-[13px] font-bold text-text-soft"
+            >
               Skip for now — view my ad →
             </Link>
           </div>

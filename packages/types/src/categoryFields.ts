@@ -1,4 +1,4 @@
-import type { ListingCategory } from "./index";
+import type { ListingCategory, TransactionType } from "./index";
 
 export interface FieldOption {
   value: string;
@@ -8,9 +8,13 @@ export interface FieldOption {
 export interface FieldDef {
   key: string;
   label: string;
-  type: "text" | "number" | "select";
+  type: "text" | "number" | "select" | "multi-select";
   options?: FieldOption[];
   placeholder?: string;
+  min?: number;
+  transactionTypes?: TransactionType[];
+  section?: "amenities" | "furnishing";
+  dependsOn?: { key: string; value: string };
   /** Must be filled in before the listing can be posted/saved — enforced in both the
    * posting wizard/edit form (disables submit) and the BFF (`ListingsService`). */
   required?: boolean;
@@ -19,7 +23,13 @@ export interface FieldDef {
 const RESIDENTIAL_FIELDS: FieldDef[] = [
   { key: "bedrooms", label: "Bedrooms", type: "number", required: true },
   { key: "bathrooms", label: "Bathrooms", type: "number", required: true },
-  { key: "sqft", label: "Area (sqft)", type: "number", required: true },
+  {
+    key: "carpetAreaSqft",
+    label: "Carpet area (sqft)",
+    type: "number",
+    min: 1,
+    required: true,
+  },
   {
     key: "furnished",
     label: "Furnishing",
@@ -30,6 +40,228 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
       { value: "furnished", label: "Furnished" },
     ],
   },
+  { key: "balconyCount", label: "Balcony count", type: "number", min: 0 },
+  {
+    key: "openParkingCount",
+    label: "Open parking spaces",
+    type: "number",
+    min: 0,
+  },
+  {
+    key: "closedParkingCount",
+    label: "Closed parking spaces",
+    type: "number",
+    min: 0,
+  },
+  {
+    key: "entranceFacing",
+    label: "Main entrance facing",
+    type: "select",
+    options: [
+      { value: "north", label: "North" },
+      { value: "south", label: "South" },
+      { value: "east", label: "East" },
+      { value: "west", label: "West" },
+      { value: "north-east", label: "North-East" },
+      { value: "north-west", label: "North-West" },
+      { value: "south-east", label: "South-East" },
+      { value: "south-west", label: "South-West" },
+    ],
+  },
+  {
+    key: "gatedCommunity",
+    label: "Gated community",
+    type: "select",
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  },
+  {
+    key: "priceNegotiable",
+    label: "Price negotiable",
+    type: "select",
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  },
+  {
+    key: "preferredTenantTypes",
+    label: "Preferred tenant type",
+    type: "multi-select",
+    transactionTypes: ["rent", "lease"],
+    options: [
+      { value: "family", label: "Family" },
+      { value: "company", label: "Company" },
+      { value: "bachelor", label: "Bachelor" },
+    ],
+  },
+  {
+    key: "fromBroker",
+    label: "Posted by broker",
+    type: "select",
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  },
+  {
+    key: "brokerageFeeApplicable",
+    label: "Brokerage fee applicable",
+    type: "select",
+    transactionTypes: ["rent", "lease"],
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  },
+  {
+    key: "brokerageFee",
+    label: "Brokerage fee (INR)",
+    type: "number",
+    min: 0,
+    transactionTypes: ["rent", "lease"],
+  },
+  {
+    key: "maintenanceFeeApplicable",
+    label: "Monthly maintenance fee applicable",
+    type: "select",
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  },
+  {
+    key: "monthlyMaintenanceFee",
+    label: "Monthly maintenance fee (INR)",
+    type: "number",
+    min: 0,
+  },
+  {
+    key: "gasPipeline",
+    label: "Gas pipeline",
+    type: "select",
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  },
+  {
+    key: "washingMachineCount",
+    label: "Washing machines",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "sofaCount",
+    label: "Sofas",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "stoveCount",
+    label: "Stoves",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "fridgeCount",
+    label: "Fridges",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "cupboardCount",
+    label: "Cupboards",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "fanCount",
+    label: "Fans",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "lightCount",
+    label: "Lights",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "bedCount",
+    label: "Beds",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "tvCount",
+    label: "TVs",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "geyserCount",
+    label: "Geysers",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "tableCount",
+    label: "Tables",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  {
+    key: "diningTableCount",
+    label: "Dining tables",
+    type: "number",
+    min: 0,
+    section: "furnishing",
+    dependsOn: { key: "furnished", value: "furnished" },
+  },
+  ...[
+    ["cctv", "CCTV"],
+    ["lift", "Lift"],
+    ["powerBackup", "Power backup"],
+    ["waterSupply", "Water supply"],
+    ["playArea", "Play area"],
+    ["gym", "Gym"],
+    ["swimmingPool", "Swimming pool"],
+    ["clubHouse", "Club house"],
+  ].map(([key, label]) => ({
+    key,
+    label,
+    type: "select" as const,
+    section: "amenities" as const,
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  })),
 ];
 
 /** One field-def list per category — the single source of truth for both the posting
@@ -96,7 +328,12 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       ],
       required: true,
     },
-    { key: "amenities", label: "Amenities", type: "text", placeholder: "24/7 access, meeting rooms, high-speed wifi…" },
+    {
+      key: "amenities",
+      label: "Amenities",
+      type: "text",
+      placeholder: "24/7 access, meeting rooms, high-speed wifi…",
+    },
   ],
   furniture: [
     {
@@ -111,7 +348,12 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "other", label: "Other" },
       ],
     },
-    { key: "dimensions", label: "Dimensions", type: "text", placeholder: "e.g. 72in x 36in x 30in" },
+    {
+      key: "dimensions",
+      label: "Dimensions",
+      type: "text",
+      placeholder: "e.g. 72in x 36in x 30in",
+    },
     {
       key: "condition",
       label: "Condition",
@@ -141,7 +383,12 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
     },
   ],
   plot: [
-    { key: "plotAreaSqft", label: "Plot Area (sqft)", type: "number", required: true },
+    {
+      key: "plotAreaSqft",
+      label: "Plot Area (sqft)",
+      type: "number",
+      required: true,
+    },
     {
       key: "facing",
       label: "Facing",
@@ -166,7 +413,12 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "no", label: "No" },
       ],
     },
-    { key: "approvedBy", label: "Approved by", type: "text", placeholder: "e.g. BDA, Panchayat, DTCP" },
+    {
+      key: "approvedBy",
+      label: "Approved by",
+      type: "text",
+      placeholder: "e.g. BDA, Panchayat, DTCP",
+    },
   ],
   commercial: [
     { key: "sqft", label: "Area (sqft)", type: "number", required: true },
@@ -184,7 +436,12 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       ],
       required: true,
     },
-    { key: "floor", label: "Floor", type: "text", placeholder: "e.g. Ground, 2nd floor" },
+    {
+      key: "floor",
+      label: "Floor",
+      type: "text",
+      placeholder: "e.g. Ground, 2nd floor",
+    },
     {
       key: "furnished",
       label: "Furnishing",

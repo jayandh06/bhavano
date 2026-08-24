@@ -21,8 +21,12 @@ function makeService() {
     user: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn() },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
-  const notificationsService = { notifyListingLiked: jest.fn() } as unknown as NotificationsService;
-  const listingSlotsService = { assertCanRenew: jest.fn() } as unknown as ListingSlotsService;
+  const notificationsService = {
+    notifyListingLiked: jest.fn(),
+  } as unknown as NotificationsService;
+  const listingSlotsService = {
+    assertCanRenew: jest.fn(),
+  } as unknown as ListingSlotsService;
 
   const service = new ListingsService(
     prisma,
@@ -38,6 +42,143 @@ function makeService() {
 }
 
 describe('ListingsService', () => {
+  describe('residential attributes', () => {
+    const validAttributes = {
+      bedrooms: '2',
+      bathrooms: '2',
+      carpetAreaSqft: '950',
+      balconyCount: '1',
+      openParkingCount: '1',
+      closedParkingCount: '0',
+      gatedCommunity: 'yes',
+      priceNegotiable: 'no',
+      fromBroker: 'yes',
+      brokerageFeeApplicable: 'yes',
+      brokerageFee: '10000',
+      maintenanceFeeApplicable: 'yes',
+      monthlyMaintenanceFee: '2500',
+      gasPipeline: 'yes',
+      preferredTenantTypes: ['family', 'company'],
+    };
+
+    it('accepts valid rent attributes and multi-select tenant types', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes(
+          'apartment',
+          'rent',
+          validAttributes,
+        ),
+      ).not.toThrow();
+    });
+
+    it('rejects a fee amount when the fee is not applicable', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('house', 'buy', {
+          bedrooms: '2',
+          bathrooms: '2',
+          carpetAreaSqft: '950',
+          maintenanceFeeApplicable: 'no',
+          monthlyMaintenanceFee: '2500',
+        }),
+      ).toThrow(
+        'Monthly maintenance fee amount requires applicability to be Yes',
+      );
+    });
+
+    it('accepts legacy sqft as the area required by older listings', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('house', 'sell', {
+          bedrooms: 2,
+          bathrooms: 2,
+          sqft: 950,
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects furnishing inventory when the residence is not furnished', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('house', 'rent', {
+          bedrooms: 2,
+          bathrooms: 2,
+          carpetAreaSqft: 950,
+          furnished: 'semi',
+          sofaCount: 1,
+        }),
+      ).toThrow('Sofas is not applicable');
+    });
+
+    it('accepts all configured amenities and furnishing inventory for a furnished home', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('house', 'buy', {
+          bedrooms: 3,
+          bathrooms: 2,
+          carpetAreaSqft: 1450,
+          furnished: 'furnished',
+          washingMachineCount: 1,
+          sofaCount: 1,
+          stoveCount: 1,
+          fridgeCount: 1,
+          cupboardCount: 3,
+          fanCount: 5,
+          lightCount: 8,
+          bedCount: 3,
+          tvCount: 2,
+          geyserCount: 2,
+          tableCount: 2,
+          diningTableCount: 1,
+          cctv: 'yes',
+          lift: 'yes',
+          powerBackup: 'no',
+          waterSupply: 'yes',
+          playArea: 'yes',
+          gym: 'no',
+          swimmingPool: 'no',
+          clubHouse: 'yes',
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects invalid amenity values and negative inventory counts', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('apartment', 'rent', {
+          bedrooms: 2,
+          bathrooms: 2,
+          carpetAreaSqft: 950,
+          furnished: 'furnished',
+          cctv: 'sometimes',
+        }),
+      ).toThrow('Invalid cctv');
+
+      expect(() =>
+        (service as any).assertValidAttributes('apartment', 'rent', {
+          bedrooms: 2,
+          bathrooms: 2,
+          carpetAreaSqft: 950,
+          furnished: 'furnished',
+          fanCount: -1,
+        }),
+      ).toThrow('Fans must be a whole number');
+    });
+
+    it('rejects rent-only fields on a buy listing', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('villa', 'buy', {
+          bedrooms: 3,
+          bathrooms: 2,
+          carpetAreaSqft: 1800,
+          preferredTenantTypes: ['family'],
+        }),
+      ).toThrow('Preferred tenant type is not applicable');
+    });
+  });
+
   describe('acceptVideosForOwner — video entitlement by agentPro/boost', () => {
     // v2 (90s) exceeds the default 30s cap but fits the elevated 120s cap — this array is sized
     // to exactly the elevated maxVideos (3), so "all accepted" is a meaningful assertion below.
@@ -49,7 +190,9 @@ describe('ListingsService', () => {
 
     async function accept(agentProUntil: Date | null, ownerId = 'owner1') {
       const { service, prisma } = makeService();
-      (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({ agentProUntil });
+      (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+        agentProUntil,
+      });
       // acceptVideosForOwner is private — accessed via bracket notation, the standard escape
       // hatch for unit-testing a private helper without changing its visibility for production code.
       return (service as any).acceptVideosForOwner(ownerId, videos);
@@ -80,7 +223,10 @@ describe('ListingsService', () => {
   });
 
   describe('addVideo — rejection messages branch on boost-upgrade eligibility', () => {
-    function setup(owner: { agentProUntil: Date | null }, listing: Record<string, unknown>) {
+    function setup(
+      owner: { agentProUntil: Date | null },
+      listing: Record<string, unknown>,
+    ) {
       const { service, prisma } = makeService();
       (prisma.listing.findUnique as jest.Mock).mockResolvedValue(listing);
       (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue(owner);
@@ -90,9 +236,18 @@ describe('ListingsService', () => {
     it('a free, unboosted owner at the default video cap is told to boost to upgrade', async () => {
       const { service } = setup(
         { agentProUntil: null },
-        { ownerId: 'owner1', boostedUntil: null, listingVideos: [{ videoNo: 1 }] },
+        {
+          ownerId: 'owner1',
+          boostedUntil: null,
+          listingVideos: [{ videoNo: 1 }],
+        },
       );
-      const call = service.addVideo('listing1', 'owner1', { durationSec: 10, storageId: 'x', ext: 'mp4', sizeBytes: 1 });
+      const call = service.addVideo('listing1', 'owner1', {
+        durationSec: 10,
+        storageId: 'x',
+        ext: 'mp4',
+        sizeBytes: 1,
+      });
       await expect(call).rejects.toBeInstanceOf(BadRequestException);
       await expect(call).rejects.toThrow('Boost this listing');
     });
@@ -106,22 +261,43 @@ describe('ListingsService', () => {
           listingVideos: [{ videoNo: 1 }, { videoNo: 2 }, { videoNo: 3 }],
         },
       );
-      const call = service.addVideo('listing1', 'owner1', { durationSec: 10, storageId: 'x', ext: 'mp4', sizeBytes: 1 });
+      const call = service.addVideo('listing1', 'owner1', {
+        durationSec: 10,
+        storageId: 'x',
+        ext: 'mp4',
+        sizeBytes: 1,
+      });
       await expect(call).rejects.toBeInstanceOf(BadRequestException);
       await expect(call).rejects.toThrow('maximum');
     });
 
     it('rejects a video longer than the entitlement duration', async () => {
-      const { service } = setup({ agentProUntil: null }, { ownerId: 'owner1', boostedUntil: null, listingVideos: [] });
-      const call = service.addVideo('listing1', 'owner1', { durationSec: 999, storageId: 'x', ext: 'mp4', sizeBytes: 1 });
+      const { service } = setup(
+        { agentProUntil: null },
+        { ownerId: 'owner1', boostedUntil: null, listingVideos: [] },
+      );
+      const call = service.addVideo('listing1', 'owner1', {
+        durationSec: 999,
+        storageId: 'x',
+        ext: 'mp4',
+        sizeBytes: 1,
+      });
       await expect(call).rejects.toBeInstanceOf(BadRequestException);
       await expect(call).rejects.toThrow('30s limit');
     });
 
     it("throws NotFoundException-equivalent when the caller doesn't own the listing", async () => {
-      const { service } = setup({ agentProUntil: null }, { ownerId: 'someoneElse', boostedUntil: null, listingVideos: [] });
+      const { service } = setup(
+        { agentProUntil: null },
+        { ownerId: 'someoneElse', boostedUntil: null, listingVideos: [] },
+      );
       await expect(
-        service.addVideo('listing1', 'owner1', { durationSec: 10, storageId: 'x', ext: 'mp4', sizeBytes: 1 }),
+        service.addVideo('listing1', 'owner1', {
+          durationSec: 10,
+          storageId: 'x',
+          ext: 'mp4',
+          sizeBytes: 1,
+        }),
       ).rejects.toThrow("You don't own this listing");
     });
   });
@@ -177,9 +353,12 @@ describe('ListingsService', () => {
 
       await service.renew('listing1', 'owner1');
 
-      const renewalArgs = (prisma.listingRenewal.create as jest.Mock).mock.calls[0][0];
+      const renewalArgs = (prisma.listingRenewal.create as jest.Mock).mock
+        .calls[0][0];
       expect(renewalArgs.data.previousExpiresAt).toEqual(expiresAt);
-      expect(renewalArgs.data.newExpiresAt.getTime()).toBe(expiresAt.getTime() + 30 * DAY_MS);
+      expect(renewalArgs.data.newExpiresAt.getTime()).toBe(
+        expiresAt.getTime() + 30 * DAY_MS,
+      );
     });
 
     it('counts from today (not the lapsed date) when renewed after expiry', async () => {
@@ -188,8 +367,11 @@ describe('ListingsService', () => {
 
       await service.renew('listing1', 'owner1');
 
-      const { newExpiresAt } = (prisma.listingRenewal.create as jest.Mock).mock.calls[0][0].data;
-      expect(newExpiresAt.getTime()).toBeGreaterThanOrEqual(before + 30 * DAY_MS);
+      const { newExpiresAt } = (prisma.listingRenewal.create as jest.Mock).mock
+        .calls[0][0].data;
+      expect(newExpiresAt.getTime()).toBeGreaterThanOrEqual(
+        before + 30 * DAY_MS,
+      );
     });
 
     it('writes the audit row and the expiry bump in a single transaction', async () => {
@@ -198,7 +380,9 @@ describe('ListingsService', () => {
       await service.renew('listing1', 'owner1');
 
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-      expect((prisma.$transaction as jest.Mock).mock.calls[0][0]).toHaveLength(2);
+      expect((prisma.$transaction as jest.Mock).mock.calls[0][0]).toHaveLength(
+        2,
+      );
     });
 
     it('reports the renewal count and history back to the owner', async () => {
@@ -206,7 +390,9 @@ describe('ListingsService', () => {
       const { service } = setup(
         listingRow(),
         listingRow({
-          listingRenewals: [{ previousExpiresAt: past(2), newExpiresAt: future(48), renewedAt }],
+          listingRenewals: [
+            { previousExpiresAt: past(2), newExpiresAt: future(48), renewedAt },
+          ],
         }),
       );
 
@@ -218,19 +404,27 @@ describe('ListingsService', () => {
 
     it('rejects a non-active listing', async () => {
       const { service } = setup(listingRow({ status: 'sold' }));
-      await expect(service.renew('listing1', 'owner1')).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.renew('listing1', 'owner1')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
 
     it("rejects a caller who doesn't own the listing", async () => {
       const { service } = setup(listingRow({ ownerId: 'someoneElse' }));
-      await expect(service.renew('listing1', 'owner1')).rejects.toThrow("You don't own this listing");
+      await expect(service.renew('listing1', 'owner1')).rejects.toThrow(
+        "You don't own this listing",
+      );
     });
 
     it('propagates the slot-cap rejection and writes nothing', async () => {
       const { service, prisma, listingSlotsService } = setup(listingRow());
-      (listingSlotsService.assertCanRenew as jest.Mock).mockRejectedValue(new ForbiddenException());
+      (listingSlotsService.assertCanRenew as jest.Mock).mockRejectedValue(
+        new ForbiddenException(),
+      );
 
-      await expect(service.renew('listing1', 'owner1')).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(service.renew('listing1', 'owner1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
   });
@@ -246,7 +440,10 @@ describe('ListingsService', () => {
         ownerId: 'owner1',
         boostedUntil: future(),
       });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ email: 'owner@example.com', phone: null });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'owner@example.com',
+        phone: null,
+      });
 
       await service.toggleFavourite('listing1', 'liker1');
       // fire-and-forget: allow the notify microtask to settle
