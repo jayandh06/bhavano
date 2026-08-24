@@ -59,6 +59,10 @@ export interface FieldDef {
   options?: FieldOption[];
   placeholder?: string;
   min?: number;
+  /** A single emoji shown next to the label in both the posting form and the listing detail
+   * page — set on amenity/furnishing fields, where a quick visual scan matters more than for a
+   * plain count or select. Not required elsewhere. */
+  icon?: string;
   /** Caps a `number` field's input to this many digits — e.g. a bedroom/bathroom/appliance
    * count never needs more than 2 (max 99), unlike a currency amount or an area in sqft, which
    * are left unrestricted (`undefined`). Enforced by truncating keystrokes past the limit, not
@@ -334,6 +338,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "🧺",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -343,6 +348,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "🛋️",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -352,6 +358,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "🍳",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -361,6 +368,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "❄️",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -370,6 +378,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "🚪",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -379,6 +388,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "🌀",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -388,6 +398,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "💡",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -397,6 +408,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "🛏️",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -406,6 +418,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "📺",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -415,6 +428,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "🚿",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -424,6 +438,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "🪑",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -433,21 +448,23 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    icon: "🍽️",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
   ...[
-    ["cctv", "CCTV"],
-    ["lift", "Lift"],
-    ["powerBackup", "Power backup"],
-    ["waterSupply", "Water supply"],
-    ["playArea", "Play area"],
-    ["gym", "Gym"],
-    ["swimmingPool", "Swimming pool"],
-    ["clubHouse", "Club house"],
-  ].map(([key, label]) => ({
+    ["cctv", "CCTV", "📹"],
+    ["lift", "Lift", "🛗"],
+    ["powerBackup", "Power backup", "🔋"],
+    ["waterSupply", "Water supply", "🚰"],
+    ["playArea", "Play area", "🎠"],
+    ["gym", "Gym", "🏋️"],
+    ["swimmingPool", "Swimming pool", "🏊"],
+    ["clubHouse", "Club house", "🏛️"],
+  ].map(([key, label, icon]) => ({
     key,
     label,
+    icon,
     type: "select" as const,
     section: "amenities" as const,
     options: [

@@ -313,12 +313,12 @@ function CategoryField({
   value: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
 }) {
-  const labelText = field.required ? (
+  const labelText = (
     <>
-      {field.label} <span className="text-[#b3413a]">*</span>
+      {field.icon && <span className="mr-1">{field.icon}</span>}
+      {field.label}
+      {field.required && <span className="text-[#b3413a]"> *</span>}
     </>
-  ) : (
-    field.label
   );
 
   if (isYesNoField(field)) {

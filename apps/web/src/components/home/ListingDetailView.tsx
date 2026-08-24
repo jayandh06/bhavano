@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Fragment } from "react";
 import type { City, ListingDetailDto } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
@@ -54,12 +53,16 @@ export function ListingDetailView({
   // A field's stored value only makes sense to show once its `dependsOn` condition (if any) is
   // currently met — e.g. a brokerage fee shouldn't display for a listing where "posted by
   // broker" has since been edited back to "no". Same visibility rule the posting/edit forms use
-  // (see `fieldIsVisible` in @bhavano/types/categoryFields), so all three agree.
-  const visibleFields = CATEGORY_FIELD_CONFIG[listing.category].filter(
-    (field) =>
-      field.key in attributes &&
-      fieldIsVisible(field, listing.transactionType, attributes),
-  );
+  // (see `fieldIsVisible` in @bhavano/types/categoryFields), so all three agree. Amenities are
+  // additionally dropped when "no" — they read as a badge list of what the place *has*, so a
+  // present-but-negative flag (e.g. "🏊 Swimming pool: No") would just be noise here, unlike on
+  // the posting/edit forms where every amenity needs to stay editable either way.
+  const visibleFields = CATEGORY_FIELD_CONFIG[listing.category].filter((field) => {
+    if (!(field.key in attributes)) return false;
+    if (!fieldIsVisible(field, listing.transactionType, attributes)) return false;
+    if (field.section === "amenities" && attributes[field.key] !== "yes") return false;
+    return true;
+  });
   const displaySections = groupFieldsBySection(visibleFields);
 
   return (
@@ -145,25 +148,43 @@ export function ListingDetailView({
         </div>
 
         {visibleFields.length > 0 && (
-          <div className="border border-border rounded-xl p-5 mb-6 bg-surface">
-            <div className="font-bold text-sm mb-3">Property details</div>
-            <div className="grid [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))] gap-2.5">
-              {displaySections.map(({ section, label, fields }) => (
-                <Fragment key={section}>
-                  {section !== "basics" && (
-                    <div className="col-span-full font-bold text-text mt-2 mb-1">
-                      {label}
-                    </div>
-                  )}
-                  {fields.map((field) => (
-                    <div key={field.key} className="text-[13px] text-text-soft">
-                      <span className="font-semibold">{field.label}</span>:{" "}
-                      {formatAttributeValue(attributes[field.key])}
-                    </div>
-                  ))}
-                </Fragment>
-              ))}
-            </div>
+          <div className="flex flex-col gap-3 mb-6">
+            {displaySections.map(({ section, label, fields }) => (
+              <div
+                key={section}
+                className="border border-border rounded-xl p-5 bg-surface"
+              >
+                <div className="font-bold text-sm mb-3">{label}</div>
+                {section === "amenities" ? (
+                  // Amenities read as a badge list of what's present, not a label/value pair —
+                  // every entry here already passed the "yes" filter above, so the icon + name
+                  // alone says everything the value would have.
+                  <div className="flex flex-wrap gap-2">
+                    {fields.map((field) => (
+                      <span
+                        key={field.key}
+                        className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md"
+                      >
+                        {field.icon && <span className="mr-1">{field.icon}</span>}
+                        {field.label}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))] gap-2.5">
+                    {fields.map((field) => (
+                      <div key={field.key} className="text-[13px] text-text-soft">
+                        <span className="font-semibold">
+                          {field.icon && <span className="mr-1">{field.icon}</span>}
+                          {field.label}
+                        </span>
+                        : {formatAttributeValue(attributes[field.key])}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
