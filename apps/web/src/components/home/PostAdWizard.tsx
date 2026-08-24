@@ -544,36 +544,6 @@ export function PostAdWizard({
 
       {step === "details" && category && transactionType && (
         <div className="flex flex-col gap-4">
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <RequiredLabel text="Price (₹)" />
-              <input
-                type="number"
-                required
-                min={1}
-                value={price}
-                onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
-                className={fieldClass}
-              />
-            </div>
-            <div className="flex-1">
-              <RequiredLabel text="Price qualifier" />
-              <select
-                value={priceQualifier}
-                onChange={(e) => setPriceQualifier(e.target.value)}
-                className={fieldClass}
-              >
-                {getPriceQualifierOptions(category, transactionType).map(
-                  (opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ),
-                )}
-              </select>
-            </div>
-          </div>
-
           <div>
             <RequiredLabel text="Title" />
             <input
@@ -671,6 +641,39 @@ export function PostAdWizard({
               transactionType={transactionType}
               attributes={attributes}
               onAttributesChange={setAttributes}
+              sectionExtras={{
+                pricing: (
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <RequiredLabel text="Price (₹)" />
+                      <input
+                        type="number"
+                        required
+                        min={1}
+                        value={price}
+                        onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
+                        className={fieldClass}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <RequiredLabel text="Price qualifier" />
+                      <select
+                        value={priceQualifier}
+                        onChange={(e) => setPriceQualifier(e.target.value)}
+                        className={fieldClass}
+                      >
+                        {getPriceQualifierOptions(category, transactionType).map(
+                          (opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </div>
+                  </div>
+                ),
+              }}
             />
           </div>
 

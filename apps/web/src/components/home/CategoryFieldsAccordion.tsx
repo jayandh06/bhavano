@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
-import type { FieldDef, FieldOption } from "@bhavano/types/categoryFields";
+import type { FieldDef, FieldOption, FieldSection } from "@bhavano/types/categoryFields";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
@@ -256,6 +256,7 @@ export function CategoryFieldsAccordion({
   transactionType,
   attributes,
   onAttributesChange,
+  sectionExtras,
 }: {
   category: ListingCategory;
   transactionType: TransactionType;
@@ -265,6 +266,10 @@ export function CategoryFieldsAccordion({
       prev: Record<string, string | string[]>,
     ) => Record<string, string | string[]>,
   ) => void;
+  /** Extra content rendered at the top of a given section's box, above its dynamic fields —
+   * e.g. the wizard folds its (non-category-specific) Price/Price Qualifier inputs into the
+   * top of "pricing" this way rather than duplicating the section-box chrome for them. */
+  sectionExtras?: Partial<Record<FieldSection, ReactNode>>;
 }) {
   const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) =>
     fieldIsVisible(field, transactionType, attributes),
@@ -298,8 +303,10 @@ export function CategoryFieldsAccordion({
             // count/select grid below, where their labels would truncate.
             const toggleFields = fields.filter(isYesNoField);
             const otherFields = fields.filter((field) => !isYesNoField(field));
+            const extra = section !== "other" ? sectionExtras?.[section] : undefined;
             return (
               <div className="flex flex-col gap-4 px-4 pb-4">
+                {extra}
                 {toggleFields.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                     {toggleFields.map((field) => (

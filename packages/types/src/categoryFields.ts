@@ -39,6 +39,7 @@ export const SECTION_LABELS: Record<FieldSection, string> = {
  * category's array, so a field can be added anywhere without reshuffling its section's
  * position in the UI. */
 export const SECTION_ORDER: FieldSection[] = [
+  "pricing",
   "basics",
   "roomDetails",
   "spaceDetails",
@@ -46,7 +47,6 @@ export const SECTION_ORDER: FieldSection[] = [
   "itemDetails",
   "serviceDetails",
   "plotDetails",
-  "pricing",
   "preferences",
   "furnishing",
   "amenities",
@@ -240,10 +240,14 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     ],
   },
   {
+    // "Negotiable" is already one of the Price Qualifier's own options for sell listings (see
+    // SELL_OPTIONS in priceQualifiers.ts) — restricted to rent/lease here so the two can't say
+    // conflicting things (qualifier "Fixed price" + this toggle "Yes") for the same listing.
     key: "priceNegotiable",
     label: "Price negotiable",
     type: "select",
     section: "pricing",
+    transactionTypes: ["rent", "lease"],
     options: [
       { value: "yes", label: "Yes" },
       { value: "no", label: "No" },
@@ -260,11 +264,12 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     ],
   },
   {
+    // Shared gate for both brokerage-amount fields below — no transactionTypes restriction of
+    // its own, since a sale can involve a broker just as much as a rental can.
     key: "brokerageFeeApplicable",
     label: "Has brokerage fee",
     type: "select",
     section: "pricing",
-    transactionTypes: ["rent", "lease"],
     dependsOn: { key: "fromBroker", value: "yes" },
     options: [
       { value: "yes", label: "Yes" },
@@ -278,6 +283,18 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     section: "pricing",
     transactionTypes: ["rent", "lease"],
+    dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
+  },
+  {
+    // Sale-side brokerage is conventionally quoted as a % of sale price rather than a flat
+    // amount — a distinct field/key rather than reusing `brokerageFee` for both, so neither the
+    // BFF nor the listing detail page has to guess whether a stored number means ₹ or %.
+    key: "brokerageCommissionPercent",
+    label: "Brokerage commission (%)",
+    type: "number",
+    min: 0,
+    section: "pricing",
+    transactionTypes: ["sell"],
     dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
   },
   {
