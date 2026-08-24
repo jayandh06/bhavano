@@ -175,6 +175,12 @@ function CategoryFieldInput({
     field.type === "number" && field.maxDigits !== undefined
       ? 10 ** field.maxDigits - 1
       : undefined;
+  // A 2-digit count doesn't need a full-width box to type into — stretching it the same as a
+  // 6-digit price/area field just leaves a wide empty input with a couple of characters in it.
+  const className =
+    field.type === "number" && field.maxDigits !== undefined
+      ? fieldClass.replace("w-full", "w-20")
+      : fieldClass;
 
   return (
     <input
@@ -190,7 +196,7 @@ function CategoryFieldInput({
         )
       }
       placeholder={field.placeholder}
-      className={fieldClass}
+      className={className}
     />
   );
 }
