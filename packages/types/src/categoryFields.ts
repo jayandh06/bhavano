@@ -59,6 +59,11 @@ export interface FieldDef {
   options?: FieldOption[];
   placeholder?: string;
   min?: number;
+  /** Caps a `number` field's input to this many digits — e.g. a bedroom/bathroom/appliance
+   * count never needs more than 2 (max 99), unlike a currency amount or an area in sqft, which
+   * are left unrestricted (`undefined`). Enforced by truncating keystrokes past the limit, not
+   * just `<input max>`, since browsers don't stop someone typing a 3rd digit on their own. */
+  maxDigits?: number;
   transactionTypes?: TransactionType[];
   section?: FieldSection;
   /** Field is only shown once `attributes[dependsOn.key] === dependsOn.value` — e.g. a
@@ -144,6 +149,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Bedrooms",
     type: "number",
     required: true,
+    maxDigits: 2,
     section: "basics",
   },
   {
@@ -151,6 +157,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Bathrooms",
     type: "number",
     required: true,
+    maxDigits: 2,
     section: "basics",
   },
   {
@@ -177,25 +184,28 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Balcony count",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "basics",
   },
   {
     key: "openParkingCount",
-    label: "Open parking spaces",
+    label: "Open parking",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "basics",
   },
   {
     key: "closedParkingCount",
-    label: "Closed parking spaces",
+    label: "Closed parking",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "basics",
   },
   {
     key: "entranceFacing",
-    label: "Main entrance facing",
+    label: "Entrance facing",
     type: "select",
     section: "basics",
     options: [
@@ -251,7 +261,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
   },
   {
     key: "brokerageFeeApplicable",
-    label: "Brokerage fee applicable",
+    label: "Has brokerage fee",
     type: "select",
     section: "pricing",
     transactionTypes: ["rent", "lease"],
@@ -263,7 +273,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
   },
   {
     key: "brokerageFee",
-    label: "Brokerage fee (INR)",
+    label: "Brokerage fee (₹)",
     type: "number",
     min: 0,
     section: "pricing",
@@ -272,7 +282,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
   },
   {
     key: "maintenanceFeeApplicable",
-    label: "Monthly maintenance fee applicable",
+    label: "Has monthly maintenance?",
     type: "select",
     section: "pricing",
     options: [
@@ -282,7 +292,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
   },
   {
     key: "monthlyMaintenanceFee",
-    label: "Monthly maintenance fee (INR)",
+    label: "Maintenance fee (₹)",
     type: "number",
     min: 0,
     section: "pricing",
@@ -305,6 +315,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Washing machines",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -313,6 +324,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Sofas",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -321,6 +333,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Stoves",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -329,6 +342,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Fridges",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -337,6 +351,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Cupboards",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -345,6 +360,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Fans",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -353,6 +369,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Lights",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -361,6 +378,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Beds",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -369,6 +387,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "TVs",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -377,6 +396,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Geysers",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -385,6 +405,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Tables",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -393,6 +414,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Dining tables",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
