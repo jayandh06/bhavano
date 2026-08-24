@@ -201,6 +201,105 @@ function CategoryFieldInput({
   );
 }
 
+type FieldRun =
+  | { kind: "standalone"; fields: FieldDef[] }
+  | { kind: "chain"; fields: FieldDef[] };
+
+/** Splits a section's fields into runs, keeping a `dependsOn` chain (e.g. "Posted by broker" →
+ * "Has brokerage fee" → "Brokerage fee") together as one block instead of scattering the toggle
+ * into a shared toggle grid and the amount field into a shared number grid elsewhere in the
+ * section — a chain is one decision with a follow-up, so it should read as one, not get split
+ * apart by field type. Fields with no chain partner in this section stay batched together for
+ * grid density, same as before. */
+function groupFieldsByChain(fields: FieldDef[]): FieldRun[] {
+  const keysInSection = new Set(fields.map((field) => field.key));
+  const childrenOf = new Map<string, FieldDef[]>();
+  const roots: FieldDef[] = [];
+  for (const field of fields) {
+    const parentKey = field.dependsOn?.key;
+    if (parentKey && keysInSection.has(parentKey)) {
+      const siblings = childrenOf.get(parentKey);
+      if (siblings) siblings.push(field);
+      else childrenOf.set(parentKey, [field]);
+    } else {
+      roots.push(field);
+    }
+  }
+  function collectChain(field: FieldDef): FieldDef[] {
+    const children = childrenOf.get(field.key) ?? [];
+    return [field, ...children.flatMap(collectChain)];
+  }
+
+  const runs: FieldRun[] = [];
+  let standaloneRun: FieldDef[] = [];
+  for (const root of roots) {
+    const chain = collectChain(root);
+    if (chain.length === 1) {
+      standaloneRun.push(root);
+      continue;
+    }
+    if (standaloneRun.length > 0) {
+      runs.push({ kind: "standalone", fields: standaloneRun });
+      standaloneRun = [];
+    }
+    runs.push({ kind: "chain", fields: chain });
+  }
+  if (standaloneRun.length > 0) runs.push({ kind: "standalone", fields: standaloneRun });
+  return runs;
+}
+
+/** Renders one run from `groupFieldsByChain` — same toggle-grid / other-grid split as before,
+ * just scoped to the run's own fields instead of the whole section, so a chain's toggle(s) and
+ * trailing amount field stay adjacent while still getting the same compact grid treatment. */
+function FieldRunBlock({
+  run,
+  attributes,
+  onChange,
+}: {
+  run: FieldRun;
+  attributes: Record<string, string | string[]>;
+  onChange: (field: FieldDef, value: string | string[]) => void;
+}) {
+  const toggleFields = run.fields.filter(isYesNoField);
+  const otherFields = run.fields.filter((field) => !isYesNoField(field));
+  return (
+    <div className="flex flex-col gap-3">
+      {toggleFields.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+          {toggleFields.map((field) => (
+            <CategoryField
+              key={field.key}
+              field={field}
+              value={attributes[field.key]}
+              onChange={(value) => onChange(field, value)}
+            />
+          ))}
+        </div>
+      )}
+      {otherFields.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-4">
+          {otherFields.map((field) => (
+            <div
+              key={field.key}
+              className={
+                field.type === "text" || field.type === "multi-select"
+                  ? "col-span-full"
+                  : undefined
+              }
+            >
+              <CategoryField
+                field={field}
+                value={attributes[field.key]}
+                onChange={(value) => onChange(field, value)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** One field's label + input. A Yes/No field pairs its label with the toggle inline on the same
  * row (the toggle is compact enough to share the row); every other field keeps the label
  * stacked above the input. Labels always truncate to one line rather than wrapping — `title`
@@ -297,52 +396,19 @@ export function CategoryFieldsAccordion({
             {label}
           </summary>
           {(() => {
-            // Toggle fields pair a label with a switch on the same row, so they need more
-            // width per item than a stacked label-above-input field does — they get their own,
-            // wider grid (1 column on mobile, 2 on desktop) rather than sharing the tighter
-            // count/select grid below, where their labels would truncate.
-            const toggleFields = fields.filter(isYesNoField);
-            const otherFields = fields.filter((field) => !isYesNoField(field));
             const extra = section !== "other" ? sectionExtras?.[section] : undefined;
+            const runs = groupFieldsByChain(fields);
             return (
               <div className="flex flex-col gap-4 px-4 pb-4">
                 {extra}
-                {toggleFields.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                    {toggleFields.map((field) => (
-                      <CategoryField
-                        key={field.key}
-                        field={field}
-                        value={attributes[field.key]}
-                        onChange={(value) => setFieldValue(field, value)}
-                      />
-                    ))}
-                  </div>
-                )}
-                {otherFields.length > 0 && (
-                  // Most of these are a small count or short pick from a handful of options, so
-                  // a single-column stack wastes most of the row's width. The few fields that
-                  // genuinely need room (free text, multi-select) span the full row instead of
-                  // getting squeezed.
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-4">
-                    {otherFields.map((field) => (
-                      <div
-                        key={field.key}
-                        className={
-                          field.type === "text" || field.type === "multi-select"
-                            ? "col-span-full"
-                            : undefined
-                        }
-                      >
-                        <CategoryField
-                          field={field}
-                          value={attributes[field.key]}
-                          onChange={(value) => setFieldValue(field, value)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {runs.map((run) => (
+                  <FieldRunBlock
+                    key={run.fields[0].key}
+                    run={run}
+                    attributes={attributes}
+                    onChange={setFieldValue}
+                  />
+                ))}
               </div>
             );
           })()}

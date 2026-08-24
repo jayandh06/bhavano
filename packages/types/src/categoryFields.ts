@@ -293,6 +293,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Brokerage commission (%)",
     type: "number",
     min: 0,
+    maxDigits: 2,
     section: "pricing",
     transactionTypes: ["sell"],
     dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
