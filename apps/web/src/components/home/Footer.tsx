@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Area, City } from "@bhavano/types";
+import { ENTITY_TAGLINE, entityCopyright } from "@bhavano/types/legalEntity";
 import { slugify } from "@bhavano/types/slugify";
 import { fetchCities } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
@@ -79,6 +80,10 @@ export async function Footer({
       <div className="max-w-[1280px] mx-auto flex flex-wrap justify-between gap-8">
         <div className="max-w-[260px]">
           <div className="font-lora font-bold text-lg text-green mb-1.5">Bhavano</div>
+          {/* Brand → legal entity link, on every page. DLT/telco header verification (and payment
+              aggregator onboarding) rejects a site that names only the brand — see
+              docs/plans/finfolia-entity-disclosure.md. */}
+          <p className="text-[12.5px] text-text-soft leading-[1.6] m-0 mb-1.5">{ENTITY_TAGLINE}</p>
           <p className="text-[13px] text-text-soft leading-[1.6] m-0">
             Verified listings to buy, rent or lease houses, apartments, villas, plots, coworking desks, commercial
             spaces, PG accommodation and furniture across India — no login needed to browse.
@@ -92,12 +97,14 @@ export async function Footer({
             <Link href={currentCityName ? `/post?city=${slugify(currentCityName)}` : "/post"}>Post a free ad</Link>
             <Link href="/tools">Tools</Link>
             <Link href="/help">Help centre</Link>
+            <Link href="/about">About us</Link>
           </div>
         </div>
       </div>
       <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-4">
-        <span className="text-xs text-muted">© 2026 Bhavano. All rights reserved.</span>
+        <span className="text-xs text-muted">{entityCopyright(2026)}</span>
         <div className="flex gap-5 text-xs">
+          <Link href="/about">About Us</Link>
           <Link href="/terms">Terms of Service</Link>
           <Link href="/privacy">Privacy Policy</Link>
           <Link href="/contact">Contact Us</Link>

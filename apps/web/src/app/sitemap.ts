@@ -55,5 +55,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(),
   }));
 
-  return [{ url: SITE_URL, lastModified: new Date() }, ...browseEntries, ...listingEntries];
+  // Static informational pages. Previously absent, which left the legal/company pages
+  // discoverable only by following footer links — the entity-disclosure pages in particular need
+  // to be trivially reachable by a verification reviewer (see
+  // docs/plans/finfolia-entity-disclosure.md). `robots.ts` already allows all of these.
+  const staticEntries: MetadataRoute.Sitemap = [
+    "/about",
+    "/contact",
+    "/help",
+    "/terms",
+    "/privacy",
+    "/premium",
+    "/tools",
+  ].map((path) => ({ url: `${SITE_URL}${path}`, lastModified: new Date() }));
+
+  return [
+    { url: SITE_URL, lastModified: new Date() },
+    ...staticEntries,
+    ...browseEntries,
+    ...listingEntries,
+  ];
 }

@@ -60,6 +60,10 @@
     "./listingSlots": {
       "types": "./dist/listingSlots.d.ts",
       "default": "./dist/listingSlots.js"
+    },
+    "./legalEntity": {
+      "types": "./dist/legalEntity.d.ts",
+      "default": "./dist/legalEntity.js"
     }
   },
   "scripts": {

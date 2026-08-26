@@ -3,7 +3,10 @@
 // file can't reference process.env at all). See docs/plans/google-maps-location-picker.md.
 module.exports = {
   expo: {
-    name: "mobile",
+    // Display name under the app icon and in the store listing. The publisher/developer name in
+    // the Play and App Store consoles must read "Finfolia Technologies LLP" to match — that's a
+    // console setting, not config. See docs/plans/finfolia-entity-disclosure.md.
+    name: "Bhavano",
     slug: "mobile",
     scheme: "bhavano",
     version: "1.0.0",

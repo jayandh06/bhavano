@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LEGAL_ENTITY, entityOperatorSentence } from "@bhavano/types/legalEntity";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
 export const metadata = {
@@ -8,11 +9,17 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <StaticPageLayout title="Terms of Service" updated="17 July 2026">
+    <StaticPageLayout title="Terms of Service" updated="26 August 2026">
       <PageSection heading="1. Acceptance of these terms">
         <p className="m-0">
           By accessing or using Bhavano (the &quot;Platform&quot;) you agree to be bound by these Terms of Service.
           If you do not agree, please do not use the Platform.
+        </p>
+        {/* Names the operator so the "we"/"us"/"our" used throughout the rest of these terms has a
+            defined referent — and so the registered entity behind the brand is stated on the site. */}
+        <p className="m-0 mt-2">
+          {entityOperatorSentence()} References to &quot;we&quot;, &quot;us&quot; and &quot;our&quot; in these terms
+          mean {LEGAL_ENTITY.legalName}.
         </p>
       </PageSection>
 

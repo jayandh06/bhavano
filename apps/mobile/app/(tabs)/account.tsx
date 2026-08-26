@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import type { UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
+import { LegalFooter } from "../../src/components/home/LegalFooter";
 import { linkPhone, sendOtp, updateProfile } from "../../src/lib/bffClient";
 
 type PhoneStep = "idle" | "otpSent";
@@ -20,7 +21,13 @@ export default function AccountScreen() {
   );
 
   if (!isLoggedIn) {
-    return <View style={[styles.container, { backgroundColor: colors.bg }]} />;
+    // The login sheet is what's actually on screen here, but the entity disclosure has to be
+    // reachable *without* an account — a verification reviewer won't sign up to find it.
+    return (
+      <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
+        <LegalFooter />
+      </ScrollView>
+    );
   }
 
   if (!profile || !accessToken) {
@@ -254,6 +261,8 @@ function ProfileFields({
       >
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>{saving ? "Saving…" : "Save changes"}</Text>
       </Pressable>
+
+      <LegalFooter />
     </ScrollView>
   );
 }

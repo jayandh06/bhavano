@@ -1,16 +1,40 @@
 import Link from "next/link";
+import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
 export const metadata = {
   title: "Contact Us — Bhavano",
-  description: "Get in touch with the Bhavano team for support, feedback, or partnership queries.",
+  description: `Get in touch with ${LEGAL_ENTITY.legalName}, the operator of Bhavano, for support, feedback, or partnership queries.`,
 };
 
-const SUPPORT_EMAIL = "support@bhavano.com";
+const SUPPORT_EMAIL = LEGAL_ENTITY.supportEmail;
 
 export default function ContactPage() {
+  const addressLines = entityAddressLines();
+
   return (
-    <StaticPageLayout title="Contact us" updated="17 July 2026">
+    <StaticPageLayout title="Contact us" updated="26 August 2026">
+      <PageSection heading="Registered entity">
+        <p className="m-0">
+          Bhavano is operated by <span className="text-text font-bold">{LEGAL_ENTITY.legalName}</span>
+          {LEGAL_ENTITY.llpin && <> (LLPIN: {LEGAL_ENTITY.llpin})</>}.
+        </p>
+        {addressLines.length > 0 && (
+          <address className="not-italic m-0 mt-2">
+            <span className="text-muted">Registered office: </span>
+            {addressLines.join(", ")}
+          </address>
+        )}
+        {LEGAL_ENTITY.supportPhone && (
+          <p className="m-0 mt-2">
+            <span className="text-muted">Phone: </span>
+            <a href={`tel:${LEGAL_ENTITY.supportPhone.replace(/\s/g, "")}`} className="text-green font-bold">
+              {LEGAL_ENTITY.supportPhone}
+            </a>
+          </p>
+        )}
+      </PageSection>
+
       <PageSection heading="Get in touch">
         <p className="m-0">
           Have a question, need help with your account, or want to report a listing? Check our{" "}

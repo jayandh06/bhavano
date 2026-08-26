@@ -1,14 +1,37 @@
 import Link from "next/link";
+import { LEGAL_ENTITY, entityAddressLines, entityOperatorSentence } from "@bhavano/types/legalEntity";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
 export const metadata = {
   title: "Privacy Policy — Bhavano",
-  description: "How Bhavano collects, uses, and protects your personal information.",
+  description: `How ${LEGAL_ENTITY.legalName}, the operator of Bhavano, collects, uses, and protects your personal information.`,
 };
 
 export default function PrivacyPage() {
+  const addressLines = entityAddressLines();
+
   return (
-    <StaticPageLayout title="Privacy Policy" updated="17 July 2026">
+    <StaticPageLayout title="Privacy Policy" updated="26 August 2026">
+      <PageSection heading="Who processes your data">
+        <p className="m-0">
+          {entityOperatorSentence()} {LEGAL_ENTITY.legalName} is the data fiduciary responsible for the personal
+          data described in this policy.
+        </p>
+        {addressLines.length > 0 && (
+          <address className="not-italic m-0 mt-2">
+            <span className="text-muted">Registered office: </span>
+            {addressLines.join(", ")}
+          </address>
+        )}
+        <p className="m-0 mt-2">
+          Privacy and grievance queries:{" "}
+          <a href={`mailto:${LEGAL_ENTITY.supportEmail}`} className="text-green font-bold">
+            {LEGAL_ENTITY.supportEmail}
+          </a>
+          .
+        </p>
+      </PageSection>
+
       <PageSection heading="1. Information we collect">
         <p className="m-0 mb-2">We collect the following information:</p>
         <ul className="list-disc m-0 pl-5">

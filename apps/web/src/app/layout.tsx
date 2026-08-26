@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Lora, Manrope } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "next-themes";
+import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
 import { AuthGateProvider } from "@/components/home/AuthGateProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
@@ -25,6 +26,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com"
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 const GOOGLE_MAPS_JS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY;
 const SITE_NAME = "Bhavano";
+const ENTITY_ADDRESS_LINES = entityAddressLines();
 const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
 const SITE_DESCRIPTION =
   "India's home for Buy, Rent, Villas, Plots, Commercial Spaces, Coworking, PG and Furniture listings — browse without login, verified listings across India.";
@@ -56,8 +58,20 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           data={{
             "@type": "Organization",
             name: SITE_NAME,
+            // Machine-readable brand → registered-entity link, for the automated scrapes that
+            // DLT/telco and payment-aggregator verification run against the homepage.
+            legalName: LEGAL_ENTITY.legalName,
             url: SITE_URL,
             description: SITE_DESCRIPTION,
+            ...(ENTITY_ADDRESS_LINES.length > 0 && {
+              address: { "@type": "PostalAddress", streetAddress: ENTITY_ADDRESS_LINES.join(", ") },
+            }),
+            contactPoint: {
+              "@type": "ContactPoint",
+              contactType: "customer support",
+              email: LEGAL_ENTITY.supportEmail,
+              ...(LEGAL_ENTITY.supportPhone && { telephone: LEGAL_ENTITY.supportPhone }),
+            },
           }}
         />
         {GOOGLE_MAPS_JS_KEY && (
