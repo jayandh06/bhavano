@@ -24,6 +24,12 @@ const manrope = Manrope({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
+// Google Ads conversion ID (AW-XXXXXXXXXX), installed as a direct gtag.js tag rather than through
+// the GTM container above — leave blank to skip loading it entirely (the default locally, so dev
+// traffic never pollutes real Ads reporting). gtag.js handles gclid link-decoration itself, so no
+// separate Conversion Linker tag is needed on this path. Like every NEXT_PUBLIC_*, this is inlined
+// at `next build`, so prod needs it as a docker build arg — not just a runtime environment entry.
+const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 const GOOGLE_MAPS_JS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY;
 const SITE_NAME = "Bhavano";
 const ENTITY_ADDRESS_LINES = entityAddressLines();
@@ -83,6 +89,21 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Script id="gtm-loader" strategy="afterInteractive">
             {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${GTM_ID}');`}
           </Script>
+        )}
+        {GOOGLE_ADS_ID && (
+          <>
+            <Script
+              id="google-tag-loader"
+              src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-tag-config" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${GOOGLE_ADS_ID}');`}
+            </Script>
+          </>
         )}
       </head>
       <body suppressHydrationWarning>
