@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { sendOtpAction, signInWithGoogleAction, verifyOtpAction } from "@/app/actions/auth";
 import { pushDataLayerEvent } from "@/lib/gtm";
 
@@ -28,6 +29,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
+  const router = useRouter();
+
   function requireLogin() {
     setLoginStep("choose");
     setPhone("");
@@ -44,6 +47,12 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     setShowLoginModal(false);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2200);
+    // The header's logged-in state is a server-resolved `userName` prop (see Header ->
+    // HeaderAuthButtons), so signing in server-side is not enough on its own: without this the
+    // client keeps the RSC payload it rendered while logged out and the header still says
+    // "Login" until the next navigation. Google sign-in avoids this only because it is a
+    // full-page redirect.
+    router.refresh();
   }
 
   async function handleSendOtp() {
