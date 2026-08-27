@@ -7,7 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import type { AuthSession } from '@bhavano/types';
+import type { AuthSession, LinkIdentifierResult } from '@bhavano/types';
 import { AuthGuard } from './guards/auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { RequestUser } from './guards/auth.guard';
@@ -72,12 +72,11 @@ export class AuthController {
   @HttpCode(200)
   @UseGuards(AuthGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  async linkPhone(
+  linkPhone(
     @Body() dto: VerifyOtpDto,
     @CurrentUser() user: RequestUser,
-  ): Promise<{ success: true }> {
-    await this.authService.linkPhone(user.id, dto.phone, dto.code);
-    return { success: true };
+  ): Promise<LinkIdentifierResult> {
+    return this.authService.linkPhone(user.id, dto.phone, dto.code);
   }
 
   /** No server-side session to end (JWTs are stateless/short-lived) — this exists purely to give

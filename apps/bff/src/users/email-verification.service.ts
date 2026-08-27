@@ -1,10 +1,8 @@
 import { createHash, randomInt } from 'node:crypto';
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import type { LinkIdentifierResult } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { AccountMergeService } from './account-merge.service';
 import { EmailProvider } from '../notifications/providers/email.provider';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -32,21 +30,16 @@ export class EmailVerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailProvider,
+    private readonly merge: AccountMergeService,
   ) {}
 
-  /** Sends a code to `email`. Refuses addresses already held by someone else, since verifying
-   * one would otherwise be the first half of taking their account. */
+  /** Sends a code to `email`.
+   *
+   * Deliberately does NOT refuse an address held by another account: proving control of it is
+   * exactly what authorises merging the two, so refusing here would preserve the dead end this
+   * flow exists to remove. Nothing leaks either — the code goes to the address itself, so only
+   * its real owner learns anything. */
   async requestCode(userId: string, email: string): Promise<void> {
-    const owner = await this.prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
-    });
-    if (owner && owner.id !== userId) {
-      throw new ConflictException(
-        'This email is already associated with another account',
-      );
-    }
-
     const code = randomInt(100000, 1000000).toString();
     await this.prisma.emailChallenge.create({
       data: {
@@ -72,18 +65,71 @@ export class EmailVerificationService {
     }
   }
 
+  /** Validates the code without consuming it — used by the confirm path, which has already
+   * shown the user what a merge would move and now needs the same proof again. */
+  async assertCodeValid(
+    userId: string,
+    email: string,
+    code: string,
+  ): Promise<void> {
+    await this.checkChallenge(userId, email, code);
+  }
+
   /** Marks the address verified on success. Throws on wrong/expired/exhausted, mirroring
    * OtpService.verifyChallenge. */
-  async verifyCode(userId: string, email: string, code: string): Promise<void> {
+  async verifyCode(
+    userId: string,
+    email: string,
+    code: string,
+  ): Promise<LinkIdentifierResult> {
+    await this.checkChallenge(userId, email, code);
+
+    // The code proved this address is theirs; the session proves the current account is theirs.
+    // If another account holds the address, one person owns both — so this is a merge, not a
+    // conflict.
+    const owner = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (owner && owner.id !== userId) {
+      const summary = await this.merge.summarize(owner.id);
+      if (!this.merge.isEmpty(summary)) return { status: 'confirm', summary };
+
+      await this.prisma.emailChallenge.deleteMany({ where: { userId, email } });
+      const { winnerId, loserId } = await this.merge.pickWinner(
+        userId,
+        owner.id,
+      );
+      await this.merge.merge(winnerId, loserId);
+      return { status: 'merged', reauthRequired: loserId === userId };
+    }
+
+    await this.prisma.emailChallenge.deleteMany({ where: { userId, email } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { email, emailVerifiedAt: new Date() },
+    });
+    return { status: 'linked' };
+  }
+
+  /** Shared validation: never consumes the challenge, so the caller decides when to commit.
+   * A wrong code still burns an attempt — that is the brute-force bound. */
+  private async checkChallenge(
+    userId: string,
+    email: string,
+    code: string,
+  ): Promise<void> {
     const challenge = await this.prisma.emailChallenge.findFirst({
       where: { userId, email },
       orderBy: { createdAt: 'desc' },
     });
 
-    if (!challenge)
+    if (!challenge) {
       throw new BadRequestException(
         'No verification request found for this email',
       );
+    }
     if (challenge.attempts >= MAX_ATTEMPTS) {
       throw new BadRequestException('Too many attempts — request a new code');
     }
@@ -97,19 +143,5 @@ export class EmailVerificationService {
       });
       throw new BadRequestException('Incorrect code');
     }
-
-    try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { email, emailVerifiedAt: new Date() },
-      });
-    } catch {
-      // Someone claimed the address between requestCode and now.
-      throw new ConflictException(
-        'This email is already associated with another account',
-      );
-    }
-
-    await this.prisma.emailChallenge.deleteMany({ where: { userId, email } });
   }
 }

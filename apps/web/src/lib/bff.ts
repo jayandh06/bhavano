@@ -29,6 +29,7 @@ import type {
 } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
 import type { CreateSupportTicketResponse } from "@bhavano/types/support";
+import type { LinkIdentifierResult } from "@bhavano/types";
 import { isListingSlotCapErrorBody, ListingSlotCapError } from "@/lib/listingSlotErrors";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
@@ -262,7 +263,7 @@ export function requestEmailCode(accessToken: string, email: string): Promise<{ 
   });
 }
 
-export function verifyEmail(accessToken: string, email: string, code: string): Promise<UserProfileDto> {
+export function verifyEmail(accessToken: string, email: string, code: string): Promise<LinkIdentifierResult> {
   return authedBffFetch(accessToken, "/users/me/email/verify", {
     method: "POST",
     body: JSON.stringify({ email, code }),
@@ -327,7 +328,7 @@ export async function loginWithGoogle(idToken: string): Promise<AuthSession> {
 
 /** Links a verified phone number to the currently logged-in user (e.g. a Google-login user
  * completing their profile) — distinct from verifyOtp(), which logs in/signs up by phone. */
-export function linkPhone(accessToken: string, phone: string, code: string): Promise<{ success: true }> {
+export function linkPhone(accessToken: string, phone: string, code: string): Promise<LinkIdentifierResult> {
   return authedBffFetch(accessToken, "/auth/otp/link", { method: "POST", body: JSON.stringify({ phone, code }) });
 }
 
@@ -426,4 +427,16 @@ export function sendMessage(accessToken: string, conversationId: string, body: s
 
 export function markConversationRead(accessToken: string, conversationId: string): Promise<void> {
   return authedBffFetch(accessToken, `/conversations/${conversationId}/read`, { method: "POST" });
+}
+
+/** Executes a merge the user approved. `code` is the same one proven when the server answered
+ * `confirm` — that request deliberately left the challenge valid. */
+export function confirmAccountMerge(
+  accessToken: string,
+  identifier: { phone?: string; email?: string; code: string },
+): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/users/me/merge/confirm", {
+    method: "POST",
+    body: JSON.stringify(identifier),
+  });
 }

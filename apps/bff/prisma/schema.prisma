@@ -228,8 +228,23 @@ model User {
   outreachContact       OutreachContact?
   outreachCampaigns     OutreachCampaign[]
   supportTickets        SupportTicket[]
+  /** Non-null once this account was merged into another — the row is kept, never deleted, so the
+   * payments and listings that used to hang off it stay auditable and a bad merge stays
+   * recoverable. Points at the survivor rather than being a bare `deletedAt` so support can
+   * follow the chain. Sessions for a merged row resolve to the survivor (see AuthGuard).
+   * See docs/plans/account-linking-phone-and-email.md. */
+  mergedIntoUserId      String?
+  mergedInto            User?          @relation("UserMerge", fields: [mergedIntoUserId], references: [id])
+  mergedFrom            User[]         @relation("UserMerge")
+  mergedAt              DateTime?
+  /** phone/email/googleId are @unique, so a retained row would keep holding the identifiers the
+   * surviving account needs — which is the entire point of merging. They are released (nulled)
+   * and preserved here instead. */
+  mergedPhone           String?
+  mergedEmail           String?
 
   @@index([cityId])
+  @@index([mergedIntoUserId])
 }
 
 model Listing {

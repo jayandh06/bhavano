@@ -677,3 +677,29 @@ export interface CampaignPreviewDto {
   /** A handful of resolved message bodies, so a bad placeholder is caught before sending. */
   sampleBodies: string[];
 }
+
+/** What the other account holds, so a merge prompt can itemise what moves rather than asking
+ * for a bare confirmation. See docs/plans/account-linking-phone-and-email.md. */
+export interface AccountMergeSummary {
+  listings: number;
+  activeSubscription: boolean;
+  payments: number;
+  conversations: number;
+  favourites: number;
+}
+
+/** Outcome of adding an identifier that turned out to belong to another account.
+ * - `linked`   — the identifier was free; nothing else happened.
+ * - `merged`   — the other account was empty, so it was merged automatically and announced.
+ * - `confirm`  — both accounts hold something; the user must approve before anything moves. */
+export type LinkIdentifierResult =
+  | { status: "linked" }
+  | {
+      status: "merged";
+      /** True when the session's own account was the one retired — its listings now live under
+       * the surviving id, so the caller must sign in again rather than keep acting as a row that
+       * no longer holds anything. Surfaced here rather than resolved in AuthGuard, which is
+       * deliberately DB-free and runs on every authenticated request. */
+      reauthRequired: boolean;
+    }
+  | { status: "confirm"; summary: AccountMergeSummary };

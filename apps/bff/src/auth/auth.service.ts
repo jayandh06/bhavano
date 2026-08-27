@@ -1,16 +1,17 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
-import type { AuthSession, AuthUser } from '@bhavano/types';
+import type {
+  AuthSession,
+  AuthUser,
+  LinkIdentifierResult,
+} from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import type { User } from '@prisma/client';
 import { OtpService } from './otp.service';
 import { Msg91Provider } from '../notifications/providers/msg91.provider';
+import { AccountMergeService } from '../users/account-merge.service';
 import { GoogleProvider } from './providers/google.provider';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -69,6 +70,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly otpService: OtpService,
     private readonly msg91: Msg91Provider,
+    private readonly accountMerge: AccountMergeService,
     private readonly googleProvider: GoogleProvider,
     private readonly notificationsService: NotificationsService,
     private readonly analyticsService: AnalyticsService,
@@ -108,20 +110,46 @@ export class AuthService {
   /** Links a verified phone number to the currently logged-in user — e.g. a Google-login
    * user completing their profile. Distinct from verifyOtp() (login/signup by phone), which
    * would otherwise upsert-by-phone and risk operating on a different user's account. */
-  async linkPhone(userId: string, phone: string, code: string): Promise<void> {
-    await this.otpService.verifyChallenge(phone, code);
+  /** Validates an OTP without consuming it — used by the merge-confirm path, which needs the
+   * same proof a second time after the user approves. */
+  async assertOtpValid(phone: string, code: string): Promise<void> {
+    await this.otpService.verifyChallenge(phone, code, { consume: false });
+  }
+
+  async linkPhone(
+    userId: string,
+    phone: string,
+    code: string,
+  ): Promise<LinkIdentifierResult> {
+    // The OTP proves this number is theirs and the session proves the current account is theirs,
+    // so when another account holds the number, one person owns both. This used to throw at
+    // exactly this point, discarding the proof it had just obtained.
+    // Not consumed yet: if this turns out to need the user's approval, the same code has to
+    // still be valid when they confirm, rather than sending them a second one.
+    await this.otpService.verifyChallenge(phone, code, { consume: false });
 
     const existing = await this.prisma.user.findUnique({ where: { phone } });
+
     if (existing && existing.id !== userId) {
-      throw new ConflictException(
-        'This phone number is already linked to another account',
+      const summary = await this.accountMerge.summarize(existing.id);
+      if (!this.accountMerge.isEmpty(summary))
+        return { status: 'confirm', summary };
+
+      await this.otpService.verifyChallenge(phone, code);
+      const { winnerId, loserId } = await this.accountMerge.pickWinner(
+        userId,
+        existing.id,
       );
+      await this.accountMerge.merge(winnerId, loserId);
+      return { status: 'merged', reauthRequired: loserId === userId };
     }
 
+    await this.otpService.verifyChallenge(phone, code);
     await this.prisma.user.update({
       where: { id: userId },
       data: { phone, phoneVerifiedAt: new Date() },
     });
+    return { status: 'linked' };
   }
 
   async loginWithGoogle(

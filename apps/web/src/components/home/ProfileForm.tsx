@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { City, UserProfileDto } from "@bhavano/types";
+import { useRouter } from "next/navigation";
+import type { AccountMergeSummary, City, UserProfileDto } from "@bhavano/types";
 import { autoDetectCityAction, searchCitiesAction } from "@/app/actions/locations";
-import { requestEmailCodeAction, updateProfileAction, verifyEmailAction } from "@/app/actions/users";
+import {
+  confirmAccountMergeAction,
+  requestEmailCodeAction,
+  updateProfileAction,
+  verifyEmailAction,
+} from "@/app/actions/users";
 import { linkPhoneAction, sendOtpAction } from "@/app/actions/auth";
 
 type PhoneStep = "idle" | "otpSent";
@@ -27,6 +33,13 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   const [emailCode, setEmailCode] = useState("");
   const [emailPending, setEmailPending] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [mergePrompt, setMergePrompt] = useState<{
+    summary: AccountMergeSummary;
+    email: string;
+    code: string;
+  } | null>(null);
+  const [mergeNotice, setMergeNotice] = useState<string | null>(null);
+  const router = useRouter();
 
   const [currentPhone, setCurrentPhone] = useState(profile.phone);
   const [phoneStep, setPhoneStep] = useState<PhoneStep>("idle");
@@ -69,16 +82,52 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
     setEmailError(null);
     const result = await verifyEmailAction(email.trim(), emailCode);
     setEmailPending(false);
-    if (result.success) {
-      setEmailVerified(true);
-      setEmailStep("idle");
-      setEmailCode("");
-      // The address is only stored at this point, so the read-only view has to learn about it
-      // without waiting for a reload.
-      if (result.profile?.email) setSavedEmail(result.profile.email);
-    } else {
-      setEmailError(result.error ?? "Couldn't verify the code");
+    if (!result.success) {
+      setEmailError(result.error);
+      return;
     }
+
+    if (result.result.status === "confirm") {
+      // Both accounts hold something, so nothing moves until the user agrees. The code stays
+      // valid for the confirm call — the server deliberately did not consume it.
+      setMergePrompt({ summary: result.result.summary, email: email.trim(), code: emailCode });
+      return;
+    }
+
+    if (result.result.status === "merged") {
+      finishMerge(result.result.reauthRequired);
+      return;
+    }
+
+    setEmailVerified(true);
+    setEmailStep("idle");
+    setSavedEmail(email.trim());
+    setEmailCode("");
+  }
+
+  function finishMerge(reauthRequired: boolean) {
+    setEmailStep("idle");
+    setEmailCode("");
+    setMergePrompt(null);
+    if (reauthRequired) {
+      // This session's own account was the one retired — its data now lives under the surviving
+      // id, so continuing as it would show an empty profile. Sign out rather than leave them
+      // looking at a hollow account.
+      setMergeNotice("Your accounts are now combined. Please sign in again to continue.");
+    } else {
+      setMergeNotice("Your accounts are now combined.");
+      router.refresh();
+    }
+  }
+
+  async function handleConfirmMerge() {
+    if (!mergePrompt) return;
+    setEmailPending(true);
+    setEmailError(null);
+    const result = await confirmAccountMergeAction({ email: mergePrompt.email, code: mergePrompt.code });
+    setEmailPending(false);
+    if (result.success) finishMerge(false);
+    else setEmailError(result.error ?? "Couldn't merge the accounts");
   }
 
   async function onCityQueryChange(value: string) {
@@ -265,6 +314,55 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
             )}
             {emailError && <p className={errorClass}>{emailError}</p>}
           </>
+        )}
+
+        {mergeNotice && (
+          <p aria-live="polite" className="text-green text-[13px] font-bold m-0 mt-2">
+            {mergeNotice}
+          </p>
+        )}
+
+        {/* Both accounts hold something, so nothing has moved yet. Itemised rather than a bare
+            confirm: the user is agreeing to relocate real data, and a merge cannot be undone by
+            them — only by support, from the retired row. */}
+        {mergePrompt && (
+          <div className="border border-border rounded-lg p-4 mt-3">
+            <p className="m-0 font-bold text-text">That email is on another Bhavano account.</p>
+            <p className="m-0 mt-2 text-[13px] text-text-soft">
+              You&apos;ve verified both, so we can combine them. That account has:
+            </p>
+            <ul className="list-disc m-0 mt-2 mb-3 pl-5 text-[13px] text-text-soft">
+              {mergePrompt.summary.listings > 0 && <li>{mergePrompt.summary.listings} listing(s)</li>}
+              {mergePrompt.summary.activeSubscription && <li>an active subscription</li>}
+              {mergePrompt.summary.conversations > 0 && (
+                <li>{mergePrompt.summary.conversations} conversation(s)</li>
+              )}
+              {mergePrompt.summary.payments > 0 && <li>{mergePrompt.summary.payments} payment(s)</li>}
+              {mergePrompt.summary.favourites > 0 && (
+                <li>{mergePrompt.summary.favourites} saved favourite(s)</li>
+              )}
+            </ul>
+            <p className="m-0 mb-3 text-[12.5px] text-muted">
+              Everything moves into one account. This can&apos;t be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleConfirmMerge}
+                disabled={emailPending}
+                className="bg-green text-white border-0 rounded-lg px-4 py-2 text-[13px] font-bold cursor-pointer disabled:opacity-60"
+              >
+                {emailPending ? "Combining…" : "Combine accounts"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMergePrompt(null)}
+                className="bg-transparent border-[1.5px] border-border text-text rounded-lg px-4 py-2 text-[13px] font-bold cursor-pointer"
+              >
+                Keep separate
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

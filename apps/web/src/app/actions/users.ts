@@ -1,8 +1,15 @@
 "use server";
 
-import type { UpdateProfileInput, UserProfileDto } from "@bhavano/types";
+import type { LinkIdentifierResult, UpdateProfileInput, UserProfileDto } from "@bhavano/types";
 import { auth } from "@/auth";
-import { BffAuthError, fetchProfile, requestEmailCode, updateProfile, verifyEmail } from "@/lib/bff";
+import {
+  BffAuthError,
+  confirmAccountMerge,
+  fetchProfile,
+  requestEmailCode,
+  updateProfile,
+  verifyEmail,
+} from "@/lib/bff";
 
 export type ProfileActionResult = { requiresLogin: true } | { requiresLogin: false; profile: UserProfileDto };
 
@@ -50,14 +57,28 @@ export async function requestEmailCodeAction(email: string): Promise<{ success: 
 export async function verifyEmailAction(
   email: string,
   code: string,
-): Promise<{ success: boolean; error?: string; profile?: UserProfileDto }> {
+): Promise<{ success: true; result: LinkIdentifierResult } | { success: false; error: string }> {
   const session = await auth();
   if (!session?.accessToken) return { success: false, error: "Not logged in" };
 
   try {
-    const profile = await verifyEmail(session.accessToken, email, code);
-    return { success: true, profile };
+    return { success: true, result: await verifyEmail(session.accessToken, email, code) };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Couldn't verify the code" };
+  }
+}
+
+/** Executes a merge the user approved after seeing what the other account holds. */
+export async function confirmAccountMergeAction(
+  identifier: { phone?: string; email?: string; code: string },
+): Promise<{ success: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "Not logged in" };
+
+  try {
+    await confirmAccountMerge(session.accessToken, identifier);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Couldn't merge the accounts" };
   }
 }

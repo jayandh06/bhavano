@@ -28,8 +28,17 @@ export class OtpService {
     return code;
   }
 
-  /** Throws if the code is wrong/expired/attempts exhausted; resolves silently on success. */
-  async verifyChallenge(phone: string, code: string): Promise<void> {
+  /** Throws if the code is wrong/expired/attempts exhausted; resolves silently on success.
+   *
+   * `consume: false` validates without deleting the challenge, so a caller that has more to do
+   * before committing — linkPhone discovering the number belongs to another account, and needing
+   * the user to approve a merge — can re-verify the same code on the follow-up request instead of
+   * making them request a second one. */
+  async verifyChallenge(
+    phone: string,
+    code: string,
+    options?: { consume?: boolean },
+  ): Promise<void> {
     const challenge = await this.prisma.otpChallenge.findFirst({
       where: { phone },
       orderBy: { createdAt: 'desc' },
@@ -55,6 +64,8 @@ export class OtpService {
       throw new BadRequestException('Incorrect OTP');
     }
 
-    await this.prisma.otpChallenge.delete({ where: { id: challenge.id } });
+    if (options?.consume !== false) {
+      await this.prisma.otpChallenge.delete({ where: { id: challenge.id } });
+    }
   }
 }
