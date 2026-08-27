@@ -1,12 +1,10 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import type { UserProfileDto } from '@bhavano/types';
 import type { User, City } from '@prisma/client';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ListingSlotsService } from '../listing-slots/listing-slots.service';
@@ -40,42 +38,20 @@ export class UsersService {
       if (!city) throw new BadRequestException('Unknown cityId');
     }
 
-    // Email is only settable while the profile doesn't already have one (e.g. a phone-login
-    // user completing their profile) — once set it's shown read-only, so this never overwrites
-    // a Google-verified email.
-    if (dto.email !== undefined) {
-      const existing = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { email: true },
-      });
-      if (existing?.email)
-        throw new BadRequestException('Email is already set');
-    }
-
-    try {
-      const user = await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          ...(dto.name !== undefined ? { name: dto.name } : {}),
-          ...(dto.cityId !== undefined ? { cityId: dto.cityId } : {}),
-          ...(dto.email !== undefined ? { email: dto.email } : {}),
-        },
-        include: { city: true },
-      });
-      const { activeCount, allowance } =
-        await this.listingSlotsService.getSummary(userId);
-      return toProfileDto(user, activeCount, allowance);
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          'This email is already associated with another account',
-        );
-      }
-      throw error;
-    }
+    // No try/catch for P2002 any more: the only unique field this endpoint could collide on was
+    // `email`, and an address now reaches the profile solely through the verified flow, which
+    // does its own conflict handling.
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.cityId !== undefined ? { cityId: dto.cityId } : {}),
+      },
+      include: { city: true },
+    });
+    const { activeCount, allowance } =
+      await this.listingSlotsService.getSummary(userId);
+    return toProfileDto(user, activeCount, allowance);
   }
 }
 
@@ -88,6 +64,7 @@ function toProfileDto(
     id: user.id,
     name: user.name,
     email: user.email,
+    emailVerified: !!user.emailVerifiedAt,
     phone: user.phone,
     cityId: user.cityId,
     cityName: user.city?.name ?? null,

@@ -255,6 +255,20 @@ export async function submitSupportTicket(formData: FormData): Promise<CreateSup
   return res.json() as Promise<CreateSupportTicketResponse>;
 }
 
+export function requestEmailCode(accessToken: string, email: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/users/me/email/request-code", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function verifyEmail(accessToken: string, email: string, code: string): Promise<UserProfileDto> {
+  return authedBffFetch(accessToken, "/users/me/email/verify", {
+    method: "POST",
+    body: JSON.stringify({ email, code }),
+  });
+}
+
 export function sendOtp(phone: string): Promise<{ success: true }> {
   return bffFetch("/auth/otp/send", { method: "POST", body: JSON.stringify({ phone }) });
 }

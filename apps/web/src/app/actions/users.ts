@@ -2,7 +2,7 @@
 
 import type { UpdateProfileInput, UserProfileDto } from "@bhavano/types";
 import { auth } from "@/auth";
-import { BffAuthError, fetchProfile, updateProfile } from "@/lib/bff";
+import { BffAuthError, fetchProfile, requestEmailCode, updateProfile, verifyEmail } from "@/lib/bff";
 
 export type ProfileActionResult = { requiresLogin: true } | { requiresLogin: false; profile: UserProfileDto };
 
@@ -28,5 +28,36 @@ export async function updateProfileAction(
     return { success: true, profile };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update profile" };
+  }
+}
+
+/** Sends a 6-digit code to `email`. Verifying an address is what makes it count as identity —
+ * an address merely typed into the form is stored but never treated as proof, so Google
+ * sign-in will not adopt this account until it is verified. See
+ * docs/plans/account-linking-phone-and-email.md. */
+export async function requestEmailCodeAction(email: string): Promise<{ success: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "Not logged in" };
+
+  try {
+    await requestEmailCode(session.accessToken, email);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Couldn't send the code" };
+  }
+}
+
+export async function verifyEmailAction(
+  email: string,
+  code: string,
+): Promise<{ success: boolean; error?: string; profile?: UserProfileDto }> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "Not logged in" };
+
+  try {
+    const profile = await verifyEmail(session.accessToken, email, code);
+    return { success: true, profile };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Couldn't verify the code" };
   }
 }

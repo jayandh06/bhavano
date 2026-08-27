@@ -292,6 +292,11 @@ export interface UserProfileDto {
   id: string;
   name: string | null;
   email: string | null;
+  /** Whether the address was actually proven — set by Google sign-in or the emailed-code flow.
+   * An email typed into the profile form is stored but stays unverified, and account adoption
+   * on Google sign-in keys on this rather than on `email`. See
+   * docs/plans/account-linking-phone-and-email.md. */
+  emailVerified: boolean;
   phone: string | null;
   cityId: string | null;
   cityName: string | null;
@@ -308,9 +313,10 @@ export interface UserProfileDto {
 export interface UpdateProfileInput {
   name?: string;
   cityId?: string;
-  /** Only accepted when the profile doesn't already have an email — e.g. a phone-login
-   * user completing their profile. Once set, it's shown read-only. */
-  email?: string;
+  /* No `email` here on purpose: an address may only reach the profile through the verified
+   * flow (POST /users/me/email/request-code then /email/verify), exactly as a phone may only
+   * arrive through OTP. Letting this endpoint set an unverified address is what made account
+   * adoption unsafe — see docs/plans/account-linking-phone-and-email.md. */
 }
 
 /** Admin moderation queue — same listing shape as the public/owner views, just without the
