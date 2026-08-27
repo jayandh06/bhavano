@@ -221,8 +221,40 @@ surface to regress.
 
 ## Findings log
 
-*Step 0 audit result — fill in before starting step 1:*
+### Step 0 audit — done 2026-08-27 (via `gtm_audit.py`)
 
-- Contents of `GTM-N46D868W` as of ____________:
-- Was `AW-18351718445` already configured in the container? [ ] Yes [ ] No
-- If yes, affected date range for discounted historical data:
+Container `GTM-N46D868W`, account `6367939478`, name `www.bhavano.com`.
+
+**No Ads double-counting occurred.** No tag references `AW-18351718445`, in either the live
+version or the draft workspace. Ads data from the window when both tags were live (`f24584a` ..
+`3af5197`) is unaffected — the direct `gtag.js` tag was the only thing configuring that ID, and it
+recorded no conversions anyway.
+
+**But GA4 is misconfigured, and analytics is effectively not working.** Live is version 2,
+"GA4 web stream (G-T5G7MCWJRC) via GTM", containing exactly one tag:
+
+| | Live version 2 | Draft workspace (unpublished) |
+|---|---|---|
+| `Google Analytics GA4 Event` (`gaawe`) | present, fires on All Pages | present, unchanged |
+| `Google Tag G-XZ2TDGSKMS` (`googtag`) | **absent** | present, fires on Initialization - All Pages |
+| Triggers / Variables | none (built-ins only) | none |
+
+Three defects in what is live:
+
+1. **Wrong tag type.** The only live tag is a GA4 *Event* tag (`gaawe`), not a Google tag
+   (`googtag`). Without a Google tag establishing config, GA4 gets no `page_view` and no session
+   handling — so there is no pageview reporting at all today.
+2. **Junk event name.** It sends `eventName = "Bhavano-GA4-Tag"` on every page. That is not a
+   meaningful GA4 event; it pollutes the property with one noise event per pageview.
+3. ~~**Measurement ID mismatch.**~~ **Resolved** by `ga4_audit.py`: `G-XZ2TDGSKMS` is correct —
+   property `bhavano-23f72` (`properties/545834199`), stream `Bhavano-Web`, URI
+   `https://bhavano.com`. `G-T5G7MCWJRC` does not exist in the Analytics account at all; it was
+   only ever text in the container version's *description*, i.e. someone mistyped an ID when
+   describing their own work. Ignore it — nothing should reference it.
+
+The correct config tag (`Google Tag G-XZ2TDGSKMS` on Initialization - All Pages) already exists in
+the draft workspace but has **never been published**. Whoever set this up got partway there.
+
+**Consequence for step 3:** GA4 does not need creating — it needs *fixing*. Confirm the intended
+measurement ID, publish the `googtag`, and delete or repurpose the junk `Bhavano-GA4-Tag` event
+tag. Only then add the 8 per-event GA4 tags.

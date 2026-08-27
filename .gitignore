@@ -36,3 +36,7 @@ rzp-key.csv
 
 # Locally generated Caddy root CA (machine-specific, regenerated per dev box)
 caddy-local-root.crt
+
+# Python (the gtm_*.py / *_audit.py admin scripts at the repo root)
+__pycache__/
+*.pyc
