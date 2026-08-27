@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, NotFoundException, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  NotFoundException,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { AuthSession } from '@bhavano/types';
 import { AuthGuard } from './guards/auth.guard';
@@ -52,7 +59,10 @@ export class AuthController {
   @Post('dev-login')
   @HttpCode(200)
   devLogin(@Body() dto: DevLoginDto): Promise<AuthSession> {
-    if (process.env.NODE_ENV === 'production' || process.env.ALLOW_DEV_LOGIN !== 'true') {
+    if (
+      process.env.NODE_ENV === 'production' ||
+      process.env.ALLOW_DEV_LOGIN !== 'true'
+    ) {
       throw new NotFoundException();
     }
     return this.authService.devLogin(dto.phone);
@@ -62,7 +72,10 @@ export class AuthController {
   @HttpCode(200)
   @UseGuards(AuthGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  async linkPhone(@Body() dto: VerifyOtpDto, @CurrentUser() user: RequestUser): Promise<{ success: true }> {
+  async linkPhone(
+    @Body() dto: VerifyOtpDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<{ success: true }> {
     await this.authService.linkPhone(user.id, dto.phone, dto.code);
     return { success: true };
   }

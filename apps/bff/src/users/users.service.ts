@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { UserProfileDto } from '@bhavano/types';
 import type { User, City } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -14,15 +19,24 @@ export class UsersService {
   ) {}
 
   async getProfile(userId: string): Promise<UserProfileDto> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { city: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { city: true },
+    });
     if (!user) throw new NotFoundException('User not found');
-    const { activeCount, allowance } = await this.listingSlotsService.getSummary(userId);
+    const { activeCount, allowance } =
+      await this.listingSlotsService.getSummary(userId);
     return toProfileDto(user, activeCount, allowance);
   }
 
-  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserProfileDto> {
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<UserProfileDto> {
     if (dto.cityId) {
-      const city = await this.prisma.city.findUnique({ where: { id: dto.cityId } });
+      const city = await this.prisma.city.findUnique({
+        where: { id: dto.cityId },
+      });
       if (!city) throw new BadRequestException('Unknown cityId');
     }
 
@@ -30,8 +44,12 @@ export class UsersService {
     // user completing their profile) — once set it's shown read-only, so this never overwrites
     // a Google-verified email.
     if (dto.email !== undefined) {
-      const existing = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-      if (existing?.email) throw new BadRequestException('Email is already set');
+      const existing = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+      });
+      if (existing?.email)
+        throw new BadRequestException('Email is already set');
     }
 
     try {
@@ -44,11 +62,17 @@ export class UsersService {
         },
         include: { city: true },
       });
-      const { activeCount, allowance } = await this.listingSlotsService.getSummary(userId);
+      const { activeCount, allowance } =
+        await this.listingSlotsService.getSummary(userId);
       return toProfileDto(user, activeCount, allowance);
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('This email is already associated with another account');
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'This email is already associated with another account',
+        );
       }
       throw error;
     }

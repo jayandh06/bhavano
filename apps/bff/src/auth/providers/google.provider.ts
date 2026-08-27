@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 
@@ -24,7 +28,9 @@ export class GoogleProvider {
       );
     }
 
-    const ticket = await this.client.verifyIdToken({ idToken, audience: clientId }).catch(() => null);
+    const ticket = await this.client
+      .verifyIdToken({ idToken, audience: clientId })
+      .catch(() => null);
     const payload = ticket?.getPayload();
     if (!payload?.sub || !payload.email) {
       throw new UnauthorizedException('Invalid Google ID token');

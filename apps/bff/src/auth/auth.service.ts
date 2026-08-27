@@ -130,16 +130,51 @@ export class AuthService {
   ): Promise<AuthSession> {
     const profile = await this.googleProvider.verifyIdToken(idToken);
 
-    const user = await this.prisma.user.upsert({
+    // Adopt an existing account that already holds this address rather than creating a second
+    // one — the phone-first-then-Google case, which otherwise leaves one person with two
+    // accounts and their listings split between them.
+    //
+    // Gated on emailVerifiedAt, never on `email` alone: an address typed into the profile form
+    // is an unproven claim, so adopting on it would let anyone take over the account of someone
+    // who had not yet signed in with Google. See docs/plans/account-linking-phone-and-email.md.
+    let user = await this.prisma.user.findUnique({
       where: { googleId: profile.googleId },
-      update: { email: profile.email, name: profile.name },
-      create: {
-        googleId: profile.googleId,
-        email: profile.email,
-        name: profile.name,
-        ...acquisitionCreateFields(visit),
-      },
     });
+
+    if (user) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          email: profile.email,
+          name: profile.name,
+          emailVerifiedAt: new Date(),
+        },
+      });
+    } else {
+      const byEmail = profile.email
+        ? await this.prisma.user.findUnique({ where: { email: profile.email } })
+        : null;
+
+      user = byEmail?.emailVerifiedAt
+        ? await this.prisma.user.update({
+            where: { id: byEmail.id },
+            // Their own name wins over Google's — someone who set it meant it.
+            data: {
+              googleId: profile.googleId,
+              name: byEmail.name ?? profile.name,
+            },
+          })
+        : await this.prisma.user.create({
+            data: {
+              googleId: profile.googleId,
+              email: profile.email,
+              name: profile.name,
+              // Google asserts the address, so it is proven from the moment of creation.
+              emailVerifiedAt: new Date(),
+              ...acquisitionCreateFields(visit),
+            },
+          });
+    }
 
     const isNewUser = !user.welcomedAt;
     const promoted = await this.promoteToAdminIfAllowlisted(user);

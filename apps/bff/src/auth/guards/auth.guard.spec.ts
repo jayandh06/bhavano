@@ -10,8 +10,13 @@ function makeConfig(): ConfigService {
   return { get: jest.fn().mockReturnValue(SECRET) } as unknown as ConfigService;
 }
 
-function makeContext(authorization?: string): { context: ExecutionContext; request: Record<string, unknown> } {
-  const request: Record<string, unknown> = { headers: authorization ? { authorization } : {} };
+function makeContext(authorization?: string): {
+  context: ExecutionContext;
+  request: Record<string, unknown>;
+} {
+  const request: Record<string, unknown> = {
+    headers: authorization ? { authorization } : {},
+  };
   const context = {
     switchToHttp: () => ({ getRequest: () => request }),
   } as unknown as ExecutionContext;
@@ -43,13 +48,17 @@ describe('AuthGuard — role: user', () => {
   });
 
   it('throws UnauthorizedException for a token signed with a different secret', () => {
-    const { context } = makeContext(`Bearer ${jwt.sign({ sub: 'u1', role: 'user' }, 'wrong-secret')}`);
+    const { context } = makeContext(
+      `Bearer ${jwt.sign({ sub: 'u1', role: 'user' }, 'wrong-secret')}`,
+    );
     const guard = new AuthGuard(makeConfig());
     expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
   });
 
   it('defaults role to "user" when the JWT payload omits it', () => {
-    const { context, request } = makeContext(`Bearer ${jwt.sign({ sub: 'u1' }, SECRET)}`);
+    const { context, request } = makeContext(
+      `Bearer ${jwt.sign({ sub: 'u1' }, SECRET)}`,
+    );
     const guard = new AuthGuard(makeConfig());
     guard.canActivate(context);
     expect(request.user).toEqual({ id: 'u1', role: 'user' });
