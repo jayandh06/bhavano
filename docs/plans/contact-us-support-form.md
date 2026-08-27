@@ -12,6 +12,10 @@ three costs:
    number on the account. Support's first reply is usually a request for the missing detail.
 3. **Nothing is recorded.** A `mailto:` leaves no trace in our systems, so there is no way to
    count issue types, spot a spike after a release, or find a report someone says they sent.
+4. **Screenshots are the whole report, for UI bugs.** "The photo upload button does nothing" is
+   unactionable; the same message with a screenshot usually diagnoses itself. A `mailto:` link
+   technically allows attachments but only if the user thinks to add them, and nothing prompts
+   for one.
 
 A form fixes all three and routes to `support@bhavano.com` (`LEGAL_ENTITY.supportEmail`).
 
@@ -28,6 +32,11 @@ A form fixes all three and routes to `support@bhavano.com` (`LEGAL_ENTITY.suppor
 | Validation pattern | `class-validator` DTOs, e.g. `auth/dto/send-otp.dto.ts` |
 | Support address | `packages/types/src/legalEntity.ts` → `supportEmail: "support@bhavano.com"` |
 | Ticket persistence | **None** — no `SupportTicket`-like model in `apps/bff/prisma/schema.prisma` |
+| Object storage | `apps/bff/src/storage/r2-storage.service.ts` — `putObject/getObject/deleteObject`, generic, exported from `StorageModule`. **Reusable as-is** |
+| Existing upload endpoint | `apps/bff/src/uploads/uploads.controller.ts` — **not** reusable: `@UseGuards(AuthGuard)`, keyed to `listingId`/`photoNo` via `photo-keys.ts`, and computes a dHash for listing dedupe |
+| Next.js server action body limit | **1 MB (the default)** — `apps/web/next.config.ts` sets no `serverActions.bodySizeLimit` |
+| CDN | `cdn.bhavano.com` fronts the R2 bucket (`next.config.ts` `remotePatterns`) — anything written to that bucket is potentially fetchable by key |
+| Deps already present in bff | `sharp`, `multer`, `resend`, `@nestjs/schedule` (cron jobs exist, e.g. `seller-jobs/listing-expiry-reminder.job.ts`) |
 
 Two facts above drive the design: Resend credentials live only on the bff, so the submission
 **must** route web → bff; and the email provider deliberately swallows failures, so email alone
@@ -58,11 +67,29 @@ supply an email so support can reply.
 **5. `replyTo` the reporter.**
 Support should be able to hit Reply. Requires adding an optional `replyTo` to `EmailProvider`.
 
+**6. Attachments are delivered as email attachments, not as links.**
+The R2 bucket is fronted by `cdn.bhavano.com`. Writing anonymous uploads there and mailing out
+URLs would turn the form into public file hosting — the classic abuse of an unauthenticated
+upload. Instead the files ride along on the email itself (Resend supports attachments), and the
+R2 copy is a private durable record that is never linked publicly. 3 x 5 MB is comfortably inside
+Resend's per-message ceiling.
+
+**7. Images only for v1, and every image is re-encoded.**
+A client-declared MIME type is trivially spoofed, and the existing photo controller trusts
+`file.mimetype` — safe behind `AuthGuard`, not safe anonymously. Support attachments are sniffed
+by magic bytes and then re-encoded through `sharp`, which strips EXIF (location data users did
+not mean to send) and neutralises polyglot files by construction. PDFs cannot be neutralised that
+way, so they are deferred rather than accepted — see out of scope.
+
 ---
 
 ## Step 1 — Shared types
 
 **File:** `packages/types/src/support.ts` (exported from the package index)
+
+Attachment limits live here too, so the form's client-side check and the bff's multer config
+cannot drift: `MAX_ATTACHMENTS = 3`, `MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024`,
+`MAX_ATTACHMENTS_TOTAL_BYTES = 10 * 1024 * 1024`, `ACCEPTED_ATTACHMENT_MIME_TYPES`.
 
 ```ts
 export const CONTACT_TOPICS = [
@@ -122,9 +149,21 @@ model SupportTicket {
   @@index([createdAt])
   @@index([topic])
 }
+
+model SupportAttachment {
+  id        String        @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  r2Key     String        // e.g. support/<ticketId>/1.webp — never served publicly
+  mimeType  String
+  bytes     Int
+  createdAt DateTime      @default(now())
+
+  @@index([ticketId])
+}
 ```
 
-Add the back-relation on `User`. Migration: `npx prisma migrate dev --name support_tickets`,
+`SupportTicket` gains `attachments SupportAttachment[]`. Add the back-relation on `User`. Migration: `npx prisma migrate dev --name support_tickets`,
 applied in prod with `migrate deploy` per `docs/deployment.md`.
 
 `ipHash` rather than a raw IP keeps rate-limit forensics possible without holding personal data
@@ -218,7 +257,79 @@ above the existing "What to include" section, and reword the mailto paragraph to
 as the alternative rather than the only route. Nothing else changes: `metadata` export,
 `StaticPageLayout`, and all existing copy stay exactly as they are.
 
-## Step 7 — Track it
+## Step 7 — Attachments
+
+### 7.1 What's reusable
+
+`R2StorageService` is generic (`putObject(key, body, contentType)`) and already exported from
+`StorageModule` — import it into the support module and use it directly. The *uploads controller*
+is not reusable: it is `@UseGuards(AuthGuard)`, keys objects by `listingId`/`photoNo`, and
+computes a dHash for listing dedupe. None of that applies here, so the support module gets its
+own handling rather than bending that endpoint.
+
+Key convention, mirroring `photo-keys.ts`: `support/<ticketId>/<n>.webp`.
+
+### 7.2 Limits
+
+| | |
+|---|---|
+| Count | max **3** files |
+| Size | max **5 MB** each, **10 MB** total per submission |
+| Types accepted | JPEG, PNG, WebP, GIF, HEIC |
+| Stored as | WebP, always re-encoded, max 2000px on the long edge |
+
+### 7.3 Validation — do not trust the client
+
+In order, rejecting at the first failure:
+
+1. **Multer limits** (`fileSize`, `files: 3`) with `memoryStorage()`, as the photo controller does.
+2. **Magic-byte sniff** on the buffer — the real format, not `file.mimetype`, which the client
+   controls. Reject anything not on the allowlist.
+3. **`sharp(buffer).rotate().resize({ width: 2000, height: 2000, fit: 'inside' }).webp()`** —
+   re-encode unconditionally. This is the security step, not just a size optimisation: it strips
+   EXIF (including GPS coordinates a user did not realise were in their screenshot) and makes
+   polyglot files (a valid image that is also a valid script/archive) structurally impossible.
+   A file that fails to decode is rejected.
+
+### 7.4 Transport — the 1 MB wall
+
+`next.config.ts` sets no `serverActions.bodySizeLimit`, so server actions cap request bodies at
+**1 MB**. A 5 MB screenshot fails there before reaching any of our code. Two options:
+
+- **(a) Raise the limit** — `experimental: { serverActions: { bodySizeLimit: '12mb' } }`, and post
+  the whole form as one `FormData` through the existing server action. Simplest, one round trip,
+  atomic: no ticket without its files, no orphaned objects. Cost: the web container buffers up to
+  12 MB per submission in memory.
+- **(b) Direct-to-bff upload** — a separate `POST /support/attachments` returning keys, which the
+  form then submits with the ticket. Keeps the web app thin, but adds a second endpoint to
+  rate-limit, plus orphaned objects to reap when someone uploads and abandons the form.
+
+**Recommend (a).** Volume on a support form is low, the cap is bounded, and the atomicity is worth
+more than the memory. Revisit only if attachment sizes grow.
+
+### 7.5 Delivery
+
+`EmailProvider.send()` gains an optional `attachments` array alongside `replyTo`, passed through
+to Resend as `{ filename, content }` (base64). Support receives the screenshots inline — no link
+to leak, no public bucket exposure.
+
+R2 keeps the durable copy so the record survives an email failure, consistent with decision 2.
+
+### 7.6 Retention
+
+Support attachments are user-submitted content we hold only to resolve a ticket. A
+`@nestjs/schedule` cron in the support module (following `seller-jobs/listing-expiry-reminder.job.ts`)
+deletes R2 objects and their `SupportAttachment` rows after **90 days**, leaving the ticket text
+intact. Without this, an anonymous upload endpoint accumulates storage forever.
+
+### 7.7 Form UI
+
+A file input accepting `image/*` with `multiple`, showing selected filenames and sizes with a
+remove control, and client-side rejection of oversized/too-many files before submit so the user
+gets an instant answer. Total-size counter next to the input. On mobile this surfaces the camera
+roll, which is where the screenshot already is.
+
+## Step 8 — Track it
 
 On success, `pushDataLayerEvent("contact_form_submit", { topic })`. The GTM container built in
 `consolidate-analytics-and-ads-on-gtm.md` already has a `DLV - category` pattern; this needs a
@@ -227,10 +338,14 @@ On success, `pushDataLayerEvent("contact_form_submit", { topic })`. The GTM cont
 
 Not an Ads conversion: a support request is a cost signal, not something to bid toward.
 
-## Step 8 — Tests
+## Step 9 — Tests
 
 - **BFF unit** (`support.service.spec.ts`): persists before emailing; `emailSent` false when the
   provider fails, and the row still exists; honeypot path writes nothing.
+- **Attachment validation** (`support.attachments.spec.ts`): a `.png`-named file whose magic
+  bytes are a ZIP is rejected; a valid JPEG is re-encoded to WebP with EXIF stripped; a 4th file
+  and an oversized file are both rejected; a truncated/corrupt image is rejected rather than
+  crashing `sharp`.
 - **BFF e2e**: validation rejections; `@Throttle` returns 429 on the 4th call in a minute.
 - **Web e2e** (Playwright, `apps/web/e2e/`): fill and submit, assert the success state; assert
   conditional fields appear per topic.
@@ -243,13 +358,24 @@ Not an Ads conversion: a support request is a cost signal, not something to bid 
    **Reply** addresses the reporter, not the from-address.
 3. `curl` the endpoint 4× in a minute → the 4th returns 429.
 4. Submit with the honeypot filled → 201, no row, no email.
+5. Attach a screenshot with GPS EXIF; confirm it arrives at support as WebP and that
+   `exiftool` on the received file shows no GPS block.
+6. Attach a renamed non-image (`mv payload.zip shot.png`) → rejected.
+7. Confirm the R2 key is **not** reachable at `https://cdn.bhavano.com/support/<ticketId>/1.webp`;
+   if it is, the bucket/CDN needs a prefix rule before this ships. This is the one check that
+   decides whether the form is also public file hosting.
 5. Lighthouse/PSI on `/contact` before and after — the client component is a leaf, so LCP should
    be unchanged. Confirm `metadata` still renders in view-source.
 
 ## Out of scope
 
-- **File/screenshot attachments** — needs upload plumbing and a virus-scanning story; the
-  listing photo pipeline is not reusable here as-is.
+- **PDF and document attachments** — images are made safe by re-encoding them; a PDF cannot be,
+  so accepting one means either running a scanner or asking support to open untrusted files.
+  Images cover the screenshot case that motivates this, and payment receipts are usually
+  screenshots on mobile anyway. Revisit with a real AV step (ClamAV sidecar or an API) if users
+  actually ask.
+- **Virus scanning** — not needed while the allowlist is images-that-get-re-encoded. It becomes
+  mandatory the moment any format is accepted that is passed through untouched.
 - **In-app ticket status or threaded replies** — email is the reply channel for v1.
 - **Admin UI** — the `apps/admin` app could list tickets later; for v1 they're readable in the
   DB and every one is emailed.
@@ -259,6 +385,6 @@ Not an Ads conversion: a support request is a cost signal, not something to bid 
 
 ## Rollback
 
-Additive throughout: one new page section, one new bff module, one new table. Reverting the web
+Additive throughout: one new page section, one new bff module, two new tables. Reverting the web
 commit restores the mailto-only page; the table can stay (harmless) or be dropped by a follow-up
 migration. No routing, rendering-strategy, or metadata changes, so no SEO surface is at risk.
