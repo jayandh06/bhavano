@@ -361,9 +361,8 @@ Not an Ads conversion: a support request is a cost signal, not something to bid 
 5. Attach a screenshot with GPS EXIF; confirm it arrives at support as WebP and that
    `exiftool` on the received file shows no GPS block.
 6. Attach a renamed non-image (`mv payload.zip shot.png`) → rejected.
-7. Confirm the R2 key is **not** reachable at `https://cdn.bhavano.com/support/<ticketId>/1.webp`;
-   if it is, the bucket/CDN needs a prefix rule before this ships. This is the one check that
-   decides whether the form is also public file hosting.
+7. ~~Confirm the R2 key is not reachable at the CDN~~ — **checked on 2026-08-27, and it IS
+   reachable.** `https://cdn.bhavano.com/support/<key>` returned `200`. See the open issue below.
 5. Lighthouse/PSI on `/contact` before and after — the client component is a leaf, so LCP should
    be unchanged. Confirm `metadata` still renders in view-source.
 
@@ -388,3 +387,31 @@ Not an Ads conversion: a support request is a cost signal, not something to bid 
 Additive throughout: one new page section, one new bff module, two new tables. Reverting the web
 commit restores the mailto-only page; the table can stay (harmless) or be dropped by a follow-up
 migration. No routing, rendering-strategy, or metadata changes, so no SEO surface is at risk.
+
+---
+
+## OPEN ISSUE — support attachments are publicly readable
+
+Verified in production on 2026-08-27: an uploaded attachment is fetchable at
+`https://cdn.bhavano.com/support/<key>` and returns `200`. The R2 bucket that backs the CDN is
+public, and the support module writes into it.
+
+This is worse than a guessable-key problem. The submission confirmation shows the reporter their
+own ticket id ("Your reference is cmtb…"), so under the original `support/<ticketId>/1.webp`
+convention an uploader could construct their own file's public URL immediately — which is
+functioning file hosting on the CDN, reachable by anyone, from an endpoint that requires no
+login.
+
+**Mitigated, not fixed:** keys now carry 16 random bytes that are never disclosed
+(`support/<ticketId>-<32 hex>/1.webp`), so holding the ticket id is no longer enough. Objects
+already uploaded under the old convention remain predictable and should be deleted.
+
+**The actual fix is at the CDN**, and it needs dashboard access:
+
+- **Preferred** — a Cloudflare rule on `cdn.bhavano.com` blocking any path starting `/support/`.
+  One rule, no code, and it closes the hole for every past and future object.
+- **Alternative** — move support attachments to a separate, non-public R2 bucket. Cleaner
+  separation, but needs a second bucket plus its own credentials in the bff config.
+
+Until one of those is in place, treat attachments as public-if-the-key-leaks. The email path is
+unaffected: files reach support as email attachments and no URL is ever published.

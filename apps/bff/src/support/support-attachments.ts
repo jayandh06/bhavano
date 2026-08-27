@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { BadRequestException } from '@nestjs/common';
 import sharp from 'sharp';
 import {
@@ -113,6 +114,19 @@ export async function processAttachments(
   return processed;
 }
 
+/** R2 keys carry 16 random bytes that are never shown to anyone.
+ *
+ * The bucket is fronted by cdn.bhavano.com and objects under it are publicly readable, so a
+ * predictable key would make this anonymous upload endpoint into public file hosting — and
+ * `support/<ticketId>/1.webp` is entirely predictable to the uploader, who is handed their own
+ * ticket id in the submission confirmation. The random segment means possessing the ticket id
+ * is not enough to construct the URL.
+ *
+ * This is defence in depth, not the fix: the objects are still public to anyone holding the
+ * full key. Blocking the `support/` prefix at the CDN is the actual remedy — see
+ * docs/plans/contact-us-support-form.md. The stored r2Key is what the retention job and any
+ * future retrieval use, so nothing depends on the key being derivable.
+ */
 export function attachmentKey(ticketId: string, index: number): string {
-  return `support/${ticketId}/${index + 1}.webp`;
+  return `support/${ticketId}-${randomBytes(16).toString('hex')}/${index + 1}.webp`;
 }
