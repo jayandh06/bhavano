@@ -179,10 +179,28 @@ Three risks specific to merging without asking:
 Prompting *every* time is over-cautious though. The common duplicate is someone who logged in
 once and did nothing, and making them read a warning to fix a mess the app created is poor.
 
-| Other account holds | Behaviour |
+**The condition is whether EITHER side is empty, not whether the other one is.** The hard part of
+a merge is reconciling two non-empty datasets — deduping favourites both accounts hold, resolving
+the 1:1 `outreachContact` when both have one, taking the more generous of two overlapping
+subscriptions. When one side is empty none of that arises and the merge is a straight
+reassignment, so the risk that justifies a prompt is not present.
+
+| Situation | Behaviour |
 |---|---|
-| No listings, payments, or conversations | Merge automatically, then say "We've linked your accounts" |
-| Anything at all | Prompt, itemising what moves |
+| Either account is empty | Merge automatically, then tell them: "We've linked your accounts" |
+| Both hold listings, subscriptions, payments or conversations | Prompt, itemising what moves |
+
+Two refinements:
+
+- **"Empty" means no listings, no subscriptions, no payments, and no conversations.** Financial
+  history counts even when it is spent, because it is audit-relevant. Conversations count because
+  a thread has a counterparty — merging moves a buyer's conversation to a different account, which
+  affects someone who was never asked.
+- **The account holding the listings always wins**, whichever one the user is signed into. The
+  direction of the merge should never depend on which login they happened to use.
+
+Automatic still means *announced*, not silent: the user is told afterwards. The distinction being
+drawn is blocking versus non-blocking, not visible versus invisible.
 
 The prompt should state the contents, not just ask:
 
