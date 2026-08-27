@@ -2,7 +2,10 @@ import { createHash, randomInt } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-const OTP_TTL_MS = 5 * 60 * 1000;
+/** Pinned to the wording of the approved MSG91 DLT template ("Valid for 10 minutes"). Changing
+ * this without changing the template — which needs a multi-day DLT re-approval — tells users one
+ * thing and enforces another, and they'd be provably right when they complain. */
+const OTP_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
 function hashCode(phone: string, code: string): string {
@@ -33,7 +36,9 @@ export class OtpService {
     });
 
     if (!challenge) {
-      throw new BadRequestException('No OTP request found for this phone number');
+      throw new BadRequestException(
+        'No OTP request found for this phone number',
+      );
     }
     if (challenge.attempts >= MAX_ATTEMPTS) {
       throw new BadRequestException('Too many attempts — request a new OTP');

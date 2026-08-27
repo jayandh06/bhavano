@@ -107,13 +107,40 @@ const params = new URLSearchParams({
 Conditional, so behaviour is unchanged when it is unset. This is a bff code change, so it needs
 a rebuild rather than a restart.
 
-## Step 3 — Confirm the template's variable name
+## Step 3 — The template variable is `##var1##`, not `##OTP##` (confirmed)
 
-MSG91's v5 OTP API substitutes the generated code into the template's OTP variable, conventionally
-`##OTP##`. Open the approved template in the MSG91 dashboard and confirm the body contains that
-placeholder. If it uses a differently-named variable, the SMS will arrive with an empty slot —
-the send succeeds, the user gets a code-less message, and nothing in our logs looks wrong. This
-is the most likely silent failure of the whole exercise, so check it before testing.
+The approved template reads:
+
+> Your OTP for Bhavano App login is `##var1##`. Valid for 10 minutes. Do not share this OTP with
+> anyone. - Team Bhavano
+
+MSG91's v5 OTP API substitutes its `otp` parameter into an `##OTP##` placeholder specifically, so
+against this template the code would arrive blank — which is exactly what a dashboard test send
+showed. A dashboard test supplies no variable value and so is always blank, but here the app
+would have produced the same empty slot.
+
+Renaming the template variable means another multi-day DLT re-approval. Instead the provider now
+sends the code under **both** names — `otp` and the template's own variable — since the value is
+identical either way and this keeps working whichever placeholder a future template uses. The
+variable name is `MSG91_OTP_VAR_NAME` (default `var1`) so a differently-named template needs a
+config change rather than a deploy.
+
+Prove it before deploying, with `msg91_test_otp.py`, which sends one real SMS:
+
+```
+python msg91_test_otp.py 9876543210
+python msg91_test_otp.py 9876543210 --var-name VAR1   # if the digits are still missing
+```
+
+Note MSG91 answers `200` with `{"type": "error"}` for template and sender problems, so the HTTP
+status alone is not the success signal — the script checks the body too.
+
+### The 10-minute mismatch
+
+The template promises "Valid for 10 minutes" while `OTP_TTL_MS` was **5 minutes**. A user coming
+back at seven minutes would be told the code expired, and would be provably right to complain.
+Fixed by moving the code to 10 minutes rather than re-approving the template; the 5-attempt cap
+and the 3/minute send throttle are what actually bound brute force, not the window length.
 
 ## Step 4 — Verify
 
