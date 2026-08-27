@@ -34,6 +34,13 @@ def main() -> int:
         "(19 digits) against the MSG91 id (24 hex chars) without editing .env",
     )
     ap.add_argument(
+        "--flow",
+        action="store_true",
+        help="send via the Flow API (/api/v5/flow/) instead of the OTP API — the endpoint a "
+        "Flow/Transactional template must use, and the fallback when the OTP API says "
+        "'Invalid Template' for a template that is genuinely approved",
+    )
+    ap.add_argument(
         "--var-name",
         default=None,
         help="also send the code under this extra param name, for a template whose placeholder "
@@ -67,12 +74,32 @@ def main() -> int:
     extra = ", %s=%s" % (args.var_name, code) if args.var_name else ""
     print("  variables   = otp=%s%s" % (code, extra))
 
-    resp = requests.post(
-        "https://control.msg91.com/api/v5/otp",
-        params=params,
-        headers={"authkey": auth_key, "Content-Type": "application/json"},
-        timeout=30,
-    )
+    if args.flow:
+        # The Flow API takes template variables as named keys on the recipient, so the key has to
+        # match the template's placeholder (##otp## -> "otp"). Worth trying when the OTP API says
+        # "Invalid Template": that error also means "this template is not an OTP-type template",
+        # and a Flow/Transactional template can only be sent through this endpoint.
+        recipient = {"mobiles": "91%s" % args.phone, args.var_name or "otp": code}
+        print("  endpoint    = /api/v5/flow/  (recipient key: %s)" % (args.var_name or "otp"))
+        resp = requests.post(
+            "https://control.msg91.com/api/v5/flow/",
+            json={
+                "template_id": template_id,
+                "short_url": "0",
+                **({"sender": sender_id} if sender_id else {}),
+                "recipients": [recipient],
+            },
+            headers={"authkey": auth_key, "Content-Type": "application/json"},
+            timeout=30,
+        )
+    else:
+        print("  endpoint    = /api/v5/otp")
+        resp = requests.post(
+            "https://control.msg91.com/api/v5/otp",
+            params=params,
+            headers={"authkey": auth_key, "Content-Type": "application/json"},
+            timeout=30,
+        )
     print("\nHTTP %s\n%s" % (resp.status_code, resp.text))
     print("\nNOTE: MSG91 answers 200 / type:success even for sends it then discards — an IP")
     print("      that is not whitelisted, or an invalid template, both look like this here.")
