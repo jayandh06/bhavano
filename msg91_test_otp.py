@@ -28,6 +28,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("phone", help="10-digit Indian mobile number, no country code")
     ap.add_argument(
+        "--template-id",
+        default=None,
+        help="override MSG91_DLT_TEMPLATE_ID for one run — use it to try the DLT registry id "
+        "(19 digits) against the MSG91 id (24 hex chars) without editing .env",
+    )
+    ap.add_argument(
         "--var-name",
         default=None,
         help="also send the code under this extra param name, for a template whose placeholder "
@@ -39,7 +45,7 @@ def main() -> int:
     if not auth_key:
         return err("MSG91_AUTH_KEY is not set in .env or apps/bff/.env.\n"
                    "It is currently only set on the prod host — copy it locally to test.")
-    template_id = os.getenv("MSG91_DLT_TEMPLATE_ID")
+    template_id = args.template_id or os.getenv("MSG91_DLT_TEMPLATE_ID")
     if not template_id:
         return err("MSG91_DLT_TEMPLATE_ID is not set. Put the approved template id in .env first.")
     sender_id = os.getenv("MSG91_SENDER_ID")
@@ -68,6 +74,9 @@ def main() -> int:
         timeout=30,
     )
     print("\nHTTP %s\n%s" % (resp.status_code, resp.text))
+    print("\nNOTE: MSG91 answers 200 / type:success even for sends it then discards — an IP")
+    print("      that is not whitelisted, or an invalid template, both look like this here.")
+    print("      Always confirm the outcome in MSG91 -> Reports -> SMS logs.")
 
     # MSG91 answers 200 with {"type": "error"} for template/sender problems, so the status code
     # alone is not the success signal.
