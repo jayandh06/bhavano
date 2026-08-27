@@ -17,8 +17,11 @@ services:
       # to role=admin automatically on login.
       ADMIN_PHONES: ${ADMIN_PHONES}
       ADMIN_EMAILS: ${ADMIN_EMAILS}
-      RESEND_API_KEY: ${RESEND_API_KEY}
-      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
       MSG91_TRANSACTIONAL_TEMPLATE_ID: ${MSG91_TRANSACTIONAL_TEMPLATE_ID}
       # Photo storage — Cloudflare R2 (S3-compatible), served publicly through CDN_BASE_URL.
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}

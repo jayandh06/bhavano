@@ -107,8 +107,11 @@ export class NotificationsService {
     expiresAt: Date,
     daysLeft: number,
   ): Promise<'email' | 'sms' | null> {
-    const siteUrl = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://bhavano.com';
-    const expiryDate = expiresAt.toLocaleDateString('en-IN', { dateStyle: 'medium' });
+    const siteUrl =
+      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://bhavano.com';
+    const expiryDate = expiresAt.toLocaleDateString('en-IN', {
+      dateStyle: 'medium',
+    });
     const subject = `Your listing "${listingTitle}" expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
     const body =
       `${user.name ? `Hi ${user.name}` : 'Hi'},\n\n` +
@@ -116,8 +119,7 @@ export class NotificationsService {
       `(${daysLeft} day${daysLeft === 1 ? '' : 's'} from now). After that it will stop appearing in search and your listing slot will free up.\n\n` +
       `Manage your ads: ${siteUrl}/my-listings\n\n` +
       `— Team Bhavano`;
-    const smsBody =
-      `Bhavano: "${listingTitle}" expires in ${daysLeft}d (${expiryDate}). Manage: ${siteUrl}/my-listings`;
+    const smsBody = `Bhavano: "${listingTitle}" expires in ${daysLeft}d (${expiryDate}). Manage: ${siteUrl}/my-listings`;
 
     return this.dispatchEmailPreferSms(user, subject, body, smsBody);
   }
