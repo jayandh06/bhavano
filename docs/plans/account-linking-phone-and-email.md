@@ -208,9 +208,34 @@ The prompt should state the contents, not just ask:
 > That account has **3 listings**, **12 favourites**, and an **active Agent Pro subscription**.
 > Everything moves to this account. This can't be undone.
 
-**Soft-delete the losing row** rather than hard-deleting it — keep it for ~30 days with the
-identifiers released. That converts "irreversible" into "reversible by support", which is worth
-far more than the row it costs, especially for the first months when the merge code is young.
+### Soft delete is a rule, not a grace period
+
+**A user row is never hard-deleted — not on merge, not ever.** No code path deletes one today
+(`grep` finds no `user.delete` anywhere), and merge must not become the first.
+
+The row is worth more than it costs: it is the audit trail for payments and listings that used to
+hang off it, it makes a bad merge recoverable by support instead of unrecoverable, and it keeps
+foreign keys intact rather than cascading through a dozen tables.
+
+Two mechanical consequences that have to be handled, or soft delete quietly breaks things:
+
+1. **Release the unique identifiers.** `phone`, `email` and `googleId` are `@unique`, so a
+   retained row keeps holding them and the surviving account cannot take them — which is the
+   whole point of the merge. Null them on the losing row and keep the originals in
+   `mergedPhone` / `mergedEmail` columns for the audit trail.
+2. **Every user query must exclude merged rows.** A `mergedIntoUserId` (non-null once merged) is
+   better than a bare `deletedAt` here: it records *where* the data went, so support can follow
+   the chain, and it reads unambiguously at the call site.
+
+### One exception, and it is not optional
+
+A **data erasure request** under India's DPDP Act still has to be honoured, and the privacy page
+already invites one ("a request to access/delete your data"). Soft delete is the default for
+merges and account closure; a genuine erasure request is a separate, deliberate path that really
+does remove or irreversibly anonymise personal data.
+
+Keeping those distinct matters: "we never delete" is the right engineering default and the wrong
+answer to a regulator.
 
 ## Phase 3 — What merging actually has to move
 
