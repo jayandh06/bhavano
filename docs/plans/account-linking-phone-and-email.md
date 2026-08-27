@@ -49,6 +49,36 @@ needed. It gets materially harder with every signup.
 
 ---
 
+## Phase 0 — Verify email before it is stored (PREREQUISITE for phase 1)
+
+**Phase 1 is unsafe without this.** The schema has `phoneVerifiedAt` but **no
+`emailVerifiedAt`**, and `updateProfile` stores whatever address is typed into the form. That
+turns an unverified claim into an identity bridge:
+
+1. Attacker signs up by phone OTP → account A
+2. Attacker types `victim@gmail.com` into their profile. It is stored unverified, and succeeds
+   because no other account holds it yet
+3. The real victim later signs in with Google as `victim@gmail.com`
+4. Phase 1 sees an account carrying that email and adopts it → **the victim is signed into the
+   attacker's account**, which the attacker still controls through phone OTP
+
+Two accounts is an annoyance. This would be account takeover, so phase 1 must not ship first.
+
+**Fix:**
+
+- Add `emailVerifiedAt DateTime?` to `User`, mirroring `phoneVerifiedAt`.
+- `updateProfile` sends a verification code/link to the address and stores it only once
+  confirmed — or stores it immediately with `emailVerifiedAt` null and treats it as unverified
+  everywhere that matters.
+- `loginWithGoogle` sets `emailVerifiedAt` (Google asserts it).
+- **Phase 1 adopts an existing account only when its `emailVerifiedAt` is non-null.**
+
+That last rule is what makes the whole design safe: adoption keys on *verified* email, never on a
+typed one.
+
+An unverified email is still useful — it is where support replies go, and it is what
+`ProfileCompletionBanner` is nagging for. It just must not be treated as proof of identity.
+
 ## Phase 1 — Stop creating duplicates on Google login (small, high value)
 
 **File:** `apps/bff/src/auth/auth.service.ts`, `loginWithGoogle`
@@ -66,7 +96,9 @@ if (!user && profile.email) {
   // adopt it rather than creating a second one. The reverse (phone -> Google) cannot be done
   // this way; see phase 2.
   const byEmail = await this.prisma.user.findUnique({ where: { email: profile.email } });
-  if (byEmail) {
+  // Only adopt a VERIFIED email — see phase 0. Adopting on a typed-in address would let anyone
+  // claim a stranger's account by entering their address before they first sign in with Google.
+  if (byEmail?.emailVerifiedAt) {
     user = await this.prisma.user.update({
       where: { id: byEmail.id },
       data: { googleId: profile.googleId, name: byEmail.name ?? profile.name },
@@ -139,8 +171,10 @@ carefully against.
 
 ## Recommendation
 
-Do **phase 1** now — it is roughly 15 lines, removes the most likely duplicate path, and carries
-no risk of data loss because it creates nothing and deletes nothing.
+Do **phase 0 then phase 1** together — phase 1 alone is a takeover vector, and phase 0 alone is
+useful anyway (a verified email is what makes support replies and notifications reliable). Phase 1
+itself is roughly 15 lines and carries no data-loss risk, since it creates nothing and deletes
+nothing.
 
 Do **2a** next: it is small, and turns the remaining case into something support can resolve.
 
