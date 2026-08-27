@@ -46,18 +46,42 @@ EVENT_FOR = {
 
 
 def make_client():
-    cfg = {
+    """Builds a client, sending login-customer-id only when the login can actually use it.
+
+    GOOGLE_ADS_LOGIN_CUSTOMER_ID names a manager (MCC) account. Sending that header for an
+    MCC the authenticated user has no access to is itself a USER_PERMISSION_DENIED — which
+    reads like a token problem but isn't. When the login reaches the target account directly
+    (the common case here), the header is unnecessary, so drop it rather than fail.
+    """
+    base = {
         "developer_token": os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN"),
         "client_id": os.getenv("GOOGLE_ADS_CLIENT_ID"),
         "client_secret": os.getenv("GOOGLE_ADS_CLIENT_SECRET"),
         "refresh_token": os.getenv("GOOGLE_ADS_REFRESH_TOKEN"),
-        "login_customer_id": os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "").replace("-", ""),
         "use_proto_plus": True,
     }
-    missing = [k for k, v in cfg.items() if v is None or v == ""]
+    missing = [k for k, v in base.items() if v is None or v == ""]
     if missing:
         raise SystemExit("Missing from .env: %s" % ", ".join(missing))
-    return GoogleAdsClient.load_from_dict(cfg)
+
+    login_cid = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "").replace("-", "")
+    target = os.getenv("GOOGLE_ADS_CUSTOMER_ID", "").replace("-", "")
+    if login_cid and login_cid != target:
+        probe = GoogleAdsClient.load_from_dict(base)
+        reachable = {
+            rn.split("/")[-1]
+            for rn in probe.get_service("CustomerService").list_accessible_customers().resource_names
+        }
+        if login_cid not in reachable:
+            print(
+                "note: GOOGLE_ADS_LOGIN_CUSTOMER_ID=%s is not accessible to this login "
+                "(reachable: %s) — omitting the login-customer-id header."
+                % (login_cid, ", ".join(sorted(reachable)) or "none")
+            )
+            login_cid = ""
+    if login_cid:
+        base["login_customer_id"] = login_cid
+    return GoogleAdsClient.load_from_dict(base)
 
 
 def existing_actions(client, customer_id):

@@ -56,13 +56,14 @@ EVENTS = {
     "contact_owner": ["listingId"],
 }
 
-# Fill from Google Ads once the conversion actions exist, then re-run. Event -> label.
+# Conversion labels for the 5 actions in Ads account 421-406-6478, created by
+# ads_setup_conversions.py (re-run it to re-print these). Event name -> label.
 ADS_CONVERSION_LABELS = {
-    # "boost_purchase": "AbC-D1efGhIjKlmNoP",
-    # "subscription_purchase": "...",
-    # "post_ad_success": "...",
-    # "signup_complete": "...",
-    # "save_search": "...",
+    "boost_purchase": "wj7ACIPWxOgcEK2A5K5E",
+    "subscription_purchase": "mmAyCIbWxOgcEK2A5K5E",
+    "post_ad_success": "ztuNCInWxOgcEK2A5K5E",
+    "signup_complete": "PH9hCIzWxOgcEK2A5K5E",
+    "save_search": "5zhCCI_WxOgcEK2A5K5E",
 }
 ADS_VALUE_EVENTS = {"boost_purchase", "subscription_purchase"}
 
