@@ -221,6 +221,7 @@ model User {
    * to a campaign. Null for organic signups. */
   outreachContact       OutreachContact?
   outreachCampaigns     OutreachCampaign[]
+  supportTickets        SupportTicket[]
 
   @@index([cityId])
 }
@@ -752,4 +753,59 @@ model SuppressionEntry {
   channel   OutreachChannel?
   reason    String
   createdAt DateTime         @default(now())
+}
+
+/** Contact Us form submissions — see docs/plans/contact-us-support-form.md.
+ *
+ * Persisted before the notification email is attempted, deliberately: EmailProvider.send() logs
+ * and returns on failure rather than throwing, which is right for moderation notifications but
+ * would silently lose a user's only copy of a bug report. */
+enum ContactTopic {
+  posting
+  subscription
+  account
+  listing_report
+  website
+  other
+}
+
+model SupportTicket {
+  id          String              @id @default(cuid())
+  topic       ContactTopic
+  name        String
+  email       String
+  phone       String?
+  listingUrl  String?
+  paymentId   String?
+  message     String              @db.Text
+  /** Set when the form was submitted while logged in; null for anonymous reports (which is the
+   * whole point of leaving the endpoint public — "I can't log in" is one of the topics). */
+  userId      String?
+  user        User?               @relation(fields: [userId], references: [id])
+  emailSent   Boolean             @default(false)
+  userAgent   String?
+  /** Hashed, never the raw address — enough to correlate abuse from one source without holding
+   * personal data we have no reason to keep. */
+  ipHash      String?
+  attachments SupportAttachment[]
+  createdAt   DateTime            @default(now())
+
+  @@index([createdAt])
+  @@index([topic])
+}
+
+model SupportAttachment {
+  id        String        @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  /** R2 object key. Never served publicly — the CDN fronts this bucket, so linking these would
+   * turn an anonymous upload endpoint into public file hosting. Support receives the files as
+   * email attachments instead; this copy is the durable record. */
+  r2Key     String
+  filename  String
+  mimeType  String
+  bytes     Int
+  createdAt DateTime      @default(now())
+
+  @@index([ticketId])
 }

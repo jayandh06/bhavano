@@ -5,6 +5,6 @@ import { Msg91Provider } from './providers/msg91.provider';
 
 @Module({
   providers: [NotificationsService, EmailProvider, Msg91Provider],
-  exports: [NotificationsService, Msg91Provider],
+  exports: [NotificationsService, Msg91Provider, EmailProvider],
 })
 export class NotificationsModule {}

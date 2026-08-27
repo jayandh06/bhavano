@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
+import { auth } from "@/auth";
+import { ContactForm } from "@/components/home/ContactForm";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
 export const metadata = {
@@ -9,8 +11,11 @@ export const metadata = {
 
 const SUPPORT_EMAIL = LEGAL_ENTITY.supportEmail;
 
-export default function ContactPage() {
+export default async function ContactPage() {
   const addressLines = entityAddressLines();
+  // Prefill only — the form works logged out on purpose, since "I can't log in" is one of the
+  // topics. Reading the session here keeps the page a Server Component (see .claude/CLAUDE.md).
+  const session = await auth();
 
   return (
     <StaticPageLayout title="Contact us" updated="26 August 2026">
@@ -36,17 +41,22 @@ export default function ContactPage() {
       </PageSection>
 
       <PageSection heading="Get in touch">
-        <p className="m-0">
+        <p className="m-0 mb-4">
           Have a question, need help with your account, or want to report a listing? Check our{" "}
           <Link href="/help" className="text-green font-bold">
             Help centre
           </Link>{" "}
-          first — if that doesn&apos;t answer it, email us at{" "}
+          first — if that doesn&apos;t answer it, send us the details below and we&apos;ll get back to
+          you as soon as we can. Prefer email? Write to{" "}
           <a href={`mailto:${SUPPORT_EMAIL}`} className="text-green font-bold">
             {SUPPORT_EMAIL}
-          </a>{" "}
-          and we&apos;ll get back to you as soon as we can.
+          </a>
+          .
         </p>
+        <ContactForm
+          defaultName={session?.user?.name ?? undefined}
+          defaultEmail={session?.user?.email ?? undefined}
+        />
       </PageSection>
 
       <PageSection heading="What to include">

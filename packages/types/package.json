@@ -64,6 +64,10 @@
     "./legalEntity": {
       "types": "./dist/legalEntity.d.ts",
       "default": "./dist/legalEntity.js"
+    },
+    "./support": {
+      "types": "./dist/support.d.ts",
+      "default": "./dist/support.js"
     }
   },
   "scripts": {

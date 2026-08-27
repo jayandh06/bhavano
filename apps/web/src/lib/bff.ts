@@ -28,6 +28,7 @@ import type {
   UserProfileDto,
 } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import type { CreateSupportTicketResponse } from "@bhavano/types/support";
 import { isListingSlotCapErrorBody, ListingSlotCapError } from "@/lib/listingSlotErrors";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
@@ -232,6 +233,26 @@ export async function uploadPhoto(formData: FormData, accessToken: string): Prom
     throw new Error(`BFF upload failed (${res.status}): ${body}`);
   }
   return res.json() as Promise<{ hash: string; ext: string }>;
+}
+
+/** Not routed through bffFetch — that forces a JSON Content-Type, which would strip the
+ * multipart boundary fetch generates for a FormData body (same reason as uploadPhoto above).
+ * Unauthenticated by design: the contact form has to work for someone who can't log in. */
+export async function submitSupportTicket(formData: FormData): Promise<CreateSupportTicketResponse> {
+  const res = await fetch(`${BFF_URL}/support/tickets`, { method: "POST", body: formData });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    const message = (() => {
+      try {
+        const parsed = JSON.parse(body) as { message?: string | string[] };
+        return Array.isArray(parsed.message) ? parsed.message.join(", ") : parsed.message;
+      } catch {
+        return undefined;
+      }
+    })();
+    throw new Error(message ?? `Support ticket submission failed (${res.status})`);
+  }
+  return res.json() as Promise<CreateSupportTicketResponse>;
 }
 
 export function sendOtp(phone: string): Promise<{ success: true }> {

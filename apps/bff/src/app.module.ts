@@ -21,6 +21,7 @@ import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SellerJobsModule } from './seller-jobs/seller-jobs.module';
 import { OutreachModule } from './outreach/outreach.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { OutreachModule } from './outreach/outreach.module';
     SavedSearchesModule,
     AnalyticsModule,
     SellerJobsModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [AppService],
