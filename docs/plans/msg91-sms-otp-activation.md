@@ -148,6 +148,40 @@ back at seven minutes would be told the code expired, and would be provably righ
 Fixed by moving the code to 10 minutes rather than re-approving the template; the 5-attempt cap
 and the 3/minute send throttle are what actually bound brute force, not the window length.
 
+## Root cause (resolved 2026-08-27)
+
+Eight sends failed with `Template ID Missing or Invalid Template` before the cause was clear.
+The answer: **`sendOtp()` was calling the wrong endpoint.**
+
+MSG91 keeps templates in separate buckets and `/api/v5/otp` accepts only OTP-type templates.
+`Bhavano_Login` is a **Flow/Transactional** template, so that endpoint rejected it no matter what
+else the request got right — which is why changing ids, adding the sender, and re-approving the
+body all made no difference. `sendOtp()` now posts to `/api/v5/flow/`, passing the code as a
+recipient key matching the `##otp##` placeholder. Nothing is lost: we generate and verify codes
+ourselves, so the OTP API's own features were never used.
+
+Confirmed working, request `3668416e544e3664446c6d53`, **Delivered**:
+
+| Setting | Value |
+|---|---|
+| Endpoint | `https://control.msg91.com/api/v5/flow/` |
+| `MSG91_DLT_TEMPLATE_ID` | `6a8ea1aae1638d5a06061ca5` — MSG91's id, **not** the 19-digit DLT registry id |
+| `MSG91_SENDER_ID` | `bhavno` (lowercase, as MSG91 records it) |
+| Recipient key | `otp`, matching `##otp##` |
+
+Two things that made this slow to diagnose, worth remembering:
+
+1. **MSG91 answers `200` / `type:success` for sends it then discards.** Both the IP-whitelist
+   rejection and the invalid-template rejection looked like success at the API. Only
+   Reports → SMS logs shows the truth. `sendOtp()` now also treats a `"error"` body as a failure,
+   though that still cannot catch the discard-after-accept case.
+2. **The variable name `MSG91_DLT_TEMPLATE_ID` is misleading** — it wants MSG91's template id,
+   not the DLT registry id. Renaming it is a tidy-up worth doing when someone next touches this.
+
+Strictly, only the endpoint is *proven* necessary: the successful send changed both the endpoint
+and the sender case at once, and Flow-with-uppercase-sender was never tried. Lowercase is used
+because that is what is known to work.
+
 ## Step 4 — Verify
 
 1. **Local first**, with a real key: put `MSG91_AUTH_KEY` and `MSG91_DLT_TEMPLATE_ID` into

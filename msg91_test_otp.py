@@ -1,15 +1,20 @@
-"""Sends one real OTP SMS through MSG91, to prove out the template variable before deploying.
+"""Sends one real OTP SMS through MSG91, mirroring exactly what the bff does in production.
 
-The approved DLT template uses ##var1## rather than the ##OTP## placeholder MSG91's OTP API
-substitutes into by default, so this sends the code under both names and reports what MSG91
-says. Run it against your own phone and read the SMS: if the digits appear, the provider change
-in apps/bff/src/notifications/providers/msg91.provider.ts is correct.
+Defaults to the **Flow** API, because that is what works: the Bhavano_Login template is a
+Flow/Transactional template, and MSG91's OTP endpoint (/api/v5/otp) rejects it as "Template ID
+Missing or Invalid Template" regardless of ids or sender. Use --otp-api only to re-test that.
+
+Two traps this exists to catch, both learned the hard way:
+  - MSG91 answers 200 with type:success for sends it then discards (IP not whitelisted, invalid
+    template). The API response is not the outcome — MSG91 -> Reports -> SMS logs is.
+  - MSG91_DLT_TEMPLATE_ID wants MSG91's own template id (24 hex chars), not the 19-digit DLT
+    registry id, despite the variable's name.
 
 Reads MSG91_AUTH_KEY / MSG91_DLT_TEMPLATE_ID / MSG91_SENDER_ID from .env (repo root), falling
 back to apps/bff/.env.
 
 Run: python msg91_test_otp.py 9876543210
-     python msg91_test_otp.py 9876543210 --var-name VAR1
+     python msg91_test_otp.py 9876543210 --otp-api
 """
 
 import argparse
@@ -34,11 +39,11 @@ def main() -> int:
         "(19 digits) against the MSG91 id (24 hex chars) without editing .env",
     )
     ap.add_argument(
-        "--flow",
+        "--otp-api",
         action="store_true",
-        help="send via the Flow API (/api/v5/flow/) instead of the OTP API — the endpoint a "
-        "Flow/Transactional template must use, and the fallback when the OTP API says "
-        "'Invalid Template' for a template that is genuinely approved",
+        help="send via the OTP API (/api/v5/otp) instead of the Flow API. Only useful against "
+        "an OTP-type template — the Bhavano_Login template is a Flow/Transactional one, which "
+        "that endpoint rejects as 'Invalid Template'",
     )
     ap.add_argument(
         "--var-name",
@@ -74,7 +79,7 @@ def main() -> int:
     extra = ", %s=%s" % (args.var_name, code) if args.var_name else ""
     print("  variables   = otp=%s%s" % (code, extra))
 
-    if args.flow:
+    if not args.otp_api:
         # The Flow API takes template variables as named keys on the recipient, so the key has to
         # match the template's placeholder (##otp## -> "otp"). Worth trying when the OTP API says
         # "Invalid Template": that error also means "this template is not an OTP-type template",

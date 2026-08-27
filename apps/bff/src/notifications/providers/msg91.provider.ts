@@ -6,11 +6,19 @@ import {
 import { ConfigService } from '@nestjs/config';
 
 /**
- * MSG91 OTP delivery (v5 OTP API). Requires MSG91_AUTH_KEY (and, depending on your
- * account's DLT setup, MSG91_SENDER_ID / MSG91_DLT_TEMPLATE_ID) to actually send SMS —
- * throws until those are configured rather than silently no-op'ing, since a fake success
- * would be worse than a clear "not configured yet" error.
- * Docs: https://docs.msg91.com/reference/send-otp
+ * MSG91 SMS delivery. Requires MSG91_AUTH_KEY (plus MSG91_SENDER_ID / MSG91_DLT_TEMPLATE_ID)
+ * to actually send — sendOtp throws until those are configured rather than silently
+ * no-op'ing, since a fake success would leave a user waiting for an SMS that never went.
+ *
+ * NOTE: OTP goes through the **Flow** API (/api/v5/flow/), not the OTP API (/api/v5/otp),
+ * even though it is an OTP. MSG91 keeps templates in separate buckets and /api/v5/otp only
+ * accepts OTP-type templates; ours ("Bhavano_Login", MSG91 id 6a8ea1aae1638d5a06061ca5) is a
+ * Flow/Transactional template, which that endpoint rejects with "Template ID Missing or
+ * Invalid Template" no matter what else the request gets right. Nothing depends on the OTP
+ * API's own features — we generate and verify codes ourselves — so this is purely a delivery
+ * pipe. See docs/plans/msg91-sms-otp-activation.md.
+ *
+ * Docs: https://docs.msg91.com/reference/send-flow-based-sms
  */
 @Injectable()
 export class Msg91Provider {
@@ -28,33 +36,26 @@ export class Msg91Provider {
 
     const templateId = this.config.get<string>('MSG91_DLT_TEMPLATE_ID');
     const senderId = this.config.get<string>('MSG91_SENDER_ID');
-    // MSG91 fills a template placeholder from the request param of the same name, so the `otp`
-    // param below fills the approved template's ##otp##. Set MSG91_OTP_VAR_NAME only if a
-    // template ever uses a differently-named placeholder (an earlier revision used ##var1##);
-    // the code is then sent under that name too, since the value is identical either way.
-    // Left unset by default so no stray parameter is sent that the template can't consume.
-    const otpVarName = this.config.get<string>('MSG91_OTP_VAR_NAME');
-    const params = new URLSearchParams({
-      mobile: `91${phone}`,
-      otp: code,
-      ...(otpVarName ? { [otpVarName]: code } : {}),
-      ...(templateId ? { template_id: templateId } : {}),
-      // An approved DLT template is registered against a specific 6-character header; when the
-      // account has more than one, omitting it gets rejected in a way that reads like a bad
-      // template rather than a missing sender.
-      ...(senderId ? { sender: senderId } : {}),
+    // Key on the recipient must match the template's placeholder — ##otp## -> "otp".
+    const otpVarName = this.config.get<string>('MSG91_OTP_VAR_NAME') ?? 'otp';
+
+    const res = await fetch('https://control.msg91.com/api/v5/flow/', {
+      method: 'POST',
+      headers: { authkey: authKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...(templateId ? { template_id: templateId } : {}),
+        short_url: '0',
+        ...(senderId ? { sender: senderId } : {}),
+        recipients: [{ mobiles: `91${phone}`, [otpVarName]: code }],
+      }),
     });
 
-    const res = await fetch(
-      `https://control.msg91.com/api/v5/otp?${params.toString()}`,
-      {
-        method: 'POST',
-        headers: { authkey: authKey, 'Content-Type': 'application/json' },
-      },
-    );
-
-    if (!res.ok) {
-      const body = await res.text();
+    // MSG91 answers 200 with {"type":"error"} for template and sender problems, so the status
+    // code alone is not the outcome — this cost a long debugging session to learn. Note it is
+    // still not the *delivery* outcome: an unwhitelisted IP also returns 200/success here and
+    // is only visible in MSG91's own SMS logs.
+    const body = await res.text();
+    if (!res.ok || body.includes('"error"')) {
       throw new InternalServerErrorException(
         `MSG91 send failed (${res.status}): ${body}`,
       );
