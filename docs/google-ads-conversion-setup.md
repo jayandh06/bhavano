@@ -10,6 +10,15 @@ actual Google Ads/GA4 conversion tags are configured **from the GTM dashboard
 against these event names**, not in code — no deploy needed to add, change,
 or remove a conversion.
 
+> **Don't reintroduce a direct `gtag.js` tag.** A hardcoded
+> `<script src=".../gtag/js?id=AW-...">` block was added to `layout.tsx` in
+> commit `f24584a` and removed again — it put a second Google tag on every
+> page alongside the GTM container, and it silently ignored every `dataLayer`
+> event below (that dispatch is GTM-specific), so it recorded zero
+> conversions. See
+> [`plans/consolidate-analytics-and-ads-on-gtm.md`](./plans/consolidate-analytics-and-ads-on-gtm.md).
+> The Ads ID belongs in the GTM tags described here, not in the app.
+
 This doc is the runbook for that dashboard-side setup, covering the 5
 conversions decided on:
 

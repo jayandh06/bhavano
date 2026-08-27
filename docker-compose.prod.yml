@@ -65,7 +65,6 @@ services:
         NEXT_PUBLIC_BFF_URL: ${NEXT_PUBLIC_BFF_URL}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
         NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
-        NEXT_PUBLIC_GOOGLE_ADS_ID: ${NEXT_PUBLIC_GOOGLE_ADS_ID}
         NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY}
     restart: unless-stopped
     environment:
@@ -77,9 +76,6 @@ services:
       NEXT_PUBLIC_BFF_URL: ${NEXT_PUBLIC_BFF_URL}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
       NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
-      # Google Ads conversion ID for the gtag.js tag in the web app's root layout. Inlined at
-      # `next build` (see build.args above) — this runtime entry only keeps the two in sync.
-      NEXT_PUBLIC_GOOGLE_ADS_ID: ${NEXT_PUBLIC_GOOGLE_ADS_ID}
       # Google Maps JavaScript API + Places — the posting flow's map pin-picker (see
       # docs/plans/google-maps-location-picker.md). HTTP-referrer restricted, safe for the
       # browser — never reuse GOOGLE_MAPS_SERVER_KEY (bff, above) here.

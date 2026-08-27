@@ -330,16 +330,13 @@ was just posted) and `contact_owner` (a buyer started a conversation with a sell
 needed to wire up a conversion once GTM is live, just a trigger + tag in the GTM dashboard matching
 those event names.
 
-**Google Ads** — set `NEXT_PUBLIC_GOOGLE_ADS_ID` in `.env` to the conversion ID (`AW-XXXXXXXXXX`)
-from the Google Ads account, then rebuild `web` (same rebuild caveat as GTM below). This loads
-`gtag.js` directly from the web app's root layout, independent of the GTM container — leave it
-blank to skip loading it entirely (the default locally, so dev traffic never pollutes real Ads
-reporting). gtag.js handles `gclid` link-decoration itself, so no separate Conversion Linker tag is
-needed. Note this loads the tag but counts **no conversions** on its own: each conversion action
-also needs its label wired into a `gtag('event', 'conversion', ...)` call — see
-[google-ads-conversion-setup.md](./google-ads-conversion-setup.md).
+**Google Ads** — there is no separate Ads env var. The Ads conversion ID (`AW-18351718445`) is
+entered into tags **inside the GTM container**, not into the app, so `NEXT_PUBLIC_GTM_ID` above is
+the only tag variable. A direct `gtag.js` tag was briefly shipped instead and then removed — see
+[consolidate-analytics-and-ads-on-gtm.md](./plans/consolidate-analytics-and-ads-on-gtm.md) for why,
+and [google-ads-conversion-setup.md](./google-ads-conversion-setup.md) for the dashboard runbook.
 
-**`NEXT_PUBLIC_*` on `web` (Maps, BFF URL, site URL, GTM, Google Ads)** — values used in the browser bundle
+**`NEXT_PUBLIC_*` on `web` (Maps, BFF URL, site URL, GTM)** — values used in the browser bundle
 (e.g. `NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY` for the post-ad map) are baked in at **`docker build`**, not
 when you only restart the running container. `docker-compose.prod.yml` passes them as `web.build.args`;
 after adding or changing any of them in `.env`, run `docker compose -f docker-compose.prod.yml up -d
