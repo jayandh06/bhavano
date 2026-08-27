@@ -28,16 +28,16 @@ export class Msg91Provider {
 
     const templateId = this.config.get<string>('MSG91_DLT_TEMPLATE_ID');
     const senderId = this.config.get<string>('MSG91_SENDER_ID');
-    // MSG91 substitutes the `otp` param into a ##OTP## placeholder specifically. Our approved
-    // DLT template uses ##var1## instead, and renaming it would mean another multi-day DLT
-    // re-approval — so the code is also sent under the template's own variable name, which
-    // MSG91 passes through to the matching placeholder. Both are sent because the value is the
-    // same either way, and this then works whichever placeholder a future template uses.
-    const otpVarName = this.config.get<string>('MSG91_OTP_VAR_NAME') ?? 'var1';
+    // MSG91 fills a template placeholder from the request param of the same name, so the `otp`
+    // param below fills the approved template's ##otp##. Set MSG91_OTP_VAR_NAME only if a
+    // template ever uses a differently-named placeholder (an earlier revision used ##var1##);
+    // the code is then sent under that name too, since the value is identical either way.
+    // Left unset by default so no stray parameter is sent that the template can't consume.
+    const otpVarName = this.config.get<string>('MSG91_OTP_VAR_NAME');
     const params = new URLSearchParams({
       mobile: `91${phone}`,
       otp: code,
-      [otpVarName]: code,
+      ...(otpVarName ? { [otpVarName]: code } : {}),
       ...(templateId ? { template_id: templateId } : {}),
       // An approved DLT template is registered against a specific 6-character header; when the
       // account has more than one, omitting it gets rejected in a way that reads like a bad

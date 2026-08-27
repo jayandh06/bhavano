@@ -27,7 +27,12 @@ load_dotenv("apps/bff/.env")
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("phone", help="10-digit Indian mobile number, no country code")
-    ap.add_argument("--var-name", default="var1", help="template variable name (default: var1)")
+    ap.add_argument(
+        "--var-name",
+        default=None,
+        help="also send the code under this extra param name, for a template whose placeholder "
+        "is not ##otp## (e.g. --var-name var1)",
+    )
     args = ap.parse_args()
 
     auth_key = os.getenv("MSG91_AUTH_KEY")
@@ -43,16 +48,18 @@ def main() -> int:
     params = {
         "mobile": "91%s" % args.phone,
         "otp": code,
-        args.var_name: code,
         "template_id": template_id,
     }
+    if args.var_name:
+        params[args.var_name] = code
     if sender_id:
         params["sender"] = sender_id
 
     print("Sending code %s to %s" % (code, args.phone))
     print("  template_id = %s" % template_id)
     print("  sender      = %s" % (sender_id or "(not set — MSG91 will use the account default)"))
-    print("  variables   = otp=%s, %s=%s" % (code, args.var_name, code))
+    extra = ", %s=%s" % (args.var_name, code) if args.var_name else ""
+    print("  variables   = otp=%s%s" % (code, extra))
 
     resp = requests.post(
         "https://control.msg91.com/api/v5/otp",
@@ -70,8 +77,9 @@ def main() -> int:
         return 1
 
     print("\n=> Accepted by MSG91. Now read the SMS:")
-    print("   digits present  -> the %s variable is correct; deploy the provider change." % args.var_name)
-    print("   still blank     -> re-run with --var-name VAR1 (or whatever the template shows).")
+    print("   digits present  -> the template placeholder matches; deploy as-is.")
+    print("   still blank     -> the placeholder is named something else; re-run with")
+    print("                      --var-name <name>, then set MSG91_OTP_VAR_NAME to match.")
     return 0
 
 

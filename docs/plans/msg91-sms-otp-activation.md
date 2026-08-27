@@ -119,11 +119,17 @@ against this template the code would arrive blank — which is exactly what a da
 showed. A dashboard test supplies no variable value and so is always blank, but here the app
 would have produced the same empty slot.
 
-Renaming the template variable means another multi-day DLT re-approval. Instead the provider now
-sends the code under **both** names — `otp` and the template's own variable — since the value is
-identical either way and this keeps working whichever placeholder a future template uses. The
-variable name is `MSG91_OTP_VAR_NAME` (default `var1`) so a differently-named template needs a
-config change rather than a deploy.
+**Resolved by editing the template**, which now reads `##otp##` — matching the param name the
+API already sends, so this is the standard configuration and needs no special handling. The
+provider keeps an optional `MSG91_OTP_VAR_NAME` for a template that ever uses a different
+placeholder, but it is **unset by default** so no stray parameter is sent that the template
+cannot consume.
+
+> **Check the template's approval state before testing.** Editing a DLT template's body can put
+> it back into *Pending* with the telecom registry, because it is the message content that is
+> registered, not just the MSG91 record. If MSG91 → DLT → Templates does not show *Approved*,
+> sends will be rejected regardless of anything in this repo — and the rejection reads like a
+> configuration error rather than a pending approval.
 
 Prove it before deploying, with `msg91_test_otp.py`, which sends one real SMS:
 
