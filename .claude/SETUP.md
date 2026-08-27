@@ -635,6 +635,39 @@ When all 8 boxes are ticked, Claude has full direct access to Google Ads. No She
 ---
 
 
+## Tag Manager / GA4 access (added later, same OAuth client)
+
+The `gtm_*.py` and `ga4_audit.py` scripts at the repo root configure GTM container
+`GTM-N46D868W` and read the GA4 property over Google's APIs. They reuse
+`GOOGLE_ADS_CLIENT_ID`/`GOOGLE_ADS_CLIENT_SECRET` above but need their own token, because
+scopes are fixed when a refresh token is minted:
+
+```
+GTM_REFRESH_TOKEN=1//xxxxxxxxxxxxxxxxxx
+```
+
+Generate it with `python get_gtm_refresh_token.py` (Tag Manager edit/publish + read-only
+GA4 Admin scopes). Prerequisites, both easy to miss:
+
+- Enable **both** APIs in the *same* Cloud project as the OAuth client — use the
+  `?project=` form, since the generic console link opens whichever project you last used:
+  `tagmanager.googleapis.com` and `analyticsadmin.googleapis.com`.
+- Sign in as an account with **Publish** rights on the GTM container. This is not
+  necessarily the same Google account that has Google Ads access.
+
+Two failure modes that look like a bad token but aren't:
+
+- `insufficient authentication scopes` — the token was minted before a scope was added.
+  Re-run the script; a token's scopes cannot be widened in place.
+- `USER_PERMISSION_DENIED` on the Ads API — sending `login-customer-id` for an MCC the
+  authenticated user cannot access. `ads_setup_conversions.py` probes
+  `list_accessible_customers` and drops the header when that happens.
+
+Keep `GTM_REFRESH_TOKEN` **local only** — production holds no Google API credentials, by
+design. See `docs/plans/consolidate-analytics-and-ads-on-gtm.md`.
+
+---
+
 ## Security notes
 
 
