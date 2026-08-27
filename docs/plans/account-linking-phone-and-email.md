@@ -158,6 +158,42 @@ it is the data problem in phase 3, which is where the actual risk lives.
 identifier is not enough: it proves the number was controlled once, not that the person sitting
 there controls it now.
 
+### 2c. Prompt or merge automatically?
+
+**Prompt when the other account holds anything; merge silently when it does not.**
+
+The authorisation question is settled by then — session plus fresh verification proves one human
+owns both. What is not settled is *consent*, and the asymmetry that decides it is that
+verification is reversible while a merge is not: once listings, payments and subscriptions are
+repointed and the losing row is gone, there is no clean undo.
+
+Three risks specific to merging without asking:
+
+1. **The user may not know they have two accounts.** Listings they did not expect appear in the
+   account they are looking at, with no explanation.
+2. **Some duplicates are deliberate** — a personal account and an agent account sharing a phone
+   number. Rare, but an automatic merge destroys that intent permanently.
+3. **A bug amplifies silently.** Automatic merging runs the riskiest code path for every user;
+   a prompt means fewer merges, each user-initiated, so a problem surfaces while it is small.
+
+Prompting *every* time is over-cautious though. The common duplicate is someone who logged in
+once and did nothing, and making them read a warning to fix a mess the app created is poor.
+
+| Other account holds | Behaviour |
+|---|---|
+| No listings, payments, or conversations | Merge automatically, then say "We've linked your accounts" |
+| Anything at all | Prompt, itemising what moves |
+
+The prompt should state the contents, not just ask:
+
+> This phone is on another Bhavano account. You've verified both, so we can combine them.
+> That account has **3 listings**, **12 favourites**, and an **active Agent Pro subscription**.
+> Everything moves to this account. This can't be undone.
+
+**Soft-delete the losing row** rather than hard-deleting it — keep it for ~30 days with the
+identifiers released. That converts "irreversible" into "reversible by support", which is worth
+far more than the row it costs, especially for the first months when the merge code is young.
+
 ## Phase 3 — What merging actually has to move
 
 Every row pointing at the losing account has to be repointed, in one transaction. From
