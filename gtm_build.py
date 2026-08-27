@@ -42,6 +42,7 @@ DLV_KEYS = [
     "tier",
     "months",
     "boostDays",
+    "topic",
 ]
 
 # event name -> payload keys carried into GA4 as event parameters.
@@ -54,6 +55,9 @@ EVENTS = {
     "signup_complete": ["method"],
     "save_search": ["category", "transactionType"],
     "contact_owner": ["listingId"],
+    # Support requests: tracked in GA4 as a product-health signal, deliberately NOT an Ads
+    # conversion — bidding toward it would spend budget finding users who hit problems.
+    "contact_form_submit": ["topic"],
 }
 
 # Conversion labels for the 5 actions in Ads account 421-406-6478, created by
