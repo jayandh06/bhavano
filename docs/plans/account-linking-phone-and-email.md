@@ -132,16 +132,31 @@ error code (e.g. `IDENTIFIER_BELONGS_TO_OTHER_ACCOUNT`) and have the profile pag
 Even without the merge built, this converts a dead end into a support request that arrives with
 the context needed to resolve it by hand — which at 4 users is entirely reasonable.
 
-### 2b. Verified self-service merge
+### 2b. Verified self-service merge — symmetric, and cheaper than it looks
 
-Only offer merge once **both** identifiers are proven in the same session:
+Once **every** identifier requires verification (phase 0 does this for email; phone already has
+it), both directions collapse into one rule:
 
-1. User is logged into account A and enters an identifier belonging to account B
-2. They verify it — OTP for a phone, emailed code/link for an email
-3. Both proven, so both accounts belong to them, and the merge may proceed
+> If the session proves account A, and a fresh verification proves the identifier on account B,
+> then one human controls both — so merging them is safe.
 
-**Never merge without step 2.** Without it, entering a stranger's phone number claims their
-account.
+| Direction | Proof of account A | Proof of account B |
+|---|---|---|
+| Phone user adds an email | logged-in session | emailed code (phase 0) |
+| Email user adds a phone | logged-in session | **OTP — already implemented** |
+
+**`linkPhone` already gathers the proof and throws it away.** It calls
+`otpService.verifyChallenge(phone, code)` *before* the conflict check, so at the moment it raises
+`This phone number is already linked to another account`, the server has just confirmed the user
+controls that number. The authorisation question is already answered; only the merge mechanics
+are missing.
+
+So the safety argument is settled for both directions. What remains is **not** an auth problem —
+it is the data problem in phase 3, which is where the actual risk lives.
+
+**Never merge without a fresh verification in the same session.** A previously-verified
+identifier is not enough: it proves the number was controlled once, not that the person sitting
+there controls it now.
 
 ## Phase 3 — What merging actually has to move
 
@@ -178,8 +193,13 @@ nothing.
 
 Do **2a** next: it is small, and turns the remaining case into something support can resolve.
 
-Defer **2b/3** until duplicates actually accumulate. With 4 users, a hand-run merge is cheaper and
-safer than a self-service flow that could destroy listings if it has a bug.
+Defer **2b/3** until duplicates actually accumulate. Not because the safety is unclear — with
+phase 0 in place the verification story is settled in both directions, and `linkPhone` already
+proves phone ownership at the right moment — but because the *merge itself* is where the risk is.
+Repointing twelve relations, deduping favourites, resolving a 1:1 `outreachContact` and taking the
+more generous of two paid entitlements is the part that can silently destroy someone's listings.
+With 4 users, a hand-run merge is cheaper and safer than a self-service flow carrying that bug
+surface.
 
 ## Out of scope
 
