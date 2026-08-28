@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { slugify } from "@bhavano/types/slugify";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { City } from "@bhavano/types";
 import { getCityIcon } from "@bhavano/types/cityIcons";
 import { autoDetectCityAction, listAllCitiesAction, searchCitiesAction } from "@/app/actions/locations";
-import { buildHomeUrl } from "@/lib/homeUrl";
 import { buildBrowsePath } from "@/lib/listingPath";
 import type { ParsedSegments } from "@/lib/seoRoute";
 
@@ -24,7 +22,6 @@ export function LocationPicker({
   currentSegments?: ParsedSegments;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<City[]>(popularCities);
@@ -66,10 +63,13 @@ export function LocationPicker({
         }),
       );
     } else {
-      // Slug, not city.id: a cuid is unreadable, unshareable, and couples bookmarked links to
-      // database ids that a reseed would invalidate. Matches every other `?city=` in the app
-      // (/post?city=bengaluru and friends); the homepage still accepts an id for older links.
-      router.push(buildHomeUrl(searchParams, { city: slugify(city.name) }));
+      // From the homepage, go to the city's own route rather than /?city=<slug>. That URL is the
+      // one the footer links to and the one crawlers index — the homepage canonicalises every
+      // query-string variant back to "/", so /?city=chennai can never rank as a Chennai page.
+      // Note this is a destination change as well as a URL one: /chennai renders the browse view
+      // ("All Listings in Chennai") rather than the homepage's category-tab view ("Buy in
+      // Chennai").
+      router.push(buildBrowsePath({ cityName: city.name }));
     }
   }
 
