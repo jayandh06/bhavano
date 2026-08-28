@@ -19,7 +19,7 @@ export function MessageThread({
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const { requireLogin } = useAuthGate();
 
   useEffect(() => {
@@ -35,8 +35,14 @@ export function MessageThread({
     };
   }, [conversationId, accessToken]);
 
+  // Scrolls the message list itself rather than calling scrollIntoView, which walks up and
+  // scrolls every scrollable ancestor including the window — that dragged the whole page down on
+  // mount, pushing the header off-screen so the view opened partway down. Also skipped entirely
+  // when there is nothing to scroll to.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length === 0) return;
+    const list = listRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
   }, [messages]);
 
   useEffect(() => {
@@ -55,7 +61,7 @@ export function MessageThread({
 
   return (
     <div className="flex flex-col h-[70vh]">
-      <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-2.5">
+      <div ref={listRef} className="flex-1 overflow-y-auto py-4 flex flex-col gap-2.5">
         {/* A conversation can exist with no messages — it is created when a buyer opens contact
             with a seller, before anything is actually sent. Without this the thread renders as a
             blank panel and looks broken rather than empty. */}
@@ -77,7 +83,6 @@ export function MessageThread({
             </div>
           );
         })}
-        <div ref={bottomRef} />
       </div>
 
       <div className="flex gap-2.5 border-t border-border pt-3">
