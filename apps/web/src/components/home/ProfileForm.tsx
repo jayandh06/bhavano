@@ -35,8 +35,8 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [mergePrompt, setMergePrompt] = useState<{
     summary: AccountMergeSummary;
-    email: string;
-    code: string;
+    identifier: { phone?: string; email?: string; code: string };
+    label: string;
   } | null>(null);
   const [mergeNotice, setMergeNotice] = useState<string | null>(null);
   const router = useRouter();
@@ -90,7 +90,11 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
     if (result.result.status === "confirm") {
       // Both accounts hold something, so nothing moves until the user agrees. The code stays
       // valid for the confirm call — the server deliberately did not consume it.
-      setMergePrompt({ summary: result.result.summary, email: email.trim(), code: emailCode });
+      setMergePrompt({
+        summary: result.result.summary,
+        identifier: { email: email.trim(), code: emailCode },
+        label: "email",
+      });
       return;
     }
 
@@ -108,6 +112,8 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   function finishMerge(reauthRequired: boolean) {
     setEmailStep("idle");
     setEmailCode("");
+    setPhoneStep("idle");
+    setOtpInput("");
     setMergePrompt(null);
     if (reauthRequired) {
       // This session's own account was the one retired — its data now lives under the surviving
@@ -124,7 +130,7 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
     if (!mergePrompt) return;
     setEmailPending(true);
     setEmailError(null);
-    const result = await confirmAccountMergeAction({ email: mergePrompt.email, code: mergePrompt.code });
+    const result = await confirmAccountMergeAction(mergePrompt.identifier);
     setEmailPending(false);
     if (result.success) finishMerge(false);
     else setEmailError(result.error ?? "Couldn't merge the accounts");
@@ -167,13 +173,31 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
     setPhoneError(null);
     const result = await linkPhoneAction(phoneInput, otpInput);
     setPhonePending(false);
-    if (result.success) {
-      setCurrentPhone(phoneInput);
-      setPhoneStep("idle");
-      setOtpInput("");
-    } else {
-      setPhoneError(result.error ?? "Incorrect OTP");
+
+    if (!result.success) {
+      setPhoneError(result.error);
+      return;
     }
+
+    if (result.result.status === "confirm") {
+      // Another account holds this number and both have data, so nothing moves until the user
+      // agrees. The OTP stays valid for the confirm call — the server left it unconsumed.
+      setMergePrompt({
+        summary: result.result.summary,
+        identifier: { phone: phoneInput, code: otpInput },
+        label: "phone number",
+      });
+      return;
+    }
+
+    if (result.result.status === "merged") {
+      finishMerge(result.result.reauthRequired);
+      return;
+    }
+
+    setCurrentPhone(phoneInput);
+    setPhoneStep("idle");
+    setOtpInput("");
   }
 
   async function onSave() {
@@ -192,6 +216,57 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
 
   return (
     <div className="max-w-[480px] flex flex-col gap-5">
+        {mergeNotice && (
+          <p aria-live="polite" className="text-green text-[13px] font-bold m-0 mt-2">
+            {mergeNotice}
+          </p>
+        )}
+
+        {/* Both accounts hold something, so nothing has moved yet. Itemised rather than a bare
+            confirm: the user is agreeing to relocate real data, and a merge cannot be undone by
+            them — only by support, from the retired row. */}
+        {mergePrompt && (
+          <div className="border border-border rounded-lg p-4 mt-3">
+            <p className="m-0 font-bold text-text">
+              That {mergePrompt.label} is on another Bhavano account.
+            </p>
+            <p className="m-0 mt-2 text-[13px] text-text-soft">
+              You&apos;ve verified both, so we can combine them. That account has:
+            </p>
+            <ul className="list-disc m-0 mt-2 mb-3 pl-5 text-[13px] text-text-soft">
+              {mergePrompt.summary.listings > 0 && <li>{mergePrompt.summary.listings} listing(s)</li>}
+              {mergePrompt.summary.activeSubscription && <li>an active subscription</li>}
+              {mergePrompt.summary.conversations > 0 && (
+                <li>{mergePrompt.summary.conversations} conversation(s)</li>
+              )}
+              {mergePrompt.summary.payments > 0 && <li>{mergePrompt.summary.payments} payment(s)</li>}
+              {mergePrompt.summary.favourites > 0 && (
+                <li>{mergePrompt.summary.favourites} saved favourite(s)</li>
+              )}
+            </ul>
+            <p className="m-0 mb-3 text-[12.5px] text-muted">
+              Everything moves into one account. This can&apos;t be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleConfirmMerge}
+                disabled={emailPending}
+                className="bg-green text-white border-0 rounded-lg px-4 py-2 text-[13px] font-bold cursor-pointer disabled:opacity-60"
+              >
+                {emailPending ? "Combining…" : "Combine accounts"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMergePrompt(null)}
+                className="bg-transparent border-[1.5px] border-border text-text rounded-lg px-4 py-2 text-[13px] font-bold cursor-pointer"
+              >
+                Keep separate
+              </button>
+            </div>
+          </div>
+        )}
+
       <div>
         <label className={labelClass}>Name</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className={inputClass} />
@@ -316,54 +391,6 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
           </>
         )}
 
-        {mergeNotice && (
-          <p aria-live="polite" className="text-green text-[13px] font-bold m-0 mt-2">
-            {mergeNotice}
-          </p>
-        )}
-
-        {/* Both accounts hold something, so nothing has moved yet. Itemised rather than a bare
-            confirm: the user is agreeing to relocate real data, and a merge cannot be undone by
-            them — only by support, from the retired row. */}
-        {mergePrompt && (
-          <div className="border border-border rounded-lg p-4 mt-3">
-            <p className="m-0 font-bold text-text">That email is on another Bhavano account.</p>
-            <p className="m-0 mt-2 text-[13px] text-text-soft">
-              You&apos;ve verified both, so we can combine them. That account has:
-            </p>
-            <ul className="list-disc m-0 mt-2 mb-3 pl-5 text-[13px] text-text-soft">
-              {mergePrompt.summary.listings > 0 && <li>{mergePrompt.summary.listings} listing(s)</li>}
-              {mergePrompt.summary.activeSubscription && <li>an active subscription</li>}
-              {mergePrompt.summary.conversations > 0 && (
-                <li>{mergePrompt.summary.conversations} conversation(s)</li>
-              )}
-              {mergePrompt.summary.payments > 0 && <li>{mergePrompt.summary.payments} payment(s)</li>}
-              {mergePrompt.summary.favourites > 0 && (
-                <li>{mergePrompt.summary.favourites} saved favourite(s)</li>
-              )}
-            </ul>
-            <p className="m-0 mb-3 text-[12.5px] text-muted">
-              Everything moves into one account. This can&apos;t be undone.
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleConfirmMerge}
-                disabled={emailPending}
-                className="bg-green text-white border-0 rounded-lg px-4 py-2 text-[13px] font-bold cursor-pointer disabled:opacity-60"
-              >
-                {emailPending ? "Combining…" : "Combine accounts"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setMergePrompt(null)}
-                className="bg-transparent border-[1.5px] border-border text-text rounded-lg px-4 py-2 text-[13px] font-bold cursor-pointer"
-              >
-                Keep separate
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       <div>

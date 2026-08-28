@@ -1,6 +1,7 @@
 "use server";
 
 import { signIn, signOut } from "@/auth";
+import type { LinkIdentifierResult } from "@bhavano/types";
 import { linkPhone, logout, sendOtp } from "@/lib/bff";
 import { auth } from "@/auth";
 
@@ -51,13 +52,15 @@ export async function signOutAction(): Promise<void> {
 
 /** Links a verified phone number to the currently logged-in user — used by the profile page
  * for Google-login users completing their profile. Distinct from verifyOtpAction (login). */
-export async function linkPhoneAction(phone: string, code: string): Promise<{ success: boolean; error?: string }> {
+export async function linkPhoneAction(
+  phone: string,
+  code: string,
+): Promise<{ success: true; result: LinkIdentifierResult } | { success: false; error: string }> {
   const session = await auth();
   if (!session?.accessToken) return { success: false, error: "Not logged in" };
 
   try {
-    await linkPhone(session.accessToken, phone, code);
-    return { success: true };
+    return { success: true, result: await linkPhone(session.accessToken, phone, code) };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Incorrect OTP" };
   }
