@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AccountMergeSummary, City, UserProfileDto } from "@bhavano/types";
 import { autoDetectCityAction, searchCitiesAction } from "@/app/actions/locations";
+import { LocationMapPicker } from "./LocationMapPicker";
 import {
   confirmAccountMergeAction,
   requestEmailCodeAction,
@@ -23,6 +24,8 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   const [cityResults, setCityResults] = useState<City[]>([]);
   const [showCityResults, setShowCityResults] = useState(false);
   const [cityNoResults, setCityNoResults] = useState(false);
+  const [showCityMap, setShowCityMap] = useState(false);
+  const [newCityNote, setNewCityNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [detected, setDetected] = useState(false);
@@ -491,12 +494,56 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
           placeholder="Search for your city"
           className={inputClass}
         />
-        {cityNoResults && (
+        {cityNoResults && !showCityMap && (
           <p className="text-[12.5px] text-muted m-0 mt-1.5">
-            No match — we may not cover that city yet. You can still post an ad and drop a pin on
-            the map, which adds the city automatically.
+            No match yet.{" "}
+            <button
+              type="button"
+              onClick={() => setShowCityMap(true)}
+              className="bg-transparent border-0 p-0 text-green font-bold cursor-pointer underline"
+            >
+              Find it on the map
+            </button>{" "}
+            and we&apos;ll add it.
           </p>
         )}
+
+        {/* Reuses the posting flow's picker rather than sending the user there: dropping a pin
+            reverse-geocodes through the same path, which creates the city when Bhavano does not
+            already cover it (LocationsService.ensureCity). Without this the profile was a dead
+            end for anyone outside the seeded set. */}
+        {showCityMap && (
+          <div className="mt-2">
+            <LocationMapPicker
+              defaultCenter={{ lat: 20.5937, lng: 78.9629 }}
+              onPinChange={(_pin, suggestion) => {
+                if (!suggestion?.cityId) return;
+                setCityId(suggestion.cityId);
+                setCityName(suggestion.cityName ?? "");
+                // The DTO carries no state — the display template already omits the ", State"
+                // half when it is blank.
+                setState("");
+                setCityQuery("");
+                setCityNoResults(false);
+                setShowCityMap(false);
+                setNewCityNote(
+                  suggestion.isNewCity
+                    ? `Added ${suggestion.cityName} — select Save to use it.`
+                    : null,
+                );
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowCityMap(false)}
+              className="bg-transparent border-0 p-0 mt-2 text-[12.5px] text-muted cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {newCityNote && <p className="text-[12.5px] text-green font-bold m-0 mt-1.5">{newCityNote}</p>}
         {showCityResults && cityResults.length > 0 && (
           <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-20 max-h-[220px] overflow-y-auto">
             {cityResults.map((city) => (
