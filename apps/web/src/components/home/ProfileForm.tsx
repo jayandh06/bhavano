@@ -22,6 +22,7 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   const [cityQuery, setCityQuery] = useState("");
   const [cityResults, setCityResults] = useState<City[]>([]);
   const [showCityResults, setShowCityResults] = useState(false);
+  const [cityNoResults, setCityNoResults] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [detected, setDetected] = useState(false);
@@ -138,13 +139,18 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
 
   async function onCityQueryChange(value: string) {
     setCityQuery(value);
+    setCityNoResults(false);
     if (!value) {
       setCityResults([]);
       setShowCityResults(false);
       return;
     }
-    setCityResults(await searchCitiesAction(value));
-    setShowCityResults(true);
+    const results = await searchCitiesAction(value);
+    setCityResults(results);
+    setShowCityResults(results.length > 0);
+    // Two characters in with nothing back is worth explaining — cities are a curated set, and
+    // silence leaves the user unsure whether they mistyped or the city is unsupported.
+    setCityNoResults(results.length === 0 && value.trim().length >= 2);
   }
 
   function selectCity(city: City) {
@@ -471,10 +477,26 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
             setState("");
             onCityQueryChange(e.target.value);
           }}
-          onFocus={() => cityResults.length > 0 && setShowCityResults(true)}
+          onFocus={() => {
+            // Clear the resolved "City, State" text so editing starts a fresh search. Without
+            // this, backspacing one character searched for "Bengaluru, Karnatak" — comma, state
+            // fragment and all — which matches nothing, and the field looked stuck.
+            if (cityName) {
+              setCityQuery("");
+              setCityResults([]);
+              setCityNoResults(false);
+            }
+            if (cityResults.length > 0) setShowCityResults(true);
+          }}
           placeholder="Search for your city"
           className={inputClass}
         />
+        {cityNoResults && (
+          <p className="text-[12.5px] text-muted m-0 mt-1.5">
+            No match — we may not cover that city yet. You can still post an ad and drop a pin on
+            the map, which adds the city automatically.
+          </p>
+        )}
         {showCityResults && cityResults.length > 0 && (
           <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-20 max-h-[220px] overflow-y-auto">
             {cityResults.map((city) => (
