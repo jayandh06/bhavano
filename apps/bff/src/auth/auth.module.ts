@@ -14,6 +14,7 @@ import { AnalyticsModule } from '../analytics/analytics.module';
     forwardRef(() => UsersModule),
   ],
   controllers: [AuthController],
+  exports: [AuthService],
   providers: [AuthService, OtpService, GoogleProvider],
 })
 export class AuthModule {}
