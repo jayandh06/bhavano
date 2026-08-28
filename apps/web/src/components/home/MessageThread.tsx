@@ -56,6 +56,14 @@ export function MessageThread({
   return (
     <div className="flex flex-col h-[70vh]">
       <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-2.5">
+        {/* A conversation can exist with no messages — it is created when a buyer opens contact
+            with a seller, before anything is actually sent. Without this the thread renders as a
+            blank panel and looks broken rather than empty. */}
+        {messages.length === 0 && (
+          <p className="text-sm text-muted m-0 py-6 text-center">
+            No messages yet — say hello to start the conversation.
+          </p>
+        )}
         {messages.map((m) => {
           const isMine = m.senderId === currentUserId;
           return (
