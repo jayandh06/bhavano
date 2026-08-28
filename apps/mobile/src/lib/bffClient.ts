@@ -10,6 +10,7 @@ import type {
   MessageDto,
   PropertyTypeFilter,
   ReverseGeocodeResultDto,
+  LinkIdentifierResult,
   UpdateProfileInput,
   UserProfileDto,
 } from "@bhavano/types";
@@ -217,8 +218,33 @@ export function updateProfile(accessToken: string, input: UpdateProfileInput): P
   return authedBffFetch(accessToken, "/users/me", { method: "PATCH", body: JSON.stringify(input) });
 }
 
+/** Sends a 6-digit code to `email`. An address only enters the profile verified — updateProfile
+ * no longer accepts one — because an unverified address is not evidence of identity, and Google
+ * sign-in adopts an account based on it. See docs/plans/account-linking-phone-and-email.md. */
+export function requestEmailCode(accessToken: string, email: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/users/me/email/request-code", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function verifyEmail(
+  accessToken: string,
+  email: string,
+  code: string,
+): Promise<LinkIdentifierResult> {
+  return authedBffFetch(accessToken, "/users/me/email/verify", {
+    method: "POST",
+    body: JSON.stringify({ email, code }),
+  });
+}
+
 /** Links a verified phone number to the currently logged-in user (e.g. a Google-login user
  * completing their profile) — distinct from verifyOtp() (login/signup by phone). */
-export function linkPhone(accessToken: string, phone: string, code: string): Promise<{ success: true }> {
+export function linkPhone(
+  accessToken: string,
+  phone: string,
+  code: string,
+): Promise<LinkIdentifierResult> {
   return authedBffFetch(accessToken, "/auth/otp/link", { method: "POST", body: JSON.stringify({ phone, code }) });
 }

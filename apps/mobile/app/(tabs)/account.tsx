@@ -5,7 +5,13 @@ import type { UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { LegalFooter } from "../../src/components/home/LegalFooter";
-import { linkPhone, sendOtp, updateProfile } from "../../src/lib/bffClient";
+import {
+  linkPhone,
+  requestEmailCode,
+  sendOtp,
+  updateProfile,
+  verifyEmail,
+} from "../../src/lib/bffClient";
 
 type PhoneStep = "idle" | "otpSent";
 
@@ -68,11 +74,49 @@ function ProfileFields({
   const [phoneStep, setPhoneStep] = useState<PhoneStep>("idle");
   const [phonePending, setPhonePending] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [emailStep, setEmailStep] = useState<"idle" | "codeSent">("idle");
+  const [emailCode, setEmailCode] = useState("");
+  const [emailPending, setEmailPending] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const emailMissing = !profile.email && email.trim().length === 0;
+  const emailMissing = !profile.email;
   const canSave = !!profile.phone && !emailMissing;
+
+  async function onSendEmailCode() {
+    setEmailPending(true);
+    setEmailError(null);
+    try {
+      await requestEmailCode(accessToken, email.trim());
+      setEmailStep("codeSent");
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : "Couldn't send the code");
+    } finally {
+      setEmailPending(false);
+    }
+  }
+
+  async function onVerifyEmailCode() {
+    setEmailPending(true);
+    setEmailError(null);
+    try {
+      const result = await verifyEmail(accessToken, email.trim(), emailCode);
+      // A merge needing confirmation is web-only for now; on mobile the safe outcome is to tell
+      // the user rather than silently do nothing, since nothing has moved.
+      if (result.status === "confirm") {
+        setEmailError("That email is on another account — open bhavano.com to combine them.");
+        return;
+      }
+      await refreshProfile();
+      setEmailStep("idle");
+      setEmailCode("");
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : "Couldn't verify the code");
+    } finally {
+      setEmailPending(false);
+    }
+  }
 
   async function onSendPhoneOtp() {
     setPhonePending(true);
@@ -91,7 +135,13 @@ function ProfileFields({
     setPhonePending(true);
     setPhoneError(null);
     try {
-      await linkPhone(accessToken, phoneInput, otpInput);
+      const result = await linkPhone(accessToken, phoneInput, otpInput);
+      // Same as the email path: a merge needing confirmation is web-only for now, and nothing
+      // has moved, so say so rather than appearing to succeed while the number stays unlinked.
+      if (result.status === "confirm") {
+        setPhoneError("That number is on another account — open bhavano.com to combine them.");
+        return;
+      }
       await refreshProfile();
       setPhoneStep("idle");
       setOtpInput("");
@@ -106,10 +156,10 @@ function ProfileFields({
     setSaving(true);
     setMessage(null);
     try {
-      await updateProfile(accessToken, {
-        name: name.trim() || undefined,
-        email: !profile.email && email.trim() ? email.trim() : undefined,
-      });
+      // No email here: an address only reaches the profile through the verified flow below,
+      // mirroring how a phone only arrives through OTP. See
+      // docs/plans/account-linking-phone-and-email.md.
+      await updateProfile(accessToken, { name: name.trim() || undefined });
       await refreshProfile();
       setMessage({ type: "success", text: "Profile updated." });
     } catch (e) {
@@ -150,15 +200,54 @@ function ProfileFields({
           <Text style={[styles.hint, { color: colors.muted }]}>
             You signed in with your phone number — add an email so we have another way to reach you.
           </Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            placeholderTextColor={colors.muted}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-          />
+          {emailStep === "idle" ? (
+            <>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.muted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+              />
+              <Pressable
+                onPress={onSendEmailCode}
+                disabled={emailPending || !email.includes("@")}
+                style={[styles.row, { borderColor: colors.border, opacity: emailPending || !email.includes("@") ? 0.6 : 1 }]}
+              >
+                <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
+                  {emailPending ? "Sending…" : "Send verification code"}
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.hint, { color: colors.muted }]}>
+                We sent a 6-digit code to {email}.
+              </Text>
+              <TextInput
+                value={emailCode}
+                onChangeText={(t) => setEmailCode(t.replace(/\D/g, "").slice(0, 6))}
+                placeholder="6-digit code"
+                placeholderTextColor={colors.muted}
+                keyboardType="number-pad"
+                style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+              />
+              <Pressable
+                onPress={onVerifyEmailCode}
+                disabled={emailPending || emailCode.length !== 6}
+                style={[styles.row, { borderColor: colors.border, opacity: emailPending || emailCode.length !== 6 ? 0.6 : 1 }]}
+              >
+                <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
+                  {emailPending ? "Verifying…" : "Verify"}
+                </Text>
+              </Pressable>
+            </>
+          )}
+          {emailError ? (
+            <Text style={{ color: "#b3413a", fontSize: 12.5, marginTop: 6 }}>{emailError}</Text>
+          ) : null}
         </>
       )}
 

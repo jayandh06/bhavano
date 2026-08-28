@@ -14,7 +14,10 @@ module.exports = {
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     ios: {
-      supportsTablet: true,
+      // iPad support means App Review checks iPad layouts and the listing needs iPad
+      // screenshots. Nothing here has been tested at that size, and shipping a broken tablet
+      // layout is an easy rejection — turn this back on deliberately, with screenshots.
+      supportsTablet: false,
       bundleIdentifier: "com.finfolia.bhavano",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
