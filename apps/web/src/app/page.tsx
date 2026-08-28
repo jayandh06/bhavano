@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { HomeCategoryFilter } from "@bhavano/types";
+import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
 import { sessionHeaderName } from "@/lib/session";
@@ -45,7 +46,7 @@ export default async function HomePage({
   const category = parseCategory(sp.category);
   const propertyType = parseEnum(sp.propertyType, PROPERTY_TYPE_VALUES);
   const q = typeof sp.q === "string" ? sp.q : "";
-  const cityIdParam = typeof sp.city === "string" ? sp.city : undefined;
+  const cityParam = typeof sp.city === "string" ? sp.city : undefined;
   const page = parsePage(sp.page);
 
   const bedrooms = parsePositiveInt(sp.bedrooms);
@@ -68,8 +69,13 @@ export default async function HomePage({
   // still resolves here instead of silently falling back to the default city.
   const [session, allCities] = await Promise.all([auth(), fetchCities(undefined, true)]);
   const popularCities = allCities.filter((c) => c.isPopular);
+  // Slug first — that is what the picker emits and what every other `?city=` in the app uses
+  // (/post?city=bengaluru and friends). The id lookup stays as a fallback so links shared or
+  // bookmarked while this emitted a cuid keep resolving instead of silently falling back to
+  // the default city.
   const resolvedCity =
-    allCities.find((c) => c.id === cityIdParam) ??
+    allCities.find((c) => slugify(c.name) === cityParam) ??
+    allCities.find((c) => c.id === cityParam) ??
     popularCities.find((c) => c.name === "Bengaluru") ??
     popularCities[0];
 
@@ -122,7 +128,7 @@ export default async function HomePage({
     params.set("category", category);
     if (propertyType) params.set("propertyType", propertyType);
     if (q) params.set("q", q);
-    if (cityIdParam) params.set("city", cityIdParam);
+    if (resolvedCity) params.set("city", slugify(resolvedCity.name));
     if (bedrooms !== undefined) params.set("bedrooms", String(bedrooms));
     if (furnished) params.set("furnished", furnished);
     if (sharingType) params.set("sharingType", sharingType);

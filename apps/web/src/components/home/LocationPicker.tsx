@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { slugify } from "@bhavano/types/slugify";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { City } from "@bhavano/types";
 import { getCityIcon } from "@bhavano/types/cityIcons";
@@ -65,7 +66,10 @@ export function LocationPicker({
         }),
       );
     } else {
-      router.push(buildHomeUrl(searchParams, { city: city.id }));
+      // Slug, not city.id: a cuid is unreadable, unshareable, and couples bookmarked links to
+      // database ids that a reseed would invalidate. Matches every other `?city=` in the app
+      // (/post?city=bengaluru and friends); the homepage still accepts an id for older links.
+      router.push(buildHomeUrl(searchParams, { city: slugify(city.name) }));
     }
   }
 
