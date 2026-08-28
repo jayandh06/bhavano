@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  UnauthorizedException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -454,6 +455,16 @@ export class ListingsService {
   ): Promise<ListingDetailDto> {
     if (!input.photos.length)
       throw new BadRequestException('At least one photo is required');
+    // A token issued before the owner deleted their account still authenticates for up to an
+    // hour (stateless JWT, DB-free AuthGuard), and this is the one path that would attach new
+    // data to a deleted account.
+    const owner = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { deletedAt: true },
+    });
+    if (owner?.deletedAt) {
+      throw new UnauthorizedException('This account was deleted');
+    }
     await this.listingSlotsService.assertCanPublish(ownerId);
     this.assertValidAttributes(
       input.category,

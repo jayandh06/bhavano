@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { UserProfileDto } from '@bhavano/types';
 import type { User, City } from '@prisma/client';
@@ -22,6 +23,12 @@ export class UsersService {
       include: { city: true },
     });
     if (!user) throw new NotFoundException('User not found');
+    // A JWT outlives the account it names — tokens are stateless with a 1h TTL and AuthGuard is
+    // deliberately DB-free, so a session issued before deletion still authenticates. Rejecting
+    // here logs the holder out everywhere, since apps/web maps a 401 to requiresLogin and
+    // ProfileCompletionBanner refetches this on every navigation.
+    if (user.deletedAt)
+      throw new UnauthorizedException('This account was deleted');
     const { activeCount, allowance } =
       await this.listingSlotsService.getSummary(userId);
     return toProfileDto(user, activeCount, allowance);
