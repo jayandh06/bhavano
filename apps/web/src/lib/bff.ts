@@ -440,3 +440,15 @@ export function confirmAccountMerge(
     body: JSON.stringify(identifier),
   });
 }
+
+/** Deletes the caller's own account. Irreversible: the identifiers are released and every
+ * identifying field cleared, so there is no undo from the client side. */
+export function deleteAccount(
+  accessToken: string,
+  identifier: { phone?: string; email?: string; code: string },
+): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/users/me", {
+    method: "DELETE",
+    body: JSON.stringify(identifier),
+  });
+}

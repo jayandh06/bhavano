@@ -242,9 +242,15 @@ model User {
    * and preserved here instead. */
   mergedPhone           String?
   mergedEmail           String?
+  /** Non-null once the user deleted their own account. The row survives — it is the audit trail
+   * behind their payments — but every identifying field is cleared and the identifiers released,
+   * so the account is unusable and holds no personal data. Required by App Store guideline
+   * 5.1.1(v) and by the DPDP Act's erasure right; see docs/plans/ios-app-store-release.md. */
+  deletedAt             DateTime?
 
   @@index([cityId])
   @@index([mergedIntoUserId])
+  @@index([deletedAt])
 }
 
 model Listing {

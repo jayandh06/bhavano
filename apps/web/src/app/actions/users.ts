@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import {
   BffAuthError,
   confirmAccountMerge,
+  deleteAccount,
   fetchProfile,
   requestEmailCode,
   updateProfile,
@@ -80,5 +81,21 @@ export async function confirmAccountMergeAction(
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Couldn't merge the accounts" };
+  }
+}
+
+/** Deletes the account, then the caller is expected to sign out — the session's user no longer
+ * has a usable account behind it. */
+export async function deleteAccountAction(
+  identifier: { phone?: string; email?: string; code: string },
+): Promise<{ success: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "Not logged in" };
+
+  try {
+    await deleteAccount(session.accessToken, identifier);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Couldn't delete the account" };
   }
 }

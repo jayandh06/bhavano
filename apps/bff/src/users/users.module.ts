@@ -6,6 +6,7 @@ import { ListingsModule } from '../listings/listings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailVerificationService } from './email-verification.service';
 import { AccountMergeService } from './account-merge.service';
+import { AccountDeletionService } from './account-deletion.service';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
@@ -18,7 +19,12 @@ import { AuthModule } from '../auth/auth.module';
     forwardRef(() => AuthModule),
   ],
   controllers: [UsersController],
-  providers: [UsersService, EmailVerificationService, AccountMergeService],
+  providers: [
+    UsersService,
+    EmailVerificationService,
+    AccountMergeService,
+    AccountDeletionService,
+  ],
   exports: [AccountMergeService],
 })
 export class UsersModule {}

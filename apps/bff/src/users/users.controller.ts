@@ -1,6 +1,8 @@
 import {
   Body,
+  BadRequestException,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -23,8 +25,10 @@ import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RequestEmailCodeDto, VerifyEmailDto } from './dto/verify-email.dto';
 import { ConfirmMergeDto } from './dto/confirm-merge.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 import { EmailVerificationService } from './email-verification.service';
 import { AccountMergeService } from './account-merge.service';
+import { AccountDeletionService } from './account-deletion.service';
 import { AuthService } from '../auth/auth.service';
 
 @Controller('users/me')
@@ -36,6 +40,7 @@ export class UsersController {
     private readonly emailVerification: EmailVerificationService,
     private readonly accountMerge: AccountMergeService,
     private readonly authService: AuthService,
+    private readonly accountDeletion: AccountDeletionService,
   ) {}
 
   @Get()
@@ -96,6 +101,44 @@ export class UsersController {
           this.emailVerification.assertCodeValid(uid, mail, code),
       },
     );
+    return { success: true };
+  }
+
+  /** Deletes the caller's own account. Required by App Store guideline 5.1.1(v), which does not
+   * accept "contact support", and by the DPDP Act's erasure right.
+   *
+   * Verifies a freshly-issued code for an identifier the account actually holds, so neither a
+   * stale session nor a guessed identifier is enough. */
+  @Delete()
+  @HttpCode(200)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  async deleteAccount(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: DeleteAccountDto,
+  ): Promise<{ success: true }> {
+    if (!dto.phone === !dto.email) {
+      throw new BadRequestException('Provide exactly one of phone or email');
+    }
+
+    const owner = await this.usersService.getProfile(user.id);
+    // The identifier must be one this account actually holds — otherwise a caller could verify
+    // some address they control and delete an account that never had it.
+    if (dto.phone && owner.phone !== dto.phone) {
+      throw new BadRequestException('That phone number is not on this account');
+    }
+    if (dto.email && owner.email !== dto.email) {
+      throw new BadRequestException('That email is not on this account');
+    }
+
+    if (dto.phone) await this.authService.assertOtpValid(dto.phone, dto.code);
+    else if (dto.email)
+      await this.emailVerification.assertCodeValid(
+        user.id,
+        dto.email,
+        dto.code,
+      );
+
+    await this.accountDeletion.deleteOwnAccount(user.id);
     return { success: true };
   }
 

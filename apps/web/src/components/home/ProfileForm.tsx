@@ -7,11 +7,12 @@ import { autoDetectCityAction, searchCitiesAction } from "@/app/actions/location
 import { LocationMapPicker } from "./LocationMapPicker";
 import {
   confirmAccountMergeAction,
+  deleteAccountAction,
   requestEmailCodeAction,
   updateProfileAction,
   verifyEmailAction,
 } from "@/app/actions/users";
-import { linkPhoneAction, sendOtpAction } from "@/app/actions/auth";
+import { linkPhoneAction, sendOtpAction, signOutAction } from "@/app/actions/auth";
 
 type PhoneStep = "idle" | "otpSent";
 
@@ -44,6 +45,11 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   } | null>(null);
   const [mergeNotice, setMergeNotice] = useState<string | null>(null);
   const router = useRouter();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteCode, setDeleteCode] = useState("");
+  const [deleteSent, setDeleteSent] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [currentPhone, setCurrentPhone] = useState(profile.phone);
   const [phoneStep, setPhoneStep] = useState<PhoneStep>("idle");
@@ -207,6 +213,38 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
     setCurrentPhone(phoneInput);
     setPhoneStep("idle");
     setOtpInput("");
+  }
+
+  /** Sends the confirmation code to whichever identifier the account holds — phone first, since
+   * that is the one every account has. */
+  async function sendDeleteCode() {
+    setDeletePending(true);
+    setDeleteError(null);
+    const result = currentPhone
+      ? await sendOtpAction(currentPhone)
+      : await requestEmailCodeAction(savedEmail ?? "");
+    setDeletePending(false);
+    if (result.success) setDeleteSent(true);
+    else setDeleteError(result.error ?? "Couldn't send the code");
+  }
+
+  async function confirmDelete() {
+    setDeletePending(true);
+    setDeleteError(null);
+    const result = await deleteAccountAction(
+      currentPhone
+        ? { phone: currentPhone, code: deleteCode }
+        : { email: savedEmail ?? "", code: deleteCode },
+    );
+    setDeletePending(false);
+    if (!result.success) {
+      setDeleteError(result.error ?? "Couldn't delete the account");
+      return;
+    }
+    // The session now points at an account with nothing behind it, so end it rather than leave
+    // them looking at an empty profile.
+    await signOutAction();
+    router.push("/");
   }
 
   async function onSave() {
@@ -562,6 +600,69 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
       {message && (
         <p className={`text-[13px] m-0 ${message.type === "success" ? "text-green" : "text-[#b3413a]"}`}>{message.text}</p>
       )}
+
+      {/* App Store guideline 5.1.1(v) requires deletion to be startable in-app, and the DPDP Act
+          requires it regardless of the store. Gated behind a freshly-issued code because it is
+          irreversible — a borrowed unlocked phone should not be enough. */}
+      <div className="border-t border-border pt-5 mt-2">
+        {!deleteOpen ? (
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="bg-transparent border-0 p-0 text-[13px] text-[#b3413a] font-bold cursor-pointer"
+          >
+            Delete my account
+          </button>
+        ) : (
+          <div>
+            <p className="m-0 mb-2 text-[13px] font-bold text-text">Delete your account?</p>
+            <p className="m-0 mb-3 text-[12.5px] text-muted">
+              Your ads come offline, your saved searches are removed, and your name, email and
+              phone number are erased. Records of payments you made are kept for accounting, but
+              no longer identify you. This can&apos;t be undone.
+            </p>
+            {!deleteSent ? (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={sendDeleteCode}
+                  disabled={deletePending}
+                  className="bg-[#b3413a] text-white border-0 rounded-lg px-4 py-2 text-[13px] font-bold cursor-pointer disabled:opacity-60"
+                >
+                  {deletePending ? "Sending…" : `Send confirmation code to ${currentPhone ? "my phone" : "my email"}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteOpen(false)}
+                  className="bg-transparent border-[1.5px] border-border text-text rounded-lg px-4 py-2 text-[13px] font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={deleteCode}
+                  onChange={(e) => setDeleteCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="6-digit code"
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deletePending || deleteCode.length !== 6}
+                  className="bg-[#b3413a] text-white border-0 rounded-lg px-4 py-2 text-[13px] font-bold cursor-pointer disabled:opacity-60 whitespace-nowrap"
+                >
+                  {deletePending ? "Deleting…" : "Delete permanently"}
+                </button>
+              </div>
+            )}
+            {deleteError && <p className={errorClass}>{deleteError}</p>}
+          </div>
+        )}
+      </div>
 
       {!canSave && (
         <p className="text-[12.5px] text-muted m-0">

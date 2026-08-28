@@ -2,7 +2,9 @@ import { AccountMergeService } from './account-merge.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { AccountMergeSummary } from '@bhavano/types';
 
-function summary(overrides: Partial<AccountMergeSummary> = {}): AccountMergeSummary {
+function summary(
+  overrides: Partial<AccountMergeSummary> = {},
+): AccountMergeSummary {
   return {
     listings: 0,
     activeSubscription: false,
@@ -16,10 +18,17 @@ function summary(overrides: Partial<AccountMergeSummary> = {}): AccountMergeSumm
 /** Records every write the merge issues, so ordering and payloads can be asserted — this is the
  * riskiest code in the app (it relocates listings and payment records), and the failures that
  * matter are silent ones. */
+/** Structural shape of the Prisma call arguments this spec asserts on — enough to read
+ * where/data without reaching for `any` at every call site. */
+type PrismaArgs = {
+  where?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+};
+
 function makeTx() {
-  const calls: { model: string; args: unknown }[] = [];
+  const calls: { model: string; args: PrismaArgs }[] = [];
   const record = (model: string) =>
-    jest.fn((args: unknown) => {
+    jest.fn((args: PrismaArgs) => {
       calls.push({ model, args });
       return Promise.resolve({ count: 0 });
     });
@@ -126,11 +135,11 @@ describe('AccountMergeService.merge', () => {
 
     // phone/email/googleId are @unique: claiming the loser's email while the loser still holds
     // it fails the constraint and rolls the entire merge back.
-    const [first, second] = userUpdates as [{ args: any }, { args: any }];
-    expect(first.args.where.id).toBe('loser');
-    expect(first.args.data.email).toBeNull();
-    expect(second.args.where.id).toBe('winner');
-    expect(second.args.data.email).toBe('both@example.com');
+    const [first, second] = userUpdates;
+    expect(first.args.where?.id).toBe('loser');
+    expect(first.args.data?.email).toBeNull();
+    expect(second.args.where?.id).toBe('winner');
+    expect(second.args.data?.email).toBe('both@example.com');
   });
 
   it('preserves the released identifiers on the retired row', async () => {
@@ -138,11 +147,11 @@ describe('AccountMergeService.merge', () => {
     await makeService(tx).merge('winner', 'loser');
 
     const loserUpdate = tx.calls.find(
-      (c) => c.model === 'user.update' && (c.args as any).where.id === 'loser',
-    ) as { args: any };
-    expect(loserUpdate.args.data.mergedEmail).toBe('both@example.com');
-    expect(loserUpdate.args.data.mergedIntoUserId).toBe('winner');
-    expect(loserUpdate.args.data.mergedAt).toBeInstanceOf(Date);
+      (c) => c.model === 'user.update' && c.args.where?.id === 'loser',
+    )!;
+    expect(loserUpdate.args.data?.mergedEmail).toBe('both@example.com');
+    expect(loserUpdate.args.data?.mergedIntoUserId).toBe('winner');
+    expect(loserUpdate.args.data?.mergedAt).toBeInstanceOf(Date);
   });
 
   it('never deletes the losing row', async () => {
@@ -156,12 +165,16 @@ describe('AccountMergeService.merge', () => {
     await makeService(tx).merge('winner', 'loser');
 
     const winnerUpdate = tx.calls.find(
-      (c) => c.model === 'user.update' && (c.args as any).where.id === 'winner',
-    ) as { args: any };
+      (c) => c.model === 'user.update' && c.args.where?.id === 'winner',
+    )!;
     // The user paid for both; quietly shortening access they bought is the worst outcome here.
-    expect(winnerUpdate.args.data.premiumUntil).toEqual(new Date('2026-09-01'));
-    expect(winnerUpdate.args.data.agentProUntil).toEqual(new Date('2026-06-01'));
-    expect(winnerUpdate.args.data.agentProUnits).toBe(3);
+    expect(winnerUpdate.args.data?.premiumUntil).toEqual(
+      new Date('2026-09-01'),
+    );
+    expect(winnerUpdate.args.data?.agentProUntil).toEqual(
+      new Date('2026-06-01'),
+    );
+    expect(winnerUpdate.args.data?.agentProUnits).toBe(3);
   });
 
   it('fills only what the survivor is missing, never overwriting it', async () => {
@@ -169,22 +182,28 @@ describe('AccountMergeService.merge', () => {
     await makeService(tx).merge('winner', 'loser');
 
     const winnerUpdate = tx.calls.find(
-      (c) => c.model === 'user.update' && (c.args as any).where.id === 'winner',
-    ) as { args: any };
-    expect(winnerUpdate.args.data.phone).toBe('9000000001'); // winner's own, kept
-    expect(winnerUpdate.args.data.name).toBe('Chosen Name'); // a name they set beats Google's
-    expect(winnerUpdate.args.data.googleId).toBe('google-123'); // winner had none
+      (c) => c.model === 'user.update' && c.args.where?.id === 'winner',
+    )!;
+    expect(winnerUpdate.args.data?.phone).toBe('9000000001'); // winner's own, kept
+    expect(winnerUpdate.args.data?.name).toBe('Chosen Name'); // a name they set beats Google's
+    expect(winnerUpdate.args.data?.googleId).toBe('google-123'); // winner had none
   });
 
   it('drops the duplicate favourite before repointing, since (userId, listingId) is unique', async () => {
     const tx = makeTx();
     await makeService(tx).merge('winner', 'loser');
 
-    const deleteIdx = tx.calls.findIndex((c) => c.model === 'favourite.deleteMany');
-    const updateIdx = tx.calls.findIndex((c) => c.model === 'favourite.updateMany');
+    const deleteIdx = tx.calls.findIndex(
+      (c) => c.model === 'favourite.deleteMany',
+    );
+    const updateIdx = tx.calls.findIndex(
+      (c) => c.model === 'favourite.updateMany',
+    );
     expect(deleteIdx).toBeGreaterThanOrEqual(0);
     expect(deleteIdx).toBeLessThan(updateIdx);
-    expect((tx.calls[deleteIdx].args as any).where.listingId.in).toContain('shared-listing');
+    expect(
+      (tx.calls[deleteIdx].args.where?.listingId as { in: string[] }).in,
+    ).toContain('shared-listing');
   });
 
   it('moves both sides of a conversation', async () => {
@@ -193,15 +212,17 @@ describe('AccountMergeService.merge', () => {
 
     const convo = tx.calls.filter((c) => c.model === 'conversation.updateMany');
     expect(convo).toHaveLength(2);
-    expect((convo[0].args as any).where).toHaveProperty('posterId', 'loser');
-    expect((convo[1].args as any).where).toHaveProperty('inquirerId', 'loser');
+    expect(convo[0].args.where).toHaveProperty('posterId', 'loser');
+    expect(convo[1].args.where).toHaveProperty('inquirerId', 'loser');
   });
 
   it('leaves a colliding 1:1 outreachContact on the retired row', async () => {
     const tx = makeTx();
     tx.outreachContact.findUnique.mockResolvedValue({ userId: 'winner' });
     await makeService(tx).merge('winner', 'loser');
-    expect(tx.calls.some((c) => c.model === 'outreachContact.updateMany')).toBe(false);
+    expect(tx.calls.some((c) => c.model === 'outreachContact.updateMany')).toBe(
+      false,
+    );
   });
 
   it('does nothing when both ids are the same', async () => {
@@ -212,7 +233,10 @@ describe('AccountMergeService.merge', () => {
 });
 
 describe('AccountMergeService.pickWinner', () => {
-  function serviceWithSummaries(a: AccountMergeSummary, b: AccountMergeSummary) {
+  function serviceWithSummaries(
+    a: AccountMergeSummary,
+    b: AccountMergeSummary,
+  ) {
     const service = new AccountMergeService({} as PrismaService);
     jest
       .spyOn(service, 'summarize')
@@ -231,7 +255,10 @@ describe('AccountMergeService.pickWinner', () => {
   });
 
   it('falls back to payment history when listings tie', async () => {
-    const service = serviceWithSummaries(summary({ payments: 1 }), summary({ payments: 9 }));
+    const service = serviceWithSummaries(
+      summary({ payments: 1 }),
+      summary({ payments: 9 }),
+    );
     await expect(service.pickWinner('a', 'b')).resolves.toEqual({
       winnerId: 'b',
       loserId: 'a',
@@ -260,7 +287,9 @@ describe('AccountMergeService.resolveActiveUserId', () => {
   }
 
   it('returns the id unchanged when the account was never merged', async () => {
-    await expect(serviceWithChain({ a: null }).resolveActiveUserId('a')).resolves.toBe('a');
+    await expect(
+      serviceWithChain({ a: null }).resolveActiveUserId('a'),
+    ).resolves.toBe('a');
   });
 
   it('follows the chain to the surviving account', async () => {
