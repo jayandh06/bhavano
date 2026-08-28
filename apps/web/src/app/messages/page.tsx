@@ -68,7 +68,14 @@ async function ConversationList({ accessToken }: { accessToken: string }) {
               )}
             </div>
             <div className="text-xs text-muted">{c.listingTitle}</div>
-            {c.lastMessage && <div className="text-[13px] text-text-soft mt-1">{c.lastMessage.body}</div>}
+            {/* A conversation exists from the moment someone opens contact, before anything is
+                sent, so lastMessage is legitimately null. Rendering nothing there left the row
+                looking truncated and gave no hint why the thread opened empty. */}
+            {c.lastMessage ? (
+              <div className="text-[13px] text-text-soft mt-1">{c.lastMessage.body}</div>
+            ) : (
+              <div className="text-[13px] text-muted italic mt-1">No messages yet</div>
+            )}
           </div>
           {c.unreadCount > 0 && (
             <span className="bg-green text-on-green rounded-full text-[11px] font-bold px-2 py-[3px]">{c.unreadCount}</span>
