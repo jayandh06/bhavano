@@ -4,9 +4,11 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { sendOtpAction, signInWithGoogleAction, verifyOtpAction } from "@/app/actions/auth";
+import { requestEmailCodeAction, verifyEmailAction } from "@/app/actions/users";
 import { pushDataLayerEvent } from "@/lib/gtm";
 
-type LoginStep = "choose" | "phone" | "otp";
+/** `email` and `emailCode` only ever follow a brand-new phone signup — see handleVerifyOtp. */
+type LoginStep = "choose" | "phone" | "otp" | "email" | "emailCode";
 
 interface AuthGateContextValue {
   requireLogin: () => void;
@@ -28,6 +30,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailCode, setEmailCode] = useState("");
 
   const router = useRouter();
 
@@ -35,6 +39,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     setLoginStep("choose");
     setPhone("");
     setOtp("");
+    setEmail("");
+    setEmailCode("");
     setError(null);
     setShowLoginModal(true);
   }
@@ -72,12 +78,48 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     setError(null);
     const result = await verifyOtpAction(phone, otp);
     setPending(false);
-    if (result.success) {
-      if (result.isNewUser) pushDataLayerEvent("signup_complete", { method: "phone" });
-      onLoginSuccess();
-    } else {
+    if (!result.success) {
       setError(result.error ?? "Incorrect OTP");
+      return;
     }
+
+    if (result.isNewUser) {
+      pushDataLayerEvent("signup_complete", { method: "phone" });
+      // Asked here, while they are already in a form, rather than by a banner they will ignore.
+      // A verified email is what lets a later Google sign-in land in THIS account instead of
+      // silently creating a second one — see docs/plans/account-linking-phone-and-email.md.
+      // Skippable on purpose: someone who signed in to message a seller should not be trapped.
+      setError(null);
+      setLoginStep("email");
+      return;
+    }
+
+    onLoginSuccess();
+  }
+
+  async function handleSendEmailCode() {
+    setPending(true);
+    setError(null);
+    const result = await requestEmailCodeAction(email.trim());
+    setPending(false);
+    if (result.success) setLoginStep("emailCode");
+    else setError(result.error ?? "Couldn't send the code");
+  }
+
+  async function handleVerifyEmailCode() {
+    setPending(true);
+    setError(null);
+    const result = await verifyEmailAction(email.trim(), emailCode);
+    setPending(false);
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    // A brand-new phone account has nothing in it, so any account already holding this address
+    // merges automatically — the user never sees a prompt, which is the point of doing this at
+    // signup rather than later.
+    onLoginSuccess();
   }
 
   async function handleGoogle() {
@@ -108,6 +150,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 {loginStep === "choose" && "Log in to continue"}
                 {loginStep === "phone" && "Enter your phone number"}
                 {loginStep === "otp" && "Enter the OTP"}
+                {loginStep === "email" && "Add your email"}
+                {loginStep === "emailCode" && "Confirm your email"}
               </div>
               <button onClick={closeModal} className="bg-transparent border-0 text-xl cursor-pointer text-muted">
                 ✕
@@ -178,6 +222,58 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                   Verify &amp; continue
                 </button>
                 <button onClick={() => setLoginStep("phone")} className={backButtonClass}>
+                  ← Back
+                </button>
+              </>
+            )}
+
+            {loginStep === "email" && (
+              <>
+                <p className="text-[13px] text-muted m-0 mb-3">
+                  So we can reach you about your ads — and so signing in with Google later brings
+                  you back to this same account.
+                </p>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className={`${inputClass} mb-3.5`}
+                />
+                {error && <p className={errorClass}>{error}</p>}
+                <button
+                  onClick={handleSendEmailCode}
+                  disabled={pending || !email.includes("@")}
+                  className={`${primaryButtonClass} ${email.includes("@") ? "opacity-100" : "opacity-50"}`}
+                >
+                  {pending ? "Sending…" : "Send code"}
+                </button>
+                <button onClick={onLoginSuccess} className={backButtonClass}>
+                  Skip for now
+                </button>
+              </>
+            )}
+
+            {loginStep === "emailCode" && (
+              <>
+                <p className="text-[13px] text-muted m-0 mb-3">
+                  We sent a 6-digit code to {email}.
+                </p>
+                <input
+                  value={emailCode}
+                  onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="······"
+                  className={`${inputClass} text-center tracking-[0.4em] mb-3.5`}
+                />
+                {error && <p className={errorClass}>{error}</p>}
+                <button
+                  onClick={handleVerifyEmailCode}
+                  disabled={emailCode.length !== 6 || pending}
+                  className={`${primaryButtonClass} ${emailCode.length === 6 ? "opacity-100" : "opacity-50"}`}
+                >
+                  {pending ? "Verifying…" : "Verify & continue"}
+                </button>
+                <button onClick={() => setLoginStep("email")} className={backButtonClass}>
                   ← Back
                 </button>
               </>
