@@ -6,6 +6,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { HomeCategoryFilter } from "@bhavano/types";
 import { buildHomeUrl } from "@/lib/homeUrl";
 import { HOME_TABS } from "@/lib/homeCategories";
+import { buildBrowsePath } from "@/lib/listingPath";
+import { segmentsForHomeCategory, type ParsedSegments } from "@/lib/seoRoute";
 import { slugify } from "@bhavano/types/slugify";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { MegaMenu } from "./MegaMenu";
@@ -22,7 +24,17 @@ const FILTER_PARAM_KEYS = [
   "transactionType",
 ];
 
-export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter; cityName: string }) {
+export function CategoryTabs({
+  active,
+  cityName,
+  currentSegments,
+}: {
+  active: HomeCategoryFilter;
+  cityName: string;
+  /** Set only on the /{city}/... browse pages — its presence is what tells a tab click to stay
+   * in the browse view instead of falling back to the homepage's query-string filter view. */
+  currentSegments?: ParsedSegments;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -38,9 +50,27 @@ export function CategoryTabs({ active, cityName }: { active: HomeCategoryFilter;
   // page) — opening the dropdown is a separate, hover-only interaction below, matching how
   // MegaMenu's own column-1 items already switch via onMouseEnter.
   function onTabClick(tab: HomeCategoryFilter) {
-    const clearedFilters = Object.fromEntries(FILTER_PARAM_KEYS.map((key) => [key, undefined]));
-    router.push(buildHomeUrl(searchParams, { category: tab, ...clearedFilters }));
     setOpenTab(null);
+
+    // Already on a browse page: move to the equivalent browse path rather than bouncing back to
+    // the homepage. The area is deliberately dropped — switching tab is a reset (it clears every
+    // filter param below for the same reason), and /{city}/{area}/{group} is often empty enough
+    // to look broken.
+    if (currentSegments) {
+      const { transactionGroup, category } = segmentsForHomeCategory(tab);
+      router.push(buildBrowsePath({ cityName, transactionGroup, category }));
+      return;
+    }
+
+    const clearedFilters = Object.fromEntries(FILTER_PARAM_KEYS.map((key) => [key, undefined]));
+    // Everywhere else (the homepage, and static/account pages carrying a city like /post?city=)
+    // the tabs drive the homepage's own filter view. Off the homepage the city may live in the
+    // path or a page-level param rather than in `searchParams`, so a bare buildHomeUrl would land
+    // on "/" with no ?city= and silently fall back to the default city — carry it across
+    // explicitly. On the homepage itself the param (or its deliberate absence) is already in
+    // `searchParams`, so it is left untouched rather than pinning the default city into the URL.
+    const cityOverride = pathname === "/" ? {} : { city: slugify(cityName) };
+    router.push(buildHomeUrl(searchParams, { category: tab, ...clearedFilters, ...cityOverride }));
   }
 
   // The tab row itself scrolls horizontally on narrow screens (overflow-x-auto), which would

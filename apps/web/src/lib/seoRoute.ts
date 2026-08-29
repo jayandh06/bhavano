@@ -330,6 +330,34 @@ export function homeCategoryForSegments(parsed: ParsedSegments): HomeCategoryFil
   return transactionGroup === "rent-lease" ? "rentLease" : "buy";
 }
 
+/** Inverse of `homeCategoryForSegments` — the browse-path segments a header tab should land on,
+ * so clicking a tab from a /{city}/... page moves to the equivalent browse page instead of
+ * bouncing back to the homepage's query-string filter view.
+ *
+ * `furniture` is the one lossy direction: it is postable as both `sell` and `rent`
+ * (POSTABLE_TRANSACTION_TYPES), so the homepage tab shows both while a browse path must pick a
+ * group. It resolves to `buy` — the dominant intent for second-hand furniture, and the group the
+ * mega menu lists first. Rent stays one click away in the mega menu, and the browse page's own
+ * related links cross-link to it (see `browseSeoCopy`). `pg` (rent-only) and `interiors`
+ * (sell-only) have exactly one group each, so they are not lossy. */
+export function segmentsForHomeCategory(tab: HomeCategoryFilter): {
+  transactionGroup: TransactionGroup;
+  category?: ListingCategory;
+} {
+  switch (tab) {
+    case "rentLease":
+      return { transactionGroup: "rent-lease" };
+    case "pg":
+      return { transactionGroup: "rent-lease", category: "pg" };
+    case "furniture":
+      return { transactionGroup: "buy", category: "furniture" };
+    case "interiors":
+      return { transactionGroup: "buy", category: "interiors" };
+    default:
+      return { transactionGroup: "buy" };
+  }
+}
+
 /** Human-readable H1 for whatever combination of filters is active — shared by the homepage
  * (query-string driven) and the SEO catch-all route (path-segment driven), both of which reduce
  * to the same underlying dimensions. `fallbackLabel` is used when nothing more specific is

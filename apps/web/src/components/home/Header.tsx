@@ -89,7 +89,7 @@ export function Header({
 
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
           <Suspense>
-            <CategoryTabs active={activeCategory} cityName={cityName} />
+            <CategoryTabs active={activeCategory} cityName={cityName} currentSegments={currentSegments} />
           </Suspense>
         </div>
       </header>
