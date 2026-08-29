@@ -24,6 +24,7 @@ Run: python ads_retarget_owners.py --dry-run
 
 import sys
 
+from ads_intent import classify
 from ads_setup_conversions import make_client
 from google.ads.googleads.errors import GoogleAdsException
 from google.api_core import protobuf_helpers
@@ -32,34 +33,58 @@ CID = "4214066478"
 SEARCH_CAMPAIGN = "Leads-Search-1"
 PMAX_CAMPAIGN = "Leads-Performance Max-1"
 LANDING_PAGE = "https://www.bhavano.com/post"
+SEARCH_THEME_LIMIT = 25
 
 # Phrase match throughout: "rent my house" is genuinely ambiguous between an owner and a
 # tenant, and broad match drags the tenants straight back in.
 OWNER_KEYWORDS = [
-    # Rent-out intent. "give ... for rent" and "let out" are the common Indian English forms
-    # and are how owners actually phrase this — they are not typos.
+    # Rent-out intent. "give ... for rent", "put ... on rent" and "let out" are the common Indian
+    # English forms and are how owners actually phrase this — they are not typos.
     "rent out my house",
     "rent out my flat",
+    "rent out my apartment",
+    "rent out my pg",
+    "put my house on rent",
+    "put my flat on rent",
     "give house for rent",
     "give flat for rent",
     "let out my property",
+    "to let my house",
+    "list my house for rent",
+    "list my flat for rent",
     "list my property for rent",
     "how to rent out my house",
     # Sell intent
     "sell my flat online",
+    "sell my house online",
+    "sell my plot online",
+    "sell my land online",
+    "sell my villa",
+    "sell property without broker",
     "list my property for sale",
     "advertise my property",
     # Post/list, brand-agnostic
     "post property ad free",
     "post free property ad",
+    "post my property online",
+    "post rental listing free",
     "free property listing site",
     "property listing site for owners",
     "post property without broker",
+    "owner property listing site",
+    "where to post property ad",
+    "how to list property online",
+    "free classifieds for property",
     # PG owners
     "post pg vacancy",
     "list my pg online",
+    # Commercial owners
+    "rent out my shop",
+    "list my office space",
+    "post commercial space for rent",
     # Furniture sellers — on this site the seller is the poster
     "sell used furniture online",
+    "sell furniture online free",
 ]
 
 # Seeker markers. Budget qualifiers and "near me" are the strongest signals that the searcher
@@ -201,16 +226,20 @@ def main():
         return
     ad_group = kws[0].ad_group.resource_name
     have = {r.ad_group_criterion.keyword.text.lower() for r in kws}
-    keep = {k.lower() for k in OWNER_KEYWORDS}
 
-    to_pause = [
-        r
-        for r in kws
-        if r.ad_group_criterion.keyword.text.lower() not in keep
-        and r.ad_group_criterion.status.name == "ENABLED"
-    ]
+    # Classify rather than test membership of OWNER_KEYWORDS. Membership would pause every
+    # keyword added by hand in the Ads UI simply because this file has not heard of it — so a
+    # good owner keyword someone added yesterday would be switched off by the next run. Only
+    # phrases that actually read as seeker intent are touched; "unknown" is left alone.
+    seekers = [r for r in kws if classify(r.ad_group_criterion.keyword.text) == "seeker"]
+    to_pause = [r for r in seekers if r.ad_group_criterion.status.name == "ENABLED"]
+    # Already paused on an earlier run and still seeker-intent: delete them properly rather than
+    # leaving a graveyard in the ad group. Reporting keeps the history of a removed keyword, so
+    # nothing measurable is lost.
+    to_remove = [r for r in seekers if r.ad_group_criterion.status.name == "PAUSED"]
     new_kws = [k for k in OWNER_KEYWORDS if k.lower() not in have]
-    print("  %d seeker keywords to pause, %d owner keywords to add" % (len(to_pause), len(new_kws)))
+    print("  %d seeker keywords to pause, %d paused seekers to remove, %d owner keywords to add"
+          % (len(to_pause), len(to_remove), len(new_kws)))
 
     if to_pause:
 
@@ -226,6 +255,19 @@ def main():
             svc.mutate_ad_group_criteria(customer_id=CID, operations=ops)
 
         act("pause %d seeker keywords" % len(to_pause), pause)
+
+    if to_remove:
+
+        def remove():
+            svc = client.get_service("AdGroupCriterionService")
+            ops = []
+            for r in to_remove:
+                op = client.get_type("AdGroupCriterionOperation")
+                op.remove = r.ad_group_criterion.resource_name
+                ops.append(op)
+            svc.mutate_ad_group_criteria(customer_id=CID, operations=ops)
+
+        act("remove %d paused seeker keywords" % len(to_remove), remove)
 
     if new_kws:
 
@@ -336,10 +378,17 @@ def main():
         "asset_group_signal.search_theme.text FROM asset_group_signal"
     )
     themes = [r for r in sigs if r.asset_group_signal.search_theme.text]
-    keep_themes = {t.lower() for t in OWNER_KEYWORDS}
-    stale = [r for r in themes if r.asset_group_signal.search_theme.text.lower() not in keep_themes]
+    # Classified, not membership-tested, for the same reason as the keywords above: a theme added
+    # by hand in the UI should survive a run of this script.
+    stale = [r for r in themes if classify(r.asset_group_signal.search_theme.text) == "seeker"]
     have_themes = {r.asset_group_signal.search_theme.text.lower() for r in themes}
-    new_themes = [t for t in OWNER_KEYWORDS if t.lower() not in have_themes]
+    # PMax caps user-set search themes at 25 per asset group. The 34 that were here originally
+    # exceeded that because Google generated them itself during campaign setup, which is not a
+    # limit this script can rely on. Fill up to the cap in list order — rent-out intent first,
+    # which is the highest-volume owner phrasing — rather than sending 40 and having the whole
+    # call rejected. Search keywords have no comparable limit, so only themes are trimmed.
+    room = max(0, SEARCH_THEME_LIMIT - (len(themes) - len(stale)))
+    new_themes = [t for t in OWNER_KEYWORDS if t.lower() not in have_themes][:room]
 
     if not themes and not new_themes:
         print("  no asset group signals found")

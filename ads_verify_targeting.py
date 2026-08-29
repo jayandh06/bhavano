@@ -8,29 +8,11 @@ flags anything still pointing at seekers.
 Run: python ads_verify_targeting.py
 """
 
+from ads_intent import classify
 from ads_setup_conversions import make_client
 from google.ads.googleads.errors import GoogleAdsException
 
 CID = "4214066478"
-
-# Words that only an owner/lister searches for, and words that only a seeker does. Deliberately
-# crude: this is a smoke test meant to catch a whole seeker phrase left behind, not to grade
-# individual wording.
-OWNER = ("rent out", "list my", "list your", "post ", "sell my", "sell your", "advertise",
-         "give house", "give flat", "let out", "listing site", "without broker", "owners",
-         "no agents", "brokerage", "tenants directly", "your ad", "listings for free")
-SEEKER = ("near me", "for rent", "for sale", "in bangalore", "in chennai", "rent houses",
-          "coliving", "nearby", "for ladies", "for gents", "find your", "find affordable",
-          "browse", "discover", "buy or rent", "your next home", "perfect home")
-
-
-def classify(text):
-    low = text.lower()
-    if any(m in low for m in OWNER):
-        return "owner"
-    if any(m in low for m in SEEKER):
-        return "SEEKER"
-    return "?"
 
 
 def main():
@@ -48,8 +30,8 @@ def main():
 
     def report(label, items):
         """items: list of (text, classification)."""
-        seekers = [t for t, c in items if c == "SEEKER"]
-        unclear = [t for t, c in items if c == "?"]
+        seekers = [t for t, c in items if c == "seeker"]
+        unclear = [t for t, c in items if c == "unknown"]
         print("\n=== %s (%d) ===" % (label, len(items)))
         print("  owner-facing : %d" % len([1 for _, c in items if c == "owner"]))
         print("  seeker-facing: %d%s" % (len(seekers), "   <-- PROBLEM" if seekers else ""))
