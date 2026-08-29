@@ -5,10 +5,21 @@ import Link from "next/link";
 import type { HomeTab } from "@/lib/homeCategories";
 import { hrefForLink } from "@/lib/homeCategories";
 
-export function MegaMenu({ tab, cityName, onNavigate }: { tab: HomeTab; cityName: string; onNavigate: () => void }) {
+export function MegaMenu({
+  tab,
+  cityName,
+  onNavigate,
+}: {
+  tab: HomeTab;
+  /** Undefined for national browsing. Links then omit the city segment, and their labels read
+   * "in India" — the label and the path need the value for different reasons, which is why one
+   * falls back to a word and the other stays undefined. */
+  cityName?: string;
+  onNavigate: () => void;
+}) {
   const [activeValue, setActiveValue] = useState(tab.column1[0]?.value);
   const activeItem = tab.column1.find((item) => item.value === activeValue) ?? tab.column1[0];
-  const links = activeItem ? activeItem.links(cityName) : [];
+  const links = activeItem ? activeItem.links(cityName ?? "India") : [];
 
   return (
     // Positioning (absolute/top/left) is applied by the caller, which places this under

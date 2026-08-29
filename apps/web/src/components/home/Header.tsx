@@ -1,13 +1,14 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import type { City, HomeCategoryFilter, PopularSearchDto } from "@bhavano/types";
+import type { City, PopularSearchDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import type { ParsedSegments } from "@/lib/seoRoute";
 import { LocationPicker } from "./LocationPicker";
 import { SearchBar } from "./SearchBar";
 import { ThemeToggle } from "./ThemeToggle";
 import { HeaderAuthButtons } from "./HeaderAuthButtons";
+import type { HomeTabValue } from "@/lib/homeCategories";
 import { CategoryTabs } from "./CategoryTabs";
 
 export function Header({
@@ -23,7 +24,7 @@ export function Header({
   cityName: string;
   popularCities: City[];
   searchQuery: string;
-  activeCategory: HomeCategoryFilter;
+  activeCategory: HomeTabValue;
   userName?: string | null;
   /** Passed through to `LocationPicker` — see its own prop doc. Omitted on the homepage, which
    * has no path segments to preserve across a city switch. */
@@ -89,7 +90,7 @@ export function Header({
 
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
           <Suspense>
-            <CategoryTabs active={activeCategory} cityName={cityName} currentSegments={currentSegments} />
+            <CategoryTabs active={activeCategory} cityName={cityName} />
           </Suspense>
         </div>
       </header>

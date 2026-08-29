@@ -1,4 +1,5 @@
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from "@bhavano/types";
+import type { HomeTabValue } from "./homeCategories";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
@@ -78,6 +79,20 @@ export function transactionGroupFor(t: TransactionType): TransactionGroup {
 
 export function isTransactionGroup(value: string): value is TransactionGroup {
   return value === "buy" || value === "rent-lease";
+}
+
+/** Path words the URL grammar owns: the two transaction groups plus every ListingCategory.
+ *
+ * They are reserved everywhere a free-form slug could otherwise appear — the city position
+ * (so `/buy` is national browsing rather than a city named Buy) and the area position (so
+ * `/bengaluru/furniture` is a category rather than a locality). Verified against production:
+ * no city and none of the 368 areas slugifies to any of these. A city or area that ever did
+ * would become unreachable, so this list is the constraint to check when seeding new ones.
+ *
+ * `middleware.ts` keeps its own copy in RESERVED_FIRST_SEGMENTS — it runs in the edge runtime
+ * and importing the types package there is not worth the bundle. Change both together. */
+export function isReservedSegment(value: string): boolean {
+  return isTransactionGroup(value) || isListingCategory(value);
 }
 
 /** Which groups a category is reachable under, derived from POSTABLE_TRANSACTION_TYPES —
@@ -228,30 +243,41 @@ export function parseSegments(rest: string[]): ParsedSegments | null {
   let i = 0;
   if (i >= rest.length) return result;
 
-  // New-shape area, right after the city — anything that isn't a transactionGroup keyword (and
-  // isn't itself a listing slug-id, which never legitimately appears this early). Whether it's a
+  // New-shape area, right after the city — anything that isn't reserved vocabulary (and isn't
+  // itself a listing slug-id, which never legitimately appears this early). Whether it's a
   // *real* locality is verified against the DB by the caller (resolveArea), same as before.
   let areaConsumedAtFront = false;
-  if (!isTransactionGroup(rest[i]) && !looksLikeListingSlugId(rest[i])) {
+  if (!isReservedSegment(rest[i]) && !looksLikeListingSlugId(rest[i])) {
     result.areaSlug = rest[i];
     areaConsumedAtFront = true;
     i++;
     if (i >= rest.length) return result;
   }
 
+  // Either a transaction group (`/buy/apartment`) or a bare category (`/furniture`). The bare
+  // form exists because `furniture` is postable as both sell and rent, so forcing it under a
+  // group would silently show half its listings — the header's Furniture tab had no correct
+  // destination until this. It is also what makes the cityless `/furniture` route possible.
   const groupCandidate = rest[i];
-  if (!isTransactionGroup(groupCandidate)) return null;
-  const transactionGroup = groupCandidate;
-  result.transactionGroup = transactionGroup;
-  i++;
+  if (isTransactionGroup(groupCandidate)) {
+    result.transactionGroup = groupCandidate;
+    i++;
+    if (i >= rest.length) return result;
+
+    const categoryCandidate = rest[i];
+    if (!isListingCategory(categoryCandidate) || !categoryGroupsFor(categoryCandidate).includes(groupCandidate)) return null;
+    result.category = categoryCandidate;
+    i++;
+  } else if (isListingCategory(groupCandidate)) {
+    result.category = groupCandidate;
+    i++;
+  } else {
+    return null;
+  }
   if (i >= rest.length) return result;
 
-  const categoryCandidate = rest[i];
-  if (!isListingCategory(categoryCandidate) || !categoryGroupsFor(categoryCandidate).includes(transactionGroup)) return null;
-  const category = categoryCandidate;
-  result.category = category;
-  i++;
-  if (i >= rest.length) return result;
+  const category = result.category;
+  if (!category) return null;
 
   if (facetKindForCategory(category) !== "none") {
     const facetValue = parseFacetSlug(category, rest[i]);
@@ -301,7 +327,10 @@ export function buildQueryForSegments(parsed: ParsedSegments): SegmentQuery {
   if (category === "furniture") {
     return {
       category: "furniture",
-      transactionType: transactionGroup === "buy" ? "sell" : "rent",
+      // No group in the path (`/furniture`) means both sides deliberately — furniture is
+      // postable as sell AND rent, so defaulting the absent group to one of them would hide
+      // half the listings on a URL that promised all of them.
+      transactionType: transactionGroup === undefined ? undefined : transactionGroup === "buy" ? "sell" : "rent",
       condition: typeof facetValue === "string" ? facetValue : undefined,
     };
   }
@@ -310,9 +339,10 @@ export function buildQueryForSegments(parsed: ParsedSegments): SegmentQuery {
   if (category === "storage" || category === "coworking") {
     return { homeCategory: "rentLease", propertyType: category };
   }
-  // house/apartment
+  // house/apartment/villa/plot/commercial. Same rule as furniture above: an absent group means
+  // "either", so omit homeCategory rather than letting the ternary silently pick rent.
   return {
-    homeCategory: transactionGroup === "buy" ? "buy" : "rentLease",
+    homeCategory: transactionGroup === undefined ? undefined : transactionGroup === "buy" ? "buy" : "rentLease",
     propertyType: category,
     bedrooms: typeof facetValue === "number" ? [facetValue] : undefined,
   };
@@ -322,11 +352,15 @@ export function buildQueryForSegments(parsed: ParsedSegments): SegmentQuery {
  * right tab (and thus mega-menu) in `<Header>` when it's rendered on a path-driven SEO page rather
  * than the homepage's own query-string-driven one. Falls back to "buy" for the bare city/group
  * root, matching the homepage's own default tab. */
-export function homeCategoryForSegments(parsed: ParsedSegments): HomeCategoryFilter {
+export function homeCategoryForSegments(parsed: ParsedSegments): HomeTabValue {
   const { category, transactionGroup } = parsed;
   if (category === "furniture") return "furniture";
   if (category === "pg") return "pg";
   if (category === "interiors") return "interiors";
+  // No group and no category is the city root (/bengaluru) or the national root (/) — every
+  // category, which is what the "all" tab means. This used to fall through to "buy", so those
+  // pages rendered "All Listings in Bengaluru" under a highlighted Buy tab.
+  if (!transactionGroup) return "all";
   return transactionGroup === "rent-lease" ? "rentLease" : "buy";
 }
 
@@ -340,17 +374,21 @@ export function homeCategoryForSegments(parsed: ParsedSegments): HomeCategoryFil
  * mega menu lists first. Rent stays one click away in the mega menu, and the browse page's own
  * related links cross-link to it (see `browseSeoCopy`). `pg` (rent-only) and `interiors`
  * (sell-only) have exactly one group each, so they are not lossy. */
-export function segmentsForHomeCategory(tab: HomeCategoryFilter): {
-  transactionGroup: TransactionGroup;
+export function segmentsForHomeCategory(tab: HomeTabValue): {
+  transactionGroup?: TransactionGroup;
   category?: ListingCategory;
 } {
   switch (tab) {
+    case "all":
+      return {};
     case "rentLease":
       return { transactionGroup: "rent-lease" };
     case "pg":
       return { transactionGroup: "rent-lease", category: "pg" };
     case "furniture":
-      return { transactionGroup: "buy", category: "furniture" };
+      // No group: furniture is postable as both sell and rent, and `/furniture` now exists
+      // precisely so this tab does not have to pick one and hide the other half.
+      return { category: "furniture" };
     case "interiors":
       return { transactionGroup: "buy", category: "interiors" };
     default:

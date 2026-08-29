@@ -15,14 +15,18 @@ export function buildListingPath(item: Pick<ListingCardDto, "id" | "slug" | "cat
  * area sits right after the city (so /{city}/{locality} is a real landing page on its own),
  * everything else is optional and built up to however deep the caller has resolved. */
 export function buildBrowsePath(params: {
-  cityName: string;
+  /** Omitted for national browsing — `/buy`, `/rent-lease/pg`, `/furniture`. The category
+   * vocabulary is reserved at the city position precisely so those cannot be mistaken for a
+   * city slug (see `isReservedSegment`). With no city there is no area either: a locality is
+   * only meaningful inside one. */
+  cityName?: string;
   transactionGroup?: TransactionGroup;
   category?: ListingCategory;
   facetValue?: string | number;
   areaName?: string;
 }): string {
-  const parts = [slugify(params.cityName)];
-  if (params.areaName) parts.push(slugify(params.areaName));
+  const parts = params.cityName ? [slugify(params.cityName)] : [];
+  if (params.cityName && params.areaName) parts.push(slugify(params.areaName));
   if (params.transactionGroup) parts.push(params.transactionGroup);
   if (params.category) parts.push(params.category);
   if (params.category && params.facetValue !== undefined) parts.push(buildFacetSlug(params.category, params.facetValue));

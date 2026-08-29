@@ -16,10 +16,21 @@ export interface MegaMenuColumn1Item {
   links: (cityName: string) => MegaMenuLink[];
 }
 
+/** The tab row's vocabulary: the five real filters plus "all".
+ *
+ * "all" deliberately does NOT go into `HomeCategoryFilter` (which lives in the types package and
+ * is validated by the BFF's ListListingsDto). The BFF already treats an absent `homeCategory` as
+ * "everything" — see buildHomeCategoryWhere — so "all" is the absence of a filter, not a new
+ * value of one. Keeping it a UI-only concept avoids widening a validated wire type to express
+ * something the wire already expressed by omission. */
+export type HomeTabValue = HomeCategoryFilter | "all";
+
 export interface HomeTab {
-  value: HomeCategoryFilter;
+  value: HomeTabValue;
   label: string;
   icon: string;
+  /** Empty for the "All" tab, which has nothing narrower to offer — `CategoryTabs` renders no
+   * dropdown arrow and opens no mega menu when this is empty. */
   column1: MegaMenuColumn1Item[];
 }
 
@@ -55,6 +66,15 @@ const FURNITURE_CONDITION_OPTIONS = CATEGORY_FIELD_CONFIG.furniture.find((f) => 
 const INTERIORS_SERVICE_OPTIONS = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")!.options!;
 
 export const HOME_TABS: HomeTab[] = [
+  // First, and the default. Before this existed a city root like /bengaluru rendered "All
+  // Listings in Bengaluru" while the Buy tab sat highlighted, because there was no tab for the
+  // state the page was actually in.
+  {
+    value: "all",
+    label: "All",
+    icon: "🗂️",
+    column1: [],
+  },
   {
     value: "buy",
     label: "Buy",
@@ -144,6 +164,8 @@ export const HOME_TABS: HomeTab[] = [
   },
 ];
 
-export function hrefForLink(link: MegaMenuLink, cityName: string): string {
+/** `cityName` is omitted for national browsing, giving `/buy/apartment/2bhk` rather than
+ * `/bengaluru/buy/apartment/2bhk`. */
+export function hrefForLink(link: MegaMenuLink, cityName?: string): string {
   return buildBrowsePath({ cityName, transactionGroup: link.transactionGroup, category: link.category, facetValue: link.facetValue });
 }
