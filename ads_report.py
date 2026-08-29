@@ -73,6 +73,12 @@ def main():
     print("\n" + "=" * 78)
     print("CUSTOMER CONVERSION GOALS  (which categories bidding optimises toward)")
     print("=" * 78)
+    # Read this together with the CATEGORY column above, not with primary=. When goals are set
+    # here, bidding is decided per *category* and conversion_action.primary_for_goal is ignored
+    # — a mutate that clears it is accepted and silently does nothing. So two actions sharing a
+    # category cannot be split: to stop bidding toward one, move it to a category that is not
+    # biddable. ("Save a search" and "Post ad success" were both SUBMIT_LEAD_FORM, which meant
+    # the campaigns were bidding for house-hunters and posters as one indistinguishable goal.)
     try:
         res = rows(client, customer_id, """
             SELECT customer_conversion_goal.category, customer_conversion_goal.origin,
@@ -89,6 +95,27 @@ def main():
         others = len(res) - len(biddable)
         if others:
             print("  (+%d non-biddable category/origin combinations)" % others)
+    except GoogleAdsException as e:
+        print("  error:", e)
+
+    print("\n" + "=" * 78)
+    print("CAMPAIGN CONVERSION GOALS  (per-campaign overrides of the account defaults)")
+    print("=" * 78)
+    try:
+        res = rows(client, customer_id, """
+            SELECT campaign.name, campaign_conversion_goal.category,
+                   campaign_conversion_goal.origin, campaign_conversion_goal.biddable
+            FROM campaign_conversion_goal
+        """)
+        biddable = [r for r in res if r.campaign_conversion_goal.biddable]
+        if not biddable:
+            print("  (none — every campaign follows the account-level goals above)")
+        for r in biddable:
+            g = r.campaign_conversion_goal
+            print("  %-32s %-20s origin=%s" % (
+                r.campaign.name,
+                name_of(g.category, client, "ConversionActionCategoryEnum"),
+                name_of(g.origin, client, "ConversionOriginEnum")))
     except GoogleAdsException as e:
         print("  error:", e)
 

@@ -105,28 +105,41 @@ def main():
 
     print("Account %s%s\n" % (CID, "   [DRY RUN]" if DRY else ""))
 
-    # --- 1. Conversion action: Save a search -> secondary ---------------------------------
+    # --- 1. Stop bidding toward "Save a search" -------------------------------------------
+    #
+    # Setting conversion_action.primary_for_goal = False does NOT work on this account, and
+    # fails silently: the mutate is accepted and the field stays True. This account bids by
+    # *category*, via customer_conversion_goal (PURCHASE / SIGNUP / SUBMIT_LEAD_FORM, all
+    # biddable, and both campaigns inherit them). The per-action primary flag is ignored when
+    # goals are set that way, so the category is the only real lever.
+    #
+    # "Post ad success" and "Save a search" were both SUBMIT_LEAD_FORM, so that whole category
+    # meant "a poster OR a seeker" and could not be split. Moving "Save a search" to
+    # ENGAGEMENT — which is not a biddable goal here — takes it out of bidding while still
+    # recording it, and leaves SUBMIT_LEAD_FORM meaning exactly one thing: someone posted an ad.
     print("Conversion actions")
     for r in rows(
         "SELECT conversion_action.resource_name, conversion_action.name, "
-        "conversion_action.primary_for_goal FROM conversion_action "
+        "conversion_action.category FROM conversion_action "
         "WHERE conversion_action.name = 'Save a search'"
     ):
-        if not r.conversion_action.primary_for_goal:
-            print("  ok     'Save a search' is already secondary")
+        if r.conversion_action.category.name != "SUBMIT_LEAD_FORM":
+            print("  ok     'Save a search' is already out of SUBMIT_LEAD_FORM (%s)"
+                  % r.conversion_action.category.name)
             continue
 
-        def demote(rn=r.conversion_action.resource_name):
+        def recategorise(rn=r.conversion_action.resource_name):
             svc = client.get_service("ConversionActionService")
             op = client.get_type("ConversionActionOperation")
             op.update.resource_name = rn
-            op.update.primary_for_goal = False
+            op.update.category = client.enums.ConversionActionCategoryEnum.ENGAGEMENT
             # client.get_type("FieldMask") does not exist in v25. The supported way to build an
             # update mask is to derive it from whichever fields were actually set above.
             client.copy_from(op.update_mask, protobuf_helpers.field_mask(None, op.update._pb))
             svc.mutate_conversion_actions(customer_id=CID, operations=[op])
 
-        act("demote 'Save a search' to secondary (seeker action - stop bidding toward it)", demote)
+        act("move 'Save a search' SUBMIT_LEAD_FORM -> ENGAGEMENT (seeker action - stop "
+            "bidding toward it, keep measuring it)", recategorise)
 
     # --- 2 & 3. Search keywords -----------------------------------------------------------
     print("\nSearch keywords")
