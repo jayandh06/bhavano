@@ -258,3 +258,26 @@ the draft workspace but has **never been published**. Whoever set this up got pa
 **Consequence for step 3:** GA4 does not need creating — it needs *fixing*. Confirm the intended
 measurement ID, publish the `googtag`, and delete or repurpose the junk `Bhavano-GA4-Tag` event
 tag. Only then add the 8 per-event GA4 tags.
+
+### Ads base tag missing — found and fixed 2026-08-29 (container version 5)
+
+The Performance Max campaign "Leads-Performance Max-1" showed **Eligible (Misconfigured)** with
+*"Your website is missing a Google tag"*, despite conversions arriving normally from 28 Aug.
+
+Both things were true. Live version 4 carried the five `awct` conversion tags and the Conversion
+Linker — enough to *record* conversions — but its only `googtag` was `G-XZ2TDGSKMS`. The Ads
+account had **no base Google tag at all**, which is what Ads checks for, and what Performance Max
+needs for remarketing audiences, enhanced conversions and optimisation signals. A campaign can
+serve and convert without it while still optimising blind, which is why nothing looked broken.
+
+Fixed by adding a second `googtag` for `AW-18351718445` on Initialization - All Pages (a `googtag`
+carries exactly one `tagId`, so it cannot be folded into the GA4 one). It is a base tag and counts
+nothing on its own, so it does **not** reintroduce the double-counting that removing the hardcoded
+gtag.js block fixed in `3af5197` — conversions still come only from the five `awct` tags.
+
+**Also shipped in the same version, and worth noting as its own lesson:** `GA4 -
+contact_form_submit`, `CE - contact_form_submit` and `DLV - topic` had been sitting in the
+workspace unpublished since the contact form was built, while `ContactForm.tsx` was already pushing
+the event. Every submission between the form going live and version 5 was dropped. Building in the
+workspace and publishing are separate acts, and `gtm_audit.py` reads the *workspace* — use
+`gtm_publish.py --dry-run`, which diffs against the live version, to see what is actually serving.

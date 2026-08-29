@@ -6,6 +6,7 @@ Creates, in the Default Workspace:
   - 8 Custom Event triggers, one per dataLayer event
   - 1 Conversion Linker tag (required for gclid attribution on the GTM path)
   - 8 GA4 Event tags -> G-XZ2TDGSKMS, carrying each event's payload as event parameters
+  - 1 Google tag -> AW-18351718445 (the Ads account's base tag, not a conversion)
 
 Deliberately NOT done here:
   - Publishing. Everything lands in the workspace; review in GTM Preview, then publish.
@@ -29,6 +30,10 @@ ADS_CONVERSION_ID = "AW-18351718445"
 
 # GTM's reserved built-in trigger ids, confirmed present on this container's existing tags.
 TRIGGER_ALL_PAGES = "2147479553"
+# Fires before All Pages, which is what a Google tag wants so the page view it sends is not
+# beaten to it by an event tag. Read off the existing "Google Tag G-XZ2TDGSKMS", so both base
+# tags load identically.
+TRIGGER_INITIALIZATION = "2147479573"
 
 # Payload keys pushed by apps/web/src/lib/gtm.ts callers -> one Data Layer Variable each.
 DLV_KEYS = [
@@ -160,6 +165,24 @@ def main():
             "parameter": [{"type": "boolean", "key": "enableCrossDomain", "value": "false"}],
             "firingTriggerId": [TRIGGER_ALL_PAGES],
         }, "Conversion Linker")
+
+    # The Ads account's base Google tag. Distinct from the `awct` conversion tags below: those
+    # report conversions, this one is what Google Ads looks for when it reports "Your website is
+    # missing a Google tag", and what Performance Max needs for remarketing audiences, enhanced
+    # conversions and optimisation signals. It counts nothing on its own, so it cannot reintroduce
+    # the double-counting that removing the hardcoded gtag.js snippet (3af5197) fixed.
+    #
+    # A separate tag rather than a second id on the GA4 one: a googtag carries exactly one tagId.
+    ads_google_tag = "Google Tag %s" % ADS_CONVERSION_ID
+    if ads_google_tag in have_tags:
+        print("  exists        tag       %s" % ads_google_tag)
+    else:
+        create(ws, "tags", {
+            "name": ads_google_tag,
+            "type": "googtag",
+            "parameter": [{"type": "template", "key": "tagId", "value": ADS_CONVERSION_ID}],
+            "firingTriggerId": [TRIGGER_INITIALIZATION],
+        }, ads_google_tag)
 
     for event, keys in EVENTS.items():
         name = "GA4 - %s" % event
