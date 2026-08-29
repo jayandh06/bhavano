@@ -224,11 +224,26 @@ function listingJsonLd(listing: ListingDetailDto) {
  * routes stay out of sitemap.xml, so they are navigation rather than acquisition surfaces. */
 async function NationalBrowsePage({
   parsed,
+  requestedPath,
   searchParams,
 }: {
   parsed: ParsedSegments;
+  /** The path as asked for, so a non-canonical spelling can 301 the way the city branch does. */
+  requestedPath: string;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Same canonical redirect the city branch does, and before any I/O: basePath depends only on
+  // the parsed path, so resolving a session and the city list first would throw that work away on
+  // every non-canonical request. Without this, /rent-lease/pg served a 200 beside /pg — the
+  // self-canonical pointed Google at the right one, but two live URLs for identical content is a
+  // weaker signal than one.
+  const basePath = buildBrowsePath({
+    transactionGroup: parsed.transactionGroup,
+    category: parsed.category,
+    facetValue: parsed.facetValue,
+  });
+  if (requestedPath !== basePath) permanentRedirect(basePath);
+
   const sp = await searchParams;
   const page = parsePage(sp.page);
   const minPrice = parsePositiveInt(sp.minPrice);
@@ -240,11 +255,6 @@ async function NationalBrowsePage({
   const session = await auth();
   const baseQuery = buildQueryForSegments(parsed);
   const allCities = await fetchCities(undefined, true);
-  const basePath = buildBrowsePath({
-    transactionGroup: parsed.transactionGroup,
-    category: parsed.category,
-    facetValue: parsed.facetValue,
-  });
 
   return (
     <BrowseListingsView
@@ -360,7 +370,13 @@ export default async function CityBrowsePage({
   const { city, rest = [] } = await params;
 
   const national = nationalSegments(city, rest);
-  if (national) return NationalBrowsePage({ parsed: national, searchParams });
+  if (national) {
+    return NationalBrowsePage({
+      parsed: national,
+      requestedPath: `/${[city, ...rest].join("/")}`,
+      searchParams,
+    });
+  }
 
   if (isTransactionType(city)) await legacyRedirect(city, rest);
 
