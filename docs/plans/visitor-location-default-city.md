@@ -69,7 +69,15 @@ Then `page.tsx` and `PageHeader.tsx` read the cookie as the fallback ahead of Be
 and a stale slug from a renamed city must fall through to the next step rather than resolving to
 nothing.
 
-## Step 2 — IP → city for first-time visitors
+## Step 2 — IP → city for first-time visitors — **DONE (needs a licence key to switch on)**
+
+Built as described below, and inert until configured. `GeoIpService` reads `GEOIP_DB_PATH`; with
+no database present every lookup returns null and the default city is used, so deploying this
+changes nothing until `MAXMIND_LICENSE_KEY` is in `.env` and `scripts/update-geolite.sh` has run.
+
+The `Visit` table also now records the visitor's IP (`20260829120000_visit_ip`), and `/privacy`
+discloses both that and the city cookie.
+
 
 ### The obstacle
 

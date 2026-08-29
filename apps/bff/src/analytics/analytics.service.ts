@@ -19,6 +19,7 @@ export class AnalyticsService {
         medium: dto.medium,
         campaign: dto.campaign,
         landingPath: dto.landingPath,
+        ip: dto.ip,
       },
     });
   }

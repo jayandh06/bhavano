@@ -522,6 +522,10 @@ model Visit {
   medium      String?
   campaign    String?
   landingPath String?
+  /** The visitor's IP as seen by Caddy. Personal data under the DPDP Act — /privacy discloses
+   * it. Nullable, since a request reaching the BFF without a usable X-Forwarded-For should still
+   * record its visit rather than fail. */
+  ip          String?
   createdAt   DateTime @default(now())
 
   @@index([userId])

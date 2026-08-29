@@ -85,6 +85,20 @@ function resolveCitySlug(request: NextRequest): string | undefined {
   return first;
 }
 
+/** The visitor's IP as Caddy saw it.
+ *
+ * The LAST entry, not the first. Caddy appends the connecting peer to whatever X-Forwarded-For
+ * arrived, so a client that sends its own header produces "spoofed, real" — the leftmost value is
+ * attacker-controlled and the rightmost is the address Caddy actually observed. With exactly one
+ * trusted proxy in front of us, that last hop is the one to trust.
+ */
+function clientIp(request: NextRequest): string | undefined {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (!forwarded) return undefined;
+  const hops = forwarded.split(",").map((v) => v.trim()).filter(Boolean);
+  return hops[hops.length - 1];
+}
+
 function safeHostname(url: string | null): string | undefined {
   if (!url) return undefined;
   try {
@@ -161,6 +175,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
           medium: resolved.medium,
           campaign: resolved.campaign,
           landingPath: request.nextUrl.pathname,
+          ip: clientIp(request),
         }),
       }).catch(() => {
         // Best-effort — a dropped visit log should never affect the page request itself.

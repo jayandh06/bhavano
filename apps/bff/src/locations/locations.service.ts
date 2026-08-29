@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import type { Area as AreaDto, City as CityDto, ReverseGeocodeResultDto } from '@bhavano/types';
 import { slugify } from '@bhavano/types/slugify';
 import { PrismaService } from '../prisma/prisma.service';
+import { GeoIpService } from './geoip.service';
 import type { Area, City } from '@prisma/client';
+
+/** See `cityForIp` for why this is as loose as it is. */
+const IP_CITY_MAX_KM = 150;
 
 interface GoogleGeocodeAddressComponent {
   long_name: string;
@@ -56,6 +60,7 @@ export class LocationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly geoIp: GeoIpService,
   ) {}
 
   async searchCities(q?: string, all?: boolean): Promise<CityDto[]> {
@@ -139,8 +144,13 @@ export class LocationsService {
   }
 
   /** Nearest-city lookup for "Auto-detect" — plain distance calc over all cities;
-   * swap for a real PostGIS ST_Distance query once city count grows past a full scan. */
-  async reverseGeocode(lat: number, lng: number): Promise<CityDto | null> {
+   * swap for a real PostGIS ST_Distance query once city count grows past a full scan.
+   *
+   * `maxKm` caps how far the answer may be. Unset for the auto-detect button, where the user
+   * pressed it and any nearest city beats nothing. Set for the IP path, where nobody asked:
+   * without a cap, a visitor in Singapore or behind an unmappable address is silently handed
+   * whichever Indian city happens to be closest, presented as if it were theirs. */
+  async reverseGeocode(lat: number, lng: number, maxKm?: number): Promise<CityDto | null> {
     const cities = await this.prisma.city.findMany();
     if (cities.length === 0) return null;
 
@@ -153,7 +163,20 @@ export class LocationsService {
         nearestDist = dist;
       }
     }
+    if (maxKm !== undefined && nearestDist > maxKm) return null;
     return toDto(nearest);
+  }
+
+  /** The city an IP looks like it is in, or null if that cannot be answered confidently.
+   *
+   * 150km is deliberately generous. Indian mobile carriers route large regions through a handful
+   * of peering cities, so a Coimbatore user on Jio can resolve to Chennai — wrong, but a better
+   * default than Bengaluru and one click from corrected. A tighter cap would reject those and
+   * gain little; a looser one starts labelling foreign traffic as Indian. */
+  async cityForIp(ip: string): Promise<CityDto | null> {
+    const point = this.geoIp.lookup(ip);
+    if (!point) return null;
+    return this.reverseGeocode(point.lat, point.lng, IP_CITY_MAX_KM);
   }
 
   /** Real Google-backed reverse geocoding for the map pin-picker (posting flow) — distinct from

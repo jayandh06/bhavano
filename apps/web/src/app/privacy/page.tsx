@@ -55,6 +55,13 @@ export default function PrivacyPage() {
             <strong>Usage data:</strong> which listings you view or favourite, and messages you send through the
             Platform&apos;s messaging feature.
           </li>
+          <li>
+            <strong>Technical data:</strong> your IP address and the page you first arrived on, recorded once per
+            browsing session. We use your IP address to work out roughly which city you are in, so the Platform
+            opens on listings near you rather than in a default city, and to investigate abuse. This is an
+            approximation from the network you are connected to — it is often wrong, and you can change the city
+            at any time using the location selector at the top of any page.
+          </li>
         </ul>
       </PageSection>
 
@@ -80,7 +87,8 @@ export default function PrivacyPage() {
 
       <PageSection heading="4. Cookies and sessions">
         <p className="m-0">
-          We use a session cookie to keep you signed in. We do not use third-party advertising or tracking cookies.
+          We use a session cookie to keep you signed in, and a cookie that remembers which city you last browsed
+          so the Platform opens on it next time. We do not use third-party advertising or tracking cookies.
         </p>
       </PageSection>
 

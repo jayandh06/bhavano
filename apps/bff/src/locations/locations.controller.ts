@@ -38,6 +38,20 @@ export class LocationsController {
     res.json(city);
   }
 
+  /** Coarse IP → city, for choosing which city to open on for a visitor who has never picked
+   * one. Returns null rather than erroring whenever the answer is not confident — no GeoLite2
+   * database configured, a private or malformed address, or the nearest city being implausibly
+   * far away — and the caller falls back to its own default. See
+   * docs/plans/visitor-location-default-city.md.
+   *
+   * Takes the address as a query param rather than reading it off this request: the caller is
+   * web's server-side render, so the socket here belongs to the web container, not the visitor. */
+  @Get('by-ip')
+  cityForIp(@Query('ip') ip?: string): Promise<City | null> {
+    if (!ip) throw new BadRequestException('ip query param is required');
+    return this.locationsService.cityForIp(ip);
+  }
+
   /** Real Google-backed reverse geocoding for the map pin-picker (posting flow) — distinct from
    * `GET /reverse` above, which stays the plain haversine nearest-city lookup for the homepage's
    * unrelated "auto-detect my location" button. */

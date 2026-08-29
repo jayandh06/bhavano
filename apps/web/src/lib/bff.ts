@@ -169,6 +169,14 @@ export function reverseGeocode(lat: number, lng: number): Promise<City | null> {
   return bffFetch<City | null>(`/locations/reverse?lat=${lat}&lng=${lng}`, { cache: "no-store" });
 }
 
+/** Coarse IP → city, for a visitor who has never chosen one. Null whenever the BFF cannot answer
+ * confidently — no GeoLite2 database, a private address, or the nearest city implausibly far —
+ * and null on any failure here too: this sits on the first render of the homepage, so it must
+ * never turn a slow or unhappy BFF into a slow or failed page. See `resolveDefaultCity`. */
+export function fetchCityByIp(ip: string): Promise<City | null> {
+  return bffFetch<City | null>(`/locations/by-ip?ip=${encodeURIComponent(ip)}`, { cache: "no-store" }).catch(() => null);
+}
+
 /** Real Google-backed reverse geocoding for the posting flow's map pin-picker — distinct from
  * `reverseGeocode` above (the homepage's unrelated haversine "auto-detect my location"). */
 export function reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseGeocodeResultDto> {
