@@ -26,6 +26,7 @@ import sys
 
 from ads_setup_conversions import make_client
 from google.ads.googleads.errors import GoogleAdsException
+from google.api_core import protobuf_helpers
 
 CID = "4214066478"
 SEARCH_CAMPAIGN = "Leads-Search-1"
@@ -96,6 +97,11 @@ def main():
         except GoogleAdsException as e:
             msg = e.failure.errors[0].message if e.failure.errors else str(e)
             print("  FAILED %s -> %s" % (label, msg))
+        # Catching only GoogleAdsException was too narrow: a client-side mistake (the update
+        # mask, first time round) surfaced as a plain ValueError and killed the whole run
+        # before the other four steps got a chance.
+        except Exception as e:
+            print("  FAILED %s -> %s: %s" % (label, type(e).__name__, e))
 
     print("Account %s%s\n" % (CID, "   [DRY RUN]" if DRY else ""))
 
@@ -115,7 +121,9 @@ def main():
             op = client.get_type("ConversionActionOperation")
             op.update.resource_name = rn
             op.update.primary_for_goal = False
-            client.copy_from(op.update_mask, client.get_type("FieldMask")(paths=["primary_for_goal"]))
+            # client.get_type("FieldMask") does not exist in v25. The supported way to build an
+            # update mask is to derive it from whichever fields were actually set above.
+            client.copy_from(op.update_mask, protobuf_helpers.field_mask(None, op.update._pb))
             svc.mutate_conversion_actions(customer_id=CID, operations=[op])
 
         act("demote 'Save a search' to secondary (seeker action - stop bidding toward it)", demote)
@@ -153,7 +161,7 @@ def main():
                 op = client.get_type("AdGroupCriterionOperation")
                 op.update.resource_name = r.ad_group_criterion.resource_name
                 op.update.status = client.enums.AdGroupCriterionStatusEnum.PAUSED
-                client.copy_from(op.update_mask, client.get_type("FieldMask")(paths=["status"]))
+                client.copy_from(op.update_mask, protobuf_helpers.field_mask(None, op.update._pb))
                 ops.append(op)
             svc.mutate_ad_group_criteria(customer_id=CID, operations=ops)
 
@@ -233,7 +241,7 @@ def main():
             op = client.get_type("AdOperation")
             op.update.resource_name = rn
             op.update.final_urls.append(LANDING_PAGE)
-            client.copy_from(op.update_mask, client.get_type("FieldMask")(paths=["final_urls"]))
+            client.copy_from(op.update_mask, protobuf_helpers.field_mask(None, op.update._pb))
             svc.mutate_ads(customer_id=CID, operations=[op])
 
         act("search ad %s -> %s" % (list(r.ad_group_ad.ad.final_urls), LANDING_PAGE), fix_ad)
@@ -248,7 +256,7 @@ def main():
             op = client.get_type("AssetGroupOperation")
             op.update.resource_name = rn
             op.update.final_urls.append(LANDING_PAGE)
-            client.copy_from(op.update_mask, client.get_type("FieldMask")(paths=["final_urls"]))
+            client.copy_from(op.update_mask, protobuf_helpers.field_mask(None, op.update._pb))
             svc.mutate_asset_groups(customer_id=CID, operations=[op])
 
         act("asset group %s -> %s" % (list(r.asset_group.final_urls), LANDING_PAGE), fix_ag)
