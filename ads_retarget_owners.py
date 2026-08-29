@@ -141,6 +141,53 @@ def main():
         act("move 'Save a search' SUBMIT_LEAD_FORM -> ENGAGEMENT (seeker action - stop "
             "bidding toward it, keep measuring it)", recategorise)
 
+    # Moving the action is only half of it. This account uses account-default goals, which means
+    # Google makes every category that contains a conversion action biddable — so the moment
+    # "Save a search" landed in ENGAGEMENT, a biddable ENGAGEMENT goal appeared at both the
+    # customer and campaign level and bidding carried on exactly as before, under a new name.
+    # Turning that goal off is what actually stops it. Do this after the recategorise, never
+    # before: an empty category has no goal to switch off.
+    for r in rows(
+        "SELECT customer_conversion_goal.resource_name, customer_conversion_goal.category, "
+        "customer_conversion_goal.biddable FROM customer_conversion_goal "
+        "WHERE customer_conversion_goal.category = 'ENGAGEMENT'"
+    ):
+        if not r.customer_conversion_goal.biddable:
+            print("  ok     account ENGAGEMENT goal is already non-biddable")
+            continue
+
+        def unbid_customer(rn=r.customer_conversion_goal.resource_name):
+            svc = client.get_service("CustomerConversionGoalService")
+            op = client.get_type("CustomerConversionGoalOperation")
+            op.update.resource_name = rn
+            op.update.biddable = False
+            client.copy_from(op.update_mask, protobuf_helpers.field_mask(None, op.update._pb))
+            svc.mutate_customer_conversion_goals(customer_id=CID, operations=[op])
+
+        act("make the account-level ENGAGEMENT goal non-biddable", unbid_customer)
+
+    campaign_goals = [
+        r for r in rows(
+            "SELECT campaign.name, campaign_conversion_goal.resource_name, "
+            "campaign_conversion_goal.biddable FROM campaign_conversion_goal "
+            "WHERE campaign_conversion_goal.category = 'ENGAGEMENT'"
+        )
+        if r.campaign_conversion_goal.biddable
+    ]
+    if not campaign_goals:
+        print("  ok     no campaign is bidding toward ENGAGEMENT")
+    for r in campaign_goals:
+
+        def unbid_campaign(rn=r.campaign_conversion_goal.resource_name):
+            svc = client.get_service("CampaignConversionGoalService")
+            op = client.get_type("CampaignConversionGoalOperation")
+            op.update.resource_name = rn
+            op.update.biddable = False
+            client.copy_from(op.update_mask, protobuf_helpers.field_mask(None, op.update._pb))
+            svc.mutate_campaign_conversion_goals(customer_id=CID, operations=[op])
+
+        act("stop %s bidding toward ENGAGEMENT" % r.campaign.name, unbid_campaign)
+
     # --- 2 & 3. Search keywords -----------------------------------------------------------
     print("\nSearch keywords")
     kws = rows(
