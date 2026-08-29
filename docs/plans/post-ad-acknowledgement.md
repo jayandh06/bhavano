@@ -35,17 +35,42 @@ thing they just made.
 - **A link to the live ad.** The whole point.
 - The expiry date, and a link to `/my-listings` to manage or renew.
 
-## Channel: `dispatchEmailPreferSms`, not `dispatch`
+## Channel: email, else WhatsApp. No SMS.
 
-Two dispatch helpers already exist and they behave differently:
+```
+user has an email  ->  email
+otherwise          ->  WhatsApp
+```
 
-- `dispatch` sends to email **and** SMS whenever the user has both — the same message twice.
-- `dispatchEmailPreferSms` sends email if present, else SMS. Only the expiry reminder uses it.
+One message, never two. Neither existing helper does this — `dispatch` sends to email *and* SMS
+whenever the user has both, and `dispatchEmailPreferSms` falls back to SMS. This needs a third:
+`dispatchEmailPreferWhatsapp`.
 
-Use the second. Most flagged/approved/liked notifications double-send today, which is tolerable
-for rare admin events and wrong for something that fires on every post.
+**This makes WhatsApp a blocker rather than a follow-up**, and that is the main consequence of
+choosing it. `sendWhatsapp` exists but `MSG91_WHATSAPP_INTEGRATED_NUMBER` and
+`MSG91_WHATSAPP_TEMPLATE_NAME` are unset in production, so it has never sent a single message —
+`notifyWelcome` already calls it and that call has always logged-and-skipped. Until the sender and
+template are live, a phone-only poster gets **nothing**. Most posters are phone-only.
 
-WhatsApp is **not** in the first cut — see below.
+Worth stating plainly: with no SMS fallback, a failed WhatsApp send means that user is never told
+their ad went live. That is the trade being made. It is recoverable — the ad is still there under
+`/my-listings` — but it is a real silence, not a degraded message.
+
+### What WhatsApp needs before this can ship
+
+1. **A registered WhatsApp Business sender number** in MSG91 — its own onboarding, separate from
+   the SMS sender that `msg91-sms-otp-activation.md` covers.
+2. **An approved template**, categorised as **utility** rather than marketing. A confirmation of
+   something the user just did is exactly what the utility category is for, and it avoids the
+   opt-in requirements marketing templates carry. Approval is Meta's, not MSG91's, and takes days.
+3. **A single body variable.** `sendWhatsapp` sends the whole message as `body_1`, mirroring the
+   SMS provider's `VAR1`. A template with several variables will not work without changing the
+   provider.
+4. **Verification of the endpoint itself.** The method carries its own warning: the URL and
+   payload shape were written against MSG91's docs and never exercised, and that API surface has
+   changed over time. Send one real message through it before trusting it.
+5. **Per-conversation pricing.** WhatsApp Business bills per conversation window, unlike the SMS
+   allowance already being paid for. Utility conversations in India are cheap, not free.
 
 ---
 
@@ -65,7 +90,7 @@ import changes.
 Listing URLs specifically were left untouched by the recent refactor, so this is a move, not a
 change of shape.
 
-### 2. Indian SMS cannot carry arbitrary text
+### 2. Indian SMS cannot carry arbitrary text — no longer blocking, still worth knowing
 
 `sendTransactionalSms` posts the whole message as `VAR1` into
 `MSG91_TRANSACTIONAL_TEMPLATE_ID` — a DLT-registered template. Indian regulation requires the
@@ -76,8 +101,10 @@ depends entirely on how that template was registered.
 SMS through this path before assuming it works** — the existing callers may have been failing
 silently all along, and nothing in the logs would have said so beyond a warning.
 
-If the template will not carry free text, the SMS variant needs its own registered template with
-proper variables, which is days of approval, not minutes.
+Not a blocker for this feature any more, since the acknowledgement goes over WhatsApp. But the
+flagged, approved and saved-search notifications all still go through `sendTransactionalSms` — so
+if free text does not survive that template, those have been failing silently all along. That is a
+bigger finding than this feature.
 
 ### 3. `PUBLIC_SITE_URL` is not set in production
 
@@ -101,22 +128,21 @@ our problem, not theirs.
 
 1. Move `buildListingPath` + `transactionGroupFor` to `packages/types`; re-export from
    `apps/web/src/lib/listingPath.ts`.
-2. `NotificationsService.notifyListingPosted(user, listing, url, expiresAt)`, modelled on
-   `notifyListingExpiryReminder` — same shape, same `dispatchEmailPreferSms` return so the caller
-   can log which channel was used.
-3. Call it fire-and-forget from `ListingsService.create`, beside `notifyMatchingBuyers`.
-4. Set `PUBLIC_SITE_URL` on prod.
-5. Unit test alongside the existing `listings.service.spec.ts` notification tests: fires once on
+2. `dispatchEmailPreferWhatsapp` alongside the two existing dispatch helpers.
+3. `NotificationsService.notifyListingPosted(user, listing, url, expiresAt)`, modelled on
+   `notifyListingExpiryReminder` — same shape, returning which channel was used so the caller can
+   log it.
+4. Call it fire-and-forget from `ListingsService.create`, beside `notifyMatchingBuyers`.
+5. Set `PUBLIC_SITE_URL` on prod.
+6. Register the WhatsApp sender and template, set the two env vars, and verify one real send.
+7. Unit test alongside the existing `listings.service.spec.ts` notification tests: fires once on
    create, and a rejected notification still returns the listing.
 
 ## Out of scope
 
-- **WhatsApp.** `sendWhatsapp` exists and `notifyWelcome` calls it, but
-  `MSG91_WHATSAPP_INTEGRATED_NUMBER` and `MSG91_WHATSAPP_TEMPLATE_NAME` are unset in production,
-  so it has never sent anything. It needs a registered WhatsApp Business sender and an approved
-  template, and the code carries its own warning that it was written against MSG91's WhatsApp API
-  without ever being exercised. Add it once the sender is approved and the method is verified —
-  not as part of a change that should ship this week.
+- **SMS.** Deliberately not a fallback for this message. It does mean the DLT-template question
+  in §2 no longer blocks *this* feature — but it still needs answering, because the flagged,
+  approved and saved-search notifications all go through that path.
 - **Notification preferences.** There is no preference column, and routing is presence-based.
   Worth having eventually; not worth blocking a first acknowledgement on.
 - **Edit/renew acknowledgements.** Same machinery, different triggers, decide separately.
@@ -124,7 +150,10 @@ our problem, not theirs.
 ## Verification
 
 - Post an ad as an email-only user → one email, no SMS.
-- Post as a phone-only user → one SMS, no email. **Confirm it actually arrives**, per §2.
+- Post as a phone-only user → one WhatsApp message, no email, no SMS. **Confirm it actually
+  arrives** — nothing has ever been delivered down this path.
 - Post as a user with both → exactly one message, on email.
+- Post as a phone-only user while WhatsApp is still unconfigured → the ad is created, the skip is
+  logged, nothing throws.
 - Click the link in the message → lands on the live ad, not a redirect or a 404.
 - Point SMTP at a dead host and post → the ad is still created and returned.
