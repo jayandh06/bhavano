@@ -274,13 +274,69 @@ def main():
 
         act("asset group %s -> %s" % (list(r.asset_group.final_urls), LANDING_PAGE), fix_ag)
 
+    # --- 6. PMax search themes -------------------------------------------------------------
+    #
+    # Google auto-generated these from the old campaign keywords, so all of them were seeker
+    # intent. Adding owner themes alongside would not help: 34 seeker themes drown out 18 owner
+    # ones. They have to be removed. AssetGroupSignal has no update — a theme is replaced by
+    # removing the old signal and creating a new one.
+    #
+    # Only search_theme signals are touched. An audience signal is the same resource type with
+    # an empty search_theme, so filtering on the text is what keeps this from deleting one.
+    print("\nPMax search themes")
+    sigs = rows(
+        "SELECT asset_group.resource_name, asset_group_signal.resource_name, "
+        "asset_group_signal.search_theme.text FROM asset_group_signal"
+    )
+    themes = [r for r in sigs if r.asset_group_signal.search_theme.text]
+    keep_themes = {t.lower() for t in OWNER_KEYWORDS}
+    stale = [r for r in themes if r.asset_group_signal.search_theme.text.lower() not in keep_themes]
+    have_themes = {r.asset_group_signal.search_theme.text.lower() for r in themes}
+    new_themes = [t for t in OWNER_KEYWORDS if t.lower() not in have_themes]
+
+    if not themes and not new_themes:
+        print("  no asset group signals found")
+    print("  %d seeker themes to remove, %d owner themes to add" % (len(stale), len(new_themes)))
+
+    if stale:
+
+        def drop_themes():
+            svc = client.get_service("AssetGroupSignalService")
+            ops = []
+            for r in stale:
+                op = client.get_type("AssetGroupSignalOperation")
+                op.remove = r.asset_group_signal.resource_name
+                ops.append(op)
+            svc.mutate_asset_group_signals(customer_id=CID, operations=ops)
+
+        act("remove %d seeker search themes" % len(stale), drop_themes)
+
+    if new_themes:
+        ag_for_themes = themes[0].asset_group.resource_name if themes else None
+        if ag_for_themes is None:
+            for r in rows("SELECT asset_group.resource_name FROM asset_group"):
+                ag_for_themes = r.asset_group.resource_name
+                break
+
+        def add_themes():
+            svc = client.get_service("AssetGroupSignalService")
+            ops = []
+            for text in new_themes:
+                op = client.get_type("AssetGroupSignalOperation")
+                op.create.asset_group = ag_for_themes
+                op.create.search_theme.text = text
+                ops.append(op)
+            svc.mutate_asset_group_signals(customer_id=CID, operations=ops)
+
+        act("add %d owner search themes" % len(new_themes), add_themes)
+
     print("\n%sStill to do by hand in the Ads UI:" % ("[dry run - nothing changed] " if DRY else ""))
     print("  - Ad copy: headlines still sell 'find a home'. They need to say 'List Your")
     print("    Property Free' / 'No Brokerage' / 'Reach Tenants Directly'.")
-    print("  - PMax search themes: replacing them on an existing asset group is a UI edit —")
-    print("    Asset Group 1 -> Audience signals -> Search themes.")
-    print("  - Disable the duplicate 'Sign-up' conversion action (MANY_PER_CLICK, double-counts")
-    print("    against 'New registration').")
+    print("  - Audience signal: the asset group has none. Custom segment on the owner search")
+    print("    terms, plus Detailed demographics -> Homeownership Status -> Homeowners.")
+    print("  - Disable the duplicate 'Sign-up' conversion action (MANY_PER_CLICK, 0 conversions;")
+    print("    'New registration' holds all 5 and is the one to keep).")
 
 
 if __name__ == "__main__":
