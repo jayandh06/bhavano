@@ -103,9 +103,13 @@ def main():
 
     current = {}
     asset_group = None
+    # Excluding REMOVED matters: removing an AssetGroupAsset tombstones the row rather than
+    # deleting it, so an unfiltered query keeps returning last run's discarded copy and this
+    # reports 21 headlines against a cap of 15 on an asset group that is already correct.
     for r in rows(
         "SELECT asset_group.resource_name, asset_group_asset.resource_name, "
-        "asset_group_asset.field_type, asset.text_asset.text FROM asset_group_asset"
+        "asset_group_asset.field_type, asset.text_asset.text FROM asset_group_asset "
+        "WHERE asset_group_asset.status != 'REMOVED'"
     ):
         ft = r.asset_group_asset.field_type.name
         if ft not in LIMITS:
