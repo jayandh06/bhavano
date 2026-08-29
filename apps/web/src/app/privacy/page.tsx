@@ -63,6 +63,16 @@ export default function PrivacyPage() {
             at any time using the location selector at the top of any page.
           </li>
         </ul>
+        {/* Required by the GeoLite2 EULA, which asks for this credit wherever the data is used.
+          * See docs/plans/visitor-location-default-city.md. */}
+        <p className="m-0 mt-3 text-[13px] text-muted">
+          City detection from IP addresses uses GeoLite2 data created by MaxMind, available from{" "}
+          <a href="https://www.maxmind.com" target="_blank" rel="noopener noreferrer" className="text-green font-bold">
+            maxmind.com
+          </a>
+          . The lookup happens on our own servers — your IP address is never sent to MaxMind or any other third
+          party.
+        </p>
       </PageSection>
 
       <PageSection heading="2. How we use this information">

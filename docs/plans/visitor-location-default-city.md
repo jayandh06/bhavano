@@ -178,3 +178,46 @@ Add a line before shipping Step 2. Step 1 needs nothing — the user told us the
 - Googlebot's US IP lands on Bengaluru and gets no redirect.
 - `/{city}/...` pages render identically regardless of visitor IP.
 - A cookie naming a city that no longer exists falls through cleanly instead of erroring.
+
+---
+
+## Verification log — GeoIP path, 2026-08-29
+
+The graceful-degradation path was exercised on deploy (no database → `by-ip` returns null, the
+default city is used). The *happy* path was then verified separately against MaxMind's public
+test database (`MaxMind-DB/test-data/GeoIP2-City-Test.mmdb`, not committed — the real database is
+not redistributable and the test one has no reason to live here):
+
+```
+81.2.69.160    -> 51.5142,-0.0931   8033km from the nearest Indian city  => null (cap works)
+2.125.160.216  -> 51.75,-1.25       8113km                               => null (cap works)
+10.0.0.1       -> null              private address
+not-an-ip      -> null              maxmind throws, caught
+203.0.113.7    -> null              valid but unmapped
+[13.01, 80.21] -> 10km from Chennai                                      => Chennai
+```
+
+So the reader resolves real addresses, the 150km cap rejects foreign traffic instead of handing
+it a random Indian city, and every malformed/private/unmapped input degrades to null rather than
+throwing into a page render.
+
+## Cost, checked 2026-08-29
+
+GeoLite2 is free at any volume — the lookup is local, so there is no per-query billing and
+traffic growth costs nothing. MaxMind's paid GeoIP2 City database is $135.67/month billed
+annually ($1,628/year, ~₹1.4L).
+
+**Not worth buying.** The paid tier improves accuracy, and accuracy is not the binding
+constraint here: Indian mobile carriers route large regions through a few peering cities, so a
+Coimbatore user surfaces in Chennai regardless of which database answers. That is a property of
+the networks, not of MaxMind's data.
+
+Licence obligations that do apply, all free but not optional:
+
+- **Attribution** — credited on `/privacy`.
+- **Refresh within 30 days** of a release, removing the old copy. `scripts/update-geolite.sh`
+  exists for this; the monthly cron it documents has to actually be installed.
+- **Never used to identify a household, individual or street address**, nor for credit,
+  insurance, employment or licensing decisions. Choosing which city's listings to show is fine.
+- **No redistribution** — hence `data/geoip/` in `.gitignore` and a bind mount rather than a
+  layer in the image.
