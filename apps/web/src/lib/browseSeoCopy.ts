@@ -111,6 +111,18 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
     links.push(...siblingAreaLinks(cityName, cityAreas, areaName));
   } else if (category && group) {
     const catLabel = CATEGORY_LABELS[category];
+    // Categories postable under both groups (furniture, house/apartment/villa, commercial) are
+    // otherwise a dead end: the group is fixed by the path and the page has no control to flip
+    // it, so a visitor on "furniture for sale" has no route to "furniture for rent" short of
+    // reopening the header mega menu. This is the only on-page link between the two, and it goes
+    // first so it survives the 12-link cap below.
+    const otherGroup = categoryGroupsFor(category).find((g) => g !== group);
+    if (otherGroup) {
+      links.push({
+        label: `${catLabel} ${otherGroup === "buy" ? "for sale" : "for rent"} in ${cityName}`,
+        href: buildBrowsePath({ cityName, transactionGroup: otherGroup, category }),
+      });
+    }
     if (category === "house" || category === "apartment" || category === "villa") {
       const bedroom = typeof facetValue === "number" ? facetValue : undefined;
       if (facetValue !== undefined) {
