@@ -113,7 +113,8 @@ export default async function HomePage({
   const popularSearches = await resolvePopularSearches(cityName ?? "India", resolvedCity?.id);
 
   const heading = buildHeading({
-    fallbackLabel: activeTab.label,
+    // The "All" tab's own label is just "All", which reads as a fragment — "All in India".
+    fallbackLabel: activeTab.value === "all" ? "All Listings" : activeTab.label,
     // "India" when no city is selected, so the H1 reads "Rent & Lease in India" rather than
     // dropping the location and leaving a bare category.
     cityName: cityName ?? "India",

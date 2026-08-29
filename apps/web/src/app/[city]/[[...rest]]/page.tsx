@@ -79,12 +79,23 @@ function nationalSegments(first: string, rest: string[]): ParsedSegments | null 
 function headingFor(parsed: ParsedSegments, cityName: string, areaName?: string): string {
   const query = buildQueryForSegments(parsed);
   return buildHeading({
-    fallbackLabel: "All Listings",
+    // A group with no category is not "All Listings" — /buy and /bengaluru/buy are specifically
+    // things for sale, and said so nowhere before this.
+    fallbackLabel:
+      parsed.transactionGroup === "buy"
+        ? "Properties for Sale"
+        : parsed.transactionGroup === "rent-lease"
+          ? "Properties for Rent"
+          : "All Listings",
     cityName,
     areaName,
     propertyType: query.propertyType,
     bedrooms: query.bedrooms?.[0],
-    listingCategory: query.category,
+    // buildQueryForSegments folds pg and interiors into `homeCategory` and drops `category`, so
+    // /rent-lease/pg lost its label and read "All Listings". Fall back to the category from the
+    // URL — but only when no narrower branch of buildHeading would have fired, since those read
+    // better: a facet gives "PG Single Sharing", a propertyType gives "2 BHK Apartments".
+    listingCategory: query.category ?? (parsed.facetValue === undefined && !query.propertyType ? parsed.category : undefined),
     transactionType: query.transactionType,
     sharingType: query.sharingType,
     condition: query.condition,
