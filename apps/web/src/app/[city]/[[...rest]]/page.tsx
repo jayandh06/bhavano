@@ -18,6 +18,7 @@ import {
   parsePage,
   parsePositiveInt,
   parseSegments,
+  isReservedSegment,
   SORT_VALUES,
   transactionGroupFor,
   type ParsedSegments,
@@ -53,6 +54,26 @@ async function legacyRedirect(transaction: string, rest: string[]): Promise<neve
   permanentRedirect(
     buildBrowsePath({ cityName: cityRow.name, transactionGroup: transactionGroupFor(transaction), category, areaName: areaRow?.name }),
   );
+}
+
+/** National browsing — `/buy`, `/rent-lease/pg`, `/furniture` — where the first segment is
+ * reserved category vocabulary rather than a city slug.
+ *
+ * Returns null for anything that is not national, so the caller falls through to the city and
+ * legacy branches untouched. Two rejections carry the weight:
+ *
+ * - **An area disqualifies it.** A locality only exists inside a city, so a parse that yields
+ *   one is really the legacy `/{transaction}/{category}/{city}` shape — `/buy/apartment/bengaluru`
+ *   parses as group+category+area and must keep 301ing, not render nationally.
+ * - **A listing slug-id disqualifies it.** Every listing has a canonical URL under its own city.
+ *
+ * This ordering matters because "buy" is both a TransactionGroup and a TransactionType, so `/buy`
+ * would otherwise be swallowed by `legacyRedirect` and 404. */
+function nationalSegments(first: string, rest: string[]): ParsedSegments | null {
+  if (!isReservedSegment(first)) return null;
+  const parsed = parseSegments([first, ...rest]);
+  if (!parsed || parsed.areaSlug || parsed.listingSlugId) return null;
+  return parsed;
 }
 
 function headingFor(parsed: ParsedSegments, cityName: string, areaName?: string): string {
@@ -183,6 +204,61 @@ function listingJsonLd(listing: ListingDetailDto) {
   };
 }
 
+/** The national counterpart of the city page body below. Deliberately a separate function rather
+ * than threading `cityRow: City | null` through that one: the city branch resolves an area, builds
+ * breadcrumb JSON-LD, canonicalises an area-first path and fetches that city's areas, none of
+ * which mean anything without a city. Making all of it conditional is where SEO regressions hide.
+ *
+ * No breadcrumb JSON-LD and no SEO intro copy here on purpose — both are city-shaped — and these
+ * routes stay out of sitemap.xml, so they are navigation rather than acquisition surfaces. */
+async function NationalBrowsePage({
+  parsed,
+  searchParams,
+}: {
+  parsed: ParsedSegments;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const page = parsePage(sp.page);
+  const minPrice = parsePositiveInt(sp.minPrice);
+  const maxPrice = parsePositiveInt(sp.maxPrice);
+  const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);
+  const sort = parseEnum(sp.sort, SORT_VALUES);
+  const bedroomsFromQuery = parseIntList(sp.bedrooms);
+
+  const session = await auth();
+  const baseQuery = buildQueryForSegments(parsed);
+  const allCities = await fetchCities(undefined, true);
+  const basePath = buildBrowsePath({
+    transactionGroup: parsed.transactionGroup,
+    category: parsed.category,
+    facetValue: parsed.facetValue,
+  });
+
+  return (
+    <BrowseListingsView
+      query={{
+        ...baseQuery,
+        bedrooms: bedroomsFromQuery ?? baseQuery.bedrooms,
+        minPrice,
+        maxPrice,
+        furnished,
+        sort,
+      }}
+      heading={headingFor(parsed, "India")}
+      page={page}
+      basePath={basePath}
+      filterCategory={parsed.category}
+      filterIsSale={parsed.transactionGroup === "buy"}
+      popularCities={allCities.filter((c) => c.isPopular)}
+      userName={sessionHeaderName(session)}
+      currentSegments={parsed}
+      cityAreas={[]}
+      allCities={allCities}
+    />
+  );
+}
+
 export async function generateMetadata({
   params,
   searchParams,
@@ -191,6 +267,25 @@ export async function generateMetadata({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { city, rest = [] } = await params;
+
+  // National routes self-canonicalise and are deliberately absent from sitemap.xml: they overlap
+  // the /{city}/... pages that are the actual ranking strategy, so they exist to be navigated to,
+  // not to compete for the same queries.
+  const national = nationalSegments(city, rest);
+  if (national) {
+    const heading = headingFor(national, "India");
+    const path = buildBrowsePath({
+      transactionGroup: national.transactionGroup,
+      category: national.category,
+      facetValue: national.facetValue,
+    });
+    return {
+      title: `${heading} | Bhavano`,
+      description: `Browse ${heading.toLowerCase()} across every city on Bhavano. Post your own ad free — no brokerage.`,
+      alternates: { canonical: path },
+    };
+  }
+
   if (isTransactionType(city)) return {};
   const cityRow = await resolveCity(city);
   if (!cityRow) return {};
@@ -252,6 +347,9 @@ export default async function CityBrowsePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { city, rest = [] } = await params;
+
+  const national = nationalSegments(city, rest);
+  if (national) return NationalBrowsePage({ parsed: national, searchParams });
 
   if (isTransactionType(city)) await legacyRedirect(city, rest);
 

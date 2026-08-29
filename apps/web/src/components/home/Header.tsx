@@ -21,7 +21,8 @@ export function Header({
   areaName,
   popularSearches,
 }: {
-  cityName: string;
+  /** Undefined means "All cities" — the national routes (`/`, `/buy`). */
+  cityName?: string;
   popularCities: City[];
   searchQuery: string;
   activeCategory: HomeTabValue;
@@ -46,13 +47,13 @@ export function Header({
             India&apos;s home for Buy · Rent · Villas · Plots · Coworking · PG · Commercial · Furniture
           </span>
           <div className="flex gap-5 opacity-[0.85]">
-            <Link href={`/post?city=${slugify(cityName)}`} className="text-inherit">
+            <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} className="text-inherit">
               For Owners
             </Link>
             <Link href="/tools" className="text-inherit">
               Tools
             </Link>
-            <Link href={`/premium?city=${slugify(cityName)}`} className="text-inherit">
+            <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} className="text-inherit">
               Plans
             </Link>
             <Link href="/help" className="text-inherit">
@@ -75,7 +76,7 @@ export function Header({
           <Suspense>
             <SearchBar
               initialQuery={searchQuery}
-              cityName={cityName}
+              cityName={cityName ?? "India"}
               areaName={areaName}
               popularCities={popularCities}
               popularSearches={popularSearches}

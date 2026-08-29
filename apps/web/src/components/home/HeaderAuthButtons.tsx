@@ -7,30 +7,32 @@ import { useAuthGate } from "./AuthGateProvider";
 import { signOutAction } from "@/app/actions/auth";
 import { useClickOutside } from "@/lib/useClickOutside";
 
-export function HeaderAuthButtons({ userName, cityName }: { userName?: string | null; cityName: string }) {
+export function HeaderAuthButtons({ userName, cityName }: { userName?: string | null; cityName?: string }) {
   const { requireLogin } = useAuthGate();
   // Carries the currently-selected city through to every account/static page below — without
   // it, PageHeader/Footer on those pages fall back to their own generic defaults (Bengaluru, no
-  // footer area links) regardless of what the user actually had selected here.
-  const citySlug = slugify(cityName);
+  // footer area links) regardless of what the user actually had selected here. With no city
+  // selected (national browsing) the param is omitted entirely rather than sent as an empty
+  // string, which would resolve to no city and look like a bug in the URL.
+  const cityQuery = cityName ? `?city=${slugify(cityName)}` : "";
 
   return (
     <div className="flex items-center gap-3 shrink-0">
       {/* TEMP(auth-gate): posting is open without login for now. */}
       <Link
-        href={`/post?city=${citySlug}`}
+        href={`/post${cityQuery}`}
         className="border-[1.5px] border-green text-green rounded-lg px-4 py-[9px] text-sm font-bold whitespace-nowrap"
       >
         + Post free ad
       </Link>
-      <Link href={`/favourites?city=${citySlug}`} className="text-text text-sm font-bold whitespace-nowrap">
+      <Link href={`/favourites${cityQuery}`} className="text-text text-sm font-bold whitespace-nowrap">
         ♡ Favourites
       </Link>
-      <Link href={`/messages?city=${citySlug}`} className="text-text text-sm font-bold whitespace-nowrap">
+      <Link href={`/messages${cityQuery}`} className="text-text text-sm font-bold whitespace-nowrap">
         💬 Messages
       </Link>
       {userName ? (
-        <AccountMenu userName={userName} citySlug={citySlug} />
+        <AccountMenu userName={userName} cityQuery={cityQuery} />
       ) : (
         <button
           onClick={requireLogin}
@@ -45,7 +47,7 @@ export function HeaderAuthButtons({ userName, cityName }: { userName?: string | 
 
 const menuItemClass = "block px-3.5 py-2.5 text-sm font-semibold text-text";
 
-function AccountMenu({ userName, citySlug }: { userName: string; citySlug: string }) {
+function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useClickOutside(ref, () => setOpen(false));
@@ -60,16 +62,16 @@ function AccountMenu({ userName, citySlug }: { userName: string; citySlug: strin
       </button>
       {open && (
         <div className="absolute top-[calc(100%+8px)] right-0 bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px] overflow-hidden">
-          <Link href={`/profile?city=${citySlug}`} onClick={() => setOpen(false)} className={menuItemClass}>
+          <Link href={`/profile${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
             Profile
           </Link>
-          <Link href={`/my-listings?city=${citySlug}`} onClick={() => setOpen(false)} className={menuItemClass}>
+          <Link href={`/my-listings${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
             My listings
           </Link>
-          <Link href={`/premium?city=${citySlug}`} onClick={() => setOpen(false)} className={menuItemClass}>
+          <Link href={`/premium${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
             ⭐ Bhavano Plus
           </Link>
-          <Link href={`/saved-searches?city=${citySlug}`} onClick={() => setOpen(false)} className={menuItemClass}>
+          <Link href={`/saved-searches${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
             🔔 Saved searches
           </Link>
           <Link href="/help" onClick={() => setOpen(false)} className={menuItemClass}>

@@ -81,7 +81,10 @@ export async function BrowseListingsView({
   allCities,
 }: {
   query: Omit<ListingsQuery, "limit" | "cursor" | "offset">;
-  cityName: string;
+  /** Undefined for national browsing (`/buy`, `/furniture`). Without a city there is no area
+   * filter to offer and no city-scoped footer links, so both are dropped rather than shown
+   * empty. */
+  cityName?: string;
   heading: string;
   page: number;
   basePath: string;
@@ -106,7 +109,7 @@ export async function BrowseListingsView({
   const offset = (page - 1) * PAGE_SIZE;
   const [listingsPage, popularSearches] = await Promise.all([
     fetchListings({ ...query, offset, limit: PAGE_SIZE }, session?.accessToken),
-    resolvePopularSearches(cityName, query.cityId),
+    resolvePopularSearches(cityName ?? "India", query.cityId),
   ]);
 
   // Page 1 with zero results is a normal "nothing here yet" state — only pages *past* the last
@@ -131,7 +134,7 @@ export async function BrowseListingsView({
           <h1 className="font-lora text-[26px] font-semibold m-0 text-text">{heading}</h1>
           <span className="text-[13px] text-muted">{listingsPage.total} listings</span>
         </div>
-        {page === 1 && (
+        {page === 1 && cityName && (
           <BrowseSeoIntro
             heading={heading}
             cityName={cityName}
@@ -143,8 +146,8 @@ export async function BrowseListingsView({
         )}
         <div className="flex gap-2.5 mb-5 flex-wrap justify-between items-start">
           <div className="flex gap-2.5 flex-wrap">
-            <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
-            {(filterCategory === "house" || filterCategory === "apartment") && (
+            {cityName && <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />}
+            {cityName && (filterCategory === "house" || filterCategory === "apartment") && (
               <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
             )}
             <BrowseFilterBar
@@ -166,7 +169,7 @@ export async function BrowseListingsView({
             })}
           />
         )}
-        <ListingGrid items={listingsPage.items} cityName={cityName} />
+        <ListingGrid items={listingsPage.items} cityName={cityName ?? "India"} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
       </main>
       <Footer currentCityName={cityName} cityAreas={cityAreas} allCities={allCities} />

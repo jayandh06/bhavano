@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import type { HomeCategoryFilter } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
@@ -10,9 +9,8 @@ import { AreaFilter } from "@/components/home/AreaFilter";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { Pagination } from "@/components/home/Pagination";
 import { Footer } from "@/components/home/Footer";
-import { resolveDefaultCity } from "@/lib/defaultCity";
 import { resolvePopularSearches } from "@/lib/popularSearches";
-import { HOME_TABS } from "@/lib/homeCategories";
+import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
 import {
   buildHeading,
@@ -28,9 +26,11 @@ import {
 
 const PAGE_SIZE = 12;
 
-function parseCategory(value: string | string[] | undefined): HomeCategoryFilter {
+function parseCategory(value: string | string[] | undefined): HomeTabValue {
   const v = Array.isArray(value) ? value[0] : value;
-  return HOME_TABS.some((t) => t.value === v) ? (v as HomeCategoryFilter) : "buy";
+  // "all" is the default now: "/" is every city and every category. A visitor arriving with no
+  // filters should see the whole marketplace rather than one arbitrary slice of it.
+  return HOME_TABS.some((t) => t.value === v) ? (v as HomeTabValue) : "all";
 }
 
 // The homepage's own tab/query-string filtering is a UX convenience, not meant to rank
@@ -72,20 +72,18 @@ export default async function HomePage({
   const popularCities = allCities.filter((c) => c.isPopular);
   // Slug first — that is what the picker emits and what every other `?city=` in the app uses
   // (/post?city=bengaluru and friends). The id lookup stays as a fallback so links shared or
-  // bookmarked while this emitted a cuid keep resolving instead of silently falling back to
-  // the default city.
+  // bookmarked while this emitted a cuid keep resolving.
+  //
+  // No fallback to a remembered or IP-guessed city: "/" is the all-cities view, and only an
+  // explicit `?city=` narrows it. A visitor who wants their own city picks it, which puts them
+  // on /{city} — a real, linkable address rather than an invisible default.
   const resolvedCity =
-    allCities.find((c) => slugify(c.name) === cityParam) ??
-    allCities.find((c) => c.id === cityParam) ??
-    // Falls back to whichever city this visitor last looked at, then Bengaluru. An explicit
-    // `?city=` above always wins, so a shared link opens on the city it names rather than on the
-    // recipient's own remembered one.
-    (await resolveDefaultCity(allCities));
+    allCities.find((c) => slugify(c.name) === cityParam) ?? allCities.find((c) => c.id === cityParam);
 
   const offset = (page - 1) * PAGE_SIZE;
   const listingsPage = await fetchListings(
     {
-      homeCategory: category,
+      homeCategory: category === "all" ? undefined : category,
       propertyType,
       category: listingCategory,
       transactionType,
@@ -109,14 +107,16 @@ export default async function HomePage({
   if (page > 1 && page > totalPages) notFound();
 
   const activeTab = HOME_TABS.find((t) => t.value === category) ?? HOME_TABS[0];
-  const cityName = resolvedCity?.name ?? "your city";
+  const cityName = resolvedCity?.name;
   // Full area list for both the search bar's placeholder hint and the AreaFilter multi-select.
   const cityAreas = resolvedCity ? await fetchAreas(resolvedCity.id, undefined, true) : [];
-  const popularSearches = await resolvePopularSearches(cityName, resolvedCity?.id);
+  const popularSearches = await resolvePopularSearches(cityName ?? "India", resolvedCity?.id);
 
   const heading = buildHeading({
     fallbackLabel: activeTab.label,
-    cityName,
+    // "India" when no city is selected, so the H1 reads "Rent & Lease in India" rather than
+    // dropping the location and leaving a bare category.
+    cityName: cityName ?? "India",
     propertyType,
     bedrooms,
     listingCategory,
@@ -172,7 +172,7 @@ export default async function HomePage({
             <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
           </div>
         )}
-        <ListingGrid items={listingsPage.items} cityName={cityName} />
+        <ListingGrid items={listingsPage.items} cityName={cityName ?? "India"} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
       </main>
       <Footer currentCityName={resolvedCity?.name} cityAreas={cityAreas} allCities={allCities} />

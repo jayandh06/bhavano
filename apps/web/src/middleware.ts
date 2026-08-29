@@ -19,6 +19,23 @@ const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
  * remembered city with its own name — which degrades to "forgot the city" (the read side
  * resolves the slug against the real city list and falls through), never to a broken page. */
 const RESERVED_FIRST_SEGMENTS = new Set([
+  // The URL grammar's own vocabulary — national browsing lives at /buy, /rent-lease, /pg,
+  // /furniture and friends. Without these here, visiting /buy would store bhavano_city="buy"
+  // and silently discard whichever city the visitor had actually chosen. Mirrors
+  // `isReservedSegment` in lib/seoRoute.ts, which cannot be imported into the edge runtime
+  // cheaply — change both together.
+  "buy",
+  "rent-lease",
+  "house",
+  "apartment",
+  "villa",
+  "pg",
+  "storage",
+  "coworking",
+  "furniture",
+  "interiors",
+  "plot",
+  "commercial",
   "about",
   "agent",
   "api",

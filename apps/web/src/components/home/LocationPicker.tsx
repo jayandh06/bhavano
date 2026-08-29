@@ -13,7 +13,9 @@ export function LocationPicker({
   popularCities,
   currentSegments,
 }: {
-  currentCityName: string;
+  /** Undefined means every city — the chip reads "All cities" and the national routes are in
+   * play. Distinct from a city that failed to resolve, which never reaches here. */
+  currentCityName?: string;
   popularCities: City[];
   /** The current path's parsed city-first segments (transactionGroup/category/facet), when
    * rendered on one of those pages rather than the homepage — lets switching city land on the
@@ -49,6 +51,19 @@ export function LocationPicker({
     setLoadingAll(true);
     setAllCities(await listAllCitiesAction());
     setLoadingAll(false);
+  }
+
+  /** Clears the city filter, keeping whatever category the user is looking at — /bengaluru/buy
+   * becomes /buy rather than dumping them back on the homepage. */
+  function selectAllCities() {
+    setOpen(false);
+    router.push(
+      buildBrowsePath({
+        transactionGroup: currentSegments?.transactionGroup,
+        category: currentSegments?.category,
+        facetValue: currentSegments?.facetValue,
+      }),
+    );
   }
 
   function selectCity(city: City) {
@@ -97,7 +112,7 @@ export function LocationPicker({
         <span className="text-base">📍</span>
         <div className="text-left">
           <div className="text-[10px] text-muted leading-[1.2]">Showing ads near</div>
-          <div className="text-sm font-bold text-text leading-[1.3]">{currentCityName}</div>
+          <div className="text-sm font-bold text-text leading-[1.3]">{currentCityName ?? "All cities"}</div>
         </div>
         <span className="text-[11px] text-muted ml-0.5">▾</span>
       </button>
@@ -117,6 +132,18 @@ export function LocationPicker({
                 ✕
               </button>
             </div>
+
+            {/* Above auto-detect on purpose: with listings still thin in most cities, "show me
+              * everything" is the more useful answer more often than "narrow me down". */}
+            <button
+              onClick={selectAllCities}
+              className={`w-full flex items-center gap-2.5 border rounded-[10px] px-3.5 py-[13px] text-sm font-bold cursor-pointer mb-2.5 ${
+                currentCityName ? "bg-surface-alt border-border text-text" : "bg-surface-alt border-green text-green"
+              }`}
+            >
+              🗂️ All cities
+              {!currentCityName && <span className="ml-auto text-xs">Selected</span>}
+            </button>
 
             <button
               onClick={useAutoLocation}
