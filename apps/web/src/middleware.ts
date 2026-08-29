@@ -3,10 +3,43 @@ import type { NextFetchEvent } from "next/server";
 
 const ACQUISITION_COOKIE = "bhavano_acq";
 const SESSION_COOKIE = "bhavano_sid";
+const CITY_COOKIE = "bhavano_city";
 // 30 days — long enough to still attribute a signup that happens a few visits after the user's
 // first-ever landing, without pinning the cookie down indefinitely.
 const ACQUISITION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+// 90 days. Longer than the acquisition window above because this is a stated preference, not an
+// attribution horizon — someone who picked Chennai in March still lives in Chennai in May.
+const CITY_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 90;
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
+
+/** Top-level routes that are pages in their own right rather than city slugs.
+ *
+ * `/[city]/[[...rest]]` is a catch-all, so every first path segment that is not listed here
+ * looks like a city. A new top-level route added without being added here would overwrite a
+ * remembered city with its own name — which degrades to "forgot the city" (the read side
+ * resolves the slug against the real city list and falls through), never to a broken page. */
+const RESERVED_FIRST_SEGMENTS = new Set([
+  "about",
+  "agent",
+  "api",
+  "contact",
+  "favourites",
+  "help",
+  "listings",
+  "messages",
+  "my-listings",
+  "post",
+  "premium",
+  "privacy",
+  "profile",
+  "saved-searches",
+  "terms",
+  "tools",
+]);
+
+/** Shape of a slug this app emits — `slugify` only ever produces lowercase, digits and hyphens.
+ * Anything else is a URL nobody legitimately generated, and is not worth storing. */
+const SLUG_PATTERN = /^[a-z0-9-]{1,64}$/;
 
 interface ResolvedSource {
   source: string;
@@ -37,6 +70,21 @@ function resolveSource(request: NextRequest): ResolvedSource {
   return { source: "direct" };
 }
 
+/** The city slug this request is looking at, if any — `?city=<slug>` (what the nav links and the
+ * homepage picker emit) or the first path segment of a `/{city}/...` browse URL.
+ *
+ * Not validated against real cities: middleware has no database access, and a lookup on every
+ * page navigation would be the wrong trade anyway. `resolveDefaultCity` does that check when the
+ * cookie is read, so a junk value costs a fallback to the default, not a wrong page. */
+function resolveCitySlug(request: NextRequest): string | undefined {
+  const param = request.nextUrl.searchParams.get("city");
+  if (param) return SLUG_PATTERN.test(param) ? param : undefined;
+
+  const first = request.nextUrl.pathname.split("/")[1];
+  if (!first || RESERVED_FIRST_SEGMENTS.has(first) || !SLUG_PATTERN.test(first)) return undefined;
+  return first;
+}
+
 function safeHostname(url: string | null): string | undefined {
   if (!url) return undefined;
   try {
@@ -47,8 +95,8 @@ function safeHostname(url: string | null): string | undefined {
 }
 
 /**
- * Two independent things happen here, both first-touch/first-visit-of-session only (skipped
- * entirely once their cookie already exists):
+ * Three independent things happen here. The first two are first-touch/first-visit-of-session
+ * only (skipped entirely once their cookie already exists); the third tracks an ongoing choice:
  *
  * 1. `bhavano_acq` — a permanent (30-day) cookie capturing the user's very first-ever landing
  *    source, read at signup time (see lib/bff.ts) and persisted once onto the new User row.
@@ -57,14 +105,32 @@ function safeHostname(url: string | null): string | undefined {
  *    the BFF to log a Visit row (source/medium/campaign/landing path) for it — one row per
  *    session, not per page load. If that session later logs in, AuthService links the Visit to
  *    the user (see auth.service.ts's linkVisitToUser).
+ * 3. `bhavano_city` — the city the visitor is currently looking at, so the homepage and the
+ *    account/static pages can open on it next time instead of always on Bengaluru. This has to
+ *    live here rather than in the pages that resolve the city, because a Server Component cannot
+ *    set a cookie during render. Read by `lib/defaultCity.ts`; see
+ *    docs/plans/visitor-location-default-city.md.
  */
 export function middleware(request: NextRequest, event: NextFetchEvent): NextResponse {
   const hasAcquisitionCookie = request.cookies.has(ACQUISITION_COOKIE);
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
-  if (hasAcquisitionCookie && hasSessionCookie) return NextResponse.next();
+  const citySlug = resolveCitySlug(request);
+  // Only write when it actually changes, so the steady state stays a bare NextResponse.next()
+  // with no Set-Cookie on every page view.
+  const cityChanged = citySlug !== undefined && request.cookies.get(CITY_COOKIE)?.value !== citySlug;
+  if (hasAcquisitionCookie && hasSessionCookie && !cityChanged) return NextResponse.next();
 
   const resolved = resolveSource(request);
   const response = NextResponse.next();
+
+  if (cityChanged) {
+    response.cookies.set(CITY_COOKIE, citySlug, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: CITY_COOKIE_MAX_AGE_SECONDS,
+    });
+  }
 
   if (!hasAcquisitionCookie) {
     response.cookies.set(ACQUISITION_COOKIE, JSON.stringify(resolved), {

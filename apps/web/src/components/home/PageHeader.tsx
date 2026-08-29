@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { fetchCities } from "@/lib/bff";
+import { resolveDefaultCity } from "@/lib/defaultCity";
 import { sessionHeaderName } from "@/lib/session";
 import { Header } from "./Header";
 
@@ -17,7 +18,10 @@ export async function PageHeader({
 } = {}) {
   const [session, allCities] = await Promise.all([auth(), fetchCities(undefined, true)]);
   const popularCities = allCities.filter((c) => c.isPopular);
-  const cityName = cityNameOverride ?? popularCities.find((c) => c.name === "Bengaluru")?.name ?? popularCities[0]?.name ?? "your city";
+  // Shared with the homepage: the city this visitor last looked at, else Bengaluru. Without it
+  // these pages announced "Showing ads near Bengaluru" to someone who had been browsing Chennai
+  // one click earlier.
+  const cityName = cityNameOverride ?? (await resolveDefaultCity(allCities))?.name ?? "your city";
 
   return (
     <Header cityName={cityName} popularCities={popularCities} searchQuery="" activeCategory="buy" userName={sessionHeaderName(session)} />

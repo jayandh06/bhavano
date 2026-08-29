@@ -10,6 +10,7 @@ import { AreaFilter } from "@/components/home/AreaFilter";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { Pagination } from "@/components/home/Pagination";
 import { Footer } from "@/components/home/Footer";
+import { resolveDefaultCity } from "@/lib/defaultCity";
 import { resolvePopularSearches } from "@/lib/popularSearches";
 import { HOME_TABS } from "@/lib/homeCategories";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
@@ -76,8 +77,10 @@ export default async function HomePage({
   const resolvedCity =
     allCities.find((c) => slugify(c.name) === cityParam) ??
     allCities.find((c) => c.id === cityParam) ??
-    popularCities.find((c) => c.name === "Bengaluru") ??
-    popularCities[0];
+    // Falls back to whichever city this visitor last looked at, then Bengaluru. An explicit
+    // `?city=` above always wins, so a shared link opens on the city it names rather than on the
+    // recipient's own remembered one.
+    (await resolveDefaultCity(allCities));
 
   const offset = (page - 1) * PAGE_SIZE;
   const listingsPage = await fetchListings(

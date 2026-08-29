@@ -40,7 +40,12 @@ Each step only runs if the one above produced nothing.
 
 ---
 
-## Step 1 — Remember the chosen city (ship this on its own)
+## Step 1 — Remember the chosen city (ship this on its own) — **DONE**
+
+Implemented as described below: `middleware.ts` writes `bhavano_city`, `lib/defaultCity.ts`
+reads and validates it, and both hardcoded "Bengaluru" fallbacks now go through it. Step 2 is
+still open.
+
 
 No guessing, no new dependency, no privacy question, and it removes most of the annoyance.
 
