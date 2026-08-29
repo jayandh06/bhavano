@@ -7,9 +7,27 @@ module.exports = {
     // the Play and App Store consoles must read "Finfolia Technologies LLP" to match — that's a
     // console setting, not config. See docs/plans/finfolia-entity-disclosure.md.
     name: "Bhavano",
-    slug: "mobile",
-    scheme: "bhavano",
+    // Must match the slug of the EAS project named by extra.eas.projectId below, or eas-cli
+    // refuses to build. The EAS project is "bhavano" under the finfolia-technologies-llp account.
+    slug: "bhavano",
+    owner: "finfolia-technologies-llp",
+    // "bhavano" is the app's own deep-link scheme. The second entry is the reversed form of the
+    // iOS Google OAuth client ID: Google redirects there after sign-in, and iOS only hands the
+    // callback to this app if the scheme is declared here. It is a public identifier, not a
+    // secret — it ships inside every iOS app that uses Google sign-in. Changing the OAuth client
+    // means changing this string and rebuilding, since it lands in Info.plist at build time.
+    scheme: ["bhavano", "com.googleusercontent.apps.336986668125-vs9rfncotlefvtc9e7rsl15r5lhmjfht"],
     version: "1.0.0",
+    // EAS Update, added by `eas update:configure` (which can only print these for a dynamic
+    // config, not write them). The "appVersion" policy ties an update to the `version` above, so
+    // a binary only accepts updates built against the same 1.0.0 — bumping version cuts older
+    // builds off, which is what you want when a release contains native changes.
+    runtimeVersion: {
+      policy: "appVersion",
+    },
+    updates: {
+      url: "https://u.expo.dev/1d49dddb-076f-426a-a702-4ebfedaed527",
+    },
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -71,7 +89,7 @@ module.exports = {
     extra: {
       router: {},
       eas: {
-        projectId: "cf1073e1-7795-4ed3-9ee1-7db540e38a49",
+        projectId: "1d49dddb-076f-426a-a702-4ebfedaed527",
       },
     },
   },

@@ -17,7 +17,21 @@ type PhoneStep = "idle" | "otpSent";
 
 export default function AccountScreen() {
   const { colors } = useAppTheme();
-  const { requireLogin, isLoggedIn, accessToken, profile, refreshProfile } = useHomeSheets();
+  const { requireLogin, logout, isLoggedIn, accessToken, profile, refreshProfile } = useHomeSheets();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  /** No confirmation dialog: logging back in costs one OTP, so a mis-tap is cheap to undo, and the
+   * button sits well away from Save. Router.replace("/") lands on Home rather than leaving the
+   * user on a signed-out Account screen, which would immediately re-prompt for login. */
+  async function onLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+      router.replace("/");
+    } finally {
+      setLoggingOut(false);
+    }
+  }
   const router = useRouter();
 
   useFocusEffect(
@@ -50,6 +64,8 @@ export default function AccountScreen() {
       profile={profile}
       refreshProfile={refreshProfile}
       onOpenMessages={() => router.push("/messages")}
+      onLogout={onLogout}
+      loggingOut={loggingOut}
     />
   );
 }
@@ -59,11 +75,15 @@ function ProfileFields({
   profile,
   refreshProfile,
   onOpenMessages,
+  onLogout,
+  loggingOut,
 }: {
   accessToken: string;
   profile: UserProfileDto;
   refreshProfile: () => Promise<void>;
   onOpenMessages: () => void;
+  onLogout: () => void;
+  loggingOut: boolean;
 }) {
   const { colors } = useAppTheme();
 
@@ -351,6 +371,18 @@ function ProfileFields({
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>{saving ? "Saving…" : "Save changes"}</Text>
       </Pressable>
 
+      {/* Below Save, above the legal footer: reachable but not adjacent to the primary action,
+          so it can't be hit by mistake while editing the profile. */}
+      <Pressable
+        onPress={onLogout}
+        disabled={loggingOut}
+        style={[styles.logoutButton, { borderColor: colors.border, opacity: loggingOut ? 0.6 : 1 }]}
+      >
+        <Text style={{ color: "#c0554b", fontWeight: "700", fontSize: 14 }}>
+          {loggingOut ? "Logging out…" : "Log out"}
+        </Text>
+      </Pressable>
+
       <LegalFooter />
     </ScrollView>
   );
@@ -368,5 +400,6 @@ const styles = StyleSheet.create({
   countryChip: { borderWidth: 1, borderRadius: 9, paddingVertical: 12, paddingHorizontal: 14, justifyContent: "center" },
   secondaryButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 11, paddingHorizontal: 16, alignItems: "center", alignSelf: "flex-start" },
   primaryButton: { borderRadius: 8, paddingVertical: 13, alignItems: "center", marginTop: 24 },
+  logoutButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 13, alignItems: "center", marginTop: 32 },
   errorText: { color: "#c0554b", fontSize: 13, marginBottom: 8 },
 });

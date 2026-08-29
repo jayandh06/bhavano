@@ -210,6 +210,14 @@ export function loginWithGoogle(
   return bffFetch("/auth/google", { method: "POST", body: JSON.stringify({ idToken }) });
 }
 
+/** Purely a signal for the BFF to log — JWTs are stateless and short-lived, so there is no
+ * server-side session to end (see the endpoint's own note in apps/bff auth.controller.ts). The
+ * logout that matters happens on the device, by deleting the stored token. Callers should treat a
+ * failure here as non-fatal and sign out locally regardless. */
+export function logout(accessToken: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/auth/logout", { method: "POST" });
+}
+
 export function fetchProfile(accessToken: string): Promise<UserProfileDto> {
   return authedBffFetch(accessToken, "/users/me");
 }

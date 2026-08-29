@@ -9,13 +9,21 @@ import {
   type ReactNode,
 } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
+import { BottomSheetModal, BottomSheetScrollView, BottomSheetView } from "@gorhom/bottom-sheet";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
 import type { City, UserProfileDto } from "@bhavano/types";
 import { getCityIcon } from "@bhavano/types/cityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
-import { fetchCities, fetchProfile, loginWithGoogle, reverseGeocode, sendOtp, verifyOtp } from "../lib/bffClient";
+import {
+  fetchCities,
+  fetchProfile,
+  loginWithGoogle,
+  logout as bffLogout,
+  reverseGeocode,
+  sendOtp,
+  verifyOtp,
+} from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
 
 const TOKEN_KEY = "bhavano.accessToken";
@@ -36,6 +44,8 @@ interface HomeSheetsContextValue {
   setCity: (city: City) => void;
   openLocationPicker: () => void;
   requireLogin: () => void;
+  /** Clears the session on this device. Safe to await — never rejects, even offline. */
+  logout: () => Promise<void>;
   isLoggedIn: boolean;
   accessToken: string | null;
   userId: string | null;
@@ -178,6 +188,19 @@ export function HomeSheetsProvider({
     setTimeout(() => setShowToast(false), 2200);
   }
 
+  /** Signs the user out on this device. The BFF call is best-effort and deliberately not awaited
+   * for correctness — it only gives the server a logout event to log, since JWTs are stateless and
+   * cannot be revoked. What actually ends the session is deleting the stored token, so that is
+   * done unconditionally: a network failure must never leave someone stuck logged in. */
+  const logout = useCallback(async () => {
+    const token = accessToken;
+    setIsLoggedIn(false);
+    setAccessToken(null);
+    setProfile(null);
+    if (Platform.OS !== "web") await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+    if (token) await bffLogout(token).catch(() => {});
+  }, [accessToken]);
+
   async function handleSendOtp() {
     setPending(true);
     setError(null);
@@ -222,25 +245,28 @@ export function HomeSheetsProvider({
   const userId = useMemo(() => (accessToken ? decodeUserId(accessToken) : null), [accessToken]);
 
   const value = useMemo(
-    () => ({ city, setCity, openLocationPicker, requireLogin, isLoggedIn, accessToken, userId, profile, refreshProfile }),
-    [city, setCity, openLocationPicker, requireLogin, isLoggedIn, accessToken, userId, profile, refreshProfile],
+    () => ({ city, setCity, openLocationPicker, requireLogin, logout, isLoggedIn, accessToken, userId, profile, refreshProfile }),
+    [city, setCity, openLocationPicker, requireLogin, logout, isLoggedIn, accessToken, userId, profile, refreshProfile],
   );
 
   return (
     <HomeSheetsContext.Provider value={value}>
       {children}
 
-      {profile && (!profile.email || !profile.phone) && (
-        <View style={[styles.completionBanner, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-          <Text style={{ color: colors.textSoft, fontSize: 12.5, textAlign: "center" }}>
-            Add your {[!profile.email && "email", !profile.phone && "phone number"].filter(Boolean).join(" and ")} to
-            your profile so we can keep you updated.
-          </Text>
-        </View>
-      )}
+      {/* The profile-completion nudge used to live here as a position:absolute overlay pinned to
+          the top of every screen, where it covered the app's own header and could not be
+          dismissed. It now renders inline at the top of the home list — see
+          src/components/home/ProfileCompletionBanner.tsx — so it pushes content down instead of
+          occluding it, and scrolls away. `profile` stays on this context because the banner and
+          the Account screen both read it. */}
 
       <BottomSheetModal ref={locationSheetRef} snapPoints={["70%"]} backgroundStyle={{ backgroundColor: colors.surface }}>
-        <BottomSheetView style={styles.sheetContent}>
+        {/* Scrollable, not a plain BottomSheetView: "Show more cities" replaces a short popular
+            list with every city in the country, which overflows the 70% sheet. In a plain View the
+            overflow is simply unreachable. BottomSheetScrollView (rather than RN's ScrollView)
+            coordinates with the sheet's own pan gesture, so dragging the list scrolls it and
+            dragging past the top dismisses the sheet, instead of the two fighting each other. */}
+        <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
           <Text style={[styles.sheetTitle, { color: colors.text }]}>Choose your location</Text>
           <Pressable
             onPress={useAutoLocation}
@@ -301,7 +327,7 @@ export function HomeSheetsProvider({
               </Text>
             </Pressable>
           )}
-        </BottomSheetView>
+        </BottomSheetScrollView>
       </BottomSheetModal>
 
       <BottomSheetModal ref={loginSheetRef} snapPoints={["55%"]} backgroundStyle={{ backgroundColor: colors.surface }}>
@@ -422,14 +448,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 22,
     alignItems: "center",
-  },
-  completionBanner: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    borderBottomWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
   },
 });

@@ -1,15 +1,89 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import type { Area, City, ListingCategory, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
-import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import {
+  CATEGORY_FIELD_CONFIG,
+  fieldIsVisible,
+  groupFieldsBySection,
+  pruneHiddenAttributes,
+} from "@bhavano/types/categoryFields";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createListing, fetchAreas, uploadPhoto } from "../../lib/bffClient";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
+
+type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
+
+/** Short two- or three-option fields stay inline as a segmented control — seeing every choice at
+ * once is worth the row it costs. Anything longer (facing has eight) wraps chips over three rows
+ * and pushes the rest of the form off screen, so it collapses to a single row that opens a picker
+ * sheet instead. */
+function isSegmented(field: FieldConfig): boolean {
+  return (
+    field.type === "select" &&
+    !!field.options &&
+    field.options.length <= 3 &&
+    field.options.every((o) => o.label.length <= 12)
+  );
+}
+
+/** Every quantity field in the config is named `somethingCount` — balconies, parking, and each
+ * furnishing item. They are small whole numbers, so a stepper beats a keyboard: no keypad, no way
+ * to type "abc" or a negative, and the value is visible without tapping in. */
+function isCounter(field: FieldConfig): boolean {
+  return field.type === "number" && field.key.endsWith("Count");
+}
+
+/** Upper bound from the field's own `maxDigits` (the config already carries it), defaulting to two
+ * digits: nobody lists 100 balconies, and an unbounded field invites a typo that ships. */
+function maxCountFor(field: FieldConfig): number {
+  return 10 ** (field.maxDigits ?? 2) - 1;
+}
+
+/** Counters start at 0 and yes/no toggles at "no", so the form opens in a stated, submittable
+ * state instead of a page of blanks the seller must confirm one by one. Only fields the seller
+ * has not touched are seeded — selectCategory clears attributes first, so this never overwrites. */
+function defaultAttributesFor(category: ListingCategory): Record<string, string | string[]> {
+  const defaults: Record<string, string | string[]> = {};
+  for (const field of CATEGORY_FIELD_CONFIG[category]) {
+    if (isCounter(field)) defaults[field.key] = "0";
+    // Multi-selects open on their first option (Family, for preferred tenant type) rather than
+    // empty — the common answer, and it stops a required multi-select blocking submission before
+    // the seller has looked at it. Still fully deselectable.
+    else if (field.type === "multi-select" && field.options?.[0]) defaults[field.key] = [field.options[0].value];
+    else if (field.options?.some((o) => o.value === "no") && field.options.length === 2) {
+      defaults[field.key] = "no";
+    }
+  }
+  return defaults;
+}
+
+/** Keyboards can be bypassed — paste, autofill, and hardware keyboards all reach a number-pad
+ * field — so digits are enforced on the value, not just requested via keyboardType. Mirrors the
+ * web wizard's sanitizeNonNegative + clampDigits. */
+function digitsOnly(value: string): string {
+  return value.replace(/[^0-9]/g, "");
+}
+
+/** Truncates to the field's own `maxDigits`, so a percent field can't take a third digit. */
+function clampDigits(value: string, maxDigits: number | undefined): string {
+  return maxDigits === undefined ? value : value.slice(0, maxDigits);
+}
+
+/** A price is what the listing is for; 0 or blank is not a listing. Kept as its own predicate so
+ * the Review gate and the inline message can never disagree about what counts as valid. */
+function priceIsValid(price: string): boolean {
+  return Number(price) > 0;
+}
+
+/** Wide enough for any realistic rupee amount, narrow enough that a stuck key can't produce a
+ * number the BFF then has to reject. */
+const MAX_PRICE_DIGITS = 11;
 
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
@@ -55,6 +129,16 @@ export function PostAdWizard({
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
 
   const [cityId, setCityId] = useState(defaultCityId ?? cities[0]?.id ?? "");
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
+  const optionSheetRef = useRef<BottomSheetModal>(null);
+  const [openField, setOpenField] = useState<FieldConfig | null>(null);
+  /** Cities the map pin resolved that aren't in the `cities` prop. Kept separate rather than
+   * copying the prop into state, so a later prop update can't be silently shadowed. */
+  const [pinResolvedCities, setPinResolvedCities] = useState<City[]>([]);
+  const cityOptions = useMemo(
+    () => [...cities, ...pinResolvedCities.filter((p) => !cities.some((c) => c.id === p.id))],
+    [cities, pinResolvedCities],
+  );
   const [price, setPrice] = useState("");
   const [priceQualifier, setPriceQualifier] = useState("");
   const [title, setTitle] = useState("");
@@ -64,14 +148,16 @@ export function PostAdWizard({
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [specs, setSpecs] = useState("");
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
-  const [attributes, setAttributes] = useState<Record<string, string>>({});
+  // string[] for multi-select fields (preferredTenantTypes); the attributes column is JSONB and
+  // typed Record<string, unknown> on the wire, so an array round-trips as-is.
+  const [attributes, setAttributes] = useState<Record<string, string | string[]>>({});
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function selectCategory(next: ListingCategory) {
     setCategory(next);
-    setAttributes({});
+    setAttributes(defaultAttributesFor(next));
     const postable = POSTABLE_TRANSACTION_TYPES[next];
     if (postable.length === 1) {
       setTransactionType(postable[0]);
@@ -149,25 +235,92 @@ export function PostAdWizard({
     setAreaSuggestions([]);
   }
 
+  function countOf(key: string): number {
+    const raw = attributes[key];
+    return typeof raw === "string" ? Number(raw) || 0 : 0;
+  }
+
+  function bumpCount(field: FieldConfig, delta: number) {
+    setAttributes((prev) => {
+      const current = typeof prev[field.key] === "string" ? Number(prev[field.key]) || 0 : 0;
+      const next = Math.min(maxCountFor(field), Math.max(0, current + delta));
+      return { ...prev, [field.key]: String(next) };
+    });
+  }
+
+  function toggleMulti(key: string, value: string) {
+    setAttributes((prev) => {
+      const current = Array.isArray(prev[key]) ? (prev[key] as string[]) : [];
+      return {
+        ...prev,
+        [key]: current.includes(value) ? current.filter((v) => v !== value) : [...current, value],
+      };
+    });
+  }
+
   /** Google's City/Area resolution is a suggestion, never auto-locked — the user can still
    * change the City chip / Area field manually after the map pre-fills them. */
   function onPinChange(nextPin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) {
     setPin(nextPin);
     if (!suggestion) return;
-    if (suggestion.cityId) onCityChange(suggestion.cityId);
-    if (suggestion.areaId && suggestion.resolvedLocality) {
-      setAreaId(suggestion.areaId);
+    if (suggestion.cityId) {
+      // The pin can resolve a city outside the `cities` prop (it holds popular cities only), in
+      // which case selecting its id used to leave nothing selected in the picker and a blank city
+      // on the review step. Carry it alongside, as the web wizard does with its own city list.
+      if (!cities.some((c) => c.id === suggestion.cityId)) {
+        setPinResolvedCities((prev) =>
+          prev.some((c) => c.id === suggestion.cityId)
+            ? prev
+            : [
+                ...prev,
+                {
+                  id: suggestion.cityId!,
+                  name: suggestion.cityName ?? suggestion.resolvedLocality,
+                  state: "",
+                  lat: nextPin.lat,
+                  lng: nextPin.lng,
+                  isPopular: false,
+                },
+              ],
+        );
+      }
+      onCityChange(suggestion.cityId);
+    }
+    // `resolvedLocality` always comes back; `areaId` only when Google's locality matched an
+    // existing Bhavano Area. Filling the text either way is the point of the pin — gating both on
+    // areaId left the field blank for every locality we don't have a row for yet, which reads as
+    // "the map did nothing". Without a match the id stays null, so submission sends `areaName` and
+    // the area gets created, exactly as typing it by hand would.
+    if (suggestion.resolvedLocality) {
+      setAreaId(suggestion.areaId ?? null);
       setAreaQuery(suggestion.resolvedLocality);
       setAreaSuggestions([]);
     }
   }
 
+  /** Mirrors the desktop wizard: a field appears only when it applies to this transaction type
+   * and its `dependsOn` gate is satisfied. Without this mobile showed both brokerage amount
+   * fields at once — the ₹ one is rent/lease-only, the % one sell-only — and showed them even
+   * when "Has brokerage fee" was No. */
+  const visibleFields =
+    category && transactionType
+      ? CATEGORY_FIELD_CONFIG[category].filter((field) => fieldIsVisible(field, transactionType, attributes))
+      : [];
+
+  // Only currently-visible required fields block submission — one hidden behind an unmet gate
+  // can't be filled in anyway.
   const requiredAttributesFilled = category
-    ? CATEGORY_FIELD_CONFIG[category].every((field) => !field.required || (attributes[field.key] ?? "").length > 0)
+    ? visibleFields.every((field) => {
+        if (!field.required) return true;
+        const value = attributes[field.key];
+        // An empty multi-select is [] rather than "", and [].length works the same — but a bare
+        // `?? ""` would have turned the array into a string and passed on "family,company".
+        return Array.isArray(value) ? value.length > 0 : (value ?? "").length > 0;
+      })
     : true;
 
   const detailsValid =
-    price.length > 0 &&
+    priceIsValid(price) &&
     title.length > 0 &&
     areaQuery.trim().length > 0 &&
     !!cityId &&
@@ -202,7 +355,7 @@ export function PostAdWizard({
             .map((s) => s.trim())
             .filter(Boolean),
           photos: uploadedPhotos,
-          attributes,
+          attributes: pruneHiddenAttributes(category, transactionType, attributes),
           lat: pin?.lat,
           lng: pin?.lng,
         },
@@ -218,6 +371,7 @@ export function PostAdWizard({
   }
 
   return (
+    <>
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={styles.stepper}>
         {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
@@ -262,13 +416,18 @@ export function PostAdWizard({
 
       {step === "details" && category && transactionType && (
         <View style={{ gap: 4 }}>
-          <Text style={[styles.label, { color: colors.textSoft }]}>Price (₹)</Text>
+          <Text style={[styles.label, { color: colors.textSoft }]}>Price (₹) *</Text>
           <TextInput
             value={price}
-            onChangeText={setPrice}
+            onChangeText={(v) => setPrice(digitsOnly(v).slice(0, MAX_PRICE_DIGITS))}
             keyboardType="number-pad"
+            placeholder="e.g. 25000"
+            placeholderTextColor={colors.muted}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
+          {price.length > 0 && !priceIsValid(price) && (
+            <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
+          )}
 
           <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier *</Text>
           <View style={styles.chipRow}>
@@ -294,22 +453,41 @@ export function PostAdWizard({
             Pin your exact location (optional — helps buyers find you, and auto-fills City/Area below)
           </Text>
           <LocationMapPicker
-            defaultCenter={cities.find((c) => c.id === cityId) ?? cities[0] ?? { lat: 20.5937, lng: 78.9629 }}
+            defaultCenter={cityOptions.find((c) => c.id === cityId) ?? cities[0] ?? { lat: 20.5937, lng: 78.9629 }}
             onPinChange={onPinChange}
           />
 
           <Text style={[styles.label, { color: colors.textSoft }]}>City</Text>
-          <View style={styles.chipRow}>
-            {cities.map((c) => (
-              <Pressable
-                key={c.id}
-                onPress={() => onCityChange(c.id)}
-                style={[styles.chip, { borderColor: colors.border, backgroundColor: cityId === c.id ? colors.surfaceAlt : "transparent" }]}
-              >
-                <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{c.name}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {/* Collapsed by default. Rendering a chip for every city pushed the rest of the form off
+              screen and, worse, hid the fact that dropping a map pin had already chosen one —
+              the selection was a subtly different chip background somewhere in a wall of chips. */}
+          <Pressable
+            onPress={() => setCityPickerOpen((open) => !open)}
+            style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          >
+            <Text style={{ color: colors.text, fontSize: 14, flex: 1 }}>
+              {cityOptions.find((c) => c.id === cityId)?.name ?? "Select a city"}
+            </Text>
+            <Text style={{ color: colors.green, fontSize: 12.5, fontWeight: "700" }}>
+              {cityPickerOpen ? "Done" : "Change"}
+            </Text>
+          </Pressable>
+          {cityPickerOpen && (
+            <View style={styles.chipRow}>
+              {cityOptions.map((c) => (
+                <Pressable
+                  key={c.id}
+                  onPress={() => {
+                    onCityChange(c.id);
+                    setCityPickerOpen(false);
+                  }}
+                  style={[styles.chip, { borderColor: colors.border, backgroundColor: cityId === c.id ? colors.surfaceAlt : "transparent" }]}
+                >
+                  <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{c.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           <Text style={[styles.label, { color: colors.textSoft }]}>Area / locality</Text>
           <TextInput
@@ -347,31 +525,110 @@ export function PostAdWizard({
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
               {CATEGORIES.find((c) => c.value === category)?.label} details
             </Text>
-            {CATEGORY_FIELD_CONFIG[category].map((field) => (
-              <View key={field.key}>
-                <Text style={[styles.label, { color: colors.textSoft }]}>
+            {/* Grouped into the config's own sections (pricing, preferences, …) in SECTION_ORDER,
+                the same helper the desktop wizard uses — one flat run of twenty-odd controls gave
+                the seller no sense of where they were or how much was left. */}
+            {groupFieldsBySection(visibleFields).map((group) => (
+            <View key={group.section}>
+            <Text
+              style={[
+                styles.sectionHeading,
+                { color: colors.green, backgroundColor: colors.surfaceAlt, borderLeftColor: colors.green },
+              ]}
+            >
+              {group.label}
+            </Text>
+            <View style={styles.attrGrid}>
+            {group.fields.map((field) => {
+              const segmented = isSegmented(field);
+              const counter = isCounter(field);
+              const selectedOption = field.options?.find((o) => o.value === attributes[field.key]);
+              const chosen = Array.isArray(attributes[field.key]) ? (attributes[field.key] as string[]) : [];
+              const summaryLabel =
+                field.type === "multi-select"
+                  ? field.options
+                      ?.filter((o) => chosen.includes(o.value))
+                      .map((o) => o.label)
+                      .join(", ") || null
+                  : (selectedOption?.label ?? null);
+
+              return (
+              // Two per row: these are mostly one-word labels over a small control, so a full-width
+              // row wasted most of its width and made the section three screens long.
+              <View key={field.key} style={styles.attrCell}>
+                <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
                   {field.label}
                   {field.required ? " *" : ""}
                 </Text>
-                {field.type === "select" ? (
-                  <View style={styles.chipRow}>
-                    {field.options?.map((opt) => (
-                      <Pressable
-                        key={opt.value}
-                        onPress={() => setAttributes((prev) => ({ ...prev, [field.key]: opt.value }))}
-                        style={[
-                          styles.chip,
-                          { borderColor: colors.border, backgroundColor: attributes[field.key] === opt.value ? colors.surfaceAlt : "transparent" },
-                        ]}
-                      >
-                        <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{opt.label}</Text>
-                      </Pressable>
-                    ))}
+                {counter ? (
+                  <View style={[styles.counter, { borderColor: colors.border }]}>
+                    <Pressable
+                      onPress={() => bumpCount(field, -1)}
+                      hitSlop={8}
+                      style={[styles.counterButton, { borderRightWidth: 1, borderRightColor: colors.border }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>−</Text>
+                    </Pressable>
+                    <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700", flex: 1, textAlign: "center" }}>
+                      {countOf(field.key)}
+                    </Text>
+                    <Pressable
+                      onPress={() => bumpCount(field, 1)}
+                      hitSlop={8}
+                      style={[styles.counterButton, { borderLeftWidth: 1, borderLeftColor: colors.border }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>+</Text>
+                    </Pressable>
                   </View>
+                ) : segmented ? (
+                  <View style={[styles.segmented, { borderColor: colors.border }]}>
+                    {field.options?.map((opt, i) => {
+                      const selected = attributes[field.key] === opt.value;
+                      return (
+                        <Pressable
+                          key={opt.value}
+                          onPress={() => setAttributes((prev) => ({ ...prev, [field.key]: opt.value }))}
+                          style={[
+                            styles.segment,
+                            i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border },
+                            selected && { backgroundColor: colors.green },
+                          ]}
+                        >
+                          <Text
+                            style={{ color: selected ? colors.onGreen : colors.text, fontSize: 12.5, fontWeight: "700" }}
+                            numberOfLines={1}
+                          >
+                            {opt.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : field.type === "multi-select" || field.type === "select" ? (
+                  <Pressable
+                    onPress={() => {
+                      setOpenField(field);
+                      optionSheetRef.current?.present();
+                    }}
+                    style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                  >
+                    <Text
+                      style={{ color: summaryLabel ? colors.text : colors.muted, fontSize: 13.5, flex: 1 }}
+                      numberOfLines={1}
+                    >
+                      {summaryLabel ?? "Select…"}
+                    </Text>
+                    <Text style={{ color: colors.muted, fontSize: 13 }}>▾</Text>
+                  </Pressable>
                 ) : (
                   <TextInput
-                    value={attributes[field.key] ?? ""}
-                    onChangeText={(v) => setAttributes((prev) => ({ ...prev, [field.key]: v }))}
+                    value={typeof attributes[field.key] === "string" ? (attributes[field.key] as string) : ""}
+                    onChangeText={(v) =>
+                      setAttributes((prev) => ({
+                        ...prev,
+                        [field.key]: field.type === "number" ? clampDigits(digitsOnly(v), field.maxDigits) : v,
+                      }))
+                    }
                     keyboardType={field.type === "number" ? "number-pad" : "default"}
                     placeholder={field.placeholder}
                     placeholderTextColor={colors.muted}
@@ -379,6 +636,10 @@ export function PostAdWizard({
                   />
                 )}
               </View>
+              );
+            })}
+            </View>
+            </View>
             ))}
           </View>
 
@@ -430,7 +691,7 @@ export function PostAdWizard({
             </Text>
             <Text style={{ color: colors.text, marginBottom: 6 }}>{title}</Text>
             <Text style={{ color: colors.muted, marginBottom: 6 }}>
-              {areaQuery}, {cities.find((c) => c.id === cityId)?.name}
+              {areaQuery}, {cityOptions.find((c) => c.id === cityId)?.name}
             </Text>
             <Text style={{ color: colors.green, fontWeight: "700" }}>
               ₹{price} {priceQualifier}
@@ -452,6 +713,55 @@ export function PostAdWizard({
         </View>
       )}
     </ScrollView>
+
+    {/* One sheet reused by every collapsed select, driven by `openField` — a modal per field would
+        mount a dozen sheets for a form the user mostly scrolls past. Sits outside the ScrollView
+        so it isn't clipped by it. */}
+    <BottomSheetModal
+      ref={optionSheetRef}
+      snapPoints={["50%"]}
+      backgroundStyle={{ backgroundColor: colors.surface }}
+      onDismiss={() => setOpenField(null)}
+    >
+      <BottomSheetView style={styles.optionSheet}>
+        <Text style={[styles.optionSheetTitle, { color: colors.text }]}>{openField?.label}</Text>
+        {openField?.options?.map((opt) => {
+          const multi = openField.type === "multi-select";
+          const current = attributes[openField.key];
+          const selected = multi
+            ? Array.isArray(current) && current.includes(opt.value)
+            : current === opt.value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => {
+                if (multi) {
+                  // Stays open: picking one tenant type usually means picking another, and a sheet
+                  // that closes on every tap would have to be reopened for each.
+                  toggleMulti(openField.key, opt.value);
+                } else {
+                  setAttributes((prev) => ({ ...prev, [openField.key]: opt.value }));
+                  optionSheetRef.current?.dismiss();
+                }
+              }}
+              style={styles.optionRow}
+            >
+              <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{opt.label}</Text>
+              {selected && <Text style={{ color: colors.green, fontSize: 15, fontWeight: "700" }}>✓</Text>}
+            </Pressable>
+          );
+        })}
+        {openField?.type === "multi-select" && (
+          <Pressable
+            onPress={() => optionSheetRef.current?.dismiss()}
+            style={[styles.doneButton, { backgroundColor: colors.green }]}
+          >
+            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Done</Text>
+          </Pressable>
+        )}
+      </BottomSheetView>
+    </BottomSheetModal>
+    </>
   );
 }
 
@@ -460,6 +770,43 @@ const styles = StyleSheet.create({
   stepper: { flexDirection: "row", flexWrap: "wrap", marginBottom: 20 },
   label: { fontSize: 13, fontWeight: "700", marginTop: 14, marginBottom: 6 },
   optionButton: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1.5, borderRadius: 10, padding: 14 },
+  readOnlyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 9,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  sectionHeading: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    // A filled bar with a green rule down its left edge: at a glance the seller can see where one
+    // group of fields ends and the next begins while scrolling, which a plain small-caps line
+    // above a divider did not achieve.
+    borderLeftWidth: 3,
+    borderRadius: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginTop: 22,
+    marginBottom: 10,
+    overflow: "hidden",
+  },
+  fieldError: { color: "#c0554b", fontSize: 12, marginTop: 4 },
+  attrGrid: { flexDirection: "row", flexWrap: "wrap", columnGap: 12 },
+  attrCell: { width: "47%", flexGrow: 1 },
+  counter: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 9, overflow: "hidden" },
+  counterButton: { paddingVertical: 9, paddingHorizontal: 16, alignItems: "center", justifyContent: "center" },
+  optionSheet: { paddingHorizontal: 20, paddingBottom: 24 },
+  optionSheetTitle: { fontWeight: "700", fontSize: 17, marginBottom: 12 },
+  optionRow: { flexDirection: "row", alignItems: "center", paddingVertical: 13 },
+  doneButton: { borderRadius: 8, paddingVertical: 13, alignItems: "center", marginTop: 12 },
+  segmented: { flexDirection: "row", borderWidth: 1, borderRadius: 9, overflow: "hidden" },
+  segment: { flex: 1, paddingVertical: 10, paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { borderWidth: 1, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14 },
   input: { borderWidth: 1, borderRadius: 9, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14 },

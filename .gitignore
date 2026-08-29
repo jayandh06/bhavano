@@ -40,3 +40,11 @@ caddy-local-root.crt
 # Python (the gtm_*.py / *_audit.py admin scripts at the repo root)
 __pycache__/
 *.pyc
+
+# Agent skill packs installed by `npx skills add` (e.g. expo/skills). Machine-local and
+# regenerable, so not shared — but the real reason they must be ignored is that `.claude/skills`
+# is a tree of symlinks into `.agents/skills`, and EAS Build copies untracked-but-unignored files
+# into its clone, where Windows refuses to recreate a symlink. That fails the upload with
+# "EPERM: operation not permitted, symlink ...". Reinstall with `npx skills@latest add`.
+.agents/
+**/.claude/skills/

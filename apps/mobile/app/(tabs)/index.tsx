@@ -8,6 +8,7 @@ import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useAreasQuery, useInfiniteListingsQuery } from "../../src/lib/queries";
 import { CategoryChips } from "../../src/components/home/CategoryChips";
 import { ListingCard } from "../../src/components/home/ListingCard";
+import { ProfileCompletionBanner } from "../../src/components/home/ProfileCompletionBanner";
 import { FilterSheet, EMPTY_FILTERS, activeFilterCount, type AppliedFilters } from "../../src/components/home/FilterSheet";
 import { SortSheet, SORT_OPTIONS, type SortValue } from "../../src/components/home/SortSheet";
 import { HOME_TABS } from "../../src/components/home/categories";
@@ -18,7 +19,7 @@ const WIDE_SCREEN_BREAKPOINT = 700;
 
 export default function HomeScreen() {
   const { colors, theme, toggleTheme } = useAppTheme();
-  const { city, openLocationPicker, requireLogin, accessToken } = useHomeSheets();
+  const { city, openLocationPicker, requireLogin, accessToken, isLoggedIn } = useHomeSheets();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 2 : 1;
@@ -100,6 +101,7 @@ export default function HomeScreen() {
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         ListHeaderComponent={
           <View>
+            <ProfileCompletionBanner />
             <View style={styles.headerTop}>
               <View style={styles.brandRow}>
                 <Image source={require("../../assets/logo.png")} style={styles.logoMark} />
@@ -114,9 +116,14 @@ export default function HomeScreen() {
                 >
                   <Text style={{ fontSize: 14 }}>{theme === "dark" ? "☀️" : "🌙"}</Text>
                 </Pressable>
-                <Pressable onPress={requireLogin}>
-                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Login</Text>
-                </Pressable>
+                {/* Only an invitation to log in — once logged in there is nothing to offer here,
+                    since the Account tab already owns profile and sign-out. Leaving it visible
+                    made a logged-in user look logged out. */}
+                {!isLoggedIn && (
+                  <Pressable onPress={requireLogin}>
+                    <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Login</Text>
+                  </Pressable>
+                )}
               </View>
             </View>
 
@@ -196,10 +203,11 @@ export default function HomeScreen() {
       />
       <SortSheet ref={sortSheetRef} active={sort} onSelect={onSelectSort} />
 
-      {/* TEMP(auth-gate): posting is open without login for now. */}
-      <Pressable onPress={() => router.push("/post")} style={[styles.fab, { backgroundColor: colors.gold }]}>
-        <Text style={{ color: "#241C0C", fontWeight: "800", fontSize: 13 }}>＋ Post ad</Text>
-      </Pressable>
+      {/* The floating "＋ Post ad" button that used to sit here pushed to the same /post route as
+          the ＋ Post tab, and being position:absolute bottom:16 it floated directly above that
+          tab — two identical affordances stacked on each other, the upper one covering the last
+          row of listings. The tab bar is persistent across every screen, so it is the better
+          single home for the action. */}
     </View>
   );
 }
@@ -264,20 +272,4 @@ const styles = StyleSheet.create({
   singleItem: { paddingHorizontal: 16 },
   gridItem: { flex: 1 },
   columnWrapper: { gap: 12, paddingHorizontal: 16 },
-  fab: {
-    position: "absolute",
-    right: 16,
-    bottom: 16,
-    borderRadius: 28,
-    paddingVertical: 13,
-    paddingHorizontal: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.19,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 20,
-    elevation: 6,
-  },
 });
