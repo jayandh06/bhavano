@@ -1,6 +1,6 @@
 import { slugify } from "@bhavano/types/slugify";
 import type { ListingCardDto, ListingCategory } from "@bhavano/types";
-import { buildFacetSlug, transactionGroupFor, type TransactionGroup } from "./seoRoute";
+import { buildFacetSlug, categoryGroupsFor, transactionGroupFor, type TransactionGroup } from "./seoRoute";
 
 /** Canonical SEO path for a listing: /{city}/{locality}/{transactionGroup}/{category}/{slug}-{id}.
  * Built entirely from card/detail DTO fields already in hand — no extra fetch needed. Facet
@@ -27,7 +27,15 @@ export function buildBrowsePath(params: {
 }): string {
   const parts = params.cityName ? [slugify(params.cityName)] : [];
   if (params.cityName && params.areaName) parts.push(slugify(params.areaName));
-  if (params.transactionGroup) parts.push(params.transactionGroup);
+  // Drop the group when the category only has one — PG is rent-only, interiors and plots are
+  // sell-only, so "/rent-lease/pg" spends a segment saying something "/pg" already implies. The
+  // group stays wherever it genuinely narrows: houses, apartments, villas, commercial, furniture.
+  //
+  // This is presentation, not meaning: callers still pass the group they mean, and
+  // `parseSegments` still accepts the long form, so already-indexed URLs keep resolving and the
+  // catch-all's canonical redirect 301s them to the short one.
+  const groupIsRedundant = params.category !== undefined && categoryGroupsFor(params.category).length === 1;
+  if (params.transactionGroup && !groupIsRedundant) parts.push(params.transactionGroup);
   if (params.category) parts.push(params.category);
   if (params.category && params.facetValue !== undefined) parts.push(buildFacetSlug(params.category, params.facetValue));
   return `/${parts.join("/")}`;
