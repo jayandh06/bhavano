@@ -110,9 +110,12 @@ export function Header({
             </div>
             {/* One element at every size now, since it sits on this row in both layouts — only
               * the label shortens. */}
+            {/* Filled rather than outlined. It is the action the ad campaigns pay for and the
+              * only thing on this row that is not navigation, so it should not look like the
+              * city chip beside it. */}
             <Link
               href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
-              className="ml-auto sm:ml-0 shrink-0 border-[1.5px] border-green text-green rounded-lg px-3.5 sm:px-4 py-[9px] text-[13px] sm:text-sm font-bold whitespace-nowrap"
+              className="ml-auto sm:ml-0 shrink-0 bg-green text-on-green border-0 rounded-lg px-4 sm:px-5 py-[10px] text-[13px] sm:text-sm font-bold whitespace-nowrap shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
             >
               <span className="sm:hidden">Post ad</span>
               <span className="hidden sm:inline">+ Post free ad</span>

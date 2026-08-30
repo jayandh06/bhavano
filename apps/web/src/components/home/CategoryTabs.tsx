@@ -95,15 +95,20 @@ export function CategoryTabs({
     <div ref={containerRef} className="relative" onMouseLeave={() => setOpenTab(null)}>
       {/* Fade plus chevron rather than a bare arrow: the fade shows content continuing under it,
         * which is what tells you to scroll, and the chevron gives a mouse something to click.
-        * Rendered only on the side that actually has more. */}
+        * Rendered only on the side that actually has more.
+        *
+        * The chevron sits in a bordered circle rather than floating as a bare glyph — over a row
+        * of bordered tabs a loose character reads as punctuation, not a control. */}
       {overflow.left && (
         <button
           type="button"
           aria-label="Scroll categories left"
           onClick={() => scrollTabs(-200)}
-          className="absolute left-0 top-0 bottom-0 z-20 w-10 flex items-center justify-start pl-1 border-0 cursor-pointer text-text-soft text-lg bg-gradient-to-r from-bg via-bg to-transparent"
+          className="absolute left-0 top-0 bottom-0 z-20 w-14 flex items-center justify-start pl-0.5 border-0 cursor-pointer bg-gradient-to-r from-bg via-bg to-transparent"
         >
-          ‹
+          <span className="w-8 h-8 rounded-full bg-surface border border-border shadow-[0_1px_4px_rgba(0,0,0,0.18)] flex items-center justify-center text-text text-xl leading-none pb-0.5">
+            ‹
+          </span>
         </button>
       )}
       {overflow.right && (
@@ -111,9 +116,11 @@ export function CategoryTabs({
           type="button"
           aria-label="Scroll categories right"
           onClick={() => scrollTabs(200)}
-          className="absolute right-0 top-0 bottom-0 z-20 w-10 flex items-center justify-end pr-1 border-0 cursor-pointer text-text-soft text-lg bg-gradient-to-l from-bg via-bg to-transparent"
+          className="absolute right-0 top-0 bottom-0 z-20 w-14 flex items-center justify-end pr-0.5 border-0 cursor-pointer bg-gradient-to-l from-bg via-bg to-transparent"
         >
-          ›
+          <span className="w-8 h-8 rounded-full bg-surface border border-border shadow-[0_1px_4px_rgba(0,0,0,0.18)] flex items-center justify-center text-text text-xl leading-none pb-0.5">
+            ›
+          </span>
         </button>
       )}
       {/* scrollbar-none: the row is scrolled by these arrows or a swipe, and a visible bar under
