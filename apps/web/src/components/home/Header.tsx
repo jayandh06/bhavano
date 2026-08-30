@@ -43,9 +43,11 @@ export function Header({
           {/* Kept visible on every screen size — this is the earliest, most reliably-crawled
            * statement of what Bhavano is on any page, so it stays on even on phones instead of
            * being dropped for the utility links' benefit. */}
-          {/* Kept in the markup at every size so crawlers still read it, but truncated to one
-            * line on a phone rather than wrapping to three. */}
-          <span className="opacity-[0.85] truncate max-w-full">
+          {/* Hidden on phones, where it cost a whole line of a small screen to say something a
+            * visitor who just tapped an ad does not need. Deliberately `hidden` rather than
+            * removed: `display:none` still leaves it in the HTML, so it remains the earliest
+            * crawlable statement of what the site is, which is the only reason it exists. */}
+          <span className="hidden sm:block opacity-[0.85] truncate max-w-full">
             India&apos;s home for Buy · Rent · Villas · Plots · Coworking · PG · Commercial · Furniture
           </span>
           <div className="flex gap-5 opacity-[0.85]">
@@ -103,7 +105,7 @@ export function Header({
                 href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
                 className="sm:hidden shrink-0 border-[1.5px] border-green text-green rounded-lg px-3.5 py-[9px] text-[13px] font-bold whitespace-nowrap"
               >
-                + Post free ad
+                Post ad
               </Link>
             </div>
           </Suspense>
