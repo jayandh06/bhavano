@@ -4,6 +4,7 @@ import type { ListingDetailDto } from '@bhavano/types';
 import { Msg91Provider } from './providers/msg91.provider';
 import { WhatsappProvider } from './providers/whatsapp.provider';
 import { EmailProvider } from './providers/email.provider';
+import { renderEmail } from './emailLayout';
 
 interface NotifiableUser {
   email: string | null;
@@ -83,10 +84,17 @@ export class NotificationsService {
     phone: string | null;
   }): Promise<void> {
     const greeting = user.name ? `Hi ${user.name}` : 'Hi';
-    const emailBody =
-      `${greeting},\n\nWelcome to Bhavano! We're glad you're here.\n\n` +
-      `Browse verified listings, post your own ad, and message buyers/sellers directly — all free.\n\n` +
-      `— Team Bhavano`;
+    const site =
+      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const paragraphs = [
+      `${greeting}, and welcome to Bhavano.`,
+      'You can post ads free, browse listings across India, and message buyers and sellers directly — no brokerage, no middlemen.',
+      'Posting takes about two minutes, and your ad goes live straight away.',
+    ];
+    // The text/plain part is not an afterthought: spam filters read it, and some clients show it
+    // instead of the HTML. It carries the same call to action as a bare URL, since a link with
+    // nothing to hang an href on is useless there.
+    const emailBody = `${paragraphs.join('\n\n')}\n\nPost your first ad: ${site}/post\n\n— Team Bhavano`;
     const smsBody = `${greeting}, welcome to Bhavano! Browse verified listings or post your own ad — all free.`;
     const welcomeTemplate = this.config.get<string>(
       'WHATSAPP_WELCOME_TEMPLATE',
@@ -94,7 +102,20 @@ export class NotificationsService {
 
     await Promise.all([
       user.email
-        ? this.emailProvider.send(user.email, 'Welcome to Bhavano!', emailBody)
+        ? this.emailProvider.send(
+            user.email,
+            'Welcome to Bhavano!',
+            emailBody,
+            {
+              html: renderEmail({
+                heading: 'Welcome to Bhavano',
+                preheader:
+                  'Post ads free, browse listings across India, and message buyers and sellers directly.',
+                paragraphs,
+                button: { label: 'Post your first ad', url: `${site}/post` },
+              }),
+            },
+          )
         : Promise.resolve(),
       user.phone
         ? this.msg91.sendTransactionalSms(user.phone, smsBody)

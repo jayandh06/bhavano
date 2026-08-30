@@ -12,6 +12,10 @@ export interface SendEmailOptions {
    * support can just hit Reply and reach the reporter. */
   replyTo?: string;
   attachments?: EmailAttachment[];
+  /** Branded HTML alternative, built by `renderEmail`. The `text` argument stays mandatory and
+   * is sent alongside it: a message with no text/plain part scores worse with spam filters and
+   * is unreadable in clients that prefer text, so HTML is an addition, never a replacement. */
+  html?: string;
 }
 
 /**
@@ -86,6 +90,7 @@ export class EmailProvider {
         to,
         subject,
         text,
+        ...(options?.html && { html: options.html }),
         ...(options?.replyTo && { replyTo: options.replyTo }),
         ...(options?.attachments?.length && {
           attachments: options.attachments,
