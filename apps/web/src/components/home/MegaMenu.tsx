@@ -26,8 +26,8 @@ export function MegaMenu({
     // whichever tab is open — no gap between this and the tab row above it, since CategoryTabs
     // opens/closes this on hover and any gap becomes a dead zone where the pointer briefly hovers
     // neither element, firing mouseleave and slamming the menu shut before the user can reach it.
-    <div className="z-50 flex bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] min-w-[480px] max-h-[360px]">
-      <div className="w-[200px] border-r border-border overflow-y-auto p-1.5">
+    <div className="z-50 flex bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] w-[min(480px,calc(100vw-2rem))] sm:w-auto sm:min-w-[480px] max-h-[360px]">
+      <div className="w-[42%] sm:w-[200px] shrink-0 border-r border-border overflow-y-auto p-1.5">
         {tab.column1.map((item) => (
           <button
             key={item.value}
@@ -42,7 +42,7 @@ export function MegaMenu({
           </button>
         ))}
       </div>
-      <div className="flex-1 overflow-y-auto p-1.5 min-w-[260px]">
+      <div className="flex-1 overflow-y-auto p-1.5 sm:min-w-[260px]">
         {links.map((link) => (
           <Link
             key={link.label}

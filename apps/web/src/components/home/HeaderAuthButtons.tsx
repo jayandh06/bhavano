@@ -17,19 +17,31 @@ export function HeaderAuthButtons({ userName, cityName }: { userName?: string | 
   const cityQuery = cityName ? `?city=${slugify(cityName)}` : "";
 
   return (
-    <div className="flex items-center gap-3 shrink-0">
+    <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 ml-auto">
       {/* TEMP(auth-gate): posting is open without login for now. */}
+      {/* The one link worth its width on a phone: it is the conversion the ad campaigns pay
+        * for. Shortened rather than dropped. */}
       <Link
         href={`/post${cityQuery}`}
-        className="border-[1.5px] border-green text-green rounded-lg px-4 py-[9px] text-sm font-bold whitespace-nowrap"
+        className="border-[1.5px] border-green text-green rounded-lg px-3 sm:px-4 py-[7px] sm:py-[9px] text-[13px] sm:text-sm font-bold whitespace-nowrap"
       >
-        + Post free ad
+        <span className="sm:hidden">+ Post</span>
+        <span className="hidden sm:inline">+ Post free ad</span>
       </Link>
-      <Link href={`/favourites${cityQuery}`} className="text-text text-sm font-bold whitespace-nowrap">
-        ♡ Favourites
+      {/* Icon-only below sm — the glyphs carry the meaning and the words are what overflow. */}
+      <Link
+        href={`/favourites${cityQuery}`}
+        aria-label="Favourites"
+        className="text-text text-sm font-bold whitespace-nowrap"
+      >
+        ♡<span className="hidden sm:inline"> Favourites</span>
       </Link>
-      <Link href={`/messages${cityQuery}`} className="text-text text-sm font-bold whitespace-nowrap">
-        💬 Messages
+      <Link
+        href={`/messages${cityQuery}`}
+        aria-label="Messages"
+        className="text-text text-sm font-bold whitespace-nowrap"
+      >
+        💬<span className="hidden sm:inline"> Messages</span>
       </Link>
       {userName ? (
         <AccountMenu userName={userName} cityQuery={cityQuery} />
