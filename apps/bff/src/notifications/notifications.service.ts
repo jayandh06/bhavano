@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ListingDetailDto } from '@bhavano/types';
 import { Msg91Provider } from './providers/msg91.provider';
+import { WhatsappProvider } from './providers/whatsapp.provider';
 import { EmailProvider } from './providers/email.provider';
 
 interface NotifiableUser {
@@ -14,6 +15,7 @@ export class NotificationsService {
   constructor(
     private readonly emailProvider: EmailProvider,
     private readonly msg91: Msg91Provider,
+    private readonly whatsapp: WhatsappProvider,
     private readonly config: ConfigService,
   ) {}
 
@@ -86,6 +88,9 @@ export class NotificationsService {
       `Browse verified listings, post your own ad, and message buyers/sellers directly — all free.\n\n` +
       `— Team Bhavano`;
     const smsBody = `${greeting}, welcome to Bhavano! Browse verified listings or post your own ad — all free.`;
+    const welcomeTemplate = this.config.get<string>(
+      'WHATSAPP_WELCOME_TEMPLATE',
+    );
 
     await Promise.all([
       user.email
@@ -94,8 +99,10 @@ export class NotificationsService {
       user.phone
         ? this.msg91.sendTransactionalSms(user.phone, smsBody)
         : Promise.resolve(),
-      user.phone
-        ? this.msg91.sendWhatsapp(user.phone, smsBody)
+      // Meta's Cloud API directly (see WhatsappProvider). The template carries the greeting as
+      // its single variable, so the SMS body is reused rather than written twice.
+      user.phone && welcomeTemplate
+        ? this.whatsapp.sendTemplate(user.phone, welcomeTemplate, [greeting])
         : Promise.resolve(),
     ]);
   }

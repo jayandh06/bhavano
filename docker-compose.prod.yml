@@ -23,6 +23,14 @@ services:
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
       MSG91_TRANSACTIONAL_TEMPLATE_ID: ${MSG91_TRANSACTIONAL_TEMPLATE_ID}
+      # WhatsApp Business via Meta's Cloud API, direct rather than through MSG91. Unset disables
+      # WhatsApp entirely (sends log and skip) — see .env.production.example for which id goes in
+      # WHATSAPP_PHONE_NUMBER_ID, which is the easiest thing to get wrong here.
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}
+      WHATSAPP_WELCOME_TEMPLATE: ${WHATSAPP_WELCOME_TEMPLATE}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION}
+      WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE}
       # Photo storage — Cloudflare R2 (S3-compatible), served publicly through CDN_BASE_URL.
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
