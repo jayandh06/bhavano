@@ -9,10 +9,13 @@ import {
 } from "@bhavano/types/categoryFields";
 import { clampDigits } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass } from "@/lib/formStyles";
+import { SelectField } from "./SelectField";
 import { useClickOutside } from "@/lib/useClickOutside";
 
+/** Half of the stacked arrow column beside a counter's value — no border or radius of its own,
+ * since the wrapper supplies the frame. */
 const stepperButtonClass =
-  "w-9 h-9 shrink-0 flex items-center justify-center border border-border rounded-lg bg-surface text-text text-lg font-bold leading-none cursor-pointer disabled:opacity-40 disabled:cursor-default";
+  "w-8 flex-1 flex items-center justify-center border-0 bg-surface-alt text-text-soft text-[9px] leading-none cursor-pointer hover:text-green disabled:opacity-35 disabled:cursor-default disabled:hover:text-text-soft";
 
 function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
@@ -155,11 +158,7 @@ function CategoryFieldInput({
 
   if (field.type === "select") {
     return (
-      <select
-        value={typeof value === "string" ? value : ""}
-        onChange={(e) => onChange(e.target.value)}
-        className={fieldClass}
-      >
+      <SelectField value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)}>
         <option value="" disabled>
           Select…
         </option>
@@ -168,7 +167,7 @@ function CategoryFieldInput({
             {opt.label}
           </option>
         ))}
-      </select>
+      </SelectField>
     );
   }
 
@@ -186,17 +185,12 @@ function CategoryFieldInput({
     const min = field.min ?? 0;
     const max = maxValue ?? Number.MAX_SAFE_INTEGER;
     const step = (delta: number) => onChange(String(Math.min(max, Math.max(min, current + delta))));
+    // One bordered control rather than three loose ones: the value and its arrows share a
+    // frame, so a row of counters reads as a column of fields instead of a scatter of buttons.
+    // Stacked up/down rather than −/+ on either side — the same shape as the spinner a browser
+    // would draw, but visible on every device and in the app's own colours.
     return (
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          aria-label={`Decrease ${field.label}`}
-          onClick={() => step(-1)}
-          disabled={current <= min}
-          className={stepperButtonClass}
-        >
-          −
-        </button>
+      <div className="inline-flex items-stretch border border-border rounded-[9px] bg-surface overflow-hidden">
         <input
           type="number"
           inputMode="numeric"
@@ -205,17 +199,28 @@ function CategoryFieldInput({
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(clampDigits(sanitizeNonNegative(e.target.value), field.maxDigits))}
           aria-label={field.label}
-          className={`${fieldClass.replace("w-full", "w-14")} text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+          className="w-14 px-2 py-3 text-base sm:text-sm text-center bg-transparent text-text outline-none border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
-        <button
-          type="button"
-          aria-label={`Increase ${field.label}`}
-          onClick={() => step(1)}
-          disabled={current >= max}
-          className={stepperButtonClass}
-        >
-          +
-        </button>
+        <div className="flex flex-col border-l border-border">
+          <button
+            type="button"
+            aria-label={`Increase ${field.label}`}
+            onClick={() => step(1)}
+            disabled={current >= max}
+            className={stepperButtonClass}
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            aria-label={`Decrease ${field.label}`}
+            onClick={() => step(-1)}
+            disabled={current <= min}
+            className={`${stepperButtonClass} border-t border-border`}
+          >
+            ▼
+          </button>
+        </div>
       </div>
     );
   }

@@ -34,6 +34,7 @@ import {
 import { uploadVideoDirect } from "@/lib/videoUpload";
 import { BoostButton } from "./BoostButton";
 import { LocationMapPicker } from "./LocationMapPicker";
+import { SelectField } from "./SelectField";
 import { VideoManager } from "./VideoManager";
 
 
@@ -646,18 +647,13 @@ export function PostAdWizard({
 
           <div>
             <RequiredLabel text="City" />
-            <select
-              required
-              value={cityId}
-              onChange={(e) => onCityChange(e.target.value)}
-              className={fieldClass}
-            >
+            <SelectField required value={cityId} onChange={(e) => onCityChange(e.target.value)}>
               {cities.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </div>
 
           <div ref={areaFieldRef} className="relative">
@@ -732,11 +728,7 @@ export function PostAdWizard({
                     </div>
                     <div className="flex-1">
                       <RequiredLabel text="Price qualifier" />
-                      <select
-                        value={priceQualifier}
-                        onChange={(e) => setPriceQualifier(e.target.value)}
-                        className={fieldClass}
-                      >
+                      <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)}>
                         {getPriceQualifierOptions(category, transactionType).map(
                           (opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -744,7 +736,7 @@ export function PostAdWizard({
                             </option>
                           ),
                         )}
-                      </select>
+                      </SelectField>
                     </div>
                   </div>
                 ),
