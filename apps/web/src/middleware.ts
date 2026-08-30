@@ -65,6 +65,12 @@ const PAGE_FIRST_SEGMENTS = new Set([
  * Anything else is a URL nobody legitimately generated, and is not worth storing. */
 const SLUG_PATTERN = /^[a-z0-9-]{1,64}$/;
 
+/** A listing's trailing `{slug}-{id}` segment. Mirrors `looksLikeListingSlugId` in
+ * lib/seoRoute.ts — same reason as the reserved words above, the edge runtime is not worth an
+ * import for two regexes. Change both together. */
+const LISTING_SLUG_ID =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|-[a-z0-9]{20,}$/i;
+
 interface ResolvedSource {
   source: string;
   medium?: string;
@@ -114,6 +120,14 @@ function resolveCitySlug(request: NextRequest): string | undefined | null {
   if (pathname === "/" || (first && NATIONAL_FIRST_SEGMENTS.has(first))) return null;
 
   if (!first || PAGE_FIRST_SEGMENTS.has(first) || !SLUG_PATTERN.test(first)) return undefined;
+
+  // Viewing a listing is not choosing a city. A listing URL is
+  // /{city}/{area}/{group}/{category}/{slug}-{id}, so opening a Chennai flat from an all-cities
+  // browse used to rewrite the remembered city to Chennai — and the visitor then found /post and
+  // every account page announcing a city they had never picked.
+  const last = request.nextUrl.pathname.split("/").filter(Boolean).pop();
+  if (last && LISTING_SLUG_ID.test(last)) return undefined;
+
   return first;
 }
 
