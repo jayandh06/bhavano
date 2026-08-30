@@ -11,7 +11,7 @@ import {
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { updateListingAction } from "@/app/actions/listings";
-import { clampDigits, MAX_PRICE, PRICE_MAX_DIGITS, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 
 function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
@@ -138,9 +138,9 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
             type="number"
             min={1}
             value={price}
-            max={MAX_PRICE}
+            max={maxPriceFor(listing.transactionType)}
             inputMode="numeric"
-            onChange={(e) => setPrice(clampDigits(sanitizeNonNegative(e.target.value), PRICE_MAX_DIGITS))}
+            onChange={(e) => setPrice(clampPrice(e.target.value, listing.transactionType))}
             className={inputClass}
           />
         </div>

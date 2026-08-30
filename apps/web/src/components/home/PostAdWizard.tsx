@@ -11,7 +11,7 @@ import type {
   TransactionType,
 } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, fieldIsVisible } from "@bhavano/types/categoryFields";
-import { clampDigits, MAX_PRICE, PRICE_MAX_DIGITS, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
@@ -36,9 +36,6 @@ import { BoostButton } from "./BoostButton";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { VideoManager } from "./VideoManager";
 
-function sanitizeNonNegative(value: string): string {
-  return value.replace(/-/g, "");
-}
 
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
@@ -659,10 +656,10 @@ export function PostAdWizard({
                         type="number"
                         required
                         min={1}
-                        max={MAX_PRICE}
+                        max={maxPriceFor(transactionType)}
                         inputMode="numeric"
                         value={price}
-                        onChange={(e) => setPrice(clampDigits(sanitizeNonNegative(e.target.value), PRICE_MAX_DIGITS))}
+                        onChange={(e) => setPrice(clampPrice(e.target.value, transactionType))}
                         className={fieldClass}
                       />
                     </div>

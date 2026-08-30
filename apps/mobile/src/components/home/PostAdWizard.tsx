@@ -11,7 +11,7 @@ import {
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
-import { PRICE_MAX_DIGITS, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -89,9 +89,6 @@ function priceIsValid(price: string): boolean {
 
 /** Wide enough for any realistic rupee amount, narrow enough that a stuck key can't produce a
  * number the BFF then has to reject. */
-// Was 11 here and unbounded on the web, so the same listing had two different ceilings
-// depending on where it was typed. Both now read the shared value.
-const MAX_PRICE_DIGITS = PRICE_MAX_DIGITS;
 
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
@@ -419,7 +416,7 @@ export function PostAdWizard({
           <Text style={[styles.label, { color: colors.textSoft }]}>Price (₹) *</Text>
           <TextInput
             value={price}
-            onChangeText={(v) => setPrice(digitsOnly(v).slice(0, MAX_PRICE_DIGITS))}
+            onChangeText={(v) => setPrice(clampPrice(v, transactionType))}
             keyboardType="number-pad"
             placeholder="e.g. 25000"
             placeholderTextColor={colors.muted}
