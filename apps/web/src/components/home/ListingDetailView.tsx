@@ -90,25 +90,28 @@ export function ListingDetailView({
           isExpired={listing.isExpired}
           imgColors={listing.imgColors}
           imgLabel={listing.imgLabel}
-        />
-
-        <div className="flex justify-between items-start gap-4 mb-2">
-          <div className="font-lora text-[28px] font-bold text-green">
-            {listing.price}
-          </div>
-          {listing.priceQualifier && (
-            <div className="text-[13px] font-bold text-muted bg-surface-alt px-3 py-[5px] rounded-md whitespace-nowrap">
-              {listing.priceQualifier}
+        >
+          {/* Passed as children so the thumbnail strip renders below this rather than pinned
+            * under the hero — the strip and the hero share a selected index, so they have to stay
+            * in one component even though the page wants something between them. */}
+          <div className="flex justify-between items-start gap-4 mb-2">
+            <div className="font-lora text-[28px] font-bold text-green">
+              {listing.price}
             </div>
-          )}
-        </div>
+            {listing.priceQualifier && (
+              <div className="text-[13px] font-bold text-muted bg-surface-alt px-3 py-[5px] rounded-md whitespace-nowrap">
+                {listing.priceQualifier}
+              </div>
+            )}
+          </div>
 
-        <h1 className="font-lora text-[22px] font-semibold m-0 mb-2">
-          {listing.title}
-        </h1>
-        <div className="text-sm text-muted mb-2">
-          📍 {listing.area}, {listing.cityName}
-        </div>
+          <h1 className="font-lora text-[22px] font-semibold m-0 mb-2">
+            {listing.title}
+          </h1>
+          <div className="text-sm text-muted mb-3">
+            📍 {listing.area}, {listing.cityName}
+          </div>
+        </ListingMediaGallery>
         {listing.lat !== undefined && listing.lng !== undefined && (
           <div className="mb-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}

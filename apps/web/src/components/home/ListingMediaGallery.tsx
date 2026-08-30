@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import type { ListingVideoDto } from "@bhavano/types";
+import { MediaLightbox } from "./MediaLightbox";
 
-type MediaItem =
+export type MediaItem =
   | { kind: "photo"; url: string }
   | { kind: "video"; url: string; posterUrl: string; durationSec: number };
 
@@ -31,6 +32,7 @@ export function ListingMediaGallery({
   isExpired,
   imgColors,
   imgLabel,
+  children,
 }: {
   photosFull: string[];
   videos: ListingVideoDto[];
@@ -39,12 +41,17 @@ export function ListingMediaGallery({
   isExpired: boolean;
   imgColors: [string, string];
   imgLabel: string;
+  /** Rendered between the hero and the thumbnail strip — the page passes its price, title and
+   * location block here. The strip belongs under those rather than pinned to the hero, and the
+   * two cannot be separated in the tree because they share the selected index. */
+  children?: ReactNode;
 }) {
   const items: MediaItem[] = [
     ...photosFull.map((url): MediaItem => ({ kind: "photo", url })),
     ...videos.map((v): MediaItem => ({ kind: "video", url: v.url, posterUrl: v.posterUrl, durationSec: v.durationSec })),
   ];
   const [activeIndex, setActiveIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const active = items[activeIndex];
 
   return (
@@ -60,7 +67,16 @@ export function ListingMediaGallery({
         }
       >
         {active?.kind === "photo" && (
-          <Image src={active.url} alt={title} fill priority={activeIndex === 0} sizes="(max-width: 880px) 100vw, 880px" className="object-cover" />
+          // A button, not a bare image: the hero is cropped to a fixed band, so tapping it to
+          // see the whole frame is the obvious thing to try and previously did nothing.
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(true)}
+            aria-label="View full size"
+            className="absolute inset-0 border-0 p-0 bg-transparent cursor-zoom-in"
+          >
+            <Image src={active.url} alt={title} fill priority={activeIndex === 0} sizes="(max-width: 880px) 100vw, 880px" className="object-cover" />
+          </button>
         )}
         {active?.kind === "video" && (
           // preload="none", no autoplay: this page pays per-view for what it loads, and a
@@ -78,13 +94,20 @@ export function ListingMediaGallery({
         )}
       </div>
 
+      {children}
+
       {items.length > 1 && (
-        <div className="flex gap-2.5 mb-6 overflow-x-auto">
+        <div className="flex gap-2.5 mb-6 overflow-x-auto scrollbar-none">
           {items.map((item, i) => (
             <button
               key={item.kind === "photo" ? item.url : item.url + item.posterUrl}
               type="button"
-              onClick={() => setActiveIndex(i)}
+              onClick={() => {
+                // Selecting and opening in one tap. The strip now sits below the title, far
+                // enough from the hero that "select, then look up" is a poor trade.
+                setActiveIndex(i);
+                setLightboxOpen(true);
+              }}
               className={`relative shrink-0 w-20 h-20 rounded-lg overflow-hidden border-0 p-0 cursor-pointer ${
                 i === activeIndex ? "outline outline-2 outline-green" : ""
               }`}
@@ -107,6 +130,16 @@ export function ListingMediaGallery({
             </button>
           ))}
         </div>
+      )}
+
+      {lightboxOpen && (
+        <MediaLightbox
+          items={items}
+          index={activeIndex}
+          title={title}
+          onClose={() => setLightboxOpen(false)}
+          onIndexChange={setActiveIndex}
+        />
       )}
     </>
   );
