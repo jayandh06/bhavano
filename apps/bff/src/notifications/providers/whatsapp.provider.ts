@@ -42,13 +42,24 @@ export class WhatsappProvider {
    * messages inside the 24-hour window opened by the user messaging first; outside it — which is
    * every case here — the message must be a template Meta has approved in advance.
    *
-   * `bodyParams` fill the template's `{{1}}`, `{{2}}`… placeholders in order. The count must match
-   * the approved template exactly: too few or too many is a 400, not a partial send.
+   * `bodyParams` accepts either parameter style, because a template is fixed to one of them at
+   * creation and cannot be converted afterwards:
+   *
+   * - **an array** for positional templates (`{{1}}`, `{{2}}`…), filled in order;
+   * - **an object** for named templates (`{{name}}`, `{{title}}`…), keyed by parameter name.
+   *
+   * Named is worth preferring for anything with more than two variables. Positional order is
+   * invisible from the template text, so reordering `{{2}}` and `{{3}}` in WhatsApp Manager
+   * silently starts sending the title where the link should go, with nothing failing. Named
+   * parameters cannot be misaligned that way.
+   *
+   * Either way the set must match the approved template exactly — a missing or unexpected
+   * parameter is a 400, not a partial send.
    */
   async sendTemplate(
     phone: string,
     templateName: string,
-    bodyParams: string[] = [],
+    bodyParams: string[] | Record<string, string> = [],
   ): Promise<boolean> {
     const token = this.config.get<string>('WHATSAPP_ACCESS_TOKEN');
     const phoneNumberId = this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID');
@@ -70,6 +81,17 @@ export class WhatsappProvider {
     const to =
       phone.startsWith('91') && phone.length > 10 ? phone : `91${phone}`;
 
+    // Named parameters carry `parameter_name` alongside the value; positional ones are matched
+    // by array order and must not carry it. Meta rejects the wrong shape for the template's
+    // declared style rather than coercing between them.
+    const parameters = Array.isArray(bodyParams)
+      ? bodyParams.map((text) => ({ type: 'text' as const, text }))
+      : Object.entries(bodyParams).map(([name, text]) => ({
+          type: 'text' as const,
+          parameter_name: name,
+          text,
+        }));
+
     try {
       const res = await fetch(
         `https://graph.facebook.com/${version}/${phoneNumberId}/messages`,
@@ -89,18 +111,8 @@ export class WhatsappProvider {
               language: { code: language },
               // Omit `components` entirely for a template with no variables — an empty body
               // component is rejected rather than ignored.
-              ...(bodyParams.length > 0
-                ? {
-                    components: [
-                      {
-                        type: 'body',
-                        parameters: bodyParams.map((text) => ({
-                          type: 'text',
-                          text,
-                        })),
-                      },
-                    ],
-                  }
+              ...(parameters.length > 0
+                ? { components: [{ type: 'body', parameters }] }
                 : {}),
             },
           }),

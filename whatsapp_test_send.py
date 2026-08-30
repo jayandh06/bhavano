@@ -14,6 +14,11 @@ values the BFF itself will use. Nothing is written anywhere.
 Run: python whatsapp_test_send.py                 (checks config only)
      python whatsapp_test_send.py 9876543210      (also sends hello_world to that number)
      python whatsapp_test_send.py 9876543210 my_template "Some Name"
+     python whatsapp_test_send.py 9876543210 ad_posted name=Ravi title="2 BHK" link=... date=...
+
+Positional templates ({{1}}, {{2}}) take bare values; named templates ({{name}}, {{title}}) take
+name=value pairs. A template is fixed to one style at creation and cannot be converted, so this
+mirrors WhatsappProvider.sendTemplate, which accepts either.
 """
 
 import os
@@ -138,10 +143,25 @@ def main():
         "template": {"name": template, "language": {"code": LANGUAGE}},
     }
     # hello_world takes no variables; an empty components array is rejected rather than ignored.
-    if params:
+    # Any name=value argument switches the whole call to the named-parameter shape, which carries
+    # parameter_name per entry — Meta rejects the wrong shape for the template's declared style
+    # rather than coercing between them.
+    named = [p.split("=", 1) for p in params if "=" in p and not p.startswith("http")]
+    if named and len(named) == len(params):
+        payload["template"]["components"] = [
+            {
+                "type": "body",
+                "parameters": [
+                    {"type": "text", "parameter_name": k, "text": v} for k, v in named
+                ],
+            }
+        ]
+        print("  using NAMED parameters: %s" % ", ".join(k for k, _ in named))
+    elif params:
         payload["template"]["components"] = [
             {"type": "body", "parameters": [{"type": "text", "text": p} for p in params]}
         ]
+        print("  using POSITIONAL parameters (%d)" % len(params))
 
     data, err = post("https://graph.facebook.com/%s/%s/messages" % (VERSION, PHONE_NUMBER_ID), payload)
     if err:
