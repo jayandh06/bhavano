@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import type { ListingCardDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
-import { toggleFavourite } from "../../lib/bffClient";
+import { createConversation, toggleFavourite } from "../../lib/bffClient";
 
 export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName: string }) {
   const { colors } = useAppTheme();
@@ -12,6 +12,7 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
   const router = useRouter();
   const [isFavourited, setIsFavourited] = useState(item.isFavourited);
   const [likeCount, setLikeCount] = useState(item.likeCount);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   // TEMP(auth-gate): viewing listing details is open without login for now.
   const openDetail = () => router.push(`/listing/${item.id}`);
@@ -24,6 +25,23 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
     const result = await toggleFavourite(accessToken, item.id);
     setIsFavourited(result.favourited);
     setLikeCount(result.likeCount);
+  }
+
+  // Opens the conversation with the seller — the same thing the detail screen's button does.
+  // It prompts for login only when there is no token, rather than unconditionally, which is what
+  // made this button show the login sheet to users who were already signed in.
+  async function onContactOwner() {
+    if (!accessToken) {
+      requireLogin();
+      return;
+    }
+    setContactError(null);
+    try {
+      const conversation = await createConversation(accessToken, item.id);
+      router.push(`/messages/${conversation.id}`);
+    } catch (e) {
+      setContactError(e instanceof Error ? e.message : "Failed to start conversation");
+    }
   }
 
   return (
@@ -73,13 +91,13 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
           <Text style={{ fontSize: 11, color: colors.muted }}>♥ {likeCount}</Text>
         </View>
         <View style={styles.actionsRow}>
-          <Pressable onPress={requireLogin} style={[styles.contactButton, { backgroundColor: colors.green }]}>
-            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13 }}>Contact</Text>
-          </Pressable>
-          <Pressable onPress={requireLogin} style={[styles.callButton, { borderColor: colors.green }]}>
-            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13 }}>Call</Text>
+          <Pressable onPress={onContactOwner} style={[styles.contactButton, { backgroundColor: colors.green }]}>
+            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13 }}>Contact owner</Text>
           </Pressable>
         </View>
+        {contactError ? (
+          <Text style={{ color: "#c0554b", fontSize: 12, marginTop: 6 }}>{contactError}</Text>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -118,5 +136,4 @@ const styles = StyleSheet.create({
   specsRow: { flexDirection: "row", gap: 10 },
   actionsRow: { flexDirection: "row", gap: 8, marginTop: 4 },
   contactButton: { flex: 1, borderRadius: 8, paddingVertical: 10, alignItems: "center" },
-  callButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, alignItems: "center" },
 });

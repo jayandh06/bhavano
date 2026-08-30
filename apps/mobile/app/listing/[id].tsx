@@ -155,9 +155,9 @@ export default function ListingDetailScreen() {
         </Text>
       ) : (
         <>
-          {/* Contact, Call and Message are hidden on your own ad — they would start a
-              conversation with yourself, and offering them reads as the app not knowing whose
-              listing it is. Favourite stays: harmless, and the like count is part of the page. */}
+          {/* Contact is hidden on your own ad — it would start a conversation with yourself,
+              and offering it reads as the app not knowing whose listing it is. Favourite stays:
+              harmless, and the like count is part of the page. */}
           {!listing.isOwner && (
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 16, marginBottom: 12 }}>
               Ads shown without login — sign in only to respond
@@ -166,14 +166,9 @@ export default function ListingDetailScreen() {
 
           <View style={styles.actionsRow}>
             {!listing.isOwner && (
-              <>
-                <Pressable onPress={requireLogin} style={[styles.contactButton, { backgroundColor: colors.green }]}>
-                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Contact owner</Text>
-                </Pressable>
-                <Pressable onPress={requireLogin} style={[styles.callButton, { borderColor: colors.green }]}>
-                  <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Call</Text>
-                </Pressable>
-              </>
+              <Pressable onPress={onMessage} style={[styles.contactButton, { backgroundColor: colors.green }]}>
+                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Contact owner</Text>
+              </Pressable>
             )}
             <Pressable
               onPress={onToggleFavourite}
@@ -225,7 +220,6 @@ const styles = StyleSheet.create({
   attributesBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 16 },
   actionsRow: { flexDirection: "row", gap: 10 },
   contactButton: { flex: 1, borderRadius: 8, paddingVertical: 13, alignItems: "center" },
-  callButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 13, paddingHorizontal: 20, alignItems: "center" },
   heartButton: { width: 52, borderWidth: 1.5, borderRadius: 8, alignItems: "center", justifyContent: "center", gap: 2 },
   messageButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 12, alignItems: "center", marginTop: 10 },
 });
