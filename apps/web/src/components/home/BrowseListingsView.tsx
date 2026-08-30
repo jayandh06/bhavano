@@ -130,10 +130,10 @@ export async function BrowseListingsView({
         popularSearches={popularSearches}
       />
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
-        <div className="flex items-baseline justify-between mb-5">
-          <h1 className="font-lora text-[26px] font-semibold m-0 text-text">{heading}</h1>
-          <span className="text-[13px] text-muted">{listingsPage.total} listings</span>
-        </div>
+        {/* The heading has the line to itself. Sharing it with the count squeezed a long one —
+          * "2 BHK Apartments in HSR Layout, Bengaluru" — into a narrow column on a phone and
+          * wrapped it to three lines beside a number. */}
+        <h1 className="font-lora text-[26px] font-semibold m-0 mb-3 text-text">{heading}</h1>
         {page === 1 && cityName && (
           <BrowseSeoIntro
             heading={heading}
@@ -144,7 +144,7 @@ export async function BrowseListingsView({
             cityAreas={cityAreas}
           />
         )}
-        <div className="flex gap-2.5 mb-5 flex-wrap justify-between items-start">
+        <div className="flex gap-2.5 mb-3 flex-wrap items-start">
           <div className="flex gap-2.5 flex-wrap">
             {cityName && <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />}
             {cityName && (filterCategory === "house" || filterCategory === "apartment") && (
@@ -158,6 +158,14 @@ export async function BrowseListingsView({
               activeFurnished={query.furnished}
             />
           </div>
+        </div>
+        {/* Count and sort share the line directly above the grid: the count reflects whatever
+          * the filters above have narrowed it to, and sort is the one control that acts on the
+          * results rather than defining them. */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <span className="text-[13px] text-muted">
+            {listingsPage.total} {listingsPage.total === 1 ? "listing" : "listings"}
+          </span>
           <SortDropdown activeSort={query.sort} />
         </div>
         {listingsPage.items.length > 0 && (
