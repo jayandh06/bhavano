@@ -10,6 +10,7 @@ import {
   groupFieldsBySection,
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
+import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -88,19 +89,6 @@ const MAX_PRICE_DIGITS = 11;
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-
-const CATEGORIES: { value: ListingCategory; label: string; icon: string }[] = [
-  { value: "house", label: "House", icon: "🏡" },
-  { value: "apartment", label: "Apartment", icon: "🏢" },
-  { value: "villa", label: "Villa", icon: "🏘️" },
-  { value: "plot", label: "Plot", icon: "🗺️" },
-  { value: "pg", label: "PG / Hostel", icon: "🛏️" },
-  { value: "storage", label: "Storage space", icon: "📦" },
-  { value: "coworking", label: "Coworking", icon: "💼" },
-  { value: "commercial", label: "Commercial space", icon: "🏬" },
-  { value: "furniture", label: "Furniture", icon: "🛋️" },
-  { value: "interiors", label: "Interiors", icon: "🎨" },
-];
 
 const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   sell: "Sell",
@@ -383,16 +371,21 @@ export function PostAdWizard({
       </View>
 
       {step === "category" && (
-        <View style={{ gap: 10 }}>
-          {CATEGORIES.map((c) => (
-            <Pressable
-              key={c.value}
-              onPress={() => selectCategory(c.value)}
-              style={[styles.optionButton, { borderColor: category === c.value ? colors.green : colors.border, backgroundColor: category === c.value ? colors.surfaceAlt : colors.surface }]}
-            >
-              <Text style={{ fontSize: 18 }}>{c.icon}</Text>
-              <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>{c.label}</Text>
-            </Pressable>
+        <View style={{ gap: 22 }}>
+          {POST_CATEGORY_GROUPS.map((group) => (
+            <View key={group.title} style={{ gap: 10 }}>
+              <Text style={[styles.groupHeading, { color: colors.textSoft }]}>{group.title.toUpperCase()}</Text>
+              {group.options.map((c) => (
+                <Pressable
+                  key={c.value}
+                  onPress={() => selectCategory(c.value)}
+                  style={[styles.optionButton, { borderColor: category === c.value ? colors.green : colors.border, backgroundColor: category === c.value ? colors.surfaceAlt : colors.surface }]}
+                >
+                  <Text style={{ fontSize: 18 }}>{c.icon}</Text>
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>{c.label}</Text>
+                </Pressable>
+              ))}
+            </View>
           ))}
         </View>
       )}
@@ -523,7 +516,7 @@ export function PostAdWizard({
 
           <View style={[styles.divider, { borderColor: colors.border }]}>
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
-              {CATEGORIES.find((c) => c.value === category)?.label} details
+              {POST_CATEGORIES.find((c) => c.value === category)?.label} details
             </Text>
             {/* Grouped into the config's own sections (pricing, preferences, …) in SECTION_ORDER,
                 the same helper the desktop wizard uses — one flat run of twenty-odd controls gave
@@ -687,7 +680,7 @@ export function PostAdWizard({
         <View style={{ gap: 12 }}>
           <View style={[styles.reviewBox, { borderColor: colors.border }]}>
             <Text style={{ color: colors.text, fontWeight: "700", marginBottom: 6 }}>
-              {CATEGORIES.find((c) => c.value === category)?.label} — {TRANSACTION_TYPE_LABELS[transactionType]}
+              {POST_CATEGORIES.find((c) => c.value === category)?.label} — {TRANSACTION_TYPE_LABELS[transactionType]}
             </Text>
             <Text style={{ color: colors.text, marginBottom: 6 }}>{title}</Text>
             <Text style={{ color: colors.muted, marginBottom: 6 }}>
@@ -770,6 +763,7 @@ const styles = StyleSheet.create({
   stepper: { flexDirection: "row", flexWrap: "wrap", marginBottom: 20 },
   label: { fontSize: 13, fontWeight: "700", marginTop: 14, marginBottom: 6 },
   optionButton: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1.5, borderRadius: 10, padding: 14 },
+  groupHeading: { fontSize: 12, fontWeight: "700", letterSpacing: 0.6 },
   readOnlyRow: {
     flexDirection: "row",
     alignItems: "center",

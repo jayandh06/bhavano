@@ -11,6 +11,7 @@ import type {
   TransactionType,
 } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
+import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
@@ -91,19 +92,6 @@ function readVideoDuration(file: File): Promise<number | undefined> {
     el.src = url;
   });
 }
-
-const CATEGORIES: { value: ListingCategory; label: string; icon: string }[] = [
-  { value: "house", label: "House", icon: "🏡" },
-  { value: "apartment", label: "Apartment", icon: "🏢" },
-  { value: "villa", label: "Villa", icon: "🏘️" },
-  { value: "plot", label: "Plot", icon: "🗺️" },
-  { value: "pg", label: "PG / Hostel", icon: "🛏️" },
-  { value: "storage", label: "Storage space", icon: "📦" },
-  { value: "coworking", label: "Coworking", icon: "💼" },
-  { value: "commercial", label: "Commercial space", icon: "🏬" },
-  { value: "furniture", label: "Furniture", icon: "🛋️" },
-  { value: "interiors", label: "Interiors", icon: "🎨" },
-];
 
 const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   sell: "Sell",
@@ -506,16 +494,25 @@ export function PostAdWizard({
       )}
 
       {step === "category" && (
-        <div className="grid grid-cols-3 gap-2.5">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.value}
-              onClick={() => selectCategory(c.value)}
-              className={optionButtonClass(category === c.value)}
-            >
-              <span className="text-lg">{c.icon}</span>
-              {c.label}
-            </button>
+        <div className="flex flex-col gap-6">
+          {POST_CATEGORY_GROUPS.map((group) => (
+            <div key={group.title}>
+              <h3 className="text-[13px] font-bold text-text-soft uppercase tracking-wide m-0 mb-2.5">{group.title}</h3>
+              {/* Two columns on a phone, three from sm up. Three fixed columns left roughly 100px
+                * per tile at 360px, which "Commercial space" and "Storage space" cannot fit. */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {group.options.map((c) => (
+                  <button
+                    key={c.value}
+                    onClick={() => selectCategory(c.value)}
+                    className={optionButtonClass(category === c.value)}
+                  >
+                    <span className="text-lg shrink-0">{c.icon}</span>
+                    <span className="min-w-0">{c.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -634,7 +631,7 @@ export function PostAdWizard({
 
           <div className="border-t border-border pt-4">
             <div className="text-[13px] font-bold text-text mb-3">
-              {CATEGORIES.find((c) => c.value === category)?.label} details
+              {POST_CATEGORIES.find((c) => c.value === category)?.label} details
             </div>
             <CategoryFieldsAccordion
               category={category}
@@ -790,7 +787,7 @@ export function PostAdWizard({
           <div className="border border-border rounded-[10px] p-4 text-sm text-text">
             <p className="m-0 mb-1.5">
               <strong>
-                {CATEGORIES.find((c) => c.value === category)?.label}
+                {POST_CATEGORIES.find((c) => c.value === category)?.label}
               </strong>{" "}
               — {TRANSACTION_TYPE_LABELS[transactionType]}
             </p>

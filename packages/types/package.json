@@ -17,6 +17,10 @@
       "types": "./dist/categoryFields.d.ts",
       "default": "./dist/categoryFields.js"
     },
+    "./postCategories": {
+      "types": "./dist/postCategories.d.ts",
+      "default": "./dist/postCategories.js"
+    },
     "./postingRules": {
       "types": "./dist/postingRules.d.ts",
       "default": "./dist/postingRules.js"
