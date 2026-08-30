@@ -5,7 +5,9 @@ import type { ReverseGeocodeResultDto } from "@bhavano/types";
 import { loadGoogleMaps } from "@/lib/googleMaps";
 import { reverseGeocodeAction } from "@/app/actions/locations";
 
-const fieldClass = "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
+// Matches lib/formStyles.ts — text-base on mobile so iOS does not zoom on focus.
+const fieldClass =
+  "w-full border border-border rounded-[9px] px-3.5 py-3 text-base sm:text-sm outline-none bg-surface text-text";
 
 /** Pin picker for the posting flow — a Places Autocomplete search box (jump the map to an
  * address) plus a draggable marker (click the map, or drag the pin, to place it precisely).

@@ -158,7 +158,7 @@ export function LocationPicker({
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
               placeholder="e.g. Koramangala, Bangalore or 560034"
-              className="w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none mb-3.5 bg-surface text-text"
+              className="w-full border border-border rounded-[9px] px-3.5 py-3 text-base sm:text-sm outline-none mb-3.5 bg-surface text-text"
             />
 
             {query || !tierCities ? (

@@ -19,7 +19,7 @@ import { submitSupportTicketAction } from "@/app/actions/support";
 import { pushDataLayerEvent } from "@/lib/gtm";
 
 const inputClass =
-  "w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text placeholder:text-muted";
+  "w-full bg-surface border border-border rounded-lg px-3 py-2 text-base sm:text-sm text-text placeholder:text-muted";
 const labelClass = "block text-[13px] font-bold text-text mb-1.5";
 // Same error red the rest of the app uses (see ProfileForm.tsx).
 const errorClass = "text-[#b3413a] text-[13px] font-bold m-0";

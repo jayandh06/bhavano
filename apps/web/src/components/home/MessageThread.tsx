@@ -91,7 +91,7 @@ export function MessageThread({
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onSend()}
           placeholder="Type a message…"
-          className="flex-1 border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text"
+          className="flex-1 border border-border rounded-[9px] px-3.5 py-3 text-base sm:text-sm outline-none bg-surface text-text"
         />
         <button
           onClick={onSend}

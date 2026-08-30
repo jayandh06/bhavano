@@ -175,7 +175,7 @@ export function SearchBar({
             if (e.key === "Escape") setOpen(false);
           }}
           placeholder={placeholder}
-          className="flex-1 border-0 outline-none px-2.5 py-3 text-sm bg-transparent min-w-0 text-text"
+          className="flex-1 border-0 outline-none px-2.5 py-3 text-base sm:text-sm bg-transparent min-w-0 text-text"
         />
         <button
           onClick={submit}

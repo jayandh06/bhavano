@@ -309,7 +309,9 @@ const primaryButtonClass =
 const outlineButtonClass =
   "w-full bg-surface text-text border-[1.5px] border-border rounded-lg p-[13px] text-sm font-bold cursor-pointer";
 
-const inputClass = "flex-1 w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
+// text-base on mobile for the same reason as lib/formStyles.ts: iOS zooms below 16px.
+const inputClass =
+  "flex-1 w-full border border-border rounded-[9px] px-3.5 py-3 text-base sm:text-sm outline-none bg-surface text-text";
 
 const backButtonClass = "bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer mt-1";
 
