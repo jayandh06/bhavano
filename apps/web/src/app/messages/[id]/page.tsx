@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { BffAuthError, fetchAreas, fetchCities, fetchMessages } from "@/lib/bff";
 import { MessageThread } from "@/components/home/MessageThread";
+import { resolveDefaultCity } from "@/lib/defaultCity";
 import { PageHeader } from "@/components/home/PageHeader";
 import { Footer } from "@/components/home/Footer";
 
@@ -19,10 +20,12 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
     throw error;
   }
 
-  // Same city context the messages list and every other static page feed their footer, so the
-  // footer's city/area links are not generic here.
+  // Whichever city the reader last chose — not "the first popular city the API happens to
+  // return", which is what this used to do and which shows a genuinely arbitrary place to
+  // someone who never picked it. Undefined means they have not chosen one, and the footer falls
+  // back to its plain city list rather than inventing an answer.
   const allCities = await fetchCities(undefined, true);
-  const city = allCities.find((c) => c.isPopular) ?? allCities[0];
+  const city = await resolveDefaultCity(allCities);
   const cityAreas = city ? await fetchAreas(city.id, undefined, true) : [];
 
   return (
