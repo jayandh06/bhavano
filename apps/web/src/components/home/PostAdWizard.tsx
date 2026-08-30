@@ -108,6 +108,12 @@ function RequiredLabel({ text }: { text: string }) {
   );
 }
 
+/** The photo/video pickers. A dashed border reads as "drop or choose something here" rather
+ * than as a filled button competing with Continue, and the full-width tap target matters more on
+ * a phone than the few pixels it costs on desktop. */
+const uploadZoneClass =
+  "flex flex-col items-center justify-center gap-1.5 w-full border-[1.5px] border-dashed border-green rounded-xl px-4 py-6 bg-surface-alt cursor-pointer text-center";
+
 const optionButtonClass = (active: boolean) =>
   `flex items-center gap-2.5 w-full text-left border-[1.5px] rounded-[10px] px-4 py-3.5 text-sm font-bold text-text cursor-pointer ${
     active ? "border-green bg-surface-alt" : "border-border bg-surface"
@@ -688,15 +694,29 @@ export function PostAdWizard({
           <div>
             <RequiredLabel text={`Photos (up to ${MAX_PHOTOS})`} />
             {photos.length < MAX_PHOTOS && (
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                multiple
-                onChange={(e) => {
-                  onPhotosSelected(e.target.files);
-                  e.target.value = "";
-                }}
-              />
+              // A styled label wrapping a hidden input rather than a bare <input type="file">.
+              // The native control renders as a small grey "Choose files" button that is easy to
+              // scroll past — on the one step where skipping it costs the listing most, since an
+              // ad with no photo is the one nobody opens.
+              <label className={uploadZoneClass}>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    onPhotosSelected(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <span className="text-2xl leading-none">📷</span>
+                <span className="text-sm font-bold text-green">
+                  {photos.length > 0 ? "Add more photos" : "Add photos"}
+                </span>
+                <span className="text-xs text-muted">
+                  JPG, PNG or WebP · {MAX_PHOTOS - photos.length} more allowed
+                </span>
+              </label>
             )}
             {photos.length > 0 && (
               <div className="flex flex-wrap gap-2.5 mt-2.5">
@@ -734,15 +754,25 @@ export function PostAdWizard({
                 " Boost this listing after posting to add up to 3 videos, up to 2 minutes each."}
             </p>
             {videos.length < videoEntitlement.maxVideos && (
-              <input
-                type="file"
-                accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/x-matroska"
-                multiple
-                onChange={(e) => {
-                  void onVideosSelected(e.target.files);
-                  e.target.value = "";
-                }}
-              />
+              <label className={uploadZoneClass}>
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/x-matroska"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    void onVideosSelected(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <span className="text-2xl leading-none">🎥</span>
+                <span className="text-sm font-bold text-green">
+                  {videos.length > 0 ? "Add another video" : "Add a video"}
+                </span>
+                <span className="text-xs text-muted">
+                  MP4 or MOV · up to {videoEntitlement.maxDurationSec}s each
+                </span>
+              </label>
             )}
             {videos.length > 0 && (
               <div className="flex flex-wrap gap-2.5 mt-2.5">

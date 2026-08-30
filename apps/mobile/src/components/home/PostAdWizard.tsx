@@ -661,9 +661,13 @@ export function PostAdWizard({
 
           <Text style={[styles.label, { color: colors.textSoft }]}>Photos (up to {MAX_PHOTOS}) *</Text>
           {photoUris.length < MAX_PHOTOS && (
-            <Pressable onPress={pickPhotos} style={[styles.photoButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
-              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13 }}>
-                {photoUris.length > 0 ? "Add more photos" : "Choose photos"}
+            <Pressable onPress={pickPhotos} style={[styles.photoButton, { borderColor: colors.green, backgroundColor: colors.surfaceAlt }]}>
+              <Text style={{ fontSize: 24 }}>📷</Text>
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 15 }}>
+                {photoUris.length > 0 ? "Add more photos" : "Add photos"}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 12 }}>
+                {MAX_PHOTOS - photoUris.length} more allowed
               </Text>
             </Pressable>
           )}
@@ -830,7 +834,10 @@ const styles = StyleSheet.create({
   suggestionsBox: { borderWidth: 1, borderRadius: 9, marginTop: 6, overflow: "hidden" },
   suggestionRow: { paddingVertical: 10, paddingHorizontal: 14 },
   divider: { borderTopWidth: 1, paddingTop: 12, marginTop: 8, gap: 4 },
-  photoButton: { borderWidth: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
+  // Dashed and taller than a plain button: it reads as "put something here" rather than as
+  // another action competing with Continue, and photos are what decide whether a listing gets
+  // opened at all.
+  photoButton: { borderWidth: 1.5, borderStyle: "dashed", borderRadius: 12, paddingVertical: 20, alignItems: "center", gap: 6 },
   photoThumb: { width: 90, height: 90, borderRadius: 8 },
   removeBadge: {
     position: "absolute",
