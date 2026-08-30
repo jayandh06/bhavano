@@ -317,7 +317,7 @@ function FieldRunBlock({
   return (
     <div className="flex flex-col gap-3">
       {toggleFields.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
           {toggleFields.map((field) => (
             <CategoryField
               key={field.key}
@@ -329,7 +329,7 @@ function FieldRunBlock({
         </div>
       )}
       {otherFields.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-4">
           {otherFields.map((field) => (
             <div
               key={field.key}

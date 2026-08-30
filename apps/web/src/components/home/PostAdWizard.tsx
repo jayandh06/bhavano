@@ -566,7 +566,7 @@ export function PostAdWizard({
               <h3 className="text-[13px] font-bold text-text-soft uppercase tracking-wide m-0 mb-2.5">{group.title}</h3>
               {/* Two columns on a phone, three from sm up. Three fixed columns left roughly 100px
                 * per tile at 360px, which "Commercial space" and "Storage space" cannot fit. */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                 {group.options.map((c) => (
                   <button
                     key={c.value}
@@ -624,7 +624,7 @@ export function PostAdWizard({
               value={title}
               maxLength={TITLE_MAX_LENGTH}
               onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
-              className={fieldClass}
+              className={`${fieldClass} max-w-[720px]`}
             />
           </div>
 

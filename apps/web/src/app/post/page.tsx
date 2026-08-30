@@ -47,9 +47,11 @@ export default async function PostAdPage({
           ← Back to listings
         </Link>
         <h1 className="font-lora text-2xl font-semibold m-0 mb-5">Post a free ad</h1>
-        {/* The 780px measure wraps only the wizard, not the login prompt. A form wants a narrow
-          * column and reads best left-aligned under the heading; a one-line prompt and its button
-          * want the middle of the page, and would sit oddly off-centre inside a left-aligned box. */}
+        {/* The wizard fills the container; only the login prompt is left out of it, since a
+          * one-line prompt and its button want the middle of the page rather than a left edge.
+          * The wizard was capped at 780px when it was centred, which left a third of a desktop
+          * screen empty once the column moved to the left. Its own grids widen with the space
+          * instead — more columns, not wider fields. */}
         {!loggedIn ? (
           // Opens the login dialog straight away: there is nothing on this page for a logged-out
           // visitor, so a button that only opens a dialog is a step with no decision in it. The
@@ -65,7 +67,7 @@ export default async function PostAdPage({
             redirectTo={citySlug ? `/post?city=${encodeURIComponent(citySlug)}` : "/post"}
           />
         ) : (
-          <div className="max-w-[780px]">
+          <div>
             {/* Keyed on the resolved default city: a client-side nav to /post with a different
               * ?city= is a search-param-only change on the same route, so React would otherwise
               * reuse the already-mounted wizard instance and its stale `useState(defaultCityId)`
