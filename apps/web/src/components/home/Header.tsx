@@ -68,29 +68,33 @@ export function Header({
       </div>
 
       <header className="bg-bg border-b border-border sticky top-0 z-40">
-        {/* Wraps on a phone. Every child here is shrink-0 or non-wrapping by nature — logo,
-          * city chip, search, account links — so a single fixed row added up to roughly twice a
-          * 360px viewport and pushed the whole page into horizontal scroll. That sideways scroll
-          * is what makes every other element look misaligned, since the viewport no longer
-          * matches the page. Most paid traffic lands here on a phone, so this is the first thing
-          * an ad click sees. */}
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-8 py-3 sm:py-[18px] flex flex-wrap items-center gap-x-3 gap-y-2.5 sm:gap-7">
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <Image src="/logo.png" alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px]" priority />
-            <span className="font-lora font-bold text-xl sm:text-2xl tracking-[-0.01em] text-green">Bhavano</span>
-          </Link>
+        {/* Two explicit rows. The first is identity — logo and account — and the second is what
+          * a visitor acts on. This started as one row that wrapped on a phone, which worked but
+          * left the layout dependent on how the widths happened to add up; stating the rows means
+          * desktop and phone differ only in what each row holds, not in how it is built. The
+          * original single row summed to roughly twice a 360px viewport and pushed the page into
+          * horizontal scroll, which is what made everything else look misaligned. */}
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
+          <div className="flex items-center gap-3 py-2.5 sm:py-3">
+            <Link href="/" className="flex items-center gap-2.5 shrink-0">
+              <Image src="/logo.png" alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px]" priority />
+              <span className="font-lora font-bold text-xl sm:text-2xl tracking-[-0.01em] text-green">Bhavano</span>
+            </Link>
+            <HeaderAuthButtons userName={userName} cityName={cityName} />
+            <div className="hidden sm:flex items-center shrink-0">
+              <ThemeToggle />
+            </div>
+          </div>
 
-          <Suspense>
-            <LocationPicker currentCityName={cityName} popularCities={popularCities} currentSegments={currentSegments} />
-          </Suspense>
-          {/* order-last + w-full drops this onto its own line on a phone, where a search box
-            * squeezed between the city chip and the account links has no usable width. The
-            * posting CTA rides along on that second line: paired with search it gets a real
-            * label rather than a truncated one, and taking it out of the first row leaves the
-            * account links room to stay put whether the visitor is logged in or out. */}
-          <Suspense>
-            <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1 flex items-center gap-2.5">
-              <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 pb-2.5 sm:pb-3">
+            <Suspense>
+              <LocationPicker currentCityName={cityName} popularCities={popularCities} currentSegments={currentSegments} />
+            </Suspense>
+            {/* Desktop and tablet only. On a phone the browse-and-search job belongs to the
+              * listing pages themselves, and a search box here was competing for width with the
+              * two controls that matter more on arrival: which city, and post an ad. */}
+            <div className="hidden sm:block flex-1 min-w-0">
+              <Suspense>
                 <SearchBar
                   initialQuery={searchQuery}
                   cityName={cityName ?? "India"}
@@ -98,22 +102,18 @@ export function Header({
                   popularCities={popularCities}
                   popularSearches={popularSearches}
                 />
-              </div>
-              {/* Phone only — the desktop header keeps its own copy inline with the account
-                * links (see HeaderAuthButtons), so exactly one is ever visible. */}
-              <Link
-                href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
-                className="sm:hidden shrink-0 border-[1.5px] border-green text-green rounded-lg px-3.5 py-[9px] text-[13px] font-bold whitespace-nowrap"
-              >
-                Post ad
-              </Link>
+              </Suspense>
             </div>
-          </Suspense>
-
-          <div className="hidden sm:flex items-center gap-3 shrink-0">
-            <ThemeToggle />
+            {/* One element at every size now, since it sits on this row in both layouts — only
+              * the label shortens. */}
+            <Link
+              href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
+              className="ml-auto sm:ml-0 shrink-0 border-[1.5px] border-green text-green rounded-lg px-3.5 sm:px-4 py-[9px] text-[13px] sm:text-sm font-bold whitespace-nowrap"
+            >
+              <span className="sm:hidden">Post ad</span>
+              <span className="hidden sm:inline">+ Post free ad</span>
+            </Link>
           </div>
-          <HeaderAuthButtons userName={userName} cityName={cityName} />
         </div>
 
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8">

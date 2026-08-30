@@ -18,29 +18,15 @@ export function HeaderAuthButtons({ userName, cityName }: { userName?: string | 
 
   return (
     <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 ml-auto">
-      {/* TEMP(auth-gate): posting is open without login for now. */}
-      {/* Desktop only. On a phone this lives beside the search box on the second row (see
-        * Header), where it fits its full label instead of being squeezed to "+ Post". */}
-      <Link
-        href={`/post${cityQuery}`}
-        className="hidden sm:inline-block border-[1.5px] border-green text-green rounded-lg px-4 py-[9px] text-sm font-bold whitespace-nowrap"
-      >
-        + Post free ad
+      {/* Desktop keeps these as top-level links, where there is room for words. On a phone they
+        * move into the account menu — the same place My listings already lives — so the first
+        * row holds only identity. Both need an account anyway, so nothing is lost by putting
+        * them behind one. */}
+      <Link href={`/favourites${cityQuery}`} className="hidden sm:inline-block text-text text-sm font-bold whitespace-nowrap">
+        ♡ Favourites
       </Link>
-      {/* Icon-only below sm — the glyphs carry the meaning and the words are what overflow. */}
-      <Link
-        href={`/favourites${cityQuery}`}
-        aria-label="Favourites"
-        className="text-text text-sm font-bold whitespace-nowrap"
-      >
-        ♡<span className="hidden sm:inline"> Favourites</span>
-      </Link>
-      <Link
-        href={`/messages${cityQuery}`}
-        aria-label="Messages"
-        className="text-text text-sm font-bold whitespace-nowrap"
-      >
-        💬<span className="hidden sm:inline"> Messages</span>
+      <Link href={`/messages${cityQuery}`} className="hidden sm:inline-block text-text text-sm font-bold whitespace-nowrap">
+        💬 Messages
       </Link>
       {userName ? (
         <AccountMenu userName={userName} cityQuery={cityQuery} />
@@ -75,6 +61,14 @@ function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: str
         <div className="absolute top-[calc(100%+8px)] right-0 bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px] overflow-hidden">
           <Link href={`/profile${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
             Profile
+          </Link>
+          {/* Phone only — on desktop these are top-level links in the header row above, and
+            * showing them in both places would be two routes to the same page a thumb apart. */}
+          <Link href={`/favourites${cityQuery}`} onClick={() => setOpen(false)} className={`${menuItemClass} sm:hidden`}>
+            ♡ Favourites
+          </Link>
+          <Link href={`/messages${cityQuery}`} onClick={() => setOpen(false)} className={`${menuItemClass} sm:hidden`}>
+            💬 Messages
           </Link>
           <Link href={`/my-listings${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
             My listings
