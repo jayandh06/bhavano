@@ -52,6 +52,8 @@ export async function resolveDefaultCity(allCities: City[]): Promise<City | unde
     if (matched) return matched;
   }
 
-  const popular = allCities.filter((c) => c.isPopular);
-  return popular.find((c) => c.name === "Bengaluru") ?? popular[0];
+  // No Bengaluru fallback. "All cities" is now a real, expressible state — `/` and `/buy` are
+  // its addresses — so a visitor who has not chosen a city has genuinely not chosen one, and
+  // saying "Bengaluru" would be inventing an answer. Callers render "All cities" for undefined.
+  return undefined;
 }
