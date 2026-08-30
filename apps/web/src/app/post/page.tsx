@@ -38,26 +38,35 @@ export default async function PostAdPage({
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader cityName={city?.name} />
-      <div className="flex-1 w-full max-w-[780px] mx-auto px-8 pt-6 pb-20">
+      {/* 1280px to match every other page, so the back link and heading start at the same left
+        * edge as the logo above them instead of floating in a narrower centred column. The form
+        * keeps its 780px measure for readability, left-aligned rather than centred under a
+        * left-aligned heading. */}
+      <div className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-6 pb-20">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
         <h1 className="font-lora text-2xl font-semibold m-0 mb-5">Post a free ad</h1>
-        {!loggedIn ? (
-          <RequireLoginPrompt message="Log in to post your ad." />
-        ) : (
-          // Keyed on the resolved default city: a client-side nav to /post with a different
-          // ?city= is a search-param-only change on the same route, so React would otherwise
-          // reuse the already-mounted wizard instance and its stale `useState(defaultCityId)`
-          // init instead of picking up the new default.
-          <PostAdWizard
-            key={city?.id ?? "none"}
-            cities={allCities}
-            defaultCityId={city?.id}
-            accessToken={accessToken}
-            videoEntitlement={videoEntitlement}
-          />
-        )}
+        <div className="max-w-[780px]">
+          {!loggedIn ? (
+            // Opens the login dialog straight away: there is nothing on this page for a logged-out
+            // visitor, so a button that only opens a dialog is a step with no decision in it. The
+            // button stays for anyone who dismisses it.
+            <RequireLoginPrompt message="Log in to post your ad." autoPrompt />
+          ) : (
+            // Keyed on the resolved default city: a client-side nav to /post with a different
+            // ?city= is a search-param-only change on the same route, so React would otherwise
+            // reuse the already-mounted wizard instance and its stale `useState(defaultCityId)`
+            // init instead of picking up the new default.
+            <PostAdWizard
+              key={city?.id ?? "none"}
+              cities={allCities}
+              defaultCityId={city?.id}
+              accessToken={accessToken}
+              videoEntitlement={videoEntitlement}
+            />
+          )}
+        </div>
       </div>
       <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
     </div>
