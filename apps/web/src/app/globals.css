@@ -125,3 +125,14 @@
     transform: translateY(0) scale(1);
   }
 }
+
+/* Hides the horizontal scrollbar on the category tab row, which is scrolled by its own arrows
+   or a swipe (see CategoryTabs). A bar drawn under the tabs reads as a second border. The row
+   stays keyboard- and wheel-scrollable — this hides the indicator, not the behaviour. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

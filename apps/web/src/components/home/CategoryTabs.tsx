@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
@@ -30,6 +30,42 @@ export function CategoryTabs({
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpenTab(null));
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [overflow, setOverflow] = useState({ left: false, right: false });
+
+  /** Tracks whether there is more tab row in either direction, so the arrows below appear only
+   * when they mean something.
+   *
+   * The row has always scrolled horizontally; nothing said so. On a phone the last two or three
+   * tabs sit off-screen with no scrollbar to hint at them — desktop browsers hide overlay
+   * scrollbars until you scroll, and touch devices never draw one — so a visitor could easily
+   * conclude Buy and Rent were the whole set.
+   *
+   * A ResizeObserver as well as a scroll listener: the row also becomes scrollable, or stops
+   * being, when the viewport changes or a font loads and reflows it, with no scroll event. */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      // 1px of slack — fractional scroll positions on zoomed or high-DPI displays otherwise
+      // leave an arrow lit at the very end of the track.
+      setOverflow({ left: el.scrollLeft > 1, right: el.scrollLeft < max - 1 });
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, []);
+
+  function scrollTabs(delta: number) {
+    scrollRef.current?.scrollBy({ left: delta, behavior: "smooth" });
+  }
+
   // Click navigates (and always closes the dropdown, since clicking is committing to that
   // page) — opening the dropdown is a separate, hover-only interaction below, matching how
   // MegaMenu's own column-1 items already switch via onMouseEnter.
@@ -57,7 +93,32 @@ export function CategoryTabs({
 
   return (
     <div ref={containerRef} className="relative" onMouseLeave={() => setOpenTab(null)}>
-      <div className="flex gap-1.5 overflow-x-auto">
+      {/* Fade plus chevron rather than a bare arrow: the fade shows content continuing under it,
+        * which is what tells you to scroll, and the chevron gives a mouse something to click.
+        * Rendered only on the side that actually has more. */}
+      {overflow.left && (
+        <button
+          type="button"
+          aria-label="Scroll categories left"
+          onClick={() => scrollTabs(-200)}
+          className="absolute left-0 top-0 bottom-0 z-20 w-10 flex items-center justify-start pl-1 border-0 cursor-pointer text-text-soft text-lg bg-gradient-to-r from-bg via-bg to-transparent"
+        >
+          ‹
+        </button>
+      )}
+      {overflow.right && (
+        <button
+          type="button"
+          aria-label="Scroll categories right"
+          onClick={() => scrollTabs(200)}
+          className="absolute right-0 top-0 bottom-0 z-20 w-10 flex items-center justify-end pr-1 border-0 cursor-pointer text-text-soft text-lg bg-gradient-to-l from-bg via-bg to-transparent"
+        >
+          ›
+        </button>
+      )}
+      {/* scrollbar-none: the row is scrolled by these arrows or a swipe, and a visible bar under
+        * the tabs would read as a second border. */}
+      <div ref={scrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-none">
         {HOME_TABS.map((tab) => {
           const isActive = tab.value === active;
           const highlighted = isActive || openTab === tab.value;
