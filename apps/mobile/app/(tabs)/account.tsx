@@ -85,7 +85,7 @@ function ProfileFields({
   onLogout: () => void;
   loggingOut: boolean;
 }) {
-  const { colors } = useAppTheme();
+  const { colors, theme, toggleTheme } = useAppTheme();
 
   const [name, setName] = useState(profile.name ?? "");
   const [email, setEmail] = useState(profile.email ?? "");
@@ -195,6 +195,15 @@ function ProfileFields({
 
       <Pressable onPress={onOpenMessages} style={[styles.row, { borderColor: colors.border }]}>
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>💬 Messages</Text>
+      </Pressable>
+
+      {/* The other toggle lives in the Home tab's brand row, which is not where anyone looks for
+          a preference — and is unreachable from the other three tabs. Appearance belongs on the
+          settings screen; Home keeps its copy for the visitor who spots it there first. */}
+      <Pressable onPress={toggleTheme} style={[styles.row, { borderColor: colors.border }]}>
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
+          {theme === "dark" ? "☀️  Switch to light mode" : "🌙  Switch to dark mode"}
+        </Text>
       </Pressable>
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile</Text>

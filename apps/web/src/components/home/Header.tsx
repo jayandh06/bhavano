@@ -81,7 +81,11 @@ export function Header({
               <span className="font-lora font-bold text-xl sm:text-2xl tracking-[-0.01em] text-green">Bhavano</span>
             </Link>
             <HeaderAuthButtons userName={userName} cityName={cityName} />
-            <div className="hidden sm:flex items-center shrink-0">
+            {/* Visible at every size. It was hidden below sm while the header was one crowded
+              * row and this was the least important thing competing for the space — but the row
+              * is no longer crowded, and hiding it left phone users with no way to switch theme
+              * at all, since nothing else offers one. */}
+            <div className="flex items-center shrink-0">
               <ThemeToggle />
             </div>
           </div>
