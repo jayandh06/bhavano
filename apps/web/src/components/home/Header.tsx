@@ -40,9 +40,6 @@ export function Header({
     <>
       <div className="bg-green text-on-green text-[13px] py-1.5">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 sm:gap-0">
-          {/* Kept visible on every screen size — this is the earliest, most reliably-crawled
-           * statement of what Bhavano is on any page, so it stays on even on phones instead of
-           * being dropped for the utility links' benefit. */}
           {/* Hidden on phones, where it cost a whole line of a small screen to say something a
             * visitor who just tapped an ad does not need. Deliberately `hidden` rather than
             * removed: `display:none` still leaves it in the HTML, so it remains the earliest
@@ -50,7 +47,11 @@ export function Header({
           <span className="hidden sm:block opacity-[0.85] truncate max-w-full">
             India&apos;s home for Buy · Rent · Villas · Plots · Coworking · PG · Commercial · Furniture
           </span>
-          <div className="flex gap-5 opacity-[0.85]">
+          {/* Pushed right on a phone. The tagline that used to sit to their left is hidden
+            * there, so left-aligned links ended up alone against the edge with the whole bar
+            * empty beside them; against the right they line up with the account controls in the
+            * row below. From sm up the tagline is back and justify-between spaces the two. */}
+          <div className="flex gap-5 justify-end sm:justify-normal opacity-[0.85]">
             <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} className="text-inherit">
               For Owners
             </Link>
