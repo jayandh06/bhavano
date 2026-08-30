@@ -51,13 +51,13 @@ export function ListingDetailActions({
     <div>
       <div className="flex gap-3 mt-2">
         <button
-          onClick={requireLogin}
+          onClick={() => requireLogin()}
           className="flex-1 bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer"
         >
           Contact owner
         </button>
         <button
-          onClick={requireLogin}
+          onClick={() => requireLogin()}
           className="bg-surface text-green border-[1.5px] border-green rounded-lg px-5 py-[13px] text-sm font-bold cursor-pointer"
         >
           Call

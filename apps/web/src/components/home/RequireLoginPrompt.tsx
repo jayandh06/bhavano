@@ -3,7 +3,17 @@
 import { useEffect, useRef } from "react";
 import { useAuthGate } from "./AuthGateProvider";
 
-export function RequireLoginPrompt({ message, autoPrompt = false }: { message: string; autoPrompt?: boolean }) {
+export function RequireLoginPrompt({
+  message,
+  autoPrompt = false,
+  redirectTo,
+}: {
+  message: string;
+  autoPrompt?: boolean;
+  /** Where to land after logging in. Worth setting wherever the page cannot be used logged out,
+   * so the login finishes the errand rather than abandoning it. */
+  redirectTo?: string;
+}) {
   const { requireLogin } = useAuthGate();
   const promptedRef = useRef(false);
 
@@ -20,14 +30,14 @@ export function RequireLoginPrompt({ message, autoPrompt = false }: { message: s
   useEffect(() => {
     if (!autoPrompt || promptedRef.current) return;
     promptedRef.current = true;
-    requireLogin();
-  }, [autoPrompt, requireLogin]);
+    requireLogin({ redirectTo });
+  }, [autoPrompt, redirectTo, requireLogin]);
 
   return (
     <div className="text-center px-5 py-[60px]">
       <p className="text-sm text-text-soft mb-4">{message}</p>
       <button
-        onClick={requireLogin}
+        onClick={() => requireLogin({ redirectTo })}
         className="bg-green text-on-green border-0 rounded-lg px-7 py-3 text-sm font-bold cursor-pointer"
       >
         Log in

@@ -52,7 +52,16 @@ export default async function PostAdPage({
             // Opens the login dialog straight away: there is nothing on this page for a logged-out
             // visitor, so a button that only opens a dialog is a step with no decision in it. The
             // button stays for anyone who dismisses it.
-            <RequireLoginPrompt message="Log in to post your ad." autoPrompt />
+            //
+            // redirectTo keeps them here afterwards. Google sign-in is a full-page redirect that
+            // otherwise lands on "/", so someone who came to post an ad was returned to the
+            // listings page with their errand forgotten. The city is carried so the wizard still
+            // opens on the one they picked.
+            <RequireLoginPrompt
+              message="Log in to post your ad."
+              autoPrompt
+              redirectTo={citySlug ? `/post?city=${encodeURIComponent(citySlug)}` : "/post"}
+            />
           ) : (
             // Keyed on the resolved default city: a client-side nav to /post with a different
             // ?city= is a search-param-only change on the same route, so React would otherwise

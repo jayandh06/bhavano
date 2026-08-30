@@ -35,7 +35,7 @@ export function HeaderAuthButtons({ userName, cityName }: { userName?: string | 
         <AccountMenu userName={userName} cityQuery={cityQuery} />
       ) : (
         <button
-          onClick={requireLogin}
+          onClick={() => requireLogin()}
           className="bg-transparent border-0 text-text text-sm font-bold cursor-pointer whitespace-nowrap"
         >
           Login

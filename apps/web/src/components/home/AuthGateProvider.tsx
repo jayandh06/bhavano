@@ -11,7 +11,11 @@ import { pushDataLayerEvent } from "@/lib/gtm";
 type LoginStep = "choose" | "phone" | "otp" | "email" | "emailCode";
 
 interface AuthGateContextValue {
-  requireLogin: () => void;
+  /** `redirectTo` sends the user back to a specific path once logged in, instead of wherever the
+   * login flow would otherwise leave them. Pass it when the page they are on only exists to be
+   * used logged in — /post — so finishing the login continues what they came to do. Omit it for
+   * the header's Login button, which is not tied to any particular intent. */
+  requireLogin: (options?: { redirectTo?: string }) => void;
 }
 
 const AuthGateContext = createContext<AuthGateContextValue | null>(null);
@@ -32,10 +36,12 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [showToast, setShowToast] = useState(false);
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
+  const [redirectTo, setRedirectTo] = useState<string | undefined>(undefined);
 
   const router = useRouter();
 
-  function requireLogin() {
+  function requireLogin(options?: { redirectTo?: string }) {
+    setRedirectTo(options?.redirectTo);
     setLoginStep("choose");
     setPhone("");
     setOtp("");
@@ -58,6 +64,10 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     // client keeps the RSC payload it rendered while logged out and the header still says
     // "Login" until the next navigation. Google sign-in avoids this only because it is a
     // full-page redirect.
+    // A caller that named a destination gets sent there; everyone else stays put. The refresh
+    // is needed either way — the header's logged-in state is a server-rendered prop, so without
+    // it the client keeps the RSC payload it rendered while logged out.
+    if (redirectTo) router.push(redirectTo);
     router.refresh();
   }
 
@@ -125,7 +135,9 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   async function handleGoogle() {
     setPending(true);
     try {
-      await signInWithGoogleAction();
+      // Google is a full-page redirect, so unlike the OTP path there is no client-side moment
+      // afterwards to navigate from — the destination has to be decided before leaving.
+      await signInWithGoogleAction(redirectTo);
       onLoginSuccess();
     } finally {
       setPending(false);

@@ -29,8 +29,17 @@ export async function verifyOtpAction(
   }
 }
 
-export async function signInWithGoogleAction(): Promise<void> {
-  await signIn("google");
+/** `redirectTo` is where NextAuth lands the user after the Google round trip. Without it the
+ * default is "/", which is why signing in from /post used to dump the user on the listings page
+ * with their intent forgotten.
+ *
+ * Only same-origin paths are honoured. This value reaches the server from the client, so an
+ * unchecked pass-through would be an open redirect: "//evil.example" is a protocol-relative URL
+ * that browsers treat as absolute. Requiring a single leading slash rejects both that and any
+ * scheme-qualified URL. */
+export async function signInWithGoogleAction(redirectTo?: string): Promise<void> {
+  const safe = redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : undefined;
+  await signIn("google", safe ? { redirectTo: safe } : undefined);
 }
 
 /** Google sign-in is a full-page redirect through NextAuth — there's no synchronous "it just
