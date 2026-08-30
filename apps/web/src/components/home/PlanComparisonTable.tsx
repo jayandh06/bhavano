@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HorizontalScroller } from "./HorizontalScroller";
 import type { UserProfileDto } from "@bhavano/types";
 import {
   FREE_LISTING_SLOTS,
@@ -86,7 +87,7 @@ export function PlanComparisonTable({ profile }: { profile: UserProfileDto | nul
           Active listings use a slot until the ad expires (~30 days) or you remove it. Boosts are separate — buy
           from My listings anytime.
         </p>
-        <div className="overflow-x-auto border border-border rounded-2xl bg-surface">
+        <HorizontalScroller ariaLabel="plan comparison" contentClassName="border border-border rounded-2xl bg-surface overflow-hidden">
           <table className="w-full min-w-[640px] border-collapse text-left">
             <thead>
               <tr className="border-b border-border">
@@ -128,7 +129,7 @@ export function PlanComparisonTable({ profile }: { profile: UserProfileDto | nul
               ))}
             </tbody>
           </table>
-        </div>
+        </HorizontalScroller>
         {sellerPlan === "free" && (
           <p className="text-[13px] text-muted mt-3 m-0">
             On the free plan now?{" "}
@@ -142,7 +143,7 @@ export function PlanComparisonTable({ profile }: { profile: UserProfileDto | nul
       <div>
         <h2 className="font-lora text-lg font-semibold m-0 mb-1">Buying — Bhavano Plus</h2>
         <p className="text-[13px] text-muted m-0 mb-4">For searching and messaging sellers — not for posting inventory.</p>
-        <div className="overflow-x-auto border border-border rounded-2xl bg-surface">
+        <HorizontalScroller ariaLabel="plan comparison" contentClassName="border border-border rounded-2xl bg-surface overflow-hidden">
           <table className="w-full min-w-[320px] border-collapse">
             <thead>
               <tr className="border-b border-border">
@@ -164,7 +165,7 @@ export function PlanComparisonTable({ profile }: { profile: UserProfileDto | nul
               ))}
             </tbody>
           </table>
-        </div>
+        </HorizontalScroller>
       </div>
     </div>
   );
