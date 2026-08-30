@@ -51,14 +51,20 @@ function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: str
 
   return (
     <div ref={ref} className="relative">
+      {/* The name is user-supplied and unbounded — a long one stretched this button until it
+        * pushed the theme toggle off the row entirely. Capped and truncated instead, with the
+        * caret held outside the truncating span so it never disappears with the overflow. The
+        * full name is still available on hover and to a screen reader. */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 bg-transparent border-0 text-text text-sm font-bold cursor-pointer whitespace-nowrap"
+        title={userName}
+        className="flex items-center gap-1.5 min-w-0 max-w-[7rem] sm:max-w-[10rem] bg-transparent border-0 text-text text-sm font-bold cursor-pointer"
       >
-        {userName} <span className="text-[10px] text-muted">▾</span>
+        <span className="truncate">{userName}</span>
+        <span className="text-[10px] text-muted shrink-0">▾</span>
       </button>
       {open && (
-        <div className="absolute top-[calc(100%+8px)] right-0 bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px] overflow-hidden">
+        <div className="absolute top-[calc(100%+8px)] right-0 bg-surface border border-border rounded-[10px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 w-[13rem] overflow-hidden">
           <Link href={`/profile${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
             Profile
           </Link>

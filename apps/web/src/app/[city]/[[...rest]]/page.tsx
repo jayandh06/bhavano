@@ -406,8 +406,8 @@ export default async function CityBrowsePage({
         <ListingDetailView
           listing={listing}
           popularCities={allCitiesForDetail.filter((c) => c.isPopular)}
+          allCities={allCitiesForDetail}
           userName={sessionHeaderName(session)}
-          currentSegments={parsed}
         />
       </>
     );

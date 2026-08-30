@@ -5,7 +5,7 @@ import {
   fieldIsVisible,
   groupFieldsBySection,
 } from "@bhavano/types/categoryFields";
-import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
+import { resolveDefaultCity } from "@/lib/defaultCity";
 import { daysUntil } from "@/lib/listingExpiry";
 import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
@@ -38,16 +38,17 @@ function directionsUrl(lat: number, lng: number): string {
 
 /** The full listing-detail page body — shared by the SEO catch-all route so it renders
  * identically regardless of which URL depth resolved to this listing. */
-export function ListingDetailView({
+export async function ListingDetailView({
   listing,
   popularCities,
+  allCities,
   userName,
-  currentSegments,
 }: {
   listing: ListingDetailDto;
   popularCities: City[];
+  /** Needed to resolve the *viewer's* city — see the header below. */
+  allCities: City[];
   userName?: string | null;
-  currentSegments: ParsedSegments;
 }) {
   const attributes = listing.attributes as Record<string, string | string[]>;
   // A field's stored value only makes sense to show once its `dependsOn` condition (if any) is
@@ -65,15 +66,22 @@ export function ListingDetailView({
   });
   const displaySections = groupFieldsBySection(visibleFields);
 
+  // The header describes where the *visitor* is browsing, not where this listing happens to be.
+  // It used to take both from the listing, so opening an Ahmedabad flat while browsing all
+  // cities left the chip reading "Showing ads near Ahmedabad" and the Rent & Lease tab active —
+  // a browsing context the visitor never chose. It is also literally untrue: on a detail page
+  // nobody is being shown ads near anywhere. The listing's own location is stated in the body,
+  // under the title, where it belongs.
+  const viewerCity = await resolveDefaultCity(allCities);
+
   return (
     <div className="min-h-screen bg-bg text-text">
       <Header
-        cityName={listing.cityName}
+        cityName={viewerCity?.name}
         popularCities={popularCities}
         searchQuery=""
-        activeCategory={homeCategoryForSegments(currentSegments)}
+        activeCategory="all"
         userName={userName}
-        currentSegments={currentSegments}
         areaName={listing.area}
       />
       <ViewTracker listingId={listing.id} />
