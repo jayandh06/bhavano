@@ -47,13 +47,33 @@ export function MediaLightbox({
       if (e.key === "ArrowLeft") step(-1);
     }
     window.addEventListener("keydown", onKey);
-    // The page behind must not scroll while this is open — on a phone a swipe meant for the
-    // gallery otherwise drags the listing underneath it.
-    const previousOverflow = document.body.style.overflow;
+
+    // The page behind must not scroll while this is open — on a phone a vertical swipe meant for
+    // the viewer otherwise drags the listing underneath it.
+    //
+    // `overflow: hidden` on <body> is the usual line and does not work on iOS Safari, which
+    // scrolls the page regardless. Pinning the body with position:fixed does work, but it also
+    // jumps the page to the top — so the offset is captured first and restored on close,
+    // otherwise closing the viewer would dump the reader back at the top of a long listing.
+    const scrollY = window.scrollY;
+    const previous = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+      overflow: document.body.style.overflow,
+    };
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
+
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previousOverflow;
+      document.body.style.position = previous.position;
+      document.body.style.top = previous.top;
+      document.body.style.width = previous.width;
+      document.body.style.overflow = previous.overflow;
+      window.scrollTo(0, scrollY);
     };
   }, [hasMultiple, onClose, step]);
 
@@ -78,7 +98,8 @@ export function MediaLightbox({
         if (start == null || end == null || !hasMultiple || Math.abs(end - start) < 50) return;
         step(end < start ? 1 : -1);
       }}
-      className="fixed inset-0 z-[200] bg-[#0b0b0adf] flex items-center justify-center select-none"
+      style={{ height: "100dvh" }}
+      className="fixed inset-x-0 top-0 z-[200] bg-[#0b0b0adf] flex items-center justify-center select-none"
     >
       <button
         type="button"
@@ -137,8 +158,8 @@ export function MediaLightbox({
             src={active.url}
             poster={active.posterUrl}
             controls
-            autoPlay
             playsInline
+            preload="metadata"
             className="max-w-full max-h-full"
           >
             <track kind="captions" />
