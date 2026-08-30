@@ -81,17 +81,30 @@ export function Header({
           <Suspense>
             <LocationPicker currentCityName={cityName} popularCities={popularCities} currentSegments={currentSegments} />
           </Suspense>
-          {/* order-last + w-full drops it onto its own line on a phone, where a search box
-            * squeezed between the city chip and the account links has no usable width. */}
+          {/* order-last + w-full drops this onto its own line on a phone, where a search box
+            * squeezed between the city chip and the account links has no usable width. The
+            * posting CTA rides along on that second line: paired with search it gets a real
+            * label rather than a truncated one, and taking it out of the first row leaves the
+            * account links room to stay put whether the visitor is logged in or out. */}
           <Suspense>
-            <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1">
-            <SearchBar
-              initialQuery={searchQuery}
-              cityName={cityName ?? "India"}
-              areaName={areaName}
-              popularCities={popularCities}
-              popularSearches={popularSearches}
-            />
+            <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1 flex items-center gap-2.5">
+              <div className="flex-1 min-w-0">
+                <SearchBar
+                  initialQuery={searchQuery}
+                  cityName={cityName ?? "India"}
+                  areaName={areaName}
+                  popularCities={popularCities}
+                  popularSearches={popularSearches}
+                />
+              </div>
+              {/* Phone only — the desktop header keeps its own copy inline with the account
+                * links (see HeaderAuthButtons), so exactly one is ever visible. */}
+              <Link
+                href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
+                className="sm:hidden shrink-0 border-[1.5px] border-green text-green rounded-lg px-3.5 py-[9px] text-[13px] font-bold whitespace-nowrap"
+              >
+                + Post free ad
+              </Link>
             </div>
           </Suspense>
 

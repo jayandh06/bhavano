@@ -19,14 +19,13 @@ export function HeaderAuthButtons({ userName, cityName }: { userName?: string | 
   return (
     <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 ml-auto">
       {/* TEMP(auth-gate): posting is open without login for now. */}
-      {/* The one link worth its width on a phone: it is the conversion the ad campaigns pay
-        * for. Shortened rather than dropped. */}
+      {/* Desktop only. On a phone this lives beside the search box on the second row (see
+        * Header), where it fits its full label instead of being squeezed to "+ Post". */}
       <Link
         href={`/post${cityQuery}`}
-        className="border-[1.5px] border-green text-green rounded-lg px-3 sm:px-4 py-[7px] sm:py-[9px] text-[13px] sm:text-sm font-bold whitespace-nowrap"
+        className="hidden sm:inline-block border-[1.5px] border-green text-green rounded-lg px-4 py-[9px] text-sm font-bold whitespace-nowrap"
       >
-        <span className="sm:hidden">+ Post</span>
-        <span className="hidden sm:inline">+ Post free ad</span>
+        + Post free ad
       </Link>
       {/* Icon-only below sm — the glyphs carry the meaning and the words are what overflow. */}
       <Link
