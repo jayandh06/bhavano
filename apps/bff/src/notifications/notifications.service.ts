@@ -86,15 +86,19 @@ export class NotificationsService {
     const greeting = user.name ? `Hi ${user.name}` : 'Hi';
     const site =
       this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    // The greeting lives in the heading for the HTML version and at the top of the body for the
+    // plain-text one — each medium wants it in a different place, and putting it in both is what
+    // produced "Welcome to Bhavano" as a heading followed by "and welcome to Bhavano" as the
+    // opening line.
+    const heading = user.name ? `Welcome, ${user.name}` : 'Welcome to Bhavano';
     const paragraphs = [
-      `${greeting}, and welcome to Bhavano.`,
       'You can post ads free, browse listings across India, and message buyers and sellers directly — no brokerage, no middlemen.',
       'Posting takes about two minutes, and your ad goes live straight away.',
     ];
     // The text/plain part is not an afterthought: spam filters read it, and some clients show it
     // instead of the HTML. It carries the same call to action as a bare URL, since a link with
     // nothing to hang an href on is useless there.
-    const emailBody = `${paragraphs.join('\n\n')}\n\nPost your first ad: ${site}/post\n\n— Team Bhavano`;
+    const emailBody = `${greeting},\n\n${paragraphs.join('\n\n')}\n\nPost your first ad: ${site}/post\n\n— Team Bhavano`;
     const smsBody = `${greeting}, welcome to Bhavano! Browse verified listings or post your own ad — all free.`;
     const welcomeTemplate = this.config.get<string>(
       'WHATSAPP_WELCOME_TEMPLATE',
@@ -108,7 +112,7 @@ export class NotificationsService {
             emailBody,
             {
               html: renderEmail({
-                heading: 'Welcome to Bhavano',
+                heading,
                 preheader:
                   'Post ads free, browse listings across India, and message buyers and sellers directly.',
                 paragraphs,
