@@ -144,8 +144,11 @@ export function CategoryTabs({
             </button>
           );
         })}
+        {/* prefetch={false} — see the note on the same links in Header.tsx. A payload prefetched
+          * from a city page carries that city's chip into a page opened from somewhere else. */}
         <Link
           href="/tools"
+          prefetch={false}
           className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
             toolsActive ? "bg-surface-alt text-text border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
           }`}
@@ -155,6 +158,7 @@ export function CategoryTabs({
         </Link>
         <Link
           href={plansHref}
+          prefetch={false}
           className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
             plansActive ? "bg-surface-alt text-text border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
           }`}

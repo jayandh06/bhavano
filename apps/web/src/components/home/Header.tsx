@@ -52,16 +52,22 @@ export function Header({
             * empty beside them; against the right they line up with the account controls in the
             * row below. From sm up the tagline is back and justify-between spaces the two. */}
           <div className="flex gap-5 justify-end sm:justify-normal opacity-[0.85]">
-            <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} className="text-inherit">
+            {/* prefetch={false}: the header these pages render includes the city chip, which is
+              * read from a cookie during the server render. A prefetch happens while you are
+              * still on the previous page, so /tools prefetched from /bengaluru bakes "Bengaluru"
+              * into a payload that the router may then serve after you have moved to the
+              * all-cities home — the chip showing a city you left behind. These are low-traffic
+              * utility pages; a fresh fetch on click costs nothing worth this. */}
+            <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} prefetch={false} className="text-inherit">
               For Owners
             </Link>
-            <Link href="/tools" className="text-inherit">
+            <Link href="/tools" prefetch={false} className="text-inherit">
               Tools
             </Link>
-            <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} className="text-inherit">
+            <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} prefetch={false} className="text-inherit">
               Plans
             </Link>
-            <Link href="/help" className="text-inherit">
+            <Link href="/help" prefetch={false} className="text-inherit">
               Help
             </Link>
           </div>
