@@ -68,6 +68,14 @@ export interface FieldDef {
    * are left unrestricted (`undefined`). Enforced by truncating keystrokes past the limit, not
    * just `<input max>`, since browsers don't stop someone typing a 3rd digit on their own. */
   maxDigits?: number;
+  /** Render as a −/+ stepper rather than a bare number box. For small counts the buttons are
+   * faster than a keyboard and they are visible on every device, unlike `<input type=number>`
+   * spinners, which browsers show only on hover on desktop and not at all on a phone. */
+  stepper?: boolean;
+  /** Seeded into a new listing's attributes when its category is chosen. Only counts use this:
+   * "how many bedrooms" starting at 0 is a real answer and lets the stepper work from a number,
+   * whereas an empty price or area would be a guess presented as fact. */
+  defaultValue?: string;
   transactionTypes?: TransactionType[];
   section?: FieldSection;
   /** Field is only shown once `attributes[dependsOn.key] === dependsOn.value` — e.g. a
@@ -147,6 +155,17 @@ export function pruneHiddenAttributes(
   return next;
 }
 
+/** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
+ * of resetting to an empty object so a stepper has a number to increment from and the form opens
+ * with honest answers rather than blanks the poster has to fill in to say "none". */
+export function defaultAttributesFor(category: ListingCategory): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of CATEGORY_FIELD_CONFIG[category]) {
+    if (field.defaultValue !== undefined) out[field.key] = field.defaultValue;
+  }
+  return out;
+}
+
 const RESIDENTIAL_FIELDS: FieldDef[] = [
   {
     key: "bedrooms",
@@ -154,6 +173,8 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     required: true,
     maxDigits: 2,
+    stepper: true,
+    defaultValue: "0",
     section: "basics",
   },
   {
@@ -162,12 +183,15 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     required: true,
     maxDigits: 2,
+    stepper: true,
+    defaultValue: "0",
     section: "basics",
   },
   {
     key: "carpetAreaSqft",
     label: "Carpet area (sqft)",
     type: "number",
+    maxDigits: 5,
     min: 1,
     required: true,
     section: "basics",
@@ -189,6 +213,8 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    stepper: true,
+    defaultValue: "0",
     section: "basics",
   },
   {
@@ -197,6 +223,8 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    stepper: true,
+    defaultValue: "0",
     section: "basics",
   },
   {
@@ -205,6 +233,8 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     min: 0,
     maxDigits: 2,
+    stepper: true,
+    defaultValue: "0",
     section: "basics",
   },
   {
@@ -284,6 +314,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     key: "brokerageFee",
     label: "Brokerage fee (₹)",
     type: "number",
+    maxDigits: 5,
     min: 0,
     section: "pricing",
     transactionTypes: ["rent", "lease"],
@@ -316,6 +347,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     key: "monthlyMaintenanceFee",
     label: "Maintenance fee (₹)",
     type: "number",
+    maxDigits: 5,
     min: 0,
     section: "pricing",
     dependsOn: { key: "maintenanceFeeApplicable", value: "yes" },

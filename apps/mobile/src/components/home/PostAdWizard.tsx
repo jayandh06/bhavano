@@ -11,6 +11,7 @@ import {
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
+import { PRICE_MAX_DIGITS, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -33,11 +34,15 @@ function isSegmented(field: FieldConfig): boolean {
   );
 }
 
-/** Every quantity field in the config is named `somethingCount` — balconies, parking, and each
- * furnishing item. They are small whole numbers, so a stepper beats a keyboard: no keypad, no way
- * to type "abc" or a negative, and the value is visible without tapping in. */
+/** Small whole numbers get a stepper rather than a keyboard: no keypad, no way to type "abc" or
+ * a negative, and the value is visible without tapping in.
+ *
+ * Two ways in. `stepper: true` in the shared field config is the explicit one, and covers
+ * bedrooms and bathrooms — which the naming rule below misses, since neither ends in "Count"
+ * despite being exactly the same kind of question. The suffix rule stays for the furnishing and
+ * amenity counts, which are numerous and would be tedious to flag one by one. */
 function isCounter(field: FieldConfig): boolean {
-  return field.type === "number" && field.key.endsWith("Count");
+  return field.type === "number" && (field.stepper === true || field.key.endsWith("Count"));
 }
 
 /** Upper bound from the field's own `maxDigits` (the config already carries it), defaulting to two
@@ -84,7 +89,9 @@ function priceIsValid(price: string): boolean {
 
 /** Wide enough for any realistic rupee amount, narrow enough that a stuck key can't produce a
  * number the BFF then has to reject. */
-const MAX_PRICE_DIGITS = 11;
+// Was 11 here and unbounded on the web, so the same listing had two different ceilings
+// depending on where it was typed. Both now read the shared value.
+const MAX_PRICE_DIGITS = PRICE_MAX_DIGITS;
 
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
@@ -435,10 +442,29 @@ export function PostAdWizard({
             ))}
           </View>
 
-          <Text style={[styles.label, { color: colors.textSoft }]}>Title</Text>
+          <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
+            <Text style={[styles.label, { color: colors.textSoft }]}>Title</Text>
+            {/* Counts up rather than down, so it reads as progress instead of a warning, and
+                turns amber before the cap rather than at it — running out mid-sentence is worth
+                knowing a few characters early. */}
+            <Text
+              style={{
+                fontSize: 12,
+                color:
+                  title.length >= TITLE_MAX_LENGTH
+                    ? "#b3413a"
+                    : title.length > TITLE_MAX_LENGTH - 20
+                      ? colors.green
+                      : colors.muted,
+              }}
+            >
+              {title.length}/{TITLE_MAX_LENGTH}
+            </Text>
+          </View>
           <TextInput
             value={title}
-            onChangeText={setTitle}
+            maxLength={TITLE_MAX_LENGTH}
+            onChangeText={(v) => setTitle(v.slice(0, TITLE_MAX_LENGTH))}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
 

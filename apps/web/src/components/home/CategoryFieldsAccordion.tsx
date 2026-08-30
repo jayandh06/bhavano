@@ -7,8 +7,12 @@ import {
   groupFieldsBySection,
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
+import { clampDigits } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass } from "@/lib/formStyles";
 import { useClickOutside } from "@/lib/useClickOutside";
+
+const stepperButtonClass =
+  "w-9 h-9 shrink-0 flex items-center justify-center border border-border rounded-lg bg-surface text-text text-lg font-bold leading-none cursor-pointer disabled:opacity-40 disabled:cursor-default";
 
 function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
@@ -17,9 +21,6 @@ function sanitizeNonNegative(value: string): string {
 /** Truncates to at most `maxDigits` characters — HTML's `maxlength` doesn't apply to
  * `type="number"` inputs, so this is the only thing that actually stops someone typing a 3rd
  * digit into a count field that should never need one. */
-function clampDigits(value: string, maxDigits: number | undefined): string {
-  return maxDigits === undefined ? value : value.slice(0, maxDigits);
-}
 
 /** Multi-select as a closed dropdown button that opens a checkbox list — same structural
  * pattern as `AreaFilter`/`BhkFilter` (toggle button, click-outside-to-close panel, checkbox
@@ -175,10 +176,56 @@ function CategoryFieldInput({
     field.type === "number" && field.maxDigits !== undefined
       ? 10 ** field.maxDigits - 1
       : undefined;
+
+  // Always-visible −/+ buttons for small counts. `<input type="number">` spinners are not a
+  // substitute: desktop browsers only reveal them on hover, and phones never show them at all,
+  // so on the devices most posters use there was no visible way to change the number except the
+  // keyboard.
+  if (field.type === "number" && field.stepper) {
+    const current = Number(typeof value === "string" && value !== "" ? value : 0);
+    const min = field.min ?? 0;
+    const max = maxValue ?? Number.MAX_SAFE_INTEGER;
+    const step = (delta: number) => onChange(String(Math.min(max, Math.max(min, current + delta))));
+    return (
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          aria-label={`Decrease ${field.label}`}
+          onClick={() => step(-1)}
+          disabled={current <= min}
+          className={stepperButtonClass}
+        >
+          −
+        </button>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={min}
+          max={maxValue}
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onChange(clampDigits(sanitizeNonNegative(e.target.value), field.maxDigits))}
+          aria-label={field.label}
+          className={`${fieldClass.replace("w-full", "w-14")} text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+        />
+        <button
+          type="button"
+          aria-label={`Increase ${field.label}`}
+          onClick={() => step(1)}
+          disabled={current >= max}
+          className={stepperButtonClass}
+        >
+          +
+        </button>
+      </div>
+    );
+  }
+
   // A 2-digit count doesn't need a full-width box to type into — stretching it the same as a
   // 6-digit price/area field just leaves a wide empty input with a couple of characters in it.
+  // Keyed on <= 2 rather than "has a limit at all", so capping carpet area or a fee at 5 digits
+  // does not also shrink its box to a width those digits cannot fit.
   const className =
-    field.type === "number" && field.maxDigits !== undefined
+    field.type === "number" && field.maxDigits !== undefined && field.maxDigits <= 2
       ? fieldClass.replace("w-full", "w-20")
       : fieldClass;
 

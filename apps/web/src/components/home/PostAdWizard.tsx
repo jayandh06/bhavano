@@ -10,7 +10,8 @@ import type {
   ReverseGeocodeResultDto,
   TransactionType,
 } from "@bhavano/types";
-import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
+import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, fieldIsVisible } from "@bhavano/types/categoryFields";
+import { clampDigits, MAX_PRICE, PRICE_MAX_DIGITS, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
@@ -169,7 +170,7 @@ export function PostAdWizard({
 
   function selectCategory(next: ListingCategory) {
     setCategory(next);
-    setAttributes({});
+    setAttributes(defaultAttributesFor(next));
     const postable = POSTABLE_TRANSACTION_TYPES[next];
     if (postable.length === 1) {
       setTransactionType(postable[0]);
@@ -542,11 +543,22 @@ export function PostAdWizard({
       {step === "details" && category && transactionType && (
         <div className="flex flex-col gap-4">
           <div>
-            <RequiredLabel text="Title" />
+            <div className="flex items-baseline justify-between gap-2">
+              <RequiredLabel text="Title" />
+              {/* Counts up rather than down, so it reads as progress rather than a warning, and
+                * turns amber near the cap instead of only at it — a poster who has run out of
+                * room mid-sentence wants to know a few characters earlier. */}
+              <span
+                className={`text-xs tabular-nums ${title.length >= TITLE_MAX_LENGTH ? "text-[#b3413a]" : title.length > TITLE_MAX_LENGTH - 20 ? "text-gold" : "text-muted"}`}
+              >
+                {title.length}/{TITLE_MAX_LENGTH}
+              </span>
+            </div>
             <input
               required
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              maxLength={TITLE_MAX_LENGTH}
+              onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
               className={fieldClass}
             />
           </div>
@@ -647,8 +659,10 @@ export function PostAdWizard({
                         type="number"
                         required
                         min={1}
+                        max={MAX_PRICE}
+                        inputMode="numeric"
                         value={price}
-                        onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
+                        onChange={(e) => setPrice(clampDigits(sanitizeNonNegative(e.target.value), PRICE_MAX_DIGITS))}
                         className={fieldClass}
                       />
                     </div>
