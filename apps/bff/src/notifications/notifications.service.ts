@@ -99,10 +99,13 @@ export class NotificationsService {
       user.phone
         ? this.msg91.sendTransactionalSms(user.phone, smsBody)
         : Promise.resolve(),
-      // Meta's Cloud API directly (see WhatsappProvider). The template carries the greeting as
-      // its single variable, so the SMS body is reused rather than written twice.
+      // Meta's Cloud API directly (see WhatsappProvider). The variable is the name alone, not
+      // the "Hi <name>" greeting used above: the approved template supplies its own wording
+      // around it, so passing a greeting would render "Welcome to Bhavano, Hi Ravi!".
       user.phone && welcomeTemplate
-        ? this.whatsapp.sendTemplate(user.phone, welcomeTemplate, [greeting])
+        ? this.whatsapp.sendTemplate(user.phone, welcomeTemplate, [
+            user.name ?? 'there',
+          ])
         : Promise.resolve(),
     ]);
   }
