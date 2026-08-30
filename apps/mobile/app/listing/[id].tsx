@@ -155,27 +155,41 @@ export default function ListingDetailScreen() {
         </Text>
       ) : (
         <>
-          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 16, marginBottom: 12 }}>
-            Ads shown without login — sign in only to respond
-          </Text>
+          {/* Contact, Call and Message are hidden on your own ad — they would start a
+              conversation with yourself, and offering them reads as the app not knowing whose
+              listing it is. Favourite stays: harmless, and the like count is part of the page. */}
+          {!listing.isOwner && (
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 16, marginBottom: 12 }}>
+              Ads shown without login — sign in only to respond
+            </Text>
+          )}
 
           <View style={styles.actionsRow}>
-            <Pressable onPress={requireLogin} style={[styles.contactButton, { backgroundColor: colors.green }]}>
-              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Contact owner</Text>
-            </Pressable>
-            <Pressable onPress={requireLogin} style={[styles.callButton, { borderColor: colors.green }]}>
-              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Call</Text>
-            </Pressable>
-            <Pressable onPress={onToggleFavourite} style={[styles.heartButton, { borderColor: colors.border }]}>
+            {!listing.isOwner && (
+              <>
+                <Pressable onPress={requireLogin} style={[styles.contactButton, { backgroundColor: colors.green }]}>
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Contact owner</Text>
+                </Pressable>
+                <Pressable onPress={requireLogin} style={[styles.callButton, { borderColor: colors.green }]}>
+                  <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Call</Text>
+                </Pressable>
+              </>
+            )}
+            <Pressable
+              onPress={onToggleFavourite}
+              style={[styles.heartButton, { borderColor: colors.border }, listing.isOwner && { flex: 1 }]}
+            >
               <Text style={{ fontSize: 17, color: isFavourited ? "#c0554b" : colors.text }}>
                 {isFavourited ? "♥" : "♡"}
               </Text>
               <Text style={{ fontSize: 10, fontWeight: "700", color: colors.muted }}>{likeCount}</Text>
             </Pressable>
           </View>
-          <Pressable onPress={onMessage} style={[styles.messageButton, { borderColor: colors.green }]}>
-            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>💬 Message owner</Text>
-          </Pressable>
+          {!listing.isOwner && (
+            <Pressable onPress={onMessage} style={[styles.messageButton, { borderColor: colors.green }]}>
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>💬 Message owner</Text>
+            </Pressable>
+          )}
           {messageError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{messageError}</Text>}
         </>
       )}

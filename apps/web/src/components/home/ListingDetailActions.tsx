@@ -11,10 +11,16 @@ export function ListingDetailActions({
   listingId,
   initialIsFavourited,
   initialLikeCount,
+  isOwner,
 }: {
   listingId: string;
   initialIsFavourited: boolean;
   initialLikeCount: number;
+  /** The poster's own view. Contact, Call and Message are hidden — they would start a
+   * conversation with yourself, and offering them reads as the page not knowing whose ad it is.
+   * Favourite stays: an owner bookmarking their own listing is harmless and the like count is
+   * part of how the page reads. */
+  isOwner: boolean;
 }) {
   const { requireLogin } = useAuthGate();
   const router = useRouter();
@@ -50,21 +56,25 @@ export function ListingDetailActions({
   return (
     <div>
       <div className="flex gap-3 mt-2">
-        <button
-          onClick={() => requireLogin()}
-          className="flex-1 bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer"
-        >
-          Contact owner
-        </button>
-        <button
-          onClick={() => requireLogin()}
-          className="bg-surface text-green border-[1.5px] border-green rounded-lg px-5 py-[13px] text-sm font-bold cursor-pointer"
-        >
-          Call
-        </button>
+        {!isOwner && (
+          <>
+            <button
+              onClick={() => requireLogin()}
+              className="flex-1 bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer"
+            >
+              Contact owner
+            </button>
+            <button
+              onClick={() => requireLogin()}
+              className="bg-surface text-green border-[1.5px] border-green rounded-lg px-5 py-[13px] text-sm font-bold cursor-pointer"
+            >
+              Call
+            </button>
+          </>
+        )}
         <button
           onClick={onToggleFavourite}
-          className={`w-[60px] bg-surface border-[1.5px] border-border rounded-lg text-[17px] cursor-pointer flex flex-col items-center gap-0.5 ${
+          className={`${isOwner ? "flex-1" : "w-[60px]"} bg-surface border-[1.5px] border-border rounded-lg py-2.5 text-[17px] cursor-pointer flex flex-col items-center gap-0.5 ${
             isFavourited ? "text-[#c0554b]" : ""
           }`}
         >
@@ -72,12 +82,14 @@ export function ListingDetailActions({
           <span className="text-[10px] font-bold text-muted">{likeCount}</span>
         </button>
       </div>
-      <button
-        onClick={onMessage}
-        className="w-full mt-2.5 bg-surface text-green border-[1.5px] border-green rounded-lg p-3 text-sm font-bold cursor-pointer"
-      >
-        💬 Message owner
-      </button>
+      {!isOwner && (
+        <button
+          onClick={onMessage}
+          className="w-full mt-2.5 bg-surface text-green border-[1.5px] border-green rounded-lg p-3 text-sm font-bold cursor-pointer"
+        >
+          💬 Message owner
+        </button>
+      )}
       {messageError && <p className="text-[#b3413a] text-[13px] mt-2">{messageError}</p>}
     </div>
   );

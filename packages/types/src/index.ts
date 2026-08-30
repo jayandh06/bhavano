@@ -95,6 +95,9 @@ export interface ListingCardDto {
    * badge. Deliberately not the full `videos[]` array here (see ListingDetailDto.videos) since
    * browse pages render 20+ cards and none of them play video. See docs/plans/listing-video-uploads.md. */
   hasVideo: boolean;
+  /** The viewer posted this listing. Hides the contact actions on the card, for the same reason
+   * as on the detail page — always false for an anonymous viewer, who owns nothing. */
+  isOwner: boolean;
 }
 
 export interface ListingsPage {

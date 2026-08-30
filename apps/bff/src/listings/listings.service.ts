@@ -296,7 +296,7 @@ export class ListingsService {
         rows.map((r) => r.id),
       );
       return {
-        items: rows.map((row) => this.toCardDto(row, favouritedIds)),
+        items: rows.map((row) => this.toCardDto(row, favouritedIds, currentUserId)),
         nextCursor: null,
         total,
       };
@@ -310,7 +310,7 @@ export class ListingsService {
     );
 
     return {
-      items: page.map((row) => this.toCardDto(row, favouritedIds)),
+      items: page.map((row) => this.toCardDto(row, favouritedIds, currentUserId)),
       nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
@@ -446,7 +446,15 @@ export class ListingsService {
     }
 
     const favouritedIds = await this.getFavouritedIds(currentUser?.id, [id]);
-    return this.toDetailDto(listing, favouritedIds, isOwnerOrAdmin);
+    // Ownership is passed separately from isOwnerOrAdmin: an admin looking at someone else's
+    // listing is not its owner and may well need the contact actions, so the two cannot share a
+    // flag even though they are computed a line apart.
+    return this.toDetailDto(
+      listing,
+      favouritedIds,
+      isOwnerOrAdmin,
+      currentUser?.id === listing.ownerId,
+    );
   }
 
   async create(
@@ -1147,6 +1155,8 @@ export class ListingsService {
     // populated at all (the client must never recompute tier itself — see resolveVideoEntitlement's
     // doc comment in packages/types/src/videoLimits.ts).
     isOwnerOrAdmin = false,
+    /** Strictly the poster — see the call site in `findOne`. */
+    isOwner = false,
   ): ListingDetailDto {
     const videos = (
       isOwnerOrAdmin
@@ -1180,6 +1190,7 @@ export class ListingsService {
         ? resolveVideoEntitlement(listing.owner, listing)
         : undefined,
       renewCount: listing.listingRenewals.length,
+      isOwner,
       renewalHistory: isOwnerOrAdmin
         ? listing.listingRenewals.map((r) => ({
             from: r.previousExpiresAt.toISOString(),
@@ -1227,6 +1238,8 @@ export class ListingsService {
       listingVideos: ListingVideo[];
     },
     favouritedIds?: Set<string>,
+    /** Compared against the row's ownerId — see the DTO field. */
+    viewerId?: string,
   ): ListingCardDto {
     const placeholder = categoryImagePlaceholder[listing.category];
     const hasPhoto = listing.listingPhotos.length > 0;
@@ -1252,6 +1265,7 @@ export class ListingsService {
       likeCount: listing.likeCount,
       isFavourited: favouritedIds?.has(listing.id) ?? false,
       isBoosted: (listing.boostedUntil?.getTime() ?? 0) > Date.now(),
+      isOwner: viewerId !== undefined && viewerId === listing.ownerId,
       // Browse-card badge only — not gated on isOwnerOrAdmin like toDetailDto's `videos` array,
       // since "does this listing have a playable video at all" is fine as public info once done.
       hasVideo: listing.listingVideos.some((v) => v.status === 'done'),

@@ -93,20 +93,24 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
             <span>♥ {likeCount}</span>
           </div>
         </Link>
-        <div className="flex gap-2.5 mt-2">
-          <button
-            onClick={() => requireLogin()}
-            className="flex-1 bg-green text-on-green border-none rounded-lg p-[11px] text-sm font-bold cursor-pointer"
-          >
-            Contact owner
-          </button>
-          <button
-            onClick={() => requireLogin()}
-            className="bg-surface text-green border-[1.5px] border-green rounded-lg px-4 py-[11px] text-sm font-bold cursor-pointer"
-          >
-            Call
-          </button>
-        </div>
+        {/* Hidden on your own listing — the same reason as on the detail page, and more visible
+          * here since a seller scrolling their own city sees the card among everyone else's. */}
+        {!item.isOwner && (
+          <div className="flex gap-2.5 mt-2">
+            <button
+              onClick={() => requireLogin()}
+              className="flex-1 bg-green text-on-green border-none rounded-lg p-[11px] text-sm font-bold cursor-pointer"
+            >
+              Contact owner
+            </button>
+            <button
+              onClick={() => requireLogin()}
+              className="bg-surface text-green border-[1.5px] border-green rounded-lg px-4 py-[11px] text-sm font-bold cursor-pointer"
+            >
+              Call
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
