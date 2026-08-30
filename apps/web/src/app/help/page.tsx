@@ -72,7 +72,7 @@ const POSTING: Faq[] = [
 const BUYING_RENTING: Faq[] = [
   {
     q: "How do I contact a seller or owner?",
-    a: 'Open the listing and use "Contact owner" to start a message, or "Call" if a phone number is available. You\'ll need to be logged in to do either.',
+    a: 'Open the listing and use "Contact owner" — it starts a message thread with them, which you can carry on from Messages. You\'ll need to be logged in, and we\'ll ask you to sign in at that point if you aren\'t.',
   },
   {
     q: "Can I save a listing to look at later?",

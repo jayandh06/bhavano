@@ -4,14 +4,19 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ListingCardDto } from "@bhavano/types";
+import { useRouter } from "next/navigation";
 import { useAuthGate } from "./AuthGateProvider";
 import { toggleFavouriteAction } from "@/app/actions/listings";
+import { startConversationAction } from "@/app/actions/messaging";
 import { buildListingPath } from "@/lib/listingPath";
+import { pushDataLayerEvent } from "@/lib/gtm";
 
 export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName: string }) {
   const { requireLogin } = useAuthGate();
+  const router = useRouter();
   const [isFavourited, setIsFavourited] = useState(item.isFavourited);
   const [likeCount, setLikeCount] = useState(item.likeCount);
+  const [contactError, setContactError] = useState<string | null>(null);
   const href = buildListingPath(item);
 
   async function onToggleFavourite(e: React.MouseEvent) {
@@ -23,6 +28,25 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
     }
     setIsFavourited(result.favourited);
     setLikeCount(result.likeCount);
+  }
+
+  // Whether login is needed is the server's answer, not a guess from client state: the action
+  // returns `requiresLogin` when the session cookie is missing or the BFF rejects the token, so
+  // an expired session opens the modal and a live one goes straight to the conversation. Asking
+  // the client instead is what made this button open the login dialog even when signed in.
+  async function onContactOwner() {
+    setContactError(null);
+    const result = await startConversationAction(item.id);
+    if (result.requiresLogin) {
+      requireLogin();
+      return;
+    }
+    if ("error" in result) {
+      setContactError(result.error);
+      return;
+    }
+    pushDataLayerEvent("contact_owner", { listingId: item.id });
+    router.push(`/messages/${result.conversationId}`);
   }
 
   return (
@@ -96,19 +120,14 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
         {/* Hidden on your own listing — the same reason as on the detail page, and more visible
           * here since a seller scrolling their own city sees the card among everyone else's. */}
         {!item.isOwner && (
-          <div className="flex gap-2.5 mt-2">
+          <div className="mt-2">
             <button
-              onClick={() => requireLogin()}
-              className="flex-1 bg-green text-on-green border-none rounded-lg p-[11px] text-sm font-bold cursor-pointer"
+              onClick={onContactOwner}
+              className="w-full bg-green text-on-green border-none rounded-lg p-[11px] text-sm font-bold cursor-pointer"
             >
               Contact owner
             </button>
-            <button
-              onClick={() => requireLogin()}
-              className="bg-surface text-green border-[1.5px] border-green rounded-lg px-4 py-[11px] text-sm font-bold cursor-pointer"
-            >
-              Call
-            </button>
+            {contactError && <p className="text-[#b3413a] text-[12px] mt-1.5">{contactError}</p>}
           </div>
         )}
       </div>
