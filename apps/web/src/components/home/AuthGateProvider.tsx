@@ -204,6 +204,13 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Out of the way while Google's window has the user's attention. Leaving it up meant asking
+    // someone to log in on top of the login they are already doing — and on a phone, where the
+    // popup is a tab rather than a window, they come back to a dialog that looks like nothing
+    // happened. It returns below if they close Google without signing in, so backing out lands
+    // them exactly where they were rather than on a page with no way back in.
+    setShowLoginModal(false);
+
     // Two ways this ends, because only one of them is reliable. The popup reports back when it
     // reaches our own completion page; but a user who closes the window mid-flow sends nothing,
     // and without the poll the dialog would sit disabled forever waiting for a message that is
@@ -219,6 +226,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
       if (event.data?.type !== AUTH_POPUP_MESSAGE) return;
       cleanup();
       if (!event.data.ok) {
+        setShowLoginModal(true);
         setError("Sign-in was not completed.");
         return;
       }
@@ -236,7 +244,10 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
         if (signedIn) {
           onLoginSuccess();
           void trackGoogleSignup();
+          return;
         }
+        // Closed the window without finishing — put the choices back, on the step they left.
+        setShowLoginModal(true);
       });
     }, 500);
 
