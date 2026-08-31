@@ -74,7 +74,15 @@ export function CategoryTabs({
             >
               <Icon name={tab.icon} />
               {tab.label}
-              {tab.column1.length > 0 && <span className="text-[10px] text-muted">▾</span>}
+              {/* Desktop only — the menu it points at opens on mouseenter, which a touch device
+                * can never fire. Tapping a tab there already just navigates, same as a tab with
+                * no dropdown at all, so the chevron on mobile was promising an interaction that
+                * does not exist. Hidden rather than shown-but-inert, since a flex row's gap and
+                * this span's own width both go away with it — exactly the tighter spacing asked
+                * for, not a separate padding change. */}
+              {tab.column1.length > 0 && (
+                <span className="hidden sm:inline text-[10px] text-muted">▾</span>
+              )}
             </button>
           );
         })}
