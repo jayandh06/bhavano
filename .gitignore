@@ -49,7 +49,3 @@ __pycache__/
 .agents/
 **/.claude/skills/
 
-# MaxMind GeoLite2 database, downloaded by scripts/update-geolite.sh and bind-mounted into the
-# bff. ~60MB, refreshed periodically under MaxMind's licence, and redistributing it is not ours
-# to do — it belongs on the host, not in git.
-data/geoip/
