@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { sendOtpAction, signInWithGoogleAction, verifyOtpAction } from "@/app/actions/auth";
+import { hasAdminSessionAction, sendOtpAction, signInWithGoogleAction, verifyOtpAction } from "@/app/actions/auth";
+import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 
 type Step = "choose" | "phone" | "otp";
 
@@ -35,6 +36,68 @@ export function LoginForm() {
     else setError(result.error ?? "Incorrect OTP");
   }
 
+  /**
+   * Google sign-in in a child window, so this page never unloads.
+   *
+   * It used to hand the whole tab to Google and let NextAuth's redirect bring it back — which
+   * works, but means a rejected account (a real Google login, just not one the BFF has marked
+   * admin) only finds out after a full round trip through "/" and back to "/login?error=
+   * unauthorized". The popup's completion page checks the same admin-role condition
+   * `requireAdmin` does and reports it directly, so that message can show here instead.
+   *
+   * Falls back to the old full-page flow when there is no usable popup — a blocker, or a browser
+   * that refuses the window.
+   */
+  async function onGoogleSignIn() {
+    setPending(true);
+    setError(null);
+
+    const popup = window.open(
+      "/auth/google",
+      "bhavano-admin-google-auth",
+      "width=480,height=620,menubar=no,toolbar=no,location=no,status=no",
+    );
+    if (!popup) {
+      await signInWithGoogleAction();
+      return;
+    }
+
+    const cleanup = () => {
+      window.removeEventListener("message", onMessage);
+      clearInterval(closedTimer);
+      setPending(false);
+    };
+
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== AUTH_POPUP_MESSAGE) return;
+      cleanup();
+      if (event.data.ok) {
+        router.push("/");
+      } else {
+        setError(
+          event.data.reason === "unauthorized"
+            ? "That account doesn't have admin access."
+            : "Sign-in was not completed.",
+        );
+      }
+    }
+
+    // A closed window is not proof of failure — the message is the normal path, not a
+    // guarantee — so a login that landed without one is verified rather than assumed. If it
+    // genuinely was just closed with nothing completed, there is nothing to report: the form is
+    // already sitting right here, unlike web's modal, so there is no dialog to put back either.
+    const closedTimer = window.setInterval(() => {
+      if (!popup.closed) return;
+      cleanup();
+      void hasAdminSessionAction().then((isAdmin) => {
+        if (isAdmin) router.push("/");
+      });
+    }, 500);
+
+    window.addEventListener("message", onMessage);
+  }
+
   return (
     <div
       style={{
@@ -62,7 +125,7 @@ export function LoginForm() {
           <button onClick={() => setStep("phone")} style={primaryButtonStyle}>
             Continue with Phone OTP
           </button>
-          <button onClick={() => signInWithGoogleAction()} style={outlineButtonStyle}>
+          <button onClick={onGoogleSignIn} style={outlineButtonStyle} disabled={pending}>
             Continue with Google
           </button>
         </>

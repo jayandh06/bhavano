@@ -25,6 +25,16 @@ export async function signInWithGoogleAction(): Promise<void> {
   await signIn("google", { redirectTo: "/" });
 }
 
+/** Whether this browser now holds a valid *admin* session — not just a valid one.
+ *
+ * For the Google popup: if the window is closed without having reported back, the login may
+ * still have succeeded. Checked the same way `requireAdmin` would, minus the redirect it does on
+ * failure — this just needs an answer, not a navigation. */
+export async function hasAdminSessionAction(): Promise<boolean> {
+  const session = await auth();
+  return !!session?.accessToken && session.role === "admin";
+}
+
 export async function signOutAction(): Promise<void> {
   // Best-effort — a failed logout log call should never block the user from actually signing
   // out (e.g. an already-expired token would 401 here, which is fine to ignore).

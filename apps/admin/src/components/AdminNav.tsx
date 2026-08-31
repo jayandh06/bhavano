@@ -20,11 +20,12 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 /** Persistent top nav for every authenticated admin page — rendered from the root layout so it
- * never has to be duplicated per-page. Hidden on `/login`, the only admin route reached before
- * a session exists. */
+ * never has to be duplicated per-page. Hidden on `/login` and `/auth/*` — the only admin routes
+ * reached before a session exists, the latter being the Google sign-in popup's own two pages,
+ * which have no business showing a nav bar for pages the popup never visits. */
 export function AdminNav() {
   const pathname = usePathname();
-  if (pathname === "/login") return null;
+  if (pathname === "/login" || pathname.startsWith("/auth/")) return null;
 
   return (
     <div style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
