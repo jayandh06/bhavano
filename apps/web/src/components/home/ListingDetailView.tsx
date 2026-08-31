@@ -85,140 +85,160 @@ export async function ListingDetailView({
         areaName={listing.area}
       />
       <ViewTracker listingId={listing.id} />
-      <div className="max-w-[880px] mx-auto px-4 sm:px-8 pt-6 pb-20">
+      {/* 1280px, the same container as the header above it and every browse page — this was the
+        * one page at 880, which read as the content being indented relative to its own header.
+        *
+        * The extra width goes to a second column rather than to the prose. Widening a single
+        * column to 1280 would give a 100+ character measure and a hero cropped to a letterbox;
+        * the space was empty on the right, so that is where the respond panel now lives. The main
+        * column ends up about the width it already was, which is the point — the layout stopped
+        * wasting the right half, it did not stretch the text.
+        *
+        * minmax(0,1fr), not 1fr: a grid item defaults to min-width:auto and refuses to shrink
+        * below its content, so a long unbroken title would otherwise push the sidebar off. */}
+      <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-6 pb-20">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
 
-        <ListingMediaGallery
-          photosFull={listing.photosFull}
-          videos={listing.videos}
-          title={listing.title}
-          tag={listing.tag}
-          isExpired={listing.isExpired}
-          imgColors={listing.imgColors}
-          imgLabel={listing.imgLabel}
-        >
-          {/* Passed as children so the thumbnail strip renders below this rather than pinned
-            * under the hero — the strip and the hero share a selected index, so they have to stay
-            * in one component even though the page wants something between them. */}
-          <div className="flex justify-between items-start gap-4 mb-2">
-            <div className="font-lora text-[28px] font-bold text-green">
-              {listing.price}
-            </div>
-            {listing.priceQualifier && (
-              <div className="text-[13px] font-bold text-muted bg-surface-alt px-3 py-[5px] rounded-md whitespace-nowrap">
-                {listing.priceQualifier}
-              </div>
-            )}
-          </div>
-
-          <h1 className="font-lora text-[22px] font-semibold m-0 mb-2">
-            {listing.title}
-          </h1>
-          <div className="text-sm text-muted mb-3">
-            📍 {listing.area}, {listing.cityName}
-          </div>
-        </ListingMediaGallery>
-        {listing.lat !== undefined && listing.lng !== undefined && (
-          <div className="mb-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={staticMapUrl(listing.lat, listing.lng)}
-              alt={`Approximate location of ${listing.title}`}
-              className="w-full h-[180px] object-cover rounded-xl"
-            />
-            <a
-              href={directionsUrl(listing.lat, listing.lng)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block mt-2 text-[13px] font-semibold text-green"
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
+          <div className="min-w-0">
+            <ListingMediaGallery
+              photosFull={listing.photosFull}
+              videos={listing.videos}
+              title={listing.title}
+              tag={listing.tag}
+              isExpired={listing.isExpired}
+              imgColors={listing.imgColors}
+              imgLabel={listing.imgLabel}
             >
-              🧭 Get directions
-            </a>
-          </div>
-        )}
-        <div className="text-xs text-muted mb-4 flex gap-3.5">
-          <span>👁 {listing.viewCount} views</span>
-          <span>
-            {listing.isExpired
-              ? "Expired"
-              : `Expires in ${daysUntil(listing.expiresAt)} days`}
-          </span>
-        </div>
-
-        <div className="flex gap-4 flex-wrap mb-6">
-          {listing.specs.map((spec) => (
-            <span
-              key={spec}
-              className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md"
-            >
-              {spec}
-            </span>
-          ))}
-        </div>
-
-        {visibleFields.length > 0 && (
-          <div className="flex flex-col gap-3 mb-6">
-            {displaySections.map(({ section, label, fields }) => (
-              <div
-                key={section}
-                className="border border-border rounded-xl p-5 bg-surface"
-              >
-                <div className="font-bold text-sm mb-3">{label}</div>
-                {section === "amenities" ? (
-                  // Amenities read as a badge list of what's present, not a label/value pair —
-                  // every entry here already passed the "yes" filter above, so the icon + name
-                  // alone says everything the value would have.
-                  <div className="flex flex-wrap gap-2">
-                    {fields.map((field) => (
-                      <span
-                        key={field.key}
-                        className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md"
-                      >
-                        {field.icon && <span className="mr-1">{field.icon}</span>}
-                        {field.label}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))] gap-2.5">
-                    {fields.map((field) => (
-                      <div key={field.key} className="text-[13px] text-text-soft">
-                        <span className="font-semibold">
-                          {field.icon && <span className="mr-1">{field.icon}</span>}
-                          {field.label}
-                        </span>
-                        : {formatAttributeValue(attributes[field.key])}
-                      </div>
-                    ))}
+              {/* Passed as children so the thumbnail strip renders below this rather than pinned
+                * under the hero — the strip and the hero share a selected index, so they have to stay
+                * in one component even though the page wants something between them. */}
+              <div className="flex justify-between items-start gap-4 mb-2">
+                <div className="font-lora text-[28px] font-bold text-green">
+                  {listing.price}
+                </div>
+                {listing.priceQualifier && (
+                  <div className="text-[13px] font-bold text-muted bg-surface-alt px-3 py-[5px] rounded-md whitespace-nowrap">
+                    {listing.priceQualifier}
                   </div>
                 )}
               </div>
+
+              <h1 className="font-lora text-[22px] font-semibold m-0 mb-2">
+                {listing.title}
+              </h1>
+              <div className="text-sm text-muted mb-3">
+                📍 {listing.area}, {listing.cityName}
+              </div>
+            </ListingMediaGallery>
+            {listing.lat !== undefined && listing.lng !== undefined && (
+              <div className="mb-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={staticMapUrl(listing.lat, listing.lng)}
+                  alt={`Approximate location of ${listing.title}`}
+                  className="w-full h-[180px] object-cover rounded-xl"
+                />
+                <a
+                  href={directionsUrl(listing.lat, listing.lng)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-[13px] font-semibold text-green"
+                >
+                  🧭 Get directions
+                </a>
+              </div>
+            )}
+            <div className="text-xs text-muted mb-4 flex gap-3.5">
+              <span>👁 {listing.viewCount} views</span>
+              <span>
+                {listing.isExpired
+                  ? "Expired"
+                  : `Expires in ${daysUntil(listing.expiresAt)} days`}
+              </span>
+          </div>
+
+          <div className="flex gap-4 flex-wrap mb-6">
+            {listing.specs.map((spec) => (
+              <span
+                key={spec}
+                className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md"
+              >
+                {spec}
+              </span>
             ))}
           </div>
-        )}
 
-        {listing.isExpired ? (
-          <p className="text-[13px] text-muted">
-            This ad has expired and is no longer accepting responses.
-          </p>
-        ) : (
-          <>
-            {/* The sign-in nudge is for people who might respond — pointless on your own ad. */}
-            {!listing.isOwner && (
-              <span className="text-xs text-muted block mb-3">
-                Ads shown without login — sign in only to respond
-              </span>
+          {visibleFields.length > 0 && (
+            <div className="flex flex-col gap-3 mb-6">
+              {displaySections.map(({ section, label, fields }) => (
+                <div
+                  key={section}
+                  className="border border-border rounded-xl p-5 bg-surface"
+                >
+                  <div className="font-bold text-sm mb-3">{label}</div>
+                  {section === "amenities" ? (
+                    // Amenities read as a badge list of what's present, not a label/value pair —
+                    // every entry here already passed the "yes" filter above, so the icon + name
+                    // alone says everything the value would have.
+                    <div className="flex flex-wrap gap-2">
+                      {fields.map((field) => (
+                        <span
+                          key={field.key}
+                          className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md"
+                        >
+                          {field.icon && <span className="mr-1">{field.icon}</span>}
+                          {field.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))] gap-2.5">
+                      {fields.map((field) => (
+                        <div key={field.key} className="text-[13px] text-text-soft">
+                          <span className="font-semibold">
+                            {field.icon && <span className="mr-1">{field.icon}</span>}
+                            {field.label}
+                          </span>
+                          : {formatAttributeValue(attributes[field.key])}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          </div>
+
+          {/* Card styling only from lg: below that this is still the plain run of content at the
+            * bottom of the page it has always been, in the same order. A phone was never the
+            * problem here — 880px does not constrain a 390px screen — so nothing changes. */}
+          <aside className="lg:border lg:border-border lg:rounded-2xl lg:p-5 lg:bg-surface">
+            {listing.isExpired ? (
+              <p className="text-[13px] text-muted">
+                This ad has expired and is no longer accepting responses.
+              </p>
+            ) : (
+              <>
+                {/* The sign-in nudge is for people who might respond — pointless on your own ad. */}
+                {!listing.isOwner && (
+                  <span className="text-xs text-muted block mb-3">
+                    Ads shown without login — sign in only to respond
+                  </span>
+                )}
+                <ListingDetailActions
+                  listingId={listing.id}
+                  initialIsFavourited={listing.isFavourited}
+                  initialLikeCount={listing.likeCount}
+                  isOwner={listing.isOwner}
+                />
+              </>
             )}
-            <ListingDetailActions
-              listingId={listing.id}
-              initialIsFavourited={listing.isFavourited}
-              initialLikeCount={listing.likeCount}
-              isOwner={listing.isOwner}
-            />
-          </>
-        )}
+          </aside>
+        </div>
       </div>
     </div>
   );
