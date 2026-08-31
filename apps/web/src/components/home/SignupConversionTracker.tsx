@@ -4,13 +4,20 @@ import { useEffect } from "react";
 import { checkNewSignupAction } from "@/app/actions/auth";
 import { pushDataLayerEvent } from "@/lib/gtm";
 
-const CHECKED_KEY = "bhavano_google_signup_tracked";
+/** Shared with `AuthGateProvider`, which fires the same event from the popup flow. One key, so
+ * whichever path got there first stops the other double-counting a single signup. */
+export const GOOGLE_SIGNUP_TRACKED_KEY = "bhavano_google_signup_tracked";
 
-/** Fires `signup_complete` for the Google OAuth path — the phone-OTP path already fires it
- * synchronously right at the moment of successful verification (AuthGateProvider.handleVerifyOtp),
- * but Google sign-in is a full-page redirect through NextAuth with no such moment on the client to
- * hook into. Instead: this mounts once per real page load (the root layout doesn't remount on
- * client-side navigation, only on a hard reload or a redirect like this one), and checks the
+/** Fires `signup_complete` for a Google sign-in that came back as a full-page redirect — which
+ * is now only the fallback path, when a popup could not be opened. The popup path fires this
+ * itself (see AuthGateProvider.handleGoogle), because it deliberately never reloads the page and
+ * so never remounts this component. Both write the same sessionStorage key, so a signup counts
+ * once however it happened.
+ *
+ * The phone-OTP path fires synchronously at the moment of successful verification
+ * (AuthGateProvider.handleVerifyOtp); the redirect flow has no such moment on the client, so
+ * instead: this mounts once per real page load (the root layout doesn't remount on client-side
+ * navigation, only on a hard reload or a redirect like that one), and checks the
  * already-populated `session.isNewUser`/`provider` (see auth.ts) right after the app reloads.
  *
  * `isNewUser` stays true in the JWT for the rest of that session (see its doc comment in auth.ts),
@@ -20,12 +27,12 @@ const CHECKED_KEY = "bhavano_google_signup_tracked";
  * acceptable, rare over-count for an analytics event, not a correctness-critical one. */
 export function SignupConversionTracker() {
   useEffect(() => {
-    if (sessionStorage.getItem(CHECKED_KEY)) return;
+    if (sessionStorage.getItem(GOOGLE_SIGNUP_TRACKED_KEY)) return;
 
     checkNewSignupAction().then(({ isNewUser, provider }) => {
       if (isNewUser && provider === "google") {
         pushDataLayerEvent("signup_complete", { method: "google" });
-        sessionStorage.setItem(CHECKED_KEY, "1");
+        sessionStorage.setItem(GOOGLE_SIGNUP_TRACKED_KEY, "1");
       }
     });
   }, []);

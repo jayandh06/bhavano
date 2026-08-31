@@ -74,7 +74,9 @@ describe("citySlugForRoute", () => {
 
   it("leaves the memory alone on pages that are not about geography", () => {
     // undefined, not null: /messages is not a statement that the visitor wants every city.
-    for (const path of ["/messages", "/messages/abc123", "/post", "/help", "/profile", "/tools"]) {
+    // /auth is the Google popup's own route pair. Left off this list it would look like a city
+    // slug and overwrite the visitor's real city with "auth" every time they signed in.
+    for (const path of ["/messages", "/messages/abc123", "/post", "/help", "/profile", "/tools", "/auth/google", "/auth/complete"]) {
       expect(citySlugForRoute(path, null)).toBeUndefined();
     }
   });

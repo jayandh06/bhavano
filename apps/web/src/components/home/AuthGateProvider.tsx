@@ -3,9 +3,17 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { sendOtpAction, signInWithGoogleAction, verifyOtpAction } from "@/app/actions/auth";
+import {
+  checkNewSignupAction,
+  hasSessionAction,
+  sendOtpAction,
+  signInWithGoogleAction,
+  verifyOtpAction,
+} from "@/app/actions/auth";
 import { requestEmailCodeAction, verifyEmailAction } from "@/app/actions/users";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
+import { GOOGLE_SIGNUP_TRACKED_KEY } from "./SignupConversionTracker";
 
 /** `email` and `emailCode` only ever follow a brand-new phone signup — see handleVerifyOtp. */
 type LoginStep = "choose" | "phone" | "otp" | "email" | "emailCode";
@@ -107,6 +115,23 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     onLoginSuccess();
   }
 
+  /**
+   * `signup_complete` for a Google signup that happened in the popup.
+   *
+   * SignupConversionTracker used to cover this by mounting on the page load that the redirect
+   * caused. The popup's whole point is that there is no such load, so without this a Google
+   * signup would stop reporting a conversion — silently, on the campaigns actually being paid
+   * for. Same sessionStorage key as that component, so the two cannot both count one signup.
+   */
+  async function trackGoogleSignup() {
+    if (sessionStorage.getItem(GOOGLE_SIGNUP_TRACKED_KEY)) return;
+    const { isNewUser, provider } = await checkNewSignupAction();
+    if (isNewUser && provider === "google") {
+      pushDataLayerEvent("signup_complete", { method: "google" });
+      sessionStorage.setItem(GOOGLE_SIGNUP_TRACKED_KEY, "1");
+    }
+  }
+
   async function handleSendEmailCode() {
     setPending(true);
     setError(null);
@@ -132,16 +157,75 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     onLoginSuccess();
   }
 
+  /**
+   * Google sign-in in a child window, so this page never unloads.
+   *
+   * It used to hand the whole tab to Google. Everything on the page died with it, and NextAuth
+   * came back to "/" — so someone who tapped "Contact owner" on a listing and chose Google was
+   * returned to the homepage without the listing they were asking about. Five other call sites
+   * pass no redirectTo either and had the same ending. A popup fixes all of them at once, and
+   * not by threading a destination through six places: there is no navigation, so there is no
+   * destination to get wrong.
+   *
+   * It also makes the /post flow survivable. A wizard full of photos holds File objects, which
+   * cannot be serialised anywhere — the only way to keep them across a login is to not tear the
+   * page down.
+   *
+   * Falls back to the old full-page flow when there is no usable popup — a blocker, or a browser
+   * that refuses the window. That path still works; it is simply the experience everyone had
+   * before this.
+   */
   async function handleGoogle() {
     setPending(true);
-    try {
-      // Google is a full-page redirect, so unlike the OTP path there is no client-side moment
-      // afterwards to navigate from — the destination has to be decided before leaving.
+    setError(null);
+
+    const popup = window.open(
+      "/auth/google",
+      "bhavano-google-auth",
+      "width=500,height=640,menubar=no,toolbar=no,location=no,status=no",
+    );
+    if (!popup) {
       await signInWithGoogleAction(redirectTo);
-      onLoginSuccess();
-    } finally {
-      setPending(false);
+      return;
     }
+
+    // Two ways this ends, because only one of them is reliable. The popup reports back when it
+    // reaches our own completion page; but a user who closes the window mid-flow sends nothing,
+    // and without the poll the dialog would sit disabled forever waiting for a message that is
+    // never coming.
+    const cleanup = () => {
+      window.removeEventListener("message", onMessage);
+      clearInterval(closedTimer);
+      setPending(false);
+    };
+
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== AUTH_POPUP_MESSAGE) return;
+      cleanup();
+      if (!event.data.ok) {
+        setError("Sign-in was not completed.");
+        return;
+      }
+      onLoginSuccess();
+      void trackGoogleSignup();
+    }
+
+    // A closed window is not proof of failure — the message is the normal path, not a
+    // guarantee, and a login that landed without one would otherwise leave this dialog sitting
+    // open over a page the user is already signed into. So ask, rather than assume.
+    const closedTimer = window.setInterval(() => {
+      if (!popup.closed) return;
+      cleanup();
+      void hasSessionAction().then((signedIn) => {
+        if (signedIn) {
+          onLoginSuccess();
+          void trackGoogleSignup();
+        }
+      });
+    }, 500);
+
+    window.addEventListener("message", onMessage);
   }
 
   return (

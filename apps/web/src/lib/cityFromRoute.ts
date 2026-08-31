@@ -46,6 +46,7 @@ export const PAGE_FIRST_SEGMENTS = new Set([
   "about",
   "agent",
   "api",
+  "auth",
   "contact",
   "favourites",
   "help",

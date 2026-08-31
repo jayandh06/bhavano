@@ -3,6 +3,7 @@
 import { signIn, signOut } from "@/auth";
 import type { LinkIdentifierResult } from "@bhavano/types";
 import { linkPhone, logout, sendOtp } from "@/lib/bff";
+import { isAccessTokenValid } from "@/lib/session";
 import { auth } from "@/auth";
 
 export async function sendOtpAction(phone: string): Promise<{ success: boolean; error?: string }> {
@@ -40,6 +41,16 @@ export async function verifyOtpAction(
 export async function signInWithGoogleAction(redirectTo?: string): Promise<void> {
   const safe = redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : undefined;
   await signIn("google", safe ? { redirectTo: safe } : undefined);
+}
+
+/** Whether this browser now holds a valid session.
+ *
+ * For the Google popup: if the window is closed without having reported back, the login may
+ * still have succeeded — the message is the normal path, not a guarantee. Asking the server
+ * beats leaving the dialog sitting open over a page the user is, in fact, logged into. */
+export async function hasSessionAction(): Promise<boolean> {
+  const session = await auth();
+  return isAccessTokenValid(session?.accessToken);
 }
 
 /** Google sign-in is a full-page redirect through NextAuth — there's no synchronous "it just
