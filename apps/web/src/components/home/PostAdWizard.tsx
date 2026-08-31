@@ -38,7 +38,7 @@ import { BoostButton } from "./BoostButton";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
 import { VideoManager } from "./VideoManager";
-import { Icon } from "./Icon";
+import { Icon, isIconName } from "./Icon";
 import type { IconName } from "./Icon";
 
 
@@ -633,7 +633,11 @@ export function PostAdWizard({
                     onClick={() => selectCategory(c.value)}
                     className={optionButtonClass(category === c.value)}
                   >
-                    <span className="text-lg shrink-0">{c.icon}</span>
+                    {isIconName(c.iconName) && (
+                      <span className="text-lg shrink-0 text-green">
+                        <Icon name={c.iconName} />
+                      </span>
+                    )}
                     <span className="min-w-0">{c.label}</span>
                   </button>
                 ))}

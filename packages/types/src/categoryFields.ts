@@ -62,7 +62,12 @@ export interface FieldDef {
   /** A single emoji shown next to the label in both the posting form and the listing detail
    * page — set on amenity/furnishing fields, where a quick visual scan matters more than for a
    * plain count or select. Not required elsewhere. */
+  /** Emoji. Still here because the app renders this field as text and has no SVG support —
+   * see `iconName`, which the web app uses instead. */
   icon?: string;
+  /** A key into the web app's outlined icon set. String, not a union: the icon set is a web
+   * concern and this package must not depend on it. */
+  iconName?: string;
   /** Caps a `number` field's input to this many digits — e.g. a bedroom/bathroom/appliance
    * count never needs more than 2 (max 99), unlike a currency amount or an area in sqft, which
    * are left unrestricted (`undefined`). Enforced by truncating keystrokes past the limit, not
@@ -371,6 +376,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "🧺",
+    iconName: "washingMachine",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -381,6 +387,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "🛋️",
+    iconName: "sofa",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -391,6 +398,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "🍳",
+    iconName: "stove",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -401,6 +409,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "❄️",
+    iconName: "fridge",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -411,6 +420,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "🚪",
+    iconName: "cupboard",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -421,6 +431,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "🌀",
+    iconName: "fan",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -431,6 +442,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "💡",
+    iconName: "light",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -441,6 +453,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "🛏️",
+    iconName: "bedSingle",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -451,6 +464,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "📺",
+    iconName: "tv",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -461,6 +475,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "🚿",
+    iconName: "geyser",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -471,6 +486,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "🪑",
+    iconName: "table",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
@@ -481,6 +497,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     min: 0,
     maxDigits: 2,
     icon: "🍽️",
+    iconName: "diningTable",
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },

@@ -3,7 +3,13 @@ import type { ListingCategory } from "./index";
 export interface PostCategoryOption {
   value: ListingCategory;
   label: string;
+  /** Emoji. Still here because the app renders this field as text and has no SVG support —
+   * see `iconName`, which the web app uses instead. */
   icon: string;
+  /** A key into the web app's outlined icon set (apps/web/src/components/home/Icon.tsx).
+   * Typed as a string here because the icon set is a web concern and this package must not
+   * depend on it; the web side narrows it with `isIconName` before rendering. */
+  iconName: string;
 }
 
 export interface PostCategoryGroup {
@@ -31,28 +37,28 @@ export const POST_CATEGORY_GROUPS: PostCategoryGroup[] = [
   {
     title: "Property",
     options: [
-      { value: "house", label: "House", icon: "🏡" },
-      { value: "apartment", label: "Apartment", icon: "🏢" },
-      { value: "villa", label: "Villa", icon: "🏘️" },
-      { value: "plot", label: "Plot", icon: "🗺️" },
+      { value: "house", label: "House", icon: "🏡", iconName: "catHouse" },
+      { value: "apartment", label: "Apartment", icon: "🏢", iconName: "catApartment" },
+      { value: "villa", label: "Villa", icon: "🏘️", iconName: "catVilla" },
+      { value: "plot", label: "Plot", icon: "🗺️", iconName: "catPlot" },
       // Land, whichever way it is eventually used. Someone with a plot to sell thinks of it as
       // property long before they think of it as commercial.
-      { value: "pg", label: "PG / Hostel", icon: "🛏️" },
+      { value: "pg", label: "PG / Hostel", icon: "🛏️", iconName: "catPg" },
     ],
   },
   {
     title: "Commercial & workspace",
     options: [
-      { value: "commercial", label: "Commercial space", icon: "🏬" },
-      { value: "coworking", label: "Coworking", icon: "💼" },
-      { value: "storage", label: "Storage space", icon: "📦" },
+      { value: "commercial", label: "Commercial space", icon: "🏬", iconName: "catCommercial" },
+      { value: "coworking", label: "Coworking", icon: "💼", iconName: "catCoworking" },
+      { value: "storage", label: "Storage space", icon: "📦", iconName: "catStorage" },
     ],
   },
   {
     title: "Home & furniture",
     options: [
-      { value: "furniture", label: "Furniture", icon: "🛋️" },
-      { value: "interiors", label: "Interiors", icon: "🎨" },
+      { value: "furniture", label: "Furniture", icon: "🛋️", iconName: "catFurniture" },
+      { value: "interiors", label: "Interiors", icon: "🎨", iconName: "catInteriors" },
     ],
   },
 ];

@@ -1,5 +1,21 @@
 import {
+  Bed,
   Bell,
+  Briefcase,
+  CookingPot,
+  DoorClosed,
+  Fan,
+  Hotel,
+  House,
+  LandPlot,
+  Lightbulb,
+  Refrigerator,
+  ShowerHead,
+  Store,
+  Table,
+  Tv,
+  UtensilsCrossed,
+  WashingMachine,
   Building2,
   Calculator,
   Camera,
@@ -86,7 +102,40 @@ export const ICONS = {
   ruler: Ruler,
   scale: Scale,
   rupee: IndianRupee,
+
+  // Posting categories — the tiles on the first step of the wizard.
+  catHouse: House,
+  catApartment: Building2,
+  catVilla: Hotel,
+  catPlot: LandPlot,
+  catPg: BedDouble,
+  catCommercial: Store,
+  catCoworking: Briefcase,
+  catStorage: Package,
+  catFurniture: Sofa,
+  catInteriors: Paintbrush,
+
+  // What comes with a furnished place — the counted items on a listing's detail page.
+  washingMachine: WashingMachine,
+  stove: CookingPot,
+  fridge: Refrigerator,
+  cupboard: DoorClosed,
+  fan: Fan,
+  light: Lightbulb,
+  bedSingle: Bed,
+  tv: Tv,
+  geyser: ShowerHead,
+  table: Table,
+  diningTable: UtensilsCrossed,
 } satisfies Record<string, LucideIcon>;
+
+/** Narrows a name that crossed a package boundary as a plain string — `iconName` on the shared
+ * category data, which cannot reference this file. An unknown name renders nothing rather than
+ * throwing, so a category added to the types package without an icon here degrades to no icon
+ * rather than a blank page. */
+export function isIconName(value: string | undefined): value is IconName {
+  return value !== undefined && value in ICONS;
+}
 
 export type IconName = keyof typeof ICONS;
 

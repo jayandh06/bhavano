@@ -11,7 +11,7 @@ import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
 import { ListingMediaGallery } from "./ListingMediaGallery";
 import { ViewTracker } from "./ViewTracker";
-import { Icon } from "./Icon";
+import { Icon, isIconName } from "./Icon";
 
 /** A plain cached image, not the interactive Maps JavaScript API — this page is by far the
  * highest-traffic surface in the product, so cost here scales with page *views*, unlike the
@@ -191,7 +191,7 @@ export async function ListingDetailView({
                           key={field.key}
                           className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md"
                         >
-                          {field.icon && <span className="mr-1">{field.icon}</span>}
+                          {isIconName(field.iconName) && <Icon name={field.iconName} className="mr-1.5 text-muted" />}
                           {field.label}
                         </span>
                       ))}
@@ -201,7 +201,7 @@ export async function ListingDetailView({
                       {fields.map((field) => (
                         <div key={field.key} className="text-[13px] text-text-soft">
                           <span className="font-semibold">
-                            {field.icon && <span className="mr-1">{field.icon}</span>}
+                            {isIconName(field.iconName) && <Icon name={field.iconName} className="mr-1.5 text-muted" />}
                             {field.label}
                           </span>
                           : {formatAttributeValue(attributes[field.key])}
