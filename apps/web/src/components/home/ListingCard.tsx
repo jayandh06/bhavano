@@ -51,7 +51,14 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   }
 
   return (
-    <div className="bg-surface border border-border rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both]">
+    // sm:hover rather than plain hover: below that breakpoint is where touch-primary devices
+    // live, and :hover there does not mean "the pointer is over this" the way it does with a
+    // mouse — it means "this was the last thing tapped," which reads as the card staying stuck
+    // highlighted rather than as an effect at all. Same shadow token the dropdown menus already
+    // use, not a new one, so an elevated card matches what "elevated" already looks like
+    // elsewhere in the app. Border and shadow only, no scale/translate: the grid's columns sit
+    // close together, and a card that grows or shifts on hover jostles its neighbours' edges.
+    <div className="bg-surface border border-border rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both] transition-[box-shadow,border-color] duration-200 sm:hover:border-green/40 sm:hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
       <div
         className="relative h-[200px]"
         // Dynamic per-listing placeholder gradient stays inline — it's data, not a static style.
