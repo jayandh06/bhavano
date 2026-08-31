@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -22,8 +22,13 @@ interface AuthGateContextValue {
   /** `redirectTo` sends the user back to a specific path once logged in, instead of wherever the
    * login flow would otherwise leave them. Pass it when the page they are on only exists to be
    * used logged in — /post — so finishing the login continues what they came to do. Omit it for
-   * the header's Login button, which is not tied to any particular intent. */
-  requireLogin: (options?: { redirectTo?: string }) => void;
+   * the header's Login button, which is not tied to any particular intent.
+   *
+   * `onSuccess` resumes whatever the login interrupted, in place. The posting wizard uses it to
+   * carry on submitting the ad the user just pressed Publish on: without it they would log in,
+   * find the form exactly as they left it, and have to press the same button a second time —
+   * which reads as the first press having failed. */
+  requireLogin: (options?: { redirectTo?: string; onSuccess?: () => void }) => void;
 }
 
 const AuthGateContext = createContext<AuthGateContextValue | null>(null);
@@ -45,11 +50,15 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [redirectTo, setRedirectTo] = useState<string | undefined>(undefined);
+  const onSuccessRef = useRef<(() => void) | undefined>(undefined);
 
   const router = useRouter();
 
-  function requireLogin(options?: { redirectTo?: string }) {
+  function requireLogin(options?: { redirectTo?: string; onSuccess?: () => void }) {
     setRedirectTo(options?.redirectTo);
+    // A ref, not state: this fires once from inside onLoginSuccess and must not cause a render
+    // of its own on the way in.
+    onSuccessRef.current = options?.onSuccess;
     setLoginStep("choose");
     setPhone("");
     setOtp("");
@@ -77,6 +86,12 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     // it the client keeps the RSC payload it rendered while logged out.
     if (redirectTo) router.push(redirectTo);
     router.refresh();
+
+    // Cleared before calling, so a caller that somehow triggers another login from inside its
+    // own callback cannot re-enter this one.
+    const resume = onSuccessRef.current;
+    onSuccessRef.current = undefined;
+    resume?.();
   }
 
   async function handleSendOtp() {

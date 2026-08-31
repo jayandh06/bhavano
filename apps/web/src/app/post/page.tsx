@@ -8,7 +8,6 @@ import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { PostAdWizard } from "@/components/home/PostAdWizard";
 import { PostPageTracker } from "@/components/home/PostPageTracker";
-import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 
 export default async function PostAdPage({
   searchParams,
@@ -54,35 +53,28 @@ export default async function PostAdPage({
           * The wizard was capped at 780px when it was centred, which left a third of a desktop
           * screen empty once the column moved to the left. Its own grids widen with the space
           * instead — more columns, not wider fields. */}
-        {!loggedIn ? (
-          // Opens the login dialog straight away: there is nothing on this page for a logged-out
-          // visitor, so a button that only opens a dialog is a step with no decision in it. The
-          // button stays for anyone who dismisses it.
-          //
-          // redirectTo keeps them here afterwards. Google sign-in is a full-page redirect that
-          // otherwise lands on "/", so someone who came to post an ad was returned to the
-          // listings page with their errand forgotten. The city is carried so the wizard still
-          // opens on the one they picked.
-          <RequireLoginPrompt
-            message="Log in to post your ad."
-            autoPrompt
-            redirectTo={citySlug ? `/post?city=${encodeURIComponent(citySlug)}` : "/post"}
+        {/* The form, logged in or not.
+          *
+          * This used to be a login wall: a modal opened over an empty page on arrival, so a
+          * visitor from an ad that promised a free listing met a sign-up box before seeing that
+          * the form is short and free. Nothing in the wizard touches the server until Publish —
+          * photos are File objects held in memory — so the account was never needed to fill it
+          * in, only to submit it. The ask moved there.
+          *
+          * Keyed on the resolved default city: a client-side nav to /post with a different
+          * ?city= is a search-param-only change on the same route, so React would otherwise
+          * reuse the already-mounted wizard instance and its stale `useState(defaultCityId)`
+          * init instead of picking up the new default. */}
+        <div>
+          <PostAdWizard
+            key={city?.id ?? "none"}
+            cities={allCities}
+            defaultCityId={city?.id}
+            accessToken={accessToken}
+            loggedIn={loggedIn}
+            videoEntitlement={videoEntitlement}
           />
-        ) : (
-          <div>
-            {/* Keyed on the resolved default city: a client-side nav to /post with a different
-              * ?city= is a search-param-only change on the same route, so React would otherwise
-              * reuse the already-mounted wizard instance and its stale `useState(defaultCityId)`
-              * init instead of picking up the new default. */}
-            <PostAdWizard
-              key={city?.id ?? "none"}
-              cities={allCities}
-              defaultCityId={city?.id}
-              accessToken={accessToken}
-              videoEntitlement={videoEntitlement}
-            />
-          </div>
-        )}
+        </div>
       </div>
       <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
     </div>

@@ -43,6 +43,17 @@ export async function signInWithGoogleAction(redirectTo?: string): Promise<void>
   await signIn("google", safe ? { redirectTo: safe } : undefined);
 }
 
+/** The current session's BFF access token, if any.
+ *
+ * For the posting wizard, which now renders logged out and only asks for a login at submit: the
+ * token arrives as a server-rendered prop, so a wizard that resumes its submission the instant
+ * the login dialog closes still holds the `undefined` it mounted with. `router.refresh()` will
+ * deliver the real one, but not before the resumed upload needs it. */
+export async function getAccessTokenAction(): Promise<string | undefined> {
+  const session = await auth();
+  return isAccessTokenValid(session?.accessToken) ? session?.accessToken : undefined;
+}
+
 /** Whether this browser now holds a valid session.
  *
  * For the Google popup: if the window is closed without having reported back, the login may

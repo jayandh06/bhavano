@@ -17,7 +17,9 @@ import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
+import { getAccessTokenAction } from "@/app/actions/auth";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
+import { useAuthGate } from "./AuthGateProvider";
 import { CategoryFieldsAccordion } from "@/components/home/CategoryFieldsAccordion";
 import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
@@ -200,15 +202,23 @@ export function PostAdWizard({
   cities: initialCities,
   defaultCityId,
   accessToken,
+  loggedIn,
   videoEntitlement,
 }: {
   cities: City[];
   defaultCityId?: string;
-  accessToken: string;
+  /** Undefined for a logged-out visitor, who now gets the whole form — see `onSubmit`. */
+  accessToken?: string;
+  loggedIn: boolean;
   videoEntitlement: VideoEntitlement;
 }) {
+  const { requireLogin } = useAuthGate();
   const [listingId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("category");
+  // Held in state as well as taken as a prop: after a login at submit, the prop is still the
+  // undefined this mounted with until router.refresh() lands, which is later than the resumed
+  // upload needs it. Whichever arrives first wins.
+  const [token, setToken] = useState<string | undefined>(accessToken);
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [transactionType, setTransactionType] =
     useState<TransactionType | null>(null);
@@ -465,10 +475,43 @@ export function PostAdWizard({
     photos.length > 0 &&
     requiredAttributesFilled;
 
+  /**
+   * Publish — and the one place this form needs an account.
+   *
+   * The login used to be a wall on arrival: a modal over an empty page, before the visitor had
+   * seen that the form is short and free. Nothing here touches the server until this function
+   * runs — photos are File objects held in memory and uploaded below — so there was never a
+   * technical reason to ask first, only a habit of asking.
+   *
+   * `onSuccess` resumes this same call rather than returning the user to a form with a button to
+   * press again, which would read as the first press having failed. It is safe because Google
+   * sign-in no longer reloads the page (see AuthGateProvider.handleGoogle); before that, this
+   * function's own closure — photos included — would not have survived the round trip.
+   */
   async function onSubmit() {
     if (!category || !transactionType) return;
+
+    if (!loggedIn && !token) {
+      pushDataLayerEvent("post_login_required", { step });
+      requireLogin({ onSuccess: () => void onSubmit() });
+      return;
+    }
+
     setPending(true);
     setError(null);
+
+    // Straight after a login the prop has not caught up yet, so ask the server directly. A
+    // no-op on the ordinary path, where the token was server-rendered into this component.
+    let activeToken = token;
+    if (!activeToken) {
+      activeToken = await getAccessTokenAction();
+      setToken(activeToken);
+    }
+    if (!activeToken) {
+      setPending(false);
+      setError("You must be logged in to post an ad.");
+      return;
+    }
 
     const uploadedPhotos: { photoNo: number; hash: string; ext: string }[] = [];
     for (let i = 0; i < photos.length; i++) {
@@ -503,7 +546,7 @@ export function PostAdWizard({
     for (const video of videos) {
       try {
         uploadedVideos.push(
-          await uploadVideoDirect(video.file, listingId, accessToken),
+          await uploadVideoDirect(video.file, listingId, activeToken),
         );
       } catch (uploadError) {
         setError(
@@ -929,7 +972,7 @@ export function PostAdWizard({
               listingId={createdListing.id}
               category={createdListing.category}
             />
-            <VideoManager listing={createdListing} accessToken={accessToken} />
+            <VideoManager listing={createdListing} accessToken={token ?? ""} />
             <Link
               href={buildListingPath(createdListing)}
               className="text-[13px] font-bold text-text-soft"
