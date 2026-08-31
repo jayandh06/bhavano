@@ -177,7 +177,7 @@ export async function BrowseListingsView({
             })}
           />
         )}
-        <ListingGrid items={listingsPage.items} cityName={cityName ?? "India"} />
+        <ListingGrid items={listingsPage.items} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
       </main>
       <Footer currentCityName={cityName} cityAreas={cityAreas} allCities={allCities} />

@@ -28,7 +28,7 @@ export default function SavedScreen() {
       contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
       data={favourites}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <ListingCard item={item} cityName={item.cityName} />}
+      renderItem={({ item }) => <ListingCard item={item} />}
       ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
       ListEmptyComponent={
         <Text style={{ color: colors.muted, fontSize: 14, textAlign: "center", marginTop: 40 }}>

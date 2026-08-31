@@ -239,7 +239,6 @@ export function PostAdWizard({
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const areaFieldRef = useRef<HTMLDivElement | null>(null);
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
-  const [specs, setSpecs] = useState("");
   const [description, setDescription] = useState("");
   const [attributes, setAttributes] = useState<
     Record<string, string | string[]>
@@ -568,10 +567,6 @@ export function PostAdWizard({
       areaId: areaId ?? undefined,
       areaName: areaId ? undefined : areaQuery.trim(),
       cityId,
-      specs: specs
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
       description: description.trim() || undefined,
       photos: uploadedPhotos,
       videos: uploadedVideos.length > 0 ? uploadedVideos : undefined,
@@ -764,20 +759,9 @@ export function PostAdWizard({
             </p>
           </div>
 
-          {/* Kept separate from the description above, and deliberately still short. These render
-            * as chips in a single non-wrapping row on the listing card, so a sentence here
-            * squashes that row — which is what happened while this field was doing duty as both. */}
-          <div>
-            <label className={labelClass}>
-              Key specs (comma-separated, shown as tags on the card)
-            </label>
-            <input
-              value={specs}
-              onChange={(e) => setSpecs(e.target.value)}
-              placeholder="3 Beds, 1450 sqft"
-              className={fieldClass}
-            />
-          </div>
+          {/* No "specs" box. The card's chips are derived from the category fields below, which
+            * the seller is already filling in — asking again produced "3bhk", "3 BHK" and
+            * "3 Beds" as three spellings of the same number. See deriveCardSpecs. */}
 
           <div className="border-t border-border pt-4">
             <div className="text-[13px] font-bold text-text mb-3">

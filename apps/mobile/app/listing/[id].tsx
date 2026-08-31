@@ -136,13 +136,9 @@ export default function ListingDetailScreen() {
         </Text>
       ) : null}
 
-      <View style={styles.specsRow}>
-        {listing.specs.map((spec) => (
-          <View key={spec} style={[styles.specChip, { backgroundColor: colors.surfaceAlt }]}>
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSoft }}>{spec}</Text>
-          </View>
-        ))}
-      </View>
+      {/* No chip row. It repeated the labelled details below it — a "3bhk" chip above
+          "Bedrooms: 3", in the seller's spelling rather than the app's. The chips are for the
+          browse cards, which render none of these sections. */}
 
       {Object.entries(listing.attributes).length > 0 && (
         <View style={[styles.attributesBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -221,8 +217,6 @@ const styles = StyleSheet.create({
   },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16 },
   qualifierChip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6 },
-  specsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
-  specChip: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 6 },
   attributesBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 16 },
   actionsRow: { flexDirection: "row", gap: 10 },
   contactButton: { flex: 1, borderRadius: 8, paddingVertical: 13, alignItems: "center" },

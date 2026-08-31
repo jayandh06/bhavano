@@ -26,6 +26,7 @@ import { categoryImagePlaceholder } from '@bhavano/types/tokens';
 import { slugify } from '@bhavano/types/slugify';
 import { deriveTag } from '@bhavano/types/listingTag';
 import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
+import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
 import { getPriceQualifierOptions } from '@bhavano/types/priceQualifiers';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
@@ -146,6 +147,25 @@ const LISTING_MEDIA_INCLUDE = {
   owner: { select: { agentProUntil: true } },
   listingRenewals: { orderBy: { renewedAt: 'desc' as const } },
 };
+
+
+/** The two or three chips a card shows under the title.
+ *
+ * Derived from the attributes the seller already filled in rather than from a second free-text
+ * box — which is how production ended up with "3bhk", "3 BHK" and "3 Beds" as three spellings of
+ * one bedroom count, and a bare "1500" that did not say what it measured.
+ *
+ * Falls back to the stored `specs` column, which is what listings posted before this still carry.
+ * An empty derived array is a real answer ("nothing to show") but indistinguishable here from
+ * "this predates the field", so the fallback wins whenever there is nothing to derive.
+ */
+function cardSpecs(listing: { category: ListingCategory; attributes: unknown; specs: string[] }): string[] {
+  const derived = deriveCardSpecs(
+    listing.category,
+    listing.attributes as Record<string, unknown>,
+  );
+  return derived.length > 0 ? derived.slice(0, 3) : listing.specs;
+}
 
 @Injectable()
 export class ListingsService {
@@ -1262,7 +1282,11 @@ export class ListingsService {
       title: listing.title,
       area: listing.area.name,
       cityName: listing.city.name,
-      specs: listing.specs,
+      // Derived from the attributes the seller already filled in, not from what they typed into
+      // a second free-text box — which is how production ended up with "3bhk", "3 BHK" and
+      // "3 Beds" as three spellings of one number, and a bare "1500" that did not say what it
+      // measured. The stored column is the fallback for listings posted before this.
+      specs: cardSpecs(listing),
       imgLabel: hasPhoto ? '' : placeholder.imgLabel,
       imgColors: [placeholder.imgA, placeholder.imgB],
       photos: listing.listingPhotos.map((p) =>

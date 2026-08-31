@@ -168,16 +168,9 @@ export async function ListingDetailView({
             </div>
           )}
 
-          <div className="flex gap-4 flex-wrap mb-6">
-            {listing.specs.map((spec) => (
-              <span
-                key={spec}
-                className="text-[13px] font-semibold text-text-soft bg-surface-alt px-3 py-1.5 rounded-md"
-              >
-                {spec}
-              </span>
-            ))}
-          </div>
+          {/* No chip row here. It repeated what the labelled sections below already say — a
+            * "3bhk" chip a few hundred pixels above "Bedrooms: 3", in the seller's spelling
+            * rather than the app's. The chips exist for the card, which renders none of this. */}
 
           {visibleFields.length > 0 && (
             <div className="flex flex-col gap-3 mb-6">

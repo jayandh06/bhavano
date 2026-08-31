@@ -6,7 +6,7 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { createConversation, toggleFavourite } from "../../lib/bffClient";
 
-export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName: string }) {
+export function ListingCard({ item }: { item: ListingCardDto }) {
   const { colors } = useAppTheme();
   const { requireLogin, accessToken } = useHomeSheets();
   const router = useRouter();
@@ -77,7 +77,10 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
         </View>
         <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>{item.title}</Text>
         <Text style={{ fontSize: 12, color: colors.muted }}>
-          📍 {item.area}, {cityName}
+          {/* The listing's own city, not the one being browsed. The home screen passed the
+              selected city, which is an empty string while browsing all cities — so every card
+              read "Koramangala, " with a dangling comma. */}
+          📍 {item.area}, {item.cityName}
         </Text>
         <View style={styles.specsRow}>
           {item.specs.map((spec) => (

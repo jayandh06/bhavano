@@ -45,7 +45,6 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
     String(listing.price).replace(/[^0-9]/g, ""),
   );
   const [priceQualifier, setPriceQualifier] = useState(listing.priceQualifier);
-  const [specs, setSpecs] = useState(listing.specs.join(", "));
   const [description, setDescription] = useState(listing.description ?? "");
   const [attributes, setAttributes] = useState<
     Record<string, string | string[]>
@@ -97,10 +96,6 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
       title: title.trim(),
       price: priceValue,
       priceQualifier,
-      specs: specs
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
       description: description.trim(),
       attributes,
       status,
@@ -173,16 +168,6 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
         />
       </div>
 
-      {/* Short chips for the card, kept apart from the description above — they render in one
-        * non-wrapping row, so a sentence here squashes it. */}
-      <div>
-        <label className={labelClass}>Key specs (comma-separated)</label>
-        <input
-          value={specs}
-          onChange={(e) => setSpecs(e.target.value)}
-          className={inputClass}
-        />
-      </div>
 
       {fieldConfig.length > 0 && (
         <div className="border-t border-border pt-4 flex flex-col gap-4">

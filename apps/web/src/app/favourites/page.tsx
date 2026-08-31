@@ -54,7 +54,7 @@ async function FavouritesGrid({ accessToken }: { accessToken: string }) {
   return (
     <div className="grid gap-6 [grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr))]">
       {favourites.map((item) => (
-        <ListingCard key={item.id} item={item} cityName={item.cityName} />
+        <ListingCard key={item.id} item={item} />
       ))}
     </div>
   );

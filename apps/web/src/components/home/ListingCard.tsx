@@ -11,7 +11,7 @@ import { startConversationAction } from "@/app/actions/messaging";
 import { buildListingPath } from "@/lib/listingPath";
 import { pushDataLayerEvent } from "@/lib/gtm";
 
-export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName: string }) {
+export function ListingCard({ item }: { item: ListingCardDto }) {
   const { requireLogin } = useAuthGate();
   const router = useRouter();
   const [isFavourited, setIsFavourited] = useState(item.isFavourited);
@@ -105,7 +105,11 @@ export function ListingCard({ item, cityName }: { item: ListingCardDto; cityName
           </div>
           <div className="text-[15px] font-bold text-text leading-[1.35]">{item.title}</div>
           <div className="text-[13px] text-muted flex items-center gap-[5px]">
-            📍 {item.area}, {cityName}
+            {/* The listing's own city, not the one being browsed. The all-cities views passed
+              * "India" as a stand-in heading word, so every card read "Koramangala, India" — and
+              * the app passed an empty string, giving "Koramangala, ". A card states where the
+              * place is; that is never a property of the page it happens to appear on. */}
+            📍 {item.area}, {item.cityName}
           </div>
           <div className="flex gap-3.5 text-[13px] text-text-soft font-semibold pt-0.5">
             {item.specs.map((spec) => (

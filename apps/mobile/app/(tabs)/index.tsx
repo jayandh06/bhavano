@@ -95,7 +95,7 @@ export default function HomeScreen() {
         ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 20 }} color={colors.green} /> : null}
         renderItem={({ item }) => (
           <View style={numColumns > 1 ? styles.gridItem : styles.singleItem}>
-            <ListingCard item={item} cityName={city?.name ?? ""} />
+            <ListingCard item={item} />
           </View>
         )}
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}

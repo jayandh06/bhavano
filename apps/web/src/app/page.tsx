@@ -173,7 +173,7 @@ export default async function HomePage({
             <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
           </div>
         )}
-        <ListingGrid items={listingsPage.items} cityName={cityName ?? "India"} />
+        <ListingGrid items={listingsPage.items} />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
       </main>
       <Footer currentCityName={resolvedCity?.name} cityAreas={cityAreas} allCities={allCities} />

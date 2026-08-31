@@ -13,6 +13,10 @@
       "types": "./dist/tokens.d.ts",
       "default": "./dist/tokens.js"
     },
+    "./cardSpecs": {
+      "types": "./dist/cardSpecs.d.ts",
+      "default": "./dist/cardSpecs.js"
+    },
     "./categoryFields": {
       "types": "./dist/categoryFields.d.ts",
       "default": "./dist/categoryFields.js"
