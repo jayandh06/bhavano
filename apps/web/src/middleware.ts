@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { NextFetchEvent } from "next/server";
+import { citySlugForRoute } from "@/lib/cityFromRoute";
 
 const ACQUISITION_COOKIE = "bhavano_acq";
 const SESSION_COOKIE = "bhavano_sid";
@@ -11,65 +12,6 @@ const ACQUISITION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 // attribution horizon — someone who picked Chennai in March still lives in Chennai in May.
 const CITY_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 90;
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
-
-/** The URL grammar's own vocabulary — national browsing lives at `/buy`, `/pg`, `/furniture`.
- *
- * Reaching one of these means the visitor is looking at **every** city, which is a choice worth
- * remembering as much as picking a single city is. Mirrors `isReservedSegment` in
- * lib/seoRoute.ts, which cannot be imported into the edge runtime cheaply — change both
- * together. */
-const NATIONAL_FIRST_SEGMENTS = new Set([
-  "buy",
-  "rent-lease",
-  "house",
-  "apartment",
-  "villa",
-  "pg",
-  "storage",
-  "coworking",
-  "furniture",
-  "interiors",
-  "plot",
-  "commercial",
-]);
-
-/** Top-level routes that are pages in their own right rather than city slugs.
- *
- * `/[city]/[[...rest]]` is a catch-all, so every first path segment that is not listed here (or
- * above) looks like a city. A new top-level route added without being added here would overwrite
- * a remembered city with its own name — which degrades to "forgot the city" (the read side
- * resolves the slug against the real city list and falls through), never to a broken page.
- *
- * Unlike the national segments above, these say nothing about which city the visitor wants:
- * /messages is not a statement about geography, so it leaves the remembered city alone. */
-const PAGE_FIRST_SEGMENTS = new Set([
-  "about",
-  "agent",
-  "api",
-  "contact",
-  "favourites",
-  "help",
-  "listings",
-  "messages",
-  "my-listings",
-  "post",
-  "premium",
-  "privacy",
-  "profile",
-  "saved-searches",
-  "terms",
-  "tools",
-]);
-
-/** Shape of a slug this app emits — `slugify` only ever produces lowercase, digits and hyphens.
- * Anything else is a URL nobody legitimately generated, and is not worth storing. */
-const SLUG_PATTERN = /^[a-z0-9-]{1,64}$/;
-
-/** A listing's trailing `{slug}-{id}` segment. Mirrors `looksLikeListingSlugId` in
- * lib/seoRoute.ts — same reason as the reserved words above, the edge runtime is not worth an
- * import for two regexes. Change both together. */
-const LISTING_SLUG_ID =
-  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|-[a-z0-9]{20,}$/i;
 
 interface ResolvedSource {
   source: string;
@@ -98,37 +40,6 @@ function resolveSource(request: NextRequest): ResolvedSource {
     return { source: refererHost, medium: "referral" };
   }
   return { source: "direct" };
-}
-
-/** The city slug this request is looking at, if any — `?city=<slug>` (what the nav links and the
- * homepage picker emit) or the first path segment of a `/{city}/...` browse URL.
- *
- * Not validated against real cities: middleware has no database access, and a lookup on every
- * page navigation would be the wrong trade anyway. `resolveDefaultCity` does that check when the
- * cookie is read, so a junk value costs a fallback to the default, not a wrong page. */
-function resolveCitySlug(request: NextRequest): string | undefined | null {
-  const param = request.nextUrl.searchParams.get("city");
-  if (param) return SLUG_PATTERN.test(param) ? param : undefined;
-
-  const { pathname } = request.nextUrl;
-  const first = pathname.split("/")[1];
-
-  // "/" and the national routes ARE the all-cities view. Reaching one is a deliberate choice to
-  // stop filtering by city, so it clears the cookie rather than leaving a stale value behind —
-  // without this, picking "All cities" and then opening /post announced the city the visitor had
-  // been looking at last week.
-  if (pathname === "/" || (first && NATIONAL_FIRST_SEGMENTS.has(first))) return null;
-
-  if (!first || PAGE_FIRST_SEGMENTS.has(first) || !SLUG_PATTERN.test(first)) return undefined;
-
-  // Viewing a listing is not choosing a city. A listing URL is
-  // /{city}/{area}/{group}/{category}/{slug}-{id}, so opening a Chennai flat from an all-cities
-  // browse used to rewrite the remembered city to Chennai — and the visitor then found /post and
-  // every account page announcing a city they had never picked.
-  const last = request.nextUrl.pathname.split("/").filter(Boolean).pop();
-  if (last && LISTING_SLUG_ID.test(last)) return undefined;
-
-  return first;
 }
 
 /** The visitor's IP as Caddy saw it.
@@ -175,7 +86,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   const hasAcquisitionCookie = request.cookies.has(ACQUISITION_COOKIE);
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
   // undefined = this page says nothing about the city; null = it says "all cities".
-  const citySlug = resolveCitySlug(request);
+  const citySlug = citySlugForRoute(request.nextUrl.pathname, request.nextUrl.searchParams.get("city"));
   const currentCity = request.cookies.get(CITY_COOKIE)?.value;
   // Only write when it actually changes, so the steady state stays a bare NextResponse.next()
   // with no Set-Cookie on every page view.
