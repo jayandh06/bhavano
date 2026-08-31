@@ -29,12 +29,26 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   const cityAreas = city ? await fetchAreas(city.id, undefined, true) : [];
 
   return (
-    // flex flex-col + flex-1 below, matching the listings pages: without it the footer rides up
-    // under short content instead of sitting at the bottom.
-    <div className="min-h-screen flex flex-col bg-bg text-text">
+    // Exactly one viewport tall on a phone, and taller than one on desktop.
+    //
+    // `min-h-screen` on both was what buried the composer: the header, the back link, a 70vh
+    // thread and a footer full of city links add up to well over a screen, so on a phone the
+    // page scrolled and the text box — the only thing you came here to use — started below the
+    // fold. `h-dvh` instead makes the shell the exact height of the viewport, so nothing can
+    // push the composer off it; the message list is then the one part that scrolls. `dvh`
+    // rather than `vh` because mobile Safari's `vh` is the height with the address bar hidden,
+    // which is taller than what you can actually see.
+    //
+    // Every box between here and the composer needs `min-h-0`: a flex item defaults to
+    // `min-height: auto`, which refuses to shrink below its content, and one such box anywhere
+    // in the chain pushes the overflow back out to the page and restores the original bug.
+    //
+    // flex flex-col + flex-1 matches the listings pages: without it the footer rides up under
+    // short content instead of sitting at the bottom.
+    <div className="h-dvh sm:h-auto sm:min-h-screen flex flex-col bg-bg text-text">
       <PageHeader />
-      <div className="flex-1 w-full max-w-[1280px] mx-auto p-8">
-        <Link href="/messages" className="text-[13px] text-muted mb-4 inline-block">
+      <div className="flex-1 min-h-0 w-full max-w-[1280px] mx-auto p-4 sm:p-8 flex flex-col">
+        <Link href="/messages" className="text-[13px] text-muted mb-3 sm:mb-4 inline-block shrink-0">
           ← Back to messages
         </Link>
         <MessageThread
@@ -44,7 +58,11 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
           initialMessages={messages}
         />
       </div>
-      <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
+      {/* A chat fills the phone screen, so there is nowhere to put a footer that would not mean
+          scrolling the composer away again. Desktop has the room and keeps it. */}
+      <div className="hidden sm:block">
+        <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
+      </div>
     </div>
   );
 }

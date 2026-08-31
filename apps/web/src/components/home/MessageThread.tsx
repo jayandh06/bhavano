@@ -60,8 +60,11 @@ export function MessageThread({
   }
 
   return (
-    <div className="flex flex-col h-[70vh]">
-      <div ref={listRef} className="flex-1 overflow-y-auto py-4 flex flex-col gap-2.5">
+    // On a phone this fills whatever the page shell has left, so the composer below lands on the
+    // bottom edge of the viewport and stays there. On desktop it keeps its fixed 70vh box, which
+    // sits in a normally scrolling page alongside the footer.
+    <div className="flex flex-col flex-1 min-h-0 sm:flex-none sm:h-[70vh]">
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-2.5">
         {/* A conversation can exist with no messages — it is created when a buyer opens contact
             with a seller, before anything is actually sent. Without this the thread renders as a
             blank panel and looks broken rather than empty. */}
@@ -85,7 +88,9 @@ export function MessageThread({
         })}
       </div>
 
-      <div className="flex gap-2.5 border-t border-border pt-3">
+      {/* pb for the phone's home-indicator strip: without it the Send button sits under the
+          swipe bar on a gesture-navigation device. Zero on anything that has no such inset. */}
+      <div className="flex gap-2.5 border-t border-border pt-3 shrink-0 pb-[env(safe-area-inset-bottom)]">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
