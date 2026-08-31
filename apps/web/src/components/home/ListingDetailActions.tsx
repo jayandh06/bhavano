@@ -59,8 +59,9 @@ export function ListingDetailActions({
         {!isOwner && (
           <button
             onClick={onMessage}
-            className="flex-1 bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-1.5 bg-green text-on-green border-0 rounded-lg p-[13px] text-[15px] font-extrabold tracking-[0.01em] cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)] transition-[filter] hover:brightness-110 active:brightness-95"
           >
+            <Icon name="message" />
             Contact owner
           </button>
         )}

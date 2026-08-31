@@ -126,10 +126,17 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
           * here since a seller scrolling their own city sees the card among everyone else's. */}
         {!item.isOwner && (
           <div className="mt-2">
+            {/* Heavier than a default button on purpose — this is the one action a listing
+              * exists to produce, so it should read as the obvious next step in a glance rather
+              * than tie visually with Favourite beside it. The shadow matches the header's own
+              * "Post ad" CTA (see Header.tsx) rather than inventing a second treatment; the
+              * brightness hover/active is filter-based so it needs no new colour token and still
+              * respects the theme. */}
             <button
               onClick={onContactOwner}
-              className="w-full bg-green text-on-green border-none rounded-lg p-[11px] text-sm font-bold cursor-pointer"
+              className="w-full flex items-center justify-center gap-1.5 bg-green text-on-green border-none rounded-lg p-3 text-sm font-extrabold tracking-[0.01em] cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)] transition-[filter] hover:brightness-110 active:brightness-95"
             >
+              <Icon name="message" />
               Contact owner
             </button>
             {contactError && <p className="text-[#b3413a] text-[12px] mt-1.5">{contactError}</p>}
