@@ -11,6 +11,7 @@ import { clampDigits } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { Icon, isIconName } from "./Icon";
 
 /** Half of the stacked arrow column beside a counter's value — no border or radius of its own,
  * since the wrapper supplies the frame. */
@@ -367,7 +368,7 @@ function CategoryField({
 }) {
   const labelText = (
     <>
-      {field.icon && <span className="mr-1">{field.icon}</span>}
+      {isIconName(field.iconName) && <Icon name={field.iconName} className="mr-1.5 text-muted" />}
       {field.label}
       {field.required && <span className="text-[#b3413a]"> *</span>}
     </>
