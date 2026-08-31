@@ -74,14 +74,18 @@ export function CategoryTabs({
             >
               <Icon name={tab.icon} />
               {tab.label}
-              {/* Desktop only — the menu it points at opens on mouseenter, which a touch device
-                * can never fire. Tapping a tab there already just navigates, same as a tab with
-                * no dropdown at all, so the chevron on mobile was promising an interaction that
-                * does not exist. Hidden rather than shown-but-inert, since a flex row's gap and
-                * this span's own width both go away with it — exactly the tighter spacing asked
-                * for, not a separate padding change. */}
+              {/* Gated on actual hover capability, not screen width — the menu this points at
+                * opens on mouseenter, so what decides whether the chevron means anything is
+                * whether the device can hover at all, not how wide its screen is. sm: alone got
+                * this wrong for a tablet: touch-primary and often wider than the sm: breakpoint,
+                * so it passed the width check and showed a chevron for a menu it can never open
+                * by hovering, the exact broken promise this was meant to fix for phones. A
+                * touch-tablet still just navigates on tap, identically to a tab with no dropdown.
+                * (hover: hover) matches a mouse or trackpad regardless of screen size, and
+                * correctly still shows this on, say, a small browser window on a desktop, or a
+                * tablet with a mouse attached — width was never actually the right test. */}
               {tab.column1.length > 0 && (
-                <span className="hidden sm:inline text-[10px] text-muted">▾</span>
+                <span className="hidden [@media(hover:hover)]:inline text-[10px] text-muted">▾</span>
               )}
             </button>
           );
