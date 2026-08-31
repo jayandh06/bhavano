@@ -124,31 +124,34 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
               <span key={spec}>{spec}</span>
             ))}
           </div>
-          <div className="flex gap-3 text-[11.5px] text-muted">
+        </Link>
+        {/* Views/likes and Contact owner share one row now rather than stacking — the counts
+          * sat above a full-width button before, which cost the card an extra line for two short
+          * numbers. Owner's own card still shows the counts here; the button just isn't part of
+          * the row for it, same as before. No breakpoint prefixes in this block on purpose — one
+          * layout on a phone-width card and a desktop grid card alike, not a wider button that
+          * only appears past some screen size. */}
+        <div className="flex items-center justify-between gap-2 mt-1">
+          <div className="flex gap-3 text-[11.5px] text-muted shrink-0">
             <span className="flex items-center gap-1"><Icon name="eye" /> {item.viewCount}</span>
             <span className="flex items-center gap-1"><Icon name="heart" /> {likeCount}</span>
           </div>
-        </Link>
-        {/* Hidden on your own listing — the same reason as on the detail page, and more visible
-          * here since a seller scrolling their own city sees the card among everyone else's. */}
-        {!item.isOwner && (
-          <div className="mt-2">
-            {/* Heavier than a default button on purpose — this is the one action a listing
-              * exists to produce, so it should read as the obvious next step in a glance rather
-              * than tie visually with Favourite beside it. The shadow matches the header's own
-              * "Post ad" CTA (see Header.tsx) rather than inventing a second treatment; the
-              * brightness hover/active is filter-based so it needs no new colour token and still
-              * respects the theme. */}
+          {/* Hidden on your own listing — the same reason as on the detail page, and more
+            * visible here since a seller scrolling their own city sees the card among everyone
+            * else's. Light green rather than filled: sharing a row with the view/like counts,
+            * a solid button the same weight as before would visually shout over them — this
+            * keeps Contact owner readable as a button without drowning out what sits beside it. */}
+          {!item.isOwner && (
             <button
               onClick={onContactOwner}
-              className="w-full flex items-center justify-center gap-1.5 bg-green text-on-green border-none rounded-lg p-3 text-sm font-extrabold tracking-[0.01em] cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)] transition-[filter] hover:brightness-110 active:brightness-95"
+              className="flex items-center gap-1.5 bg-green/10 text-green border-none rounded-lg px-3 py-1.5 text-[12.5px] font-bold cursor-pointer whitespace-nowrap transition-colors hover:bg-green/15"
             >
               <Icon name="message" />
               Contact owner
             </button>
-            {contactError && <p className="text-[#b3413a] text-[12px] mt-1.5">{contactError}</p>}
-          </div>
-        )}
+          )}
+        </div>
+        {contactError && <p className="text-[#b3413a] text-[12px] mt-1.5">{contactError}</p>}
       </div>
     </div>
   );

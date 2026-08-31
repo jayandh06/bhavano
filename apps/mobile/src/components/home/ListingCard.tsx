@@ -89,13 +89,19 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             </Text>
           ))}
         </View>
-        <View style={styles.specsRow}>
-          <Text style={{ fontSize: 11, color: colors.muted }}>👁 {item.viewCount}</Text>
-          <Text style={{ fontSize: 11, color: colors.muted }}>♥ {likeCount}</Text>
-        </View>
+        {/* Counts and Contact owner share one row rather than stacking, matching the web
+          * card — the counts sat above a full-width button before, costing an extra line for two
+          * short numbers. Owner's own card still shows the counts here; the button just isn't
+          * part of the row for it (see ListingDetailView's isOwner gate for the reason). */}
         <View style={styles.actionsRow}>
-          <Pressable onPress={onContactOwner} style={[styles.contactButton, { backgroundColor: colors.green }]}>
-            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13 }}>Contact owner</Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Text style={{ fontSize: 11, color: colors.muted }}>👁 {item.viewCount}</Text>
+            <Text style={{ fontSize: 11, color: colors.muted }}>♥ {likeCount}</Text>
+          </View>
+          {/* Light green rather than filled: sharing a row with the counts, a solid button the
+            * same weight as before would visually shout over them. */}
+          <Pressable onPress={onContactOwner} style={[styles.contactButton, { backgroundColor: `${colors.green}1a` }]}>
+            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>Contact owner</Text>
           </Pressable>
         </View>
         {contactError ? (
@@ -137,6 +143,6 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
   qualifierChip: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5 },
   specsRow: { flexDirection: "row", gap: 10 },
-  actionsRow: { flexDirection: "row", gap: 8, marginTop: 4 },
-  contactButton: { flex: 1, borderRadius: 8, paddingVertical: 10, alignItems: "center" },
+  actionsRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 4 },
+  contactButton: { borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, alignItems: "center" },
 });
