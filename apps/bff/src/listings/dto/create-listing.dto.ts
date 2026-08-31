@@ -100,6 +100,13 @@ export class CreateListingDto {
   @IsString({ each: true })
   specs?: string[];
 
+  // 4000 is generous for a classified ad and still bounded — the column is TEXT, so without a
+  // limit here a single listing could carry a novel.
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  description?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreatedPhotoInputDto)

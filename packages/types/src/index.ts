@@ -127,6 +127,9 @@ export interface PopularSearchDto {
 }
 
 export interface ListingDetailDto extends ListingCardDto {
+  /** The seller's own prose. Null for anything posted before the field existed — most listings.
+   * Distinct from `specs`, which are the short chips the card renders in one row. */
+  description: string | null;
   status: ListingStatus;
   moderationState: ModerationState;
   adminReviewed: boolean;
@@ -172,6 +175,7 @@ export interface UpdateListingInput {
   priceQualifier?: string;
   title?: string;
   specs?: string[];
+  description?: string;
   attributes?: Record<string, unknown>;
   status?: ListingStatus;
 }
@@ -221,6 +225,7 @@ export interface CreateListingInput {
   areaName?: string;
   cityId: string;
   specs?: string[];
+  description?: string;
   photos: CreatedPhotoInput[];
   /** Optional — video is additive, never required. Entitlement (Agent Pro only, since the
    * listing doesn't exist yet to be boosted) is re-checked and silently trimmed in

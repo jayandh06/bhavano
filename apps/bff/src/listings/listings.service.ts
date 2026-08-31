@@ -507,6 +507,9 @@ export class ListingsService {
         areaId,
         cityId: input.cityId,
         specs: input.specs ?? [],
+        // Empty string normalised to null: "left blank" and "cleared" are the same thing here,
+        // and a null keeps the "has a description" check a single test everywhere downstream.
+        description: input.description?.trim() || null,
         attributes: (input.attributes ?? {}) as Prisma.InputJsonValue,
         tag: deriveTag(input),
         ownerId,
@@ -755,6 +758,9 @@ export class ListingsService {
           ? { title: dto.title, slug: slugify(dto.title) }
           : {}),
         ...(dto.specs !== undefined ? { specs: dto.specs } : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description.trim() || null }
+          : {}),
         ...(dto.attributes !== undefined
           ? { attributes: dto.attributes as Prisma.InputJsonValue }
           : {}),
@@ -1173,6 +1179,7 @@ export class ListingsService {
 
     return {
       ...this.toCardDto(listing, favouritedIds),
+      description: listing.description,
       status: listing.status,
       moderationState: listing.moderationState,
       adminReviewed: listing.adminReviewed,

@@ -130,6 +130,12 @@ export default function ListingDetailScreen() {
         </Text>
       </View>
 
+      {listing.description ? (
+        <Text style={{ fontSize: 14, lineHeight: 21, color: colors.textSoft, marginTop: 16 }}>
+          {listing.description}
+        </Text>
+      ) : null}
+
       <View style={styles.specsRow}>
         {listing.specs.map((spec) => (
           <View key={spec} style={[styles.specChip, { backgroundColor: colors.surfaceAlt }]}>

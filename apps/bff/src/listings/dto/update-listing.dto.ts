@@ -25,6 +25,11 @@ export class UpdateListingDto {
   specs?: string[];
 
   @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  description?: string;
+
+  @IsOptional()
   @IsObject()
   attributes?: Record<string, unknown>;
 

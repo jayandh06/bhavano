@@ -46,6 +46,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
   );
   const [priceQualifier, setPriceQualifier] = useState(listing.priceQualifier);
   const [specs, setSpecs] = useState(listing.specs.join(", "));
+  const [description, setDescription] = useState(listing.description ?? "");
   const [attributes, setAttributes] = useState<
     Record<string, string | string[]>
   >(attributesToStrings(listing.attributes));
@@ -100,6 +101,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
+      description: description.trim(),
       attributes,
       status,
     });
@@ -161,7 +163,20 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
       </div>
 
       <div>
-        <label className={labelClass}>Specs (comma-separated)</label>
+        <label className={labelClass}>Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={5}
+          placeholder="Describe the place in your own words — the layout, the neighbourhood, what's nearby."
+          className={`${inputClass} resize-y min-h-[120px]`}
+        />
+      </div>
+
+      {/* Short chips for the card, kept apart from the description above — they render in one
+        * non-wrapping row, so a sentence here squashes it. */}
+      <div>
+        <label className={labelClass}>Key specs (comma-separated)</label>
         <input
           value={specs}
           onChange={(e) => setSpecs(e.target.value)}

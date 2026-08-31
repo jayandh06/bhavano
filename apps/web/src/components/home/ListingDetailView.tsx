@@ -160,6 +160,14 @@ export async function ListingDetailView({
               </span>
           </div>
 
+          {listing.description && (
+            // whitespace-pre-line so the paragraph breaks the seller typed survive. They wrote it
+            // in a textarea; collapsing it into one block loses the shape they gave it.
+            <div className="text-sm text-text-soft leading-[1.6] whitespace-pre-line mb-6">
+              {listing.description}
+            </div>
+          )}
+
           <div className="flex gap-4 flex-wrap mb-6">
             {listing.specs.map((spec) => (
               <span

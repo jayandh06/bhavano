@@ -240,6 +240,7 @@ export function PostAdWizard({
   const areaFieldRef = useRef<HTMLDivElement | null>(null);
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [specs, setSpecs] = useState("");
+  const [description, setDescription] = useState("");
   const [attributes, setAttributes] = useState<
     Record<string, string | string[]>
   >({});
@@ -571,6 +572,7 @@ export function PostAdWizard({
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
+      description: description.trim() || undefined,
       photos: uploadedPhotos,
       videos: uploadedVideos.length > 0 ? uploadedVideos : undefined,
       attributes,
@@ -749,8 +751,25 @@ export function PostAdWizard({
           </div>
 
           <div>
+            <label className={labelClass}>Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={5}
+              placeholder="Describe the place in your own words — the layout, what the neighbourhood is like, what's nearby, why someone would want to live here."
+              className={`${fieldClass} resize-y min-h-[120px]`}
+            />
+            <p className="text-xs text-muted mt-1">
+              Optional, but ads with a description get more responses.
+            </p>
+          </div>
+
+          {/* Kept separate from the description above, and deliberately still short. These render
+            * as chips in a single non-wrapping row on the listing card, so a sentence here
+            * squashes that row — which is what happened while this field was doing duty as both. */}
+          <div>
             <label className={labelClass}>
-              Specs (comma-separated, shown on the listing card)
+              Key specs (comma-separated, shown as tags on the card)
             </label>
             <input
               value={specs}

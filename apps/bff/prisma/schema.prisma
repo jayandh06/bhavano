@@ -273,7 +273,11 @@ model Listing {
   lat              Float?
   lng              Float?
   tag              String
+  /// Short chips for the listing card — "3 Beds", "1450 sqft". Kept separate from `description`:
+  /// they render in one non-wrapping row, so they have to stay short.
   specs            String[]          @default([])
+  /// The seller's own prose about the listing. Nullable — most listings predate the field.
+  description      String?
   attributes       Json              @default("{}")
   ownerId          String
   owner            User              @relation(fields: [ownerId], references: [id])

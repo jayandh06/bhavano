@@ -169,6 +169,29 @@ function numericAttribute(value: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** What this listing is, in one string, for a machine to read.
+ *
+ * The seller's own description first — it is the only field written to describe the place rather
+ * than to label it. `specs` was standing in for this before the field existed, which meant every
+ * listing page described itself as "3 Beds, 1450 sqft". Title last, so there is always something.
+ *
+ * Whitespace collapsed: the description comes from a textarea and carries the line breaks the
+ * seller typed. Those belong on the page (see ListingDetailView), not inside a meta tag. */
+function listingSummary(listing: ListingDetailDto): string {
+  const own = listing.description?.replace(/\s+/g, " ").trim();
+  return own || listing.specs.join(", ") || listing.title;
+}
+
+/** Search engines truncate a meta description around 160 characters, and a description can now be
+ * 4000. Cuts at a word boundary rather than mid-word, and only when there is something to gain —
+ * a string already inside the limit is returned untouched. */
+function truncateForMeta(text: string, max = 160): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
 function listingJsonLd(listing: ListingDetailDto) {
   const numericPrice = listing.price.replace(/[^\d]/g, "");
   const offers = {
@@ -183,7 +206,7 @@ function listingJsonLd(listing: ListingDetailDto) {
     return {
       "@type": "Product",
       name: listing.title,
-      description: listing.specs.join(", ") || listing.title,
+      description: listingSummary(listing),
       category: listing.category,
       image: listing.photosFull,
       offers,
@@ -197,7 +220,7 @@ function listingJsonLd(listing: ListingDetailDto) {
   return {
     "@type": "RealEstateListing",
     name: listing.title,
-    description: listing.specs.join(", ") || listing.title,
+    description: listingSummary(listing),
     url: offers.url,
     image: listing.photosFull,
     address: {
@@ -317,7 +340,9 @@ export async function generateMetadata({
     const listing = await fetchListingById(extractListingId(parsed.listingSlugId)).catch(() => null);
     if (!listing) return {};
     const canonicalPath = buildListingPath(listing);
-    const description = `${listing.price} ${listing.priceQualifier} — ${listing.specs.join(", ") || listing.title} in ${listing.area}, ${listing.cityName}.`;
+    const description = truncateForMeta(
+      `${listing.price} ${listing.priceQualifier} — ${listingSummary(listing)} in ${listing.area}, ${listing.cityName}.`,
+    );
     return {
       title: listing.title,
       description,
