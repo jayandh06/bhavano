@@ -16,9 +16,9 @@ const GETTING_STARTED: Faq[] = [
     q: "How do I create an account?",
     a: (
       <>
-        Click <strong>Login</strong> and choose either <strong>Phone OTP</strong> (we&apos;ll text you a one-time
-        code) or <strong>Continue with Google</strong>. There&apos;s no separate signup step — logging in the first
-        time creates your account.
+        Click <strong>Login</strong> and choose either <strong>Continue with Google</strong> or <strong>Phone
+        OTP</strong> (we&apos;ll text you a one-time code). There&apos;s no separate signup step — logging in the
+        first time creates your account.
       </>
     ),
   },

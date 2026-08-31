@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { hasAdminSessionAction, sendOtpAction, signInWithGoogleAction, verifyOtpAction } from "@/app/actions/auth";
+import { GoogleIcon } from "./GoogleIcon";
 import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 
 type Step = "choose" | "phone" | "otp";
@@ -122,11 +123,14 @@ export function LoginForm() {
 
       {step === "choose" && (
         <>
-          <button onClick={() => setStep("phone")} style={primaryButtonStyle}>
-            Continue with Phone OTP
-          </button>
-          <button onClick={onGoogleSignIn} style={outlineButtonStyle} disabled={pending}>
+          {/* Google first — most admins already have a Google account signed into their
+            * browser, so it is usually one click, where phone OTP always costs an SMS wait. */}
+          <button onClick={onGoogleSignIn} style={googleButtonStyle} disabled={pending}>
+            <GoogleIcon />
             Continue with Google
+          </button>
+          <button onClick={() => setStep("phone")} style={outlineButtonStyle}>
+            Continue with Phone OTP
           </button>
         </>
       )}
@@ -204,6 +208,18 @@ const outlineButtonStyle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 700,
   cursor: "pointer",
+};
+
+// Same bordered/neutral look as outlineButtonStyle, not the app's own accent colour: Google's
+// own button guidelines call for a neutral surface so the coloured logo is what reads as
+// "Google," not a button styled to match the host app.
+const googleButtonStyle: React.CSSProperties = {
+  ...outlineButtonStyle,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 10,
+  marginBottom: 10,
 };
 
 const inputStyle: React.CSSProperties = {

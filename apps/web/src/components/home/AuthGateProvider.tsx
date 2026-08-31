@@ -14,6 +14,7 @@ import { requestEmailCodeAction, verifyEmailAction } from "@/app/actions/users";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 import { GOOGLE_SIGNUP_TRACKED_KEY } from "./SignupConversionTracker";
+import { GoogleIcon } from "./GoogleIcon";
 import { Icon } from "./Icon";
 
 /** `email` and `emailCode` only ever follow a brand-new phone signup — see handleVerifyOtp. */
@@ -283,11 +284,22 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
 
             {loginStep === "choose" && (
               <>
-                <button onClick={() => setLoginStep("phone")} className={primaryButtonClass}>
-                  Continue with Phone OTP
+                {/* Google first — most visitors already have a Google account signed into
+                  * their browser, so it is usually one click with nothing to type, where phone
+                  * OTP always costs a wait for the SMS. White with a border and the official
+                  * colour mark, not the app's own green: Google's own button guidelines call for
+                  * a neutral surface so the coloured logo itself is what reads as "Google," the
+                  * same convention practically every Google sign-in button follows regardless of
+                  * the host app's own palette. */}
+                <button
+                  onClick={handleGoogle}
+                  disabled={pending}
+                  className="w-full flex items-center justify-center gap-2.5 bg-surface text-text border-[1.5px] border-border rounded-lg p-[13px] text-sm font-bold cursor-pointer mb-2.5"
+                >
+                  <GoogleIcon /> Continue with Google
                 </button>
-                <button onClick={handleGoogle} disabled={pending} className={outlineButtonClass}>
-                  G Continue with Google
+                <button onClick={() => setLoginStep("phone")} className={outlineButtonClass}>
+                  Continue with Phone OTP
                 </button>
                 <p className="text-xs text-muted mt-3.5 leading-[1.5]">
                   By continuing you agree to Bhavano&apos;s{" "}

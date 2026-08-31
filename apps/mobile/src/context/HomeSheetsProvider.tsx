@@ -448,11 +448,16 @@ export function HomeSheetsProvider({
           {loginStep === "choose" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Log in to continue</Text>
-              <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone OTP</Text>
-              </Pressable>
+              {/* Google first, matching the web and admin login dialogs — most people already
+                * have a Google account signed into the device, so it is usually one tap where
+                * phone OTP always costs an SMS wait. Still a plain "G" rather than the real
+                * four-colour mark: that needs react-native-svg, which this app does not have
+                * (see the icon-outline work earlier — same gap, not fixed here). */}
               <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
                 <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>G  Continue with Google</Text>
+              </Pressable>
+              <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
+                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone OTP</Text>
               </Pressable>
               {error && <Text style={styles.errorText}>{error}</Text>}
             </>
