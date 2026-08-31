@@ -502,18 +502,19 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     dependsOn: { key: "furnished", value: "furnished" },
   },
   ...[
-    ["cctv", "CCTV", "📹"],
-    ["lift", "Lift", "🛗"],
-    ["powerBackup", "Power backup", "🔋"],
-    ["waterSupply", "Water supply", "🚰"],
-    ["playArea", "Play area", "🎠"],
-    ["gym", "Gym", "🏋️"],
-    ["swimmingPool", "Swimming pool", "🏊"],
-    ["clubHouse", "Club house", "🏛️"],
-  ].map(([key, label, icon]) => ({
+    ["cctv", "CCTV", "📹", "cctv"],
+    ["lift", "Lift", "🛗", "lift"],
+    ["powerBackup", "Power backup", "🔋", "powerBackup"],
+    ["waterSupply", "Water supply", "🚰", "waterSupply"],
+    ["playArea", "Play area", "🎠", "playArea"],
+    ["gym", "Gym", "🏋️", "gym"],
+    ["swimmingPool", "Swimming pool", "🏊", "swimmingPool"],
+    ["clubHouse", "Club house", "🏛️", "clubHouse"],
+  ].map(([key, label, icon, iconName]) => ({
     key,
     label,
     icon,
+    iconName,
     type: "select" as const,
     section: "amenities" as const,
     options: [

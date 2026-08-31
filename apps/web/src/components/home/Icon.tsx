@@ -1,9 +1,12 @@
 import {
+  ArrowUpDown,
+  BatteryCharging,
   Bed,
   Bell,
   Briefcase,
   CookingPot,
   DoorClosed,
+  Dumbbell,
   Fan,
   Hotel,
   House,
@@ -20,16 +23,19 @@ import {
   Calculator,
   Camera,
   ChartColumn,
+  Droplets,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Compass,
   Eye,
+  FerrisWheel,
   Heart,
   Home,
   IndianRupee,
   Key,
+  Landmark,
   LayoutGrid,
   MapPin,
   MessageCircle,
@@ -47,6 +53,7 @@ import {
   Sun,
   BedDouble,
   Video,
+  Waves,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -127,6 +134,16 @@ export const ICONS = {
   geyser: ShowerHead,
   table: Table,
   diningTable: UtensilsCrossed,
+
+  // The catalogue-style amenities generated in categoryFields.ts's amenities block.
+  cctv: Camera,
+  lift: ArrowUpDown,
+  powerBackup: BatteryCharging,
+  waterSupply: Droplets,
+  playArea: FerrisWheel,
+  gym: Dumbbell,
+  swimmingPool: Waves,
+  clubHouse: Landmark,
 } satisfies Record<string, LucideIcon>;
 
 /** Narrows a name that crossed a package boundary as a plain string — `iconName` on the shared
