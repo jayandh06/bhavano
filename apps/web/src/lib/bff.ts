@@ -5,6 +5,7 @@ import type {
   Area,
   AuthSession,
   City,
+  ConversationDetailDto,
   ConversationSummaryDto,
   CreateBoostOrderResponseDto,
   CreateListingInput,
@@ -420,6 +421,10 @@ export function createConversation(accessToken: string, listingId: string): Prom
 
 export function fetchConversations(accessToken: string): Promise<ConversationSummaryDto[]> {
   return authedBffFetch(accessToken, "/conversations", { cache: "no-store" });
+}
+
+export function fetchConversation(accessToken: string, conversationId: string): Promise<ConversationDetailDto> {
+  return authedBffFetch(accessToken, `/conversations/${conversationId}`, { cache: "no-store" });
 }
 
 export function fetchMessages(accessToken: string, conversationId: string): Promise<MessageDto[]> {

@@ -1,6 +1,7 @@
 import type {
   Area,
   City,
+  ConversationDetailDto,
   ConversationSummaryDto,
   CreateListingInput,
   HomeCategoryFilter,
@@ -135,6 +136,10 @@ export function toggleFavourite(
 
 export function fetchFavourites(accessToken: string): Promise<ListingCardDto[]> {
   return authedBffFetch(accessToken, "/users/me/favourites");
+}
+
+export function fetchConversation(accessToken: string, conversationId: string): Promise<ConversationDetailDto> {
+  return authedBffFetch(accessToken, `/conversations/${conversationId}`);
 }
 
 export function createConversation(accessToken: string, listingId: string): Promise<{ id: string }> {

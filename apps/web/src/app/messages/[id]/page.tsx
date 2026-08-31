@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { BffAuthError, fetchAreas, fetchCities, fetchMessages } from "@/lib/bff";
+import { BffAuthError, fetchAreas, fetchCities, fetchConversation, fetchMessages } from "@/lib/bff";
+import { buildListingPath } from "@/lib/listingPath";
 import { MessageThread } from "@/components/home/MessageThread";
 import { resolveDefaultCity } from "@/lib/defaultCity";
 import { PageHeader } from "@/components/home/PageHeader";
@@ -13,8 +14,14 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   if (!session?.accessToken || !session.user?.id) redirect("/messages");
 
   let messages;
+  let conversation;
   try {
-    messages = await fetchMessages(session.accessToken, id);
+    // In parallel: neither depends on the other, and the thread is behind a login so this is
+    // never a cached render anyone waits twice for.
+    [messages, conversation] = await Promise.all([
+      fetchMessages(session.accessToken, id),
+      fetchConversation(session.accessToken, id),
+    ]);
   } catch (error) {
     if (error instanceof BffAuthError) redirect("/messages");
     throw error;
@@ -48,9 +55,29 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
     <div className="h-dvh sm:h-auto sm:min-h-screen flex flex-col bg-bg text-text">
       <PageHeader />
       <div className="flex-1 min-h-0 w-full max-w-[1280px] mx-auto p-4 sm:p-8 flex flex-col">
-        <Link href="/messages" className="text-[13px] text-muted mb-3 sm:mb-4 inline-block shrink-0">
-          ← Back to messages
-        </Link>
+        {/* A trail, not a back button.
+          *
+          * There are two ways into this page and the old "← Back to messages" only served one of
+          * them: someone who arrived from a listing's "Contact owner" had never seen the messages
+          * list, and the one link on the page sent them somewhere they had not been. Getting back
+          * to the ad they were asking about took the browser's own back button, or a fresh search.
+          *
+          * Reading the referrer to decide would be worse — it is absent on a fresh tab, which is
+          * exactly how listings open from a card. The conversation knows its listing, so both
+          * destinations are simply always there, and the trail reads the same either way. */}
+        <nav aria-label="Breadcrumb" className="mb-3 sm:mb-4 shrink-0 flex items-center gap-1.5 text-[13px] min-w-0">
+          <Link href="/messages" className="text-muted hover:text-text whitespace-nowrap">
+            Messages
+          </Link>
+          <span aria-hidden className="text-muted">/</span>
+          <Link
+            href={buildListingPath(conversation.listing)}
+            className="text-text font-bold truncate"
+            title={conversation.listing.title}
+          >
+            {conversation.listing.title}
+          </Link>
+        </nav>
         <MessageThread
           conversationId={id}
           accessToken={session.accessToken}
