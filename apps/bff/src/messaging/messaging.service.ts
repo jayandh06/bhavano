@@ -1,5 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import type { ConversationSummaryDto, MessageDto } from '@bhavano/types';
+import type {
+  ConversationDetailDto,
+  ConversationSummaryDto,
+  MessageDto,
+} from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Conversation, Message } from '@prisma/client';
 
@@ -81,6 +85,57 @@ export class MessagingService {
         };
       }),
     );
+  }
+
+  /** The thread's own context — who it is with and which listing it is about. Participant-gated
+   * like every other read here: a conversation id is a cuid, but guessing one should not reveal
+   * a listing anyone was asking about. */
+  async getConversation(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationDetailDto> {
+    await this.assertParticipant(conversationId, userId);
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        listing: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            category: true,
+            transactionType: true,
+            city: { select: { name: true } },
+            area: { select: { name: true } },
+          },
+        },
+        poster: { select: { id: true, name: true, phone: true } },
+        inquirer: { select: { id: true, name: true, phone: true } },
+      },
+    });
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    const viewerIsPoster = conversation.posterId === userId;
+    const otherParty = viewerIsPoster
+      ? conversation.inquirer
+      : conversation.poster;
+    return {
+      id: conversation.id,
+      type: conversation.type,
+      otherPartyName:
+        otherParty.name ??
+        otherParty.phone ??
+        (conversation.type === 'moderation' ? 'Bhavano Admin' : 'User'),
+      listing: {
+        id: conversation.listing.id,
+        title: conversation.listing.title,
+        slug: conversation.listing.slug,
+        category: conversation.listing.category,
+        transactionType: conversation.listing.transactionType,
+        cityName: conversation.listing.city.name,
+        area: conversation.listing.area.name,
+      },
+    };
   }
 
   async getMessages(conversationId: string, userId: string): Promise<MessageDto[]> {

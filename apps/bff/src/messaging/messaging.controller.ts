@@ -1,5 +1,9 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import type { ConversationSummaryDto, MessageDto } from '@bhavano/types';
+import type {
+  ConversationDetailDto,
+  ConversationSummaryDto,
+  MessageDto,
+} from '@bhavano/types';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
@@ -24,6 +28,16 @@ export class MessagingController {
   @Get()
   list(@CurrentUser() user: RequestUser): Promise<ConversationSummaryDto[]> {
     return this.messagingService.listConversations(user.id);
+  }
+
+  /** Declared before `:id/messages` only for readability — Nest matches the fuller path first
+   * either way, so this cannot shadow it. */
+  @Get(':id')
+  getConversation(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<ConversationDetailDto> {
+    return this.messagingService.getConversation(id, user.id);
   }
 
   @Get(':id/messages')

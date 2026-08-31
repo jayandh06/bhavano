@@ -275,6 +275,30 @@ export interface ConversationSummaryDto {
   unreadCount: number;
 }
 
+/** Just enough of a listing to link to it — the same fields `buildListingPath` takes, so a
+ * caller can build the URL without refetching the listing itself. Field names match
+ * `ListingCardDto` deliberately: the two are interchangeable at that call site. */
+export interface ConversationListingRefDto {
+  id: string;
+  title: string;
+  slug: string;
+  category: ListingCategory;
+  transactionType: TransactionType;
+  cityName: string;
+  area: string;
+}
+
+/** One conversation's own context, for the thread view. The messages come from
+ * `/conversations/:id/messages` separately; this is what the page frames them with — chiefly a
+ * way back to the listing the thread is about, which is otherwise a dead end for anyone who
+ * arrived from "Contact owner" rather than from the messages list. */
+export interface ConversationDetailDto {
+  id: string;
+  type: ConversationType;
+  otherPartyName: string;
+  listing: ConversationListingRefDto;
+}
+
 export interface AuthUser {
   id: string;
   phone?: string;
