@@ -159,11 +159,24 @@ export default async function HomePage({
       />
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
         <h1 className="font-lora text-[26px] font-semibold m-0 mb-1.5 text-text">{heading}</h1>
-        <p className="text-[14px] text-text-soft mb-5">
+        {/* Two versions, not one shrunk down. The full paragraph does two jobs — says what
+          * Bhavano is, and explains the login model — and neither survives being forced onto one
+          * line on a phone: category breadth is already visible in the tabs right below, so
+          * restating it is the more droppable half, and the login explanation is no longer load
+          * bearing either, now that the login prompt itself only ever appears at the moment it's
+          * needed (see the "Ads shown without login" removal) rather than needing to be
+          * pre-announced. What's left for mobile is the one line that actually earns its place:
+          * the reason to use this over a broker. `truncate` is the real guarantee of a single
+          * line — it clips gracefully on the narrowest phones instead of wrapping if the exact
+          * copy ever runs long. */}
+        <p className="hidden sm:block text-[14px] text-text-soft mb-5">
           Bhavano is India&apos;s classifieds marketplace for buying, selling, renting and leasing
           homes, plots, commercial space, coworking desks, PG stays and furniture. Sign in with
           Google or your phone number only when you want to post a listing, save a favourite, or
           message a seller — we use your account solely to power those features.
+        </p>
+        <p className="sm:hidden truncate text-[13px] text-text-soft mb-5">
+          Buy, rent, sell & lease — free, no brokerage, message sellers directly.
         </p>
         {resolvedCity && (
           <div className="mb-5">
