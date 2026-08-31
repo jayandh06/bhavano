@@ -10,6 +10,7 @@ import {
 } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView, BottomSheetView } from "@gorhom/bottom-sheet";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
 import type { City, UserProfileDto } from "@bhavano/types";
@@ -17,6 +18,7 @@ import { getCityIcon } from "@bhavano/types/cityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
 import {
   fetchCities,
+  fetchCityByIp,
   fetchProfile,
   loginWithGoogle,
   logout as bffLogout,
@@ -27,6 +29,10 @@ import {
 import { useGoogleSignIn } from "../lib/googleSignIn";
 
 const TOKEN_KEY = "bhavano.accessToken";
+/** The city the user last picked, by slug-free name. AsyncStorage rather than SecureStore: this
+ * is a preference, not a secret, and SecureStore has no web implementation. Mirrors web's
+ * `bhavano_city` cookie — see apps/web/src/lib/defaultCity.ts. */
+const CITY_KEY = "bhavano.city";
 
 /** Decodes the JWT payload without verifying — fine for local display purposes only;
  * the BFF independently verifies the token's signature on every request. */
@@ -77,7 +83,13 @@ export function HomeSheetsProvider({
   const locationSheetRef = useRef<BottomSheetModal>(null);
   const loginSheetRef = useRef<BottomSheetModal>(null);
 
-  const [city, setCityState] = useState<City | null>(popularCities[0] ?? null);
+  // Null until resolved, and a legitimate resting state afterwards: null means "all cities",
+  // which the home screen already renders and which the listings query already treats as an
+  // unfiltered search. Starting at popularCities[0] instead meant the app opened on whichever
+  // city the API happened to return first, before anything had been resolved.
+  const [city, setCityState] = useState<City | null>(null);
+  /** Guards the one-time startup resolution below against re-running when `popularCities` lands. */
+  const resolvedInitialCity = useRef(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfileDto | null>(null);
@@ -106,15 +118,76 @@ export function HomeSheetsProvider({
     });
   }, []);
 
+  /**
+   * Which city to open on, in the same order of preference as web's `resolveDefaultCity`:
+   *
+   *   1. the city this user last picked, remembered across launches
+   *   2. the device's IP, on a first-ever launch
+   *   3. all cities — not Bengaluru
+   *
+   * This used to be `find(c => c.name === "Bengaluru") ?? popularCities[0]`, so someone in
+   * Chennai opened the app on Bengaluru listings however many times they had switched, and the
+   * switch was forgotten again on the next launch. The web app stopped doing that when the city
+   * cookie landed; the app kept doing it. See docs/plans/visitor-location-default-city.md.
+   *
+   * Runs once, on the first render where the city list is actually populated — `_layout.tsx`
+   * passes `popularCities ?? []` while its query is in flight, so keying this to mount alone
+   * would resolve against an empty list and never try again. The ref, not a `city == null`
+   * check, is what makes it once: null is a legitimate answer here, and re-running on it would
+   * undo the user clearing their city back to all-cities.
+   */
   useEffect(() => {
-    if (!city && popularCities.length > 0) {
-      setCityState(popularCities.find((c) => c.name === "Bengaluru") ?? popularCities[0]);
-      setLocationResults(popularCities);
-    }
-  }, [city, popularCities]);
+    if (resolvedInitialCity.current || popularCities.length === 0) return;
+    resolvedInitialCity.current = true;
+    let cancelled = false;
+
+    (async () => {
+      // Matched by name against the real list rather than restored wholesale: a stored city that
+      // has since been renamed or removed falls through to the next step instead of resurrecting
+      // a row that no longer exists.
+      const rememberedName = await AsyncStorage.getItem(CITY_KEY).catch(() => null);
+      if (cancelled) return;
+      if (rememberedName) {
+        const remembered =
+          popularCities.find((c) => c.name === rememberedName) ??
+          (await fetchCities(rememberedName).catch(() => [])).find((c) => c.name === rememberedName);
+        if (cancelled) return;
+        if (remembered) {
+          setCityState(remembered);
+          return;
+        }
+      }
+
+      const guess = await fetchCityByIp();
+      // Only if the user has not picked one in the meantime — the lookup is a network round trip
+      // and they may well have opened the picker while it was in flight.
+      if (!cancelled && guess) setCityState((current) => current ?? guess);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [popularCities]);
+
+  useEffect(() => {
+    if (popularCities.length > 0) setLocationResults(popularCities);
+  }, [popularCities]);
 
   const setCity = useCallback((next: City) => {
     setCityState(next);
+    // Fire-and-forget: failing to remember the choice is not worth blocking the sheet closing,
+    // and the next launch simply falls back to the IP guess.
+    AsyncStorage.setItem(CITY_KEY, next.name).catch(() => undefined);
+    locationSheetRef.current?.dismiss();
+  }, []);
+
+  /** Back to browsing every city. Without this, picking a city was a one-way door: nothing in the
+   * sheet could return to the unfiltered view the app can now open in, and the only way out was
+   * reinstalling. Clears the remembered choice too — leaving it behind would restore the city on
+   * the next launch and make this look like it had not worked. */
+  const clearCity = useCallback(() => {
+    setCityState(null);
+    AsyncStorage.removeItem(CITY_KEY).catch(() => undefined);
     locationSheetRef.current?.dismiss();
   }, []);
 
@@ -268,6 +341,21 @@ export function HomeSheetsProvider({
             dragging past the top dismisses the sheet, instead of the two fighting each other. */}
         <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
           <Text style={[styles.sheetTitle, { color: colors.text }]}>Choose your location</Text>
+          <Pressable
+            onPress={clearCity}
+            style={[
+              styles.allCitiesRow,
+              {
+                backgroundColor: colors.surfaceAlt,
+                borderColor: city ? colors.border : colors.green,
+              },
+            ]}
+          >
+            <Text style={{ color: city ? colors.text : colors.green, fontWeight: "700", fontSize: 14 }}>
+              🇮🇳 All cities
+            </Text>
+            {!city && <Text style={{ color: colors.green, fontSize: 12 }}>Selected</Text>}
+          </Pressable>
           <Pressable
             onPress={useAutoLocation}
             style={[styles.autoDetectButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
@@ -432,6 +520,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 14,
     marginBottom: 14,
+  },
+  allCitiesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 10,
   },
   cityRow: { paddingVertical: 10, paddingHorizontal: 6 },
   primaryButton: { borderRadius: 8, paddingVertical: 13, alignItems: "center", marginBottom: 10 },

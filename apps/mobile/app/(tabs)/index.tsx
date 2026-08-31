@@ -135,7 +135,7 @@ export default function HomeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 9.5, color: colors.muted }}>Showing ads near</Text>
                 <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.text }}>
-                  {city?.name ?? "Select a city"}
+                  {city?.name ?? "All cities"}
                 </Text>
               </View>
               <Text style={{ fontSize: 11, color: colors.muted }}>▾</Text>

@@ -22,7 +22,7 @@ function clientIp(forwarded: string | null): string | undefined {
  *
  *   1. the `bhavano_city` cookie — a city this visitor actually chose, so it beats any guess
  *   2. the visitor's IP, for a first-ever visit
- *   3. Bengaluru
+ *   3. undefined — "all cities", which is a real state and not a guess. See the closing comment.
  *
  * Previously this was the literal "Bengaluru" in two places, so a visitor in Chennai saw a screen
  * of Bengaluru listings however many times they had switched. See

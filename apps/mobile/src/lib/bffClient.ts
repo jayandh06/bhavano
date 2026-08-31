@@ -94,6 +94,15 @@ export function reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseG
   });
 }
 
+/** Coarse "which city is this device in", for a first launch with no remembered choice.
+ *
+ * No ip argument, unlike web's caller: the request comes from the device itself, so the BFF reads
+ * the address off the connection. Resolves to null — never throws — whenever the answer is not
+ * confident, and the caller then opens on all cities rather than guessing. */
+export function fetchCityByIp(): Promise<City | null> {
+  return bffFetch<City | null>('/locations/by-ip').catch(() => null);
+}
+
 export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<Area[]> {
   const params = new URLSearchParams({ cityId });
   if (q) params.set("q", q);
