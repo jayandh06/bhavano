@@ -18,11 +18,10 @@ import { getCityIcon } from "@bhavano/types/cityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
 import {
   fetchCities,
-  fetchCityByIp,
   fetchProfile,
   loginWithGoogle,
   logout as bffLogout,
-  reverseGeocode,
+  reverseGeocodeGoogle,
   sendOtp,
   verifyOtp,
 } from "../lib/bffClient";
@@ -100,6 +99,7 @@ export function HomeSheetsProvider({
   const [allCities, setAllCities] = useState<City[] | null>(null);
   const [loadingAllCities, setLoadingAllCities] = useState(false);
   const [detecting, setDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
 
   const [loginStep, setLoginStep] = useState<LoginStep>("choose");
   const [phone, setPhone] = useState("");
@@ -119,16 +119,16 @@ export function HomeSheetsProvider({
   }, []);
 
   /**
-   * Which city to open on, in the same order of preference as web's `resolveDefaultCity`:
-   *
-   *   1. the city this user last picked, remembered across launches
-   *   2. the device's IP, on a first-ever launch
-   *   3. all cities — not Bengaluru
+   * Which city to open on: the city this user last picked, remembered across launches, else all
+   * cities — never a guess.
    *
    * This used to be `find(c => c.name === "Bengaluru") ?? popularCities[0]`, so someone in
    * Chennai opened the app on Bengaluru listings however many times they had switched, and the
-   * switch was forgotten again on the next launch. The web app stopped doing that when the city
-   * cookie landed; the app kept doing it. See docs/plans/visitor-location-default-city.md.
+   * switch was forgotten again on the next launch. There was briefly a second step here — a
+   * coarse guess from the device's IP address, run automatically on a first launch — which was
+   * removed in favour of asking: "Auto-detect my current location" below now uses the device's
+   * real GPS position, and only ever runs when tapped. See
+   * docs/plans/remove-automatic-ip-city-detection.md.
    *
    * Runs once, on the first render where the city list is actually populated — `_layout.tsx`
    * passes `popularCities ?? []` while its query is in flight, so keying this to mount alone
@@ -143,7 +143,7 @@ export function HomeSheetsProvider({
 
     (async () => {
       // Matched by name against the real list rather than restored wholesale: a stored city that
-      // has since been renamed or removed falls through to the next step instead of resurrecting
+      // has since been renamed or removed falls through to "all cities" instead of resurrecting
       // a row that no longer exists.
       const rememberedName = await AsyncStorage.getItem(CITY_KEY).catch(() => null);
       if (cancelled) return;
@@ -152,16 +152,8 @@ export function HomeSheetsProvider({
           popularCities.find((c) => c.name === rememberedName) ??
           (await fetchCities(rememberedName).catch(() => [])).find((c) => c.name === rememberedName);
         if (cancelled) return;
-        if (remembered) {
-          setCityState(remembered);
-          return;
-        }
+        if (remembered) setCityState(remembered);
       }
-
-      const guess = await fetchCityByIp();
-      // Only if the user has not picked one in the meantime — the lookup is a network round trip
-      // and they may well have opened the picker while it was in flight.
-      if (!cancelled && guess) setCityState((current) => current ?? guess);
     })();
 
     return () => {
@@ -239,14 +231,44 @@ export function HomeSheetsProvider({
     setLocationResults(await fetchCities(value));
   }
 
+  /**
+   * The device's real GPS position, reverse-geocoded through Google — never an automatic guess.
+   * This only ever runs from the button below being pressed. There used to be a step at app
+   * startup that guessed the city from the device's IP address without being asked; that is
+   * gone, and this button (which used to do its own plain nearest-city distance calculation, no
+   * outside source) now goes through the same Google-backed lookup the posting flow's map picker
+   * already uses. See docs/plans/remove-automatic-ip-city-detection.md.
+   *
+   * Only `cityId`/`cityName` come back from Google — not a full City row — so the object built
+   * here is a partial one. That's fine: `state`/`lat`/`lng`/`isPopular` are never read again after
+   * a city is selected (icon lookup keys on the name, the listings query keys on the id), so
+   * there's nothing to lose by not doing a second round trip to fetch the row properly.
+   */
   async function useAutoLocation() {
     setDetecting(true);
+    setDetectError(null);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+      if (status !== "granted") {
+        setDetectError("Location access was denied — try searching instead.");
+        return;
+      }
       const position = await Location.getCurrentPositionAsync({});
-      const nearest = await reverseGeocode(position.coords.latitude, position.coords.longitude);
-      if (nearest) setCity(nearest);
+      const result = await reverseGeocodeGoogle(position.coords.latitude, position.coords.longitude);
+      if (result.cityId && result.cityName) {
+        setCity({
+          id: result.cityId,
+          name: result.cityName,
+          state: "",
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          isPopular: false,
+        });
+      } else {
+        setDetectError("Couldn't detect your city — try searching instead.");
+      }
+    } catch {
+      setDetectError("Couldn't detect your city — try searching instead.");
     } finally {
       setDetecting(false);
     }
@@ -368,6 +390,9 @@ export function HomeSheetsProvider({
               </Text>
             )}
           </Pressable>
+          {detectError ? (
+            <Text style={{ color: "#c0554b", fontSize: 12, marginTop: 6, marginBottom: 4 }}>{detectError}</Text>
+          ) : null}
           <Text style={[styles.sheetLabel, { color: colors.muted }]}>OR SEARCH CITY / AREA / PINCODE</Text>
           <TextInput
             value={locationQuery}

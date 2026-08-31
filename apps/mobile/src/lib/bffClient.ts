@@ -78,30 +78,21 @@ export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
   return bffFetch<City[]>(`/locations/cities?${params.toString()}`);
 }
 
-export function reverseGeocode(lat: number, lng: number): Promise<City | null> {
-  return bffFetch<City | null>(`/locations/reverse?lat=${lat}&lng=${lng}`);
-}
-
-/** Real Google-backed reverse geocoding for the posting flow's map pin-picker — distinct from
- * `reverseGeocode` above (the "auto-detect my location" haversine lookup). Proxied through the
- * BFF (server-side GOOGLE_MAPS_SERVER_KEY), not called directly from the device — an
- * Android-app-restricted API key doesn't reliably work for a plain fetch() call the way it does
- * for the native Maps SDK's own rendering, so this avoids needing a second, awkwardly-restricted
- * Google key in the mobile bundle. See docs/plans/google-maps-location-picker.md. */
+/** Real Google-backed reverse geocoding — used by the posting flow's map pin-picker and by
+ * "Auto-detect my current location" in the location sheet. Proxied through the BFF (server-side
+ * GOOGLE_MAPS_SERVER_KEY), not called directly from the device — an Android-app-restricted API
+ * key doesn't reliably work for a plain fetch() call the way it does for the native Maps SDK's
+ * own rendering, so this avoids needing a second, awkwardly-restricted Google key in the mobile
+ * bundle. See docs/plans/google-maps-location-picker.md.
+ *
+ * The plain haversine nearest-city lookup this replaced for auto-detect, and the automatic
+ * IP-based city guess run on every first launch, were both removed — see
+ * docs/plans/remove-automatic-ip-city-detection.md. */
 export function reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseGeocodeResultDto> {
   return bffFetch<ReverseGeocodeResultDto>("/locations/reverse-geocode", {
     method: "POST",
     body: JSON.stringify({ lat, lng }),
   });
-}
-
-/** Coarse "which city is this device in", for a first launch with no remembered choice.
- *
- * No ip argument, unlike web's caller: the request comes from the device itself, so the BFF reads
- * the address off the connection. Resolves to null — never throws — whenever the answer is not
- * confident, and the caller then opens on all cities rather than guessing. */
-export function fetchCityByIp(): Promise<City | null> {
-  return bffFetch<City | null>('/locations/by-ip').catch(() => null);
 }
 
 export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<Area[]> {
