@@ -7,6 +7,7 @@ import { resolveVideoEntitlement } from "@bhavano/types/videoLimits";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { PostAdWizard } from "@/components/home/PostAdWizard";
+import { PostPageTracker } from "@/components/home/PostPageTracker";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 
 export default async function PostAdPage({
@@ -38,6 +39,7 @@ export default async function PostAdPage({
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader cityName={city?.name} />
+      <PostPageTracker loggedIn={loggedIn} />
       {/* 1280px to match every other page, so the back link and heading start at the same left
         * edge as the logo above them instead of floating in a narrower centred column. The form
         * keeps its 780px measure for readability, left-aligned rather than centred under a

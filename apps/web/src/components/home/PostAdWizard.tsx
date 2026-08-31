@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type {
   Area,
@@ -100,6 +100,21 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 };
 
 type Step = "category" | "transactionType" | "details" | "review" | "success";
+
+/**
+ * One `post_step_view` per step the user actually reaches.
+ *
+ * Where people give up is the whole question on this page, and the only event fired until now was
+ * `post_ad_success` — so a drop-off was visible in aggregate but never locatable. Fired on
+ * arrival at a step rather than on the button that leaves the previous one, so a step reached by
+ * the Back button counts the same as one reached going forward.
+ */
+function StepTracker({ step }: { step: Step }) {
+  useEffect(() => {
+    pushDataLayerEvent("post_step_view", { step });
+  }, [step]);
+  return null;
+}
 
 function RequiredLabel({ text }: { text: string }) {
   return (
@@ -536,6 +551,7 @@ export function PostAdWizard({
 
   return (
     <div>
+      <StepTracker step={step} />
       {step !== "success" && (
         <div className="flex gap-1.5 mb-6 text-xs font-bold text-muted">
           {(["category", "transactionType", "details", "review"] as Step[]).map(
