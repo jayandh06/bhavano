@@ -7,10 +7,11 @@ import { boostPriceFor, type BoostDurationDays } from "@bhavano/types/boostPrici
 import { createBoostOrderAction } from "@/app/actions/payments";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { Icon } from "./Icon";
 
 const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 
-/** "🚀 Boost this ad" — opens a small duration/price picker, then Razorpay Checkout. The boost
+/** "Boost this ad" — opens a small duration/price picker, then Razorpay Checkout. The boost
  * itself only activates once the BFF's webhook confirms payment (not this click), so success
  * here just means checkout completed — the badge/sort position updates within a few seconds.
  * See docs/plans/monetization-boosted-listings-premium-tiers.md. */
@@ -104,7 +105,7 @@ export function BoostButton({ listingId, category }: { listingId: string; catego
         onClick={() => setOpen(true)}
         className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 whitespace-nowrap cursor-pointer bg-transparent"
       >
-        🚀 Boost this ad
+        <Icon name="boost" /> Boost this ad
       </button>
 
       {open && (

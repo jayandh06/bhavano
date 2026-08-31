@@ -14,6 +14,7 @@ import { requestEmailCodeAction, verifyEmailAction } from "@/app/actions/users";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 import { GOOGLE_SIGNUP_TRACKED_KEY } from "./SignupConversionTracker";
+import { Icon } from "./Icon";
 
 /** `email` and `emailCode` only ever follow a brand-new phone signup — see handleVerifyOtp. */
 type LoginStep = "choose" | "phone" | "otp" | "email" | "emailCode";
@@ -276,7 +277,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 {loginStep === "emailCode" && "Confirm your email"}
               </div>
               <button onClick={closeModal} className="bg-transparent border-0 text-xl cursor-pointer text-muted">
-                ✕
+                <Icon name="close" />
               </button>
             </div>
 
@@ -406,7 +407,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
 
       {showToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[var(--toast-bg)] text-[var(--toast-text)] px-[22px] py-3 rounded-full text-sm font-semibold z-[200] animate-[fadein_0.2s_ease_both]">
-          ✓ Logged in successfully
+          <Icon name="check" /> Logged in successfully
         </div>
       )}
     </AuthGateContext.Provider>

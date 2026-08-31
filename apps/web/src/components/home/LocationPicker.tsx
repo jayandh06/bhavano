@@ -7,6 +7,7 @@ import { getCityIcon } from "@bhavano/types/cityIcons";
 import { autoDetectCityAction, listAllCitiesAction, searchCitiesAction } from "@/app/actions/locations";
 import { buildBrowsePath } from "@/lib/listingPath";
 import type { ParsedSegments } from "@/lib/seoRoute";
+import { Icon } from "./Icon";
 
 export function LocationPicker({
   currentCityName,
@@ -109,7 +110,7 @@ export function LocationPicker({
         onClick={openModal}
         className="flex items-center gap-2 bg-surface-alt border border-border rounded-[10px] px-3.5 py-2.5 cursor-pointer shrink-0"
       >
-        <span className="text-base">📍</span>
+        <Icon name="pin" className="text-base" />
         <div className="text-left">
           <div className="text-[10px] text-muted leading-[1.2]">Showing ads near</div>
           <div className="text-sm font-bold text-text leading-[1.3]">{currentCityName ?? "All cities"}</div>
@@ -129,7 +130,7 @@ export function LocationPicker({
             <div className="flex justify-between items-center mb-4">
               <div className="font-lora font-bold text-[19px] text-text">Choose your location</div>
               <button onClick={() => setOpen(false)} className="bg-transparent border-0 text-xl cursor-pointer text-muted">
-                ✕
+                <Icon name="close" />
               </button>
             </div>
 
@@ -141,7 +142,7 @@ export function LocationPicker({
                 currentCityName ? "bg-surface-alt border-border text-text" : "bg-surface-alt border-green text-green"
               }`}
             >
-              🗂️ All cities
+              <Icon name="allCities" /> All cities
               {!currentCityName && <span className="ml-auto text-xs">Selected</span>}
             </button>
 
@@ -150,7 +151,7 @@ export function LocationPicker({
               disabled={detecting}
               className="w-full flex items-center gap-2.5 bg-surface-alt border border-border rounded-[10px] px-3.5 py-[13px] text-sm font-bold text-green cursor-pointer mb-3.5"
             >
-              📍 {detecting ? "Detecting…" : "Auto-detect my current location"}
+              <Icon name="pin" /> {detecting ? "Detecting…" : "Auto-detect my current location"}
             </button>
 
             <div className="text-xs text-muted font-bold mb-2">OR SEARCH CITY / AREA / PINCODE</div>

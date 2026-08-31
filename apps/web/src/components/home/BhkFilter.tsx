@@ -6,6 +6,7 @@ import type { ListingCategory } from "@bhavano/types";
 import { MAX_BEDROOMS, bedroomLabel, type ParsedSegments } from "@/lib/seoRoute";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { Icon } from "./Icon";
 
 const BEDROOM_COUNTS = Array.from({ length: MAX_BEDROOMS }, (_, i) => i + 1);
 
@@ -95,7 +96,7 @@ export function BhkFilter({
           active ? "bg-surface-alt border-green text-green" : "bg-bg border-border text-text-soft"
         }`}
       >
-        🛏 {label} <span className="text-[10px] text-muted">▾</span>
+        <Icon name="bed" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
       {open && (
         <div className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px]">

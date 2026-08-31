@@ -48,7 +48,7 @@ async function FavouritesGrid({ accessToken }: { accessToken: string }) {
   }
 
   if (favourites.length === 0) {
-    return <p className="text-muted text-sm">No favourites yet — tap ♡ on a listing to save it here.</p>;
+    return <p className="text-muted text-sm">No favourites yet — tap the heart on a listing to save it here.</p>;
   }
 
   return (

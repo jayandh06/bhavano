@@ -11,6 +11,7 @@ import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
 import { ListingMediaGallery } from "./ListingMediaGallery";
 import { ViewTracker } from "./ViewTracker";
+import { Icon } from "./Icon";
 
 /** A plain cached image, not the interactive Maps JavaScript API — this page is by far the
  * highest-traffic surface in the product, so cost here scales with page *views*, unlike the
@@ -130,7 +131,7 @@ export async function ListingDetailView({
                 {listing.title}
               </h1>
               <div className="text-sm text-muted mb-3">
-                📍 {listing.area}, {listing.cityName}
+                <Icon name="pin" /> {listing.area}, {listing.cityName}
               </div>
             </ListingMediaGallery>
             {listing.lat !== undefined && listing.lng !== undefined && (
@@ -147,12 +148,12 @@ export async function ListingDetailView({
                   rel="noopener noreferrer"
                   className="inline-block mt-2 text-[13px] font-semibold text-green"
                 >
-                  🧭 Get directions
+                  <Icon name="compass" /> Get directions
                 </a>
               </div>
             )}
             <div className="text-xs text-muted mb-4 flex gap-3.5">
-              <span>👁 {listing.viewCount} views</span>
+              <span className="flex items-center gap-1"><Icon name="eye" /> {listing.viewCount} views</span>
               <span>
                 {listing.isExpired
                   ? "Expired"

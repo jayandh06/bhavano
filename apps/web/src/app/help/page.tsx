@@ -78,7 +78,7 @@ const BUYING_RENTING: Faq[] = [
     q: "Can I save a listing to look at later?",
     a: (
       <>
-        Yes — tap the ♡ on any listing card to favourite it (requires login), then view everything you&apos;ve
+        Yes — tap the heart on any listing card to favourite it (requires login), then view everything you&apos;ve
         saved under{" "}
         <Link href="/favourites" className="text-green font-bold">
           Favourites

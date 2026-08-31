@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import type { MediaItem } from "./ListingMediaGallery";
+import { Icon } from "./Icon";
 
 /**
  * Full-screen viewer for a listing's photos and videos.
@@ -107,7 +108,7 @@ export function MediaLightbox({
         onClick={onClose}
         className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full border-0 bg-[#ffffff1f] text-white text-xl leading-none cursor-pointer"
       >
-        ✕
+        <Icon name="close" />
       </button>
 
       {hasMultiple && (

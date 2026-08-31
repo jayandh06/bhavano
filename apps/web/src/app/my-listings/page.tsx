@@ -13,6 +13,7 @@ import { BoostButton } from "@/components/home/BoostButton";
 import { RenewButton } from "@/components/home/RenewButton";
 import { VideoManager } from "@/components/home/VideoManager";
 import { daysUntil } from "@/lib/listingExpiry";
+import { Icon } from "@/components/home/Icon";
 
 /** How far ahead of expiry the Renew affordance appears — mirrors the BFF's expiry-reminder
  * job, so the in-app action shows up at the same time the reminder email/SMS goes out. */
@@ -133,15 +134,15 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
             {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
           </span>
           {item.isBoosted && (
-            <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-gold text-gold">⭐ Featured</span>
+            <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-gold text-gold inline-flex items-center gap-1"><Icon name="featured" filled /> Featured</span>
           )}
         </div>
         <div className="text-[13px] text-muted mt-1">
           {item.price} {item.priceQualifier} · {item.area}, {item.cityName}
         </div>
         <div className="flex gap-3 text-[11.5px] text-muted mt-1.5">
-          <span>👁 {item.viewCount}</span>
-          <span>♥ {item.likeCount}</span>
+          <span className="flex items-center gap-1"><Icon name="eye" /> {item.viewCount}</span>
+          <span className="flex items-center gap-1"><Icon name="heart" /> {item.likeCount}</span>
           {canRenew && <span>{item.isExpired ? "Expired" : `Expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}</span>}
         </div>
         {item.renewCount > 0 && (

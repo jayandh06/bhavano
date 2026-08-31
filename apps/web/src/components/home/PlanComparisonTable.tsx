@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HorizontalScroller } from "./HorizontalScroller";
 import type { UserProfileDto } from "@bhavano/types";
+import { Icon } from "./Icon";
 import {
   FREE_LISTING_SLOTS,
   PRO_LISTING_SLOTS_PER_UNIT,
@@ -14,7 +15,7 @@ function CellContent({ value }: { value: Cell }) {
     return <span className="text-[13px] text-text">{value}</span>;
   }
   if (value.type === "yes") {
-    return <span className="text-green font-bold text-[13px]" aria-label="Included">✓</span>;
+    return <Icon name="check" className="text-green" label="Included" />;
   }
   if (value.type === "no") {
     return <span className="text-muted text-[13px]" aria-label="Not included">—</span>;

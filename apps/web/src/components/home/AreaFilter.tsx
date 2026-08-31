@@ -8,6 +8,7 @@ import { useClickOutside } from "@/lib/useClickOutside";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { buildHomeUrl } from "@/lib/homeUrl";
 import type { ParsedSegments } from "@/lib/seoRoute";
+import { Icon } from "./Icon";
 
 /** First filter on any results page — every area of the city checked by default (= no
  * narrowing); uncheck to restrict to specific localities. Navigates immediately on each toggle
@@ -114,7 +115,7 @@ export function AreaFilter({
           active ? "bg-surface-alt border-green text-green" : "bg-bg border-border text-text-soft"
         }`}
       >
-        📍 {label} <span className="text-[10px] text-muted">▾</span>
+        <Icon name="pin" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
       {open && (
         <div className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[220px] max-h-[320px] overflow-y-auto">

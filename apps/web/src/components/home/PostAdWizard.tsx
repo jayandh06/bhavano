@@ -38,6 +38,8 @@ import { BoostButton } from "./BoostButton";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
 import { VideoManager } from "./VideoManager";
+import { Icon } from "./Icon";
+import type { IconName } from "./Icon";
 
 
 const MAX_PHOTOS = 6;
@@ -149,7 +151,7 @@ function UploadZone({
   accept: string;
   multiple?: boolean;
   onFiles: (files: FileList | null) => void;
-  icon: string;
+  icon: IconName;
   label: string;
   hint: string;
 }) {
@@ -181,7 +183,9 @@ function UploadZone({
           e.target.value = "";
         }}
       />
-      <span className="text-2xl leading-none">{icon}</span>
+      <span className="text-2xl leading-none text-green">
+        <Icon name={icon} />
+      </span>
       <span className="text-sm font-bold text-green">
         {dragging ? "Drop to add" : label}
       </span>
@@ -816,7 +820,7 @@ export function PostAdWizard({
               <UploadZone
                 accept="image/jpeg,image/png,image/webp,image/gif"
                 onFiles={onPhotosSelected}
-                icon="📷"
+                icon="camera"
                 label={photos.length > 0 ? "Add more photos" : "Add photos"}
                 hint={`JPG, PNG or WebP · ${MAX_PHOTOS - photos.length} more allowed`}
               />
@@ -860,7 +864,7 @@ export function PostAdWizard({
               <UploadZone
                 accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/x-matroska"
                 onFiles={(files) => void onVideosSelected(files)}
-                icon="🎥"
+                icon="video"
                 label={videos.length > 0 ? "Add another video" : "Add a video"}
                 hint={`MP4 or MOV · up to ${videoEntitlement.maxDurationSec}s each`}
               />
@@ -958,13 +962,13 @@ export function PostAdWizard({
 
       {step === "success" && createdListing && (
         <div className="flex flex-col gap-4 text-center py-4">
-          <div className="text-3xl">🎉</div>
+          <div className="text-3xl text-green"><Icon name="celebrate" /></div>
           <div>
             <div className="font-lora text-xl font-bold text-text mb-1.5">
               Your ad is live!
             </div>
             <p className="text-[13px] text-muted m-0">
-              Want it seen faster? Boosted ads get a gold ⭐ Featured badge,
+              Want it seen faster? Boosted ads get a gold Featured badge,
               rank ahead of regular listings, and rotate fairly through the top
               slots — plus we&apos;ll notify you the moment someone likes it.
             </p>

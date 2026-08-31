@@ -7,6 +7,7 @@ import { PlanComparisonTable } from "@/components/home/PlanComparisonTable";
 import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { SubscribeButton } from "@/components/home/SubscribeButton";
 import { PRO_LISTING_SLOTS_PER_UNIT } from "@bhavano/types/listingSlots";
+import { Icon } from "./Icon";
 
 type Tab = "compare" | "subscribe";
 
@@ -65,13 +66,13 @@ export function PremiumPlansView({ profile }: { profile: UserProfileDto }) {
           </section>
 
           <section className="border border-border rounded-2xl p-6 bg-surface">
-            <div className="font-lora text-xl font-bold text-text mb-1">⭐ Bhavano Plus</div>
+            <div className="font-lora text-xl font-bold text-text mb-1 flex items-center gap-2"><Icon name="featured" /> Bhavano Plus</div>
             <p className="text-[13px] text-muted mb-4 m-0">For buyers &amp; renters — get noticed, get answered faster.</p>
             <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
               <li>
                 <strong>Early-access alerts</strong> — saved-search notifications when a matching listing posts
               </li>
-              <li>A &ldquo;✓ Verified Buyer&rdquo; badge on messages you send</li>
+              <li>A &ldquo;Verified Buyer&rdquo; badge on messages you send</li>
               <li>Priority visibility in sellers&apos; inboxes</li>
             </ul>
             {isPremium && premiumUntil ? (
@@ -87,7 +88,7 @@ export function PremiumPlansView({ profile }: { profile: UserProfileDto }) {
           </section>
 
           <section id="seller-slots" className="border border-border rounded-2xl p-6 bg-surface">
-            <div className="font-lora text-xl font-bold text-text mb-1">📦 Seller slot pack</div>
+            <div className="font-lora text-xl font-bold text-text mb-1 flex items-center gap-2"><Icon name="pack" /> Seller slot pack</div>
             <p className="text-[13px] text-muted mb-4 m-0">For individual sellers — more active ads at once.</p>
             <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
               <li>
@@ -103,7 +104,7 @@ export function PremiumPlansView({ profile }: { profile: UserProfileDto }) {
           </section>
 
           <section id="agent-pro" className="border border-border rounded-2xl p-6 bg-surface">
-            <div className="font-lora text-xl font-bold text-text mb-1">🏢 Agent/Broker Pro</div>
+            <div className="font-lora text-xl font-bold text-text mb-1 flex items-center gap-2"><Icon name="building" /> Agent/Broker Pro</div>
             <p className="text-[13px] text-muted mb-4 m-0">For agents &amp; brokers — scale inventory and brand.</p>
             <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
               <li>

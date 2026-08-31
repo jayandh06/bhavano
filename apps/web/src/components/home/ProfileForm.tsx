@@ -13,6 +13,7 @@ import {
   verifyEmailAction,
 } from "@/app/actions/users";
 import { linkPhoneAction, sendOtpAction, signOutAction } from "@/app/actions/auth";
+import { Icon } from "./Icon";
 
 type PhoneStep = "idle" | "otpSent";
 
@@ -328,7 +329,7 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
             <div className={readOnlyClass}>
               {savedEmail}
               {emailVerified ? (
-                <span className="text-green font-bold ml-2">✓ Verified</span>
+                <span className="text-green font-bold ml-2 inline-flex items-center gap-1"><Icon name="check" /> Verified</span>
               ) : (
                 <span className="text-muted ml-2">Not verified</span>
               )}
@@ -508,7 +509,7 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
         <label className={labelClass}>City</label>
         {detected && (
           <p className="text-[12.5px] text-muted m-0 mb-2">
-            📍 We detected your location as below — confirm or search for a different city before saving.
+            <Icon name="pin" /> We detected your location as below — confirm or search for a different city before saving.
           </p>
         )}
         <input

@@ -6,6 +6,7 @@ import { slugify } from "@bhavano/types/slugify";
 import { useAuthGate } from "./AuthGateProvider";
 import { signOutAction } from "@/app/actions/auth";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { Icon } from "./Icon";
 
 export function HeaderAuthButtons({ userName, cityName }: { userName?: string | null; cityName?: string }) {
   const { requireLogin } = useAuthGate();
@@ -23,10 +24,10 @@ export function HeaderAuthButtons({ userName, cityName }: { userName?: string | 
         * row holds only identity. Both need an account anyway, so nothing is lost by putting
         * them behind one. */}
       <Link href={`/favourites${cityQuery}`} className="hidden sm:inline-block text-text text-sm font-bold whitespace-nowrap">
-        ♡ Favourites
+        <Icon name="heart" /> Favourites
       </Link>
       <Link href={`/messages${cityQuery}`} className="hidden sm:inline-block text-text text-sm font-bold whitespace-nowrap">
-        💬 Messages
+        <Icon name="message" /> Messages
       </Link>
       {userName ? (
         <AccountMenu userName={userName} cityQuery={cityQuery} />
@@ -71,19 +72,19 @@ function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: str
           {/* Phone only — on desktop these are top-level links in the header row above, and
             * showing them in both places would be two routes to the same page a thumb apart. */}
           <Link href={`/favourites${cityQuery}`} onClick={() => setOpen(false)} className={`${menuItemClass} sm:hidden`}>
-            ♡ Favourites
+            <Icon name="heart" /> Favourites
           </Link>
           <Link href={`/messages${cityQuery}`} onClick={() => setOpen(false)} className={`${menuItemClass} sm:hidden`}>
-            💬 Messages
+            <Icon name="message" /> Messages
           </Link>
           <Link href={`/my-listings${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
             My listings
           </Link>
           <Link href={`/premium${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
-            ⭐ Bhavano Plus
+            <Icon name="featured" /> Bhavano Plus
           </Link>
           <Link href={`/saved-searches${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
-            🔔 Saved searches
+            <Icon name="bell" /> Saved searches
           </Link>
           <Link href="/help" onClick={() => setOpen(false)} className={menuItemClass}>
             Help

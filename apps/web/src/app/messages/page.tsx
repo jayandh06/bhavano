@@ -5,6 +5,7 @@ import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
+import { Icon } from "@/components/home/Icon";
 
 export default async function MessagesPage({
   searchParams,
@@ -63,7 +64,7 @@ async function ConversationList({ accessToken }: { accessToken: string }) {
               <span className="font-bold text-sm">{c.otherPartyName}</span>
               {c.otherPartyIsVerifiedBuyer && (
                 <span className="text-[10.5px] font-bold text-green border border-green rounded-md px-1.5 py-[1px] whitespace-nowrap">
-                  ✓ Verified Buyer
+                  <Icon name="check" /> Verified Buyer
                 </span>
               )}
             </div>

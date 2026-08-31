@@ -10,6 +10,7 @@ import { toggleFavouriteAction } from "@/app/actions/listings";
 import { startConversationAction } from "@/app/actions/messaging";
 import { buildListingPath } from "@/lib/listingPath";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { Icon } from "./Icon";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
   const { requireLogin } = useAuthGate();
@@ -76,7 +77,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
         <div className="absolute top-3 left-3 flex gap-1.5 pointer-events-none">
           <span className="bg-green text-on-green text-[11px] font-bold px-2.5 py-1 rounded-md">{item.tag}</span>
           {item.isBoosted && (
-            <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md">⭐ Featured</span>
+            <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1"><Icon name="featured" filled /> Featured</span>
           )}
         </div>
         <button
@@ -88,7 +89,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             isFavourited ? "text-[#c0554b]" : "text-[#3a3a3a]"
           }`}
         >
-          {isFavourited ? "♥" : "♡"}
+          <Icon name="heart" filled={isFavourited} />
         </button>
       </div>
 
@@ -109,7 +110,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
               * "India" as a stand-in heading word, so every card read "Koramangala, India" — and
               * the app passed an empty string, giving "Koramangala, ". A card states where the
               * place is; that is never a property of the page it happens to appear on. */}
-            📍 {item.area}, {item.cityName}
+            <Icon name="pin" /> {item.area}, {item.cityName}
           </div>
           <div className="flex gap-3.5 text-[13px] text-text-soft font-semibold pt-0.5">
             {item.specs.map((spec) => (
@@ -117,8 +118,8 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             ))}
           </div>
           <div className="flex gap-3 text-[11.5px] text-muted">
-            <span>👁 {item.viewCount}</span>
-            <span>♥ {likeCount}</span>
+            <span className="flex items-center gap-1"><Icon name="eye" /> {item.viewCount}</span>
+            <span className="flex items-center gap-1"><Icon name="heart" /> {likeCount}</span>
           </div>
         </Link>
         {/* Hidden on your own listing — the same reason as on the detail page, and more visible

@@ -2,6 +2,7 @@ import type { HomeCategoryFilter, ListingCategory } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 import { buildBrowsePath } from "./listingPath";
 import { bedroomLabel, type TransactionGroup } from "./seoRoute";
+import type { IconName } from "@/components/home/Icon";
 
 export interface MegaMenuLink {
   label: string;
@@ -28,7 +29,7 @@ export type HomeTabValue = HomeCategoryFilter | "all";
 export interface HomeTab {
   value: HomeTabValue;
   label: string;
-  icon: string;
+  icon: IconName;
   /** Empty for the "All" tab, which has nothing narrower to offer — `CategoryTabs` renders no
    * dropdown arrow and opens no mega menu when this is empty. */
   column1: MegaMenuColumn1Item[];
@@ -72,13 +73,13 @@ export const HOME_TABS: HomeTab[] = [
   {
     value: "all",
     label: "All",
-    icon: "🗂️",
+    icon: "allCities",
     column1: [],
   },
   {
     value: "buy",
     label: "Buy",
-    icon: "🏡",
+    icon: "home",
     column1: [
       bhkColumn1Item("buy", "Buy", "house", "House"),
       bhkColumn1Item("buy", "Buy", "apartment", "Apartment"),
@@ -96,7 +97,7 @@ export const HOME_TABS: HomeTab[] = [
   {
     value: "rentLease",
     label: "Rent & Lease",
-    icon: "🔑",
+    icon: "key",
     column1: [
       bhkColumn1Item("rent-lease", "Rent", "house", "House"),
       bhkColumn1Item("rent-lease", "Rent", "apartment", "Apartment"),
@@ -118,7 +119,7 @@ export const HOME_TABS: HomeTab[] = [
   {
     value: "pg",
     label: "PG",
-    icon: "🛏️",
+    icon: "bed",
     column1: PG_SHARING_OPTIONS.map((opt) =>
       singleLinkColumn1Item(opt.value, opt.label, (city) => `PG ${opt.label} in ${city}`, {
         transactionGroup: "rent-lease",
@@ -130,7 +131,7 @@ export const HOME_TABS: HomeTab[] = [
   {
     value: "furniture",
     label: "Furniture",
-    icon: "🛋️",
+    icon: "sofa",
     column1: FURNITURE_CONDITION_OPTIONS.map((opt) => ({
       value: opt.value,
       label: opt.label,
@@ -153,7 +154,7 @@ export const HOME_TABS: HomeTab[] = [
   {
     value: "interiors",
     label: "Interiors",
-    icon: "🎨",
+    icon: "paint",
     column1: INTERIORS_SERVICE_OPTIONS.map((opt) =>
       singleLinkColumn1Item(opt.value, opt.label, (city) => `${opt.label} Interiors in ${city}`, {
         transactionGroup: "buy",

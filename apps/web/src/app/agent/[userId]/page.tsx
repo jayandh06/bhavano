@@ -5,6 +5,7 @@ import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { ListingCard } from "@/components/home/ListingCard";
+import { Icon } from "@/components/home/Icon";
 
 export default async function AgentStorefrontPage({
   params,
@@ -34,7 +35,7 @@ export default async function AgentStorefrontPage({
         <div className="flex items-center gap-3 flex-wrap mb-1">
           <h1 className="font-lora text-[26px] font-semibold m-0">{agent.name}</h1>
           {agent.isAgentPro && (
-            <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md">✓ Bhavano Pro</span>
+            <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1"><Icon name="check" /> Bhavano Pro</span>
           )}
         </div>
         <p className="text-[13px] text-muted mb-6">

@@ -6,6 +6,7 @@ import { useAuthGate } from "./AuthGateProvider";
 import { toggleFavouriteAction } from "@/app/actions/listings";
 import { startConversationAction } from "@/app/actions/messaging";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { Icon } from "./Icon";
 
 export function ListingDetailActions({
   listingId,
@@ -69,7 +70,7 @@ export function ListingDetailActions({
             isFavourited ? "text-[#c0554b]" : ""
           }`}
         >
-          <span>{isFavourited ? "♥" : "♡"}</span>
+          <Icon name="heart" filled={isFavourited} className="text-[19px]" />
           <span className="text-[10px] font-bold text-muted">{likeCount}</span>
         </button>
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReverseGeocodeResultDto } from "@bhavano/types";
 import { loadGoogleMaps } from "@/lib/googleMaps";
 import { reverseGeocodeAction } from "@/app/actions/locations";
+import { Icon } from "./Icon";
 
 // Matches lib/formStyles.ts — text-base on mobile so iOS does not zoom on focus.
 const fieldClass =
@@ -153,7 +154,7 @@ export function LocationMapPicker({
         disabled={locating}
         className="mt-2 bg-transparent border-[1.5px] border-green text-green rounded-lg px-3 py-1.5 text-[12.5px] font-bold cursor-pointer disabled:opacity-60"
       >
-        {locating ? "Locating…" : "📍 Use my current location"}
+        {locating ? "Locating…" : <><Icon name="pin" /> Use my current location</>}
       </button>
       <p className="text-xs text-muted mt-1.5 m-0">
         This drops the pin where you are now — drag it if the property is somewhere else.

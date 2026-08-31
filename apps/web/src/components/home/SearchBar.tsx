@@ -18,6 +18,7 @@ import {
   type TransactionGroup,
 } from "@/lib/seoRoute";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { Icon } from "./Icon";
 
 function removeCaseInsensitive(haystack: string, needle: string): string {
   const idx = haystack.toLowerCase().indexOf(needle.toLowerCase());
@@ -165,7 +166,7 @@ export function SearchBar({
   return (
     <div ref={containerRef} className="flex-1 relative min-w-0">
       <div className="flex items-center bg-surface border border-border rounded-[10px] pl-3.5 pr-1.5">
-        <span className="text-muted text-[15px]">🔍</span>
+        <Icon name="search" className="text-muted text-[15px]" />
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}

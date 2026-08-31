@@ -10,6 +10,7 @@ import { slugify } from "@bhavano/types/slugify";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { HorizontalScroller } from "./HorizontalScroller";
 import { MegaMenu } from "./MegaMenu";
+import { Icon } from "./Icon";
 
 export function CategoryTabs({
   active,
@@ -71,7 +72,7 @@ export function CategoryTabs({
                 isActive ? "bg-surface-alt text-text" : "bg-transparent text-text-soft"
               } ${highlighted ? "border-b-gold" : "border-b-transparent"}`}
             >
-              <span>{tab.icon}</span>
+              <Icon name={tab.icon} />
               {tab.label}
               {tab.column1.length > 0 && <span className="text-[10px] text-muted">▾</span>}
             </button>
@@ -86,7 +87,7 @@ export function CategoryTabs({
             toolsActive ? "bg-surface-alt text-text border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
           }`}
         >
-          <span>🧮</span>
+          <Icon name="calculator" />
           Tools
         </Link>
         <Link
@@ -96,7 +97,7 @@ export function CategoryTabs({
             plansActive ? "bg-surface-alt text-text border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
           }`}
         >
-          <span>✨</span>
+          <Icon name="sparkles" />
           Plans
         </Link>
       </HorizontalScroller>

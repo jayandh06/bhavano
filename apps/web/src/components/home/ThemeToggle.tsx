@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { Icon } from "./Icon";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -14,7 +15,7 @@ export function ThemeToggle() {
       title="Toggle theme"
       className="bg-surface-alt border border-border text-text rounded-lg w-[38px] h-[38px] text-base cursor-pointer flex items-center justify-center"
     >
-      {mounted ? (theme === "dark" ? "☀️" : "🌙") : null}
+      {mounted ? <Icon name={theme === "dark" ? "sun" : "moon"} /> : null}
     </button>
   );
 }
