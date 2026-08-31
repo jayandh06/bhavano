@@ -25,20 +25,45 @@ function chunkIntoColumns<T>(items: T[], numColumns: number): T[][] {
 
 function LocationBlock({ heading, items }: { heading: string; items: { key: string; label: string; href: string }[] }) {
   if (items.length === 0) return null;
+
+  const columns = (
+    <div className="flex gap-3">
+      {chunkIntoColumns(items, LOCATION_COLUMNS).map((column, i) => (
+        <div key={i} className="flex flex-col gap-2 text-[13px]">
+          {column.map((item) => (
+            <Link key={item.key} href={item.href}>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+
+  // Two renders of the same links, one hidden per breakpoint — not one element whose open state
+  // somehow differs by viewport, which plain HTML/CSS cannot express: <details>'s open/closed
+  // state is a single boolean set once, so there is no way to have it start open on a wide
+  // screen and closed on a narrow one without client JS measuring the viewport. Duplicating a
+  // footer's worth of <a> tags is a real, known cost against page weight, but every link here
+  // is static, server-rendered markup — not blocking JS — and it buys a toggle that needs none
+  // either, which is the trade worth making for a list this size.
+  //
+  // Both copies carry the same links, so a crawler sees them in the DOM regardless of which is
+  // visually hidden — the same footing Google already gives a "show more" accordion; this isn't
+  // hiding a list from the crawler; it's controlling which of two identical menus a person sees.
   return (
     <div>
-      <div className="font-bold text-[13px] text-text mb-2.5">{heading}</div>
-      <div className="flex gap-3">
-        {chunkIntoColumns(items, LOCATION_COLUMNS).map((column, i) => (
-          <div key={i} className="flex flex-col gap-2 text-[13px]">
-            {column.map((item) => (
-              <Link key={item.key} href={item.href}>
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        ))}
+      <div className="hidden sm:block">
+        <div className="font-bold text-[13px] text-text mb-2.5">{heading}</div>
+        {columns}
       </div>
+      <details className="sm:hidden group">
+        <summary className="font-bold text-[13px] text-text mb-2.5 cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center gap-1.5">
+          {heading}
+          <span className="text-[10px] text-muted transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div className="mt-2.5">{columns}</div>
+      </details>
     </div>
   );
 }
