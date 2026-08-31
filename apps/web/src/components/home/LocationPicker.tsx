@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { City } from "@bhavano/types";
-import { getCityIcon } from "@bhavano/types/cityIcons";
 import { autoDetectCityAction, listAllCitiesAction, searchCitiesAction } from "@/app/actions/locations";
 import { buildBrowsePath } from "@/lib/listingPath";
 import type { ParsedSegments } from "@/lib/seoRoute";
@@ -207,7 +206,14 @@ function CityRow({ city, onSelect }: { city: City; onSelect: (city: City) => voi
       onClick={() => onSelect(city)}
       className="flex items-center gap-2.5 text-left bg-transparent border-0 px-1.5 py-2.5 text-sm text-text cursor-pointer rounded-[7px]"
     >
-      <span>{getCityIcon(city.name)}</span>
+      {/* One pin for every city, not 47 different emoji.
+        *
+        * A per-city glyph — a rhino for one, a palm tree for another — cannot survive being
+        * outlined in a single colour: the whole point of those was that they were little coloured
+        * pictures, and stroked versions of 47 unrelated objects would read as noise in a list
+        * where every row means the same kind of thing. The list is of cities; the icon says
+        * "city", and the name says which. */}
+      <Icon name="pin" className="text-muted" />
       {city.name}
     </button>
   );
