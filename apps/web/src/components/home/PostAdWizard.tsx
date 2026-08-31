@@ -206,9 +206,9 @@ const optionButtonClass = (active: boolean) =>
  * left-aligned rows above. That layout suits a longer label sitting beside an icon; these are
  * one or two words with nothing else in the button, so stretching them edge-to-edge the same way
  * just left-anchored 2-of-3 grid cells for any category with fewer than three options (storage,
- * coworking, furniture) rather than reading as a deliberate row. Sized to content and centred as
- * a group instead — reads as one balanced choice regardless of whether it has two options or
- * three. */
+ * coworking, furniture) rather than reading as a deliberate row. Sized to content instead, in a
+ * plain flex-start row — left-aligned like the rest of the wizard's steps, just no longer
+ * stretched into empty grid columns that were never there for a two-option category. */
 const transactionButtonClass = (active: boolean) =>
   `text-center border-[1.5px] rounded-[10px] px-5 py-2.5 text-sm font-bold text-text cursor-pointer min-w-[112px] ${
     active ? "border-green bg-surface-alt" : "border-border bg-surface"
@@ -661,7 +661,7 @@ export function PostAdWizard({
 
       {step === "transactionType" && category && (
         <div className="flex flex-col gap-2.5">
-          <div className="flex flex-wrap justify-center gap-2.5">
+          <div className="flex flex-wrap gap-2.5">
             {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
               <button
                 key={t}
