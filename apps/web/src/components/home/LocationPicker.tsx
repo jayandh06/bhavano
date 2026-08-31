@@ -30,11 +30,13 @@ export function LocationPicker({
   const [allCities, setAllCities] = useState<City[] | null>(null);
   const [loadingAll, setLoadingAll] = useState(false);
   const [detecting, setDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
 
   function openModal() {
     setQuery("");
     setResults(popularCities);
     setAllCities(null);
+    setDetectError(null);
     setOpen(true);
   }
 
@@ -66,12 +68,15 @@ export function LocationPicker({
     );
   }
 
-  function selectCity(city: City) {
+  /** Shared by picking a city from the list (a full `City` on hand) and by auto-detect (Google
+   * only ever gives us a name — see `autoDetectCityAction`). Only `.name` is actually load-bearing
+   * for navigation, so a full `City` object was never required here. */
+  function selectCityByName(cityName: string) {
     setOpen(false);
     if (currentSegments) {
       router.push(
         buildBrowsePath({
-          cityName: city.name,
+          cityName,
           transactionGroup: currentSegments.transactionGroup,
           category: currentSegments.category,
           facetValue: currentSegments.facetValue,
@@ -84,20 +89,40 @@ export function LocationPicker({
       // Note this is a destination change as well as a URL one: /chennai renders the browse view
       // ("All Listings in Chennai") rather than the homepage's category-tab view ("Buy in
       // Chennai").
-      router.push(buildBrowsePath({ cityName: city.name }));
+      router.push(buildBrowsePath({ cityName }));
     }
   }
 
+  function selectCity(city: City) {
+    selectCityByName(city.name);
+  }
+
+  /**
+   * The device's real GPS position, reverse-geocoded through Google — never an automatic guess.
+   * This only ever runs from this button being clicked; nothing on the page calls it on its own.
+   * See docs/plans/remove-automatic-ip-city-detection.md for what used to run automatically
+   * instead (a coarse guess from the visitor's IP address, applied before they had done anything)
+   * and what this button itself used to do (a plain nearest-city distance calculation with no
+   * outside source, prone to picking the wrong city where the two are close together).
+   */
   function useAutoLocation() {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setDetectError("Location isn't available in this browser — try searching instead.");
+      return;
+    }
     setDetecting(true);
+    setDetectError(null);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const city = await autoDetectCityAction(pos.coords.latitude, pos.coords.longitude);
+        const result = await autoDetectCityAction(pos.coords.latitude, pos.coords.longitude);
         setDetecting(false);
-        if (city) selectCity(city);
+        if (result) selectCityByName(result.cityName);
+        else setDetectError("Couldn't detect your city — try searching instead.");
       },
-      () => setDetecting(false),
+      () => {
+        setDetecting(false);
+        setDetectError("Location access was denied — try searching instead.");
+      },
     );
   }
 
@@ -148,12 +173,13 @@ export function LocationPicker({
             <button
               onClick={useAutoLocation}
               disabled={detecting}
-              className="w-full flex items-center gap-2.5 bg-surface-alt border border-border rounded-[10px] px-3.5 py-[13px] text-sm font-bold text-green cursor-pointer mb-3.5"
+              className="w-full flex items-center gap-2.5 bg-surface-alt border border-border rounded-[10px] px-3.5 py-[13px] text-sm font-bold text-green cursor-pointer"
             >
               <Icon name="pin" /> {detecting ? "Detecting…" : "Auto-detect my current location"}
             </button>
+            {detectError && <p className="text-[#b3413a] text-[12px] mt-1.5">{detectError}</p>}
 
-            <div className="text-xs text-muted font-bold mb-2">OR SEARCH CITY / AREA / PINCODE</div>
+            <div className="text-xs text-muted font-bold mt-3.5 mb-2">OR SEARCH CITY / AREA / PINCODE</div>
             <input
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}

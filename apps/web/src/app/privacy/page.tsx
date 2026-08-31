@@ -57,22 +57,16 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Technical data:</strong> your IP address and the page you first arrived on, recorded once per
-            browsing session. We use your IP address to work out roughly which city you are in, so the Platform
-            opens on listings near you rather than in a default city, and to investigate abuse. This is an
-            approximation from the network you are connected to — it is often wrong, and you can change the city
-            at any time using the location selector at the top of any page.
+            browsing session, to investigate abuse and understand how visitors reach the Platform.
+          </li>
+          <li>
+            <strong>Location data:</strong> only if you tap &quot;Auto-detect my current location&quot; in the
+            location selector at the top of any page. Your device asks your permission first; if you agree, your
+            coordinates are sent to our servers and from there to Google&apos;s geocoding service, solely to work
+            out which city and area you are in. We do not otherwise track or store your location, and you can
+            always pick a city yourself from the same selector instead.
           </li>
         </ul>
-        {/* Required by the GeoLite2 EULA, which asks for this credit wherever the data is used.
-          * See docs/plans/visitor-location-default-city.md. */}
-        <p className="m-0 mt-3 text-[13px] text-muted">
-          City detection from IP addresses uses GeoLite2 data created by MaxMind, available from{" "}
-          <a href="https://www.maxmind.com" target="_blank" rel="noopener noreferrer" className="text-green font-bold">
-            maxmind.com
-          </a>
-          . The lookup happens on our own servers — your IP address is never sent to MaxMind or any other third
-          party.
-        </p>
       </PageSection>
 
       <PageSection heading="2. How we use this information">

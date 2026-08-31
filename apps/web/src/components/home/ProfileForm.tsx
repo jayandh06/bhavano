@@ -63,15 +63,20 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   const canSave = !!currentPhone && !emailMissing;
 
   // No saved city yet — try to auto-detect one from the browser's geolocation so there's a
-  // sensible default to review/confirm, instead of an empty required-feeling field.
+  // sensible default to review/confirm, instead of an empty required-feeling field. Still only
+  // ever runs from a real permission prompt the browser itself shows, and only proceeds if the
+  // visitor grants it — never a silent background guess. Google-backed, like every other
+  // reverse-geocode in the app now — see docs/plans/remove-automatic-ip-city-detection.md.
   useEffect(() => {
     if (profile.cityId || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const city = await autoDetectCityAction(pos.coords.latitude, pos.coords.longitude);
       if (city) {
-        setCityId(city.id);
-        setCityName(city.name);
-        setState(city.state);
+        setCityId(city.cityId);
+        setCityName(city.cityName);
+        // The DTO carries no state — the display template already omits the ", State" half
+        // when it is blank (see the map-picker branch below, which has the same gap).
+        setState("");
         setDetected(true);
       }
     });
