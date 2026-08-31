@@ -202,6 +202,18 @@ const optionButtonClass = (active: boolean) =>
     active ? "border-green bg-surface-alt" : "border-border bg-surface"
   }`;
 
+/** Buy/Sell/Rent/Lease — short, content-sized pills rather than the category step's full-width
+ * left-aligned rows above. That layout suits a longer label sitting beside an icon; these are
+ * one or two words with nothing else in the button, so stretching them edge-to-edge the same way
+ * just left-anchored 2-of-3 grid cells for any category with fewer than three options (storage,
+ * coworking, furniture) rather than reading as a deliberate row. Sized to content and centred as
+ * a group instead — reads as one balanced choice regardless of whether it has two options or
+ * three. */
+const transactionButtonClass = (active: boolean) =>
+  `text-center border-[1.5px] rounded-[10px] px-5 py-2.5 text-sm font-bold text-text cursor-pointer min-w-[112px] ${
+    active ? "border-green bg-surface-alt" : "border-border bg-surface"
+  }`;
+
 export function PostAdWizard({
   cities: initialCities,
   defaultCityId,
@@ -649,12 +661,12 @@ export function PostAdWizard({
 
       {step === "transactionType" && category && (
         <div className="flex flex-col gap-2.5">
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="flex flex-wrap justify-center gap-2.5">
             {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
               <button
                 key={t}
                 onClick={() => selectTransactionType(t)}
-                className={optionButtonClass(transactionType === t)}
+                className={transactionButtonClass(transactionType === t)}
               >
                 {TRANSACTION_TYPE_LABELS[t]}
               </button>
