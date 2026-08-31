@@ -160,13 +160,7 @@ export default function ListingDetailScreen() {
           {/* Contact is hidden on your own ad — it would start a conversation with yourself,
               and offering it reads as the app not knowing whose listing it is. Favourite stays:
               harmless, and the like count is part of the page. */}
-          {!listing.isOwner && (
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 16, marginBottom: 12 }}>
-              Ads shown without login — sign in only to respond
-            </Text>
-          )}
-
-          <View style={styles.actionsRow}>
+          <View style={[styles.actionsRow, { marginTop: 16 }]}>
             {!listing.isOwner && (
               <Pressable onPress={onMessage} style={[styles.contactButton, { backgroundColor: colors.green }]}>
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Contact owner</Text>

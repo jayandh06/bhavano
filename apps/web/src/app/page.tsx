@@ -158,11 +158,8 @@ export default async function HomePage({
         popularSearches={popularSearches}
       />
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
-        {/* Same reason as the browse page: a 26px heading sharing its line with a 47-character
-          * notice leaves neither enough room on a phone. */}
         <h1 className="font-lora text-[26px] font-semibold m-0 mb-1.5 text-text">{heading}</h1>
-        <p className="text-[13px] text-muted mb-2">Ads shown without login — sign in only to respond</p>
-        <p className="text-[14px] text-text-soft mb-5 max-w-[720px]">
+        <p className="text-[14px] text-text-soft mb-5">
           Bhavano is India&apos;s classifieds marketplace for buying, selling, renting and leasing
           homes, plots, commercial space, coworking desks, PG stays and furniture. Sign in with
           Google or your phone number only when you want to post a listing, save a favourite, or

@@ -224,20 +224,12 @@ export async function ListingDetailView({
                 This ad has expired and is no longer accepting responses.
               </p>
             ) : (
-              <>
-                {/* The sign-in nudge is for people who might respond — pointless on your own ad. */}
-                {!listing.isOwner && (
-                  <span className="text-xs text-muted block mb-3">
-                    Ads shown without login — sign in only to respond
-                  </span>
-                )}
-                <ListingDetailActions
-                  listingId={listing.id}
-                  initialIsFavourited={listing.isFavourited}
-                  initialLikeCount={listing.likeCount}
-                  isOwner={listing.isOwner}
-                />
-              </>
+              <ListingDetailActions
+                listingId={listing.id}
+                initialIsFavourited={listing.isFavourited}
+                initialLikeCount={listing.likeCount}
+                isOwner={listing.isOwner}
+              />
             )}
           </aside>
         </div>
