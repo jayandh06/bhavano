@@ -3,11 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Area as AreaDto, City as CityDto, ReverseGeocodeResultDto } from '@bhavano/types';
 import { slugify } from '@bhavano/types/slugify';
 import { PrismaService } from '../prisma/prisma.service';
-import { GeoIpService } from './geoip.service';
 import type { Area, City } from '@prisma/client';
-
-/** See `cityForIp` for why this is as loose as it is. */
-const IP_CITY_MAX_KM = 150;
 
 interface GoogleGeocodeAddressComponent {
   long_name: string;
@@ -41,18 +37,6 @@ function toAreaDto(area: Area): AreaDto {
   return { id: area.id, name: area.name, cityId: area.cityId, lat: area.lat, lng: area.lng };
 }
 
-/** Great-circle distance in km — good enough for nearest-city lookup at city granularity. */
-function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
-  const R = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const lat1 = (a.lat * Math.PI) / 180;
-  const lat2 = (b.lat * Math.PI) / 180;
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
 @Injectable()
 export class LocationsService {
   private readonly logger = new Logger(LocationsService.name);
@@ -60,7 +44,6 @@ export class LocationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-    private readonly geoIp: GeoIpService,
   ) {}
 
   async searchCities(q?: string, all?: boolean): Promise<CityDto[]> {
@@ -143,46 +126,12 @@ export class LocationsService {
     });
   }
 
-  /** Nearest-city lookup for "Auto-detect" — plain distance calc over all cities;
-   * swap for a real PostGIS ST_Distance query once city count grows past a full scan.
-   *
-   * `maxKm` caps how far the answer may be. Unset for the auto-detect button, where the user
-   * pressed it and any nearest city beats nothing. Set for the IP path, where nobody asked:
-   * without a cap, a visitor in Singapore or behind an unmappable address is silently handed
-   * whichever Indian city happens to be closest, presented as if it were theirs. */
-  async reverseGeocode(lat: number, lng: number, maxKm?: number): Promise<CityDto | null> {
-    const cities = await this.prisma.city.findMany();
-    if (cities.length === 0) return null;
-
-    let nearest = cities[0];
-    let nearestDist = haversineKm({ lat, lng }, nearest);
-    for (const city of cities.slice(1)) {
-      const dist = haversineKm({ lat, lng }, city);
-      if (dist < nearestDist) {
-        nearest = city;
-        nearestDist = dist;
-      }
-    }
-    if (maxKm !== undefined && nearestDist > maxKm) return null;
-    return toDto(nearest);
-  }
-
-  /** The city an IP looks like it is in, or null if that cannot be answered confidently.
-   *
-   * 150km is deliberately generous. Indian mobile carriers route large regions through a handful
-   * of peering cities, so a Coimbatore user on Jio can resolve to Chennai — wrong, but a better
-   * default than Bengaluru and one click from corrected. A tighter cap would reject those and
-   * gain little; a looser one starts labelling foreign traffic as Indian. */
-  async cityForIp(ip: string): Promise<CityDto | null> {
-    const point = this.geoIp.lookup(ip);
-    if (!point) return null;
-    return this.reverseGeocode(point.lat, point.lng, IP_CITY_MAX_KM);
-  }
-
-  /** Real Google-backed reverse geocoding for the map pin-picker (posting flow) — distinct from
-   * `reverseGeocode` above, which stays a plain haversine nearest-city scan for the homepage's
-   * unrelated "auto-detect my location" button. Uses a server-side, IP-restricted API key —
-   * never call Google's Geocoding API directly from a browser/app with this key.
+  /** Real Google-backed reverse geocoding — used by the posting flow's map pin-picker and by
+   * "Auto-detect my current location". This is the only reverse-geocoding path in the app; the
+   * plain haversine nearest-city scan that used to live here, and the IP-based city guess built
+   * on top of it, were removed — see docs/plans/remove-automatic-ip-city-detection.md. Uses a
+   * server-side, IP-restricted API key — never call Google's Geocoding API directly from a
+   * browser/app with this key.
    *
    * City is matched against the existing table first, then auto-created via `ensureCity` (using
    * the dropped pin's own coordinates as the new city's lat/lng — the best approximation available
