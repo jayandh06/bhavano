@@ -1,0 +1,5 @@
+Hi {{name}},
+
+Your ad "{{title}}" is now live on Bhavano and visible to buyers across India.
+
+Tap below to see how it looks. You can manage, renew, or boost it anytime from My Listings — a boosted ad gets priority placement and more views.

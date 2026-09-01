@@ -55,11 +55,19 @@ export class WhatsappProvider {
    *
    * Either way the set must match the approved template exactly — a missing or unexpected
    * parameter is a 400, not a partial send.
+   *
+   * `buttonUrlSuffix` fills a dynamic URL button's one variable — the part of the link that
+   * comes after whatever fixed prefix the template's button was created with (see
+   * `whatsapp_create_listing_posted_template.py`'s `BUTTON_URL_BASE` for the matching prefix on
+   * that side). Meta's dynamic URL buttons take exactly one, always positional — never named,
+   * unlike the body — so this is a plain string, not part of `bodyParams`. Omit it entirely for
+   * a template with no button, or one whose button is a fixed URL with nothing to fill.
    */
   async sendTemplate(
     phone: string,
     templateName: string,
     bodyParams: string[] | Record<string, string> = [],
+    buttonUrlSuffix?: string,
   ): Promise<boolean> {
     const token = this.config.get<string>('WHATSAPP_ACCESS_TOKEN');
     const phoneNumberId = this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID');
@@ -109,10 +117,34 @@ export class WhatsappProvider {
             template: {
               name: templateName,
               language: { code: language },
-              // Omit `components` entirely for a template with no variables — an empty body
-              // component is rejected rather than ignored.
-              ...(parameters.length > 0
-                ? { components: [{ type: 'body', parameters }] }
+              // Omit `components` entirely for a template with neither body variables nor a
+              // button to fill — an empty components array is rejected the same way an empty
+              // body component is, rather than being ignored as "nothing to fill in".
+              ...(parameters.length > 0 || buttonUrlSuffix !== undefined
+                ? {
+                    components: [
+                      ...(parameters.length > 0
+                        ? [{ type: 'body', parameters }]
+                        : []),
+                      ...(buttonUrlSuffix !== undefined
+                        ? [
+                            {
+                              type: 'button',
+                              sub_type: 'url',
+                              // "0" — the button's position among the template's own buttons,
+                              // not a magic constant tied to this call. Every template built by
+                              // this codebase so far has exactly one button, so this has never
+                              // needed to vary; a second-button template would need the caller
+                              // to say which index it means.
+                              index: '0',
+                              parameters: [
+                                { type: 'text', text: buttonUrlSuffix },
+                              ],
+                            },
+                          ]
+                        : []),
+                    ],
+                  }
                 : {}),
             },
           }),

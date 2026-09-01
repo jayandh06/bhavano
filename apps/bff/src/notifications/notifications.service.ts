@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ListingDetailDto } from '@bhavano/types';
+import { buildListingPath } from '@bhavano/types/listingPath';
 import { Msg91Provider } from './providers/msg91.provider';
 import { WhatsappProvider } from './providers/whatsapp.provider';
 import { EmailProvider } from './providers/email.provider';
 import { renderEmail } from './emailLayout';
+import { loadTemplate, renderTemplate } from './templateLoader';
 
 interface NotifiableUser {
   email: string | null;
@@ -190,5 +192,90 @@ export class NotificationsService {
         ? this.msg91.sendTransactionalSms(user.phone, body)
         : Promise.resolve(),
     ]);
+  }
+
+  /**
+   * Tells someone their ad went live — the one thing `ListingsService.create` never announced.
+   * See docs/plans/post-ad-acknowledgement.md for why this exists and why the channel rule below
+   * is deliberately different from every other notification in this file.
+   *
+   * Email if they have one, else WhatsApp — never both, and no SMS fallback. That last part is a
+   * real trade, not an oversight: a phone-only user whose WhatsApp send fails (unconfigured
+   * sender, unapproved template, a transient Graph API error) gets told nothing at all. Accepted
+   * because the ad itself is unaffected either way — it is already live under `/my-listings` —
+   * and because SMS cannot carry this message: DLT registration would need its own approved
+   * template for free-form text, which is a separate, larger piece of work than this feature.
+   *
+   * The email body's actual words live in `apps/bff/notification-templates/listing-posted/`, not
+   * here — see that folder's README for why, and for how to change the wording without a code
+   * change. This method is the plumbing: which fields go in, which channel gets used, never the
+   * copy itself.
+   */
+  async notifyListingPosted(
+    user: NotifiableUser & { name?: string | null },
+    listing: Pick<
+      ListingDetailDto,
+      | 'id'
+      | 'slug'
+      | 'category'
+      | 'transactionType'
+      | 'cityName'
+      | 'area'
+      | 'title'
+    >,
+  ): Promise<'email' | 'whatsapp' | null> {
+    const site =
+      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const path = buildListingPath(listing);
+    const link = `${site}${path}`;
+    const vars = { name: user.name ?? 'there', title: listing.title };
+
+    if (user.email) {
+      const tpl = loadTemplate('listing-posted');
+      const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+      const buttonLabel = tpl.buttonLabel
+        ? renderTemplate(tpl.buttonLabel, vars)
+        : undefined;
+      const html = renderEmail({
+        heading: renderTemplate(tpl.heading, vars),
+        preheader: renderTemplate(tpl.preheader, vars),
+        paragraphs,
+        button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+      });
+      // The plain-text part mirrors the HTML rather than reusing renderEmail's own text — that
+      // function only ever produces markup, matching notifyWelcome's separate emailBody/html
+      // pair. A link with nothing to hang an href on needs to be a bare URL here instead of a
+      // button label, or it would be unreadable in a text-only client.
+      const text =
+        `${paragraphs.join('\n\n')}\n\n` +
+        (buttonLabel ? `${buttonLabel}: ${link}` : link);
+      await this.emailProvider.send(
+        user.email,
+        renderTemplate(tpl.subject, vars),
+        text,
+        { html },
+      );
+      return 'email';
+    }
+
+    if (user.phone) {
+      const template = this.config.get<string>(
+        'WHATSAPP_LISTING_POSTED_TEMPLATE',
+      );
+      if (!template) return null;
+      // The button's fixed prefix is baked into the approved template itself (see
+      // whatsapp_create_listing_posted_template.py's BUTTON_URL_BASE) — only the suffix after it
+      // is a per-send variable, so `path` (already leading with "/") has its own leading slash
+      // stripped to avoid a doubled one.
+      const sent = await this.whatsapp.sendTemplate(
+        user.phone,
+        template,
+        vars,
+        path.replace(/^\//, ''),
+      );
+      return sent ? 'whatsapp' : null;
+    }
+
+    return null;
   }
 }

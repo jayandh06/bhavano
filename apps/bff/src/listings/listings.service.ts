@@ -485,10 +485,11 @@ export class ListingsService {
       throw new BadRequestException('At least one photo is required');
     // A token issued before the owner deleted their account still authenticates for up to an
     // hour (stateless JWT, DB-free AuthGuard), and this is the one path that would attach new
-    // data to a deleted account.
+    // data to a deleted account. name/email/phone ride along on this same fetch for
+    // notifyListingPosted at the bottom of this method, rather than a second query for them.
     const owner = await this.prisma.user.findUnique({
       where: { id: ownerId },
-      select: { deletedAt: true },
+      select: { deletedAt: true, name: true, email: true, phone: true },
     });
     if (owner?.deletedAt) {
       throw new UnauthorizedException('This account was deleted');
@@ -589,6 +590,21 @@ export class ListingsService {
     // break) the poster's own submission.
     this.savedSearchesService
       .notifyMatchingBuyers(created)
+      .catch(() => undefined);
+
+    // Same fire-and-forget rule for the poster's own acknowledgement — see
+    // docs/plans/post-ad-acknowledgement.md. `owner` is never null here: `assertCanPublish`
+    // above and the `deletedAt` check both already require the row to exist.
+    this.notificationsService
+      .notifyListingPosted(owner!, {
+        id: listing.id,
+        slug: listing.slug,
+        category: listing.category,
+        transactionType: listing.transactionType,
+        cityName: listing.city.name,
+        area: listing.area.name,
+        title: listing.title,
+      })
       .catch(() => undefined);
 
     return this.toDetailDto(listing, undefined, true);

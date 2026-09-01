@@ -53,6 +53,13 @@ services:
       # see docs/plans/bff-loki-grafana-logging.md.
       - bff_logs:/app/apps/bff/logs
       - bff_video_tmp:/app/apps/bff/uploads
+      # Notification email copy (see apps/bff/notification-templates/README.md). Bind-mounted
+      # from the repo checkout on the host, not baked into the image, specifically so a wording
+      # fix can be made by editing the file directly on the app host and takes effect on the next
+      # notification sent — no rebuild, no restart. Read-only from the container's side (nothing
+      # in the app ever writes here) — editing happens on the host filesystem directly, outside
+      # Docker entirely, which :ro does nothing to prevent.
+      - ./apps/bff/notification-templates:/app/apps/bff/notification-templates:ro
     expose:
       - "4000"
     healthcheck:
