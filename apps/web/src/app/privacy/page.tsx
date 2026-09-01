@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   const addressLines = entityAddressLines();
 
   return (
-    <StaticPageLayout title="Privacy Policy" updated="26 August 2026">
+    <StaticPageLayout title="Privacy Policy" updated="1 September 2026">
       <PageSection heading="Who processes your data">
         <p className="m-0">
           {entityOperatorSentence()} {LEGAL_ENTITY.legalName} is the data fiduciary responsible for the personal
@@ -57,14 +57,18 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Technical data:</strong> your IP address and the page you first arrived on, recorded once per
-            browsing session, to investigate abuse and understand how visitors reach the Platform.
+            browsing session, to investigate abuse and understand how visitors reach the Platform. We also derive an
+            approximate city, region, and country from that IP address using a local lookup database — this is a
+            coarse estimate (it can be wrong, particularly on mobile networks) used only for our own internal
+            reporting, and never to choose what you see on the Platform.
           </li>
           <li>
-            <strong>Location data:</strong> only if you tap &quot;Auto-detect my current location&quot; in the
-            location selector at the top of any page. Your device asks your permission first; if you agree, your
-            coordinates are sent to our servers and from there to Google&apos;s geocoding service, solely to work
-            out which city and area you are in. We do not otherwise track or store your location, and you can
-            always pick a city yourself from the same selector instead.
+            <strong>Location data:</strong> precise location is only ever collected if you tap &quot;Auto-detect my
+            current location&quot; in the location selector at the top of any page. Your device asks your
+            permission first; if you agree, your coordinates are sent to our servers and from there to
+            Google&apos;s geocoding service, solely to work out which city and area you are in. Other than the
+            coarse, IP-based estimate described above, we do not otherwise track or store your location, and you
+            can always pick a city yourself from the same selector instead.
           </li>
         </ul>
       </PageSection>

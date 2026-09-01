@@ -48,6 +48,10 @@ services:
       # the image's existing /app/apps/bff/uploads dir, given its own volume below so a container
       # restart mid-upload/transcode doesn't strand temp files in the writable layer.
       VIDEO_TMP_DIR: /app/apps/bff/uploads
+      # MaxMind GeoLite2, for a best-effort city/region/country label on each Visit row (see
+      # docs/plans/visit-ip-city-logging.md). Optional: unset, or pointing at a file that is not
+      # there, simply leaves every visit's ipCity/ipRegion/ipCountry null.
+      GEOIP_DB_PATH: /app/data/geoip/GeoLite2-City.mmdb
     volumes:
       # Rotating request/response logs, shared read-only with the alloy container below —
       # see docs/plans/bff-loki-grafana-logging.md.
@@ -60,6 +64,10 @@ services:
       # in the app ever writes here) — editing happens on the host filesystem directly, outside
       # Docker entirely, which :ro does nothing to prevent.
       - ./apps/bff/notification-templates:/app/apps/bff/notification-templates:ro
+      # Bind mount rather than a baked-in file: the database is ~60MB and has to be refreshed
+      # periodically under MaxMind's licence, so keeping it out of the image means a refresh is
+      # ./scripts/update-geolite.sh + a bff restart, with no rebuild and no per-deploy disk cost.
+      - ./data/geoip:/app/data/geoip:ro
     expose:
       - "4000"
     healthcheck:
