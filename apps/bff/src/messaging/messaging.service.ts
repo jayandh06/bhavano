@@ -138,6 +138,19 @@ export class MessagingService {
     };
   }
 
+  /** Total unread messages across every conversation this user is in, in either role — the number
+   * behind the count badge on the Messages entry point. One query: the per-conversation
+   * `unreadCount` that `listConversations` computes is the same count sliced by thread. */
+  async getUnreadTotal(userId: string): Promise<number> {
+    return this.prisma.message.count({
+      where: {
+        senderId: { not: userId },
+        readAt: null,
+        conversation: { OR: [{ posterId: userId }, { inquirerId: userId }] },
+      },
+    });
+  }
+
   async getMessages(conversationId: string, userId: string): Promise<MessageDto[]> {
     await this.assertParticipant(conversationId, userId);
     const messages = await this.prisma.message.findMany({
@@ -147,10 +160,23 @@ export class MessagingService {
     return messages.map(toMessageDto);
   }
 
-  async sendMessage(conversationId: string, senderId: string, body: string): Promise<MessageDto> {
-    await this.assertParticipant(conversationId, senderId);
-    const message = await this.prisma.message.create({ data: { conversationId, senderId, body } });
-    return toMessageDto(message);
+  /** Also returns the other participant's id and the sender's display name — the caller pushes a
+   * realtime unread update and a mobile notification (titled with the sender's name) to the
+   * recipient, and would otherwise have to re-load the conversation and the user to get either. */
+  async sendMessage(
+    conversationId: string,
+    senderId: string,
+    body: string,
+  ): Promise<{ message: MessageDto; recipientId: string; senderName: string }> {
+    const conversation = await this.assertParticipant(conversationId, senderId);
+    const [message, sender] = await Promise.all([
+      this.prisma.message.create({ data: { conversationId, senderId, body } }),
+      this.prisma.user.findUnique({ where: { id: senderId }, select: { name: true, phone: true } }),
+    ]);
+    const recipientId =
+      conversation.posterId === senderId ? conversation.inquirerId : conversation.posterId;
+    const senderName = sender?.name ?? sender?.phone ?? 'New message';
+    return { message: toMessageDto(message), recipientId, senderName };
   }
 
   async markRead(conversationId: string, userId: string): Promise<void> {

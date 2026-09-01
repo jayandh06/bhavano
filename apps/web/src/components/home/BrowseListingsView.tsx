@@ -3,6 +3,7 @@ import type { Area, City, ListingCardDto, ListingCategory } from "@bhavano/types
 import { auth } from "@/auth";
 import { fetchListings, type ListingsQuery } from "@/lib/bff";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
+import { sessionAccessToken } from "@/lib/session";
 import { buildListingPath } from "@/lib/listingPath";
 import { Header } from "./Header";
 import { ListingGrid } from "./ListingGrid";
@@ -125,6 +126,7 @@ export async function BrowseListingsView({
         searchQuery=""
         activeCategory={homeCategoryForSegments(currentSegments)}
         userName={userName}
+        accessToken={sessionAccessToken(session)}
         currentSegments={currentSegments}
         areaName={areaName}
         popularSearches={popularSearches}

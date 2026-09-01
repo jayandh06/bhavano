@@ -63,6 +63,16 @@ module.exports = {
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
+      // Adds the POST_NOTIFICATIONS permission (Android 13+) and sets the small-icon/tint used
+      // for the "new message" push. The monochrome icon is the one Android actually renders in
+      // the status bar — a full-colour one shows as a white square.
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/android-icon-monochrome.png",
+          color: "#11523C",
+        },
+      ],
       [
         "expo-location",
         {

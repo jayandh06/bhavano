@@ -17,6 +17,7 @@ export function Header({
   searchQuery,
   activeCategory,
   userName,
+  accessToken,
   currentSegments,
   areaName,
   popularSearches,
@@ -27,6 +28,9 @@ export function Header({
   searchQuery: string;
   activeCategory: HomeTabValue;
   userName?: string | null;
+  /** BFF access token from the session — forwarded to the header's Messages count badge for its
+   * unread fetch + socket subscription. Undefined when logged out. */
+  accessToken?: string;
   /** Passed through to `LocationPicker` — see its own prop doc. Omitted on the homepage, which
    * has no path segments to preserve across a city switch. */
   currentSegments?: ParsedSegments;
@@ -87,7 +91,7 @@ export function Header({
               <Image src="/logo.png" alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px]" priority />
               <span className="font-lora font-bold text-xl sm:text-2xl tracking-[-0.01em] text-green">Bhavano</span>
             </Link>
-            <HeaderAuthButtons userName={userName} cityName={cityName} />
+            <HeaderAuthButtons userName={userName} cityName={cityName} accessToken={accessToken} />
             {/* Visible at every size. It was hidden below sm while the header was one crowded
               * row and this was the least important thing competing for the space — but the row
               * is no longer crowded, and hiding it left phone users with no way to switch theme

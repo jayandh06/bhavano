@@ -205,6 +205,9 @@ model User {
    * ListingNotificationLog's existing, already-working callers (the expiry-reminder job) to widen
    * its shape for a case that doesn't need it. */
   notificationLogs      UserNotificationLog[]
+  /** Registered Expo push tokens for this user's mobile devices — one row per device. Used only
+   * to deliver a "new message" push; see PushService. */
+  pushTokens            PushToken[]
   payments              Payment[]
   subscriptions         UserSubscription[]
   savedSearches         SavedSearch[]
@@ -687,6 +690,22 @@ model UserNotificationLog {
 
   @@index([userId, kind])
   @@index([sentAt])
+}
+
+/** One Expo push token per mobile device. `token` is unique so a device that logs into a
+ * different account re-points its existing row (upsert on token) rather than leaving the message
+ * push going to the previous user. Deleted on logout, and pruned when Expo reports the token as
+ * `DeviceNotRegistered`. */
+model PushToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 /** One unredeemed row per Agent Pro user per calendar month (UTC) — 7-day boost credit. */

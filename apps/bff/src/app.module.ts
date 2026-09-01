@@ -11,6 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { PushModule } from './push/push.module';
 import { AdminModule } from './admin/admin.module';
 import { PhotoProcessingModule } from './photo-processing/photo-processing.module';
 import { VideoProcessingModule } from './video-processing/video-processing.module';
@@ -36,6 +37,7 @@ import { SupportModule } from './support/support.module';
     UploadsModule,
     UsersModule,
     MessagingModule,
+    PushModule,
     AdminModule,
     PhotoProcessingModule,
     VideoProcessingModule,

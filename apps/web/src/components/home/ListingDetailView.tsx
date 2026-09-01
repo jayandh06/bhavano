@@ -44,12 +44,16 @@ export async function ListingDetailView({
   popularCities,
   allCities,
   userName,
+  accessToken,
 }: {
   listing: ListingDetailDto;
   popularCities: City[];
   /** Needed to resolve the *viewer's* city — see the header below. */
   allCities: City[];
   userName?: string | null;
+  /** Session BFF token, forwarded to the header's Messages count badge. Resolved by the caller
+   * (this component does no auth of its own). */
+  accessToken?: string;
 }) {
   const attributes = listing.attributes as Record<string, string | string[]>;
   // A field's stored value only makes sense to show once its `dependsOn` condition (if any) is
@@ -83,6 +87,7 @@ export async function ListingDetailView({
         searchQuery=""
         activeCategory="all"
         userName={userName}
+        accessToken={accessToken}
         areaName={listing.area}
       />
       <ViewTracker listingId={listing.id} />

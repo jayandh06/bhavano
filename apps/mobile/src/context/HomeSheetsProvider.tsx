@@ -26,6 +26,7 @@ import {
   verifyOtp,
 } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
+import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
 
 const TOKEN_KEY = "bhavano.accessToken";
 /** The city the user last picked, by slug-free name. AsyncStorage rather than SecureStore: this
@@ -109,12 +110,23 @@ export function HomeSheetsProvider({
 
   const googleSignIn = useGoogleSignIn();
 
+  /** This device's Expo push token, once registered — kept so logout can unregister it while the
+   * access token is still valid (the DELETE is authed). */
+  const pushTokenRef = useRef<string | null>(null);
+
   useEffect(() => {
     // expo-secure-store has no web implementation — the browser preview simply starts logged out.
     if (Platform.OS === "web") return;
     SecureStore.getItemAsync(TOKEN_KEY).then((token) => {
       setIsLoggedIn(!!token);
       setAccessToken(token);
+      // Cold start while already logged in — make sure this device's push token is on file (the
+      // OS can rotate it, and the user may have toggled the permission in Settings).
+      if (token) {
+        registerForPushAsync(token).then((t) => {
+          if (t) pushTokenRef.current = t;
+        });
+      }
     });
   }, []);
 
@@ -281,6 +293,10 @@ export function HomeSheetsProvider({
     loginSheetRef.current?.dismiss();
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2200);
+    // Register this device for "new message" pushes now that we have a user to attach it to.
+    registerForPushAsync(accessToken).then((t) => {
+      if (t) pushTokenRef.current = t;
+    });
   }
 
   /** Signs the user out on this device. The BFF call is best-effort and deliberately not awaited
@@ -289,6 +305,12 @@ export function HomeSheetsProvider({
    * done unconditionally: a network failure must never leave someone stuck logged in. */
   const logout = useCallback(async () => {
     const token = accessToken;
+    // Drop this device's push token first, while the access token is still valid to authenticate
+    // the (authed) delete — afterwards there's no way to identify the row to the server.
+    if (token && pushTokenRef.current) {
+      await unregisterPushAsync(token, pushTokenRef.current);
+      pushTokenRef.current = null;
+    }
     setIsLoggedIn(false);
     setAccessToken(null);
     setProfile(null);

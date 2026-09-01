@@ -304,6 +304,27 @@ export interface ConversationDetailDto {
   listing: ConversationListingRefDto;
 }
 
+/** Total unread messages across every conversation the caller is a participant in (either role),
+ * for the count badge on the Messages entry point. Returned by `GET /conversations/unread-count`. */
+export interface UnreadCountDto {
+  count: number;
+}
+
+/** Pushed to the per-user socket room (`user:<id>`) whenever the caller's unread total changes —
+ * a new message arrived, or they read one (possibly on another device). `unreadCount` is the
+ * fresh total, so a client sets the badge to it directly rather than re-fetching. */
+export interface UnreadUpdateEvent {
+  conversationId: string;
+  unreadCount: number;
+}
+
+/** Registers/removes an Expo push token for the current device. Sent by the mobile app on login
+ * and cleared on logout — see `POST`/`DELETE /me/push-tokens`. */
+export interface PushTokenInput {
+  token: string;
+  platform: "ios" | "android";
+}
+
 export interface AuthUser {
   id: string;
   phone?: string;

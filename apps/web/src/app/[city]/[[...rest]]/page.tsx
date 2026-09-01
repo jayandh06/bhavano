@@ -4,7 +4,7 @@ import type { ListingCategory, ListingDetailDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListingById, fetchListings } from "@/lib/bff";
-import { sessionHeaderName } from "@/lib/session";
+import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity } from "@/lib/browseRoute";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import {
@@ -433,6 +433,7 @@ export default async function CityBrowsePage({
           popularCities={allCitiesForDetail.filter((c) => c.isPopular)}
           allCities={allCitiesForDetail}
           userName={sessionHeaderName(session)}
+          accessToken={sessionAccessToken(session)}
         />
       </>
     );

@@ -156,6 +156,28 @@ export function markConversationRead(accessToken: string, conversationId: string
   return authedBffFetch(accessToken, `/conversations/${conversationId}/read`, { method: "POST" });
 }
 
+export function fetchUnreadCount(accessToken: string): Promise<{ count: number }> {
+  return authedBffFetch(accessToken, "/conversations/unread-count");
+}
+
+export function registerPushToken(
+  accessToken: string,
+  token: string,
+  platform: "ios" | "android",
+): Promise<void> {
+  return authedBffFetch(accessToken, "/users/me/push-tokens", {
+    method: "POST",
+    body: JSON.stringify({ token, platform }),
+  });
+}
+
+export function deletePushToken(accessToken: string, token: string): Promise<void> {
+  return authedBffFetch(accessToken, "/users/me/push-tokens", {
+    method: "DELETE",
+    body: JSON.stringify({ token }),
+  });
+}
+
 // TEMP(auth-gate): posting is open without login for now.
 export function createListing(input: CreateListingInput, accessToken: string): Promise<ListingDetailDto> {
   return authedBffFetch<ListingDetailDto>(accessToken, "/listings", { method: "POST", body: JSON.stringify(input) });

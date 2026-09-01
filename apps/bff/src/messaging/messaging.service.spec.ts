@@ -52,3 +52,66 @@ describe('MessagingService.listConversations — Verified Buyer badge (premiumUn
     expect(result.otherPartyIsVerifiedBuyer).toBe(false);
   });
 });
+
+describe('MessagingService.getUnreadTotal', () => {
+  it('counts unread messages from others across every conversation the user is a participant in', async () => {
+    const count = jest.fn().mockResolvedValue(4);
+    const prisma = { message: { count } } as unknown as PrismaService;
+    const service = new MessagingService(prisma);
+
+    await expect(service.getUnreadTotal('u1')).resolves.toBe(4);
+    expect(count).toHaveBeenCalledWith({
+      where: {
+        senderId: { not: 'u1' },
+        readAt: null,
+        conversation: { OR: [{ posterId: 'u1' }, { inquirerId: 'u1' }] },
+      },
+    });
+  });
+});
+
+describe('MessagingService.sendMessage', () => {
+  function makeSendService(conversationRow: unknown, sender: unknown) {
+    const created = {
+      id: 'm1',
+      conversationId: 'c1',
+      senderId: 'poster1',
+      body: 'hi',
+      createdAt: new Date(),
+      readAt: null,
+    };
+    const prisma = {
+      conversation: { findUnique: jest.fn().mockResolvedValue(conversationRow) },
+      message: { create: jest.fn().mockResolvedValue(created) },
+      user: { findUnique: jest.fn().mockResolvedValue(sender) },
+    } as unknown as PrismaService;
+    return new MessagingService(prisma);
+  }
+
+  it('returns the other participant as recipient and the sender\'s name', async () => {
+    const service = makeSendService(
+      { id: 'c1', posterId: 'poster1', inquirerId: 'buyer1' },
+      { name: 'Asha', phone: null },
+    );
+    const result = await service.sendMessage('c1', 'poster1', 'hi');
+    expect(result.recipientId).toBe('buyer1');
+    expect(result.senderName).toBe('Asha');
+    expect(result.message.id).toBe('m1');
+  });
+
+  it('falls back to the sender\'s phone, then a generic label, when there is no name', async () => {
+    const withPhone = makeSendService(
+      { id: 'c1', posterId: 'p', inquirerId: 'b' },
+      { name: null, phone: '9990001111' },
+    );
+    await expect(withPhone.sendMessage('c1', 'b', 'hi')).resolves.toMatchObject({
+      recipientId: 'p',
+      senderName: '9990001111',
+    });
+
+    const anon = makeSendService({ id: 'c1', posterId: 'p', inquirerId: 'b' }, null);
+    await expect(anon.sendMessage('c1', 'b', 'hi')).resolves.toMatchObject({
+      senderName: 'New message',
+    });
+  });
+});

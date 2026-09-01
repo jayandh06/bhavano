@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { BffAuthError, createConversation, markConversationRead, sendMessage } from "@/lib/bff";
+import { BffAuthError, createConversation, fetchUnreadCount, markConversationRead, sendMessage } from "@/lib/bff";
 
 export type StartConversationResult =
   | { requiresLogin: true }
@@ -33,6 +33,18 @@ export async function sendMessageAction(conversationId: string, body: string): P
   } catch (error) {
     if (error instanceof BffAuthError) return { requiresLogin: true };
     throw error;
+  }
+}
+
+/** Read on mount by the header's Messages count badge. Returns 0 (not an error) for a
+ * logged-out or stale session — the badge simply shows nothing. */
+export async function getUnreadCountAction(): Promise<{ count: number }> {
+  const session = await auth();
+  if (!session?.accessToken) return { count: 0 };
+  try {
+    return await fetchUnreadCount(session.accessToken);
+  } catch {
+    return { count: 0 };
   }
 }
 

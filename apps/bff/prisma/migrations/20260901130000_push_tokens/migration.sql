@@ -1,0 +1,19 @@
+-- One Expo push token per mobile device, for delivering "new message" pushes (PushService).
+-- `token` is unique so a device logging into a different account re-points its row instead of
+-- leaving the push going to the previous user.
+CREATE TABLE "PushToken" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "platform" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastSeenAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PushToken_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "PushToken_token_key" ON "PushToken"("token");
+
+CREATE INDEX "PushToken_userId_idx" ON "PushToken"("userId");
+
+ALTER TABLE "PushToken" ADD CONSTRAINT "PushToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -27,13 +27,17 @@ export function MessageThread({
     socket.emit("join_conversation", { conversationId });
 
     function onNewMessage(msg: MessageDto) {
-      if (msg.conversationId === conversationId) setMessages((prev) => [...prev, msg]);
+      if (msg.conversationId !== conversationId) return;
+      setMessages((prev) => [...prev, msg]);
+      // Thread is on screen — mark it read now so the header's unread badge doesn't count a
+      // message the user is already looking at.
+      if (msg.senderId !== currentUserId) markReadAction(conversationId);
     }
     socket.on("new_message", onNewMessage);
     return () => {
       socket.off("new_message", onNewMessage);
     };
-  }, [conversationId, accessToken]);
+  }, [conversationId, accessToken, currentUserId]);
 
   // Scrolls the message list itself rather than calling scrollIntoView, which walks up and
   // scrolls every scrollable ancestor including the window — that dragged the whole page down on

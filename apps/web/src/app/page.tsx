@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
-import { sessionHeaderName } from "@/lib/session";
+import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
 import { AreaFilter } from "@/components/home/AreaFilter";
 import { ListingGrid } from "@/components/home/ListingGrid";
@@ -154,6 +154,7 @@ export default async function HomePage({
         searchQuery={q}
         activeCategory={category}
         userName={sessionHeaderName(session)}
+        accessToken={sessionAccessToken(session)}
         areaName={cityAreas[0]?.name}
         popularSearches={popularSearches}
       />

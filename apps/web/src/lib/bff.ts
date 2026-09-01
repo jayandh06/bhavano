@@ -432,6 +432,12 @@ export function markConversationRead(accessToken: string, conversationId: string
   return authedBffFetch(accessToken, `/conversations/${conversationId}/read`, { method: "POST" });
 }
 
+/** Total unread messages across all of the caller's conversations — the number on the Messages
+ * count badge in the header. */
+export function fetchUnreadCount(accessToken: string): Promise<{ count: number }> {
+  return authedBffFetch(accessToken, "/conversations/unread-count", { cache: "no-store" });
+}
+
 /** Executes a merge the user approved. `code` is the same one proven when the server answered
  * `confirm` — that request deliberately left the challenge valid. */
 export function confirmAccountMerge(

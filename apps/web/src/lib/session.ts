@@ -33,3 +33,10 @@ export function sessionHeaderName(session: { accessToken?: string; user?: { name
   if (!session?.user?.name) return undefined;
   return isAccessTokenValid(session.accessToken) ? session.user.name : undefined;
 }
+
+/** The BFF access token to hand to client components that talk to the BFF directly (today: the
+ * header's Messages count badge and its socket) — `undefined` once the token has expired, the
+ * same gate `sessionHeaderName` applies to the displayed name, so the two never disagree. */
+export function sessionAccessToken(session: { accessToken?: string } | null): string | undefined {
+  return isAccessTokenValid(session?.accessToken) ? session!.accessToken : undefined;
+}

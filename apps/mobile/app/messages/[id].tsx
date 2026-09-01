@@ -29,13 +29,17 @@ export default function ConversationScreen() {
     socket.emit("join_conversation", { conversationId: id });
 
     function onNewMessage(msg: MessageDto) {
-      if (msg.conversationId === id) setMessages((prev) => [...prev, msg]);
+      if (msg.conversationId !== id) return;
+      setMessages((prev) => [...prev, msg]);
+      // The thread is open in front of the user — clear it straight away so the unread badge
+      // doesn't tick up for a message they're already looking at.
+      if (msg.senderId !== userId) markConversationRead(accessToken!, id).catch(() => undefined);
     }
     socket.on("new_message", onNewMessage);
     return () => {
       socket.off("new_message", onNewMessage);
     };
-  }, [id, accessToken]);
+  }, [id, accessToken, userId]);
 
   useEffect(() => {
     if (accessToken) markConversationRead(accessToken, id).catch(() => undefined);

@@ -12,6 +12,7 @@ import {
   updateProfile,
   verifyEmail,
 } from "../../src/lib/bffClient";
+import { useUnreadCountQuery } from "../../src/lib/queries";
 
 type PhoneStep = "idle" | "otpSent";
 
@@ -86,6 +87,7 @@ function ProfileFields({
   loggingOut: boolean;
 }) {
   const { colors, theme, toggleTheme } = useAppTheme();
+  const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
 
   const [name, setName] = useState(profile.name ?? "");
   const [email, setEmail] = useState(profile.email ?? "");
@@ -193,8 +195,28 @@ function ProfileFields({
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
       <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: 20 }}>Your account</Text>
 
-      <Pressable onPress={onOpenMessages} style={[styles.row, { borderColor: colors.border }]}>
+      <Pressable
+        onPress={onOpenMessages}
+        style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8 }]}
+      >
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>💬 Messages</Text>
+        {unreadCount > 0 && (
+          <View
+            style={{
+              minWidth: 18,
+              height: 18,
+              borderRadius: 9,
+              paddingHorizontal: 5,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: colors.green,
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.onGreen }}>
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </Text>
+          </View>
+        )}
       </Pressable>
 
       {/* The other toggle lives in the Home tab's brand row, which is not where anyone looks for

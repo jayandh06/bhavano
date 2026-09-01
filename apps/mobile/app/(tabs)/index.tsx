@@ -5,7 +5,7 @@ import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { HomeCategoryFilter, PropertyTypeFilter } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
-import { useAreasQuery, useInfiniteListingsQuery } from "../../src/lib/queries";
+import { useAreasQuery, useInfiniteListingsQuery, useUnreadCountQuery } from "../../src/lib/queries";
 import { CategoryChips } from "../../src/components/home/CategoryChips";
 import { ListingCard } from "../../src/components/home/ListingCard";
 import { ProfileCompletionBanner } from "../../src/components/home/ProfileCompletionBanner";
@@ -34,6 +34,7 @@ export default function HomeScreen() {
   const sortSheetRef = useRef<BottomSheetModal>(null);
 
   const { data: cityAreas = [] } = useAreasQuery(city?.id);
+  const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteListingsQuery(
     {
       homeCategory: category,
@@ -110,6 +111,25 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <View style={styles.brandRow}>
+                {/* Logged-in only: the app's one always-visible route to Messages, with the
+                    unread count on it. Messages otherwise lives behind a button in the Account
+                    tab, where a count would never be seen. */}
+                {isLoggedIn && (
+                  <Pressable
+                    onPress={() => router.push("/messages")}
+                    accessibilityLabel={`Messages${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
+                    style={[styles.iconButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
+                  >
+                    <Text style={{ fontSize: 14 }}>✉️</Text>
+                    {unreadCount > 0 && (
+                      <View style={[styles.badge, styles.iconBadge, { backgroundColor: colors.green }]}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.onGreen }}>
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                )}
                 <Pressable
                   onPress={toggleTheme}
                   style={[styles.iconButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
@@ -261,6 +281,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   badge: { minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+  iconBadge: { position: "absolute", top: -5, right: -6, borderWidth: 1.5, borderColor: "transparent" },
   sectionHeading: {
     flexDirection: "row",
     justifyContent: "space-between",

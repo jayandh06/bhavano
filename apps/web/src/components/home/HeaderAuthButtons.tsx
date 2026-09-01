@@ -7,8 +7,20 @@ import { useAuthGate } from "./AuthGateProvider";
 import { signOutAction } from "@/app/actions/auth";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { Icon } from "./Icon";
+import { MessagesNavItem, UnreadCountProvider } from "./MessagesNavItem";
 
-export function HeaderAuthButtons({ userName, cityName }: { userName?: string | null; cityName?: string }) {
+export function HeaderAuthButtons({
+  userName,
+  cityName,
+  accessToken,
+}: {
+  userName?: string | null;
+  cityName?: string;
+  /** The BFF access token from the current session — drives the shared `UnreadCountProvider`
+   * (fetch + socket subscription for the Messages badge). Undefined when logged out or the token
+   * has expired, in which case the badge just stays empty. */
+  accessToken?: string;
+}) {
   const { requireLogin } = useAuthGate();
   // Carries the currently-selected city through to every account/static page below — without
   // it, PageHeader/Footer on those pages fall back to their own generic defaults (Bengaluru, no
@@ -18,28 +30,41 @@ export function HeaderAuthButtons({ userName, cityName }: { userName?: string | 
   const cityQuery = cityName ? `?city=${slugify(cityName)}` : "";
 
   return (
-    <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 ml-auto">
-      {/* Desktop keeps these as top-level links, where there is room for words. On a phone they
-        * move into the account menu — the same place My listings already lives — so the first
-        * row holds only identity. Both need an account anyway, so nothing is lost by putting
-        * them behind one. */}
-      <Link href={`/favourites${cityQuery}`} className="hidden sm:inline-block text-text text-sm font-bold whitespace-nowrap">
-        <Icon name="heart" /> Favourites
-      </Link>
-      <Link href={`/messages${cityQuery}`} className="hidden sm:inline-block text-text text-sm font-bold whitespace-nowrap">
-        <Icon name="message" /> Messages
-      </Link>
-      {userName ? (
-        <AccountMenu userName={userName} cityQuery={cityQuery} />
-      ) : (
-        <button
-          onClick={() => requireLogin()}
-          className="bg-transparent border-0 text-text text-sm font-bold cursor-pointer whitespace-nowrap"
-        >
-          Login
-        </button>
-      )}
-    </div>
+    <UnreadCountProvider accessToken={accessToken}>
+      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 ml-auto">
+        {/* Desktop keeps these as top-level links, where there is room for words. On a phone they
+          * move into the account menu — the same place My listings already lives — so the first
+          * row holds only identity. Both need an account anyway, so nothing is lost by putting
+          * them behind one. */}
+        <Link href={`/favourites${cityQuery}`} className="hidden sm:inline-block text-text text-sm font-bold whitespace-nowrap">
+          <Icon name="heart" /> Favourites
+        </Link>
+        <MessagesNavItem
+          href={`/messages${cityQuery}`}
+          className="hidden sm:inline-block text-text text-sm font-bold whitespace-nowrap"
+        />
+        {/* Phone only: the labelled Messages link lives in the account menu below, where a badge
+          * would be invisible behind a closed dropdown — so the count rides on this
+          * always-visible icon in the identity row instead. */}
+        {userName && (
+          <MessagesNavItem
+            href={`/messages${cityQuery}`}
+            showLabel={false}
+            className="sm:hidden text-text inline-flex items-center"
+          />
+        )}
+        {userName ? (
+          <AccountMenu userName={userName} cityQuery={cityQuery} />
+        ) : (
+          <button
+            onClick={() => requireLogin()}
+            className="bg-transparent border-0 text-text text-sm font-bold cursor-pointer whitespace-nowrap"
+          >
+            Login
+          </button>
+        )}
+      </div>
+    </UnreadCountProvider>
   );
 }
 
@@ -74,9 +99,11 @@ function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: str
           <Link href={`/favourites${cityQuery}`} onClick={() => setOpen(false)} className={`${menuItemClass} sm:hidden`}>
             <Icon name="heart" /> Favourites
           </Link>
-          <Link href={`/messages${cityQuery}`} onClick={() => setOpen(false)} className={`${menuItemClass} sm:hidden`}>
-            <Icon name="message" /> Messages
-          </Link>
+          <MessagesNavItem
+            href={`/messages${cityQuery}`}
+            onNavigate={() => setOpen(false)}
+            className={`${menuItemClass} sm:hidden`}
+          />
           <Link href={`/my-listings${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
             My listings
           </Link>
