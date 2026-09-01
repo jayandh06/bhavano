@@ -1,0 +1,3 @@
+Hi {{name}},
+
+Your Bhavano listing "{{title}}" will expire on {{expiryDate}} ({{daysLeft}} from now). After that it will stop appearing in search and your listing slot will free up.

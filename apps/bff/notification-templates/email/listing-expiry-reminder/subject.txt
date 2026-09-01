@@ -1,0 +1,1 @@
+Your listing "{{title}}" expires in {{daysLeft}}

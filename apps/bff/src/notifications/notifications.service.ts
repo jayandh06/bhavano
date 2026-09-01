@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ListingDetailDto } from '@bhavano/types';
 import { buildListingPath } from '@bhavano/types/listingPath';
-import { Msg91Provider } from './providers/msg91.provider';
 import { WhatsappProvider } from './providers/whatsapp.provider';
 import { EmailProvider } from './providers/email.provider';
 import { renderEmail } from './emailLayout';
@@ -17,16 +16,18 @@ interface NotifiableUser {
 export class NotificationsService {
   constructor(
     private readonly emailProvider: EmailProvider,
-    private readonly msg91: Msg91Provider,
     private readonly whatsapp: WhatsappProvider,
     private readonly config: ConfigService,
   ) {}
 
+  /** No WhatsApp template exists yet for a moderation notice — see `dispatchEmailPreferWhatsapp`'s
+   * own comment on what an absent `whatsapp` argument means. A phone-only owner gets nothing
+   * until one is built and approved. */
   async notifyListingFlagged(
     user: NotifiableUser,
     listing: ListingDetailDto,
     message: string,
-  ): Promise<void> {
+  ): Promise<'email' | 'whatsapp' | null> {
     const subject = `Action needed: your listing "${listing.title}" has been taken offline`;
     const body =
       `Hi, one of your listings ("${listing.title}") has been taken offline by a Bhavano moderator:\n\n` +
@@ -34,61 +35,66 @@ export class NotificationsService {
       `Please review and update your listing, then it will be reviewed again. ` +
       `You can reply to the moderator directly from the Messages section of your account.`;
 
-    await this.dispatch(user, subject, body);
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
   }
 
+  /** See `notifyListingFlagged`'s comment on the missing WhatsApp template. */
   async notifyListingApproved(
     user: NotifiableUser,
     listing: ListingDetailDto,
-  ): Promise<void> {
+  ): Promise<'email' | 'whatsapp' | null> {
     const subject = `Your listing "${listing.title}" is live again`;
     const body = `Good news — your listing "${listing.title}" has been reviewed and is live again on Bhavano.`;
 
-    await this.dispatch(user, subject, body);
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
   }
 
   /** A boost perk, not a universal notification — see ListingsService.toggleFavourite, which
    * only fires this while the listing is currently boosted. Unboosted listings can rack up many
    * casual likes with no real intent behind most of them; boosted ads are a much smaller, more
-   * engaged set where "someone just liked your ad" is a meaningful, non-spammy signal. */
+   * engaged set where "someone just liked your ad" is a meaningful, non-spammy signal.
+   *
+   * No WhatsApp template exists yet — see `notifyListingFlagged`'s comment. */
   async notifyListingLiked(
     user: NotifiableUser,
     listingTitle: string,
     likerName: string,
-  ): Promise<void> {
+  ): Promise<'email' | 'whatsapp' | null> {
     const subject = `${likerName} liked your boosted ad`;
     const body = `${likerName} just added your listing "${listingTitle}" to their favourites on Bhavano.`;
 
-    await this.dispatch(user, subject, body);
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
   }
 
   /** Bhavano Plus's early-access alerts — the proactive counterpart to a buyer having to keep
-   * re-checking browse pages themselves. See SavedSearchesService.notifyMatchingBuyers. */
+   * re-checking browse pages themselves. See SavedSearchesService.notifyMatchingBuyers.
+   *
+   * No WhatsApp template exists yet — see `notifyListingFlagged`'s comment. */
   async notifySavedSearchMatch(
     user: NotifiableUser,
     listingTitle: string,
     savedSearchName: string,
-  ): Promise<void> {
+  ): Promise<'email' | 'whatsapp' | null> {
     const subject = `New match for your saved search "${savedSearchName}"`;
     const body =
       `A new listing just went up matching your saved search "${savedSearchName}": "${listingTitle}". ` +
       `Check it out on Bhavano before anyone else does.`;
 
-    await this.dispatch(user, subject, body);
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
   }
 
   /** Fired once, on a user's first-ever login (see AuthService.verifyOtp/loginWithGoogle) —
    * across whichever of email/phone the user has on file, since a phone-OTP signup has no
-   * email and a Google signup has no phone. */
+   * email and a Google signup has no phone. Used to fire email + SMS + WhatsApp simultaneously
+   * for anyone with all three on file; now email else WhatsApp like everything else in this file
+   * (see `dispatchEmailPreferWhatsapp`). */
   async notifyWelcome(user: {
     name: string | null;
     email: string | null;
     phone: string | null;
-  }): Promise<void> {
-    const greeting = user.name ? `Hi ${user.name}` : 'Hi';
+  }): Promise<'email' | 'whatsapp' | null> {
     const site =
       this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
-    const smsBody = `${greeting}, welcome to Bhavano! Browse verified listings or post your own ad — all free.`;
     const welcomeTemplate = this.config.get<string>(
       'WHATSAPP_WELCOME_TEMPLATE',
     );
@@ -114,88 +120,117 @@ export class NotificationsService {
     // The text/plain part is not an afterthought: spam filters read it, and some clients show it
     // instead of the HTML. It carries the same call to action as a bare URL, since a link with
     // nothing to hang an href on is useless there.
-    const emailBody =
+    const text =
       paragraphs.join('\n\n') +
       (buttonLabel ? `\n\n${buttonLabel}: ${site}/post` : '');
 
-    await Promise.all([
-      user.email
-        ? this.emailProvider.send(
-            user.email,
-            renderTemplate(tpl.subject, vars),
-            emailBody,
-            { html },
-          )
-        : Promise.resolve(),
-      user.phone
-        ? this.msg91.sendTransactionalSms(user.phone, smsBody)
-        : Promise.resolve(),
-      // Meta's Cloud API directly (see WhatsappProvider). The variable is the name alone, not
-      // the "Hi <name>" greeting used above: the approved template supplies its own wording
-      // around it, so passing a greeting would render "Welcome to Bhavano, Hi Ravi!".
-      user.phone && welcomeTemplate
-        ? this.whatsapp.sendTemplate(user.phone, welcomeTemplate, [
-            user.name ?? 'there',
-          ])
-        : Promise.resolve(),
-    ]);
+    return this.dispatchEmailPreferWhatsapp(
+      user,
+      { subject: renderTemplate(tpl.subject, vars), text, html },
+      // welcome_signup was submitted with positional {{1}}, not named — an array, not the
+      // {name: ...} object listing_posted_v2 takes. The variable is the name alone, not a
+      // "Hi <name>" greeting, since the approved template supplies its own wording around it.
+      welcomeTemplate
+        ? { template: welcomeTemplate, params: [user.name ?? 'there'] }
+        : undefined,
+    );
   }
 
-  /** Listing expiry reminder — email when the user has one; SMS only when email is missing. */
+  /** Listing expiry reminder — email if the user has one, else WhatsApp once a template exists
+   * for this (none does yet — see `notifyListingFlagged`'s comment on what that means). Fired by
+   * `ListingExpiryReminderJob`, which already logs to `ListingNotificationLog` itself on a
+   * successful send — that part predates this refactor and is untouched. */
   async notifyListingExpiryReminder(
     user: NotifiableUser & { name?: string | null },
     listingTitle: string,
     expiresAt: Date,
     daysLeft: number,
-  ): Promise<'email' | 'sms' | null> {
-    const siteUrl =
-      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://bhavano.com';
+  ): Promise<'email' | 'whatsapp' | null> {
+    const site =
+      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
     const expiryDate = expiresAt.toLocaleDateString('en-IN', {
       dateStyle: 'medium',
     });
-    const subject = `Your listing "${listingTitle}" expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
-    const body =
-      `${user.name ? `Hi ${user.name}` : 'Hi'},\n\n` +
-      `Your Bhavano listing "${listingTitle}" will expire on ${expiryDate} ` +
-      `(${daysLeft} day${daysLeft === 1 ? '' : 's'} from now). After that it will stop appearing in search and your listing slot will free up.\n\n` +
-      `Manage your ads: ${siteUrl}/my-listings\n\n` +
-      `— Team Bhavano`;
-    const smsBody = `Bhavano: "${listingTitle}" expires in ${daysLeft}d (${expiryDate}). Manage: ${siteUrl}/my-listings`;
+    // Pluralised here, once, rather than inside the template — {{}} substitution is plain string
+    // replacement with no conditional logic, so "1 day" vs "7 days" has to arrive as one already-
+    // correct value.
+    const daysLeftText = `${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
 
-    return this.dispatchEmailPreferSms(user, subject, body, smsBody);
+    const tpl = loadTemplate('email/listing-expiry-reminder');
+    const vars = {
+      name: user.name ?? 'there',
+      title: listingTitle,
+      expiryDate,
+      daysLeft: daysLeftText,
+    };
+    const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel
+      ? renderTemplate(tpl.buttonLabel, vars)
+      : undefined;
+    const link = `${site}/my-listings`;
+    const html = renderEmail({
+      heading: renderTemplate(tpl.heading, vars),
+      preheader: renderTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+    });
+    const text =
+      `${paragraphs.join('\n\n')}\n\n` +
+      (buttonLabel ? `${buttonLabel}: ${link}` : link);
+
+    return this.dispatchEmailPreferWhatsapp(user, {
+      subject: renderTemplate(tpl.subject, vars),
+      text,
+      html,
+    });
   }
 
-  /** Email if available; otherwise SMS (no duplicate SMS when email exists). */
-  private async dispatchEmailPreferSms(
+  /**
+   * The one channel rule every notification in this file now shares: email if the user has one,
+   * else WhatsApp, never both, never SMS. See
+   * docs/plans/notification-delivery-tracking-and-engagement-alerts.md for why — short version,
+   * SMS is reserved for `AuthService.sendOtp` alone from here on, and this replaces both
+   * `dispatch` (email + SMS together) and `dispatchEmailPreferSms` (email else SMS), which this
+   * file no longer has any use for.
+   *
+   * `whatsapp` is optional, and its absence is not an oversight to fix later per call site — it
+   * means no approved WhatsApp template exists yet for that notification. Every method below that
+   * omits it says so in its own comment. A phone-only user gets nothing from those until one is
+   * built (mirroring `notifyListingPosted`'s already-accepted trade for the same reason), which is
+   * a real, known gap this refactor introduces for four notifications that used to reach SMS.
+   *
+   * Reports which channel actually delivered rather than which was merely attempted — the caller
+   * uses this to write a `ListingNotificationLog`/`UserNotificationLog` row, so an unattempted or
+   * failed send must not be reported as a success.
+   */
+  private async dispatchEmailPreferWhatsapp(
     user: NotifiableUser,
-    subject: string,
-    emailBody: string,
-    smsBody: string,
-  ): Promise<'email' | 'sms' | null> {
+    email: { subject: string; text: string; html?: string },
+    whatsapp?: {
+      template: string;
+      params: string[] | Record<string, string>;
+      buttonUrlSuffix?: string;
+    },
+  ): Promise<'email' | 'whatsapp' | null> {
     if (user.email) {
-      await this.emailProvider.send(user.email, subject, emailBody);
-      return 'email';
+      const sent = await this.emailProvider.send(
+        user.email,
+        email.subject,
+        email.text,
+        email.html ? { html: email.html } : undefined,
+      );
+      return sent ? 'email' : null;
     }
-    if (user.phone) {
-      await this.msg91.sendTransactionalSms(user.phone, smsBody);
-      return 'sms';
+    if (user.phone && whatsapp) {
+      const sent = await this.whatsapp.sendTemplate(
+        user.phone,
+        whatsapp.template,
+        whatsapp.params,
+        whatsapp.buttonUrlSuffix,
+      );
+      return sent ? 'whatsapp' : null;
     }
     return null;
-  }
-
-  private async dispatch(
-    user: NotifiableUser,
-    subject: string,
-    body: string,
-  ): Promise<void> {
-    await Promise.all([
-      user.email
-        ? this.emailProvider.send(user.email, subject, body)
-        : Promise.resolve(),
-      user.phone
-        ? this.msg91.sendTransactionalSms(user.phone, body)
-        : Promise.resolve(),
-    ]);
   }
 
   /**
