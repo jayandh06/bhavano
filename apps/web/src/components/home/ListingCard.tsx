@@ -138,13 +138,13 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
           </div>
           {/* Hidden on your own listing — the same reason as on the detail page, and more
             * visible here since a seller scrolling their own city sees the card among everyone
-            * else's. Light green rather than filled: sharing a row with the view/like counts,
-            * a solid button the same weight as before would visually shout over them — this
-            * keeps Contact owner readable as a button without drowning out what sits beside it. */}
+            * else's. Same filled bg-green/text-on-green treatment as the search button and
+            * Header's "Post free ad" — kept small (same px-3/py-1.5/text-[12.5px] as before)
+            * so it still shares the row with the view/like counts instead of taking it over. */}
           {!item.isOwner && (
             <button
               onClick={onContactOwner}
-              className="flex items-center gap-1.5 bg-green/10 text-green border-none rounded-lg px-3 py-1.5 text-[12.5px] font-bold cursor-pointer whitespace-nowrap transition-colors hover:bg-green/15"
+              className="flex items-center gap-1.5 bg-green text-on-green border-none rounded-lg px-3 py-1.5 text-[12.5px] font-bold cursor-pointer whitespace-nowrap"
             >
               <Icon name="message" />
               Contact owner
