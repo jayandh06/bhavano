@@ -1,5 +1,11 @@
 # Do we know what we sent, and should views/likes notify owners in real time?
 
+> **Status: implemented.** Every `notify*` method in `NotificationsService` now dispatches
+> email-else-WhatsApp (never both, no SMS) and returns which channel actually delivered; every
+> call site logs that result to `ListingNotificationLog` or `UserNotificationLog`. See commits
+> `f381826`, `3b35806`, `60e83da`. The correction below (originally about `ListingNotificationLog`
+> being unused) is left in place as a record of the mistake, not as still-open work.
+
 ## Direct answer to "do we track this today"
 
 **No, not reliably, for any of it.** Three separate findings:
@@ -65,12 +71,15 @@ model ListingNotificationLog {
 }
 ```
 
-— shaped exactly for "was this kind of notification sent for this listing, and how." It has
-**zero references anywhere in application code.** Someone built this table anticipating this
-need and nothing was ever wired to it — not `notifyListingExpiryReminder`, which is the
-notification whose own repeat-prevention logic (`@@unique([listingId, kind])`) this most obviously
-matches, and not the `notifyListingPosted` work from last session, which duplicated the
-same problem this table already solves.
+— shaped exactly for "was this kind of notification sent for this listing, and how."
+
+**Correction:** an earlier version of this document claimed this table had "zero references
+anywhere in application code." That was wrong — a grep for the PascalCase model name
+`ListingNotificationLog` missed the camelCase Prisma delegate `this.prisma.listingNotificationLog`
+that `ListingExpiryReminderJob` already used correctly, both to write a row after a successful
+send and to query `notificationLogs: { none: { kind } }` before sending again. So the table
+wasn't unused — it just wasn't wired into anything *other than* the expiry-reminder job, which is
+what this plan (now implemented) extended to every other notification.
 
 ## What you're actually asking for, part two: like/view notifications for paid advertisers
 
