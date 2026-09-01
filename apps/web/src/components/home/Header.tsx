@@ -84,70 +84,21 @@ export function Header({
 
       {/* Lifted off the page instead of sharing its cream and being cut off by a 1px line.
         *
-        * Solid `surface` (crisp white in light, the raised panel colour in dark) at every size,
-        * plus a shadow that widens and softens from sm up — no backdrop blur (it janked a tall
-        * sticky bar scrolling over an image-heavy list on low-end Android, and was hard to tell
-        * apart from plain flatness at a glance anyway).
+        * Phones: a solid `surface` (crisp white in light, the raised panel colour in dark) plus a
+        * tight shadow — no backdrop blur, which is the usual cause of scroll jank on a tall
+        * sticky bar over an image-heavy list on low-end Android.
         *
-        * sm and up only get the decorative wash below: a soft gold gradient anchored at the
-        * horizontal centre of the screen and fading out toward both edges, with a low-opacity
-        * skyline silhouette underneath it for texture. Skipped on phones, where the header is
-        * narrow enough that the effect would just read as noise behind the logo. */}
-      <header className="relative overflow-hidden bg-surface shadow-[0_1px_0_rgba(0,0,0,0.05),0_6px_16px_-8px_rgba(11,61,46,0.18)] sm:shadow-[0_1px_0_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(11,61,46,0.16)] sticky top-0 z-40">
-        <div aria-hidden className="hidden sm:block absolute inset-0 pointer-events-none">
-          {/* Brand-toned line art, not a photo — there is no existing header/hero image asset in
-            * the repo to reuse, and a skyline silhouette reads as "property" without competing
-            * with real listing photos elsewhere on the page. `preserveAspectRatio="none"` lets it
-            * stretch to whatever width the header actually is rather than cropping. */}
-          <svg
-            className="absolute inset-0 h-full w-full text-green opacity-[0.05]"
-            viewBox="0 0 1440 100"
-            preserveAspectRatio="none"
-            fill="currentColor"
-          >
-            <rect x="0" y="66" width="48" height="34" />
-            <rect x="48" y="48" width="36" height="52" />
-            <rect x="64" y="34" width="4" height="14" />
-            <rect x="90" y="72" width="54" height="28" />
-            <rect x="150" y="56" width="40" height="44" />
-            <rect x="196" y="40" width="60" height="60" />
-            <rect x="262" y="78" width="34" height="22" />
-            <rect x="302" y="62" width="48" height="38" />
-            <rect x="356" y="50" width="56" height="50" />
-            <rect x="418" y="80" width="30" height="20" />
-            <rect x="454" y="54" width="44" height="46" />
-            <rect x="474" y="42" width="4" height="12" />
-            <rect x="504" y="68" width="60" height="32" />
-            <rect x="570" y="46" width="40" height="54" />
-            <rect x="616" y="74" width="50" height="26" />
-            <rect x="672" y="58" width="36" height="42" />
-            <rect x="720" y="66" width="48" height="34" />
-            <rect x="768" y="48" width="36" height="52" />
-            <rect x="784" y="34" width="4" height="14" />
-            <rect x="810" y="72" width="54" height="28" />
-            <rect x="870" y="56" width="40" height="44" />
-            <rect x="916" y="40" width="60" height="60" />
-            <rect x="982" y="78" width="34" height="22" />
-            <rect x="1022" y="62" width="48" height="38" />
-            <rect x="1076" y="50" width="56" height="50" />
-            <rect x="1138" y="80" width="30" height="20" />
-            <rect x="1174" y="54" width="44" height="46" />
-            <rect x="1194" y="42" width="4" height="12" />
-            <rect x="1224" y="68" width="60" height="32" />
-            <rect x="1290" y="46" width="40" height="54" />
-            <rect x="1336" y="74" width="50" height="26" />
-            <rect x="1392" y="58" width="36" height="42" />
-          </svg>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold/10 to-transparent" />
-        </div>
-
+        * sm and up: the panel goes translucent with a light blur, so content dissolves softly as
+        * it scrolls under, and the shadow widens and softens. `color-mix`/`backdrop-filter` are
+        * both universally supported now; a browser without them just keeps the opaque `surface`. */}
+      <header className="bg-surface sm:bg-surface/80 sm:backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.05),0_6px_16px_-8px_rgba(11,61,46,0.18)] sm:shadow-[0_1px_0_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(11,61,46,0.16)] sticky top-0 z-40">
         {/* Two explicit rows. The first is identity — logo and account — and the second is what
           * a visitor acts on. This started as one row that wrapped on a phone, which worked but
           * left the layout dependent on how the widths happened to add up; stating the rows means
           * desktop and phone differ only in what each row holds, not in how it is built. The
           * original single row summed to roughly twice a 360px viewport and pushed the page into
           * horizontal scroll, which is what made everything else look misaligned. */}
-        <div className="relative max-w-[1280px] mx-auto px-4 sm:px-8">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
           <div className="flex items-center gap-3 py-2.5 sm:py-3">
             <Link href="/" className="flex items-center gap-2.5 shrink-0">
               <Image src="/logo.png" alt="" width={38} height={38} className="rounded-[10px] w-8 h-8 sm:w-[38px] sm:h-[38px]" priority />
@@ -196,7 +147,7 @@ export function Header({
           </div>
         </div>
 
-        <div className="relative max-w-[1280px] mx-auto px-4 sm:px-8">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
           <Suspense>
             <CategoryTabs active={activeCategory} cityName={cityName} />
           </Suspense>
