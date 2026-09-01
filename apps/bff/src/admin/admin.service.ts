@@ -64,7 +64,14 @@ export class AdminService {
     await this.messagingService.sendMessage(thread.id, adminId, message);
 
     const owner = await this.getListingOwner(id);
-    if (owner) await this.notificationsService.notifyListingFlagged(owner, listing, message);
+    if (owner) {
+      const channel = await this.notificationsService.notifyListingFlagged(owner, listing, message);
+      if (channel) {
+        await this.prisma.listingNotificationLog.create({
+          data: { listingId: id, kind: 'flagged', channel },
+        });
+      }
+    }
 
     return listing;
   }
@@ -75,7 +82,14 @@ export class AdminService {
     await this.messagingService.sendMessage(thread.id, adminId, APPROVED_MESSAGE);
 
     const owner = await this.getListingOwner(id);
-    if (owner) await this.notificationsService.notifyListingApproved(owner, listing);
+    if (owner) {
+      const channel = await this.notificationsService.notifyListingApproved(owner, listing);
+      if (channel) {
+        await this.prisma.listingNotificationLog.create({
+          data: { listingId: id, kind: 'approved', channel },
+        });
+      }
+    }
 
     return listing;
   }

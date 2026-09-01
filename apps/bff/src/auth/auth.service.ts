@@ -235,7 +235,12 @@ export class AuthService {
       where: { id: user.id },
       data: { welcomedAt: new Date() },
     });
-    void this.notificationsService.notifyWelcome(user);
+    void this.notificationsService.notifyWelcome(user).then((channel) => {
+      if (!channel) return;
+      return this.prisma.userNotificationLog.create({
+        data: { userId: user.id, kind: 'welcome', channel },
+      });
+    });
   }
 
   /** Best-effort, fire-and-forget: attaches the now-known user to the anonymous Visit row logged

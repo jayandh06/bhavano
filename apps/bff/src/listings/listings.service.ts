@@ -605,6 +605,12 @@ export class ListingsService {
         area: listing.area.name,
         title: listing.title,
       })
+      .then((channel) => {
+        if (!channel) return;
+        return this.prisma.listingNotificationLog.create({
+          data: { listingId: listing.id, kind: 'posted', channel },
+        });
+      })
       .catch(() => undefined);
 
     return this.toDetailDto(listing, undefined, true);
@@ -985,15 +991,19 @@ export class ListingsService {
     // more engaged set where this is a meaningful signal instead of notification noise.
     const isBoosted = (listing.boostedUntil?.getTime() ?? 0) > Date.now();
     if (isBoosted && listing.ownerId !== userId) {
-      this.notifyOwnerOfLike(listing.ownerId, userId, listing.title).catch(
-        () => undefined,
-      );
+      this.notifyOwnerOfLike(
+        listingId,
+        listing.ownerId,
+        userId,
+        listing.title,
+      ).catch(() => undefined);
     }
 
     return { favourited: true, likeCount: listing.likeCount };
   }
 
   private async notifyOwnerOfLike(
+    listingId: string,
     ownerId: string,
     likerId: string,
     listingTitle: string,
@@ -1009,11 +1019,20 @@ export class ListingsService {
       }),
     ]);
     if (!owner) return;
-    await this.notificationsService.notifyListingLiked(
+    const channel = await this.notificationsService.notifyListingLiked(
       owner,
       listingTitle,
       liker?.name ?? 'Someone',
     );
+    // Deliberately not gated on "has this listing ever logged a 'liked' row before" — unlike
+    // the one-shot kinds, this one is meant to accumulate: one row per person who likes it,
+    // for as long as it stays boosted. See ListingNotificationLog's own comment on why it isn't
+    // unique on (listingId, kind) any more.
+    if (channel) {
+      await this.prisma.listingNotificationLog.create({
+        data: { listingId, kind: 'liked', channel },
+      });
+    }
   }
 
   async listFavourites(userId: string): Promise<ListingCardDto[]> {

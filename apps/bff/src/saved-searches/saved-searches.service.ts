@@ -97,7 +97,12 @@ export class SavedSearchesService {
 
     await Promise.all(
       matches.map(async (s) => {
-        await this.notificationsService.notifySavedSearchMatch(s.user, listing.title, s.name);
+        const channel = await this.notificationsService.notifySavedSearchMatch(s.user, listing.title, s.name);
+        if (channel) {
+          await this.prisma.listingNotificationLog.create({
+            data: { listingId: listing.id, kind: 'saved_search_match', channel },
+          });
+        }
         await this.prisma.savedSearch.update({ where: { id: s.id }, data: { lastNotifiedAt: new Date() } });
       }),
     );
