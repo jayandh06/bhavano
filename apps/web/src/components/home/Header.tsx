@@ -42,7 +42,11 @@ export function Header({
 }) {
   return (
     <>
-      <div className="bg-green text-on-green text-[13px] py-1.5">
+      {/* The strip keeps its solid green, with a faint left-to-right sheen (translucent stops, so
+        * it works on the mint green the dark theme swaps in too) and a hairline of the gold
+        * accent under it — enough to make the one coloured band read as considered rather than a
+        * flat block, at any width. */}
+      <div className="bg-green bg-[linear-gradient(90deg,rgba(255,255,255,0.06),transparent_45%,rgba(0,0,0,0.07))] border-b border-gold/25 text-on-green text-[13px] py-1.5">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 sm:gap-0">
           {/* Hidden on phones, where it cost a whole line of a small screen to say something a
             * visitor who just tapped an ad does not need. Deliberately `hidden` rather than
@@ -78,7 +82,16 @@ export function Header({
         </div>
       </div>
 
-      <header className="bg-bg border-b border-border sticky top-0 z-40">
+      {/* Lifted off the page instead of sharing its cream and being cut off by a 1px line.
+        *
+        * Phones: a solid `surface` (crisp white in light, the raised panel colour in dark) plus a
+        * tight shadow — no backdrop blur, which is the usual cause of scroll jank on a tall
+        * sticky bar over an image-heavy list on low-end Android.
+        *
+        * sm and up: the panel goes translucent with a light blur, so content dissolves softly as
+        * it scrolls under, and the shadow widens and softens. `color-mix`/`backdrop-filter` are
+        * both universally supported now; a browser without them just keeps the opaque `surface`. */}
+      <header className="bg-surface sm:bg-surface/80 sm:backdrop-blur-md shadow-[0_1px_0_rgba(0,0,0,0.05),0_6px_16px_-8px_rgba(11,61,46,0.18)] sm:shadow-[0_1px_0_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(11,61,46,0.16)] sticky top-0 z-40">
         {/* Two explicit rows. The first is identity — logo and account — and the second is what
           * a visitor acts on. This started as one row that wrapped on a phone, which worked but
           * left the layout dependent on how the widths happened to add up; stating the rows means
