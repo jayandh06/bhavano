@@ -68,14 +68,13 @@ export interface SegmentQuery {
   serviceType?: string;
 }
 
-/** The URL grammar's top-level segment — groups the 4 real `TransactionType` values the same
- * way the homepage's tabs already do (buy+sell, rent+lease), so `/city/buy/...` reads naturally
- * instead of exposing the raw enum. */
-export type TransactionGroup = "buy" | "rent-lease";
-
-export function transactionGroupFor(t: TransactionType): TransactionGroup {
-  return t === "buy" || t === "sell" ? "buy" : "rent-lease";
-}
+// Moved to @bhavano/types/listingPath — the BFF needs buildListingPath (see
+// notifications.service.ts's notifyListingPosted) and buildListingPath needs
+// transactionGroupFor, so both live where both apps can reach them now. Re-exported here so
+// every existing `from "@/lib/seoRoute"` import in this app keeps working unchanged.
+export type { TransactionGroup } from "@bhavano/types/listingPath";
+export { transactionGroupFor } from "@bhavano/types/listingPath";
+import type { TransactionGroup } from "@bhavano/types/listingPath";
 
 export function isTransactionGroup(value: string): value is TransactionGroup {
   return value === "buy" || value === "rent-lease";

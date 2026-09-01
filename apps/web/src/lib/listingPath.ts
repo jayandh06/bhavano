@@ -1,15 +1,11 @@
 import { slugify } from "@bhavano/types/slugify";
-import type { ListingCardDto, ListingCategory } from "@bhavano/types";
-import { buildFacetSlug, categoryGroupsFor, transactionGroupFor, type TransactionGroup } from "./seoRoute";
+import type { ListingCategory } from "@bhavano/types";
+import { buildFacetSlug, categoryGroupsFor, type TransactionGroup } from "./seoRoute";
 
-/** Canonical SEO path for a listing: /{city}/{locality}/{transactionGroup}/{category}/{slug}-{id}.
- * Built entirely from card/detail DTO fields already in hand — no extra fetch needed. Facet
- * (bedroom count/sharing type/condition/service type) is a browse-level filter, not encoded in
- * an individual listing's own canonical URL — see `buildBrowsePath` for that. */
-export function buildListingPath(item: Pick<ListingCardDto, "id" | "slug" | "category" | "transactionType" | "cityName" | "area">): string {
-  const group = transactionGroupFor(item.transactionType);
-  return `/${slugify(item.cityName)}/${slugify(item.area)}/${group}/${item.category}/${item.slug}-${item.id}`;
-}
+// Moved to @bhavano/types/listingPath so the BFF can build a listing's URL too (see
+// NotificationsService.notifyListingPosted) — re-exported here so every existing
+// `from "@/lib/listingPath"` import in this app keeps working unchanged.
+export { buildListingPath } from "@bhavano/types/listingPath";
 
 /** Browse-landing path: /{city}[/{locality}][/{transactionGroup}[/{category}[/{facet}]]] —
  * area sits right after the city (so /{city}/{locality} is a real landing page on its own),

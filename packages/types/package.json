@@ -17,6 +17,10 @@
       "types": "./dist/cardSpecs.d.ts",
       "default": "./dist/cardSpecs.js"
     },
+    "./listingPath": {
+      "types": "./dist/listingPath.d.ts",
+      "default": "./dist/listingPath.js"
+    },
     "./categoryFields": {
       "types": "./dist/categoryFields.d.ts",
       "default": "./dist/categoryFields.js"
