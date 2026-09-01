@@ -35,9 +35,16 @@ function templatesRoot(): string {
   return join(process.cwd(), 'notification-templates');
 }
 
-/** Loads one notification's template folder. Throws if `subject.txt`/`preheader.txt`/
- * `heading.txt`/`body.txt` are missing — a typo'd folder name should fail loudly at the one call
- * site that uses it, not silently send a blank email. `buttonLabel.txt` alone is optional. */
+/** Loads one *email* notification's template folder — pass the path under
+ * `notification-templates/`, e.g. `"email/welcome"`. Only ever the `email/` half: the
+ * `whatsapp/` folders exist for reference and for the `whatsapp_create_*_template.py` scripts to
+ * read, never for this function — a WhatsApp send fills in an already-approved template's
+ * variables, it never renders one, so there is nothing here for this loader to do with them. See
+ * `notification-templates/README.md` for the full distinction.
+ *
+ * Throws if `subject.txt`/`preheader.txt`/`heading.txt`/`body.txt` are missing — a typo'd folder
+ * name should fail loudly at the one call site that uses it, not silently send a blank email.
+ * `buttonLabel.txt` alone is optional. */
 export function loadTemplate(name: string): NotificationTemplate {
   const subject = readField(name, 'subject.txt');
   const preheader = readField(name, 'preheader.txt');

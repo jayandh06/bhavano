@@ -88,39 +88,43 @@ export class NotificationsService {
     const greeting = user.name ? `Hi ${user.name}` : 'Hi';
     const site =
       this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
-    // The greeting lives in the heading for the HTML version and at the top of the body for the
-    // plain-text one — each medium wants it in a different place, and putting it in both is what
-    // produced "Welcome to Bhavano" as a heading followed by "and welcome to Bhavano" as the
-    // opening line.
-    const heading = user.name ? `Welcome, ${user.name}` : 'Welcome to Bhavano';
-    const paragraphs = [
-      'You can post ads free, browse listings across India, and message buyers and sellers directly — no brokerage, no middlemen.',
-      'Posting takes about two minutes, and your ad goes live straight away.',
-    ];
-    // The text/plain part is not an afterthought: spam filters read it, and some clients show it
-    // instead of the HTML. It carries the same call to action as a bare URL, since a link with
-    // nothing to hang an href on is useless there.
-    const emailBody = `${greeting},\n\n${paragraphs.join('\n\n')}\n\nPost your first ad: ${site}/post\n\n— Team Bhavano`;
     const smsBody = `${greeting}, welcome to Bhavano! Browse verified listings or post your own ad — all free.`;
     const welcomeTemplate = this.config.get<string>(
       'WHATSAPP_WELCOME_TEMPLATE',
     );
 
+    // Copy lives in apps/bff/notification-templates/email/welcome/, not here — see that folder's
+    // README. `{{name}}` falls back to "there" rather than the old "Welcome to Bhavano"/plain
+    // "Hi," special-casing for a nameless user: one substitution rule shared with
+    // notifyListingPosted rather than each notification inventing its own fallback wording.
+    const tpl = loadTemplate('email/welcome');
+    const vars = { name: user.name ?? 'there' };
+    const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel
+      ? renderTemplate(tpl.buttonLabel, vars)
+      : undefined;
+    const html = renderEmail({
+      heading: renderTemplate(tpl.heading, vars),
+      preheader: renderTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel
+        ? { label: buttonLabel, url: `${site}/post` }
+        : undefined,
+    });
+    // The text/plain part is not an afterthought: spam filters read it, and some clients show it
+    // instead of the HTML. It carries the same call to action as a bare URL, since a link with
+    // nothing to hang an href on is useless there.
+    const emailBody =
+      paragraphs.join('\n\n') +
+      (buttonLabel ? `\n\n${buttonLabel}: ${site}/post` : '');
+
     await Promise.all([
       user.email
         ? this.emailProvider.send(
             user.email,
-            'Welcome to Bhavano!',
+            renderTemplate(tpl.subject, vars),
             emailBody,
-            {
-              html: renderEmail({
-                heading,
-                preheader:
-                  'Post ads free, browse listings across India, and message buyers and sellers directly.',
-                paragraphs,
-                button: { label: 'Post your first ad', url: `${site}/post` },
-              }),
-            },
+            { html },
           )
         : Promise.resolve(),
       user.phone
@@ -231,7 +235,7 @@ export class NotificationsService {
     const vars = { name: user.name ?? 'there', title: listing.title };
 
     if (user.email) {
-      const tpl = loadTemplate('listing-posted');
+      const tpl = loadTemplate('email/listing-posted');
       const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
       const buttonLabel = tpl.buttonLabel
         ? renderTemplate(tpl.buttonLabel, vars)

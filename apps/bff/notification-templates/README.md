@@ -1,36 +1,66 @@
-# Notification email templates
+# Notification templates
 
 Plain text, one file per field, one folder per notification. Edit the wording here directly — no
-TypeScript, no rebuild required to see a change take effect (see the bind mount note below).
+TypeScript. Whether that edit takes effect immediately or needs a separate approval step depends
+entirely on which of the two folders below it's in — read that part before editing a WhatsApp one
+expecting the same immediacy as email.
 
-## Editing an existing message
+```
+email/welcome/            the first-login welcome email
+email/listing-posted/     the "your ad is live" email
+whatsapp/welcome/         the approved WhatsApp welcome template's wording
+whatsapp/listing-posted/  the approved WhatsApp "ad is live" template's wording
+```
 
-Open the folder for the notification (e.g. `listing-posted/`) and edit whichever field's text you
-want to change. Leave anything inside `{{double braces}}` exactly as it is — those are filled in
-by code with real values (a user's name, a listing's title) at send time. Everything else is your
-words, verbatim.
+## `email/` — takes effect on the next send, no rebuild or restart
 
-## Adding a new notification
+`NotificationsService` reads these files itself, at send time, via `templateLoader.ts`. On the
+live server this folder is bind-mounted from the host (see `docker-compose.prod.yml`), so editing
+a file directly on `~/bhavano/apps/bff/notification-templates/...` changes the very next email
+sent. Editing it here in git and redeploying works too, for a change you want tracked in history;
+editing the host copy directly is the faster path for a same-day wording fix, at the cost of that
+edit not being in git until someone copies it back.
 
-Create a new folder here with the same five files (`subject.txt`, `preheader.txt`, `heading.txt`,
-`body.txt`, `buttonLabel.txt` — omit `buttonLabel.txt` if the message has no button), then call
-`loadTemplate('your-folder-name')` from `NotificationsService`. `body.txt` supports multiple
-paragraphs — separate them with a blank line, the same way you'd write an email.
+Leave anything inside `{{double braces}}` exactly as it is — those are filled in with real values
+(a user's name, a listing's title) at send time. Everything else is your words, verbatim.
 
-## What lives in code, not here
+**Fields:** `subject.txt`, `preheader.txt` (the one-line summary an inbox shows beside the
+subject), `heading.txt`, `body.txt` (multiple paragraphs — separate with a blank line, same as
+writing an email), `buttonLabel.txt` (omit this file for a message with no button).
 
-The branded shell around this content — the logo, the colours, the footer's legal links — is
-`emailLayout.ts`'s job, not a template file's. These files hold only the words: what the email
-says, not how it's laid out. A button's destination URL is also code's job (it's the specific
-listing/page being linked to, computed per-send, not fixed text), even though the button's label
-is editable here.
+**Not here, and not meant to be:** the branded shell — logo, colours, the footer's legal links —
+is `emailLayout.ts`'s job. A button's destination URL is also code's job: it's a specific
+listing/page computed per-send, not fixed text, even though the button's visible label is
+editable here.
 
-## On the live server
+## `whatsapp/` — reference copy of what's *approved on Meta's servers*, not live content
 
-`docker-compose.prod.yml` bind-mounts this folder read-only into the bff container, and
-`templateLoader.ts` reads the files fresh on every send rather than caching them at boot — so an
-edit made directly on the app host (`~/bhavano/apps/bff/notification-templates/...`) takes effect
-on the very next notification, no restart needed. A change made here in git still needs the normal
-`git pull` + redeploy to reach the server the usual way; editing the host copy directly is the
-faster path for a same-day wording tweak, at the cost of that edit not being tracked until someone
-copies it back into git.
+This is the important difference. A WhatsApp message is never rendered by our own code the way an
+email is — Meta stores the approved wording on its own servers once a template is approved, and a
+send only ever fills in the template's variables ({{name}}, {{title}}, a button's link). Nothing
+in `NotificationsService` reads these files at send time.
+
+**Editing a file here changes nothing a real user sees, on its own.** It only takes effect if you:
+
+1. Edit the file.
+2. Re-run the matching creation script (`whatsapp_create_welcome_template.py` /
+   `whatsapp_create_listing_posted_template.py` at the repo root) with `--submit`, which reads
+   these same files and submits them as a **new** template — Meta does not let you edit an
+   approved template's wording in place.
+3. Wait for Meta's review (hours to a couple of days).
+4. Update `WHATSAPP_WELCOME_TEMPLATE` / `WHATSAPP_LISTING_POSTED_TEMPLATE` in `.env` to the new
+   template's name once it's approved.
+
+Kept here anyway rather than left as constants inside the Python scripts, so all four
+notifications' wording lives in one place someone can review together, and so the two scripts
+don't each hold their own copy that could quietly say something different from what's in git.
+
+**Fields:** `header.txt` (plain text only — Meta rejects a header carrying an emoji, newline, or
+markdown formatting; the body has no such restriction), `body.txt`, `footer.txt`, `buttonLabel.txt`
+and, for a template with a dynamic link, `buttonUrlBase.txt` (the fixed prefix) and
+`buttonUrlExample.txt` (a realistic full example Meta's review requires).
+
+`whatsapp/welcome/body.txt` uses positional `{{1}}` rather than `{{name}}` — that template was
+submitted before this convention existed and Meta does not allow converting a template between
+positional and named after submission. A resubmission under a new name could switch it; editing
+this file to say `{{name}}` without also resubmitting would not.

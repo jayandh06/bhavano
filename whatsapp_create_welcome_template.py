@@ -19,6 +19,8 @@ variables" is its own comment about the body, and it has no header-parameter cod
 so a header WITH a variable would have nothing to fill it and Meta would reject every send.
 
 Reads apps/bff/.env or ./.env, same as whatsapp_test_send.py, so the token stays on your machine.
+The template's actual wording is read from apps/bff/notification-templates/whatsapp/welcome/ —
+edit the words there, not in this file.
 
 Run: python whatsapp_create_welcome_template.py
      python whatsapp_create_welcome_template.py --category MARKETING   (see the note below first)
@@ -50,32 +52,27 @@ LANGUAGE = os.getenv("WHATSAPP_TEMPLATE_LANGUAGE") or "en"
 
 TEMPLATE_NAME = "welcome_signup"
 
+# The actual words live in apps/bff/notification-templates/whatsapp/welcome/, not here — see
+# that folder's README for what editing one of these files does and does not do (short version:
+# nothing takes effect until this script re-submits it and Meta re-approves it). Read fresh on
+# every run rather than hardcoded, so this script and that folder cannot say different things.
+TEMPLATE_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "apps", "bff", "notification-templates", "whatsapp", "welcome",
+)
+
+
+def read_field(filename):
+    with open(os.path.join(TEMPLATE_DIR, filename), "r", encoding="utf-8") as f:
+        return f.read().strip()
+
+
 # Meta rejects a header carrying an emoji, newline, or markdown formatting (*bold*, _italic_) —
 # "Header format is incorrect" is the exact error a submission with one gets. That restriction is
 # header-only: the body below keeps its emoji freely.
-HEADER_TEXT = "Welcome to Bhavano — India's Property Marketplace"
-
-BODY_TEXT = """Hi {{1}},
-
-Thank you for signing up with Bhavano! We're thrilled to have you join thousands of buyers, sellers, and agents connecting across India.
-
-Here's what you can do right away:
-
-\U0001F3E0 Post your first ad — completely free
-\U0001F50D Browse verified listings in your city and beyond
-\U0001F4AC Message buyers or sellers directly, no middlemen
-\U0001F4CD Reach a growing community of real estate seekers pan-India
-
-Getting started takes less than 2 minutes. The sooner you post, the sooner buyers can find you.
-
-\U0001F449 Post your first ad now: bhavano.com/post
-
-If you have any questions, we're just a message away.
-
-Welcome aboard!
-Team Bhavano"""
-
-FOOTER_TEXT = "Bhavano.com — Buy. Sell. Connect. Anywhere in India."
+HEADER_TEXT = read_field("header.txt")
+BODY_TEXT = read_field("body.txt")
+FOOTER_TEXT = read_field("footer.txt")
 
 # Meta's own limits — checked here so a typo gets caught before a rejected submission costs a
 # review cycle, which is usually a day.
