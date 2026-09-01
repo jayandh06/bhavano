@@ -199,6 +199,12 @@ model User {
   conversationsAsInquirer Conversation[] @relation("ConversationInquirer")
   messages              Message[]
   loginEvents           LoginEvent[]
+  /** Send log for notifications with no listing to attach to — today, just "welcome". See
+   * `ListingNotificationLog` for the listing-scoped equivalent; kept as a separate table rather
+   * than one shared table with an optional listingId, since that would have meant touching
+   * ListingNotificationLog's existing, already-working callers (the expiry-reminder job) to widen
+   * its shape for a case that doesn't need it. */
+  notificationLogs      UserNotificationLog[]
   payments              Payment[]
   subscriptions         UserSubscription[]
   savedSearches         SavedSearch[]
@@ -635,7 +641,16 @@ model ListingRenewal {
   @@index([listingId])
 }
 
-/** Idempotent send log for listing expiry reminders (7d / 1d before expiresAt). */
+/** Send log for every listing-scoped notification — "posted", "liked", "expiry_reminder_7d",
+ * "expiry_reminder_1d", and so on; `kind` is a plain string rather than an enum so a new
+ * notification type never needs a migration to log through here.
+ *
+ * Not unique on (listingId, kind): a one-shot kind (posted, either expiry reminder) naturally
+ * ends up with a single row because nothing re-triggers it, but a recurring one (liked — once per
+ * person who favourites a boosted listing) needs to log every occurrence. The expiry-reminder
+ * job's own "have I already sent this" check (`notificationLogs: { none: { kind } }`) works
+ * identically either way, since it looks for existing rows rather than relying on the database to
+ * enforce there being at most one. */
 model ListingNotificationLog {
   id        String   @id @default(cuid())
   listingId String
@@ -644,7 +659,23 @@ model ListingNotificationLog {
   channel   String
   sentAt    DateTime @default(now())
 
-  @@unique([listingId, kind])
+  @@index([listingId, kind])
+  @@index([sentAt])
+}
+
+/** `ListingNotificationLog`'s counterpart for a notification with no listing — today, just
+ * "welcome". Not unique on (userId, kind): "welcome" is genuinely one-shot in practice, gated by
+ * `User.welcomedAt` before this ever gets a chance to run, but nothing here assumes that stays
+ * true forever the way a DB constraint would. */
+model UserNotificationLog {
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind    String
+  channel String
+  sentAt  DateTime @default(now())
+
+  @@index([userId, kind])
   @@index([sentAt])
 }
 
