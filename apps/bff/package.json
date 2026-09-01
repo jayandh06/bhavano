@@ -24,7 +24,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:seed:cities": "tsx prisma/seedCities.ts",
-    "prisma:seed:demo-listings": "tsx prisma/seedDemoListings.ts"
+    "prisma:seed:demo-listings": "tsx prisma/seedDemoListings.ts",
+    "backfill:visit-geoip": "tsx prisma/backfillVisitGeoIp.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",
@@ -44,6 +45,7 @@
     "dotenv": "^17.4.2",
     "google-auth-library": "^10.9.0",
     "jsonwebtoken": "^9.0.3",
+    "maxmind": "^5.0.7",
     "multer": "^2.2.0",
     "nestjs-pino": "^4.6.1",
     "nodemailer": "^9.0.5",

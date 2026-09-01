@@ -19,6 +19,13 @@ function formatSource(source: string | null, medium?: string | null, campaign?: 
   return [source ?? "unknown", medium, campaign].filter(Boolean).join(" · ");
 }
 
+/** Null when the GeoIP lookup found nothing at all — distinct from a landingPath-style blank,
+ * since "no guess" should render no line rather than an empty parenthetical. */
+function formatIpLocation(city: string | null, region: string | null, country: string | null): string | null {
+  const parts = [city, region, country].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 export default async function UserActivityPage({ params }: { params: Promise<{ id: string }> }) {
   const { accessToken } = await requireAdmin();
   const { id } = await params;
@@ -87,7 +94,9 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
           <p style={{ color: "var(--muted)", fontSize: 14 }}>No recorded visits yet.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {visits.map((visit: VisitDto) => (
+            {visits.map((visit: VisitDto) => {
+              const ipLocation = formatIpLocation(visit.ipCity, visit.ipRegion, visit.ipCountry);
+              return (
               <div
                 key={visit.id}
                 style={{
@@ -108,12 +117,18 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
                       Landed on {visit.landingPath}
                     </div>
                   )}
+                  {ipLocation && (
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                      {ipLocation} (from IP, approximate)
+                    </div>
+                  )}
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", flexShrink: 0 }}>
                   {new Date(visit.createdAt).toLocaleString()}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -273,6 +273,9 @@ export class AdminService {
         medium: v.medium,
         campaign: v.campaign,
         landingPath: v.landingPath,
+        ipCity: v.ipCity,
+        ipRegion: v.ipRegion,
+        ipCountry: v.ipCountry,
         createdAt: v.createdAt.toISOString(),
       })),
     };

@@ -400,6 +400,11 @@ export interface VisitDto {
   medium: string | null;
   campaign: string | null;
   landingPath: string | null;
+  /** Best-effort city/region/country guess from the visit's IP, via a local MaxMind lookup —
+   * see docs/plans/visit-ip-city-logging.md. Approximate; not a verified location. */
+  ipCity: string | null;
+  ipRegion: string | null;
+  ipCountry: string | null;
   createdAt: string;
 }
 

@@ -1,15 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
+import { GeoIpService } from './geoip.service';
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly geoIp: GeoIpService,
+  ) {}
 
   /** Called once per browser session by web's middleware.ts (fire-and-forget, not awaited by the
    * page request) — upserted rather than created outright since a flaky network retry could send
    * the same sessionId twice; the second attempt is then just a no-op. */
   async recordVisit(dto: RecordVisitDto): Promise<void> {
+    // Admin-analytics label only — see docs/plans/visit-ip-city-logging.md. Never used to decide
+    // what this visitor sees; GeoIpService returns null (not an error) when it can't resolve one.
+    const geo = this.geoIp.lookupCity(dto.ip);
     await this.prisma.visit.upsert({
       where: { sessionId: dto.sessionId },
       update: {},
@@ -20,6 +27,9 @@ export class AnalyticsService {
         campaign: dto.campaign,
         landingPath: dto.landingPath,
         ip: dto.ip,
+        ipCity: geo?.city ?? null,
+        ipRegion: geo?.region ?? null,
+        ipCountry: geo?.country ?? null,
       },
     });
   }

@@ -536,6 +536,16 @@ model Visit {
    * it. Nullable, since a request reaching the BFF without a usable X-Forwarded-For should still
    * record its visit rather than fail. */
   ip          String?
+  /** Best-effort city/region/country guess from `ip` via a local MaxMind GeoLite2 lookup
+   * (GeoIpService), done once at write time. Free text, NOT a foreign key to City — GeoIP naming
+   * doesn't reliably match this app's slugified city list (e.g. "Bangalore" vs "Bengaluru"), so
+   * don't join against City on these. Null when ip is null, the IP isn't in the database, or the
+   * database file isn't present — see docs/plans/visit-ip-city-logging.md. Admin-analytics label
+   * only; never used to decide what a visitor sees (contrast with the removed IP-based city
+   * *default*, see docs/plans/remove-automatic-ip-city-detection.md). */
+  ipCity      String?
+  ipRegion    String?
+  ipCountry   String?
   createdAt   DateTime @default(now())
 
   @@index([userId])
