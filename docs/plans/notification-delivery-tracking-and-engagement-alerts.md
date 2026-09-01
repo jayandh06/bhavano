@@ -33,10 +33,10 @@ await Promise.all([
 ```
 
 A user who signed up with both an email and a phone gets three separate welcome messages today —
-email, SMS, and WhatsApp all at once. That's inconsistent with `notifyListingPosted` (built last
-session), which deliberately does the opposite: exactly one channel, email if present else
-WhatsApp, never both. Worth deciding whether `notifyWelcome` should match that stricter rule, or
-whether three simultaneous welcomes was actually intended.
+email, SMS, and WhatsApp all at once. **Decided:** this changes to match `notifyListingPosted`'s
+rule exactly — email if present, else WhatsApp, never both, and never SMS. SMS is reserved for
+OTP alone from here on; every notification (as opposed to an authentication code) goes out over
+email or WhatsApp only. See "The channel rule, decided" below for what this actually touches.
 
 ### 3. Listing acknowledgement — zero tracking, despite a table built for it
 
@@ -83,8 +83,7 @@ same problem this table already solves.
 > meaningful, non-spammy signal."
 
 This already matches "for paid advertisers." It goes through `dispatch()` — email **and** SMS
-both, if both exist, unlike the single-channel rule `notifyListingPosted` uses. Same
-inconsistency as the welcome email, worth resolving the same way.
+both, if both exist. Same fix as the welcome email: moves to email-else-WhatsApp, never SMS.
 
 ### Views — this doesn't exist, and "real time" is the wrong shape for it
 
@@ -128,14 +127,65 @@ second avoids two near-identical tables for what's conceptually one concern. `we
 as the fast "is this a new user" check `AuthService` already uses it for; the log is the answer to
 "did it actually go out, and how."
 
-### 3. Decide the channel-consistency question
+### 3. The channel rule, decided: email else WhatsApp, everywhere — SMS is OTP-only
 
-Either make `notifyWelcome` and `notifyListingLiked` single-channel like `notifyListingPosted`
-(email else WhatsApp/SMS, never both), or leave them as "send everything available" deliberately
-and just document that the two patterns coexist on purpose. Not a technical decision — a call
-about how much mail one event should generate.
+Every notification in `notifications.service.ts` moves to the same rule `notifyListingPosted`
+already uses: email if the user has one, else WhatsApp, never both, never SMS. That's a bigger
+change than it first looks, because **almost everything today reaches SMS somewhere**:
 
-### 4. Views: the digest job, if you want it
+| Method | Today | Becomes |
+|---|---|---|
+| `notifyListingFlagged` | `dispatch()` — email + SMS | email else WhatsApp |
+| `notifyListingApproved` | `dispatch()` — email + SMS | email else WhatsApp |
+| `notifyListingLiked` | `dispatch()` — email + SMS | email else WhatsApp |
+| `notifySavedSearchMatch` | `dispatch()` — email + SMS | email else WhatsApp |
+| `notifyListingExpiryReminder` | `dispatchEmailPreferSms()` — email else SMS | email else WhatsApp |
+| `notifyWelcome` | email + SMS + WhatsApp, all three | email else WhatsApp |
+| `notifyListingPosted` | already email else WhatsApp | unchanged |
+| `AuthService.sendOtp` | SMS, via msg91 | **unchanged — this is the one legitimate use** |
+
+Both existing dispatch helpers (`dispatch`, `dispatchEmailPreferSms`) get replaced by one
+`dispatchEmailPreferWhatsapp` — the helper `post-ad-acknowledgement.md` originally called for and
+that never got built as a shared function; `notifyListingPosted` hand-rolled the same logic
+inline instead of extracting it, which is worth fixing at the same time this runs everywhere else.
+
+Practical consequence worth being upfront about: WhatsApp becomes load-bearing for every
+phone-only user across every notification, not just the two that already depended on it. A
+phone-only user is currently the majority of posters (per `post-ad-acknowledgement.md`), and
+until `WHATSAPP_LISTING_POSTED_TEMPLATE`/`WHATSAPP_WELCOME_TEMPLATE` are actually approved and
+set, this rule change means phone-only users get **nothing** for any of these — a real silence,
+same trade already accepted for `notifyListingPosted`, now extended to five more notifications at
+once. Worth sequencing behind confirming those templates are live and sending successfully.
+
+### 4. Worth investigating: WhatsApp for OTP too
+
+Meta has a dedicated `AUTHENTICATION` template category built specifically for one-time codes —
+distinct from `UTILITY`/`MARKETING` — with two delivery styles: a **copy-code button** (user taps,
+code is copied to clipboard, they switch back and paste) and **one-tap autofill** (the WhatsApp
+client hands the code straight to the app, no copy-paste). This is real, current Meta
+functionality, not speculative.
+
+Real, not hypothetical, before treating this as a straightforward SMS replacement:
+
+- **Not universal.** Someone without WhatsApp installed still needs SMS — this would end up
+  WhatsApp-first-else-SMS for OTP too, not a full replacement, at least until you know what
+  fraction of signups lack WhatsApp entirely.
+- **One-tap autofill needs native app work.** It requires an SDK-level integration (an app
+  signature hash Meta verifies) similar to Android's SMS Retriever API — a mobile-app change, not
+  just a backend swap, and iOS support for this pattern is narrower than Android's.
+  Copy-code works everywhere but is a strictly worse login experience than autofill.
+- **No web equivalent of autofill.** Some browsers auto-read an SMS OTP into a web form (the
+  WebOTP API); there's no WhatsApp analogue for the browser today, so the copy-code flow is what
+  web login would get — a real UX step back from what SMS autofill (where it already works)
+  offers today.
+
+Worth a spike to measure how many current phone signups actually have WhatsApp, and to test the
+copy-code flow once, before deciding whether this is worth the native app work autofill would
+need. Not part of this plan's own scope — flagged here because it was asked about directly, and
+because it's the same MSG91-vs-Meta-Cloud-API kind of provider decision this whole notification
+system has already been through once for ordinary WhatsApp sends.
+
+### 5. Views: the digest job, if you want it
 
 A scheduled job (daily, or hourly for boosted listings only) that reads `viewCount` deltas since
 the last digest, applies a boost-only gate matching `notifyListingLiked`'s existing rule, and
@@ -144,10 +194,17 @@ sends one rollup message per listing that crossed a meaningful threshold — not
 scheduled job, a "since last digest" delta calculation, a threshold policy to define) and is
 worth scoping as its own follow-up rather than folding into the tracking-table wiring above.
 
+## A side effect of item 3, worth knowing
+
+`Msg91Provider.sendTransactionalSms` has exactly three callers today, and all three are the ones
+item 3 removes. Once that change ships, `sendTransactionalSms` has no callers left at all —
+which quietly resolves `post-ad-acknowledgement.md`'s open question about whether its free-form
+text actually survives Indian DLT template registration. That question doesn't get answered; it
+becomes moot, because nothing calls the method anymore. `Msg91Provider.sendOtp` — the one real
+remaining SMS use — is a separate method already built around a proper DLT-registered OTP
+template, and is untouched by any of this.
+
 ## What this doesn't cover
 
 - Retrying a failed send. Today's failures are logged-and-dropped everywhere; a log table records
   that a send failed, but nothing here makes it retry. Separate decision.
-- SMS's known open question from `post-ad-acknowledgement.md` — whether `sendTransactionalSms`'s
-  free-form text actually survives Indian DLT template registration. Still unverified, still
-  bigger than this plan.
