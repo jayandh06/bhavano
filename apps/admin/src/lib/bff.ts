@@ -38,7 +38,13 @@ export type AdminListingSort = "createdAt_desc" | "createdAt_asc" | "updatedAt_d
 export type AdminLoginSort = "createdAt_desc" | "createdAt_asc";
 
 /** Mirrors the BFF's PAGE_VISIT_SORT_VALUES (apps/bff/src/admin/dto/list-page-visits.dto.ts). */
-export type AdminPageVisitSort = "createdAt_desc" | "createdAt_asc";
+export type AdminPageVisitSort =
+  | "createdAt_desc"
+  | "createdAt_asc"
+  | "user_asc"
+  | "user_desc"
+  | "city_asc"
+  | "city_desc";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 

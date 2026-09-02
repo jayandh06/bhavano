@@ -32,15 +32,66 @@ const LOGIN_ORDER_BY: Record<LoginSort, Prisma.LoginEventOrderByWithRelationInpu
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
 };
 
+/** "Sort by user" groups a user's sessions together (by `userId`), then newest-first within;
+ * "sort by city" likewise. Nulls last so anonymous / un-geolocated rows don't crowd the top. A
+ * final `id` key keeps the order total, which the cursor pagination relies on. */
 const PAGE_VISIT_ORDER_BY: Record<PageVisitSort, Prisma.VisitOrderByWithRelationInput[]> = {
   createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
+  user_asc: [{ userId: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
+  user_desc: [{ userId: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
+  city_asc: [{ ipCity: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
+  city_desc: [{ ipCity: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
 };
 
-/** A trimmed, case-insensitive `contains` clause, or undefined when the filter is blank. */
-function containsFilter(value: string | undefined): Prisma.StringNullableFilter | undefined {
-  const trimmed = value?.trim();
-  return trimmed ? { contains: trimmed, mode: 'insensitive' } : undefined;
+/**
+ * The admin page-visits text-filter DSL → a Prisma string clause (see ListPageVisitsDto for the
+ * user-facing summary). `undefined` when the filter is blank.
+ *
+ *   plain / `%x%`  →  contains
+ *   `x%`           →  startsWith
+ *   `%x`           →  endsWith
+ *   `{a, b, c}`    →  in (exact, any of; a lone `{x}` is exact-equals)
+ *   leading `!`    →  negates whichever of the above it wraps
+ *
+ * All matches are case-insensitive. `%`/`{`/`}`/`!` are operators here, not literals — there is
+ * no escape, which is fine for an internal analytics view.
+ */
+function parseTextFilter(raw: string | undefined): Prisma.StringNullableFilter | undefined {
+  let value = raw?.trim();
+  if (!value) return undefined;
+
+  let negate = false;
+  if (value.startsWith('!')) {
+    negate = true;
+    value = value.slice(1).trim();
+    if (!value) return undefined;
+  }
+
+  // The comparison operator, without `mode` — `mode` is a sibling of `not`/the operator on the
+  // final filter, not something the nested comparison object carries.
+  let op: Prisma.NestedStringNullableFilter;
+
+  const inMatch = /^\{(.*)\}$/s.exec(value);
+  if (inMatch) {
+    const values = inMatch[1]
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (values.length === 0) return undefined;
+    op = { in: values };
+  } else {
+    const startsWith = value.length > 1 && value.endsWith('%') && !value.startsWith('%');
+    const endsWith = value.length > 1 && value.startsWith('%') && !value.endsWith('%');
+    const body = value.replace(/^%+/, '').replace(/%+$/, '');
+    if (!body) return undefined;
+    if (startsWith) op = { startsWith: body };
+    else if (endsWith) op = { endsWith: body };
+    else op = { contains: body };
+  }
+
+  // `mode: 'insensitive'` at this level applies to the comparison whether it is negated or not.
+  return negate ? { not: op, mode: 'insensitive' } : { ...op, mode: 'insensitive' };
 }
 
 @Injectable()
@@ -190,14 +241,20 @@ export class AdminService {
         ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
         : {}),
       ...(userId ? { userId } : {}),
-      ...(containsFilter(query.source) ? { source: containsFilter(query.source) } : {}),
-      ...(containsFilter(query.medium) ? { medium: containsFilter(query.medium) } : {}),
-      ...(containsFilter(query.ip) ? { ip: containsFilter(query.ip) } : {}),
-      ...(containsFilter(query.landingPath) ? { landingPath: containsFilter(query.landingPath) } : {}),
-      ...(containsFilter(query.city) ? { ipCity: containsFilter(query.city) } : {}),
-      ...(containsFilter(query.region) ? { ipRegion: containsFilter(query.region) } : {}),
-      ...(containsFilter(query.country) ? { ipCountry: containsFilter(query.country) } : {}),
     };
+
+    for (const [field, raw] of [
+      ['source', query.source],
+      ['medium', query.medium],
+      ['ip', query.ip],
+      ['landingPath', query.landingPath],
+      ['ipCity', query.city],
+      ['ipRegion', query.region],
+      ['ipCountry', query.country],
+    ] as const) {
+      const clause = parseTextFilter(raw);
+      if (clause) where[field] = clause;
+    }
 
     const [rows, total] = await Promise.all([
       this.prisma.visit.findMany({

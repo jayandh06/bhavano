@@ -8,8 +8,12 @@ import { UserPicker } from "@/components/UserPicker";
 type SearchParams = Record<string, string | string[] | undefined>;
 
 const SORT_OPTIONS: { value: AdminPageVisitSort; label: string }[] = [
-  { value: "createdAt_desc", label: "Newest first" },
-  { value: "createdAt_asc", label: "Oldest first" },
+  { value: "createdAt_desc", label: "Date — newest first" },
+  { value: "createdAt_asc", label: "Date — oldest first" },
+  { value: "user_asc", label: "User — grouped (A→Z)" },
+  { value: "user_desc", label: "User — grouped (Z→A)" },
+  { value: "city_asc", label: "City — A→Z" },
+  { value: "city_desc", label: "City — Z→A" },
 ];
 
 /** The date pickers are read as IST calendar days: an inclusive range from the start of the
@@ -71,8 +75,14 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
           ← Back to dashboard
         </Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>Page visits</h1>
-        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 20px" }}>
-          One row per browser session. {page.total.toLocaleString()} match the current filters. Times shown in IST.
+        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 8px" }}>
+          One row per browser session. {page.total.toLocaleString()} match the current filters. Times and the
+          date range are IST.
+        </p>
+        <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 20px", lineHeight: 1.6 }}>
+          Text filters: <Code>text</Code> contains · <Code>text%</Code> starts with · <Code>%text</Code> ends with ·{" "}
+          <Code>{"{a, b, c}"}</Code> is any of (exact) · <Code>!</Code> prefix negates (e.g. <Code>!{"{google}"}</Code>,{" "}
+          <Code>!spam%</Code>). All case-insensitive.
         </p>
 
         <form
@@ -198,6 +208,25 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
 }
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
+
+function Code({ children }: { children: React.ReactNode }) {
+  return (
+    <code
+      style={{
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+        fontSize: 11,
+        background: "var(--surface-alt)",
+        border: "1px solid var(--border)",
+        borderRadius: 5,
+        padding: "1px 5px",
+        color: "var(--text)",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </code>
+  );
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
