@@ -64,7 +64,18 @@ export class PhotoProcessingService {
         try {
           const original = await this.storage.getObject(originalKey(job.listingId, job.photoNo, job.ext));
           const { width, quality } = PHOTO_VARIANTS[job.variant as PhotoVariant];
-          const { data: resizedRaw, info } = await sharp(original)
+          const photo = await this.prisma.listingPhoto.findUnique({
+            where: { listingId_photoNo: { listingId: job.listingId, photoNo: job.photoNo } },
+            select: { rotation: true },
+          });
+          // .rotate() with no args bakes in the EXIF orientation tag before webp encoding
+          // strips it — without this, a photo a phone tagged "rotate 90°" rather than actually
+          // rotating comes out sideways once re-encoded. A second, explicit .rotate(angle) applies
+          // the admin's manual correction (see ListingPhoto.rotation) on top, for the rarer case
+          // where EXIF was missing/wrong and the automatic pass alone didn't fix it.
+          let pipeline = sharp(original).rotate();
+          if (photo?.rotation) pipeline = pipeline.rotate(photo.rotation);
+          const { data: resizedRaw, info } = await pipeline
             .resize(width, null, { withoutEnlargement: true })
             .toBuffer({ resolveWithObject: true });
           const watermark = buildWatermarkSvg(info.width, info.height);

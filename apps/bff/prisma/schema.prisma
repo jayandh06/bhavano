@@ -408,6 +408,12 @@ model ListingPhoto {
   listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   photoNo   Int
   hash      String
+  /** Admin-applied manual correction on top of the automatic EXIF orientation, in degrees
+   * clockwise (0/90/180/270) — see docs/plans/listing-photo-orientation.md. Always 0 for a
+   * freshly uploaded photo; only the admin rotate endpoint ever changes it. Re-applied every
+   * time PhotoProcessingService regenerates this photo's variants from the stored original,
+   * so it survives a reprocess rather than being baked into a one-off file edit. */
+  rotation  Int      @default(0)
   createdAt DateTime @default(now())
 
   @@unique([listingId, photoNo])
