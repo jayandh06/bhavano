@@ -26,6 +26,7 @@ import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
+import { RotatePhotoDto } from './dto/rotate-photo.dto';
 import {
   CreateOutreachCampaignDto,
   CreateOutreachContactDto,
@@ -73,8 +74,12 @@ export class AdminController {
   }
 
   @Post('listings/:id/photos/:photoNo/rotate')
-  rotatePhoto(@Param('id') id: string, @Param('photoNo') photoNo: string): Promise<{ rotation: number }> {
-    return this.adminService.rotatePhoto(id, Number(photoNo));
+  rotatePhoto(
+    @Param('id') id: string,
+    @Param('photoNo') photoNo: string,
+    @Body() dto: RotatePhotoDto,
+  ): Promise<{ rotation: number }> {
+    return this.adminService.rotatePhoto(id, Number(photoNo), dto.turns);
   }
 
   @Get('listings/:id/thread')

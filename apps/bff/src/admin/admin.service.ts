@@ -94,22 +94,28 @@ export class AdminService {
     return listing;
   }
 
-  /** Rotates a listing photo another 90° clockwise and reprocesses its variants — the admin-facing
-   * fix for a photo whose EXIF orientation was missing/wrong (or predates the .rotate() fix in
-   * PhotoProcessingService) and so still displays sideways after an automatic pass. See
-   * docs/plans/listing-photo-orientation.md.
+  /** Rotates a listing photo `turns` × 90° clockwise (1-3, validated by RotatePhotoDto) and
+   * reprocesses its variants once — the admin-facing fix for a photo whose EXIF orientation was
+   * missing/wrong (or predates the .rotate() fix in PhotoProcessingService) and so still displays
+   * sideways after an automatic pass. See docs/plans/listing-photo-orientation.md.
+   *
+   * Takes the full turn count in one call rather than always advancing by one, so the admin UI
+   * can let the admin cycle through all four orientations locally (no server round trip, no
+   * reprocess) and save only once they've picked the right one — reprocessing after every single
+   * click, even ones immediately superseded by the next click, was three avoidable multi-second
+   * R2-download/resize/upload/purge cycles for what only ever needed to be one.
    *
    * Resets the *existing* PhotoVariantJob rows to pending rather than creating new ones: those
    * rows already know the original's file extension (PhotoVariantJob.ext), which ListingPhoto
    * itself never stores. Their absence means this photo was never actually processed, which
    * shouldn't be possible for a photo the admin can see in the moderation UI to begin with. */
-  async rotatePhoto(listingId: string, photoNo: number): Promise<{ rotation: number }> {
+  async rotatePhoto(listingId: string, photoNo: number, turns: number): Promise<{ rotation: number }> {
     const photo = await this.prisma.listingPhoto.findUnique({
       where: { listingId_photoNo: { listingId, photoNo } },
     });
     if (!photo) throw new NotFoundException(`Photo ${photoNo} not found on listing ${listingId}`);
 
-    const rotation = (photo.rotation + 90) % 360;
+    const rotation = (photo.rotation + 90 * turns) % 360;
     await this.prisma.listingPhoto.update({
       where: { listingId_photoNo: { listingId, photoNo } },
       data: { rotation },

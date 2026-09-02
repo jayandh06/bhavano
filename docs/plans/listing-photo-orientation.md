@@ -182,6 +182,29 @@ Open Graph, and Twitter Card tags all accept an absolute URL with a query string
 picking up the *current* correctly-oriented image over a stale one is a genuine improvement, not
 just a non-issue.
 
+## A design flaw, not a bug: saving on every click
+
+Flagged directly: needing several 90° clicks to find the right orientation meant several full
+reprocess cycles — each rotate click saved immediately and triggered its own R2
+download/resize/upload/purge round trip, even when the very next click immediately superseded it.
+Three clicks to get from a sideways photo to the right orientation meant three multi-second round
+trips for what only ever needed to produce one final result.
+
+Fixed by separating preview from save. `RotatablePhotoGrid`'s rotate button now only cycles a
+local, unsaved `previewTurns` state (0-3) and applies it as a CSS `transform: rotate()` on the
+thumbnail — no network call, instant. A "Save" button appears once there's an unsaved preview, and
+only *that* calls the server, once, with however many turns the admin landed on
+(`rotatePhotoAction(listingId, photoNo, turns)`). `AdminService.rotatePhoto` takes the full `turns`
+count (1-3, validated by `RotatePhotoDto`) rather than always advancing by exactly one, so the
+whole decision becomes one `rotation = (current + 90 × turns) % 360` write and one reprocess,
+regardless of how many preview clicks it took to get there. A "✕" button next to Save discards the
+preview without saving.
+
+One visual caveat in the preview itself: a 90°/270° preview swaps the image's effective aspect
+ratio, which a fixed-height `object-fit: cover` thumbnail doesn't accommodate — the grid switches
+to `object-fit: contain` (letterboxed) only while previewing one of those two states, so the admin
+can still see the whole frame to judge the orientation before committing.
+
 ## What was deliberately not built
 
 - **No automatic bulk reprocess of existing listings.** Considered, turned down in favor of manual

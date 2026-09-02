@@ -77,14 +77,16 @@ export async function updateRateLimitsAction(input: RateLimitSettingsDto): Promi
 
 export type RotatePhotoResult = { success: true; rotation: number } | { success: false; error: string };
 
-/** Rotates a photo another 90° and re-triggers variant generation — see
- * docs/plans/listing-photo-orientation.md. The rotated image itself won't be ready the instant
- * this resolves: PhotoProcessingService picks the reset jobs up on its next poll (every few
- * seconds), so the caller should wait briefly before revalidating/refetching for real. */
-export async function rotatePhotoAction(listingId: string, photoNo: number): Promise<RotatePhotoResult> {
+/** Rotates a photo `turns` × 90° and re-triggers variant generation once — see
+ * docs/plans/listing-photo-orientation.md. `turns` (1-3) is the full amount the admin decided on
+ * after cycling through a local, unsaved preview client-side; this is the one and only server
+ * call for that decision, not one per preview click. The rotated image itself won't be ready the
+ * instant this resolves: PhotoProcessingService picks the reset jobs up on its next poll (every
+ * few seconds), so the caller should wait briefly before revalidating/refetching for real. */
+export async function rotatePhotoAction(listingId: string, photoNo: number, turns: number): Promise<RotatePhotoResult> {
   const { accessToken } = await requireAdmin();
   try {
-    const { rotation } = await rotateListingPhoto(accessToken, listingId, photoNo);
+    const { rotation } = await rotateListingPhoto(accessToken, listingId, photoNo, turns);
     revalidatePath(`/listings/${listingId}`);
     return { success: true, rotation };
   } catch (error) {
