@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ListingsController } from './listings.controller';
 import { ListingsService } from './listings.service';
+import { ListingPhotosService } from './listing-photos.service';
 import { ModerationModule } from '../moderation/moderation.module';
 import { RateLimitModule } from '../rate-limit/rate-limit.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -12,7 +13,7 @@ import { StorageModule } from '../storage/storage.module';
 @Module({
   imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule],
   controllers: [ListingsController],
-  providers: [ListingsService],
-  exports: [ListingsService],
+  providers: [ListingsService, ListingPhotosService],
+  exports: [ListingsService, ListingPhotosService],
 })
 export class ListingsModule {}

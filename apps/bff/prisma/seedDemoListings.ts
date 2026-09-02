@@ -324,7 +324,7 @@ async function main() {
     });
 
     await prisma.listingPhoto.createMany({
-      data: created.map((l) => ({ listingId: l.id, photoNo: 1, hash: images[l.category].hash })),
+      data: created.map((l) => ({ listingId: l.id, photoNo: 1, hash: images[l.category].hash, displayOrder: 1 })),
     });
 
     await Promise.all(

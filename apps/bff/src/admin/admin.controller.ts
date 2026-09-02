@@ -26,7 +26,8 @@ import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
-import { RotatePhotoDto } from './dto/rotate-photo.dto';
+import { RotatePhotoDto } from '../listings/dto/rotate-photo.dto';
+import { ListingPhotosService } from '../listings/listing-photos.service';
 import {
   CreateOutreachCampaignDto,
   CreateOutreachContactDto,
@@ -47,6 +48,7 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly outreachService: OutreachService,
     private readonly outreachCampaignJob: OutreachCampaignJob,
+    private readonly listingPhotos: ListingPhotosService,
   ) {}
 
   @Get('listings')
@@ -79,7 +81,12 @@ export class AdminController {
     @Param('photoNo') photoNo: string,
     @Body() dto: RotatePhotoDto,
   ): Promise<{ rotation: number }> {
-    return this.adminService.rotatePhoto(id, Number(photoNo), dto.turns);
+    return this.listingPhotos.rotateAsAdmin(id, Number(photoNo), dto.turns);
+  }
+
+  @Post('listings/:id/photos/:photoNo/set-cover')
+  setCoverPhoto(@Param('id') id: string, @Param('photoNo') photoNo: string): Promise<{ displayOrder: number }> {
+    return this.listingPhotos.setCoverAsAdmin(id, Number(photoNo));
   }
 
   @Get('listings/:id/thread')

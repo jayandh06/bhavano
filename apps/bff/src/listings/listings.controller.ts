@@ -25,16 +25,19 @@ import { assertDiskSpaceAvailable, videoTmpDir, withVideoUploadSlot } from '../u
 import { ingestUploadedVideo } from '../uploads/video-ingest';
 import { R2StorageService } from '../storage/r2-storage.service';
 import { ListingsService } from './listings.service';
+import { ListingPhotosService } from './listing-photos.service';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { RecordViewDto } from './dto/record-view.dto';
+import { RotatePhotoDto } from './dto/rotate-photo.dto';
 
 @Controller('listings')
 export class ListingsController {
   constructor(
     private readonly listingsService: ListingsService,
     private readonly storage: R2StorageService,
+    private readonly listingPhotos: ListingPhotosService,
   ) {}
 
   @Get()
@@ -136,5 +139,29 @@ export class ListingsController {
     @CurrentUser() user: RequestUser,
   ): Promise<ListingDetailDto> {
     return this.listingsService.deleteVideo(id, user.id, videoId);
+  }
+
+  // The owner-facing counterparts to the admin moderation page's rotate/set-cover controls — see
+  // docs/plans/listing-photo-cover-and-owner-controls.md. ListingPhotosService enforces ownership
+  // itself (rotateAsOwner/setCoverAsOwner), the same pattern as deleteVideo above.
+  @Post(':id/photos/:photoNo/rotate')
+  @UseGuards(AuthGuard)
+  rotatePhoto(
+    @Param('id') id: string,
+    @Param('photoNo') photoNo: string,
+    @Body() dto: RotatePhotoDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<{ rotation: number }> {
+    return this.listingPhotos.rotateAsOwner(id, Number(photoNo), dto.turns, user.id);
+  }
+
+  @Post(':id/photos/:photoNo/set-cover')
+  @UseGuards(AuthGuard)
+  setCoverPhoto(
+    @Param('id') id: string,
+    @Param('photoNo') photoNo: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<{ displayOrder: number }> {
+    return this.listingPhotos.setCoverAsOwner(id, Number(photoNo), user.id);
   }
 }

@@ -142,7 +142,9 @@ const priceFormatter = new Intl.NumberFormat('en-IN');
 // it into this one shared constant (spread at every call site already) avoids special-casing the
 // handful of owner/admin-only call sites that actually need it.
 const LISTING_MEDIA_INCLUDE = {
-  listingPhotos: { orderBy: { photoNo: 'asc' as const } },
+  // displayOrder first (gallery position, freely reassignable via "set as cover"), photoNo as
+  // the tie-breaker — see ListingPhoto.displayOrder's own doc comment.
+  listingPhotos: { orderBy: [{ displayOrder: 'asc' as const }, { photoNo: 'asc' as const }] },
   listingVideos: { orderBy: { videoNo: 'asc' as const } },
   owner: { select: { agentProUntil: true } },
   listingRenewals: { orderBy: { renewedAt: 'desc' as const } },
@@ -545,6 +547,9 @@ export class ListingsService {
         listingId: created.id,
         photoNo: p.photoNo,
         hash: p.hash,
+        // Starts equal to photoNo (upload order) — the owner's first photo is the cover until
+        // someone explicitly picks another. See ListingPhoto.displayOrder's own doc comment.
+        displayOrder: p.photoNo,
       })),
     });
     const variants = Object.keys(PHOTO_VARIANTS) as PhotoVariant[];

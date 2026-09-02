@@ -424,9 +424,18 @@ model ListingPhoto {
    * independent of origin Cache-Control) and silently serve stale, pre-rotation content. See
    * docs/plans/listing-photo-orientation.md. */
   updatedAt DateTime @updatedAt
+  /** Gallery position — defaults to `photoNo` at creation, so every existing photo's order is
+   * unchanged until someone explicitly picks a different cover. Deliberately separate from
+   * `photoNo`: `photoNo` is baked into this photo's storage keys (see
+   * apps/bff/src/uploads/photo-keys.ts) and must never change once assigned, or its R2 objects
+   * stop resolving. "Set as cover" means giving a photo a displayOrder lower than every other
+   * photo on the listing — never touching photoNo or anything in storage. See
+   * docs/plans/listing-photo-cover-and-owner-controls.md. */
+  displayOrder Int
 
   @@unique([listingId, photoNo])
   @@index([hash])
+  @@index([listingId, displayOrder])
 }
 
 enum PhotoVariantType {
