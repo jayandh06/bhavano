@@ -108,6 +108,40 @@ Fixed by no longer using `rotation` as the cache-busting value at all. `ListingP
 `rotation`, is never reused, so it can never collide with a request cached from before the photo
 was ever rotated.
 
+## A third follow-up: the admin panel updated, the public listing didn't
+
+Fixing the cache-key collision above made the admin panel show a rotated photo correctly right
+away — but visiting the actual public listing page still showed the old orientation.
+
+The `?t=<updatedAt>` fix only busts the cache for whoever's browser makes that exact request — the
+admin's own view. The public site (browse cards, the listing detail gallery) requests the bare
+variant URL, no query string at all, same as it always has. Confirmed directly against a live
+photo's response headers:
+
+```
+Server: cloudflare
+Cache-Control: max-age=14400
+cf-cache-status: MISS
+```
+
+`CDN_BASE_URL` (`cdn.bhavano.com`) is a Cloudflare-fronted R2 bucket, and Cloudflare applies its
+own default 4-hour edge cache to static file types like `.webp`, independent of anything
+`R2StorageService.putObject` sets (it sets no `Cache-Control` at all). Before the rotate feature,
+this was never a problem — every variant key was written once and never touched again, so nothing
+was ever stale at a URL someone had already fetched. A rotate is the first thing that rewrites an
+*already-cached* key, and the bare public URL keeps serving Cloudflare's cached pre-rotation copy
+for up to that 4-hour TTL, regardless of what R2 actually holds now.
+
+Fixed with an explicit purge: `CdnPurgeService` (`apps/bff/src/storage/cdn-purge.service.ts`)
+calls Cloudflare's `purge_cache` API for a photo's exact variant URL right after
+`PhotoProcessingService` finishes writing it — same best-effort, fail-soft convention as
+`WhatsappProvider`/`EmailProvider` (unconfigured logs and skips, a failed call logs and returns
+`false`, never blocks or fails the reprocess itself — the file in R2 is already correct either
+way, an unpurged cache only means the public URL takes longer to catch up, not that anything is
+actually wrong with the data). Needs `CLOUDFLARE_API_TOKEN` (Zone → Cache Purge permission) and
+`CLOUDFLARE_ZONE_ID` in `.env` — both optional; without them, rotating still fully works, the
+public URL just waits out Cloudflare's TTL on its own, as it did before this existed.
+
 ## What was deliberately not built
 
 - **No automatic bulk reprocess of existing listings.** Considered, turned down in favor of manual

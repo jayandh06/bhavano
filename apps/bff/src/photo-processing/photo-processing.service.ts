@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Interval } from '@nestjs/schedule';
 import sharp from 'sharp';
 import { PrismaService } from '../prisma/prisma.service';
 import { R2StorageService } from '../storage/r2-storage.service';
-import { originalKey, PHOTO_VARIANTS, PhotoVariant, variantKey } from '../uploads/photo-keys';
+import { CdnPurgeService } from '../storage/cdn-purge.service';
+import { originalKey, PHOTO_VARIANTS, PhotoVariant, variantKey, variantUrl } from '../uploads/photo-keys';
 import { BHAVANO_LOGO_PNG_BASE64 } from './watermark-logo';
 
 const BATCH_SIZE = 5;
@@ -45,6 +47,8 @@ export class PhotoProcessingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: R2StorageService,
+    private readonly cdnPurge: CdnPurgeService,
+    private readonly config: ConfigService,
   ) {}
 
   @Interval(POLL_INTERVAL_MS)
@@ -88,6 +92,13 @@ export class PhotoProcessingService {
             resized,
             'image/webp',
           );
+          // Cloudflare (CDN_BASE_URL) applies its own default edge cache to .webp files
+          // regardless of anything set above — a rotate rewrites this same URL, so without an
+          // explicit purge the public site keeps serving pre-rotation bytes at it for up to that
+          // cache's TTL. Best-effort: a failed/unconfigured purge doesn't affect correctness, only
+          // how long a stale copy lingers publicly — the file itself is already right in R2.
+          const cdnBase = this.config.get<string>('CDN_BASE_URL') ?? '';
+          await this.cdnPurge.purgeUrls([variantUrl(cdnBase, job.listingId, job.photoNo, job.variant as PhotoVariant)]);
           // updateMany + a status:'processing' guard, not a plain update: if an admin clicked
           // rotate again while this run was still mid-flight (a real possibility — this loop just
           // did a network round trip to R2 for both the download and the upload), AdminService

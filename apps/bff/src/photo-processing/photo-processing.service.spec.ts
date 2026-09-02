@@ -2,6 +2,19 @@ import sharp from 'sharp';
 import { PhotoProcessingService } from './photo-processing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { R2StorageService } from '../storage/r2-storage.service';
+import { CdnPurgeService } from '../storage/cdn-purge.service';
+import { ConfigService } from '@nestjs/config';
+
+/** Purging is orthogonal to everything these tests actually exercise (the job-status race) —
+ * a no-op stand-in that always "succeeds" so it never affects an assertion. */
+function fakeCdnPurge() {
+  return {
+    purgeUrls: jest.fn().mockResolvedValue(true),
+  } as unknown as CdnPurgeService;
+}
+function fakeConfig() {
+  return { get: jest.fn().mockReturnValue('') } as unknown as ConfigService;
+}
 
 /** A tiny real image, since the service actually runs it through sharp — a fixture buffer, not a
  * mock, because the whole point of these tests is to exercise the real resize/rotate/webp
@@ -91,7 +104,12 @@ describe('PhotoProcessingService', () => {
     const putObject = jest.fn().mockResolvedValue(undefined);
     const storage = { getObject, putObject } as unknown as R2StorageService;
 
-    const service = new PhotoProcessingService(prisma, storage);
+    const service = new PhotoProcessingService(
+      prisma,
+      storage,
+      fakeCdnPurge(),
+      fakeConfig(),
+    );
     await service.processPending();
 
     // The work still happened (we don't know it's stale until after doing it) ...
@@ -121,7 +139,12 @@ describe('PhotoProcessingService', () => {
     const putObject = jest.fn().mockResolvedValue(undefined);
     const storage = { getObject, putObject } as unknown as R2StorageService;
 
-    const service = new PhotoProcessingService(prisma, storage);
+    const service = new PhotoProcessingService(
+      prisma,
+      storage,
+      fakeCdnPurge(),
+      fakeConfig(),
+    );
     await service.processPending();
 
     expect(putObject).toHaveBeenCalledTimes(1);
@@ -151,7 +174,12 @@ describe('PhotoProcessingService', () => {
     const putObject = jest.fn();
     const storage = { getObject, putObject } as unknown as R2StorageService;
 
-    const service = new PhotoProcessingService(prisma, storage);
+    const service = new PhotoProcessingService(
+      prisma,
+      storage,
+      fakeCdnPurge(),
+      fakeConfig(),
+    );
     await service.processPending();
 
     expect(putObject).not.toHaveBeenCalled();
@@ -161,5 +189,45 @@ describe('PhotoProcessingService', () => {
       id: job.id,
       status: 'processing',
     });
+  });
+
+  /** A rotate rewrites the same variant URL Cloudflare may already have cached from before the
+   * photo was ever rotated — see docs/plans/listing-photo-orientation.md. Without an explicit
+   * purge, the public site would keep serving the stale bytes at that URL regardless of what's
+   * actually in R2 now. */
+  it('purges the variant URL from the CDN after a successful upload', async () => {
+    const job = makeJob({ status: 'processing', variant: 'full' });
+    const { fn: updateMany } = trackedUpdateMany('processing');
+    const prisma = {
+      photoVariantJob: {
+        findMany: jest.fn().mockResolvedValueOnce([job]),
+        update: jest.fn(),
+        updateMany,
+      },
+      listingPhoto: {
+        findUnique: jest.fn().mockResolvedValue({ rotation: 90 }),
+      },
+    } as unknown as PrismaService;
+    const storage = {
+      getObject: jest.fn().mockResolvedValue(original),
+      putObject: jest.fn().mockResolvedValue(undefined),
+    } as unknown as R2StorageService;
+    const purgeUrls = jest.fn().mockResolvedValue(true);
+    const cdnPurge = { purgeUrls } as unknown as CdnPurgeService;
+    const config = {
+      get: jest.fn().mockReturnValue('https://cdn.example.com'),
+    } as unknown as ConfigService;
+
+    const service = new PhotoProcessingService(
+      prisma,
+      storage,
+      cdnPurge,
+      config,
+    );
+    await service.processPending();
+
+    expect(purgeUrls).toHaveBeenCalledWith([
+      'https://cdn.example.com/photos/l1_1_full.webp',
+    ]);
   });
 });
