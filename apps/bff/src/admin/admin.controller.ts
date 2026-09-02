@@ -72,6 +72,11 @@ export class AdminController {
     return this.adminService.approveListing(id, user.id);
   }
 
+  @Post('listings/:id/photos/:photoNo/rotate')
+  rotatePhoto(@Param('id') id: string, @Param('photoNo') photoNo: string): Promise<{ rotation: number }> {
+    return this.adminService.rotatePhoto(id, Number(photoNo));
+  }
+
   @Get('listings/:id/thread')
   getThread(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<{ id: string }> {
     return this.adminService.getThread(id, user.id);

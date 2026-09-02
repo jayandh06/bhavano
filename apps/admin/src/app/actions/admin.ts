@@ -3,7 +3,16 @@
 import { revalidatePath } from "next/cache";
 import type { RateLimitSettingsDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { approveListing, fetchThread, flagListing, revokeBoost, sendMessage, setReviewed, updateRateLimitSettings } from "@/lib/bff";
+import {
+  approveListing,
+  fetchThread,
+  flagListing,
+  revokeBoost,
+  rotateListingPhoto,
+  sendMessage,
+  setReviewed,
+  updateRateLimitSettings,
+} from "@/lib/bff";
 
 export type ActionResult = { success: true } | { success: false; error: string };
 
@@ -63,6 +72,23 @@ export async function updateRateLimitsAction(input: RateLimitSettingsDto): Promi
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update rate limits" };
+  }
+}
+
+export type RotatePhotoResult = { success: true; rotation: number } | { success: false; error: string };
+
+/** Rotates a photo another 90° and re-triggers variant generation — see
+ * docs/plans/listing-photo-orientation.md. The rotated image itself won't be ready the instant
+ * this resolves: PhotoProcessingService picks the reset jobs up on its next poll (every few
+ * seconds), so the caller should wait briefly before revalidating/refetching for real. */
+export async function rotatePhotoAction(listingId: string, photoNo: number): Promise<RotatePhotoResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const { rotation } = await rotateListingPhoto(accessToken, listingId, photoNo);
+    revalidatePath(`/listings/${listingId}`);
+    return { success: true, rotation };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to rotate photo" };
   }
 }
 

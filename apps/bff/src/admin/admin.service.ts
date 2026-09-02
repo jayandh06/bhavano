@@ -94,6 +94,38 @@ export class AdminService {
     return listing;
   }
 
+  /** Rotates a listing photo another 90° clockwise and reprocesses its variants — the admin-facing
+   * fix for a photo whose EXIF orientation was missing/wrong (or predates the .rotate() fix in
+   * PhotoProcessingService) and so still displays sideways after an automatic pass. See
+   * docs/plans/listing-photo-orientation.md.
+   *
+   * Resets the *existing* PhotoVariantJob rows to pending rather than creating new ones: those
+   * rows already know the original's file extension (PhotoVariantJob.ext), which ListingPhoto
+   * itself never stores. Their absence means this photo was never actually processed, which
+   * shouldn't be possible for a photo the admin can see in the moderation UI to begin with. */
+  async rotatePhoto(listingId: string, photoNo: number): Promise<{ rotation: number }> {
+    const photo = await this.prisma.listingPhoto.findUnique({
+      where: { listingId_photoNo: { listingId, photoNo } },
+    });
+    if (!photo) throw new NotFoundException(`Photo ${photoNo} not found on listing ${listingId}`);
+
+    const rotation = (photo.rotation + 90) % 360;
+    await this.prisma.listingPhoto.update({
+      where: { listingId_photoNo: { listingId, photoNo } },
+      data: { rotation },
+    });
+
+    const { count } = await this.prisma.photoVariantJob.updateMany({
+      where: { listingId, photoNo },
+      data: { status: 'pending', attempts: 0, error: null },
+    });
+    if (count === 0) {
+      throw new NotFoundException(`No variant jobs found for photo ${photoNo} on listing ${listingId} — cannot reprocess`);
+    }
+
+    return { rotation };
+  }
+
   /** Used both internally (flag/approve notifications) and by the admin UI's listing-detail
    * page, which links to /users/:id/activity from here without ownerId ever appearing in the
    * public ListingDetailDto. */

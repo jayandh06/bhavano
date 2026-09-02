@@ -142,6 +142,15 @@ export interface ListingDetailDto extends ListingCardDto {
   /** Full-size (1600px-wide) variant URLs, same order as `photos` (the preview variants) —
    * used for the detail page gallery instead of the card-sized preview images. */
   photosFull: string[];
+  /** listingPhotos.photoNo for each entry, same order as `photosFull` — lets the admin rotate
+   * control identify a photo by its real number rather than assuming array index === photoNo,
+   * which would silently break if a photo were ever deleted out of the middle of the sequence. */
+  photoNos: number[];
+  /** listingPhotos.rotation for each entry, same order as `photosFull` — the admin UI appends
+   * this to the image URL as a cache-busting query param. Variant keys never change (see
+   * apps/bff/src/uploads/photo-keys.ts) even after a rotate, only their bytes do, so without this
+   * a browser (or CDN) that already cached the old bytes at that URL would keep serving them. */
+  photoRotations: number[];
   /** Only ever `status: "done"` entries for a non-owner/non-admin viewer — filtered server-side
    * in ListingsService.toDetailDto so a <video> tag never points at an object that doesn't exist
    * yet. Owners/admins see every status so the UI can show a "Processing…" state. */

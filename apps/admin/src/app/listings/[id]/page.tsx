@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchListingById, fetchListingOwner, fetchMessages, fetchThread } from "@/lib/bff";
 import { ModerationPanel } from "@/components/ModerationPanel";
+import { RotatablePhotoGrid } from "@/components/RotatablePhotoGrid";
 
 export default async function ListingModerationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -49,19 +50,16 @@ export default async function ListingModerationPage({ params }: { params: Promis
           </div>
 
           {listing.photosFull.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10, marginBottom: listing.videos.length > 0 ? 10 : 0 }}>
-              {listing.photosFull.map((url, i) => (
-                <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                  {/* Plain <img>, not next/image — these are moderation targets, not
-                      site content, so no optimization/caching pipeline should sit in front of
-                      whatever the admin is trying to actually inspect. */}
-                  <img
-                    src={url}
-                    alt={`${listing.title} photo ${i + 1}`}
-                    style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }}
-                  />
-                </a>
-              ))}
+            <div style={{ marginBottom: listing.videos.length > 0 ? 10 : 0 }}>
+              <RotatablePhotoGrid
+                listingId={listing.id}
+                title={listing.title}
+                photos={listing.photosFull.map((url, i) => ({
+                  url,
+                  photoNo: listing.photoNos[i],
+                  rotation: listing.photoRotations[i],
+                }))}
+              />
             </div>
           )}
 

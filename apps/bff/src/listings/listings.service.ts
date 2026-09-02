@@ -1247,6 +1247,11 @@ export class ListingsService {
       photosFull: listing.listingPhotos.map((p) =>
         variantUrl(this.cdnBase(), listing.id, p.photoNo, 'full'),
       ),
+      // Same order as photosFull — exists so the admin rotate control has something to send
+      // back other than an array index, which would silently break if a photo is ever deleted
+      // out of the middle of the sequence. Harmless for every other consumer to receive.
+      photoNos: listing.listingPhotos.map((p) => p.photoNo),
+      photoRotations: listing.listingPhotos.map((p) => p.rotation),
       videos,
       videoEntitlement: isOwnerOrAdmin
         ? resolveVideoEntitlement(listing.owner, listing)

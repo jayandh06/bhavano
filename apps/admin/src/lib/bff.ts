@@ -159,6 +159,10 @@ export function approveListing(accessToken: string, id: string): Promise<Listing
   return authedBffFetch(accessToken, `/admin/listings/${id}/approve`, { method: "POST" });
 }
 
+export function rotateListingPhoto(accessToken: string, id: string, photoNo: number): Promise<{ rotation: number }> {
+  return authedBffFetch(accessToken, `/admin/listings/${id}/photos/${photoNo}/rotate`, { method: "POST" });
+}
+
 export function fetchThread(accessToken: string, listingId: string): Promise<{ id: string }> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/thread`, { cache: "no-store" });
 }
