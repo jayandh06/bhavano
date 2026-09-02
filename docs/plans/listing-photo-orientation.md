@@ -83,6 +83,31 @@ the `WHERE` clause (`updateMany`, checking `count`), so a run only ever finalize
 owns — one a newer click has already reset out from under it is left alone, exactly as it should
 be. Covered by `photo-processing.service.spec.ts`.
 
+## A second follow-up: the *real* "one direction stays unrotated"
+
+The race-condition fix above was real, but it turned out not to be what was actually being
+observed — reported as still happening afterward, with a telling detail: the skipped direction
+was consistently the photo's *correct* orientation.
+
+Root cause: the admin UI cache-busted each photo's image URL with `?r=<rotation>`. `rotation`
+cycles — 0 → 90 → 180 → 270 → 0 → … — and every photo starts at `rotation: 0`. That means `?r=0`
+had *already been requested once*, the very first time the admin ever opened this listing's
+moderation page, before clicking rotate at all. Once the rotate cycle wrapped back around to 0,
+the request was for a URL a browser (or `CDN_BASE_URL`'s Cloudflare edge, which caches static file
+types like `.webp` by URL+query string by default, independent of origin `Cache-Control`) had
+already cached — so it served the original, pre-rotation content instead of hitting R2 for the
+freshly reprocessed file. `rotation: 0` is also, for the common case this feature exists to fix
+(EXIF was present but ignored — see the root-cause fix at the top of this doc), usually the
+*correct* final state, needing no manual correction once reprocessed with the fix in place. Hence
+the "ironic" pattern: the one value guaranteed to collide with a stale cache entry was also the
+one most photos actually needed to land on.
+
+Fixed by no longer using `rotation` as the cache-busting value at all. `ListingPhoto` gained
+`updatedAt` (bumped on every write, including one that lands back on `rotation: 0`), exposed as
+`ListingDetailDto.photoUpdatedAts` and used as `?t=<updatedAt>` instead — a value that, unlike
+`rotation`, is never reused, so it can never collide with a request cached from before the photo
+was ever rotated.
+
 ## What was deliberately not built
 
 - **No automatic bulk reprocess of existing listings.** Considered, turned down in favor of manual

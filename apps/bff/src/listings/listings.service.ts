@@ -1252,6 +1252,10 @@ export class ListingsService {
       // out of the middle of the sequence. Harmless for every other consumer to receive.
       photoNos: listing.listingPhotos.map((p) => p.photoNo),
       photoRotations: listing.listingPhotos.map((p) => p.rotation),
+      // Cache-busting value for the admin UI — deliberately NOT `rotation` itself, which cycles
+      // (0/90/180/270/0/…) and would collide with an already-cached ?r=0 request from before the
+      // photo was ever rotated. See ListingPhoto.updatedAt's own doc comment for why that matters.
+      photoUpdatedAts: listing.listingPhotos.map((p) => p.updatedAt.getTime()),
       videos,
       videoEntitlement: isOwnerOrAdmin
         ? resolveVideoEntitlement(listing.owner, listing)

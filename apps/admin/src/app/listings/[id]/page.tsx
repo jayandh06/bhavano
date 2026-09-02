@@ -58,7 +58,7 @@ export default async function ListingModerationPage({ params }: { params: Promis
                 photos={listing.photosFull.map((url, i) => ({
                   url,
                   photoNo: listing.photoNos[i],
-                  rotation: listing.photoRotations[i],
+                  updatedAt: listing.photoUpdatedAts[i],
                 }))}
               />
             </div>

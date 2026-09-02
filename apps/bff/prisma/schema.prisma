@@ -415,6 +415,15 @@ model ListingPhoto {
    * so it survives a reprocess rather than being baked into a one-off file edit. */
   rotation  Int      @default(0)
   createdAt DateTime @default(now())
+  /** Bumped on every write to this row, including a rotate that lands back on rotation:0 — the
+   * admin UI cache-busts each image URL with this, NOT with `rotation` itself. `rotation` cycles
+   * (0→90→180→270→0→…) and every photo starts at 0, so a plain photo has *already* been fetched
+   * once at ?r=0 before any admin ever rotates it; wrapping back around to 0 would collide with
+   * that original request under either browser or CDN caching (CDN_BASE_URL is Cloudflare-backed,
+   * which caches static file types like .webp at the edge, by URL+query string, by default,
+   * independent of origin Cache-Control) and silently serve stale, pre-rotation content. See
+   * docs/plans/listing-photo-orientation.md. */
+  updatedAt DateTime @updatedAt
 
   @@unique([listingId, photoNo])
   @@index([hash])

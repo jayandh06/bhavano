@@ -15,7 +15,7 @@ export function RotatablePhotoGrid({
 }: {
   listingId: string;
   title: string;
-  photos: { url: string; photoNo: number; rotation: number }[];
+  photos: { url: string; photoNo: number; updatedAt: number }[];
 }) {
   const router = useRouter();
   const [rotatingPhotoNo, setRotatingPhotoNo] = useState<number | null>(null);
@@ -43,17 +43,22 @@ export function RotatablePhotoGrid({
     <>
       {error && <p style={{ color: "var(--danger)", fontSize: 12.5, margin: "0 0 8px" }}>{error}</p>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
-        {photos.map(({ url, photoNo, rotation }, i) => (
+        {photos.map(({ url, photoNo, updatedAt }, i) => (
           <div key={photoNo} style={{ position: "relative" }}>
             <a href={url} target="_blank" rel="noopener noreferrer">
               {/* Plain <img>, not next/image — these are moderation targets, not site content,
                   so no optimization/caching pipeline should sit in front of whatever the admin
                   is trying to actually inspect. The variant's storage key never changes when it's
-                  rotated (see apps/bff/src/uploads/photo-keys.ts) — only its bytes do — so `?r=`
+                  rotated (see apps/bff/src/uploads/photo-keys.ts) — only its bytes do — so `?t=`
                   is there to stop a browser (or CDN) that already cached the old bytes at this
-                  exact URL from continuing to serve them after a rotate. */}
+                  exact URL from continuing to serve them after a rotate. Deliberately the photo's
+                  updatedAt timestamp, NOT its rotation value — rotation cycles back to 0, and
+                  every photo starts at rotation 0, so a value that repeats would collide with a
+                  request cached from before the photo was ever rotated at all (this actually
+                  happened — see docs/plans/listing-photo-orientation.md). A timestamp never
+                  repeats. */}
               <img
-                src={`${url}?r=${rotation}`}
+                src={`${url}?t=${updatedAt}`}
                 alt={`${title} photo ${i + 1}`}
                 style={{
                   width: "100%",

@@ -146,11 +146,17 @@ export interface ListingDetailDto extends ListingCardDto {
    * control identify a photo by its real number rather than assuming array index === photoNo,
    * which would silently break if a photo were ever deleted out of the middle of the sequence. */
   photoNos: number[];
-  /** listingPhotos.rotation for each entry, same order as `photosFull` — the admin UI appends
-   * this to the image URL as a cache-busting query param. Variant keys never change (see
-   * apps/bff/src/uploads/photo-keys.ts) even after a rotate, only their bytes do, so without this
-   * a browser (or CDN) that already cached the old bytes at that URL would keep serving them. */
+  /** listingPhotos.rotation for each entry, same order as `photosFull` — the current manual
+   * correction in degrees. NOT used for cache-busting (see photoUpdatedAts) — it cycles
+   * (0/90/180/270/0/…), so reusing it as a query param would collide with an already-cached
+   * request from before the photo was ever rotated once the cycle wraps back to 0. */
   photoRotations: number[];
+  /** listingPhotos.updatedAt (as epoch ms) for each entry, same order as `photosFull` — the admin
+   * UI appends this to the image URL as a cache-busting query param. Variant keys never change
+   * (see apps/bff/src/uploads/photo-keys.ts) even after a rotate, only their bytes do, and unlike
+   * `rotation` this value is never reused, so a browser or CDN that already cached the old bytes
+   * at that URL can never mistake a fresh rotation for one it's already seen. */
+  photoUpdatedAts: number[];
   /** Only ever `status: "done"` entries for a non-owner/non-admin viewer — filtered server-side
    * in ListingsService.toDetailDto so a <video> tag never points at an object that doesn't exist
    * yet. Owners/admins see every status so the UI can show a "Processing…" state. */
