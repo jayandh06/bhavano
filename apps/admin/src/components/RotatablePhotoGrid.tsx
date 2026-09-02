@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { rotatePhotoAction } from "@/app/actions/admin";
+import { rotatePhotoAction, setCoverPhotoAction } from "@/app/actions/admin";
 
 /** PhotoProcessingService polls for pending jobs every 3s (POLL_INTERVAL_MS) — this just adds a
  * little margin so a refresh doesn't land in the gap right before the job actually finishes. */
@@ -25,6 +25,9 @@ export function RotatablePhotoGrid({
   // it — see docs/plans/listing-photo-orientation.md.
   const [previewTurns, setPreviewTurns] = useState<Record<number, number>>({});
   const [savingPhotoNo, setSavingPhotoNo] = useState<number | null>(null);
+  // Separate from savingPhotoNo (rotate) — setting a cover is a distinct, independent action and
+  // shouldn't be blocked by (or block) an in-flight rotate save on a different photo.
+  const [settingCoverPhotoNo, setSettingCoverPhotoNo] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function onPreviewRotate(photoNo: number) {
@@ -54,6 +57,17 @@ export function RotatablePhotoGrid({
       setPreviewTurns((prev) => ({ ...prev, [photoNo]: 0 }));
       setSavingPhotoNo(null);
     }, REPROCESS_DELAY_MS);
+  }
+
+  async function onSetCover(photoNo: number) {
+    setError(null);
+    setSettingCoverPhotoNo(photoNo);
+    const result = await setCoverPhotoAction(listingId, photoNo);
+    if (!result.success) setError(result.error);
+    // Unlike rotate, this is instant — displayOrder is a pure DB reassignment, nothing to
+    // reprocess or wait on — so refreshing right away shows the new order correctly.
+    router.refresh();
+    setSettingCoverPhotoNo(null);
   }
 
   return (
@@ -99,6 +113,36 @@ export function RotatablePhotoGrid({
                   }}
                 />
               </a>
+              {/* Top-left, opposite the rotate control — every photo except the current cover
+                  gets one. There's no separate "current cover" field to check: `photos` is
+                  already ordered by displayOrder (see ListingDetailDto.photosFull), so index 0
+                  *is* the cover by construction. */}
+              {i !== 0 && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onSetCover(photoNo);
+                  }}
+                  disabled={settingCoverPhotoNo !== null}
+                  title="Make this the cover photo"
+                  aria-label={`Make photo ${i + 1} the cover photo`}
+                  style={{
+                    position: "absolute",
+                    top: 6,
+                    left: 6,
+                    padding: "3px 8px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    border: "none",
+                    borderRadius: 6,
+                    background: "rgba(0,0,0,0.55)",
+                    color: "#fff",
+                    cursor: settingCoverPhotoNo !== null ? "default" : "pointer",
+                  }}
+                >
+                  {settingCoverPhotoNo === photoNo ? "…" : "☆ Cover"}
+                </button>
+              )}
               <button
                 onClick={(e) => {
                   e.preventDefault();

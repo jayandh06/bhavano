@@ -1,99 +1,87 @@
 # Choosing a cover photo, and letting owners manage their own photos
 
-## Short answer: yes, straightforward either way
+**Status: built.** This document originally proposed swapping `photoNo` directly to change the
+cover photo — that turned out to be wrong (see "The flaw caught before building" below) and was
+corrected to a separate `displayOrder` field before anything shipped.
 
-There's no "cover photo" flag anywhere today — the first photo shown on a browse card and at the
-top of the detail gallery is simply whichever `ListingPhoto` row has the lowest `photoNo`
-(`listingPhotos: { orderBy: { photoNo: 'asc' } }` in `listings.service.ts`, used unchanged by both
-`toCardDto` and `toDetailDto`). No new field, no DTO change, no consumer update needed — "set the
-cover photo" is just **"make this photo's `photoNo` the lowest one."**
+## Short answer: yes, straightforward
 
-The simplest correct way to do that: **swap** the target photo's `photoNo` with whatever is
-currently at `photoNo: 1`, rather than renumbering the whole sequence. A full drag-to-reorder
-grid is more UI than the actual ask ("pick which one shows first") needs — a single "Make cover"
-button per photo covers it. Swapping two rows' `photoNo` under `@@unique([listingId, photoNo])`
-needs a temporary sentinel value inside a transaction (Postgres will reject setting one row to a
-value the other still holds), same shape as any two-row unique-constraint swap:
+There was no "cover photo" flag before this — the first photo shown on a browse card and at the
+top of the detail gallery was simply whichever `ListingPhoto` row had the lowest `photoNo`. "Set
+the cover photo" is now "give this photo a `displayOrder` lower than every other photo on the
+listing" — a new, purely-ordering field, decoupled from `photoNo`.
+
+### The flaw caught before building
+
+The first draft of this plan proposed swapping the target photo's `photoNo` with whatever was at
+`photoNo: 1`. That's wrong: `photoNo` is baked into this photo's **storage keys**
+(`photos/{listingId}_{photoNo}_{variant}.webp`, see `apps/bff/src/uploads/photo-keys.ts`). Swapping
+it in the database would desync "which row the DB thinks is at position 1" from "which R2 objects
+actually hold that photo's bytes" — the row now claiming `photoNo: 1` would generate a URL that
+still serves the *other* photo's pixels, since nothing about R2's actual contents moved.
+
+Fixed by adding `ListingPhoto.displayOrder` (migration
+`20260902110000_listing_photo_display_order`) as a field with **no** identity or storage
+meaning — purely "where does this show in the gallery." It defaults to `photoNo` at creation (so
+every existing photo's order is unchanged), and `set-cover` just gives the target the current
+minimum `displayOrder` minus one:
 
 ```ts
-async setCoverPhoto(listingId: string, photoNo: number) {
-  await this.prisma.$transaction(async (tx) => {
-    const target = await tx.listingPhoto.findUniqueOrThrow({ where: { listingId_photoNo: { listingId, photoNo } } });
-    if (target.photoNo === 1) return; // already the cover
-    const current = await tx.listingPhoto.findUniqueOrThrow({ where: { listingId_photoNo: { listingId, photoNo: 1 } } });
-    await tx.listingPhoto.update({ where: { id: target.id }, data: { photoNo: -1 } }); // sentinel, dodges the unique constraint
-    await tx.listingPhoto.update({ where: { id: current.id }, data: { photoNo: target.photoNo } });
-    await tx.listingPhoto.update({ where: { id: target.id }, data: { photoNo: 1 } });
-  });
+// ListingPhotosService — the actual shipped implementation
+private async setCover(listingId: string, photoNo: number) {
+  const photos = await this.prisma.listingPhoto.findMany({ where: { listingId }, select: { photoNo: true, displayOrder: true } });
+  const target = photos.find((p) => p.photoNo === photoNo);
+  if (!target) throw new NotFoundException(...);
+  const minOrder = Math.min(...photos.map((p) => p.displayOrder));
+  if (target.displayOrder === minOrder) return { displayOrder: target.displayOrder }; // already the cover
+  const displayOrder = minOrder - 1;
+  await this.prisma.listingPhoto.update({ where: { listingId_photoNo: { listingId, photoNo } }, data: { displayOrder } });
+  return { displayOrder };
 }
 ```
 
-No reprocessing needed — `photoNo` is only ever an ordering key, never part of what
-`PhotoProcessingService` renders, so a swap is instant, no R2/CDN/cache concerns like the rotate
-feature has (variant *keys* do embed `photoNo`, so the swap does mean photo A's `full`/`preview`
-files effectively "become" what's served at photo B's old URLs and vice versa — but since nothing
-about their *content* changed, and both were already fully processed, there's nothing stale to
-purge; the existing files just get referenced under swapped numbers).
+No transaction, no sentinel value, no uniqueness constraint on `displayOrder` at all — ties are
+broken by `photoNo` as a secondary sort key (`listingPhotos: { orderBy: [{ displayOrder: 'asc' },
+{ photoNo: 'asc' }] }`), and since every "set cover" strictly decreases the minimum, a genuine tie
+can never occur in practice. `photoNo` itself, and every storage key derived from it, is never
+touched — no reprocessing, no cache purge, no R2 activity at all for a cover change.
 
-## Where this belongs for admin
+## What shipped
 
-Same place as rotate: `RotatablePhotoGrid` gets a second button per photo, "Make cover" (only
-shown on photos that aren't already `photoNo === 1`), calling a new
-`POST /admin/listings/:id/photos/:photoNo/set-cover`. No local-preview step needed here (unlike
-rotate) — there's nothing to preview, the swap is unambiguous and instant.
+**Shared logic**: `ListingPhotosService` (`apps/bff/src/listings/listing-photos.service.ts`), not
+grown into either `AdminService` or the already-1300-line `ListingsService` — resolved open
+question 1 this way. `rotate`/`setCover` are private; each has an `*AsAdmin` (no ownership check)
+and `*AsOwner` (ownership enforced) public wrapper, rather than one method with an optional
+"skip the check" flag — a flag like that is exactly the kind of thing a call site could pass wrong
+and fail silently open. Registered in `ListingsModule`, exported so `AdminModule` (which already
+imports `ListingsModule`) picks it up with no new cross-module wiring.
 
-## The bigger ask: letting the owner do this themselves
+**Routes**:
+- Admin (existing pattern, `AdminGuard`): `POST /admin/listings/:id/photos/:photoNo/rotate`,
+  `POST /admin/listings/:id/photos/:photoNo/set-cover`.
+- Owner (new, `AuthGuard` + ownership check inside the service):
+  `POST /listings/:id/photos/:photoNo/rotate`, `POST /listings/:id/photos/:photoNo/set-cover`.
 
-Today, once a listing is posted, **the owner has zero photo management** — `/my-listings/:id/edit`
-doesn't touch photos at all; the only photo interaction anywhere in the owner's flow is
-add/remove *during initial posting* (`PostAdWizard.tsx`), with no reordering even then. Rotate and
-set-cover exist only for admins, on the moderation page. This plan extends both to the owner, on
-their own edit page.
+**Admin UI**: `RotatablePhotoGrid` gained a "☆ Cover" button, top-left (rotate stays top-right),
+shown on every photo except index 0 — no separate "is this the cover" field needed client-side,
+since the photos array already arrives ordered by `displayOrder`. Instant: no local-preview step
+like rotate has, since there's nothing ambiguous to preview.
 
-### API: shared logic, two gates
+**Owner UI**: `/my-listings/:id/edit` (`EditListingForm`) gained a new `EditListingPhotos`
+section — a from-scratch Tailwind rebuild of the same rotate-preview/save and set-cover
+interaction, not a copy of the admin component (which is styled for the admin app's own
+plain-inline-style convention and doesn't belong in this app's design system).
 
-Rather than duplicating `rotatePhoto`/`setCoverPhoto` between `AdminService` and `ListingsService`,
-move both into `ListingsService` (or a new focused `ListingPhotosService`, if `ListingsService` —
-already 1300+ lines — shouldn't grow further; worth deciding before building, not a call to make
-unilaterally). Two thin controller routes call the same service method:
+## The three other open questions, resolved
 
-- **Admin** (existing pattern): `POST /admin/listings/:id/photos/:photoNo/rotate`, gated by
-  `AdminGuard` — no ownership check, an admin can act on any listing.
-- **Owner** (new): `POST /listings/:id/photos/:photoNo/rotate`, gated by the regular auth guard
-  plus an explicit ownership check —
-  `if (listing.ownerId !== user.id) throw new ForbiddenException(...)`, the exact pattern already
-  used for every other owner-only listing mutation (`updateListing`, `deleteVideo`, etc. in
-  `listings.service.ts`).
-
-Same split for `set-cover`. The admin routes keep working exactly as they do today; this is
-additive, not a replacement.
-
-### UI: a web component, not a port of the admin one
-
-`RotatablePhotoGrid` is styled for the admin app's plain-inline-style convention and lives in
-`apps/admin`. The owner-facing version needs its own component in `apps/web` using this app's
-actual design system (Tailwind, the same visual language as `PostAdWizard`'s own photo thumbnails)
-— not a copy-paste, a rebuild of the same *interaction* (local preview via CSS `transform`, one
-"Save" commits every pending turn in one call, per
-`docs/plans/listing-photo-orientation.md`'s "preview vs save" section) in the app's own idiom.
-Goes on `/my-listings/:id/edit`, likely as a new section alongside the existing price/title/specs
-fields.
-
-### Open questions to settle before building
-
-1. **Where does the shared rotate/set-cover logic live** — stays in `AdminService` and
-   `ListingsService` calls into it (inverts today's natural admin→listings dependency direction,
-   probably wrong), moves to `ListingsService` (grows an already-large file), or a new
-   `ListingPhotosService` both controllers depend on? Leaning toward the third, but worth
-   confirming.
-2. **Any limit on how often an owner can rotate/re-cover?** Admin has no rate limit today since
-   admins are trusted and few. An owner-facing endpoint is a new surface reachable by every seller
-   — probably fine to leave unlimited given each save is already batched to one reprocess
-   regardless of preview clicks, but worth a deliberate "yes, unlimited" rather than an accidental
-   one.
-3. **Mobile app parity** — `apps/mobile` posts and views listings too. Does this ship web-only
-   first, or does mobile need the same edit-page capability in the same pass? Affects scope
-   significantly since it's a second UI to build, not just a second consumer of the same API.
-4. **Should non-cover-photo reordering (not just "which one is first") be a future follow-up?**
-   This plan deliberately scopes to "pick the cover," not a full drag-to-reorder grid — worth
-   confirming that's the right scope and not an under-build of what's actually wanted.
+- **Rate limiting**: none added. Each save is already batched to one reprocess regardless of how
+  many local preview clicks preceded it, so the abuse surface is no worse than any other
+  already-unlimited owner-facing mutation (`updateListing`, `deleteVideo`). Revisit only if it's
+  actually abused.
+- **Mobile parity**: web-only for this pass. `apps/mobile` gets the same capability as a follow-up,
+  not bundled in — building a second (React Native) UI for the same interaction was a big enough
+  lift to warrant shipping web first and confirming the design holds up before duplicating it.
+- **Scope**: cover-only, as originally asked — not a full drag-to-reorder grid. If reordering the
+  rest of the gallery (not just picking what's first) turns out to be wanted too, `displayOrder`
+  already supports it with no further schema change; only the UI (and a slightly more general
+  service method than "always go to the current minimum") would need building.

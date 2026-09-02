@@ -12,6 +12,7 @@ import {
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { updateListingAction } from "@/app/actions/listings";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { EditListingPhotos } from "./EditListingPhotos";
 
 function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
@@ -111,6 +112,18 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
 
   return (
     <div className="max-w-[480px] flex flex-col gap-5">
+      {listing.photosFull.length > 0 && (
+        <EditListingPhotos
+          listingId={listing.id}
+          title={listing.title}
+          photos={listing.photosFull.map((url, i) => ({
+            url,
+            photoNo: listing.photoNos[i],
+            updatedAt: listing.photoUpdatedAts[i],
+          }))}
+        />
+      )}
+
       <div>
         <label className={labelClass}>Category / transaction</label>
         <div className={readOnlyClass}>

@@ -10,6 +10,7 @@ import {
   revokeBoost,
   rotateListingPhoto,
   sendMessage,
+  setCoverPhoto,
   setReviewed,
   updateRateLimitSettings,
 } from "@/lib/bff";
@@ -91,6 +92,22 @@ export async function rotatePhotoAction(listingId: string, photoNo: number, turn
     return { success: true, rotation };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to rotate photo" };
+  }
+}
+
+export type SetCoverPhotoResult = ActionResult;
+
+/** Makes a photo the cover (shown first on browse cards and atop the detail gallery) — see
+ * docs/plans/listing-photo-cover-and-owner-controls.md. Unlike rotate, this is instant: no
+ * reprocessing, so revalidating right away shows the new order correctly. */
+export async function setCoverPhotoAction(listingId: string, photoNo: number): Promise<SetCoverPhotoResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await setCoverPhoto(accessToken, listingId, photoNo);
+    revalidatePath(`/listings/${listingId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to set cover photo" };
   }
 }
 

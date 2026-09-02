@@ -11,6 +11,8 @@ import {
   fetchMyListings,
   recordView,
   renewListing,
+  rotateOwnListingPhoto,
+  setOwnListingCoverPhoto,
   toggleFavourite,
   updateListing,
   uploadPhoto,
@@ -91,6 +93,42 @@ export async function updateListingAction(listingId: string, input: UpdateListin
     await updateListing(session.accessToken, listingId, input);
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update listing" };
+  }
+  return { success: true };
+}
+
+export type RotatePhotoResult = { success: true; rotation: number } | { success: false; error: string };
+
+/** Rotates a photo the owner posted `turns` × 90° and re-triggers variant generation once — the
+ * owner-facing counterpart to the admin panel's rotate control. `turns` (1-3) is the full amount
+ * decided on after cycling through a local, unsaved preview client-side; this is the one and only
+ * server call for that decision, not one per preview click. See
+ * docs/plans/listing-photo-cover-and-owner-controls.md. The rotated image isn't ready the instant
+ * this resolves — the caller should wait briefly before refreshing for real. */
+export async function rotateOwnPhotoAction(listingId: string, photoNo: number, turns: number): Promise<RotatePhotoResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const { rotation } = await rotateOwnListingPhoto(session.accessToken, listingId, photoNo, turns);
+    return { success: true, rotation };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to rotate photo" };
+  }
+}
+
+export type SetCoverPhotoResult = { success: true } | { success: false; error: string };
+
+/** Makes a photo the cover (shown first on browse cards and atop the detail gallery). Unlike
+ * rotate, this is instant — no reprocessing — so the caller can refresh right away. */
+export async function setOwnCoverPhotoAction(listingId: string, photoNo: number): Promise<SetCoverPhotoResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    await setOwnListingCoverPhoto(session.accessToken, listingId, photoNo);
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to set cover photo" };
   }
   return { success: true };
 }

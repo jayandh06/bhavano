@@ -209,6 +209,29 @@ export function updateListing(accessToken: string, listingId: string, input: Upd
   return authedBffFetch(accessToken, `/listings/${listingId}`, { method: "PATCH", body: JSON.stringify(input) });
 }
 
+// Owner-facing photo controls — see docs/plans/listing-photo-cover-and-owner-controls.md. Same
+// endpoints as the admin panel's rotate/set-cover, just without the AdminGuard: ListingsController
+// checks the caller actually owns the listing instead.
+export function rotateOwnListingPhoto(
+  accessToken: string,
+  listingId: string,
+  photoNo: number,
+  turns: number,
+): Promise<{ rotation: number }> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/photos/${photoNo}/rotate`, {
+    method: "POST",
+    body: JSON.stringify({ turns }),
+  });
+}
+
+export function setOwnListingCoverPhoto(
+  accessToken: string,
+  listingId: string,
+  photoNo: number,
+): Promise<{ displayOrder: number }> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/photos/${photoNo}/set-cover`, { method: "POST" });
+}
+
 export function renewListing(accessToken: string, listingId: string): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/listings/${listingId}/renew`, { method: "PATCH" });
 }

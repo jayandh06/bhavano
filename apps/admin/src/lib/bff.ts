@@ -171,6 +171,14 @@ export function rotateListingPhoto(
   });
 }
 
+export function setCoverPhoto(
+  accessToken: string,
+  id: string,
+  photoNo: number,
+): Promise<{ displayOrder: number }> {
+  return authedBffFetch(accessToken, `/admin/listings/${id}/photos/${photoNo}/set-cover`, { method: "POST" });
+}
+
 export function fetchThread(accessToken: string, listingId: string): Promise<{ id: string }> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/thread`, { cache: "no-store" });
 }
