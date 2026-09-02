@@ -32,7 +32,9 @@
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@babel/core": "7.29.7",
     "@types/react": "~19.2.2",
+    "babel-preset-expo": "57.0.2",
     "typescript": "~6.0.3"
   },
   "scripts": {
