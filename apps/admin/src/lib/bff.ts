@@ -13,6 +13,7 @@ import type {
   LoginEventsPage,
   LoginMethod,
   MessageDto,
+  PageVisitsPage,
   ModerationState,
   RateLimitSettingsDto,
   TransactionType,
@@ -35,6 +36,9 @@ export type AdminListingSort = "createdAt_desc" | "createdAt_asc" | "updatedAt_d
 
 /** Mirrors the BFF's LOGIN_SORT_VALUES (apps/bff/src/admin/dto/list-logins.dto.ts). */
 export type AdminLoginSort = "createdAt_desc" | "createdAt_asc";
+
+/** Mirrors the BFF's PAGE_VISIT_SORT_VALUES (apps/bff/src/admin/dto/list-page-visits.dto.ts). */
+export type AdminPageVisitSort = "createdAt_desc" | "createdAt_asc";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
@@ -222,6 +226,31 @@ export function fetchRecentLogins(accessToken: string, query: RecentLoginsQuery 
   if (query.sort) params.set("sort", query.sort);
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/logins?${params.toString()}`, { cache: "no-store" });
+}
+
+export interface PageVisitsQuery {
+  cursor?: string;
+  /** Full ISO instants — the page turns its IST date pickers into `+05:30` day bounds. */
+  from?: string;
+  to?: string;
+  userId?: string;
+  source?: string;
+  medium?: string;
+  ip?: string;
+  landingPath?: string;
+  city?: string;
+  region?: string;
+  country?: string;
+  sort?: AdminPageVisitSort;
+  limit?: number;
+}
+
+export function fetchPageVisits(accessToken: string, query: PageVisitsQuery = {}): Promise<PageVisitsPage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/page-visits?${params.toString()}`, { cache: "no-store" });
 }
 
 export function fetchUserActivity(accessToken: string, userId: string): Promise<UserActivityDto> {

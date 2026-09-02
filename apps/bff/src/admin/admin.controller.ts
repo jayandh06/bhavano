@@ -8,6 +8,7 @@ import type {
   ListingDetailDto,
   ListingOwnerDto,
   LoginEventsPage,
+  PageVisitsPage,
   OutreachCampaignDto,
   OutreachCampaignsPage,
   OutreachContactDto,
@@ -23,6 +24,7 @@ import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
+import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
@@ -102,6 +104,11 @@ export class AdminController {
   @Get('logins')
   listRecentLogins(@Query() query: ListLoginsDto): Promise<LoginEventsPage> {
     return this.adminService.listRecentLogins(query);
+  }
+
+  @Get('page-visits')
+  listPageVisits(@Query() query: ListPageVisitsDto): Promise<PageVisitsPage> {
+    return this.adminService.listPageVisits(query);
   }
 
   @Get('users/search')

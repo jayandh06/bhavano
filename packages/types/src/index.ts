@@ -417,6 +417,32 @@ export interface LoginEventsPage {
   total: number;
 }
 
+/** One `Visit` row (one browser session) flattened for the admin page-visits screen — the user
+ * fields are joined in so a session that later signed in shows who it was. `ipCity`/`ipRegion`/
+ * `ipCountry` are the best-effort GeoIP guess stored at write time, never a `City` FK. */
+export interface PageVisitDto {
+  id: string;
+  createdAt: string;
+  userId: string | null;
+  userName: string | null;
+  userPhone: string | null;
+  userEmail: string | null;
+  source: string | null;
+  medium: string | null;
+  campaign: string | null;
+  landingPath: string | null;
+  ip: string | null;
+  ipCity: string | null;
+  ipRegion: string | null;
+  ipCountry: string | null;
+}
+
+export interface PageVisitsPage {
+  items: PageVisitDto[];
+  nextCursor: string | null;
+  total: number;
+}
+
 /** One entry in a user's merged activity timeline — sourced from several tables
  * (logins, listings, messages, favourites, views) and returned pre-sorted, newest first. */
 export interface ActivityEventDto {

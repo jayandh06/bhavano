@@ -7,6 +7,7 @@ import type {
   ListingDetailDto,
   ListingOwnerDto,
   LoginEventsPage,
+  PageVisitsPage,
   RateLimitSettingsDto,
   UserActivityDto,
 } from '@bhavano/types';
@@ -17,6 +18,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
+import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 
@@ -29,6 +31,17 @@ const LOGIN_ORDER_BY: Record<LoginSort, Prisma.LoginEventOrderByWithRelationInpu
   createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
 };
+
+const PAGE_VISIT_ORDER_BY: Record<PageVisitSort, Prisma.VisitOrderByWithRelationInput[]> = {
+  createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
+  createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
+};
+
+/** A trimmed, case-insensitive `contains` clause, or undefined when the filter is blank. */
+function containsFilter(value: string | undefined): Prisma.StringNullableFilter | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? { contains: trimmed, mode: 'insensitive' } : undefined;
+}
 
 @Injectable()
 export class AdminService {
@@ -159,6 +172,63 @@ export class AdminService {
         userEmail: row.user.email,
         method: row.method,
         createdAt: row.createdAt.toISOString(),
+      })),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+      total,
+    };
+  }
+
+  /** Page-visit log for the admin analytics screen — the raw per-session `Visit` rows behind
+   * `User.acquisition*`, filterable on every column. `from`/`to` are already offset-adjusted ISO
+   * strings (the admin page turns its IST date pickers into `+05:30` bounds), so a plain
+   * `new Date()` here lands on the right instant. */
+  async listPageVisits(query: ListPageVisitsDto): Promise<PageVisitsPage> {
+    const { cursor, from, to, userId, sort, limit } = query;
+
+    const where: Prisma.VisitWhereInput = {
+      ...(from || to
+        ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
+        : {}),
+      ...(userId ? { userId } : {}),
+      ...(containsFilter(query.source) ? { source: containsFilter(query.source) } : {}),
+      ...(containsFilter(query.medium) ? { medium: containsFilter(query.medium) } : {}),
+      ...(containsFilter(query.ip) ? { ip: containsFilter(query.ip) } : {}),
+      ...(containsFilter(query.landingPath) ? { landingPath: containsFilter(query.landingPath) } : {}),
+      ...(containsFilter(query.city) ? { ipCity: containsFilter(query.city) } : {}),
+      ...(containsFilter(query.region) ? { ipRegion: containsFilter(query.region) } : {}),
+      ...(containsFilter(query.country) ? { ipCountry: containsFilter(query.country) } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.visit.findMany({
+        where,
+        include: { user: { select: { name: true, phone: true, email: true } } },
+        orderBy: PAGE_VISIT_ORDER_BY[sort ?? 'createdAt_desc'],
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      this.prisma.visit.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      items: page.map((row) => ({
+        id: row.id,
+        createdAt: row.createdAt.toISOString(),
+        userId: row.userId,
+        userName: row.user?.name ?? null,
+        userPhone: row.user?.phone ?? null,
+        userEmail: row.user?.email ?? null,
+        source: row.source,
+        medium: row.medium,
+        campaign: row.campaign,
+        landingPath: row.landingPath,
+        ip: row.ip,
+        ipCity: row.ipCity,
+        ipRegion: row.ipRegion,
+        ipCountry: row.ipCountry,
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
       total,

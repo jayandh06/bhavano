@@ -10,6 +10,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/outreach/contacts", label: "Contacts" },
   { href: "/outreach/campaigns", label: "Campaigns" },
   { href: "/logins", label: "Recent logins" },
+  { href: "/page-visits", label: "Page visits" },
   { href: "/settings/rate-limits", label: "Rate limits" },
 ];
 
