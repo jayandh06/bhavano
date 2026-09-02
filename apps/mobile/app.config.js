@@ -63,10 +63,6 @@ module.exports = {
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
-      // Required from expo-status-bar 57.0.1 on — the status-bar handling moved into a config
-      // plugin. `expo install --fix` / expo-doctor flag its absence; it can't add it itself here
-      // because this is a dynamic (.js) config.
-      "expo-status-bar",
       // Adds the POST_NOTIFICATIONS permission (Android 13+) and sets the small-icon/tint used
       // for the "new message" push. The monochrome icon is the one Android actually renders in
       // the status bar — a full-colour one shows as a white square.
