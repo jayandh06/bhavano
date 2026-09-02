@@ -142,6 +142,46 @@ actually wrong with the data). Needs `CLOUDFLARE_API_TOKEN` (Zone → Cache Purg
 `CLOUDFLARE_ZONE_ID` in `.env` — both optional; without them, rotating still fully works, the
 public URL just waits out Cloudflare's TTL on its own, as it did before this existed.
 
+## A fourth follow-up: a third cache layer, found on the live listing page
+
+Even with the Cloudflare purge live and confirmed working (verified directly: the purged URL's
+next request showed `cf-cache-status: MISS` and a fresh `Last-Modified` matching the rotation), a
+real listing page (`/bengaluru/.../2bhk-for-rent-<id>`) still showed the old orientation.
+
+The page's `<Image>` doesn't request the CDN URL directly — it goes through Next.js's own image
+optimization proxy, confirmed from the rendered HTML:
+
+```
+/_next/image?url=https%3A%2F%2Fcdn.bhavano.com%2Fphotos%2F<id>_1_full.webp&w=1200&q=75
+```
+
+That proxy has its *own* cache, entirely independent of Cloudflare's — the response carries
+`Cache-Control: public, max-age=14400, must-revalidate` (Next's default `minimumCacheTTL`, unset
+in `next.config.ts`) and `X-Nextjs-Cache`. It's keyed by the exact source URL + width + quality,
+and doesn't know or care that the upstream content changed — it just keeps serving whatever it
+already cached for that exact key until its own TTL expires, regardless of what Cloudflare or R2
+now hold. Since the bare `photosFull`/`photos` URLs never changed before, once any of the several
+responsive-image widths Next generates for a real device had been cached even once (near-certain
+for an already-published, previously-viewed listing), it would keep serving that stale copy for
+up to 4 hours after a rotate — a purge to Cloudflare never reaches this layer at all.
+
+Fixed at the source rather than by chasing a third purge target: `photosFull`/`photos`
+(`ListingDetailDto`/`ListingCardDto`) now use `publicVariantUrl()`
+(`apps/bff/src/uploads/photo-keys.ts`) instead of the bare `variantUrl()` — the same URL plus
+`?t=<ListingPhoto.updatedAt>`, the identical cache-busting scheme already used for the admin
+panel. An unrotated photo's URL never changes, so this costs nothing for the overwhelming majority
+of photos; a rotate changes `updatedAt`, which changes this URL, which every cache in the chain
+(browser, Cloudflare, Next's optimizer) correctly treats as a resource it has never seen — no
+purge needed for any of them, since there's nothing stale to evict when the URL itself is new.
+The Cloudflare purge from the previous section is kept regardless, as: `variantUrl()` (the bare,
+un-busted form) is still the real object identity and what `CdnPurgeService` targets, and cheap
+insurance doesn't hurt.
+
+The same query string is also fine everywhere else `photosFull` is read — JSON-LD `image`,
+Open Graph, and Twitter Card tags all accept an absolute URL with a query string, and a crawler
+picking up the *current* correctly-oriented image over a stale one is a genuine improvement, not
+just a non-issue.
+
 ## What was deliberately not built
 
 - **No automatic bulk reprocess of existing listings.** Considered, turned down in favor of manual

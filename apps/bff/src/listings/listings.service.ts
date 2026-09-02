@@ -45,7 +45,7 @@ import type {
 import {
   PHOTO_VARIANTS,
   PhotoVariant,
-  variantUrl,
+  publicVariantUrl,
 } from '../uploads/photo-keys';
 import {
   videoPosterKey,
@@ -1244,8 +1244,13 @@ export class ListingsService {
       updatedAt: listing.updatedAt.toISOString(),
       expiresAt: listing.expiresAt.toISOString(),
       isExpired: listing.expiresAt.getTime() < Date.now(),
+      // publicVariantUrl, not variantUrl — the cache-busting ?t=<updatedAt> is what makes a
+      // rotated photo actually show up correctly here (not just in the admin panel) instead of
+      // waiting out Cloudflare's edge cache AND Next.js's own separate image-optimizer cache,
+      // neither of which revisits a URL that hasn't changed. See
+      // docs/plans/listing-photo-orientation.md.
       photosFull: listing.listingPhotos.map((p) =>
-        variantUrl(this.cdnBase(), listing.id, p.photoNo, 'full'),
+        publicVariantUrl(this.cdnBase(), listing.id, p.photoNo, 'full', p.updatedAt),
       ),
       // Same order as photosFull — exists so the admin rotate control has something to send
       // back other than an array index, which would silently break if a photo is ever deleted
@@ -1333,8 +1338,9 @@ export class ListingsService {
       specs: cardSpecs(listing),
       imgLabel: hasPhoto ? '' : placeholder.imgLabel,
       imgColors: [placeholder.imgA, placeholder.imgB],
+      // publicVariantUrl — see the matching comment on photosFull in toDetailDto.
       photos: listing.listingPhotos.map((p) =>
-        variantUrl(this.cdnBase(), listing.id, p.photoNo, 'preview'),
+        publicVariantUrl(this.cdnBase(), listing.id, p.photoNo, 'preview', p.updatedAt),
       ),
       viewCount: listing.viewCount,
       likeCount: listing.likeCount,
