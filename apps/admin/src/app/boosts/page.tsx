@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchBoosts } from "@/lib/bff";
 import { RevokeBoostButton } from "@/components/RevokeBoostButton";
+import { formatDate } from "@/lib/formatDateTime";
 
 export default async function BoostsPage({
   searchParams,
@@ -64,7 +65,7 @@ export default async function BoostsPage({
                     </div>
                     <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
                       {boost.ownerName ?? "Unknown owner"} · ₹{(boost.amount / 100).toLocaleString("en-IN")} ·{" "}
-                      {new Date(boost.boostedFrom).toLocaleDateString()} → {new Date(boost.boostedUntil).toLocaleDateString()}
+                      {formatDate(boost.boostedFrom)} → {formatDate(boost.boostedUntil)}
                     </div>
                   </div>
                   {isActive && <RevokeBoostButton listingId={boost.listingId} />}

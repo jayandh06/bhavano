@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchCampaignSends } from "@/lib/bff";
 import { str } from "@/lib/searchParams";
+import { formatDateTime } from "@/lib/formatDateTime";
 
 const STATUS_COLORS: Record<string, string> = {
   queued: "var(--muted)",
@@ -89,9 +90,7 @@ export default async function SendsPage({
                   {send.renderedBody}
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>
-                  {send.sentAt
-                    ? `Sent ${new Date(send.sentAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`
-                    : `Created ${new Date(send.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`}
+                  {send.sentAt ? `Sent ${formatDateTime(send.sentAt)}` : `Created ${formatDateTime(send.createdAt)}`}
                   {send.failureReason && ` · ${send.failureReason}`}
                 </div>
               </div>

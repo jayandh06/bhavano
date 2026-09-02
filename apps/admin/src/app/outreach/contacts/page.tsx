@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchOutreachContacts } from "@/lib/bff";
 import { str } from "@/lib/searchParams";
 import { OptOutButton } from "@/components/OptOutButton";
+import { formatDate } from "@/lib/formatDateTime";
 
 const CONSENT_COLORS: Record<string, string> = {
   none: "var(--muted)",
@@ -126,9 +127,7 @@ export default async function OutreachContactsPage({
                   <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>
                     {contact.contactedCount === 0
                       ? "Never contacted"
-                      : `Contacted ${contact.contactedCount}× · last ${new Date(
-                          contact.lastContactedAt!,
-                        ).toLocaleDateString("en-IN", { dateStyle: "medium" })}`}
+                      : `Contacted ${contact.contactedCount}× · last ${formatDate(contact.lastContactedAt!)}`}
                     {" · via "}
                     {contact.source.replace("_", " ")}
                   </div>

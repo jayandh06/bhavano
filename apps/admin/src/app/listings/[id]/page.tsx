@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchListingById, fetchListingOwner, fetchMessages, fetchThread } from "@/lib/bff";
 import { ModerationPanel } from "@/components/ModerationPanel";
 import { RotatablePhotoGrid } from "@/components/RotatablePhotoGrid";
+import { formatDate } from "@/lib/formatDateTime";
 
 export default async function ListingModerationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -44,7 +45,7 @@ export default async function ListingModerationPage({ params }: { params: Promis
             </div>
           )}
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: listing.photosFull.length > 0 || listing.videos.length > 0 ? 12 : 0 }}>
-            Status: {listing.status} · Posted {new Date(listing.createdAt).toLocaleDateString()}
+            Status: {listing.status} · Posted {formatDate(listing.createdAt)}
             {listing.photosFull.length > 0 ? ` · ${listing.photosFull.length} photo(s)` : " · no photos"}
             {listing.videos.length > 0 && ` · ${listing.videos.length} video(s)`}
           </div>

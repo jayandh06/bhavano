@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { ActivityEventDto, VisitDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchUserActivity } from "@/lib/bff";
+import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 
 const EVENT_ICONS: Record<ActivityEventDto["type"], string> = {
   login: "🔑",
@@ -49,7 +50,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
           </div>
           <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
             {user.cityName ? `${user.cityName} · ` : ""}
-            {user.role === "admin" ? "Admin" : "User"} · joined {new Date(user.createdAt).toLocaleDateString()}
+            {user.role === "admin" ? "Admin" : "User"} · joined {formatDate(user.createdAt)}
           </div>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
             Found via:{" "}
@@ -81,7 +82,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13.5 }}>{event.summary}</div>
                   <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                    {new Date(event.timestamp).toLocaleString()}
+                    {formatDateTime(event.timestamp)}
                   </div>
                 </div>
               </div>
@@ -124,7 +125,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
                   )}
                 </div>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", flexShrink: 0 }}>
-                  {new Date(visit.createdAt).toLocaleString()}
+                  {formatDateTime(visit.createdAt)}
                 </div>
               </div>
               );

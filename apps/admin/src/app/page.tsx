@@ -5,6 +5,7 @@ import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@
 import { str } from "@/lib/searchParams";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { UserPicker } from "@/components/UserPicker";
+import { formatDate } from "@/lib/formatDateTime";
 
 type FilterTab = "needsReview" | "flagged" | "all";
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -246,8 +247,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0, fontSize: 11.5, color: "var(--muted)" }}>
-                  <div>Created {new Date(item.createdAt).toLocaleDateString()}</div>
-                  <div>Modified {new Date(item.updatedAt).toLocaleDateString()}</div>
+                  <div>Created {formatDate(item.createdAt)}</div>
+                  <div>Modified {formatDate(item.updatedAt)}</div>
                 </div>
               </Link>
             ))}

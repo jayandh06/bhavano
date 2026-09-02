@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminLoginSort, fetchRecentLogins } from "@/lib/bff";
 import { str } from "@/lib/searchParams";
 import { UserPicker } from "@/components/UserPicker";
+import { formatDateTime } from "@/lib/formatDateTime";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -134,7 +135,7 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "var(--green)" }}>{login.method}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{new Date(login.createdAt).toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{formatDateTime(login.createdAt)}</div>
                 </div>
               </Link>
             ))}

@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchCampaigns } from "@/lib/bff";
 import { CampaignControls } from "@/components/CampaignControls";
 import { NewCampaignForm } from "@/components/NewCampaignForm";
+import { formatDateTime } from "@/lib/formatDateTime";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "var(--muted)",
@@ -111,11 +112,7 @@ export default async function CampaignsPage({
                     </div>
                     <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>
                       {`sent ${campaign.stats.sent} · failed ${campaign.stats.failed} · suppressed ${campaign.stats.suppressed}`}
-                      {campaign.lastRunAt &&
-                        ` · last run ${new Date(campaign.lastRunAt).toLocaleString("en-IN", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}`}
+                      {campaign.lastRunAt && ` · last run ${formatDateTime(campaign.lastRunAt)}`}
                       {campaign.cadenceCron ? ` · repeats (${campaign.cadenceCron})` : " · one-shot"}
                     </div>
                     <Link
