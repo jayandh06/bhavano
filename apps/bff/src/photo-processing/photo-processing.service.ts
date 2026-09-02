@@ -88,12 +88,28 @@ export class PhotoProcessingService {
             resized,
             'image/webp',
           );
-          await this.prisma.photoVariantJob.update({ where: { id: job.id }, data: { status: 'done' } });
+          // updateMany + a status:'processing' guard, not a plain update: if an admin clicked
+          // rotate again while this run was still mid-flight (a real possibility — this loop just
+          // did a network round trip to R2 for both the download and the upload), AdminService
+          // .rotatePhoto() already reset this same row back to 'pending' for the newer rotation.
+          // A plain update here would stomp that reset with 'done', permanently orphaning the
+          // newer request: the row would sit at 'done' with content that was already stale the
+          // moment it was written, and the poller would never look at it again. Matching on
+          // status:'processing' means we only ever mark our own claim done, never someone else's.
+          const { count } = await this.prisma.photoVariantJob.updateMany({
+            where: { id: job.id, status: 'processing' },
+            data: { status: 'done' },
+          });
+          if (count === 0) {
+            this.logger.log(`Photo variant job ${job.id} was reset mid-flight — leaving its newer 'pending' status alone.`);
+          }
         } catch (error) {
           const attempts = job.attempts + 1;
           this.logger.warn(`Photo variant job ${job.id} failed (attempt ${attempts}): ${error}`);
-          await this.prisma.photoVariantJob.update({
-            where: { id: job.id },
+          // Same guard as the success path above — don't let a stale failure clobber a newer
+          // rotate click's 'pending' reset.
+          await this.prisma.photoVariantJob.updateMany({
+            where: { id: job.id, status: 'processing' },
             data: {
               attempts,
               status: attempts >= MAX_ATTEMPTS ? 'failed' : 'pending',

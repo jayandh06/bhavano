@@ -62,6 +62,27 @@ photo thumbnail. Since the reprocess is async, clicking it shows a brief "rotati
 ~4s (a bit of margin over the 3s poll interval) before refreshing, rather than refreshing
 immediately and having the admin see the same still-wrong image and assume the click did nothing.
 
+## A follow-up bug this surfaced: rotate clicks racing the background worker
+
+Reported after this shipped: rotating sometimes appeared to skip one step entirely, and the
+*next* click after that would jump 180° instead of 90°.
+
+Root cause: `PhotoProcessingService.processPending()` does a real network round trip (download the
+original from R2, re-encode, upload the new variant) between claiming a job (`status: 'processing'`)
+and marking it done. If an admin's next rotate click landed on the same photo while that was still
+in flight, `AdminService.rotatePhoto()` would correctly reset the job row back to `pending` for the
+new rotation — but the *stale* run, finishing later, wrote `status: 'done'` unconditionally,
+clobbering that reset. The row was left at `'done'` holding content from the *older* rotation,
+and — no longer `pending` — the poller never looked at it again. That click's effect was silently
+lost. The next click then computed its target angle correctly (`ListingPhoto.rotation` itself was
+never racy, only the job-table side), but visually that read as a 180° jump from wherever the
+stuck state had left the image.
+
+Fixed by guarding both the success and failure completion writes with `status: 'processing'` in
+the `WHERE` clause (`updateMany`, checking `count`), so a run only ever finalizes a job it still
+owns — one a newer click has already reset out from under it is left alone, exactly as it should
+be. Covered by `photo-processing.service.spec.ts`.
+
 ## What was deliberately not built
 
 - **No automatic bulk reprocess of existing listings.** Considered, turned down in favor of manual
