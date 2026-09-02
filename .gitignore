@@ -1,6 +1,12 @@
 node_modules/
 .turbo/
 dist/
+# Exception: @bhavano/types is consumed from its compiled dist/ (package.json `exports`), and the
+# EAS mobile build has no step that runs `tsc` for it (turbo's ^build only covers the Docker/web
+# builds). Commit its dist so `eas build` can resolve @bhavano/types/* without a build hook.
+# Rebuild + recommit this whenever packages/types/src changes: `pnpm --filter @bhavano/types build`.
+!/packages/types/dist/
+!/packages/types/dist/**
 .next/
 out/
 coverage/

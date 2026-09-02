@@ -43,9 +43,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit",
-    "//eas-build-post-install": "@bhavano/types ships from its compiled dist/ (see its package.json exports), which is gitignored and so isn't in the EAS upload. Nothing in the EAS pipeline runs turbo's ^build, so build it explicitly after install or Metro can't resolve @bhavano/types/* — https://docs.expo.dev/build-reference/npm-hooks/",
-    "eas-build-post-install": "cd ../.. && pnpm --filter @bhavano/types build"
+    "typecheck": "tsc --noEmit"
   },
   "private": true
 }

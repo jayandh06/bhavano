@@ -1,0 +1,24 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PRICE_BOUNDS = void 0;
+/** Rough plausibility bounds per category (INR) — originally just a fat-finger/scam-price
+ * defense at posting time (see apps/bff/src/moderation/priceBounds.ts), also reused by the web
+ * app to build category-aware price quick-picks on browse pages. Sale = buy/sell, rental =
+ * rent/lease. Tune as real submissions come in. */
+exports.PRICE_BOUNDS = {
+    house: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
+    apartment: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
+    villa: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 1_000_000 } },
+    pg: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 1_000, max: 100_000 } },
+    storage: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 200, max: 100_000 } },
+    coworking: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 500, max: 200_000 } },
+    furniture: { sale: { min: 50, max: 1_000_000 }, rental: { min: 50, max: 50_000 } },
+    // Sell-only (see POSTABLE_TRANSACTION_TYPES) — the `rental` bound is never actually reached.
+    interiors: { sale: { min: 500, max: 5_000_000 }, rental: { min: 500, max: 5_000_000 } },
+    // Sell-only — land spans the same price range as built residential property. `rental` mirrors
+    // `sale` (never reached), same pattern as `interiors` above.
+    plot: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 100_000, max: 500_000_000 } },
+    // A small shop and a large warehouse are both "commercial", hence the wide rental band. `sale`
+    // shares the standard real-estate-sale band used by every other sellable category.
+    commercial: { sale: { min: 100_000, max: 500_000_000 }, rental: { min: 5_000, max: 2_000_000 } },
+};

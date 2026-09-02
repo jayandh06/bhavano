@@ -1,0 +1,5 @@
+import type { ListingCategory, TransactionType } from "./index";
+/** Transaction types a poster may choose for each category in the posting wizard's step 2.
+ * "buy" is never postable — that's a browsing-side tab, not a lister's action. PG is
+ * rent-only, so its step is auto-selected/skipped in the UI. */
+export declare const POSTABLE_TRANSACTION_TYPES: Record<ListingCategory, TransactionType[]>;
