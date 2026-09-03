@@ -7,19 +7,27 @@ run everything from `apps/mobile/` unless noted.
 > `AGENTS.md` in this folder: Expo 57 changed a lot — check
 > <https://docs.expo.dev/versions/v57.0.0/> before touching native config or upgrading a package.
 
+**Fastest way to a debuggable app on a real device, with none of the native toolchain
+(Xcode / CocoaPods / Android Studio): [§5](#5-debug-on-a-device-without-a-local-native-toolchain-recommended).**
+Everything below §6 needs the toolchain and is only for touching native code or reproducing a
+build failure.
+
 ---
 
 ## 1. Prerequisites
+
+Only needed for the local *native* builds (§6–§8). §3 (simulator dev server) needs just Node +
+pnpm + Watchman + the platform SDK; **§5 needs none of this** — the build runs on EAS.
 
 | Tool | Notes |
 |---|---|
 | **Node ≥ 22** | matches the repo `engines` and the EAS builder |
 | **pnpm 11** | `corepack enable` (version pinned in root `package.json`) |
 | **Watchman** | `brew install watchman` — Metro file watching |
-| **Xcode** (iOS) | full app from the App Store, then `xcode-select --install`; open once to accept the licence |
-| **CocoaPods** (iOS) | `brew install cocoapods` |
-| **JDK 17** (Android) | `brew install --cask temurin@17`; set `JAVA_HOME` |
-| **Android Studio** (Android) | install the **SDK Platform 35**, **Build-Tools**, **Platform-Tools**, and an **emulator** image via SDK Manager; set `ANDROID_HOME` (usually `~/Library/Android/sdk`) and add `platform-tools` + `emulator` to `PATH` |
+| **Xcode** (iOS native) | full app from the App Store, then `xcode-select --install`; open once to accept the licence |
+| **CocoaPods** (iOS native) | `brew install cocoapods` — **not** `gem install`: macOS ships Ruby 2.6, and current CocoaPods/`ffi` need Ruby ≥ 3.0, so a plain `gem install cocoapods` fails on the `ffi` native extension. Homebrew's formula bundles its own Ruby and sidesteps it. (No Homebrew? Install it first: <https://brew.sh>.) |
+| **JDK 17** (Android native) | `brew install --cask temurin@17`; set `JAVA_HOME` |
+| **Android Studio** (Android native) | install the **SDK Platform 35**, **Build-Tools**, **Platform-Tools**, and an **emulator** image via SDK Manager; set `ANDROID_HOME` (usually `~/Library/Android/sdk`) and add `platform-tools` + `emulator` to `PATH` |
 | **fastlane** (only for `eas build --local`) | `brew install fastlane` |
 
 A physical iOS device also needs a signing identity (the EAS-managed certs, or your own Apple
@@ -59,17 +67,18 @@ pnpm start           # = expo start
 Then:
 - **`i`** / **`a`** — open the iOS Simulator / Android emulator (installs a **dev client** the first
   time — this project uses `expo-dev-client`, not Expo Go).
-- Scan the QR with a **physical device** that has the dev-client build installed.
+- Scan the QR with a **physical device** that has the dev-client build installed (see §5).
 - **`r`** reload, **`j`** open the debugger, **`m`** dev menu.
 
 This only reloads JS. Native changes (new native module, `app.config.js` edits, icon changes)
-need a rebuild — sections 4–6.
+need a rebuild — §5–§7.
 
 ---
 
 ## 4. Build + run on a simulator / emulator
 
-Compiles the native app locally with Xcode / Gradle, installs it, and starts Metro.
+Compiles the native app locally with Xcode / Gradle, installs it, and starts Metro. Needs the
+§1 toolchain.
 
 ```bash
 # iOS  (runs `expo prebuild` for ios/, then xcodebuild)
@@ -89,17 +98,57 @@ Add `--clean` to wipe and regenerate the native dirs.
 
 ---
 
-## 5. Physical device
+## 5. Debug on a device without a local native toolchain (recommended)
 
-1. `EXPO_PUBLIC_BFF_URL` → your Mac's LAN IP (not `localhost`), and make sure the BFF binds `0.0.0.0`.
-2. **iOS**: `npx expo run:ios --device` and pick the device. Needs a provisioning profile — easiest is
-   `npx eas-cli build --profile development --platform ios` once to let EAS provision it, install that
-   build, then iterate with the dev server.
+Build the **dev client once on EAS**, install it on the phone, then iterate on JS locally over
+Metro. **No Xcode, CocoaPods, Android Studio, or JDK on your machine** — the cloud does the
+native build. Full **JS** debugging on the device (breakpoints, console, React DevTools, Fast
+Refresh). Only native code / crash backtraces still need §6–§7.
+
+```bash
+cd apps/mobile
+npx eas-cli@latest login                                        # or: export EXPO_TOKEN=...
+
+# one build per platform — the dev-client binary. Re-run only when native deps / app.config.js change.
+npx eas-cli@latest build --profile development --platform ios
+npx eas-cli@latest build --profile development --platform android
+```
+
+Install the finished build on the device from the link/QR EAS prints (iOS: internal
+distribution, the device's UDID is registered on first install; Android: the APK downloads
+directly).
+
+```bash
+npx expo start --dev-client        # local Metro
+```
+
+- Open the **Bhavano** app on the device (not Expo Go). It lists the Metro servers on the LAN —
+  pick yours, or scan the QR.
+- `EXPO_PUBLIC_BFF_URL` must be your Mac's **LAN IP** (`http://192.168.x.x:4000`), BFF bound to
+  `0.0.0.0`, phone on the same Wi-Fi.
+- **Shake the device** (or `⌘D` iOS sim / `⌘M` Android) → dev menu → **Open JS Debugger** for
+  breakpoints + console, **Toggle Element Inspector**, **Reload**. Fast Refresh on every save.
+- Device logs stream in the `expo start` terminal.
+
+The dev client keeps working across JS changes indefinitely; you only rebuild it (the two `eas
+build` commands) when a **native** dependency or `app.config.js` changes.
+
+---
+
+## 6. Physical device with the local toolchain (`expo run:*`)
+
+For when you need §1 installed anyway (native debugging). Otherwise prefer §5.
+
+1. `EXPO_PUBLIC_BFF_URL` → your Mac's LAN IP (not `localhost`), BFF binds `0.0.0.0`.
+2. **iOS**: `npx expo run:ios --device`, pick the device. Needs a provisioning profile — the
+   easiest is to run the §5 `eas build --profile development` once to let EAS provision it, then
+   `expo run:ios --device` reuses those credentials. Or set up a free personal team in Xcode →
+   Settings → Accounts.
 3. **Android**: enable USB debugging, `adb devices` to confirm, then `npx expo run:android --device`.
 
 ---
 
-## 6. Reproduce an EAS build locally (`eas build --local`)
+## 7. Reproduce an EAS build locally (`eas build --local`)
 
 Runs the **exact** EAS pipeline on your Mac — fresh project copy, fresh `pnpm install`,
 `expo prebuild`, `pod install` / Gradle, fastlane → `.ipa` / `.aab`. Use this to debug a failing
@@ -119,7 +168,7 @@ Android SDK + JDK 17 (Android).
 
 ---
 
-## 7. Native IDE workflow (deepest debugging)
+## 8. Native IDE workflow (deepest debugging)
 
 ```bash
 # iOS
@@ -133,7 +182,7 @@ open -a "Android Studio" android      # or: cd android && ./gradlew :app:assembl
 
 ---
 
-## 8. Debug just the JS bundle
+## 9. Debug just the JS bundle
 
 The step that runs inside the native build and is the usual source of Metro errors:
 
@@ -147,7 +196,7 @@ the monorepo notes below.
 
 ---
 
-## 9. Cloud builds (EAS) — reference
+## 10. Cloud builds (EAS) — reference
 
 ```bash
 npx eas-cli@latest login                                   # or: export EXPO_TOKEN=...
@@ -156,15 +205,16 @@ npx eas-cli@latest build:view <id>
 npx eas-cli@latest submit --profile production --platform ios
 ```
 
-Profiles (`eas.json`): **development** (dev-client, internal), **preview** (internal APK/`.ipa`,
-no store), **production** (store, `autoIncrement`, `appVersionSource: remote` so EAS owns the
-build number). Always pass **`--clear-cache`** after changing dependencies — EAS otherwise reuses
-a cached `node_modules`. A Gradle failure citing `maven.production.caches.eas-build.internal` /
-`504 Gateway Timeout` is EAS infra, not the project — just retry.
+Profiles (`eas.json`): **development** (dev-client, internal — used by §5), **preview** (internal
+APK/`.ipa`, no store), **production** (store, `autoIncrement`, `appVersionSource: remote` so EAS
+owns the build number). Always pass **`--clear-cache`** after changing dependencies — EAS
+otherwise reuses a cached `node_modules`. A Gradle failure citing
+`maven.production.caches.eas-build.internal` / `504 Gateway Timeout` is EAS infra, not the
+project — just retry.
 
 ---
 
-## 10. Monorepo gotchas
+## 11. Monorepo gotchas
 
 pnpm's strict `node_modules` doesn't hoist transitive deps, so anything the **native build
 tooling** resolves from `apps/mobile/` must be a **direct dependency** here, even though it's
@@ -196,14 +246,16 @@ Other notes:
 
 ---
 
-## 11. Troubleshooting quick table
+## 12. Troubleshooting quick table
 
 | Symptom | Fix |
 |---|---|
+| `gem install cocoapods` fails on `ffi` / "Ruby version >= 3.0" | macOS Ruby 2.6 is too old — `brew install cocoapods` (bundles its own Ruby), or don't build natively at all — use §5 |
 | Metro won't start / stale cache | `npx expo start --clear` |
-| `transformFile` undefined in a native build | missing direct dep — section 10 |
+| `transformFile` undefined in a native build | missing direct dep — §11 |
 | `Cannot find module '@bhavano/types/...'` | `pnpm --filter @bhavano/types build` (dist must exist) |
 | iOS pods out of date after a native change | `npx expo prebuild --platform ios --clean` |
 | Android `SDK location not found` | set `ANDROID_HOME`, or add `sdk.dir=...` to `android/local.properties` |
-| Physical device can't reach the API | `EXPO_PUBLIC_BFF_URL` = LAN IP, BFF on `0.0.0.0`, same Wi-Fi |
+| Device can't reach the API | `EXPO_PUBLIC_BFF_URL` = LAN IP, BFF on `0.0.0.0`, same Wi-Fi |
+| Dev client on device doesn't see Metro | same Wi-Fi; `expo start --dev-client`; or `expo start --tunnel` if the LAN blocks it |
 | EAS build: Maven `504` in Gradle phase | transient EAS infra — retry |
