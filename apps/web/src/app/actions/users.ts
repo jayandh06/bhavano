@@ -25,6 +25,20 @@ export async function fetchProfileAction(): Promise<ProfileActionResult> {
   }
 }
 
+/** Email + phone for the `post_ad_success` conversion's Enhanced Conversions user-provided data
+ * — the wizard doesn't otherwise have them in scope. Returns an empty object when logged out or
+ * on any failure; the conversion still fires, just without in-page user data. */
+export async function getUserContactAction(): Promise<{ email?: string; phone?: string }> {
+  const session = await auth();
+  if (!session?.accessToken) return {};
+  try {
+    const profile = await fetchProfile(session.accessToken);
+    return { email: profile.email ?? undefined, phone: profile.phone ?? undefined };
+  } catch {
+    return {};
+  }
+}
+
 export async function updateProfileAction(
   input: UpdateProfileInput,
 ): Promise<{ success: boolean; error?: string; profile?: UserProfileDto }> {

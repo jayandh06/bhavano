@@ -11,7 +11,7 @@ import {
   verifyOtpAction,
 } from "@/app/actions/auth";
 import { requestEmailCodeAction, verifyEmailAction } from "@/app/actions/users";
-import { pushDataLayerEvent } from "@/lib/gtm";
+import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
 import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 import { GOOGLE_SIGNUP_TRACKED_KEY } from "./SignupConversionTracker";
 import { GoogleIcon } from "./GoogleIcon";
@@ -119,7 +119,12 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     }
 
     if (result.isNewUser) {
-      pushDataLayerEvent("signup_complete", { method: "phone" });
+      // The just-verified number is the Enhanced Conversions user-provided data for this signup.
+      const phoneE164 = toE164IN(phone);
+      pushDataLayerEvent("signup_complete", {
+        method: "phone",
+        ...(phoneE164 ? { user_data: { phone_number: phoneE164 } } : {}),
+      });
       // Asked here, while they are already in a form, rather than by a banner they will ignore.
       // A verified email is what lets a later Google sign-in land in THIS account instead of
       // silently creating a second one — see docs/plans/account-linking-phone-and-email.md.
@@ -142,9 +147,12 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
    */
   async function trackGoogleSignup() {
     if (sessionStorage.getItem(GOOGLE_SIGNUP_TRACKED_KEY)) return;
-    const { isNewUser, provider } = await checkNewSignupAction();
+    const { isNewUser, provider, email } = await checkNewSignupAction();
     if (isNewUser && provider === "google") {
-      pushDataLayerEvent("signup_complete", { method: "google" });
+      pushDataLayerEvent("signup_complete", {
+        method: "google",
+        ...(email ? { user_data: { email } } : {}),
+      });
       sessionStorage.setItem(GOOGLE_SIGNUP_TRACKED_KEY, "1");
     }
   }

@@ -68,9 +68,19 @@ export async function hasSessionAction(): Promise<boolean> {
  * succeeded" moment on the client the way phone-OTP has (see verifyOtpAction), so
  * SignupConversionTracker calls this once the app reloads after the redirect back, to check
  * whether that login was a brand-new Google signup. */
-export async function checkNewSignupAction(): Promise<{ isNewUser: boolean; provider?: string }> {
+export async function checkNewSignupAction(): Promise<{
+  isNewUser: boolean;
+  provider?: string;
+  /** For the `signup_complete` conversion's Enhanced Conversions user-provided data. Google
+   * sign-in always carries an email; a phone-OTP signup has none at this point. */
+  email?: string;
+}> {
   const session = await auth();
-  return { isNewUser: !!session?.isNewUser, provider: session?.provider };
+  return {
+    isNewUser: !!session?.isNewUser,
+    provider: session?.provider,
+    email: session?.user?.email ?? undefined,
+  };
 }
 
 export async function signOutAction(): Promise<void> {

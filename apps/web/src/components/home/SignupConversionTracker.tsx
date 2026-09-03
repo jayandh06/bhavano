@@ -29,9 +29,12 @@ export function SignupConversionTracker() {
   useEffect(() => {
     if (sessionStorage.getItem(GOOGLE_SIGNUP_TRACKED_KEY)) return;
 
-    checkNewSignupAction().then(({ isNewUser, provider }) => {
+    checkNewSignupAction().then(({ isNewUser, provider, email }) => {
       if (isNewUser && provider === "google") {
-        pushDataLayerEvent("signup_complete", { method: "google" });
+        pushDataLayerEvent("signup_complete", {
+          method: "google",
+          ...(email ? { user_data: { email } } : {}),
+        });
         sessionStorage.setItem(GOOGLE_SIGNUP_TRACKED_KEY, "1");
       }
     });

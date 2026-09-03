@@ -48,6 +48,12 @@ DLV_KEYS = [
     "months",
     "boostDays",
     "topic",
+    # Nested under `user_data` on post_ad_success / signup_complete — raw email + E.164 phone for
+    # Google Ads Enhanced Conversions' user-provided data. Deliberately NOT added to EVENTS: they
+    # feed the Ads conversion tags only, never GA4 (that would send PII to Analytics). GTM's
+    # data-layer variables read a dotted path as a nested lookup.
+    "user_data.email",
+    "user_data.phone_number",
 ]
 
 # event name -> payload keys carried into GA4 as event parameters.
@@ -211,6 +217,31 @@ def main():
             ],
             "firingTriggerId": [tid],
         }, name)
+
+    # --- 3b. Enhanced Conversions: User-Provided Data ---------------------------------------
+    #
+    # Google Ads flags "Implement In-page code in addition to Automatic" for Post ad success and
+    # New registration. The web app now pushes `user_data: { email, phone_number }` on
+    # post_ad_success / signup_complete (DLVs created above). Two more pieces are needed, and both
+    # use GTM API `type`/`key` strings that aren't stable enough to hand-write here — take them
+    # from a container export (`gtm_api` GET /containers/.../versions or the UI's Export) after
+    # creating them once in the GTM UI, then wire them in below:
+    #
+    #   1. A "User-Provided Data" variable, Manual configuration:
+    #        Email        = {{DLV - user_data.email}}
+    #        Phone Number = {{DLV - user_data.phone_number}}
+    #      -> create(ws, "variables", { "name": "User-Provided Data", "type": "<from export>",
+    #                                   "parameter": [ ...email/phone map... ] }, ...)
+    #
+    #   2. On the two `awct` tags below for post_ad_success and signup_complete, add the
+    #      "Include user-provided data from your website" parameter referencing that variable
+    #      (keep Automatic collection on — Google wants it *in addition to*). Append to `params`:
+    #        if event in ("post_ad_success", "signup_complete"):
+    #            params.append({"type": "template", "key": "<from export>",
+    #                           "value": "{{User-Provided Data}}"})
+    #
+    # Account side (one-time, Ads UI, not scriptable here): Settings -> Enhanced conversions ->
+    # accept the customer-data terms, method = Google Tag Manager.
 
     # --- 4. Ads conversion tags (only once labels exist) ---
     print("\nAds conversion tags")

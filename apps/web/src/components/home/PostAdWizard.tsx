@@ -18,6 +18,7 @@ import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
+import { getUserContactAction } from "@/app/actions/users";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
 import { useAuthGate } from "./AuthGateProvider";
 import { CategoryFieldsAccordion } from "@/components/home/CategoryFieldsAccordion";
@@ -25,7 +26,7 @@ import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { searchAreasAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
-import { pushDataLayerEvent } from "@/lib/gtm";
+import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
 import { buildListingPath } from "@/lib/listingPath";
 import {
   fieldClass,
@@ -598,9 +599,20 @@ export function PostAdWizard({
       return;
     }
     setSlotCap(null);
+    // `user_data` (raw email / E.164 phone) rides along for Google Ads Enhanced Conversions —
+    // GTM hashes it client-side. Best-effort: a failed lookup just omits it. The poster is
+    // always logged in by this point, so at least one identifier is normally present.
+    const contact = await getUserContactAction();
+    const phoneE164 = toE164IN(contact.phone);
     // Fired here (not on the listing page) so it's guaranteed to happen exactly once, even if
     // the user boosts, skips, or closes the tab without ever navigating to their new listing.
-    pushDataLayerEvent("post_ad_success", { listingId: result.listing.id });
+    pushDataLayerEvent("post_ad_success", {
+      listingId: result.listing.id,
+      user_data: {
+        ...(contact.email ? { email: contact.email } : {}),
+        ...(phoneE164 ? { phone_number: phoneE164 } : {}),
+      },
+    });
     setCreatedListing(result.listing);
     setStep("success");
   }
