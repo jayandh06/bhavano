@@ -1,4 +1,4 @@
-import { IsIP, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIP, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 export class RecordVisitDto {
   @IsString()
@@ -19,6 +19,29 @@ export class RecordVisitDto {
   @IsString()
   @MaxLength(100)
   campaign?: string;
+
+  /** Google Ads click id, from the account's Final URL suffix. Opaque, Google-issued token —
+   * word characters and hyphens only, not free text like source/medium/campaign. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[\w-]+$/)
+  @MaxLength(100)
+  gclid?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  campaignId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  adGroupId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  adId?: string;
 
   @IsOptional()
   @IsString()

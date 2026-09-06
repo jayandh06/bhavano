@@ -227,10 +227,18 @@ model User {
    * if neither was present. Captured by apps/web's middleware.ts on the user's very first visit
    * and written here only when this row is first created (see AuthService.verifyOtp /
    * loginWithGoogle) — never overwritten afterward, so it reflects how the user originally found
-   * Bhavano rather than the source of their most recent login. */
+   * Bhavano rather than the source of their most recent login.
+   *
+   * The four Google Ads fields below are captured the same way, independent of the UTM fields
+   * above — a Google Ads click carries its own `gclid`/campaign/ad-group/ad ids (via the Final
+   * URL suffix) whether or not the link was also UTM-tagged. */
   acquisitionSource     String?
   acquisitionMedium     String?
   acquisitionCampaign   String?
+  acquisitionGclid      String?
+  acquisitionCampaignId String?
+  acquisitionAdGroupId  String?
+  acquisitionAdId       String?
   visits                Visit[]
   /** Set when this user was first reached as an outreach prospect — the attribution link back
    * to a campaign. Null for organic signups. */
@@ -558,6 +566,13 @@ model Visit {
   source      String?
   medium      String?
   campaign    String?
+  /** Google Ads click-identifying params, from the account's Final URL suffix
+   * (gclid={gclid}&campaignid={campaignid}&adgroupid={adgroupid}&adid={creative}) — captured
+   * independently of source/medium/campaign above; see the matching User.acquisition* fields. */
+  gclid       String?
+  campaignId  String?
+  adGroupId   String?
+  adId        String?
   landingPath String?
   /** The visitor's IP as seen by Caddy. Personal data under the DPDP Act — /privacy discloses
    * it. Nullable, since a request reaching the BFF without a usable X-Forwarded-For should still

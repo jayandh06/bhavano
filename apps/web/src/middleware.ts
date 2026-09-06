@@ -17,29 +17,54 @@ interface ResolvedSource {
   source: string;
   medium?: string;
   campaign?: string;
+  /** Google Ads click-identifying params, from the account's Final URL suffix
+   * (gclid={gclid}&campaignid={campaignid}&adgroupid={adgroupid}&adid={creative}) — resolved
+   * independently of source/medium/campaign below, since a Google Ads click carries these
+   * regardless of whether the link was also UTM-tagged. */
+  gclid?: string;
+  campaignId?: string;
+  adGroupId?: string;
+  adId?: string;
 }
 
 /**
  * Resolves where a visitor came from — UTM params if the landing link was tagged, else the
- * external Referer header's hostname, else "direct". Shared by both cookies below: the permanent
- * first-touch one and the per-session visit log, since it's the same computation either way.
+ * external Referer header's hostname, else "direct" — plus, independently, any Google Ads click
+ * params on the URL. Shared by both cookies below: the permanent first-touch one and the
+ * per-session visit log, since it's the same computation either way.
  */
 function resolveSource(request: NextRequest): ResolvedSource {
   const { searchParams } = request.nextUrl;
+  const gclid = searchParams.get("gclid") ?? undefined;
+  const googleAdsParams = {
+    gclid,
+    campaignId: searchParams.get("campaignid") ?? undefined,
+    adGroupId: searchParams.get("adgroupid") ?? undefined,
+    adId: searchParams.get("adid") ?? undefined,
+  };
+
   const utmSource = searchParams.get("utm_source");
   if (utmSource) {
     return {
       source: utmSource,
       medium: searchParams.get("utm_medium") ?? undefined,
       campaign: searchParams.get("utm_campaign") ?? undefined,
+      ...googleAdsParams,
     };
+  }
+
+  // A bare gclid with no utm_source is Google Ads' own auto-tagging having fired — a stronger
+  // signal than an absent UTM param, so it wins over the referrer/"direct" fallback below. An
+  // explicit utm_source (handled above) still takes precedence over this.
+  if (gclid) {
+    return { source: "google", medium: "cpc", ...googleAdsParams };
   }
 
   const refererHost = safeHostname(request.headers.get("referer"));
   if (refererHost && refererHost !== request.nextUrl.hostname) {
-    return { source: refererHost, medium: "referral" };
+    return { source: refererHost, medium: "referral", ...googleAdsParams };
   }
-  return { source: "direct" };
+  return { source: "direct", ...googleAdsParams };
 }
 
 /** The visitor's IP as Caddy saw it.
@@ -138,6 +163,10 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
           source: resolved.source,
           medium: resolved.medium,
           campaign: resolved.campaign,
+          gclid: resolved.gclid,
+          campaignId: resolved.campaignId,
+          adGroupId: resolved.adGroupId,
+          adId: resolved.adId,
           landingPath: request.nextUrl.pathname,
           ip: clientIp(request),
         }),

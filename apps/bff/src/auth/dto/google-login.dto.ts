@@ -20,6 +20,28 @@ export class GoogleLoginDto {
   @MaxLength(100)
   acquisitionCampaign?: string;
 
+  /** Google Ads click-identifying params, captured the same way as the acquisition* fields
+   * above — see VisitContext. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionGclid?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionCampaignId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionAdGroupId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionAdId?: string;
+
   /** See VerifyOtpDto.sessionId — same purpose, for the Google login path. */
   @IsOptional()
   @IsString()

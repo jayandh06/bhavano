@@ -28,6 +28,28 @@ export class VerifyOtpDto {
   @MaxLength(100)
   acquisitionCampaign?: string;
 
+  /** Google Ads click-identifying params, captured the same way as the acquisition* fields
+   * above — see VisitContext. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionGclid?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionCampaignId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionAdGroupId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  acquisitionAdId?: string;
+
   /** The visitor's per-session id (web's `bhavano_sid` cookie) — lets AuthService link the
    * anonymous Visit row logged for this session to the now-known user. Ignored by otp/link,
    * which reuses this same DTO. */

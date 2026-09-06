@@ -308,6 +308,10 @@ async function getVisitContext(): Promise<{
   acquisitionSource?: string;
   acquisitionMedium?: string;
   acquisitionCampaign?: string;
+  acquisitionGclid?: string;
+  acquisitionCampaignId?: string;
+  acquisitionAdGroupId?: string;
+  acquisitionAdId?: string;
   sessionId?: string;
 }> {
   const jar = await cookies();
@@ -316,11 +320,23 @@ async function getVisitContext(): Promise<{
   const raw = jar.get(ACQUISITION_COOKIE)?.value;
   if (!raw) return { sessionId };
   try {
-    const parsed = JSON.parse(raw) as { source?: string; medium?: string; campaign?: string };
+    const parsed = JSON.parse(raw) as {
+      source?: string;
+      medium?: string;
+      campaign?: string;
+      gclid?: string;
+      campaignId?: string;
+      adGroupId?: string;
+      adId?: string;
+    };
     return {
       acquisitionSource: parsed.source,
       acquisitionMedium: parsed.medium,
       acquisitionCampaign: parsed.campaign,
+      acquisitionGclid: parsed.gclid,
+      acquisitionCampaignId: parsed.campaignId,
+      acquisitionAdGroupId: parsed.adGroupId,
+      acquisitionAdId: parsed.adId,
       sessionId,
     };
   } catch {

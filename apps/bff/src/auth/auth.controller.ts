@@ -37,6 +37,10 @@ export class AuthController {
       source: dto.acquisitionSource,
       medium: dto.acquisitionMedium,
       campaign: dto.acquisitionCampaign,
+      gclid: dto.acquisitionGclid,
+      campaignId: dto.acquisitionCampaignId,
+      adGroupId: dto.acquisitionAdGroupId,
+      adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
     });
   }
@@ -48,6 +52,10 @@ export class AuthController {
       source: dto.acquisitionSource,
       medium: dto.acquisitionMedium,
       campaign: dto.acquisitionCampaign,
+      gclid: dto.acquisitionGclid,
+      campaignId: dto.acquisitionCampaignId,
+      adGroupId: dto.acquisitionAdGroupId,
+      adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
     });
   }

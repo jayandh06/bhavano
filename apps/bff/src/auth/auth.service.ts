@@ -25,6 +25,12 @@ export interface VisitContext {
   source?: string;
   medium?: string;
   campaign?: string;
+  /** Google Ads click-identifying params, from the account's Final URL suffix — captured
+   * independently of source/medium/campaign above (see the matching Visit/User schema comments). */
+  gclid?: string;
+  campaignId?: string;
+  adGroupId?: string;
+  adId?: string;
   /** The visitor's per-session id (web's `bhavano_sid` cookie) — used to link the anonymous
    * Visit row logged for this session to the now-known user, not persisted onto User itself. */
   sessionId?: string;
@@ -39,6 +45,10 @@ function acquisitionCreateFields(visit?: VisitContext) {
     acquisitionSource: visit.source,
     acquisitionMedium: visit.medium,
     acquisitionCampaign: visit.campaign,
+    acquisitionGclid: visit.gclid,
+    acquisitionCampaignId: visit.campaignId,
+    acquisitionAdGroupId: visit.adGroupId,
+    acquisitionAdId: visit.adId,
   };
 }
 
