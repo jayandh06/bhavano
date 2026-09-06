@@ -15,6 +15,10 @@ import { AccountMergeService } from '../users/account-merge.service';
 import { GoogleProvider } from './providers/google.provider';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import {
+  GoogleAdsConversionProvider,
+  NEW_REGISTRATION_CONVERSION_ACTION_ID,
+} from '../ads/google-ads-conversion.provider';
 
 const ACCESS_TOKEN_TTL = '1h';
 
@@ -84,6 +88,7 @@ export class AuthService {
     private readonly googleProvider: GoogleProvider,
     private readonly notificationsService: NotificationsService,
     private readonly analyticsService: AnalyticsService,
+    private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
     @InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
   ) {}
 
@@ -112,6 +117,7 @@ export class AuthService {
     const isNewUser = !user.welcomedAt;
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.welcomeIfFirstLogin(promoted);
+    if (isNewUser) await this.reportSignupConversion(promoted, visit);
     await this.recordLogin(promoted.id, 'otp');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     return this.issueSession(promoted, isNewUser);
@@ -217,6 +223,7 @@ export class AuthService {
     const isNewUser = !user.welcomedAt;
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.welcomeIfFirstLogin(promoted);
+    if (isNewUser) await this.reportSignupConversion(promoted, visit);
     await this.recordLogin(promoted.id, 'google');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     return this.issueSession(promoted, isNewUser);
@@ -251,6 +258,32 @@ export class AuthService {
         data: { userId: user.id, kind: 'welcome', channel },
       });
     });
+  }
+
+  /** Reports the "New registration" conversion to Google Ads directly from the backend, using
+   * the gclid captured server-side at landing (see apps/web/src/middleware.ts) — catches a
+   * signup a blocked/restrictive browser would otherwise hide from Google Ads entirely (the
+   * existing client-side GTM tag for this conversion action was paused in favour of this; see
+   * docs/plans/server-side-google-ads-conversion-upload.md). Same idempotency-guard shape as
+   * welcomeIfFirstLogin: adsConversionUploadedAt is marked *before* the fire-and-forget upload
+   * call, so a concurrent duplicate login can't double-fire it. Silently a no-op with no gclid
+   * (the common case for non-ad traffic) or if this user's conversion was already reported. */
+  private async reportSignupConversion(user: User, visit?: VisitContext): Promise<void> {
+    if (user.adsConversionUploadedAt || !visit?.gclid) return;
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { adsConversionUploadedAt: new Date() },
+    });
+    void this.googleAdsConversionProvider
+      .uploadClickConversion({
+        gclid: visit.gclid,
+        conversionActionId: NEW_REGISTRATION_CONVERSION_ACTION_ID,
+        transactionId: `signup-${user.id}`,
+        eventTimestamp: user.createdAt,
+        email: user.email,
+        phone: user.phone,
+      })
+      .catch(() => undefined);
   }
 
   /** Best-effort, fire-and-forget: attaches the now-known user to the anonymous Visit row logged

@@ -4,6 +4,14 @@ Reads GOOGLE_ADS_CLIENT_ID/GOOGLE_ADS_CLIENT_SECRET from .env (repo root), opens
 browser for you to grant access, then prints the refresh token to paste back into .env
 as GOOGLE_ADS_REFRESH_TOKEN. See .claude/SETUP.md, Step 7.
 
+Includes the Data Manager API scope alongside the classic Google Ads API one — the bff's
+server-side conversion upload (docs/plans/server-side-google-ads-conversion-upload.md) needs
+datamanager; every ads_*.py script only ever needed adwords, so re-minting with both is a
+drop-in replacement for the one GOOGLE_ADS_REFRESH_TOKEN everything already shares. Requires the
+"Data Manager API" to be enabled on this OAuth client's Cloud project first (same project as the
+Ads/GTM APIs) — console.cloud.google.com/apis/library/datamanager.googleapis.com — or the consent
+screen will reject the scope.
+
 Run: python get_refresh_token.py
 """
 
@@ -13,7 +21,10 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 load_dotenv()
 
-SCOPES = ["https://www.googleapis.com/auth/adwords"]
+SCOPES = [
+    "https://www.googleapis.com/auth/adwords",
+    "https://www.googleapis.com/auth/datamanager",
+]
 
 client_id = os.getenv("GOOGLE_ADS_CLIENT_ID")
 client_secret = os.getenv("GOOGLE_ADS_CLIENT_SECRET")

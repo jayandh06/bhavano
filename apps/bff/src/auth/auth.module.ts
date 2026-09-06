@@ -6,11 +6,13 @@ import { GoogleProvider } from './providers/google.provider';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { AdsModule } from '../ads/ads.module';
 
 @Module({
   imports: [
     NotificationsModule,
     AnalyticsModule,
+    AdsModule,
     forwardRef(() => UsersModule),
   ],
   controllers: [AuthController],

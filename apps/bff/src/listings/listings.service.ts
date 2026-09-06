@@ -63,6 +63,10 @@ import {
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { LocationsService } from '../locations/locations.service';
 import { ListingSlotsService } from '../listing-slots/listing-slots.service';
+import {
+  GoogleAdsConversionProvider,
+  POST_AD_SUCCESS_CONVERSION_ACTION_ID,
+} from '../ads/google-ads-conversion.provider';
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
@@ -180,6 +184,7 @@ export class ListingsService {
     private readonly locationsService: LocationsService,
     private readonly storage: R2StorageService,
     private readonly listingSlotsService: ListingSlotsService,
+    private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
   ) {}
 
   async list(
@@ -489,9 +494,17 @@ export class ListingsService {
     // hour (stateless JWT, DB-free AuthGuard), and this is the one path that would attach new
     // data to a deleted account. name/email/phone ride along on this same fetch for
     // notifyListingPosted at the bottom of this method, rather than a second query for them.
+    // acquisitionGclid rides along too, for the Post ad success conversion upload — see
+    // docs/plans/server-side-google-ads-conversion-upload.md.
     const owner = await this.prisma.user.findUnique({
       where: { id: ownerId },
-      select: { deletedAt: true, name: true, email: true, phone: true },
+      select: {
+        deletedAt: true,
+        name: true,
+        email: true,
+        phone: true,
+        acquisitionGclid: true,
+      },
     });
     if (owner?.deletedAt) {
       throw new UnauthorizedException('This account was deleted');
@@ -596,6 +609,24 @@ export class ListingsService {
     this.savedSearchesService
       .notifyMatchingBuyers(created)
       .catch(() => undefined);
+
+    // Reports the "Post ad success" conversion to Google Ads directly from the backend, using
+    // the owner's first-touch gclid (captured at their signup — not a listing-time gclid; see
+    // docs/plans/server-side-google-ads-conversion-upload.md for why, and the caveat that
+    // implies for an owner posting long after signing up). Never blocks or fails the listing
+    // creation itself — uploadClickConversion already never throws, .catch() is belt-and-braces.
+    if (owner?.acquisitionGclid) {
+      void this.googleAdsConversionProvider
+        .uploadClickConversion({
+          gclid: owner.acquisitionGclid,
+          conversionActionId: POST_AD_SUCCESS_CONVERSION_ACTION_ID,
+          transactionId: `listing-${created.id}`,
+          eventTimestamp: created.createdAt,
+          email: owner.email,
+          phone: owner.phone,
+        })
+        .catch(() => undefined);
+    }
 
     // Same fire-and-forget rule for the poster's own acknowledgement — see
     // docs/plans/post-ad-acknowledgement.md. `owner` is never null here: `assertCanPublish`

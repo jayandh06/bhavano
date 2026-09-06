@@ -48,6 +48,15 @@ services:
       # Google Maps — server-side reverse geocoding for the map pin-picker (see
       # docs/plans/google-maps-location-picker.md). Never sent to any client.
       GOOGLE_MAPS_SERVER_KEY: ${GOOGLE_MAPS_SERVER_KEY}
+      # Google Ads — server-side conversion upload for signup/post-ad via the Data Manager API,
+      # using the gclid captured by web's middleware.ts (see
+      # docs/plans/server-side-google-ads-conversion-upload.md). Same OAuth client the root
+      # ads_*.py scripts already use; GOOGLE_ADS_REFRESH_TOKEN must include the
+      # datamanager scope (not just adwords) — see the plan doc's manual prerequisites. No
+      # developer token needed here; Data Manager API doesn't use one.
+      GOOGLE_ADS_CLIENT_ID: ${GOOGLE_ADS_CLIENT_ID}
+      GOOGLE_ADS_CLIENT_SECRET: ${GOOGLE_ADS_CLIENT_SECRET}
+      GOOGLE_ADS_REFRESH_TOKEN: ${GOOGLE_ADS_REFRESH_TOKEN}
       # Video upload/transcode temp storage (see docs/plans/listing-video-uploads.md) — reuses
       # the image's existing /app/apps/bff/uploads dir, given its own volume below so a container
       # restart mid-upload/transcode doesn't strand temp files in the writable layer.

@@ -239,6 +239,14 @@ model User {
   acquisitionCampaignId String?
   acquisitionAdGroupId  String?
   acquisitionAdId       String?
+  /** Non-null once this user's signup conversion has been uploaded to Google Ads
+   * (GoogleAdsConversionProvider.uploadClickConversion) — set immediately before the upload
+   * attempt (see AuthService.reportSignupConversion), same idempotency-guard pattern as
+   * welcomedAt, so a concurrent duplicate login can't double-fire the upload. Set regardless of
+   * whether the upload actually succeeded (no gclid, or a real API failure) — this guards against
+   * re-attempting the call, not against re-attribution; a permanently-failed upload is not
+   * retried. */
+  adsConversionUploadedAt DateTime?
   visits                Visit[]
   /** Set when this user was first reached as an outreach prospect — the attribution link back
    * to a campaign. Null for organic signups. */
