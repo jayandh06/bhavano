@@ -4,6 +4,7 @@
  * browse pages vs. the homepage build paths differently). */
 
 import Link from "next/link";
+import { Icon } from "./Icon";
 
 function pageNumbersToShow(currentPage: number, totalPages: number): (number | "ellipsis")[] {
   const pages = new Set<number>([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
@@ -22,6 +23,11 @@ const pageButtonClass = (active: boolean) =>
     active ? "bg-green text-on-green" : "bg-surface text-text-soft border border-border"
   }`;
 
+// Prev/Next: larger than the numbered page buttons and border-2 in the brand green, so they read
+// as the primary way to move through results rather than blending into the page-number row.
+const adjacentButtonClass =
+  "w-11 h-11 flex items-center justify-center rounded-full text-lg font-bold bg-surface text-green border-2 border-green hover:bg-green hover:text-on-green transition-colors";
+
 export function Pagination({
   currentPage,
   totalPages,
@@ -36,8 +42,8 @@ export function Pagination({
   return (
     <nav aria-label="Pagination" className="flex items-center justify-center gap-2 flex-wrap mt-9">
       {currentPage > 1 && (
-        <Link href={buildHref(currentPage - 1)} className={pageButtonClass(false)}>
-          ← Prev
+        <Link href={buildHref(currentPage - 1)} aria-label="Previous page" className={adjacentButtonClass}>
+          <Icon name="chevronLeft" />
         </Link>
       )}
 
@@ -54,8 +60,8 @@ export function Pagination({
       )}
 
       {currentPage < totalPages && (
-        <Link href={buildHref(currentPage + 1)} className={pageButtonClass(false)}>
-          Next →
+        <Link href={buildHref(currentPage + 1)} aria-label="Next page" className={adjacentButtonClass}>
+          <Icon name="chevronRight" />
         </Link>
       )}
     </nav>

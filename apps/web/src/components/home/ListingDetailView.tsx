@@ -151,7 +151,7 @@ export async function ListingDetailView({
                   href={directionsUrl(listing.lat, listing.lng)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block mt-2 text-[13px] font-semibold text-green"
+                  className="flex items-center justify-center gap-1.5 mt-2 w-full bg-green text-on-green border-0 rounded-lg p-[13px] text-[15px] font-extrabold tracking-[0.01em] cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)] transition-[filter] hover:brightness-110 active:brightness-95"
                 >
                   <Icon name="compass" /> Get directions
                 </a>
