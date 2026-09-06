@@ -372,6 +372,10 @@ export interface PageVisitDto {
     source: string | null;
     medium: string | null;
     campaign: string | null;
+    campaignId?: string;
+    adGroupId?: string;
+    campaignName?: string;
+    adGroupName?: string;
     landingPath: string | null;
     ip: string | null;
     ipCity: string | null;

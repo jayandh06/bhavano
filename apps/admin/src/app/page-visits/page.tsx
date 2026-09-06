@@ -157,7 +157,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
-                  {["Time (IST)", "User", "Source", "Medium", "Campaign", "Landing path", "IP", "City", "Region", "Country"].map((h) => (
+                  {["Time (IST)", "User", "Source", "Medium", "UTM campaign", "Campaign", "Ad group", "Landing path", "IP", "City", "Region", "Country"].map((h) => (
                     <th key={h} style={thStyle}>
                       {h}
                     </th>
@@ -180,6 +180,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                     <td style={tdStyle}>{v.source ?? dash}</td>
                     <td style={tdStyle}>{v.medium ?? dash}</td>
                     <td style={tdStyle}>{v.campaign ?? dash}</td>
+                    <td style={tdStyle}>{v.campaignName ?? v.campaignId ?? dash}</td>
+                    <td style={tdStyle}>{v.adGroupName ?? v.adGroupId ?? dash}</td>
                     <td style={{ ...tdStyle, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={v.landingPath ?? undefined}>
                       {v.landingPath ?? dash}
                     </td>

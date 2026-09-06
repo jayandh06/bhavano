@@ -21,6 +21,7 @@ import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
+import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
@@ -281,6 +282,10 @@ export class AdminService {
         source: row.source,
         medium: row.medium,
         campaign: row.campaign,
+        campaignId: row.campaignId ?? undefined,
+        adGroupId: row.adGroupId ?? undefined,
+        campaignName: row.campaignId ? CAMPAIGN_NAMES[row.campaignId] : undefined,
+        adGroupName: row.adGroupId ? AD_GROUP_NAMES[row.adGroupId] : undefined,
         landingPath: row.landingPath,
         ip: row.ip,
         ipCity: row.ipCity,
