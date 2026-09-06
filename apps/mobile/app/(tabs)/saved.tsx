@@ -32,7 +32,7 @@ export default function SavedScreen() {
       ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
       ListEmptyComponent={
         <Text style={{ color: colors.muted, fontSize: 14, textAlign: "center", marginTop: 40 }}>
-          No favourites yet — tap ♡ on a listing to save it here.
+          No favourites yet — tap the heart on a listing to save it here.
         </Text>
       }
     />

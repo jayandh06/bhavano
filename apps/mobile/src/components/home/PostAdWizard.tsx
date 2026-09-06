@@ -15,6 +15,7 @@ import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { Icon, isIconName } from "../Icon";
 import { createListing, fetchAreas, uploadPhoto } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
@@ -385,7 +386,9 @@ export function PostAdWizard({
                   onPress={() => selectCategory(c.value)}
                   style={[styles.optionButton, { borderColor: category === c.value ? colors.green : colors.border, backgroundColor: category === c.value ? colors.surfaceAlt : colors.surface }]}
                 >
-                  <Text style={{ fontSize: 18 }}>{c.icon}</Text>
+                  {isIconName(c.iconName) && (
+                    <Icon name={c.iconName} size={18} color={category === c.value ? colors.green : colors.textSoft} />
+                  )}
                   <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>{c.label}</Text>
                 </Pressable>
               ))}
@@ -405,8 +408,12 @@ export function PostAdWizard({
               <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>{TRANSACTION_TYPE_LABELS[t]}</Text>
             </Pressable>
           ))}
-          <Pressable onPress={() => setStep("category")}>
-            <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13, marginTop: 4 }}>← Back</Text>
+          <Pressable
+            onPress={() => setStep("category")}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}
+          >
+            <Icon name="chevronLeft" size={14} color={colors.muted} />
+            <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
           </Pressable>
         </View>
       )}
@@ -634,7 +641,7 @@ export function PostAdWizard({
                     >
                       {summaryLabel ?? "Select…"}
                     </Text>
-                    <Text style={{ color: colors.muted, fontSize: 13 }}>▾</Text>
+                    <Icon name="chevronDown" size={13} color={colors.muted} />
                   </Pressable>
                 ) : (
                   <TextInput
@@ -662,7 +669,7 @@ export function PostAdWizard({
           <Text style={[styles.label, { color: colors.textSoft }]}>Photos (up to {MAX_PHOTOS}) *</Text>
           {photoUris.length < MAX_PHOTOS && (
             <Pressable onPress={pickPhotos} style={[styles.photoButton, { borderColor: colors.green, backgroundColor: colors.surfaceAlt }]}>
-              <Text style={{ fontSize: 24 }}>📷</Text>
+              <Icon name="camera" size={24} color={colors.green} />
               <Text style={{ color: colors.green, fontWeight: "700", fontSize: 15 }}>
                 {photoUris.length > 0 ? "Add more photos" : "Add photos"}
               </Text>
@@ -680,7 +687,7 @@ export function PostAdWizard({
                     onPress={() => removePhoto(uri)}
                     style={[styles.removeBadge, { backgroundColor: colors.surface }]}
                   >
-                    <Text style={{ color: "#c0554b", fontWeight: "700", fontSize: 13 }}>×</Text>
+                    <Icon name="close" size={13} color="#c0554b" />
                   </Pressable>
                 </View>
               ))}
@@ -690,7 +697,10 @@ export function PostAdWizard({
 
           <View style={styles.navRow}>
             <Pressable onPress={() => setStep(POSTABLE_TRANSACTION_TYPES[category].length === 1 ? "category" : "transactionType")}>
-              <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>← Back</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Icon name="chevronLeft" size={14} color={colors.muted} />
+                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
+              </View>
             </Pressable>
             <Pressable
               onPress={() => setStep("review")}
@@ -722,7 +732,10 @@ export function PostAdWizard({
 
           <View style={styles.navRow}>
             <Pressable onPress={() => setStep("details")}>
-              <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>← Back</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Icon name="chevronLeft" size={14} color={colors.muted} />
+                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
+              </View>
             </Pressable>
             <Pressable onPress={onSubmit} disabled={pending} style={[styles.submitButton, { backgroundColor: colors.green, opacity: pending ? 0.6 : 1 }]}>
               {pending ? <ActivityIndicator color={colors.onGreen} /> : (
@@ -767,7 +780,7 @@ export function PostAdWizard({
               style={styles.optionRow}
             >
               <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{opt.label}</Text>
-              {selected && <Text style={{ color: colors.green, fontSize: 15, fontWeight: "700" }}>✓</Text>}
+              {selected && <Icon name="check" size={15} color={colors.green} />}
             </Pressable>
           );
         })}

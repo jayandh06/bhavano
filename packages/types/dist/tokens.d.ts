@@ -11,6 +11,12 @@ export interface ThemeColors {
     green: string;
     onGreen: string;
     gold: string;
+    /** App chrome — the top status-bar strip and the bottom tab bar. A deliberate high-contrast
+     * frame around the warm `bg` content area; the status-bar clock/battery and the tab labels
+     * sit on it, so the app forces light status-bar content on both themes. */
+    chrome: string;
+    onChrome: string;
+    onChromeMuted: string;
 }
 export declare const themeColors: Record<ThemeName, ThemeColors>;
 /** Fixed (non-themed) colors used across both themes. */

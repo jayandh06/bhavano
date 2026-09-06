@@ -1,10 +1,11 @@
 import { forwardRef, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import type { Area, HomeCategoryFilter, ListingCategory, PropertyTypeFilter } from "@bhavano/types";
+import type { Area, ListingCategory, PropertyTypeFilter } from "@bhavano/types";
 import { PRICE_BOUNDS } from "@bhavano/types/priceBounds";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
 import { useAppTheme } from "../../theme/ThemeContext";
+import type { HomeTabValue } from "./categories";
 
 export interface AppliedFilters {
   /** Empty = every area selected (no narrowing) — same convention as the web AreaFilter. */
@@ -53,8 +54,8 @@ function priceBracketsFor(category: ListingCategory, isSale: boolean): PriceBrac
 /** Best-effort mapping from the homepage's tab-grouped category to a real `ListingCategory` +
  * sale/rental flag, purely to size the price quick-picks — not filtering logic (the actual
  * minPrice/maxPrice values sent to the backend are category-agnostic). */
-function priceBoundsCategoryFor(category: HomeCategoryFilter, propertyType?: PropertyTypeFilter): { listingCategory: ListingCategory; isSale: boolean } {
-  if (category === "buy") return { listingCategory: propertyType ?? "house", isSale: true };
+function priceBoundsCategoryFor(category: HomeTabValue, propertyType?: PropertyTypeFilter): { listingCategory: ListingCategory; isSale: boolean } {
+  if (category === "all" || category === "buy") return { listingCategory: propertyType ?? "house", isSale: true };
   if (category === "rentLease") return { listingCategory: propertyType ?? "house", isSale: false };
   if (category === "pg") return { listingCategory: "pg", isSale: false };
   if (category === "furniture") return { listingCategory: "furniture", isSale: true };
@@ -74,7 +75,7 @@ export const FilterSheet = forwardRef<
   BottomSheetModal,
   {
     cityAreas: Area[];
-    category: HomeCategoryFilter;
+    category: HomeTabValue;
     propertyType?: PropertyTypeFilter;
     applied: AppliedFilters;
     onApply: (next: AppliedFilters) => void;

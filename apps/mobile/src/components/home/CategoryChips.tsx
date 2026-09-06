@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { HomeCategoryFilter, PropertyTypeFilter } from "@bhavano/types";
+import type { PropertyTypeFilter } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
-import { HOME_TABS } from "./categories";
+import { Icon } from "../Icon";
+import { HOME_TABS, type HomeTabValue } from "./categories";
 
 
 /** A horizontally scrolling row that says so.
@@ -43,7 +44,7 @@ function ScrollableRow({
       onPress={() => ref.current?.scrollTo({ x: side === "left" ? offset - 160 : offset + 160, animated: true })}
       style={[styles.arrow, side === "left" ? { left: 0 } : { right: 0 }, { backgroundColor: colors.bg }]}
     >
-      <Text style={{ color: colors.textSoft, fontSize: 18, fontWeight: "700" }}>{side === "left" ? "‹" : "›"}</Text>
+      <Icon name={side === "left" ? "chevronLeft" : "chevronRight"} size={18} color={colors.textSoft} />
     </Pressable>
   );
 
@@ -73,8 +74,8 @@ export function CategoryChips({
   activePropertyType,
   onSelectPropertyType,
 }: {
-  active: HomeCategoryFilter;
-  onSelect: (value: HomeCategoryFilter) => void;
+  active: HomeTabValue;
+  onSelect: (value: HomeTabValue) => void;
   activePropertyType?: PropertyTypeFilter;
   onSelectPropertyType: (value: PropertyTypeFilter | undefined) => void;
 }) {
@@ -98,7 +99,7 @@ export function CategoryChips({
                 },
               ]}
             >
-              <Text style={{ fontSize: 13 }}>{tab.icon}</Text>
+              <Icon name={tab.icon} size={15} color={isActive ? colors.text : colors.textSoft} />
               <Text style={{ color: isActive ? colors.text : colors.textSoft, fontWeight: "700", fontSize: 12.5 }}>
                 {tab.label}
               </Text>

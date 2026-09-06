@@ -5,6 +5,7 @@ import type { ListingCardDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { createConversation, toggleFavourite } from "../../lib/bffClient";
+import { Icon } from "../Icon";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
   const { colors } = useAppTheme();
@@ -62,7 +63,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
           <Text style={{ color: colors.onGreen, fontSize: 10, fontWeight: "700" }}>{item.tag}</Text>
         </View>
         <Pressable onPress={onToggleFavourite} style={styles.heartButton}>
-          <Text style={{ fontSize: 13, color: isFavourited ? "#c0554b" : "#000" }}>{isFavourited ? "♥" : "♡"}</Text>
+          <Icon name="heart" size={14} filled={isFavourited} color={isFavourited ? "#c0554b" : "#000"} />
         </Pressable>
       </View>
 
@@ -76,12 +77,15 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
           )}
         </View>
         <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>{item.title}</Text>
-        <Text style={{ fontSize: 12, color: colors.muted }}>
-          {/* The listing's own city, not the one being browsed. The home screen passed the
-              selected city, which is an empty string while browsing all cities — so every card
-              read "Koramangala, " with a dangling comma. */}
-          📍 {item.area}, {item.cityName}
-        </Text>
+        {/* The listing's own city, not the one being browsed. The home screen passed the selected
+            city, which is an empty string while browsing all cities — so every card read
+            "Koramangala, " with a dangling comma. */}
+        <View style={styles.metaRow}>
+          <Icon name="pin" size={11} color={colors.muted} />
+          <Text style={{ fontSize: 12, color: colors.muted }}>
+            {item.area}, {item.cityName}
+          </Text>
+        </View>
         <View style={styles.specsRow}>
           {item.specs.map((spec) => (
             <Text key={spec} style={{ fontSize: 11.5, fontWeight: "600", color: colors.textSoft }}>
@@ -94,9 +98,15 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
           * short numbers. Owner's own card still shows the counts here; the button just isn't
           * part of the row for it (see ListingDetailView's isOwner gate for the reason). */}
         <View style={styles.actionsRow}>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Text style={{ fontSize: 11, color: colors.muted }}>👁 {item.viewCount}</Text>
-            <Text style={{ fontSize: 11, color: colors.muted }}>♥ {likeCount}</Text>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={styles.metaRow}>
+              <Icon name="eye" size={12} color={colors.muted} />
+              <Text style={{ fontSize: 11, color: colors.muted }}>{item.viewCount}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Icon name="heart" size={12} filled color={colors.muted} />
+              <Text style={{ fontSize: 11, color: colors.muted }}>{likeCount}</Text>
+            </View>
           </View>
           {/* Light green rather than filled: sharing a row with the counts, a solid button the
             * same weight as before would visually shout over them. */}
@@ -143,6 +153,7 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
   qualifierChip: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5 },
   specsRow: { flexDirection: "row", gap: 10 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   actionsRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 4 },
   contactButton: { borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, alignItems: "center" },
 });

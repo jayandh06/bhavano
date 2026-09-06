@@ -13,6 +13,7 @@ import {
   verifyEmail,
 } from "../../src/lib/bffClient";
 import { useUnreadCountQuery } from "../../src/lib/queries";
+import { Icon } from "../../src/components/Icon";
 
 type PhoneStep = "idle" | "otpSent";
 
@@ -199,7 +200,8 @@ function ProfileFields({
         onPress={onOpenMessages}
         style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8 }]}
       >
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>💬 Messages</Text>
+        <Icon name="message" size={16} color={colors.text} />
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Messages</Text>
         {unreadCount > 0 && (
           <View
             style={{
@@ -222,9 +224,13 @@ function ProfileFields({
       {/* The other toggle lives in the Home tab's brand row, which is not where anyone looks for
           a preference — and is unreachable from the other three tabs. Appearance belongs on the
           settings screen; Home keeps its copy for the visitor who spots it there first. */}
-      <Pressable onPress={toggleTheme} style={[styles.row, { borderColor: colors.border }]}>
+      <Pressable
+        onPress={toggleTheme}
+        style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8 }]}
+      >
+        <Icon name={theme === "dark" ? "sun" : "moon"} size={16} color={colors.text} />
         <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
-          {theme === "dark" ? "☀️  Switch to light mode" : "🌙  Switch to dark mode"}
+          {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         </Text>
       </Pressable>
 
@@ -369,8 +375,10 @@ function ProfileFields({
                     setPhoneStep("idle");
                     setPhoneError(null);
                   }}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 14 }}
                 >
-                  <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13, marginTop: 14 }}>← Back</Text>
+                  <Icon name="chevronLeft" size={14} color={colors.muted} />
+                  <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
                 </Pressable>
               </View>
             </>

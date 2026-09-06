@@ -13,6 +13,9 @@ exports.themeColors = {
         green: "#0B3D2E",
         onGreen: "#EFE9DC",
         gold: "#C9A15A",
+        chrome: "#0B3D2E",
+        onChrome: "#EFE9DC",
+        onChromeMuted: "rgba(239,233,220,0.6)",
     },
     dark: {
         bg: "#14140F",
@@ -25,6 +28,12 @@ exports.themeColors = {
         green: "#3FA980",
         onGreen: "#0E1710",
         gold: "#D9B36B",
+        // Saturated deep green, not a near-black: against the neutral `bg` (#14140F) it separates on
+        // hue as well as luminance, so the top strip / tab bar read as a distinct frame the way the
+        // light theme's #0B3D2E does. A near-neutral value here just vanished into the background.
+        chrome: "#0E4A37",
+        onChrome: "#EDEAE0",
+        onChromeMuted: "rgba(237,234,224,0.6)",
     },
 };
 /** Fixed (non-themed) colors used across both themes. */

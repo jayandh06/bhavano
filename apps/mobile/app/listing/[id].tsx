@@ -7,6 +7,7 @@ import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
 import { createConversation, recordView, toggleFavourite } from "../../src/lib/bffClient";
+import { Icon } from "../../src/components/Icon";
 
 const VIEWER_KEY_STORAGE = "bhavano.viewerKey";
 
@@ -84,8 +85,12 @@ export default function ListingDetailScreen() {
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <Pressable onPress={() => router.back()} style={{ marginBottom: 12 }}>
-        <Text style={{ color: colors.muted, fontSize: 13 }}>← Back</Text>
+      <Pressable
+        onPress={() => router.back()}
+        style={{ marginBottom: 12, flexDirection: "row", alignItems: "center", gap: 4 }}
+      >
+        <Icon name="chevronLeft" size={15} color={colors.muted} />
+        <Text style={{ color: colors.muted, fontSize: 13 }}>Back</Text>
       </Pressable>
 
       <View
@@ -120,11 +125,17 @@ export default function ListingDetailScreen() {
       </View>
 
       <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginTop: 8 }}>{listing.title}</Text>
-      <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6 }}>
-        📍 {listing.area}, {listing.cityName}
-      </Text>
-      <View style={{ flexDirection: "row", gap: 14, marginTop: 6 }}>
-        <Text style={{ fontSize: 11.5, color: colors.muted }}>👁 {listing.viewCount} views</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
+        <Icon name="pin" size={12} color={colors.muted} />
+        <Text style={{ fontSize: 13, color: colors.muted }}>
+          {listing.area}, {listing.cityName}
+        </Text>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginTop: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <Icon name="eye" size={12} color={colors.muted} />
+          <Text style={{ fontSize: 11.5, color: colors.muted }}>{listing.viewCount} views</Text>
+        </View>
         <Text style={{ fontSize: 11.5, color: colors.muted }}>
           {listing.isExpired ? "Expired" : `Expires in ${daysUntil(listing.expiresAt)} days`}
         </Text>
@@ -170,15 +181,17 @@ export default function ListingDetailScreen() {
               onPress={onToggleFavourite}
               style={[styles.heartButton, { borderColor: colors.border }, listing.isOwner && { flex: 1 }]}
             >
-              <Text style={{ fontSize: 17, color: isFavourited ? "#c0554b" : colors.text }}>
-                {isFavourited ? "♥" : "♡"}
-              </Text>
+              <Icon name="heart" size={18} filled={isFavourited} color={isFavourited ? "#c0554b" : colors.text} />
               <Text style={{ fontSize: 10, fontWeight: "700", color: colors.muted }}>{likeCount}</Text>
             </Pressable>
           </View>
           {!listing.isOwner && (
-            <Pressable onPress={onMessage} style={[styles.messageButton, { borderColor: colors.green }]}>
-              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>💬 Message owner</Text>
+            <Pressable
+              onPress={onMessage}
+              style={[styles.messageButton, { borderColor: colors.green, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]}
+            >
+              <Icon name="message" size={15} color={colors.green} />
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Message owner</Text>
             </Pressable>
           )}
           {messageError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{messageError}</Text>}

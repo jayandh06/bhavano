@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { Icon } from "../Icon";
 
 /** Per-user so a dismissal doesn't carry over to whoever logs in next on a shared device. */
 const dismissKey = (userId: string) => `profileBannerDismissed:${userId}`;
@@ -64,10 +65,10 @@ export function ProfileCompletionBanner() {
         onPress={dismiss}
         accessibilityRole="button"
         accessibilityLabel="Dismiss"
-        // The ✕ glyph is tiny; hitSlop gives it a ~44pt touch target without a bulky layout.
+        // The glyph is tiny; hitSlop gives it a ~44pt touch target without a bulky layout.
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       >
-        <Text style={[styles.dismiss, { color: colors.muted }]}>✕</Text>
+        <Icon name="close" size={15} color={colors.muted} />
       </Pressable>
     </View>
   );
@@ -85,5 +86,4 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   text: { flex: 1, fontSize: 12.5, lineHeight: 18 },
-  dismiss: { fontSize: 15, fontWeight: "700" },
 });

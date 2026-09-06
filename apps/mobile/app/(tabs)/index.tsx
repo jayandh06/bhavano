@@ -2,16 +2,17 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
-import type { HomeCategoryFilter, PropertyTypeFilter } from "@bhavano/types";
+import type { PropertyTypeFilter } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useAreasQuery, useInfiniteListingsQuery, useUnreadCountQuery } from "../../src/lib/queries";
 import { CategoryChips } from "../../src/components/home/CategoryChips";
+import { Icon } from "../../src/components/Icon";
 import { ListingCard } from "../../src/components/home/ListingCard";
 import { ProfileCompletionBanner } from "../../src/components/home/ProfileCompletionBanner";
 import { FilterSheet, EMPTY_FILTERS, activeFilterCount, type AppliedFilters } from "../../src/components/home/FilterSheet";
 import { SortSheet, SORT_OPTIONS, type SortValue } from "../../src/components/home/SortSheet";
-import { HOME_TABS } from "../../src/components/home/categories";
+import { HOME_TABS, type HomeTabValue } from "../../src/components/home/categories";
 
 /** Below this width, `FlatList` renders one column; at/above it, two — comfortably below every
  * iPad's portrait width (744pt+) and above every phone's, including large phones in portrait. */
@@ -24,7 +25,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 2 : 1;
 
-  const [category, setCategory] = useState<HomeCategoryFilter>("buy");
+  const [category, setCategory] = useState<HomeTabValue>("all");
   const [propertyType, setPropertyType] = useState<PropertyTypeFilter | undefined>(undefined);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
@@ -37,7 +38,7 @@ export default function HomeScreen() {
   const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteListingsQuery(
     {
-      homeCategory: category,
+      homeCategory: category === "all" ? undefined : category,
       propertyType,
       cityId: city?.id,
       q: query || undefined,
@@ -53,14 +54,14 @@ export default function HomeScreen() {
   );
   const items = data?.pages.flatMap((p) => p.items) ?? [];
   const total = data?.pages[0]?.total ?? 0;
-  const categoryLabel = HOME_TABS.find((t) => t.value === category)?.label ?? "Buy";
+  const categoryLabel = HOME_TABS.find((t) => t.value === category)?.label ?? "All";
   const sortLabel = SORT_OPTIONS.find((s) => s.value === sort)?.label ?? "Newest first";
   const filterCount = activeFilterCount(filters);
 
   // Switching tabs/property-type clears stale filters — a leftover BHK/price selection from
   // House shouldn't silently apply once the user switches to PG (same rule the web app's
   // CategoryTabs already enforces).
-  function onSelectCategory(next: HomeCategoryFilter) {
+  function onSelectCategory(next: HomeTabValue) {
     setCategory(next);
     setPropertyType(undefined);
     setFilters(EMPTY_FILTERS);
@@ -120,7 +121,7 @@ export default function HomeScreen() {
                     accessibilityLabel={`Messages${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
                     style={[styles.iconButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
                   >
-                    <Text style={{ fontSize: 14 }}>✉️</Text>
+                    <Icon name="message" size={16} color={colors.text} />
                     {unreadCount > 0 && (
                       <View style={[styles.badge, styles.iconBadge, { backgroundColor: colors.green }]}>
                         <Text style={{ fontSize: 10, fontWeight: "700", color: colors.onGreen }}>
@@ -134,7 +135,7 @@ export default function HomeScreen() {
                   onPress={toggleTheme}
                   style={[styles.iconButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
                 >
-                  <Text style={{ fontSize: 14 }}>{theme === "dark" ? "☀️" : "🌙"}</Text>
+                  <Icon name={theme === "dark" ? "sun" : "moon"} size={16} color={colors.text} />
                 </Pressable>
                 {/* Only an invitation to log in — once logged in there is nothing to offer here,
                     since the Account tab already owns profile and sign-out. Leaving it visible
@@ -151,18 +152,18 @@ export default function HomeScreen() {
               onPress={openLocationPicker}
               style={[styles.locationButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
             >
-              <Text style={{ fontSize: 15 }}>📍</Text>
+              <Icon name="pin" size={16} color={colors.text} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 9.5, color: colors.muted }}>Showing ads near</Text>
                 <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.text }}>
                   {city?.name ?? "All cities"}
                 </Text>
               </View>
-              <Text style={{ fontSize: 11, color: colors.muted }}>▾</Text>
+              <Icon name="chevronDown" size={14} color={colors.muted} />
             </Pressable>
 
             <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={{ fontSize: 14, color: colors.muted }}>🔍</Text>
+              <Icon name="search" size={15} color={colors.muted} />
               <TextInput
                 value={query}
                 onChangeText={setQuery}

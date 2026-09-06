@@ -7,6 +7,7 @@ import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useMessagesQuery } from "../../src/lib/queries";
 import { fetchConversation, markConversationRead, sendMessage } from "../../src/lib/bffClient";
 import { getSocket } from "../../src/lib/socket";
+import { Icon } from "../../src/components/Icon";
 
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -102,7 +103,8 @@ export default function ConversationScreen() {
           <Text numberOfLines={1} style={{ flex: 1, fontSize: 13, fontWeight: "700", color: colors.text }}>
             {conversation.listing.title}
           </Text>
-          <Text style={{ fontSize: 12, color: colors.green, fontWeight: "700" }}>View ad ›</Text>
+          <Text style={{ fontSize: 12, color: colors.green, fontWeight: "700" }}>View ad</Text>
+          <Icon name="chevronRight" size={14} color={colors.green} />
         </Pressable>
       )}
       <FlatList

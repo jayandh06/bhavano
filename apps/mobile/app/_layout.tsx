@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { AppThemeProvider } from "../src/theme/ThemeContext";
+import { AppThemeProvider, useAppTheme } from "../src/theme/ThemeContext";
 import { HomeSheetsProvider, useHomeSheets } from "../src/context/HomeSheetsProvider";
 import { useCitiesQuery, useUnreadCountSync } from "../src/lib/queries";
 import { configureNotificationHandler, onMessageNotificationTap } from "../src/lib/push";
@@ -36,6 +36,7 @@ function PushBridge() {
 // the tabs) can also reach requireLogin/city state via useHomeSheets().
 function AppNavigation() {
   const { data: popularCities } = useCitiesQuery();
+  const { colors } = useAppTheme();
 
   return (
     <HomeSheetsProvider popularCities={popularCities ?? []}>
@@ -44,9 +45,12 @@ function AppNavigation() {
           the status-bar area — content rendered under the clock, Dynamic Island and Wi-Fi icons
           on notched devices. SafeAreaProvider alone doesn't fix this: it supplies inset values,
           it doesn't apply them. Top edge only — the tab bar already handles the bottom inset,
-          and adding "bottom" here would double it. */}
-      <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false }} />
+          and adding "bottom" here would double it.
+          `chrome` fills the status-bar strip with the brand colour (iOS has no status-bar
+          background of its own — it shows whatever view sits behind it); the forced-light
+          StatusBar below keeps the clock/battery legible on it in both themes. */}
+      <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.chrome }}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
       </SafeAreaView>
     </HomeSheetsProvider>
   );
@@ -59,7 +63,8 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AppThemeProvider>
             <BottomSheetModalProvider>
-              <StatusBar style="auto" />
+              {/* Always light: the status-bar strip is `chrome` (dark) in both themes. */}
+              <StatusBar style="light" />
               <AppNavigation />
             </BottomSheetModalProvider>
           </AppThemeProvider>

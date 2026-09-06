@@ -2,6 +2,7 @@ import { forwardRef } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { Icon } from "../Icon";
 
 export type SortValue = "newest" | "price_asc" | "price_desc" | "popular";
 
@@ -33,7 +34,7 @@ export const SortSheet = forwardRef<
             <Text style={{ fontSize: 14.5, fontWeight: opt.value === active ? "700" : "500", color: opt.value === active ? colors.green : colors.text }}>
               {opt.label}
             </Text>
-            {opt.value === active && <Text style={{ color: colors.green, fontWeight: "700" }}>✓</Text>}
+            {opt.value === active && <Icon name="check" size={16} color={colors.green} />}
           </Pressable>
         ))}
       </BottomSheetView>

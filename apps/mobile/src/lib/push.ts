@@ -127,6 +127,9 @@ export async function setAppBadgeCount(count: number): Promise<void> {
  * No-op (returns a no-op cleanup) without the native module.
  */
 export function onMessageNotificationTap(cb: (conversationId: string) => void): () => void {
+  // On web the module imports fine but the response APIs throw `UnavailabilityError` — there are
+  // no OS notifications to have tapped. Native-only feature; degrade to a no-op elsewhere.
+  if (Platform.OS === "web") return () => {};
   const N = notifications();
   if (!N) return () => {};
 

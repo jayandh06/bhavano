@@ -14,9 +14,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
 import type { City, UserProfileDto } from "@bhavano/types";
-import { getCityIcon } from "@bhavano/types/cityIcons";
 import { useAppTheme } from "../theme/ThemeContext";
 import {
+  BffError,
   fetchCities,
   fetchProfile,
   loginWithGoogle,
@@ -27,6 +27,7 @@ import {
 } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
 import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
+import { Icon } from "../components/Icon";
 
 const TOKEN_KEY = "bhavano.accessToken";
 /** The city the user last picked, by slug-free name. AsyncStorage rather than SecureStore: this
@@ -215,9 +216,18 @@ export function HomeSheetsProvider({
     }
     try {
       setProfile(await fetchProfile(accessToken));
-    } catch {
-      // Best-effort — a stale/invalid token here just means the completion banner won't show;
-      // the user will hit the normal auth handling wherever they next use the token.
+    } catch (e) {
+      // A 401/403 means the stored token is dead (expired, or signed with a secret this BFF
+      // doesn't share — e.g. a prod token against a local BFF). Without clearing it the app stays
+      // "logged in" with no profile: the Account tab spins forever and the login sheet is
+      // unreachable. So end the session here and let the user log in again. Other errors
+      // (offline, 5xx) are transient — leave the session intact.
+      if (e instanceof BffError && (e.status === 401 || e.status === 403)) {
+        setIsLoggedIn(false);
+        setAccessToken(null);
+        setProfile(null);
+        if (Platform.OS !== "web") await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+      }
     }
   }, [accessToken]);
 
@@ -395,9 +405,12 @@ export function HomeSheetsProvider({
               },
             ]}
           >
-            <Text style={{ color: city ? colors.text : colors.green, fontWeight: "700", fontSize: 14 }}>
-              🇮🇳 All cities
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Icon name="allCities" size={15} color={city ? colors.text : colors.green} />
+              <Text style={{ color: city ? colors.text : colors.green, fontWeight: "700", fontSize: 14 }}>
+                All cities
+              </Text>
+            </View>
             {!city && <Text style={{ color: colors.green, fontSize: 12 }}>Selected</Text>}
           </Pressable>
           <Pressable
@@ -407,9 +420,12 @@ export function HomeSheetsProvider({
             {detecting ? (
               <ActivityIndicator color={colors.green} />
             ) : (
-              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>
-                📍 Auto-detect my current location
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Icon name="pin" size={15} color={colors.green} />
+                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>
+                  Auto-detect my current location
+                </Text>
+              </View>
             )}
           </Pressable>
           {detectError ? (
@@ -426,9 +442,7 @@ export function HomeSheetsProvider({
           {locationQuery || !allCities ? (
             locationResults.map((c) => (
               <Pressable key={c.id} onPress={() => setCity(c)} style={styles.cityRow}>
-                <Text style={{ color: colors.text, fontSize: 14 }}>
-                  {getCityIcon(c.name)} {c.name}
-                </Text>
+                <Text style={{ color: colors.text, fontSize: 14 }}>{c.name}</Text>
               </Pressable>
             ))
           ) : (
@@ -438,9 +452,7 @@ export function HomeSheetsProvider({
                 .filter((c) => c.isPopular)
                 .map((c) => (
                   <Pressable key={c.id} onPress={() => setCity(c)} style={styles.cityRow}>
-                    <Text style={{ color: colors.text, fontSize: 14 }}>
-                      {getCityIcon(c.name)} {c.name}
-                    </Text>
+                    <Text style={{ color: colors.text, fontSize: 14 }}>{c.name}</Text>
                   </Pressable>
                 ))}
               <Text style={[styles.sheetLabel, { color: colors.muted, marginTop: 10 }]}>MORE CITIES</Text>
@@ -448,18 +460,21 @@ export function HomeSheetsProvider({
                 .filter((c) => !c.isPopular)
                 .map((c) => (
                   <Pressable key={c.id} onPress={() => setCity(c)} style={styles.cityRow}>
-                    <Text style={{ color: colors.text, fontSize: 14 }}>
-                      {getCityIcon(c.name)} {c.name}
-                    </Text>
+                    <Text style={{ color: colors.text, fontSize: 14 }}>{c.name}</Text>
                   </Pressable>
                 ))}
             </>
           )}
           {!locationQuery && !allCities && (
-            <Pressable onPress={onShowMoreCities} disabled={loadingAllCities} style={{ paddingVertical: 10, paddingHorizontal: 6 }}>
+            <Pressable
+              onPress={onShowMoreCities}
+              disabled={loadingAllCities}
+              style={{ paddingVertical: 10, paddingHorizontal: 6, flexDirection: "row", alignItems: "center", gap: 4 }}
+            >
               <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13 }}>
-                {loadingAllCities ? "Loading…" : "Show more cities ▾"}
+                {loadingAllCities ? "Loading…" : "Show more cities"}
               </Text>
+              {!loadingAllCities && <Icon name="chevronDown" size={13} color={colors.green} />}
             </Pressable>
           )}
         </BottomSheetScrollView>
@@ -509,8 +524,12 @@ export function HomeSheetsProvider({
               >
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send OTP</Text>
               </Pressable>
-              <Pressable onPress={() => setLoginStep("choose")}>
-                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13, marginTop: 4 }}>← Back</Text>
+              <Pressable
+                onPress={() => setLoginStep("choose")}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}
+              >
+                <Icon name="chevronLeft" size={14} color={colors.muted} />
+                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
               </Pressable>
             </>
           )}
@@ -537,8 +556,12 @@ export function HomeSheetsProvider({
               >
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Verify & continue</Text>
               </Pressable>
-              <Pressable onPress={() => setLoginStep("phone")}>
-                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13, marginTop: 4 }}>← Back</Text>
+              <Pressable
+                onPress={() => setLoginStep("phone")}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}
+              >
+                <Icon name="chevronLeft" size={14} color={colors.muted} />
+                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
               </Pressable>
             </>
           )}
@@ -546,8 +569,9 @@ export function HomeSheetsProvider({
       </BottomSheetModal>
 
       {showToast && (
-        <View style={styles.toast} pointerEvents="none">
-          <Text style={{ color: "#F5F1E6", fontWeight: "600", fontSize: 14 }}>✓ Logged in successfully</Text>
+        <View style={[styles.toast, { flexDirection: "row", alignItems: "center", gap: 6 }]} pointerEvents="none">
+          <Icon name="check" size={15} color="#F5F1E6" />
+          <Text style={{ color: "#F5F1E6", fontWeight: "600", fontSize: 14 }}>Logged in successfully</Text>
         </View>
       )}
     </HomeSheetsContext.Provider>

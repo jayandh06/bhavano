@@ -18,6 +18,19 @@ import type {
 
 const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
 
+/** Error thrown for any non-2xx BFF response — carries the HTTP `status` so callers can tell an
+ * auth failure (stale/invalid token) from a transient network or server error. */
+export class BffError extends Error {
+  constructor(
+    readonly status: number,
+    readonly path: string,
+    readonly body: string,
+  ) {
+    super(`BFF request failed (${status} ${path}): ${body}`);
+    this.name = "BffError";
+  }
+}
+
 async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BFF_URL}${path}`, {
     ...init,
@@ -25,7 +38,7 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`BFF request failed (${res.status} ${path}): ${body}`);
+    throw new BffError(res.status, path, body);
   }
   return res.json() as Promise<T>;
 }

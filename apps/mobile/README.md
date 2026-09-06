@@ -231,6 +231,11 @@ decoded EAS log, `Error: Cannot find module '<name>'` inside Metro's `Transforme
 Fix = add the module to `package.json` at the version already in `pnpm-lock.yaml`, `pnpm install`.
 
 Other notes:
+- **Icons** are `lucide-react-native` (the RN sibling of the web app's `lucide-react`), drawn by
+  **`react-native-svg`** — a **native module**. Adding or bumping it needs a fresh dev-client
+  build (`eas build --profile development --clear-cache`) and reinstall; a JS reload alone leaves
+  every `<Icon>` rendering an empty placeholder box because `RNSVG*` isn't in the old binary.
+  `src/components/Icon.tsx` mirrors `apps/web/src/components/home/Icon.tsx`'s `IconName` map 1:1.
 - **`@bhavano/types`** ships from its compiled `dist/`, which is **committed** (normally
   gitignored) via a scoped negation in the root `.gitignore` — nothing in the mobile build runs
   `tsc` for it. Rebuild + recommit `packages/types/dist` whenever `packages/types/src` changes:
