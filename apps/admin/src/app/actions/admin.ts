@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { RateLimitSettingsDto } from "@bhavano/types";
+import type { ListingStatus, RateLimitSettingsDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   approveListing,
@@ -11,6 +11,7 @@ import {
   rotateListingPhoto,
   sendMessage,
   setCoverPhoto,
+  setListingStatus,
   setReviewed,
   updateRateLimitSettings,
 } from "@/lib/bff";
@@ -50,6 +51,18 @@ export async function approveListingAction(listingId: string): Promise<ActionRes
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to approve listing" };
+  }
+}
+
+export async function setListingStatusAction(listingId: string, status: ListingStatus): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await setListingStatus(accessToken, listingId, status);
+    revalidatePath("/");
+    revalidatePath(`/listings/${listingId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update status" };
   }
 }
 

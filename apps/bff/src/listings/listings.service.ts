@@ -15,6 +15,7 @@ import type {
   ListingCategory,
   ListingDetailDto,
   ListingSitemapEntry,
+  ListingStatus,
   ListingVideoDto,
   ListingsPage,
   PopularSearchDto,
@@ -447,6 +448,21 @@ export class ListingsService {
         adminReviewed: true,
         moderatedAt: new Date(),
       },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+    });
+    return this.toDetailDto(listing, undefined, true);
+  }
+
+  /** Admin override of `status` (active/sold/rented/deactivated) — the owner-facing `update()`
+   * above deliberately forbids anyone but the listing's own owner from changing it; this is the
+   * one legitimate way around that, for support cases (e.g. an owner deactivated by mistake and
+   * can't be reached to fix it themselves). Always called through AdminService.setListingStatus,
+   * which posts an explanation into the moderation thread — never silent, same principle as
+   * flag()/approve() above. */
+  async setStatusAsAdmin(id: string, status: ListingStatus): Promise<ListingDetailDto> {
+    const listing = await this.prisma.listing.update({
+      where: { id },
+      data: { status },
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
     return this.toDetailDto(listing, undefined, true);

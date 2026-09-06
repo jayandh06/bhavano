@@ -6,6 +6,7 @@ import type {
   ListingBoostsPage,
   ListingDetailDto,
   ListingOwnerDto,
+  ListingStatus,
   LoginEventsPage,
   PageVisitsPage,
   RateLimitSettingsDto,
@@ -156,6 +157,18 @@ export class AdminService {
       }
     }
 
+    return listing;
+  }
+
+  /** Admin override of a listing's status (active/sold/rented/deactivated) — see
+   * ListingsService.setStatusAsAdmin's doc comment for why this exists. Same transparency
+   * principle as flag/approve above: never silent, always a message in the moderation thread the
+   * owner already sees. No push/SMS/WhatsApp notification here (unlike flag/approve) — this is a
+   * support/correction action, not something that needs to interrupt the owner. */
+  async setListingStatus(id: string, status: ListingStatus, adminId: string): Promise<ListingDetailDto> {
+    const listing = await this.listingsService.setStatusAsAdmin(id, status);
+    const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
+    await this.messagingService.sendMessage(thread.id, adminId, `Status changed to "${status}" by an admin.`);
     return listing;
   }
 

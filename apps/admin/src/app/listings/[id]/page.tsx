@@ -122,6 +122,7 @@ export default async function ListingModerationPage({ params }: { params: Promis
 
         <ModerationPanel
           listingId={listing.id}
+          status={listing.status}
           moderationState={listing.moderationState}
           adminReviewed={listing.adminReviewed}
           messages={messages}

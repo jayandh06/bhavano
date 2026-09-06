@@ -10,6 +10,7 @@ import type {
   ListingCategory,
   ListingDetailDto,
   ListingOwnerDto,
+  ListingStatus,
   LoginEventsPage,
   LoginMethod,
   MessageDto,
@@ -167,6 +168,13 @@ export function flagListing(accessToken: string, id: string, input: FlagListingI
 
 export function approveListing(accessToken: string, id: string): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/admin/listings/${id}/approve`, { method: "POST" });
+}
+
+export function setListingStatus(accessToken: string, id: string, status: ListingStatus): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/admin/listings/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
 
 export function rotateListingPhoto(

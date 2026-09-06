@@ -23,6 +23,7 @@ import { AdminService } from './admin.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
+import { SetListingStatusDto } from './dto/set-listing-status.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
@@ -75,6 +76,15 @@ export class AdminController {
   @Post('listings/:id/approve')
   approveListing(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
     return this.adminService.approveListing(id, user.id);
+  }
+
+  @Patch('listings/:id/status')
+  setListingStatus(
+    @Param('id') id: string,
+    @Body() dto: SetListingStatusDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<ListingDetailDto> {
+    return this.adminService.setListingStatus(id, dto.status, user.id);
   }
 
   @Post('listings/:id/photos/:photoNo/rotate')

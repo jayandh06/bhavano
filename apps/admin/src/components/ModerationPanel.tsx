@@ -1,22 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import type { MessageDto, ModerationState } from "@bhavano/types";
+import { useEffect, useState } from "react";
+import type { ListingStatus, MessageDto, ModerationState } from "@bhavano/types";
 import {
   approveListingAction,
   flagListingAction,
   sendThreadMessageAction,
+  setListingStatusAction,
   setReviewedAction,
 } from "@/app/actions/admin";
 
+const LISTING_STATUSES: ListingStatus[] = ["active", "sold", "rented", "deactivated"];
+
 export function ModerationPanel({
   listingId,
+  status,
   moderationState,
   adminReviewed,
   messages,
   currentUserId,
 }: {
   listingId: string;
+  status: ListingStatus;
   moderationState: ModerationState;
   adminReviewed: boolean;
   messages: MessageDto[];
@@ -25,8 +30,18 @@ export function ModerationPanel({
   const [flagMessage, setFlagMessage] = useState("");
   const [showFlagBox, setShowFlagBox] = useState(false);
   const [reply, setReply] = useState("");
+  const [statusChoice, setStatusChoice] = useState<ListingStatus>(status);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // `useState(status)` only seeds the initial value — it won't track a `status` prop that
+  // changes later on a re-render (e.g. this page revalidating after a completely unrelated
+  // action, or another admin's edit). Without this, the dropdown could silently drift from the
+  // real current status, and worse, "Update status" could re-enable and let someone submit a
+  // stale local choice that reverts a change they never made themselves.
+  useEffect(() => {
+    setStatusChoice(status);
+  }, [status]);
 
   async function onToggleReviewed() {
     setPending(true);
@@ -58,6 +73,15 @@ export function ModerationPanel({
     if (!result.success) setError(result.error);
   }
 
+  async function onSetStatus() {
+    if (statusChoice === status) return;
+    setPending(true);
+    setError(null);
+    const result = await setListingStatusAction(listingId, statusChoice);
+    setPending(false);
+    if (!result.success) setError(result.error);
+  }
+
   async function onSendReply() {
     if (!reply.trim()) return;
     setPending(true);
@@ -84,6 +108,26 @@ export function ModerationPanel({
             Approve — make live again
           </button>
         )}
+
+        <select
+          value={statusChoice}
+          onChange={(e) => setStatusChoice(e.target.value as ListingStatus)}
+          disabled={pending}
+          style={selectStyle}
+        >
+          {LISTING_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={onSetStatus}
+          disabled={pending || statusChoice === status}
+          style={outlineButtonStyle}
+        >
+          Update status
+        </button>
       </div>
 
       {showFlagBox && (
@@ -153,6 +197,15 @@ const primaryButtonStyle: React.CSSProperties = {
   fontWeight: 700,
   cursor: "pointer",
   whiteSpace: "nowrap",
+};
+
+const selectStyle: React.CSSProperties = {
+  border: "1.5px solid var(--border)",
+  borderRadius: 8,
+  padding: "10px 12px",
+  fontSize: 13.5,
+  background: "var(--surface)",
+  color: "var(--text)",
 };
 
 const outlineButtonStyle: React.CSSProperties = {
