@@ -101,7 +101,6 @@ export class AuthService {
     phone: string,
     code: string,
     visit?: VisitContext,
-    client?: 'web' | 'mobile',
   ): Promise<AuthSession> {
     await this.otpService.verifyChallenge(phone, code);
 
@@ -117,7 +116,7 @@ export class AuthService {
 
     const isNewUser = !user.welcomedAt;
     const promoted = await this.promoteToAdminIfAllowlisted(user);
-    await this.welcomeIfFirstLogin(promoted, client);
+    await this.welcomeIfFirstLogin(promoted);
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
     await this.recordLogin(promoted.id, 'otp');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
@@ -172,7 +171,6 @@ export class AuthService {
   async loginWithGoogle(
     idToken: string,
     visit?: VisitContext,
-    client?: 'web' | 'mobile',
   ): Promise<AuthSession> {
     const profile = await this.googleProvider.verifyIdToken(idToken);
 
@@ -224,7 +222,7 @@ export class AuthService {
 
     const isNewUser = !user.welcomedAt;
     const promoted = await this.promoteToAdminIfAllowlisted(user);
-    await this.welcomeIfFirstLogin(promoted, client);
+    await this.welcomeIfFirstLogin(promoted);
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
     await this.recordLogin(promoted.id, 'google');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
@@ -249,23 +247,25 @@ export class AuthService {
    * latency to the login response. Best-effort, matching the rest of NotificationsService: a
    * failed send is logged, not retried.
    *
-   * `client === 'mobile'` routes to a WhatsApp-via-MSG91 welcome instead of the default
-   * email/Meta-WhatsApp one (see NotificationsService.notifyMobileWelcome and
-   * docs/plans/whatsapp-welcome-mobile-signups.md) — except when a mobile signup has no phone
-   * (a Google sign-in that didn't collect one), which falls back to the default path since
-   * there'd be nothing to WhatsApp. */
-  private async welcomeIfFirstLogin(
-    user: User,
-    client?: 'web' | 'mobile',
-  ): Promise<void> {
+   * Routes on whether the user has a phone but no email — a phone-only signup (OTP login, on
+   * either web or mobile) gets the WhatsApp-via-MSG91 welcome; anyone with an email (Google
+   * sign-in, on either platform) gets the default email/Meta-WhatsApp path. This used to key off
+   * a `client: 'web' | 'mobile'` flag the caller sent instead, but that flag can only ever change
+   * for a user once their app is rebuilt and reinstalled — unlike a web deploy, there's no way to
+   * ship a mobile JS change to an already-installed app in this repo (no expo-updates/OTA channel
+   * configured), so it silently kept routing every already-installed mobile client's phone
+   * signups into the (unconfigured, silently-no-op) default path. Keying on the user's own
+   * email/phone fields instead is unaffected by which app build the request came from. See
+   * docs/plans/whatsapp-welcome-mobile-signups.md. */
+  private async welcomeIfFirstLogin(user: User): Promise<void> {
     if (user.welcomedAt) return;
     await this.prisma.user.update({
       where: { id: user.id },
       data: { welcomedAt: new Date() },
     });
     const send =
-      client === 'mobile' && user.phone
-        ? this.notificationsService.notifyMobileWelcome({
+      user.phone && !user.email
+        ? this.notificationsService.sendWelcomeWhatsapp({
             name: user.name,
             phone: user.phone,
           })

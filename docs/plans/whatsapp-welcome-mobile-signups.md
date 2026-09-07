@@ -150,3 +150,31 @@ to a test number before this was deployed.
    WhatsApp) — test both to confirm the branch is actually client-scoped, not global.
 4. Confirm `UserNotificationLog` gets a `kind: 'welcome', channel: 'whatsapp'` row for a
    successful mobile send, same as the existing web path already produces.
+
+## Update (2026-09-07): the `client` flag never actually worked, replaced with phone/email routing
+
+Checked every `UserNotificationLog(kind: 'welcome', channel: 'whatsapp')` row ever created in
+production against its user's `createdAt` — every one had a gap of hours to days, meaning every
+single one came from a manual backfill script or the admin Users page's bulk "Send welcome
+WhatsApp" action (see `docs/plans/admin-trigger-welcome-notification.md`). **Not one was ever
+created in real time by an actual login.** A real user reported not getting the WhatsApp welcome,
+which led to this.
+
+Root cause: `client: "mobile"` (section 4 above) requires a new mobile app build to reach a
+device — this repo's `apps/mobile/app.json` has no `expo-updates`/OTA channel configured, so a
+committed mobile source change never reaches an already-installed app. Every real device that had
+ever logged in was still running a build from before this feature existed, so `client` was never
+`"mobile"` in practice, and `AuthService.welcomeIfFirstLogin` kept falling into the default
+`notifyWelcome` path — which silently does nothing for a phone-only user, since
+`WHATSAPP_WELCOME_TEMPLATE` (the Meta fallback) is deliberately left unconfigured.
+
+Fix: `welcomeIfFirstLogin` no longer takes a `client` parameter at all. It now routes on the
+user's own `phone`/`email` fields instead — `user.phone && !user.email` (true for any phone-OTP
+signup, web or mobile) sends via MSG91 WhatsApp (`NotificationsService.sendWelcomeWhatsapp`, the
+same method `notifyMobileWelcome` used to delegate to — that wrapper is now deleted since nothing
+else called it); everyone else (an email on file, from Google sign-in on either platform) keeps
+the default `notifyWelcome` path. This is a superset of the original mobile-only behavior — a
+web-originated phone-only signup now also gets a real WhatsApp welcome instead of the same silent
+no-op it always had — and, unlike the `client` flag, is unaffected by which app build a request
+came from. The `client` field was removed entirely from `VerifyOtpDto`/`GoogleLoginDto` and the
+mobile app's request bodies, since nothing reads it anymore.

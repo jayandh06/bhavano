@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class GoogleLoginDto {
   @IsString()
@@ -47,9 +47,4 @@ export class GoogleLoginDto {
   @IsString()
   @MaxLength(64)
   sessionId?: string;
-
-  /** See VerifyOtpDto.client — same purpose, for the Google login path. */
-  @IsOptional()
-  @IsIn(['web', 'mobile'])
-  client?: 'web' | 'mobile';
 }

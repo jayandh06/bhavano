@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 export class VerifyOtpDto {
   @IsString()
@@ -57,12 +57,4 @@ export class VerifyOtpDto {
   @IsString()
   @MaxLength(64)
   sessionId?: string;
-
-  /** Which app this login request came from — web omits it entirely. Only used to route the
-   * first-signup welcome notification (see AuthService.welcomeIfFirstLogin): a mobile signup
-   * gets a WhatsApp welcome via MSG91, distinct from web's email/Meta-WhatsApp path. See
-   * docs/plans/whatsapp-welcome-mobile-signups.md. */
-  @IsOptional()
-  @IsIn(['web', 'mobile'])
-  client?: 'web' | 'mobile';
 }

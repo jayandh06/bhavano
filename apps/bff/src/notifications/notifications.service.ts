@@ -163,8 +163,9 @@ export class NotificationsService {
     return sent ? 'email' : null;
   }
 
-  /** Forces the WhatsApp welcome via MSG91 — the admin Users page's "Send welcome WhatsApp" bulk
-   * action, and the one channel this session proved actually delivers (see
+  /** Forces the WhatsApp welcome via MSG91 — the real-time path for any phone-only first login
+   * (see AuthService.welcomeIfFirstLogin), and also the admin Users page's "Send welcome
+   * WhatsApp" bulk action. The one channel proven to actually deliver (see
    * docs/plans/whatsapp-welcome-mobile-signups.md). */
   async sendWelcomeWhatsapp(user: {
     name: string | null;
@@ -175,19 +176,6 @@ export class NotificationsService {
       user.name ?? 'there',
     );
     return sent ? 'whatsapp' : null;
-  }
-
-  /** First-login welcome for a signup that happened through the mobile app — WhatsApp via MSG91
-   * only, no email branch, replacing `notifyWelcome` above for this case rather than running
-   * alongside it (see docs/plans/whatsapp-welcome-mobile-signups.md for why: sending two welcome
-   * messages from two different senders to the same phone number would be redundant/spammy).
-   * Called from AuthService.welcomeIfFirstLogin when the signup request carried `client:
-   * "mobile"`. */
-  async notifyMobileWelcome(user: {
-    name: string | null;
-    phone: string;
-  }): Promise<'whatsapp' | null> {
-    return this.sendWelcomeWhatsapp(user);
   }
 
   /** Listing expiry reminder — email if the user has one, else WhatsApp once a template exists
