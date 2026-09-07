@@ -23,8 +23,15 @@ services:
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
       MSG91_TRANSACTIONAL_TEMPLATE_ID: ${MSG91_TRANSACTIONAL_TEMPLATE_ID}
-      # WhatsApp Business via Meta's Cloud API, direct rather than through MSG91. Unset disables
-      # WhatsApp entirely (sends log and skip) — see .env.production.example for which id goes in
+      # WhatsApp via MSG91 — used only for the first-time-mobile-signup welcome (see
+      # docs/plans/whatsapp-welcome-mobile-signups.md); every other WhatsApp send in this app
+      # still goes through Meta's Cloud API directly, below. Unset disables just this one welcome
+      # path (sends log and skip, falling back to the default email/Meta-WhatsApp welcome).
+      MSG91_WHATSAPP_INTEGRATED_NUMBER: ${MSG91_WHATSAPP_INTEGRATED_NUMBER}
+      MSG91_WHATSAPP_TEMPLATE_NAME: ${MSG91_WHATSAPP_TEMPLATE_NAME}
+      # WhatsApp Business via Meta's Cloud API, direct rather than through MSG91 — the default
+      # path for every WhatsApp send except the mobile welcome above. Unset disables WhatsApp
+      # entirely (sends log and skip) — see .env.production.example for which id goes in
       # WHATSAPP_PHONE_NUMBER_ID, which is the easiest thing to get wrong here.
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}

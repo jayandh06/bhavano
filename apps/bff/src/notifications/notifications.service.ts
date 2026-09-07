@@ -4,6 +4,7 @@ import type { ListingDetailDto } from '@bhavano/types';
 import { buildListingPath } from '@bhavano/types/listingPath';
 import { WhatsappProvider } from './providers/whatsapp.provider';
 import { EmailProvider } from './providers/email.provider';
+import { Msg91Provider } from './providers/msg91.provider';
 import { renderEmail } from './emailLayout';
 import { loadTemplate, renderTemplate } from './templateLoader';
 
@@ -17,6 +18,7 @@ export class NotificationsService {
   constructor(
     private readonly emailProvider: EmailProvider,
     private readonly whatsapp: WhatsappProvider,
+    private readonly msg91: Msg91Provider,
     private readonly config: ConfigService,
   ) {}
 
@@ -134,6 +136,23 @@ export class NotificationsService {
         ? { template: welcomeTemplate, params: [user.name ?? 'there'] }
         : undefined,
     );
+  }
+
+  /** First-login welcome for a signup that happened through the mobile app — WhatsApp via MSG91
+   * only, no email branch, replacing `notifyWelcome` above for this case rather than running
+   * alongside it (see docs/plans/whatsapp-welcome-mobile-signups.md for why: sending two welcome
+   * messages from two different senders to the same phone number would be redundant/spammy).
+   * Called from AuthService.welcomeIfFirstLogin when the signup request carried `client:
+   * "mobile"`. */
+  async notifyMobileWelcome(user: {
+    name: string | null;
+    phone: string;
+  }): Promise<'whatsapp' | null> {
+    const sent = await this.msg91.sendWhatsappTemplate(
+      user.phone,
+      user.name ?? 'there',
+    );
+    return sent ? 'whatsapp' : null;
   }
 
   /** Listing expiry reminder — email if the user has one, else WhatsApp once a template exists

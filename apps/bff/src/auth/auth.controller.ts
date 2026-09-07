@@ -33,31 +33,40 @@ export class AuthController {
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   verifyOtp(@Body() dto: VerifyOtpDto): Promise<AuthSession> {
-    return this.authService.verifyOtp(dto.phone, dto.code, {
-      source: dto.acquisitionSource,
-      medium: dto.acquisitionMedium,
-      campaign: dto.acquisitionCampaign,
-      gclid: dto.acquisitionGclid,
-      campaignId: dto.acquisitionCampaignId,
-      adGroupId: dto.acquisitionAdGroupId,
-      adId: dto.acquisitionAdId,
-      sessionId: dto.sessionId,
-    });
+    return this.authService.verifyOtp(
+      dto.phone,
+      dto.code,
+      {
+        source: dto.acquisitionSource,
+        medium: dto.acquisitionMedium,
+        campaign: dto.acquisitionCampaign,
+        gclid: dto.acquisitionGclid,
+        campaignId: dto.acquisitionCampaignId,
+        adGroupId: dto.acquisitionAdGroupId,
+        adId: dto.acquisitionAdId,
+        sessionId: dto.sessionId,
+      },
+      dto.client,
+    );
   }
 
   @Post('google')
   @HttpCode(200)
   loginWithGoogle(@Body() dto: GoogleLoginDto): Promise<AuthSession> {
-    return this.authService.loginWithGoogle(dto.idToken, {
-      source: dto.acquisitionSource,
-      medium: dto.acquisitionMedium,
-      campaign: dto.acquisitionCampaign,
-      gclid: dto.acquisitionGclid,
-      campaignId: dto.acquisitionCampaignId,
-      adGroupId: dto.acquisitionAdGroupId,
-      adId: dto.acquisitionAdId,
-      sessionId: dto.sessionId,
-    });
+    return this.authService.loginWithGoogle(
+      dto.idToken,
+      {
+        source: dto.acquisitionSource,
+        medium: dto.acquisitionMedium,
+        campaign: dto.acquisitionCampaign,
+        gclid: dto.acquisitionGclid,
+        campaignId: dto.acquisitionCampaignId,
+        adGroupId: dto.acquisitionAdGroupId,
+        adId: dto.acquisitionAdId,
+        sessionId: dto.sessionId,
+      },
+      dto.client,
+    );
   }
 
   /** Test-only: mints a real session for an existing (seeded) user without going through OTP

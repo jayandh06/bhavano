@@ -241,13 +241,22 @@ export function verifyOtp(
   phone: string,
   code: string,
 ): Promise<{ user: { id: string; phone?: string; name?: string }; accessToken: string }> {
-  return bffFetch("/auth/otp/verify", { method: "POST", body: JSON.stringify({ phone, code }) });
+  // `client: "mobile"` routes a first-time signup's welcome notification to WhatsApp via MSG91
+  // instead of the web default (email/Meta-WhatsApp) — see AuthService.welcomeIfFirstLogin and
+  // docs/plans/whatsapp-welcome-mobile-signups.md.
+  return bffFetch("/auth/otp/verify", {
+    method: "POST",
+    body: JSON.stringify({ phone, code, client: "mobile" }),
+  });
 }
 
 export function loginWithGoogle(
   idToken: string,
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
-  return bffFetch("/auth/google", { method: "POST", body: JSON.stringify({ idToken }) });
+  return bffFetch("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ idToken, client: "mobile" }),
+  });
 }
 
 /** Purely a signal for the BFF to log — JWTs are stateless and short-lived, so there is no

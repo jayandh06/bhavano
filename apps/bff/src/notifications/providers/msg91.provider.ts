@@ -104,4 +104,81 @@ export class Msg91Provider {
       );
     }
   }
+
+  /** WhatsApp via MSG91 — a distinct product/endpoint from the SMS APIs above, currently used
+   * only for the first-time mobile-app-signup welcome message (see AuthService.welcomeIfFirstLogin
+   * and docs/plans/whatsapp-welcome-mobile-signups.md). Requires a WhatsApp Business template
+   * created and approved in the MSG91 dashboard first — that's a manual, human-only step, not
+   * something this code can satisfy, so this degrades to a logged no-op (like
+   * sendTransactionalSms above) rather than throwing, until MSG91_WHATSAPP_INTEGRATED_NUMBER /
+   * MSG91_WHATSAPP_TEMPLATE_NAME are both set (these two were already scaffolded in
+   * .env.production.example back on 2026-07-22, well before this was actually built — matching
+   * their names here rather than inventing new ones).
+   *
+   * No `namespace` param: MSG91's generic docs examples show one, but it was never part of the
+   * original scaffolding for this feature, and MSG91 manages the WhatsApp Business Account on
+   * the caller's behalf, so it likely resolves the namespace from `integrated_number`+template
+   * name server-side. Omitted for now — if MSG91 actually requires it, the send will fail with a
+   * clear logged API error rather than silently doing the wrong thing, and it's a one-line add.
+   *
+   * The template's own placeholder name (assumed "body_1" here) needs confirming against
+   * whatever the approved template actually declares — MSG91's docs didn't give a definitive
+   * answer for this at the time this was written.
+   *
+   * Docs: https://docs.msg91.com/whatsapp */
+  async sendWhatsappTemplate(phone: string, name: string): Promise<boolean> {
+    const authKey = this.config.get<string>('MSG91_AUTH_KEY');
+    const integratedNumber = this.config.get<string>(
+      'MSG91_WHATSAPP_INTEGRATED_NUMBER',
+    );
+    const template = this.config.get<string>('MSG91_WHATSAPP_TEMPLATE_NAME');
+    if (!authKey || !integratedNumber || !template) {
+      this.logger.warn(
+        `MSG91 WhatsApp not configured (MSG91_WHATSAPP_INTEGRATED_NUMBER/` +
+          `MSG91_WHATSAPP_TEMPLATE_NAME) — skipping WhatsApp welcome to ${phone}`,
+      );
+      return false;
+    }
+
+    try {
+      const res = await fetch(
+        'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
+        {
+          method: 'POST',
+          headers: { authkey: authKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            integrated_number: integratedNumber,
+            content_type: 'template',
+            payload: {
+              messaging_product: 'whatsapp',
+              type: 'template',
+              template: {
+                name: template,
+                language: { code: 'en', policy: 'deterministic' },
+                to_and_components: [
+                  {
+                    to: [`91${phone}`],
+                    components: { body_1: { type: 'text', value: name } },
+                  },
+                ],
+              },
+            },
+          }),
+        },
+      );
+      const responseBody = await res.text();
+      if (!res.ok || responseBody.includes('"error"')) {
+        this.logger.error(
+          `MSG91 WhatsApp send failed (${res.status}): ${responseBody}`,
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to send WhatsApp welcome to ${phone}: ${error instanceof Error ? error.message : error}`,
+      );
+      return false;
+    }
+  }
 }

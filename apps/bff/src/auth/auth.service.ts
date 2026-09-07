@@ -101,6 +101,7 @@ export class AuthService {
     phone: string,
     code: string,
     visit?: VisitContext,
+    client?: 'web' | 'mobile',
   ): Promise<AuthSession> {
     await this.otpService.verifyChallenge(phone, code);
 
@@ -116,7 +117,7 @@ export class AuthService {
 
     const isNewUser = !user.welcomedAt;
     const promoted = await this.promoteToAdminIfAllowlisted(user);
-    await this.welcomeIfFirstLogin(promoted);
+    await this.welcomeIfFirstLogin(promoted, client);
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
     await this.recordLogin(promoted.id, 'otp');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
@@ -171,6 +172,7 @@ export class AuthService {
   async loginWithGoogle(
     idToken: string,
     visit?: VisitContext,
+    client?: 'web' | 'mobile',
   ): Promise<AuthSession> {
     const profile = await this.googleProvider.verifyIdToken(idToken);
 
@@ -222,7 +224,7 @@ export class AuthService {
 
     const isNewUser = !user.welcomedAt;
     const promoted = await this.promoteToAdminIfAllowlisted(user);
-    await this.welcomeIfFirstLogin(promoted);
+    await this.welcomeIfFirstLogin(promoted, client);
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
     await this.recordLogin(promoted.id, 'google');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
@@ -241,18 +243,34 @@ export class AuthService {
     return this.issueSession(user);
   }
 
-  /** Fires the first-login welcome email/SMS/WhatsApp exactly once per user — `welcomedAt` is
-   * marked immediately (before the send even starts) so a concurrent duplicate login request
-   * can't double-send, and the dispatch itself is fire-and-forget (not awaited) so three
-   * external network calls never add latency to the login response. Best-effort, matching the
-   * rest of NotificationsService: a failed send is logged, not retried. */
-  private async welcomeIfFirstLogin(user: User): Promise<void> {
+  /** Fires the first-login welcome exactly once per user — `welcomedAt` is marked immediately
+   * (before the send even starts) so a concurrent duplicate login request can't double-send, and
+   * the dispatch itself is fire-and-forget (not awaited) so external network calls never add
+   * latency to the login response. Best-effort, matching the rest of NotificationsService: a
+   * failed send is logged, not retried.
+   *
+   * `client === 'mobile'` routes to a WhatsApp-via-MSG91 welcome instead of the default
+   * email/Meta-WhatsApp one (see NotificationsService.notifyMobileWelcome and
+   * docs/plans/whatsapp-welcome-mobile-signups.md) — except when a mobile signup has no phone
+   * (a Google sign-in that didn't collect one), which falls back to the default path since
+   * there'd be nothing to WhatsApp. */
+  private async welcomeIfFirstLogin(
+    user: User,
+    client?: 'web' | 'mobile',
+  ): Promise<void> {
     if (user.welcomedAt) return;
     await this.prisma.user.update({
       where: { id: user.id },
       data: { welcomedAt: new Date() },
     });
-    void this.notificationsService.notifyWelcome(user).then((channel) => {
+    const send =
+      client === 'mobile' && user.phone
+        ? this.notificationsService.notifyMobileWelcome({
+            name: user.name,
+            phone: user.phone,
+          })
+        : this.notificationsService.notifyWelcome(user);
+    void send.then((channel) => {
       if (!channel) return;
       return this.prisma.userNotificationLog.create({
         data: { userId: user.id, kind: 'welcome', channel },
