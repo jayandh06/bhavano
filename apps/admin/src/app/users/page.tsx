@@ -3,7 +3,7 @@ import type { UserRole } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminUserSort, fetchUsers } from "@/lib/bff";
 import { str } from "@/lib/searchParams";
-import { formatDateTime } from "@/lib/formatDateTime";
+import { UsersTable } from "@/components/UsersTable";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -128,47 +128,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         {page.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>No users match these filters.</p>
         ) : (
-          <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
-              <thead>
-                <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
-                  {["Created", "Name", "Phone", "Email", "Role", "City", "Notification status"].map((h) => (
-                    <th key={h} style={thStyle}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {page.items.map((u) => (
-                  <tr key={u.id} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDateTime(u.createdAt)}</td>
-                    <td style={tdStyle}>
-                      <Link href={`/users/${u.id}`} style={{ color: "var(--green)", fontWeight: 700 }}>
-                        {u.name ?? dash}
-                      </Link>
-                    </td>
-                    <td style={tdStyle}>{u.phone ?? dash}</td>
-                    <td style={tdStyle}>{u.email ?? dash}</td>
-                    <td style={tdStyle}>{u.role}</td>
-                    <td style={tdStyle}>{u.cityName ?? dash}</td>
-                    <td style={tdStyle}>
-                      {u.welcomed ? (
-                        <span style={{ color: "var(--green)", fontWeight: 700 }}>
-                          ✓ {u.welcomedChannel ?? "welcomed"}
-                          {u.welcomedAt && (
-                            <span style={{ color: "var(--muted)", fontWeight: 400 }}> — {formatDateTime(u.welcomedAt)}</span>
-                          )}
-                        </span>
-                      ) : (
-                        <span style={{ color: "var(--danger)", fontWeight: 700 }}>Not welcomed</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <UsersTable users={page.items} />
         )}
 
         {page.nextCursor && (
@@ -183,8 +143,6 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     </div>
   );
 }
-
-const dash = <span style={{ color: "var(--muted)" }}>—</span>;
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -226,6 +184,3 @@ const applyButtonStyle: React.CSSProperties = {
   fontWeight: 700,
   cursor: "pointer",
 };
-
-const thStyle: React.CSSProperties = { padding: "10px 12px", fontSize: 11.5, fontWeight: 700, color: "var(--muted)", whiteSpace: "nowrap" };
-const tdStyle: React.CSSProperties = { padding: "9px 12px", verticalAlign: "top" };

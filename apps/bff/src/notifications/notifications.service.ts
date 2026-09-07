@@ -95,18 +95,38 @@ export class NotificationsService {
     email: string | null;
     phone: string | null;
   }): Promise<'email' | 'whatsapp' | null> {
-    const site =
-      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
     const welcomeTemplate = this.config.get<string>(
       'WHATSAPP_WELCOME_TEMPLATE',
     );
+    const { subject, text, html } = this.buildWelcomeEmailContent(user.name);
+
+    return this.dispatchEmailPreferWhatsapp(
+      user,
+      { subject, text, html },
+      // welcome_signup was submitted with positional {{1}}, not named — an array, not the
+      // {name: ...} object listing_posted_v2 takes. The variable is the name alone, not a
+      // "Hi <name>" greeting, since the approved template supplies its own wording around it.
+      welcomeTemplate
+        ? { template: welcomeTemplate, params: [user.name ?? 'there'] }
+        : undefined,
+    );
+  }
+
+  /** The welcome email's subject/text/html — factored out of `notifyWelcome` so
+   * `sendWelcomeEmail` (the admin-triggered forced-channel resend) can build the exact same
+   * content without going through `dispatchEmailPreferWhatsapp`'s email-else-WhatsApp choice. */
+  private buildWelcomeEmailContent(
+    name: string | null,
+  ): { subject: string; text: string; html: string } {
+    const site =
+      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
 
     // Copy lives in apps/bff/notification-templates/email/welcome/, not here — see that folder's
     // README. `{{name}}` falls back to "there" rather than the old "Welcome to Bhavano"/plain
     // "Hi," special-casing for a nameless user: one substitution rule shared with
     // notifyListingPosted rather than each notification inventing its own fallback wording.
     const tpl = loadTemplate('email/welcome');
-    const vars = { name: user.name ?? 'there' };
+    const vars = { name: name ?? 'there' };
     const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
     const buttonLabel = tpl.buttonLabel
       ? renderTemplate(tpl.buttonLabel, vars)
@@ -126,16 +146,35 @@ export class NotificationsService {
       paragraphs.join('\n\n') +
       (buttonLabel ? `\n\n${buttonLabel}: ${site}/post` : '');
 
-    return this.dispatchEmailPreferWhatsapp(
-      user,
-      { subject: renderTemplate(tpl.subject, vars), text, html },
-      // welcome_signup was submitted with positional {{1}}, not named — an array, not the
-      // {name: ...} object listing_posted_v2 takes. The variable is the name alone, not a
-      // "Hi <name>" greeting, since the approved template supplies its own wording around it.
-      welcomeTemplate
-        ? { template: welcomeTemplate, params: [user.name ?? 'there'] }
-        : undefined,
+    return { subject: renderTemplate(tpl.subject, vars), text, html };
+  }
+
+  /** Forces the welcome email regardless of whether the user also has a phone — used by the
+   * admin Users page's "Send welcome email" bulk action, where the admin has explicitly chosen
+   * the channel rather than letting `dispatchEmailPreferWhatsapp` pick one. */
+  async sendWelcomeEmail(user: {
+    name: string | null;
+    email: string;
+  }): Promise<'email' | null> {
+    const { subject, text, html } = this.buildWelcomeEmailContent(user.name);
+    const sent = await this.emailProvider.send(user.email, subject, text, {
+      html,
+    });
+    return sent ? 'email' : null;
+  }
+
+  /** Forces the WhatsApp welcome via MSG91 — the admin Users page's "Send welcome WhatsApp" bulk
+   * action, and the one channel this session proved actually delivers (see
+   * docs/plans/whatsapp-welcome-mobile-signups.md). */
+  async sendWelcomeWhatsapp(user: {
+    name: string | null;
+    phone: string;
+  }): Promise<'whatsapp' | null> {
+    const sent = await this.msg91.sendWhatsappTemplate(
+      user.phone,
+      user.name ?? 'there',
     );
+    return sent ? 'whatsapp' : null;
   }
 
   /** First-login welcome for a signup that happened through the mobile app — WhatsApp via MSG91
@@ -148,11 +187,7 @@ export class NotificationsService {
     name: string | null;
     phone: string;
   }): Promise<'whatsapp' | null> {
-    const sent = await this.msg91.sendWhatsappTemplate(
-      user.phone,
-      user.name ?? 'there',
-    );
-    return sent ? 'whatsapp' : null;
+    return this.sendWelcomeWhatsapp(user);
   }
 
   /** Listing expiry reminder — email if the user has one, else WhatsApp once a template exists

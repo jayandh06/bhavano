@@ -18,6 +18,8 @@ import type {
   PageVisitsPage,
   ModerationState,
   RateLimitSettingsDto,
+  SendWelcomeInput,
+  SendWelcomeResponseDto,
   TransactionType,
   UserActivityDto,
   UserRole,
@@ -293,6 +295,10 @@ export function fetchUsers(accessToken: string, query: AdminUsersQuery = {}): Pr
     if (value !== undefined && value !== "") params.set(key, String(value));
   }
   return authedBffFetch(accessToken, `/admin/users?${params.toString()}`, { cache: "no-store" });
+}
+
+export function sendWelcome(accessToken: string, input: SendWelcomeInput): Promise<SendWelcomeResponseDto> {
+  return authedBffFetch(accessToken, "/admin/users/welcome", { method: "POST", body: JSON.stringify(input) });
 }
 
 export function fetchRateLimitSettings(accessToken: string): Promise<RateLimitSettingsDto> {

@@ -15,6 +15,7 @@ import type {
   OutreachContactDto,
   OutreachContactsPage,
   RateLimitSettingsDto,
+  SendWelcomeResponseDto,
   UserActivityDto,
 } from '@bhavano/types';
 import { AdminGuard } from '../auth/guards/auth.guard';
@@ -28,6 +29,7 @@ import { SetListingStatusDto } from './dto/set-listing-status.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { ListUsersDto } from './dto/list-users.dto';
+import { SendWelcomeDto } from './dto/send-welcome.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
@@ -126,6 +128,11 @@ export class AdminController {
   @Get('users')
   listUsers(@Query() query: ListUsersDto): Promise<AdminUsersPage> {
     return this.adminService.listUsers(query);
+  }
+
+  @Post('users/welcome')
+  sendWelcome(@Body() dto: SendWelcomeDto): Promise<SendWelcomeResponseDto> {
+    return this.adminService.sendWelcome(dto.userIds, dto.channel);
   }
 
   @Get('users/search')

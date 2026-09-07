@@ -11,7 +11,10 @@ import type {
   LoginEventsPage,
   PageVisitsPage,
   RateLimitSettingsDto,
+  SendWelcomeResponseDto,
+  SendWelcomeResultDto,
   UserActivityDto,
+  WelcomeChannel,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { ListingsService } from '../listings/listings.service';
@@ -378,6 +381,59 @@ export class AdminService {
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
+    };
+  }
+
+  /** Admin-triggered, deliberate (re)send of the welcome notification to one or many users at
+   * once — the in-product counterpart to the one-off backfill script this session ran from the
+   * terminal to fix the same gap this discovered (see
+   * docs/plans/whatsapp-welcome-mobile-signups.md). No gate on `welcomedAt` or an existing
+   * `UserNotificationLog` row: the admin is explicitly choosing to send, same trust-the-admin
+   * posture as `setListingStatus`'s manual override above. Sequential, not `Promise.all` — this
+   * hits an external API (SMTP / MSG91) per user and shouldn't fire them all concurrently. */
+  async sendWelcome(userIds: string[], channel: WelcomeChannel): Promise<SendWelcomeResponseDto> {
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds }, deletedAt: null },
+      select: { id: true, name: true, email: true, phone: true },
+    });
+    const byId = new Map(users.map((u) => [u.id, u]));
+
+    const results: SendWelcomeResultDto[] = [];
+    for (const userId of userIds) {
+      const user = byId.get(userId);
+      if (!user) {
+        results.push({ userId, success: false, error: 'User not found' });
+        continue;
+      }
+
+      let sentChannel: WelcomeChannel | null = null;
+      if (channel === 'email') {
+        if (!user.email) {
+          results.push({ userId, success: false, error: 'No email on file' });
+          continue;
+        }
+        sentChannel = await this.notificationsService.sendWelcomeEmail({ name: user.name, email: user.email });
+      } else {
+        if (!user.phone) {
+          results.push({ userId, success: false, error: 'No phone on file' });
+          continue;
+        }
+        sentChannel = await this.notificationsService.sendWelcomeWhatsapp({ name: user.name, phone: user.phone });
+      }
+
+      if (!sentChannel) {
+        results.push({ userId, success: false, error: 'Send failed' });
+        continue;
+      }
+
+      await this.prisma.userNotificationLog.create({ data: { userId, kind: 'welcome', channel: sentChannel } });
+      results.push({ userId, success: true });
+    }
+
+    return {
+      sent: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
     };
   }
 

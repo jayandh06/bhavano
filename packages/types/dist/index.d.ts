@@ -459,6 +459,22 @@ export interface AdminUsersPage {
     nextCursor: string | null;
     total: number;
 }
+export type WelcomeChannel = "email" | "whatsapp";
+export interface SendWelcomeInput {
+    userIds: string[];
+    channel: WelcomeChannel;
+}
+export interface SendWelcomeResultDto {
+    userId: string;
+    success: boolean;
+    /** e.g. "No email on file", "Send failed" — shown inline per user in the admin UI. */
+    error?: string;
+}
+export interface SendWelcomeResponseDto {
+    sent: number;
+    failed: number;
+    results: SendWelcomeResultDto[];
+}
 export interface RateLimitSettingsDto {
     publishLimit: number;
     publishWindowMinutes: number;
