@@ -48,6 +48,12 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
+  // Meta Business Manager domain verification (business.facebook.com > Brand Safety > Domains) —
+  // a one-time ownership proof for the WhatsApp/Meta integrations. Server-rendered here (not a
+  // client-injected tag) so Meta's crawler can see it on the plain HTML response.
+  other: {
+    "facebook-domain-verification": "zcmoqn7tfxb945q9n2og13fpipopfb",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
