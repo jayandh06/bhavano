@@ -438,6 +438,27 @@ export interface ListingOwnerDto {
     phone: string | null;
     email: string | null;
 }
+/** One row of the admin users list — `welcomed`/`welcomedChannel`/`welcomedAt` are derived from
+ * an actual `UserNotificationLog` row (`kind: "welcome"`), not from `User.welcomedAt`, since that
+ * flag is set unconditionally as a dispatch-attempted marker and can be true even when the send
+ * itself failed. */
+export interface UserSummaryDto {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    email: string | null;
+    role: UserRole;
+    cityName: string | null;
+    createdAt: string;
+    welcomed: boolean;
+    welcomedChannel: string | null;
+    welcomedAt: string | null;
+}
+export interface AdminUsersPage {
+    items: UserSummaryDto[];
+    nextCursor: string | null;
+    total: number;
+}
 export interface RateLimitSettingsDto {
     publishLimit: number;
     publishWindowMinutes: number;

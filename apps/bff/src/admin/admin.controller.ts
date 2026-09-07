@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import type {
   AdminListingsPage,
+  AdminUsersPage,
   CampaignPreviewDto,
   CampaignSendsPage,
   ImportOutreachContactsResult,
@@ -26,6 +27,7 @@ import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { SetListingStatusDto } from './dto/set-listing-status.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
+import { ListUsersDto } from './dto/list-users.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
@@ -119,6 +121,11 @@ export class AdminController {
   @Get('page-visits')
   listPageVisits(@Query() query: ListPageVisitsDto): Promise<PageVisitsPage> {
     return this.adminService.listPageVisits(query);
+  }
+
+  @Get('users')
+  listUsers(@Query() query: ListUsersDto): Promise<AdminUsersPage> {
+    return this.adminService.listUsers(query);
   }
 
   @Get('users/search')

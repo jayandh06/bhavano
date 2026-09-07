@@ -10,12 +10,13 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/outreach/contacts", label: "Contacts" },
   { href: "/outreach/campaigns", label: "Campaigns" },
   { href: "/logins", label: "Recent logins" },
+  { href: "/users", label: "Users" },
   { href: "/page-visits", label: "Page visits" },
   { href: "/settings/rate-limits", label: "Rate limits" },
 ];
 
-/** `/` only matches itself — every other link matches its own path and anything nested under
- * it (e.g. `/users/[id]`, reached only via the logins list, still highlights "Recent logins"). */
+/** `/` only matches itself — every other link matches its own path and anything nested under it
+ * (e.g. `/users/[id]`, reached from the users list or the logins list, highlights "Users"). */
 function isActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }

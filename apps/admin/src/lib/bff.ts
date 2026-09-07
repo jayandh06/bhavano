@@ -1,6 +1,7 @@
 import "server-only";
 import type {
   AdminListingsPage,
+  AdminUsersPage,
   Area,
   AuthSession,
   City,
@@ -19,6 +20,7 @@ import type {
   RateLimitSettingsDto,
   TransactionType,
   UserActivityDto,
+  UserRole,
   OutreachContactsPage,
   OutreachCampaignsPage,
   OutreachCampaignDto,
@@ -46,6 +48,9 @@ export type AdminPageVisitSort =
   | "user_desc"
   | "city_asc"
   | "city_desc";
+
+/** Mirrors the BFF's USER_SORT_VALUES (apps/bff/src/admin/dto/list-users.dto.ts). */
+export type AdminUserSort = "createdAt_desc" | "createdAt_asc" | "name_asc";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
@@ -269,6 +274,25 @@ export function fetchPageVisits(accessToken: string, query: PageVisitsQuery = {}
 
 export function fetchUserActivity(accessToken: string, userId: string): Promise<UserActivityDto> {
   return authedBffFetch(accessToken, `/admin/users/${userId}/activity`, { cache: "no-store" });
+}
+
+export interface AdminUsersQuery {
+  cursor?: string;
+  from?: string;
+  to?: string;
+  q?: string;
+  role?: UserRole;
+  welcomed?: "yes" | "no";
+  sort?: AdminUserSort;
+  limit?: number;
+}
+
+export function fetchUsers(accessToken: string, query: AdminUsersQuery = {}): Promise<AdminUsersPage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/users?${params.toString()}`, { cache: "no-store" });
 }
 
 export function fetchRateLimitSettings(accessToken: string): Promise<RateLimitSettingsDto> {

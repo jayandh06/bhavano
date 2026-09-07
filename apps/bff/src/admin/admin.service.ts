@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import type {
   ActivityEventDto,
   AdminListingsPage,
+  AdminUsersPage,
   ListingBoostsPage,
   ListingDetailDto,
   ListingOwnerDto,
@@ -20,6 +21,7 @@ import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
+import { ListUsersDto, UserSort } from './dto/list-users.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
@@ -44,6 +46,12 @@ const PAGE_VISIT_ORDER_BY: Record<PageVisitSort, Prisma.VisitOrderByWithRelation
   user_desc: [{ userId: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
   city_asc: [{ ipCity: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
   city_desc: [{ ipCity: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
+};
+
+const USER_ORDER_BY: Record<UserSort, Prisma.UserOrderByWithRelationInput[]> = {
+  createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
+  createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
+  name_asc: [{ name: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
 };
 
 /**
@@ -304,6 +312,69 @@ export class AdminService {
         ipCity: row.ipCity,
         ipRegion: row.ipRegion,
         ipCountry: row.ipCountry,
+      })),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+      total,
+    };
+  }
+
+  /** The admin users list — every user, filterable/sortable, with a derived notification status.
+   * `welcomed`/`welcomedChannel`/`welcomedAt` come from the most recent `UserNotificationLog`
+   * row with `kind: 'welcome'`, not from `User.welcomedAt` — that flag is set the moment a send
+   * is *attempted*, regardless of whether it actually succeeded (see
+   * docs/plans/whatsapp-welcome-mobile-signups.md's backfill, which found 34 users with the flag
+   * set and zero real log rows). */
+  async listUsers(query: ListUsersDto): Promise<AdminUsersPage> {
+    const { cursor, from, to, q, role, welcomed, sort, limit } = query;
+
+    const where: Prisma.UserWhereInput = {
+      deletedAt: null,
+      ...(from || to
+        ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
+        : {}),
+      ...(role ? { role } : {}),
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: 'insensitive' } },
+              { phone: { contains: q } },
+              { email: { contains: q, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(welcomed === 'yes' ? { notificationLogs: { some: { kind: 'welcome' } } } : {}),
+      ...(welcomed === 'no' ? { notificationLogs: { none: { kind: 'welcome' } } } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        include: {
+          city: true,
+          notificationLogs: { where: { kind: 'welcome' }, orderBy: { sentAt: 'desc' }, take: 1 },
+        },
+        orderBy: USER_ORDER_BY[sort ?? 'createdAt_desc'],
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      items: page.map((u) => ({
+        id: u.id,
+        name: u.name,
+        phone: u.phone,
+        email: u.email,
+        role: u.role,
+        cityName: u.city?.name ?? null,
+        createdAt: u.createdAt.toISOString(),
+        welcomed: u.notificationLogs.length > 0,
+        welcomedChannel: u.notificationLogs[0]?.channel ?? null,
+        welcomedAt: u.notificationLogs[0]?.sentAt.toISOString() ?? null,
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
