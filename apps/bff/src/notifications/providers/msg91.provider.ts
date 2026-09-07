@@ -5,6 +5,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+/** The image header component on the "bhavano_welcome_2" WhatsApp template — see
+ * sendWhatsappTemplate's doc comment. Not worth a config var: it's the site logo, not a secret
+ * or environment-dependent value. */
+const WELCOME_HEADER_IMAGE_URL = 'https://www.bhavano.com/logo.png';
+
 /**
  * MSG91 SMS delivery. Requires MSG91_AUTH_KEY (plus MSG91_SENDER_ID / MSG91_DLT_TEMPLATE_ID)
  * to actually send — sendOtp throws until those are configured rather than silently
@@ -111,19 +116,23 @@ export class Msg91Provider {
    * created and approved in the MSG91 dashboard first — that's a manual, human-only step, not
    * something this code can satisfy, so this degrades to a logged no-op (like
    * sendTransactionalSms above) rather than throwing, until MSG91_WHATSAPP_INTEGRATED_NUMBER /
-   * MSG91_WHATSAPP_TEMPLATE_NAME are both set (these two were already scaffolded in
-   * .env.production.example back on 2026-07-22, well before this was actually built — matching
-   * their names here rather than inventing new ones).
+   * MSG91_WHATSAPP_TEMPLATE_NAME / MSG91_WHATSAPP_NAMESPACE are all set (INTEGRATED_NUMBER and
+   * TEMPLATE_NAME were already scaffolded in .env.production.example back on 2026-07-22, well
+   * before this was actually built — matching their names here rather than inventing new ones).
    *
-   * No `namespace` param: MSG91's generic docs examples show one, but it was never part of the
-   * original scaffolding for this feature, and MSG91 manages the WhatsApp Business Account on
-   * the caller's behalf, so it likely resolves the namespace from `integrated_number`+template
-   * name server-side. Omitted for now — if MSG91 actually requires it, the send will fail with a
-   * clear logged API error rather than silently doing the wrong thing, and it's a one-line add.
+   * The exact request shape below — namespace required, and the body variable keyed
+   * "body_name"/"parameter_name" rather than a plain positional or name-matched key — is copied
+   * verbatim from the "Code" snippet MSG91's own dashboard generates for this specific approved
+   * template (Templates -> bhavano_welcome_2 -> Code), after two guesses based on generic docs
+   * examples both failed against real sends: a positional "body_1" key ("Parameter name is
+   * missing or empty"), then a plain "name" key (Meta error #132000, "number of localizable_params
+   * (0) does not match the expected number of params (1)" — neither guess was recognized as
+   * populating the template's one variable at all). Trust the dashboard snippet over any generic
+   * docs example for any future template this account adds.
    *
-   * The template's own placeholder name (assumed "body_1" here) needs confirming against
-   * whatever the approved template actually declares — MSG91's docs didn't give a definitive
-   * answer for this at the time this was written.
+   * The template also has an image header component, previously unknown — WELCOME_HEADER_IMAGE_URL
+   * below, the site logo. WhatsApp templates can't omit a defined component, so this always sends
+   * with it even though the welcome message itself is really about the body text.
    *
    * Docs: https://docs.msg91.com/whatsapp */
   async sendWhatsappTemplate(phone: string, name: string): Promise<boolean> {
@@ -132,10 +141,11 @@ export class Msg91Provider {
       'MSG91_WHATSAPP_INTEGRATED_NUMBER',
     );
     const template = this.config.get<string>('MSG91_WHATSAPP_TEMPLATE_NAME');
-    if (!authKey || !integratedNumber || !template) {
+    const namespace = this.config.get<string>('MSG91_WHATSAPP_NAMESPACE');
+    if (!authKey || !integratedNumber || !template || !namespace) {
       this.logger.warn(
         `MSG91 WhatsApp not configured (MSG91_WHATSAPP_INTEGRATED_NUMBER/` +
-          `MSG91_WHATSAPP_TEMPLATE_NAME) — skipping WhatsApp welcome to ${phone}`,
+          `MSG91_WHATSAPP_TEMPLATE_NAME/MSG91_WHATSAPP_NAMESPACE) — skipping WhatsApp welcome to ${phone}`,
       );
       return false;
     }
@@ -155,10 +165,21 @@ export class Msg91Provider {
               template: {
                 name: template,
                 language: { code: 'en', policy: 'deterministic' },
+                namespace,
                 to_and_components: [
                   {
                     to: [`91${phone}`],
-                    components: { body_1: { type: 'text', value: name } },
+                    components: {
+                      header_1: {
+                        type: 'image',
+                        value: WELCOME_HEADER_IMAGE_URL,
+                      },
+                      body_name: {
+                        type: 'text',
+                        value: name,
+                        parameter_name: 'name',
+                      },
+                    },
                   },
                 ],
               },

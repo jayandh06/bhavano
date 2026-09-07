@@ -31,8 +31,7 @@ until that template exists.
 ## 1. `Msg91Provider` — new `sendWhatsappTemplate()`
 
 New method in `apps/bff/src/notifications/providers/msg91.provider.ts`, same `authkey`/fetch shape
-as `sendOtp`/`sendTransactionalSms`, targeting the endpoint and request body confirmed via MSG91's
-docs this session:
+as `sendOtp`/`sendTransactionalSms`, targeting:
 
 ```
 POST https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/
@@ -46,19 +45,39 @@ Headers: authkey: <MSG91_AUTH_KEY>, Content-Type: application/json
     "template": {
       "name": "<MSG91_WHATSAPP_TEMPLATE_NAME>",
       "language": { "code": "en", "policy": "deterministic" },
-            "to_and_components": [{ "to": ["91<phone>"], "components": { "body_1": { "type": "text", "value": "<name>" } } }]
+      "namespace": "<MSG91_WHATSAPP_NAMESPACE>",
+      "to_and_components": [{
+        "to": ["91<phone>"],
+        "components": {
+          "header_1": { "type": "image", "value": "https://www.bhavano.com/logo.png" },
+          "body_name": { "type": "text", "value": "<name>", "parameter_name": "name" }
+        }
+      }]
     }
   }
 }
 ```
 
+**This exact shape — `namespace` required, and the body variable keyed `body_name`/
+`parameter_name` — is copied verbatim from the "Code" snippet MSG91's dashboard generates for
+this specific approved template**, not from generic docs. Two earlier guesses based on generic
+MSG91 doc examples both failed against real test sends: a positional `body_1` key ("Parameter
+name is missing or empty"), then a plain `name` key (Meta error #132000 — MSG91 wraps Meta's
+WhatsApp Cloud API underneath — "number of localizable_params (0) does not match the expected
+number of params (1)"). Only the dashboard's own generated snippet worked, confirmed via a real
+delivered WhatsApp message. **Lesson for any future template this account adds: always pull the
+per-template "Code" snippet rather than trusting a generic docs example.**
+
+The template also has an image header component, discovered only via the dashboard snippet — not
+something the original design anticipated. `WELCOME_HEADER_IMAGE_URL` (the site logo, a plain
+constant, not a config var — it's not secret or environment-dependent) fills it, since a WhatsApp
+template can't omit a component it was approved with.
+
 Signature: `async sendWhatsappTemplate(phone: string, name: string): Promise<boolean>` — returns
 `false` (logged, not thrown) when `MSG91_AUTH_KEY`/`MSG91_WHATSAPP_INTEGRATED_NUMBER`/
-`MSG91_WHATSAPP_TEMPLATE_NAME` aren't configured, or on a non-OK response — mirrors
-`sendTransactionalSms`'s best-effort style exactly (this is a side effect of login, not the login
-itself). Body param naming (`body_1` vs the template's actual placeholder name) will need
-confirming against whatever the approved template actually declares once it exists — flagged here
-since MSG91's docs didn't give a definitive answer this session.
+`MSG91_WHATSAPP_TEMPLATE_NAME`/`MSG91_WHATSAPP_NAMESPACE` aren't all configured, or on a non-OK
+response — mirrors `sendTransactionalSms`'s best-effort style exactly (this is a side effect of
+login, not the login itself).
 
 ## 2. `NotificationsService` — new `notifyMobileWelcome()`
 
@@ -108,14 +127,15 @@ keeps firing exactly as today.
 
 ## 5. Config
 
-`MSG91_WHATSAPP_INTEGRATED_NUMBER` and `MSG91_WHATSAPP_TEMPLATE_NAME` (reuses existing
-`MSG91_AUTH_KEY`), read via `ConfigService` same as the rest of `Msg91Provider`. **These two were
-already scaffolded in `.env.production.example` back on 2026-07-22** — this plan's naming matches
-that pre-existing scaffolding rather than inventing new names; no `namespace` var was ever
-scaffolded there either, so the provider omits it (see the provider's own doc comment for why
-that's a reasonable bet rather than a gap). Added to `apps/bff/.env` (local, template name filled
-in as `bhavano_welcome_2`) and `docker-compose.prod.yml`'s `bff` service. Production's real `.env`
-already has both keys present (from the same July scaffolding) but blank — confirmed via SSH.
+`MSG91_WHATSAPP_INTEGRATED_NUMBER`, `MSG91_WHATSAPP_TEMPLATE_NAME` (reuses existing
+`MSG91_AUTH_KEY`), and `MSG91_WHATSAPP_NAMESPACE` (added after real testing proved it's required
+— see section 1), read via `ConfigService` same as the rest of `Msg91Provider`. The first two
+were already scaffolded in `.env.production.example` back on 2026-07-22 — this plan's naming
+matches that pre-existing scaffolding rather than inventing new names. Set in `apps/bff/.env`
+(local) and production's real `.env` (via SSH) to the confirmed-working values:
+`INTEGRATED_NUMBER=918667496339`, `TEMPLATE_NAME=bhavano_welcome_2`,
+`NAMESPACE=5a54d183_3cfd_4189_901c_4f9c5a729ab3` — verified with a real delivered WhatsApp message
+to a test number before this was deployed.
 
 ## Verification
 
