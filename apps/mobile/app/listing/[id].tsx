@@ -168,32 +168,32 @@ export default function ListingDetailScreen() {
         </Text>
       ) : (
         <>
-          {/* Contact is hidden on your own ad — it would start a conversation with yourself,
-              and offering it reads as the app not knowing whose listing it is. Favourite stays:
-              harmless, and the like count is part of the page. */}
+          {/* Message/View Contact are hidden on your own ad — they'd start a conversation with
+              yourself or reveal your own number, and offering that reads as the app not knowing
+              whose listing it is. Favourite stays: harmless, and the like count is part of the
+              page. All three share one compact icon+label style rather than a full-width text
+              button, so the row stays legible without crowding the page. */}
           <View style={[styles.actionsRow, { marginTop: 16 }]}>
-            {!listing.isOwner && (
-              <Pressable onPress={onMessage} style={[styles.contactButton, { backgroundColor: colors.green }]}>
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Contact owner</Text>
-              </Pressable>
-            )}
-            <Pressable
-              onPress={onToggleFavourite}
-              style={[styles.heartButton, { borderColor: colors.border }, listing.isOwner && { flex: 1 }]}
-            >
+            <Pressable onPress={onToggleFavourite} style={[styles.actionButton, { borderColor: colors.border }]}>
               <Icon name="heart" size={18} filled={isFavourited} color={isFavourited ? "#c0554b" : colors.text} />
               <Text style={{ fontSize: 10, fontWeight: "700", color: colors.muted }}>{likeCount}</Text>
             </Pressable>
+            {!listing.isOwner && (
+              <>
+                <Pressable onPress={onMessage} style={[styles.actionButton, { borderColor: colors.border }]}>
+                  <Icon name="message" size={18} color={colors.green} />
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: colors.green }}>Message</Text>
+                </Pressable>
+                {/* Credit/free-quota-gated contact reveal — not wired up yet. Shown disabled
+                    rather than omitted so the layout doesn't shift once it's built, and so it
+                    reads as "coming soon" rather than silently missing. */}
+                <Pressable disabled style={[styles.actionButton, { borderColor: colors.border, opacity: 0.5 }]}>
+                  <Icon name="phone" size={18} color={colors.muted} />
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: colors.muted }}>View Contact</Text>
+                </Pressable>
+              </>
+            )}
           </View>
-          {!listing.isOwner && (
-            <Pressable
-              onPress={onMessage}
-              style={[styles.messageButton, { borderColor: colors.green, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]}
-            >
-              <Icon name="message" size={15} color={colors.green} />
-              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Message owner</Text>
-            </Pressable>
-          )}
           {messageError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{messageError}</Text>}
         </>
       )}
@@ -226,7 +226,5 @@ const styles = StyleSheet.create({
   qualifierChip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6 },
   attributesBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 16 },
   actionsRow: { flexDirection: "row", gap: 10 },
-  contactButton: { flex: 1, borderRadius: 8, paddingVertical: 13, alignItems: "center" },
-  heartButton: { width: 52, borderWidth: 1.5, borderRadius: 8, alignItems: "center", justifyContent: "center", gap: 2 },
-  messageButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 12, alignItems: "center", marginTop: 10 },
+  actionButton: { flex: 1, borderWidth: 1.5, borderRadius: 8, paddingVertical: 12, alignItems: "center", justifyContent: "center", gap: 4 },
 });

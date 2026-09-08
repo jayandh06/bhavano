@@ -55,25 +55,41 @@ export function ListingDetailActions({
 
   return (
     <div>
-      <div className="flex gap-3 mt-2">
-        {!isOwner && (
-          <button
-            onClick={onMessage}
-            className="flex-1 flex items-center justify-center gap-1.5 bg-green text-on-green border-0 rounded-lg p-[13px] text-[15px] font-extrabold tracking-[0.01em] cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)] transition-[filter] hover:brightness-110 active:brightness-95"
-          >
-            <Icon name="message" />
-            Contact owner
-          </button>
-        )}
+      <div className="flex gap-2 mt-2">
         <button
           onClick={onToggleFavourite}
-          className={`${isOwner ? "flex-1" : "w-[60px]"} bg-surface border-[1.5px] border-border rounded-lg py-2.5 text-[17px] cursor-pointer flex flex-col items-center gap-0.5 ${
+          title="Favourite"
+          className={`flex-1 bg-surface border-[1.5px] border-border rounded-lg py-2.5 text-[17px] cursor-pointer flex flex-col items-center gap-0.5 ${
             isFavourited ? "text-[#c0554b]" : ""
           }`}
         >
           <Icon name="heart" filled={isFavourited} className="text-[19px]" />
           <span className="text-[10px] font-bold text-muted">{likeCount}</span>
         </button>
+        {!isOwner && (
+          <>
+            <button
+              onClick={onMessage}
+              title="Message owner"
+              className="flex-1 bg-surface border-[1.5px] border-border rounded-lg py-2.5 text-green cursor-pointer flex flex-col items-center gap-0.5"
+            >
+              <Icon name="message" className="text-[19px]" />
+              <span className="text-[10px] font-bold">Message</span>
+            </button>
+            {/* Credit/free-quota-gated contact reveal — not wired up yet (see
+                docs/plans/contact-reveal-credits.md once that lands). Shown disabled rather than
+                omitted so the eventual layout doesn't shift, and so it's visibly "coming soon"
+                rather than silently missing. */}
+            <button
+              disabled
+              title="Coming soon"
+              className="flex-1 bg-surface border-[1.5px] border-border rounded-lg py-2.5 text-muted opacity-50 cursor-not-allowed flex flex-col items-center gap-0.5"
+            >
+              <Icon name="phone" className="text-[19px]" />
+              <span className="text-[10px] font-bold">View Contact</span>
+            </button>
+          </>
+        )}
       </div>
       {messageError && <p className="text-[#b3413a] text-[13px] mt-2">{messageError}</p>}
     </div>
