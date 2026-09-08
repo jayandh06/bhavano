@@ -5,6 +5,7 @@ import type {
   Area,
   AuthSession,
   City,
+  ContactRevealSettingsDto,
   ConversationDetailDto,
   ConversationSummaryDto,
   CreateBoostOrderResponseDto,
@@ -196,6 +197,13 @@ export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<A
   if (q) params.set("q", q);
   if (all) params.set("all", "true");
   return bffFetch<Area[]>(`/locations/areas?${params.toString()}`, { cache: "no-store" });
+}
+
+// Not tied to any one listing — for the Plans page, which describes contact-reveal credits
+// without a listing in context. The per-listing reveal flow gets pack size/price inlined on
+// ListingCardDto/ListingDetailDto instead (see those types' own doc comments).
+export function fetchContactRevealSettings(): Promise<ContactRevealSettingsDto> {
+  return bffFetch<ContactRevealSettingsDto>("/listings/contact-reveal-settings", { cache: "no-store" });
 }
 
 export function fetchListingById(id: string, accessToken?: string): Promise<ListingDetailDto> {

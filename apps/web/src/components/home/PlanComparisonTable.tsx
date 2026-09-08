@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { HorizontalScroller } from "./HorizontalScroller";
-import type { UserProfileDto } from "@bhavano/types";
+import type { ContactRevealSettingsDto, UserProfileDto } from "@bhavano/types";
 import { Icon } from "./Icon";
 import {
   FREE_LISTING_SLOTS,
@@ -75,7 +75,13 @@ function headerClass(isCurrent: boolean): string {
   return `text-left p-3 font-bold text-[13px] ${isCurrent ? "bg-green/10 text-green" : "text-text"}`;
 }
 
-export function PlanComparisonTable({ profile }: { profile: UserProfileDto | null }) {
+export function PlanComparisonTable({
+  profile,
+  contactRevealSettings,
+}: {
+  profile: UserProfileDto | null;
+  contactRevealSettings: ContactRevealSettingsDto;
+}) {
   const sellerPlan = currentSellerPlan(profile);
   const isBuyerPlus =
     profile?.premiumUntil && new Date(profile.premiumUntil).getTime() > Date.now();
@@ -164,6 +170,37 @@ export function PlanComparisonTable({ profile }: { profile: UserProfileDto | nul
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </HorizontalScroller>
+      </div>
+
+      <div>
+        <h2 className="font-lora text-lg font-semibold m-0 mb-1">Viewing contact details</h2>
+        <p className="text-[13px] text-muted m-0 mb-4">
+          Not a subscription — pay-as-you-go, for any buyer or seller. Every account starts with{" "}
+          {contactRevealSettings.freeRevealsPerUser} free contact reveals; buy a credit pack from any listing&apos;s
+          &ldquo;View Contact&rdquo; button once those run out.
+        </p>
+        <HorizontalScroller ariaLabel="contact reveal credits" contentClassName="border border-border rounded-2xl bg-surface overflow-hidden">
+          <table className="w-full min-w-[320px] border-collapse">
+            <tbody>
+              <tr className="border-b border-border">
+                <td className="p-3 text-[12px] text-muted align-top w-[40%]">Free reveals per account</td>
+                <td className="p-3 align-top text-[13px] text-text">{contactRevealSettings.freeRevealsPerUser}</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="p-3 text-[12px] text-muted align-top">Credit pack</td>
+                <td className="p-3 align-top text-[13px] text-text">
+                  {contactRevealSettings.creditPackSize} reveals for ₹{contactRevealSettings.creditPackPriceRupees}
+                </td>
+              </tr>
+              <tr className="border-b border-border last:border-0">
+                <td className="p-3 text-[12px] text-muted align-top">Credit validity</td>
+                <td className="p-3 align-top text-[13px] text-text">
+                  {contactRevealSettings.creditExpiryMonths} month{contactRevealSettings.creditExpiryMonths === 1 ? "" : "s"} from purchase
+                </td>
+              </tr>
             </tbody>
           </table>
         </HorizontalScroller>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { UserProfileDto } from "@bhavano/types";
+import type { ContactRevealSettingsDto, UserProfileDto } from "@bhavano/types";
 import { PlanComparisonTable } from "@/components/home/PlanComparisonTable";
 import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { SubscribeButton } from "@/components/home/SubscribeButton";
@@ -11,7 +11,13 @@ import { Icon } from "./Icon";
 
 type Tab = "compare" | "subscribe";
 
-export function PremiumPlansView({ profile }: { profile: UserProfileDto }) {
+export function PremiumPlansView({
+  profile,
+  contactRevealSettings,
+}: {
+  profile: UserProfileDto;
+  contactRevealSettings: ContactRevealSettingsDto;
+}) {
   const [tab, setTab] = useState<Tab>("compare");
 
   const premiumUntil = profile.premiumUntil ? new Date(profile.premiumUntil) : null;
@@ -46,7 +52,7 @@ export function PremiumPlansView({ profile }: { profile: UserProfileDto }) {
       </div>
 
       {tab === "compare" ? (
-        <PlanComparisonTable profile={profile} />
+        <PlanComparisonTable profile={profile} contactRevealSettings={contactRevealSettings} />
       ) : (
         <div className="flex flex-col gap-6">
           <ListingSlotMeter profile={profile} />
@@ -126,6 +132,28 @@ export function PremiumPlansView({ profile }: { profile: UserProfileDto }) {
             ) : (
               <SubscribeButton tier="agentPro" />
             )}
+          </section>
+
+          <section id="contact-reveal-credits" className="border border-border rounded-2xl p-6 bg-surface">
+            <div className="font-lora text-xl font-bold text-text mb-1 flex items-center gap-2">
+              <Icon name="phone" /> Contact reveal credits
+            </div>
+            <p className="text-[13px] text-muted mb-4 m-0">
+              Not a subscription — pay-as-you-go, for viewing any listing&apos;s phone number and email.
+            </p>
+            <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
+              <li>
+                <strong>{contactRevealSettings.freeRevealsPerUser} free reveals</strong> on every account, no purchase needed
+              </li>
+              <li>
+                Then <strong>{contactRevealSettings.creditPackSize} reveals for ₹{contactRevealSettings.creditPackPriceRupees}</strong> —
+                a credit unlocks a listing&apos;s contact info for good, not just for one visit
+              </li>
+              <li>Credits last {contactRevealSettings.creditExpiryMonths} month{contactRevealSettings.creditExpiryMonths === 1 ? "" : "s"} from purchase</li>
+            </ul>
+            <p className="text-[13px] text-muted m-0">
+              No purchase button here — buy credits from any listing&apos;s &ldquo;View Contact&rdquo; button when you need them.
+            </p>
           </section>
         </div>
       )}

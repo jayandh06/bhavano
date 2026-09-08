@@ -63,6 +63,8 @@ EVENTS = {
     "begin_checkout_boost": ["transactionId", "listingId", "category", "boostDays", "value", "currency"],
     "subscription_purchase": ["transactionId", "tier", "months", "value", "currency"],
     "begin_checkout_subscription": ["transactionId", "tier", "months", "value", "currency"],
+    "contact_reveal_credits_purchase": ["transactionId", "listingId", "value", "currency"],
+    "begin_checkout_contact_reveal_credits": ["transactionId", "listingId", "value", "currency"],
     "signup_complete": ["method"],
     "save_search": ["category", "transactionType"],
     "contact_owner": ["listingId"],
@@ -71,16 +73,17 @@ EVENTS = {
     "contact_form_submit": ["topic"],
 }
 
-# Conversion labels for the 5 actions in Ads account 421-406-6478, created by
+# Conversion labels for the actions in Ads account 421-406-6478, created by
 # ads_setup_conversions.py (re-run it to re-print these). Event name -> label.
 ADS_CONVERSION_LABELS = {
     "boost_purchase": "wj7ACIPWxOgcEK2A5K5E",
     "subscription_purchase": "mmAyCIbWxOgcEK2A5K5E",
+    "contact_reveal_credits_purchase": "fUb6CMu5wfEcEK2A5K5E",
     "post_ad_success": "ztuNCInWxOgcEK2A5K5E",
     "signup_complete": "PH9hCIzWxOgcEK2A5K5E",
     "save_search": "5zhCCI_WxOgcEK2A5K5E",
 }
-ADS_VALUE_EVENTS = {"boost_purchase", "subscription_purchase"}
+ADS_VALUE_EVENTS = {"boost_purchase", "subscription_purchase", "contact_reveal_credits_purchase"}
 
 DRY = "--dry-run" in sys.argv
 

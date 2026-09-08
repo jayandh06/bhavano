@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import type { ContactRevealSettingsDto } from "@bhavano/types";
 import { PlanComparisonTable } from "@/components/home/PlanComparisonTable";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 
 type Tab = "compare" | "subscribe";
 
 /** Logged-out visitors can read the comparison; subscribing requires login. */
-export function PremiumPlansPublic() {
+export function PremiumPlansPublic({
+  contactRevealSettings,
+}: {
+  contactRevealSettings: ContactRevealSettingsDto;
+}) {
   const [tab, setTab] = useState<Tab>("compare");
 
   return (
@@ -34,7 +39,7 @@ export function PremiumPlansPublic() {
       </div>
 
       {tab === "compare" ? (
-        <PlanComparisonTable profile={null} />
+        <PlanComparisonTable profile={null} contactRevealSettings={contactRevealSettings} />
       ) : (
         <RequireLoginPrompt message="Log in to purchase a plan and see which tier you're on today." />
       )}

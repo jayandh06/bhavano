@@ -13,7 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { ListingDetailDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RevealContactResponseDto } from '@bhavano/types';
+import type { ContactRevealSettingsDto, ListingDetailDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RevealContactResponseDto } from '@bhavano/types';
 import { VIDEO_LIMITS } from '@bhavano/types/videoLimits';
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -58,6 +58,16 @@ export class ListingsController {
   @Get('popular-searches')
   popularSearches(@Query('cityId') cityId?: string): Promise<PopularSearchDto[]> {
     return this.listingsService.getPopularSearches(undefined, cityId);
+  }
+
+  // Also registered before ":id" — see the comment on "sitemap" above. Public/no-auth: the
+  // Plans page (apps/web/src/components/home/PremiumPlansView.tsx) needs the current pack
+  // size/price to describe contact-reveal credits without a listing in context — the
+  // per-listing reveal flow already gets this inlined on ListingCardDto/ListingDetailDto
+  // instead of calling this, so this route exists purely for that context-free case.
+  @Get('contact-reveal-settings')
+  contactRevealSettings(): Promise<ContactRevealSettingsDto> {
+    return this.contactRevealService.getSettings();
   }
 
   @Get(':id')

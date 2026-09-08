@@ -27,9 +27,13 @@ from google.ads.googleads.errors import GoogleAdsException
 load_dotenv()
 
 # name -> (category, counts a monetary value?)  Mirrors the plan's step 4.2 table.
+# "Contact reveal credits purchase" added later, same shape as Boost/Subscription purchase
+# (WEBPAGE type, client-side dataLayer event already firing — see
+# apps/web/src/components/home/ListingDetailActions.tsx's contact_reveal_credits_purchase push).
 CONVERSIONS = [
     ("Boost purchase", "PURCHASE", True),
     ("Subscription purchase", "PURCHASE", True),
+    ("Contact reveal credits purchase", "PURCHASE", True),
     ("Post ad success", "SUBMIT_LEAD_FORM", False),
     ("New registration", "SIGNUP", False),
     ("Save a search", "SUBMIT_LEAD_FORM", False),
@@ -39,6 +43,7 @@ CONVERSIONS = [
 EVENT_FOR = {
     "Boost purchase": "boost_purchase",
     "Subscription purchase": "subscription_purchase",
+    "Contact reveal credits purchase": "contact_reveal_credits_purchase",
     "Post ad success": "post_ad_success",
     "New registration": "signup_complete",
     "Save a search": "save_search",
