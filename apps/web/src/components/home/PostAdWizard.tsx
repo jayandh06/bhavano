@@ -107,7 +107,14 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 type Step = "category" | "transactionType" | "details" | "review" | "success";
 
 /**
- * One `post_step_view` per step the user actually reaches.
+ * One `post_step_view` per step the user actually reaches, and resets scroll to the top of the
+ * page on every step change.
+ *
+ * Without the scroll reset, a step reached after scrolling down on the previous one (picking the
+ * last category in a long list, say) rendered with the new step's content starting wherever the
+ * old scroll position happened to land — often mid-page or past the end of shorter steps, so the
+ * next field to fill in was off-screen and easy to miss on a phone. Every step's content is short
+ * enough that "back to the top" is always the right place to land, forward or via Back.
  *
  * Where people give up is the whole question on this page, and the only event fired until now was
  * `post_ad_success` — so a drop-off was visible in aggregate but never locatable. Fired on
@@ -116,6 +123,7 @@ type Step = "category" | "transactionType" | "details" | "review" | "success";
  */
 function StepTracker({ step }: { step: Step }) {
   useEffect(() => {
+    window.scrollTo(0, 0);
     pushDataLayerEvent("post_step_view", { step });
   }, [step]);
   return null;
