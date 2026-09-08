@@ -198,6 +198,14 @@ export interface ListingDetailDto extends ListingCardDto {
    * at posting time. */
   lat?: number;
   lng?: number;
+  /** Whether the "your ad is live" acknowledgement (email or WhatsApp) was confirmed sent —
+   * derived from a real ListingNotificationLog row, never a dispatch-attempted flag (same
+   * precedent as User.welcomed). Only populated in the admin moderation queue
+   * (ListingsService.listForAdmin); every other listing response leaves these undefined rather
+   * than paying for the extra query. */
+  postedNotificationSent?: boolean;
+  postedNotificationChannel?: string | null;
+  postedNotificationSentAt?: string | null;
 }
 
 export interface ListingRenewalDto {

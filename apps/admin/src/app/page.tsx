@@ -241,6 +241,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{item.title}</span>
                     <StatusBadge moderationState={item.moderationState} adminReviewed={item.adminReviewed} />
+                    <PostedNotificationBadge
+                      sent={item.postedNotificationSent}
+                      channel={item.postedNotificationChannel}
+                      sentAt={item.postedNotificationSentAt}
+                    />
                   </div>
                   <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
                     {item.price} · {item.category} · {item.area}, {item.cityName}
@@ -274,6 +279,29 @@ function StatusBadge({ moderationState, adminReviewed }: { moderationState: stri
   return (
     <span style={{ fontSize: 11, fontWeight: 700, color, border: `1px solid ${color}`, borderRadius: 6, padding: "2px 8px" }}>
       {label}
+    </span>
+  );
+}
+
+/** Whether the "your ad is live" acknowledgement was confirmed delivered — see
+ * ListingDetailDto.postedNotificationSent's doc comment: derived from a real
+ * ListingNotificationLog row, not a dispatch-attempted flag. Mirrors UsersTable's "welcomed"
+ * badge for the same reason (a missing row could mean the owner has neither email nor phone, or
+ * that the send itself failed — this doesn't distinguish those, it only says whether one landed). */
+function PostedNotificationBadge({
+  sent,
+  channel,
+  sentAt,
+}: {
+  sent?: boolean;
+  channel?: string | null;
+  sentAt?: string | null;
+}) {
+  if (sent === undefined) return null;
+  const color = sent ? "var(--green)" : "var(--danger)";
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, color, border: `1px solid ${color}`, borderRadius: 6, padding: "2px 8px" }}>
+      {sent ? `Sent · ${channel ?? "unknown"}${sentAt ? ` · ${formatDate(sentAt)}` : ""}` : "Not sent"}
     </span>
   );
 }

@@ -405,7 +405,14 @@ export class ListingsService {
     const [rows, total] = await Promise.all([
       this.prisma.listing.findMany({
         where,
-        include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+        include: {
+          city: true,
+          area: true,
+          ...LISTING_MEDIA_INCLUDE,
+          // Newest "posted" row only — mirrors AdminService.listUsers' notificationLogs include
+          // for the "welcomed" column. Admin-only: no other listForAdmin caller pays for this.
+          notificationLogs: { where: { kind: 'posted' }, orderBy: { sentAt: 'desc' }, take: 1 },
+        },
         orderBy: ADMIN_ORDER_BY[sort ?? 'createdAt_desc'],
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -418,7 +425,12 @@ export class ListingsService {
 
     // Admin queue — every viewer here is an admin, so full video status/entitlement visibility.
     return {
-      items: page.map((row) => this.toDetailDto(row, undefined, true)),
+      items: page.map((row) => ({
+        ...this.toDetailDto(row, undefined, true),
+        postedNotificationSent: row.notificationLogs.length > 0,
+        postedNotificationChannel: row.notificationLogs[0]?.channel ?? null,
+        postedNotificationSentAt: row.notificationLogs[0]?.sentAt.toISOString() ?? null,
+      })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
