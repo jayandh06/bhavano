@@ -279,22 +279,25 @@ export class AuthService {
   }
 
   /** Reports the "New registration" conversion to Google Ads directly from the backend, using
-   * the gclid captured server-side at landing (see apps/web/src/middleware.ts) — catches a
-   * signup a blocked/restrictive browser would otherwise hide from Google Ads entirely (the
-   * existing client-side GTM tag for this conversion action was paused in favour of this; see
-   * docs/plans/server-side-google-ads-conversion-upload.md). Same idempotency-guard shape as
-   * welcomeIfFirstLogin: adsConversionUploadedAt is marked *before* the fire-and-forget upload
-   * call, so a concurrent duplicate login can't double-fire it. Silently a no-op with no gclid
-   * (the common case for non-ad traffic) or if this user's conversion was already reported. */
+   * the gclid captured server-side at landing (see apps/web/src/middleware.ts) when there is one
+   * — catches a signup a blocked/restrictive browser would otherwise hide from Google Ads
+   * entirely (the existing client-side GTM tag for this conversion action was paused in favour
+   * of this; see docs/plans/server-side-google-ads-conversion-upload.md). Same idempotency-guard
+   * shape as welcomeIfFirstLogin: adsConversionUploadedAt is marked *before* the fire-and-forget
+   * upload call, so a concurrent duplicate login can't double-fire it. Proceeds on email/phone
+   * alone with no gclid too — Google's own guidance for this account was to send every event
+   * with user-provided data rather than only ones that also have a click id (see
+   * GoogleAdsConversionProvider.uploadClickConversion's doc comment) — so this is only a no-op
+   * when the user has neither a gclid nor any contact info, or was already reported. */
   private async reportSignupConversion(user: User, visit?: VisitContext): Promise<void> {
-    if (user.adsConversionUploadedAt || !visit?.gclid) return;
+    if (user.adsConversionUploadedAt || (!visit?.gclid && !user.email && !user.phone)) return;
     await this.prisma.user.update({
       where: { id: user.id },
       data: { adsConversionUploadedAt: new Date() },
     });
     void this.googleAdsConversionProvider
       .uploadClickConversion({
-        gclid: visit.gclid,
+        gclid: visit?.gclid,
         conversionActionId: NEW_REGISTRATION_CONVERSION_ACTION_ID,
         transactionId: `signup-${user.id}`,
         eventTimestamp: user.createdAt,

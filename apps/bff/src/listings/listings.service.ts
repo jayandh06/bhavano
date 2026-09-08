@@ -662,12 +662,16 @@ export class ListingsService {
     // Reports the "Post ad success" conversion to Google Ads directly from the backend, using
     // the owner's first-touch gclid (captured at their signup — not a listing-time gclid; see
     // docs/plans/server-side-google-ads-conversion-upload.md for why, and the caveat that
-    // implies for an owner posting long after signing up). Never blocks or fails the listing
-    // creation itself — uploadClickConversion already never throws, .catch() is belt-and-braces.
-    if (owner?.acquisitionGclid) {
+    // implies for an owner posting long after signing up) when there is one, but proceeding on
+    // email/phone alone otherwise — Google's own guidance for this account was to send every
+    // event with user-provided data rather than only ones that also have a click id (see
+    // GoogleAdsConversionProvider.uploadClickConversion's doc comment). Never blocks or fails the
+    // listing creation itself — uploadClickConversion already never throws, .catch() is
+    // belt-and-braces.
+    if (owner?.acquisitionGclid || owner?.email || owner?.phone) {
       void this.googleAdsConversionProvider
         .uploadClickConversion({
-          gclid: owner.acquisitionGclid,
+          gclid: owner.acquisitionGclid ?? undefined,
           conversionActionId: POST_AD_SUCCESS_CONVERSION_ACTION_ID,
           transactionId: `listing-${created.id}`,
           eventTimestamp: created.createdAt,

@@ -13,7 +13,12 @@ export const NEW_REGISTRATION_CONVERSION_ACTION_ID = '7750776144';
 export const POST_AD_SUCCESS_CONVERSION_ACTION_ID = '7750575968';
 
 interface UploadClickConversionInput {
-  gclid: string;
+  /** Optional — Google's own guidance for this account was "you are only importing events that
+   * have both user-provided data and a click ID; send all events that have user-provided data,
+   * regardless of click ID" (Enhanced Conversions can match a hashed email/phone against Google's
+   * own identity graph without a gclid at all). `adIdentifiers` is only included in the request
+   * when this is present; the call still proceeds on `email`/`phone` alone. */
+  gclid?: string;
   conversionActionId: string;
   /** Dedup key: a repeated ingest with the same transactionId (within the same conversion
    * action) updates the existing event rather than creating a second one, so retries can't
@@ -42,9 +47,11 @@ const REQUEST_ERROR_CODES = new Set([
 ]);
 
 /** Reports a conversion to Google Ads directly from the backend (Data Manager API's
- * events:ingest), using a gclid captured server-side at landing (see
- * apps/web/src/middleware.ts) — immune to the client-side GTM tracking an ad blocker or
- * restrictive browser can silently drop. See
+ * events:ingest), preferring a gclid captured server-side at landing (see
+ * apps/web/src/middleware.ts) when there is one — immune to the client-side GTM tracking an ad
+ * blocker or restrictive browser can silently drop — but not requiring one: an event with only
+ * hashed email/phone still gets sent, so Enhanced Conversions matching can find it without a
+ * click id (see uploadClickConversion's own doc comment for why). See
  * docs/plans/server-side-google-ads-conversion-upload.md for the full design, why this targets
  * dedicated UPLOAD_CLICKS conversion actions rather than the older WEBPAGE-type ones, and why
  * the equivalent GTM client-side Ads tags were paused rather than left running alongside this.
@@ -68,9 +75,13 @@ export class GoogleAdsConversionProvider {
   }
 
   /** Never throws — a failure here must never break the signup/listing-post flow it's reporting
-   * on. Skip calling this entirely when there's no gclid; it's the common case for non-ad
-   * traffic and not worth a network round trip to find out. */
+   * on. Skip calling this entirely when there's neither a gclid nor any user-provided data —
+   * nothing Google could match the event to either way, not worth a network round trip to find
+   * out. A gclid alone or email/phone alone are both enough to proceed. */
   async uploadClickConversion(input: UploadClickConversionInput): Promise<void> {
+    const userIdentifiers = buildUserIdentifiers(input.email, input.phone);
+    if (!input.gclid && !userIdentifiers) return;
+
     let accessToken: string | null | undefined;
     try {
       ({ token: accessToken } = await this.client.getAccessToken());
@@ -81,8 +92,6 @@ export class GoogleAdsConversionProvider {
       return;
     }
     if (!accessToken) return;
-
-    const userIdentifiers = buildUserIdentifiers(input.email, input.phone);
 
     const body = {
       destinations: [
@@ -96,7 +105,7 @@ export class GoogleAdsConversionProvider {
         {
           eventTimestamp: input.eventTimestamp.toISOString(),
           transactionId: input.transactionId,
-          adIdentifiers: { gclid: input.gclid },
+          ...(input.gclid ? { adIdentifiers: { gclid: input.gclid } } : {}),
           ...(userIdentifiers ? { userData: { userIdentifiers } } : {}),
           eventSource: 'WEB',
         },
