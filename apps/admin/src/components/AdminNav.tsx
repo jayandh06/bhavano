@@ -71,66 +71,14 @@ export function AdminNav() {
         style={{
           maxWidth: 1000,
           margin: "0 auto",
-          padding: "14px 24px",
+          padding: "14px 24px 10px",
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
-          gap: 12,
         }}
       >
-        <span style={{ fontSize: 14, fontWeight: 700, flexShrink: 0 }}>Bhavano Admin</span>
-
-        <div style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0, gap: 2 }}>
-          {canScrollLeft && (
-            <button
-              type="button"
-              onClick={() => scrollTabs(-1)}
-              aria-label="Scroll tabs left"
-              style={arrowButtonStyle}
-            >
-              ‹
-            </button>
-          )}
-          <nav
-            ref={scrollRef}
-            onScroll={updateScrollState}
-            className="admin-nav-scroll"
-            style={{ display: "flex", gap: 4, overflowX: "auto", scrollBehavior: "smooth", flex: 1, minWidth: 0 }}
-          >
-            {NAV_LINKS.map((link) => {
-              const active = isActive(pathname, link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    padding: "6px 12px",
-                    borderRadius: 8,
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    color: active ? "var(--green)" : "var(--text-soft)",
-                    background: active ? "var(--surface-alt)" : "transparent",
-                  }}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-          {canScrollRight && (
-            <button
-              type="button"
-              onClick={() => scrollTabs(1)}
-              aria-label="Scroll tabs right"
-              style={arrowButtonStyle}
-            >
-              ›
-            </button>
-          )}
-        </div>
-
-        <form action={signOutAction} style={{ flexShrink: 0 }}>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>Bhavano Admin</span>
+        <form action={signOutAction}>
           <button
             type="submit"
             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 13, fontWeight: 700 }}
@@ -138,6 +86,66 @@ export function AdminNav() {
             Logout
           </button>
         </form>
+      </div>
+
+      <div
+        style={{
+          maxWidth: 1000,
+          margin: "0 auto",
+          padding: "0 24px 12px",
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        {canScrollLeft && (
+          <button
+            type="button"
+            onClick={() => scrollTabs(-1)}
+            aria-label="Scroll tabs left"
+            style={arrowButtonStyle}
+          >
+            ‹
+          </button>
+        )}
+        <nav
+          ref={scrollRef}
+          onScroll={updateScrollState}
+          className="admin-nav-scroll"
+          style={{ display: "flex", gap: 4, overflowX: "auto", scrollBehavior: "smooth", flex: 1, minWidth: 0 }}
+        >
+          {NAV_LINKS.map((link) => {
+            const active = isActive(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  color: active ? "var(--green)" : "var(--text-soft)",
+                  background: active ? "var(--surface-alt)" : "transparent",
+                }}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
+        {canScrollRight && (
+          <button
+            type="button"
+            onClick={() => scrollTabs(1)}
+            aria-label="Scroll tabs right"
+            style={arrowButtonStyle}
+          >
+            ›
+          </button>
+        )}
       </div>
     </div>
   );
