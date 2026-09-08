@@ -102,7 +102,9 @@ export class NotificationsService {
 
     return this.dispatchEmailPreferWhatsapp(
       user,
-      { subject, text, html },
+      // BCC support so someone at support@ can see every welcome email actually going out —
+      // requested for visibility into delivery, not because support needs to act on each one.
+      { subject, text, html, bcc: 'support@bhavano.com' },
       // welcome_signup was submitted with positional {{1}}, not named — an array, not the
       // {name: ...} object listing_posted_v2 takes. The variable is the name alone, not a
       // "Hi <name>" greeting, since the approved template supplies its own wording around it.
@@ -159,6 +161,7 @@ export class NotificationsService {
     const { subject, text, html } = this.buildWelcomeEmailContent(user.name);
     const sent = await this.emailProvider.send(user.email, subject, text, {
       html,
+      bcc: 'support@bhavano.com',
     });
     return sent ? 'email' : null;
   }
@@ -247,7 +250,7 @@ export class NotificationsService {
    */
   private async dispatchEmailPreferWhatsapp(
     user: NotifiableUser,
-    email: { subject: string; text: string; html?: string },
+    email: { subject: string; text: string; html?: string; bcc?: string },
     whatsapp?: {
       template: string;
       params: string[] | Record<string, string>;
@@ -259,7 +262,7 @@ export class NotificationsService {
         user.email,
         email.subject,
         email.text,
-        email.html ? { html: email.html } : undefined,
+        email.html || email.bcc ? { html: email.html, bcc: email.bcc } : undefined,
       );
       return sent ? 'email' : null;
     }

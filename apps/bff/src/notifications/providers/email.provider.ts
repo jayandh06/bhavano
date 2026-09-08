@@ -11,6 +11,10 @@ export interface SendEmailOptions {
   /** Where a reply should go, when that isn't the from-address — e.g. support tickets, so
    * support can just hit Reply and reach the reporter. */
   replyTo?: string;
+  /** Blind-copied alongside `to` — the recipient never sees this address. Opt-in per call site,
+   * not a global default: most notifications (expiry reminders, listing-posted, etc.) have no
+   * reason to loop support in on every send. */
+  bcc?: string;
   attachments?: EmailAttachment[];
   /** Branded HTML alternative, built by `renderEmail`. The `text` argument stays mandatory and
    * is sent alongside it: a message with no text/plain part scores worse with spam filters and
@@ -92,6 +96,7 @@ export class EmailProvider {
         text,
         ...(options?.html && { html: options.html }),
         ...(options?.replyTo && { replyTo: options.replyTo }),
+        ...(options?.bcc && { bcc: options.bcc }),
         ...(options?.attachments?.length && {
           attachments: options.attachments,
         }),
