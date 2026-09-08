@@ -213,12 +213,19 @@ export class Msg91Provider {
    * the listing title twice in its own wording, so both map to the same value) plus one dynamic
    * URL button variable, in the exact shape MSG91's dashboard "Code" snippet gives for this
    * template — same lesson as sendWhatsappTemplate above: trust that snippet over a generic
-   * docs example. */
+   * docs example.
+   *
+   * Returns whatever id MSG91's response carries for this specific send, so a later delivery/read
+   * status webhook (WhatsappWebhookController) can correlate back to it — see
+   * ListingNotificationLog.providerMessageId's own doc comment. The extraction is a best-effort
+   * guess at common field names, not yet confirmed against a real response; a wrong guess just
+   * means null gets stored (no correlation, not a broken send) until it's corrected against a
+   * real logged response. */
   async sendAdPostedConfirmation(
     phone: string,
     vars: { name: string; title1: string; title2: string; location: string },
     buttonUrlSuffix: string,
-  ): Promise<boolean> {
+  ): Promise<{ sent: boolean; messageId: string | null }> {
     const authKey = this.config.get<string>('MSG91_AUTH_KEY');
     const integratedNumber = this.config.get<string>(
       'MSG91_WHATSAPP_INTEGRATED_NUMBER',
@@ -232,7 +239,7 @@ export class Msg91Provider {
         `MSG91 WhatsApp not configured (MSG91_WHATSAPP_INTEGRATED_NUMBER/` +
           `MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME/MSG91_WHATSAPP_NAMESPACE) — skipping ad-posted WhatsApp to ${phone}`,
       );
-      return false;
+      return { sent: false, messageId: null };
     }
 
     try {
@@ -293,14 +300,46 @@ export class Msg91Provider {
         this.logger.error(
           `MSG91 WhatsApp ad-posted send failed (${res.status}): ${responseBody}`,
         );
-        return false;
+        return { sent: false, messageId: null };
       }
-      return true;
+      // Logged at info level deliberately, not debug — this is the one real response this
+      // codebase has on hand so far for extractMessageId (and WhatsappWebhookController's own
+      // status-shape guess) to be checked against and corrected from.
+      this.logger.log(`MSG91 WhatsApp ad-posted send response: ${responseBody}`);
+      return { sent: true, messageId: this.extractMessageId(responseBody) };
     } catch (error) {
       this.logger.error(
         `Failed to send ad-posted WhatsApp to ${phone}: ${error instanceof Error ? error.message : error}`,
       );
-      return false;
+      return { sent: false, messageId: null };
+    }
+  }
+
+  /** Best-effort guess at where MSG91 puts a per-message id in a successful bulk-send response —
+   * unverified against a real payload (see sendAdPostedConfirmation's own comment on why this is
+   * a guess, and the `this.logger.log` right before every call site, which is how to check it).
+   * Returns null rather than throwing on anything unexpected: a missing id just means the later
+   * webhook won't correlate to this send, not that the send itself failed. */
+  private extractMessageId(responseBody: string): string | null {
+    try {
+      const parsed = JSON.parse(responseBody) as Record<string, unknown>;
+      const data = parsed.data as Record<string, unknown> | unknown[] | undefined;
+      const candidates: unknown[] = [
+        parsed.messageId,
+        parsed.message_id,
+        parsed.request_id,
+        Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined)?.messageId : undefined,
+        Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined)?.message_id : undefined,
+        !Array.isArray(data) ? data?.messageId : undefined,
+        !Array.isArray(data) ? data?.message_id : undefined,
+        !Array.isArray(data) && Array.isArray((data as Record<string, unknown> | undefined)?.message_uuids)
+          ? ((data as Record<string, unknown>).message_uuids as unknown[])[0]
+          : undefined,
+      ];
+      const found = candidates.find((v) => typeof v === 'string' && v.length > 0);
+      return typeof found === 'string' ? found : null;
+    } catch {
+      return null;
     }
   }
 }

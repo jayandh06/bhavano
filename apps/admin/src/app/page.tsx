@@ -245,6 +245,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       sent={item.postedNotificationSent}
                       channel={item.postedNotificationChannel}
                       sentAt={item.postedNotificationSentAt}
+                      deliveryStatus={item.postedNotificationDeliveryStatus}
                     />
                   </div>
                   <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
@@ -292,16 +293,20 @@ function PostedNotificationBadge({
   sent,
   channel,
   sentAt,
+  deliveryStatus,
 }: {
   sent?: boolean;
   channel?: string | null;
   sentAt?: string | null;
+  deliveryStatus?: string | null;
 }) {
   if (sent === undefined) return null;
   const color = sent ? "var(--green)" : "var(--danger)";
   return (
     <span style={{ fontSize: 11, fontWeight: 700, color, border: `1px solid ${color}`, borderRadius: 6, padding: "2px 8px" }}>
-      {sent ? `Sent · ${channel ?? "unknown"}${sentAt ? ` · ${formatDate(sentAt)}` : ""}` : "Not sent"}
+      {sent
+        ? `Sent · ${channel ?? "unknown"}${deliveryStatus ? ` · ${deliveryStatus}` : ""}${sentAt ? ` · ${formatDate(sentAt)}` : ""}`
+        : "Not sent"}
     </span>
   );
 }

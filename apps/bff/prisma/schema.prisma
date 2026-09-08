@@ -733,9 +733,32 @@ model ListingNotificationLog {
   kind      String
   channel   String
   sentAt    DateTime @default(now())
+  /** MSG91's id for this specific WhatsApp send, when `channel` is "whatsapp" — the key a later
+   * delivery/read status webhook event correlates back to this row by. Null for email sends and
+   * for any WhatsApp send from before this field existed. */
+  providerMessageId String?
+  /** sent (this row's own existence already means that) / delivered / read / failed — advanced
+   * by WhatsappStatusWebhookController as MSG91 forwards status events. Null until the first
+   * event arrives; stays null forever for a channel MSG91 doesn't report status for (email). */
+  deliveryStatus    String?
+  deliveryStatusAt  DateTime?
 
   @@index([listingId, kind])
   @@index([sentAt])
+  @@index([providerMessageId])
+}
+
+/** Raw capture of every inbound MSG91 WhatsApp status webhook call, kept regardless of whether
+ * it could be parsed/correlated to a ListingNotificationLog row. Exists because MSG91's actual
+ * webhook payload shape isn't documented anywhere reliable in this codebase yet (the same
+ * "trust the dashboard, not generic docs" lesson Msg91Provider's own comments already learned
+ * once, for the send side) — this table is how that shape gets learned for the receive side,
+ * from real events, before WhatsappStatusWebhookController's parsing logic is trusted. Safe to
+ * prune old rows once that parsing is confirmed correct; nothing depends on this table long-term. */
+model WhatsappWebhookEvent {
+  id         String   @id @default(cuid())
+  rawBody    Json
+  receivedAt DateTime @default(now())
 }
 
 /** `ListingNotificationLog`'s counterpart for a notification with no listing — today, just

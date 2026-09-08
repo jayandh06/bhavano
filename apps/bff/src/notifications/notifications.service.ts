@@ -307,7 +307,7 @@ export class NotificationsService {
       | 'area'
       | 'title'
     >,
-  ): Promise<'email' | 'whatsapp' | null> {
+  ): Promise<{ channel: 'email' | 'whatsapp'; messageId?: string | null } | null> {
     const site =
       this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
     const path = buildListingPath(listing);
@@ -339,7 +339,7 @@ export class NotificationsService {
         text,
         { html, bcc: 'support@bhavano.com' },
       );
-      return 'email';
+      return { channel: 'email' };
     }
 
     if (user.phone) {
@@ -350,7 +350,7 @@ export class NotificationsService {
       // location. The button's fixed prefix is baked into the approved template itself — only
       // the suffix after it is a per-send variable, so `path` (already leading with "/") has its
       // own leading slash stripped to avoid a doubled one.
-      const sent = await this.msg91.sendAdPostedConfirmation(
+      const result = await this.msg91.sendAdPostedConfirmation(
         user.phone,
         {
           name: vars.name,
@@ -360,7 +360,7 @@ export class NotificationsService {
         },
         path.replace(/^\//, ''),
       );
-      return sent ? 'whatsapp' : null;
+      return result.sent ? { channel: 'whatsapp', messageId: result.messageId } : null;
     }
 
     return null;

@@ -33,6 +33,9 @@ services:
       # Ad-posted-confirmation WhatsApp — same MSG91 account/namespace as the welcome template
       # above, just a different approved template name (see Msg91Provider.sendAdPostedConfirmation).
       MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME: ${MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME}
+      # Validates inbound MSG91 WhatsApp status webhooks — see WhatsappWebhookController and
+      # .env.production.example's own comment on this var.
+      MSG91_WEBHOOK_SECRET: ${MSG91_WEBHOOK_SECRET}
       # WhatsApp Business via Meta's Cloud API, direct rather than through MSG91 — the default
       # path for every WhatsApp send except the mobile welcome above. Unset disables WhatsApp
       # entirely (sends log and skip) — see .env.production.example for which id goes in

@@ -170,6 +170,11 @@ export interface ListingDetailDto extends ListingCardDto {
     postedNotificationSent?: boolean;
     postedNotificationChannel?: string | null;
     postedNotificationSentAt?: string | null;
+    /** WhatsApp-only — "delivered"/"read"/"failed" from MSG91's status webhook (see
+     * WhatsappWebhookController), advanced asynchronously after the send itself. Null until the
+     * first status event arrives, and stays null forever for an email send (no such signal exists
+     * there) or a WhatsApp send from before this tracking existed. */
+    postedNotificationDeliveryStatus?: string | null;
 }
 export interface ListingRenewalDto {
     from: string;

@@ -430,6 +430,7 @@ export class ListingsService {
         postedNotificationSent: row.notificationLogs.length > 0,
         postedNotificationChannel: row.notificationLogs[0]?.channel ?? null,
         postedNotificationSentAt: row.notificationLogs[0]?.sentAt.toISOString() ?? null,
+        postedNotificationDeliveryStatus: row.notificationLogs[0]?.deliveryStatus ?? null,
       })),
       nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
@@ -689,10 +690,15 @@ export class ListingsService {
         area: listing.area.name,
         title: listing.title,
       })
-      .then((channel) => {
-        if (!channel) return;
+      .then((result) => {
+        if (!result) return;
         return this.prisma.listingNotificationLog.create({
-          data: { listingId: listing.id, kind: 'posted', channel },
+          data: {
+            listingId: listing.id,
+            kind: 'posted',
+            channel: result.channel,
+            providerMessageId: result.messageId ?? null,
+          },
         });
       })
       .catch(() => undefined);
