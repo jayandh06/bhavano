@@ -69,7 +69,7 @@ export default function ListingDetailScreen() {
 
   async function onMessage() {
     if (!accessToken) {
-      requireLogin();
+      requireLogin({ onSuccess: () => void onMessage() });
       return;
     }
     setMessageError(null);
@@ -88,7 +88,7 @@ export default function ListingDetailScreen() {
    * app instead of a native checkout. See docs/plans/contact-reveal-credits.md. */
   async function onViewContact() {
     if (!accessToken) {
-      requireLogin();
+      requireLogin({ onSuccess: () => void onViewContact() });
       return;
     }
     setRevealPending(true);

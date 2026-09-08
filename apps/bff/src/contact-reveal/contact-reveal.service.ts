@@ -86,6 +86,45 @@ export class ContactRevealService {
     };
   }
 
+  /** Batched counterpart to `getRevealState`, for a whole page of listing cards (browse grid,
+   * favourites) — one settings read, one batch `ContactReveal` lookup, and one credit-balance
+   * aggregate for the whole page, rather than three queries per card. The free-quota/credit
+   * balance is a per-user property (same for every card on the page), so only whether each
+   * individual listing has already been revealed differs per row. */
+  async getRevealStatesForListings(
+    userId: string | undefined,
+    listings: { id: string; ownerPhone: string | null; ownerEmail: string | null }[],
+  ): Promise<Map<string, ContactRevealState>> {
+    const states = new Map<string, ContactRevealState>();
+    if (!userId || listings.length === 0) return states;
+
+    const revealed = await this.prisma.contactReveal.findMany({
+      where: { userId, listingId: { in: listings.map((l) => l.id) } },
+      select: { listingId: true },
+    });
+    const revealedIds = new Set(revealed.map((r) => r.listingId));
+
+    const settings = await this.getSettings();
+    const freeUsed = await this.prisma.contactReveal.count({ where: { userId, source: 'free' } });
+    const freeAvailable = freeUsed < settings.freeRevealsPerUser;
+    const hasCredit = freeAvailable ? false : await this.hasCreditAvailable(userId);
+
+    for (const listing of listings) {
+      if (revealedIds.has(listing.id)) {
+        states.set(listing.id, { contactRevealed: true, ownerPhone: listing.ownerPhone, ownerEmail: listing.ownerEmail });
+        continue;
+      }
+      states.set(listing.id, {
+        contactRevealed: false,
+        ownerPhone: null,
+        ownerEmail: null,
+        revealMethod: freeAvailable ? 'free' : hasCredit ? 'credit' : 'insufficient',
+        ...(freeAvailable ? {} : { creditPackSize: settings.creditPackSize, creditPackPriceRupees: settings.creditPackPriceRupees }),
+      });
+    }
+    return states;
+  }
+
   /** Spends a free reveal or a credit (whichever applies) and permanently unlocks this listing's
    * contact for this user — idempotent (a second call is just a read) and transactional (re-
    * derives eligibility inside the transaction so two concurrent requests for the same listing

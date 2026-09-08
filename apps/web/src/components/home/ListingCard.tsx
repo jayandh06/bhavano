@@ -6,8 +6,10 @@ import Link from "next/link";
 import type { ListingCardDto } from "@bhavano/types";
 import { useRouter } from "next/navigation";
 import { useAuthGate } from "./AuthGateProvider";
-import { toggleFavouriteAction } from "@/app/actions/listings";
+import { toggleFavouriteAction, revealContactAction } from "@/app/actions/listings";
 import { startConversationAction } from "@/app/actions/messaging";
+import { createContactRevealCreditsOrderAction } from "@/app/actions/payments";
+import { loadRazorpayScript } from "@/lib/razorpay";
 import { buildListingPath } from "@/lib/listingPath";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
@@ -19,6 +21,15 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   const [likeCount, setLikeCount] = useState(item.likeCount);
   const [contactError, setContactError] = useState<string | null>(null);
   const href = buildListingPath(item);
+
+  const [contactRevealed, setContactRevealed] = useState(item.contactRevealed);
+  const [ownerPhone, setOwnerPhone] = useState(item.ownerPhone);
+  const [ownerEmail, setOwnerEmail] = useState(item.ownerEmail);
+  const [revealPending, setRevealPending] = useState(false);
+  const [showPurchase, setShowPurchase] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [purchasePending, setPurchasePending] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   async function onToggleFavourite(e: React.MouseEvent) {
     e.preventDefault();
@@ -35,11 +46,14 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   // returns `requiresLogin` when the session cookie is missing or the BFF rejects the token, so
   // an expired session opens the modal and a live one goes straight to the conversation. Asking
   // the client instead is what made this button open the login dialog even when signed in.
-  async function onContactOwner() {
+  // `onSuccess` resumes the same call once login completes, so the user isn't left having to tap
+  // the button a second time.
+  async function onMessage(e: React.MouseEvent) {
+    e.preventDefault();
     setContactError(null);
     const result = await startConversationAction(item.id);
     if (result.requiresLogin) {
-      requireLogin();
+      requireLogin({ onSuccess: () => void onMessage(e) });
       return;
     }
     if ("error" in result) {
@@ -48,6 +62,80 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     }
     pushDataLayerEvent("contact_owner", { listingId: item.id });
     router.push(`/messages/${result.conversationId}`);
+  }
+
+  async function onViewContact(e: React.MouseEvent) {
+    e.preventDefault();
+    setRevealPending(true);
+    setContactError(null);
+    const result = await revealContactAction(item.id);
+    setRevealPending(false);
+
+    if (result.requiresLogin) {
+      requireLogin({ onSuccess: () => void onViewContact(e) });
+      return;
+    }
+    if (result.insufficientCredits) {
+      setShowPurchase(true);
+      return;
+    }
+    if ("error" in result) {
+      setContactError(result.error);
+      return;
+    }
+    setContactRevealed(true);
+    setOwnerPhone(result.contact.ownerPhone);
+    setOwnerEmail(result.contact.ownerEmail);
+    pushDataLayerEvent("contact_reveal", { listingId: item.id });
+  }
+
+  async function onBuyCredits(e: React.MouseEvent) {
+    e.preventDefault();
+    setPurchasePending(true);
+    setPurchaseError(null);
+
+    const result = await createContactRevealCreditsOrderAction(discountCode.trim() || undefined);
+    if (!result.success) {
+      setPurchasePending(false);
+      setPurchaseError(result.error);
+      return;
+    }
+
+    pushDataLayerEvent("begin_checkout_contact_reveal_credits", {
+      transactionId: result.order.paymentId,
+      listingId: item.id,
+      value: result.order.amount / 100,
+      currency: result.order.currency,
+    });
+
+    try {
+      await loadRazorpayScript();
+      const { order } = result;
+      const razorpay = new window.Razorpay({
+        key: order.razorpayKeyId,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.razorpayOrderId,
+        name: "Bhavano",
+        description: "Contact reveal credits",
+        handler: () => {
+          pushDataLayerEvent("contact_reveal_credits_purchase", {
+            transactionId: order.paymentId,
+            listingId: item.id,
+            value: order.amount / 100,
+            currency: order.currency,
+          });
+          setShowPurchase(false);
+          setPurchasePending(false);
+          setTimeout(() => void onViewContact(e), 4000);
+        },
+        modal: { ondismiss: () => setPurchasePending(false) },
+      });
+      razorpay.open();
+    } catch {
+      setPurchasePending(false);
+      setPurchaseError("Couldn't open checkout — please try again.");
+    }
   }
 
   return (
@@ -125,12 +213,11 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             ))}
           </div>
         </Link>
-        {/* Views/likes and Contact owner share one row now rather than stacking — the counts
-          * sat above a full-width button before, which cost the card an extra line for two short
-          * numbers. Owner's own card still shows the counts here; the button just isn't part of
-          * the row for it, same as before. No breakpoint prefixes in this block on purpose — one
-          * layout on a phone-width card and a desktop grid card alike, not a wider button that
-          * only appears past some screen size. */}
+        {/* Views/likes and the contact actions share one row rather than stacking — the counts
+          * sat above full-width buttons before, which cost the card an extra line. Owner's own
+          * card still shows the counts here; the buttons just aren't part of the row for it.
+          * No breakpoint prefixes in this block on purpose — one layout on a phone-width card
+          * and a desktop grid card alike, not buttons that only appear past some screen size. */}
         <div className="flex items-center justify-between gap-2 mt-1">
           <div className="flex gap-3 text-[11.5px] text-muted shrink-0">
             <span className="flex items-center gap-1"><Icon name="eye" /> {item.viewCount}</span>
@@ -138,21 +225,87 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
           </div>
           {/* Hidden on your own listing — the same reason as on the detail page, and more
             * visible here since a seller scrolling their own city sees the card among everyone
-            * else's. Same filled bg-green/text-on-green treatment as the search button and
-            * Header's "Post free ad" — kept small (same px-3/py-1.5/text-[12.5px] as before)
-            * so it still shares the row with the view/like counts instead of taking it over. */}
+            * else's. */}
           {!item.isOwner && (
-            <button
-              onClick={onContactOwner}
-              className="flex items-center gap-1.5 bg-green text-on-green border-none rounded-lg px-3 py-1.5 text-[12.5px] font-bold cursor-pointer whitespace-nowrap"
-            >
-              <Icon name="message" />
-              Contact owner
-            </button>
+            <div className="flex gap-1.5">
+              <button
+                onClick={onMessage}
+                className="flex items-center gap-1 bg-green/10 text-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold cursor-pointer whitespace-nowrap"
+              >
+                <Icon name="message" />
+                Message
+              </button>
+              {contactRevealed ? (
+                (ownerPhone || ownerEmail) && (
+                  <a
+                    href={`tel:${ownerPhone ?? ""}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 bg-green text-on-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold whitespace-nowrap no-underline"
+                  >
+                    <Icon name="phone" /> {ownerPhone ?? "Email"}
+                  </a>
+                )
+              ) : (
+                <button
+                  onClick={onViewContact}
+                  disabled={revealPending}
+                  className="flex items-center gap-1 bg-green text-on-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold cursor-pointer whitespace-nowrap disabled:opacity-60"
+                >
+                  <Icon name="phone" />
+                  {revealPending ? "Unlocking…" : "Contact"}
+                </button>
+              )}
+            </div>
           )}
         </div>
         {contactError && <p className="text-[#b3413a] text-[12px] mt-1.5">{contactError}</p>}
       </div>
+
+      {showPurchase && (
+        <div
+          onClick={(e) => {
+            e.preventDefault();
+            if (!purchasePending) setShowPurchase(false);
+          }}
+          className="fixed inset-0 bg-[var(--modal-scrim)] z-[100] flex items-center justify-center p-5"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface rounded-2xl w-[360px] max-w-full p-6 animate-[modalIn_0.2s_ease_both]"
+          >
+            <div className="font-lora font-bold text-[17px] text-text mb-1">Buy contact-reveal credits</div>
+            <p className="text-[13px] text-muted mb-4 m-0">
+              You&rsquo;ve used your free reveals. {item.creditPackSize ?? 5} credits for ₹{item.creditPackPriceRupees ?? 125} —
+              each credit unlocks one listing&rsquo;s contact, permanently.
+            </p>
+            <label className="block text-[11.5px] font-bold text-muted mb-1.5">Discount code (optional)</label>
+            <input
+              value={discountCode}
+              onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+              placeholder="e.g. LAUNCH25"
+              className="w-full border-[1.5px] border-border rounded-[10px] px-3 py-2.5 text-sm text-text bg-surface mb-4"
+            />
+            <button
+              onClick={onBuyCredits}
+              disabled={purchasePending}
+              className="w-full bg-green text-on-green border-0 rounded-lg py-3 text-sm font-extrabold cursor-pointer disabled:opacity-60"
+            >
+              {purchasePending ? "Opening checkout…" : `Buy ${item.creditPackSize ?? 5} credits — ₹${item.creditPackPriceRupees ?? 125}`}
+            </button>
+            {purchaseError && <p className="text-[#b3413a] text-[13px] mt-3 mb-0">{purchaseError}</p>}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                if (!purchasePending) setShowPurchase(false);
+              }}
+              disabled={purchasePending}
+              className="mt-4 bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

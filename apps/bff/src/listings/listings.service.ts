@@ -328,8 +328,12 @@ export class ListingsService {
         currentUserId,
         rows.map((r) => r.id),
       );
+      const revealStates = await this.contactRevealService.getRevealStatesForListings(
+        currentUserId,
+        rows.map((r) => ({ id: r.id, ownerPhone: r.owner.phone, ownerEmail: r.owner.email })),
+      );
       return {
-        items: rows.map((row) => this.toCardDto(row, favouritedIds, currentUserId)),
+        items: rows.map((row) => this.toCardDto(row, favouritedIds, currentUserId, revealStates)),
         nextCursor: null,
         total,
       };
@@ -341,9 +345,13 @@ export class ListingsService {
       currentUserId,
       page.map((r) => r.id),
     );
+    const revealStates = await this.contactRevealService.getRevealStatesForListings(
+      currentUserId,
+      page.map((r) => ({ id: r.id, ownerPhone: r.owner.phone, ownerEmail: r.owner.email })),
+    );
 
     return {
-      items: page.map((row) => this.toCardDto(row, favouritedIds, currentUserId)),
+      items: page.map((row) => this.toCardDto(row, favouritedIds, currentUserId, revealStates)),
       nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
@@ -1110,7 +1118,11 @@ export class ListingsService {
       },
     });
     const favouritedIds = new Set(favourites.map((f) => f.listingId));
-    return favourites.map((f) => this.toCardDto(f.listing, favouritedIds));
+    const revealStates = await this.contactRevealService.getRevealStatesForListings(
+      userId,
+      favourites.map((f) => ({ id: f.listing.id, ownerPhone: f.listing.owner.phone, ownerEmail: f.listing.owner.email })),
+    );
+    return favourites.map((f) => this.toCardDto(f.listing, favouritedIds, userId, revealStates));
   }
 
   private async getFavouritedIds(
@@ -1383,10 +1395,17 @@ export class ListingsService {
       area: Area;
       listingPhotos: ListingPhoto[];
       listingVideos: ListingVideo[];
+      owner: { phone: string | null; email: string | null };
     },
     favouritedIds?: Set<string>,
     /** Compared against the row's ownerId — see the DTO field. */
     viewerId?: string,
+    /** From ContactRevealService.getRevealStatesForListings — one batched lookup per page rather
+     * than a query per card. Defaults to "not revealed" when absent (matches favouritedIds'
+     * default-to-empty pattern), which is also what toDetailDto relies on: its own internal
+     * `toCardDto(listing, favouritedIds)` call intentionally omits this, since toDetailDto spreads
+     * its own single-listing revealState over the result afterward anyway. */
+    revealStates?: Map<string, ContactRevealState>,
   ): ListingCardDto {
     const placeholder = categoryImagePlaceholder[listing.category];
     const hasPhoto = listing.listingPhotos.length > 0;
@@ -1421,6 +1440,7 @@ export class ListingsService {
       // Browse-card badge only — not gated on isOwnerOrAdmin like toDetailDto's `videos` array,
       // since "does this listing have a playable video at all" is fine as public info once done.
       hasVideo: listing.listingVideos.some((v) => v.status === 'done'),
+      ...(revealStates?.get(listing.id) ?? { contactRevealed: false, ownerPhone: null, ownerEmail: null }),
     };
   }
 }

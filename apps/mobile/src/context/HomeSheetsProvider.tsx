@@ -50,7 +50,9 @@ interface HomeSheetsContextValue {
   city: City | null;
   setCity: (city: City) => void;
   openLocationPicker: () => void;
-  requireLogin: () => void;
+  /** `onSuccess` resumes whatever the login interrupted, in place — same pattern as web's
+   * AuthGateProvider. */
+  requireLogin: (options?: { onSuccess?: () => void }) => void;
   /** Clears the session on this device. Safe to await — never rejects, even offline. */
   logout: () => Promise<void>;
   isLoggedIn: boolean;
@@ -235,8 +237,11 @@ export function HomeSheetsProvider({
     refreshProfile();
   }, [refreshProfile]);
 
-  const requireLogin = useCallback(() => {
+  const onSuccessRef = useRef<(() => void) | undefined>(undefined);
+
+  const requireLogin = useCallback((options?: { onSuccess?: () => void }) => {
     if (isLoggedIn) return;
+    onSuccessRef.current = options?.onSuccess;
     setLoginStep("choose");
     setPhone("");
     setOtp("");
@@ -307,6 +312,11 @@ export function HomeSheetsProvider({
     registerForPushAsync(accessToken).then((t) => {
       if (t) pushTokenRef.current = t;
     });
+    // Resumes whatever action opened the login sheet (e.g. Message/View Contact on a listing
+    // card) — same "onSuccess" pattern as web's AuthGateProvider.
+    const resume = onSuccessRef.current;
+    onSuccessRef.current = undefined;
+    resume?.();
   }
 
   /** Signs the user out on this device. The BFF call is best-effort and deliberately not awaited

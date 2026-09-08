@@ -71,6 +71,23 @@ export interface ListingCardDto {
     /** The viewer posted this listing. Hides the contact actions on the card, for the same reason
      * as on the detail page — always false for an anonymous viewer, who owns nothing. */
     isOwner: boolean;
+    /** Whether the requesting viewer has already unlocked this listing's owner contact — always
+     * derived server-side from a real ContactReveal row (see docs/plans/contact-reveal-credits.md),
+     * never a cached flag. `ownerPhone`/`ownerEmail` are only ever populated when this is true; the
+     * raw JSON response never carries them otherwise, so there's nothing to hide client-side.
+     * Present on both the browse-card and detail responses so "View Contact" works from either. */
+    contactRevealed: boolean;
+    ownerPhone: string | null;
+    ownerEmail: string | null;
+    /** Only meaningful when `contactRevealed` is false — what unlocking would cost this viewer,
+     * so the "View Contact" button can show the right label without a second round trip.
+     * Undefined for an anonymous viewer (not logged in yet). */
+    revealMethod?: "free" | "credit" | "insufficient";
+    /** The current admin-configured credit pack, inlined here (rather than a separate settings
+     * fetch) so the purchase sheet can render off this same response — present whenever
+     * `revealMethod` is `"credit"` or `"insufficient"`. */
+    creditPackSize?: number;
+    creditPackPriceRupees?: number;
 }
 export interface ListingsPage {
     items: ListingCardDto[];
@@ -145,22 +162,6 @@ export interface ListingDetailDto extends ListingCardDto {
      * at posting time. */
     lat?: number;
     lng?: number;
-    /** Whether the requesting viewer has already unlocked this listing's owner contact — always
-     * derived server-side from a real ContactReveal row (see docs/plans/contact-reveal-credits.md),
-     * never a cached flag. `ownerPhone`/`ownerEmail` are only ever populated when this is true; the
-     * raw JSON response never carries them otherwise, so there's nothing to hide client-side. */
-    contactRevealed: boolean;
-    ownerPhone: string | null;
-    ownerEmail: string | null;
-    /** Only meaningful when `contactRevealed` is false — what unlocking would cost this viewer,
-     * so the "View Contact" button can show the right label without a second round trip.
-     * Undefined for an anonymous viewer (not logged in yet). */
-    revealMethod?: "free" | "credit" | "insufficient";
-    /** The current admin-configured credit pack, inlined here (rather than a separate settings
-     * fetch) so the purchase sheet can render off this same response — present whenever
-     * `revealMethod` is `"credit"` or `"insufficient"`. */
-    creditPackSize?: number;
-    creditPackPriceRupees?: number;
 }
 export interface ListingRenewalDto {
     from: string;

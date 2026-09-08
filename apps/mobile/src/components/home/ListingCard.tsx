@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import type { ListingCardDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
-import { createConversation, toggleFavourite } from "../../lib/bffClient";
+import { BffError, createConversation, revealContact, toggleFavourite } from "../../lib/bffClient";
 import { Icon } from "../Icon";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
@@ -14,6 +14,9 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   const [isFavourited, setIsFavourited] = useState(item.isFavourited);
   const [likeCount, setLikeCount] = useState(item.likeCount);
   const [contactError, setContactError] = useState<string | null>(null);
+  const [contactRevealed, setContactRevealed] = useState(item.contactRevealed);
+  const [ownerPhone, setOwnerPhone] = useState(item.ownerPhone);
+  const [revealPending, setRevealPending] = useState(false);
 
   // TEMP(auth-gate): viewing listing details is open without login for now.
   const openDetail = () => router.push(`/listing/${item.id}`);
@@ -29,11 +32,11 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   }
 
   // Opens the conversation with the seller — the same thing the detail screen's button does.
-  // It prompts for login only when there is no token, rather than unconditionally, which is what
-  // made this button show the login sheet to users who were already signed in.
-  async function onContactOwner() {
+  // `onSuccess` resumes this same call once login completes, so the user lands straight in the
+  // conversation instead of having to tap Message a second time.
+  async function onMessage() {
     if (!accessToken) {
-      requireLogin();
+      requireLogin({ onSuccess: () => void onMessage() });
       return;
     }
     setContactError(null);
@@ -42,6 +45,31 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
       router.push(`/messages/${conversation.id}`);
     } catch (e) {
       setContactError(e instanceof Error ? e.message : "Failed to start conversation");
+    }
+  }
+
+  // No in-app purchase flow on mobile (see docs/plans/contact-reveal-credits.md) — the
+  // free-quota/existing-credit-balance path works fully; when neither applies, this points the
+  // user at buying credits on the web app instead of a native checkout.
+  async function onViewContact() {
+    if (!accessToken) {
+      requireLogin({ onSuccess: () => void onViewContact() });
+      return;
+    }
+    setRevealPending(true);
+    setContactError(null);
+    try {
+      const contact = await revealContact(accessToken, item.id);
+      setContactRevealed(true);
+      setOwnerPhone(contact.ownerPhone);
+    } catch (e) {
+      if (e instanceof BffError && e.status === 402) {
+        setContactError("You've used your free reveals. Buy contact-reveal credits at bhavano.com to unlock more.");
+      } else {
+        setContactError(e instanceof Error ? e.message : "Failed to unlock contact");
+      }
+    } finally {
+      setRevealPending(false);
     }
   }
 
@@ -93,10 +121,10 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             </Text>
           ))}
         </View>
-        {/* Counts and Contact owner share one row rather than stacking, matching the web
-          * card — the counts sat above a full-width button before, costing an extra line for two
-          * short numbers. Owner's own card still shows the counts here; the button just isn't
-          * part of the row for it (see ListingDetailView's isOwner gate for the reason). */}
+        {/* Counts and the contact actions share one row rather than stacking, matching the web
+          * card — the counts sat above full-width buttons before, costing an extra line. Owner's
+          * own card still shows the counts here; the buttons just aren't part of the row for it
+          * (see ListingDetailView's isOwner gate for the reason). */}
         <View style={styles.actionsRow}>
           <View style={{ flexDirection: "row", gap: 12 }}>
             <View style={styles.metaRow}>
@@ -108,11 +136,36 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
               <Text style={{ fontSize: 11, color: colors.muted }}>{likeCount}</Text>
             </View>
           </View>
-          {/* Light green rather than filled: sharing a row with the counts, a solid button the
-            * same weight as before would visually shout over them. */}
-          <Pressable onPress={onContactOwner} style={[styles.contactButton, { backgroundColor: `${colors.green}1a` }]}>
-            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>Contact owner</Text>
-          </Pressable>
+          {!item.isOwner && (
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              {/* Light green rather than filled: sharing a row with the counts, a solid button the
+                  same weight as before would visually shout over them. */}
+              <Pressable onPress={onMessage} style={[styles.contactButton, { backgroundColor: `${colors.green}1a` }]}>
+                <Icon name="message" size={12} color={colors.green} />
+                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12 }}>Message</Text>
+              </Pressable>
+              {contactRevealed && ownerPhone ? (
+                <Pressable
+                  onPress={() => Linking.openURL(`tel:${ownerPhone}`)}
+                  style={[styles.contactButton, { backgroundColor: colors.green }]}
+                >
+                  <Icon name="phone" size={12} color={colors.onGreen} />
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12 }}>{ownerPhone}</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={onViewContact}
+                  disabled={revealPending}
+                  style={[styles.contactButton, { backgroundColor: colors.green, opacity: revealPending ? 0.6 : 1 }]}
+                >
+                  <Icon name="phone" size={12} color={colors.onGreen} />
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12 }}>
+                    {revealPending ? "Unlocking…" : "Contact"}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
         {contactError ? (
           <Text style={{ color: "#c0554b", fontSize: 12, marginTop: 6 }}>{contactError}</Text>
@@ -155,5 +208,5 @@ const styles = StyleSheet.create({
   specsRow: { flexDirection: "row", gap: 10 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   actionsRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 4 },
-  contactButton: { borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, alignItems: "center" },
+  contactButton: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10 },
 });

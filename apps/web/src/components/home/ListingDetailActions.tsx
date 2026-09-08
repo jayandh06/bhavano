@@ -69,7 +69,7 @@ export function ListingDetailActions({
     setMessageError(null);
     const result = await startConversationAction(listingId);
     if (result.requiresLogin) {
-      requireLogin();
+      requireLogin({ onSuccess: () => void onMessage() });
       return;
     }
     if ("error" in result) {
@@ -87,7 +87,7 @@ export function ListingDetailActions({
     setRevealPending(false);
 
     if (result.requiresLogin) {
-      requireLogin();
+      requireLogin({ onSuccess: () => void onViewContact() });
       return;
     }
     if (result.insufficientCredits) {

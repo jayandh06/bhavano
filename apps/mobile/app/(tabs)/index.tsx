@@ -141,7 +141,7 @@ export default function HomeScreen() {
                     since the Account tab already owns profile and sign-out. Leaving it visible
                     made a logged-in user look logged out. */}
                 {!isLoggedIn && (
-                  <Pressable onPress={requireLogin}>
+                  <Pressable onPress={() => requireLogin()}>
                     <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Login</Text>
                   </Pressable>
                 )}
