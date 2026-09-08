@@ -370,6 +370,32 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     ],
   },
   {
+    key: "petsAllowed",
+    label: "Pets allowed",
+    type: "select",
+    section: "preferences",
+    transactionTypes: ["rent", "lease"],
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  },
+  {
+    key: "vegetariansOnly",
+    label: "Vegetarians only",
+    type: "select",
+    section: "preferences",
+    transactionTypes: ["rent", "lease"],
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+    // Defaults to "No" (no restriction) — the overwhelming common case, and unlike a guessed
+    // price/area (see `defaultValue`'s own doc comment above) a wrong default here costs the
+    // lister one click to correct rather than misstating a fact about the property itself.
+    defaultValue: "no",
+  },
+  {
     key: "washingMachineCount",
     label: "Washing machines",
     type: "number",
