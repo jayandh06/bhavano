@@ -42,3 +42,14 @@ button {
 ::placeholder {
   color: var(--muted);
 }
+
+/* AdminNav's tab strip — arrow buttons are the visible scroll affordance, so the native
+   scrollbar (still fully functional for trackpad/touch scrolling) stays hidden underneath it. */
+.admin-nav-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
