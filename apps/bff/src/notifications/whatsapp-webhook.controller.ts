@@ -13,11 +13,10 @@ import { PrismaService } from '../prisma/prisma.service';
  * Every call is still captured verbatim into WhatsappWebhookEvent regardless of whether it parses
  * (see that model's own doc comment for why) — that stopped being a hedge against total ignorance
  * once MSG91's dashboard "Test Webhook" button delivered a real sample payload on 2026-09-08, and
- * is now just a durable audit trail. `extractStatus` below reads real confirmed field names from
- * that sample (`eventName`, `uuid`, `requestId`) rather than a guess — see its own comment for
- * what's still unconfirmed (which of `uuid`/`requestId` actually matches what
- * Msg91Provider.sendAdPostedConfirmation's own send response returns; both are tried until one is
- * ruled out against a real correlated send).
+ * is now just a durable audit trail. `extractStatus` below reads real confirmed field names
+ * (`eventName`, `requestId`) — a real send-and-webhook round trip that same day confirmed
+ * `requestId` here is exactly the `request_id` Msg91Provider.sendAdPostedConfirmation's send
+ * response returns and stores as providerMessageId.
  */
 @Controller('webhooks')
 export class WhatsappWebhookController {
@@ -43,39 +42,37 @@ export class WhatsappWebhookController {
     });
     this.logger.log(`MSG91 webhook received: ${JSON.stringify(body)}`);
 
-    const { messageIds, status } = this.extractStatus(body);
-    if (messageIds.length > 0 && status) {
+    const { messageId, status } = this.extractStatus(body);
+    if (messageId && status) {
       const updated = await this.prisma.listingNotificationLog.updateMany({
-        where: { providerMessageId: { in: messageIds } },
+        where: { providerMessageId: messageId },
         data: { deliveryStatus: status, deliveryStatusAt: new Date() },
       });
       if (updated.count === 0) {
         this.logger.warn(
-          `MSG91 webhook status "${status}" for unrecognized message id(s) ${messageIds.join(', ')} — no matching ListingNotificationLog row`,
+          `MSG91 webhook status "${status}" for unrecognized message id ${messageId} — no matching ListingNotificationLog row ` +
+            `(expected for the welcome template's own WhatsApp sends — those aren't tracked here, only ad-posted-confirmation)`,
         );
       }
     } else {
       this.logger.warn(
-        'MSG91 webhook payload missing eventName/uuid/requestId — read WhatsappWebhookEvent to see what actually arrived.',
+        'MSG91 webhook payload missing eventName/requestId — read WhatsappWebhookEvent to see what actually arrived.',
       );
     }
 
     return { received: true };
   }
 
-  /** Confirmed against a real MSG91 "Test Webhook" sample payload (see this class's own doc
-   * comment) — NOT a guess. Fields seen: `eventName` ("Delivered"/"Sent"/"Read"/"Failed", title
-   * case — lowercased here to match ListingNotificationLog.deliveryStatus's convention), `uuid`
-   * (WhatsApp's own wamid.-prefixed message id) and `requestId` (MSG91's own id for the same
-   * send). Still unconfirmed: which of those two ids is what
-   * Msg91Provider.sendAdPostedConfirmation's send response actually returns and stores as
-   * providerMessageId — both are matched against until a real correlated send settles it, at
-   * which point this can drop to whichever one actually matched. */
-  private extractStatus(body: unknown): { messageIds: string[]; status: string | null } {
-    if (!body || typeof body !== 'object') return { messageIds: [], status: null };
+  /** Confirmed against a real MSG91 send-and-webhook round trip on 2026-09-08 (see this class's
+   * own doc comment) — NOT a guess. `eventName` ("Delivered"/"delivered"/"Sent"/"Read"/"Failed" —
+   * casing varies between events, lowercased here to match
+   * ListingNotificationLog.deliveryStatus's own convention) and `requestId`, which is exactly the
+   * `request_id` Msg91Provider.sendAdPostedConfirmation's send response returns. */
+  private extractStatus(body: unknown): { messageId: string | null; status: string | null } {
+    if (!body || typeof body !== 'object') return { messageId: null, status: null };
     const b = body as Record<string, unknown>;
-    const messageIds = [b.uuid, b.requestId].filter((v): v is string => typeof v === 'string' && v.length > 0);
+    const messageId = typeof b.requestId === 'string' && b.requestId.length > 0 ? b.requestId : null;
     const status = typeof b.eventName === 'string' ? b.eventName.toLowerCase() : null;
-    return { messageIds, status };
+    return { messageId, status };
   }
 }

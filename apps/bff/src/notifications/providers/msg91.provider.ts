@@ -215,12 +215,12 @@ export class Msg91Provider {
    * template — same lesson as sendWhatsappTemplate above: trust that snippet over a generic
    * docs example.
    *
-   * Returns whatever id MSG91's response carries for this specific send, so a later delivery/read
+   * Returns the id MSG91's response carries for this specific send, so a later delivery/read
    * status webhook (WhatsappWebhookController) can correlate back to it — see
-   * ListingNotificationLog.providerMessageId's own doc comment. The extraction is a best-effort
-   * guess at common field names, not yet confirmed against a real response; a wrong guess just
-   * means null gets stored (no correlation, not a broken send) until it's corrected against a
-   * real logged response. */
+   * ListingNotificationLog.providerMessageId's own doc comment. Confirmed against a real send on
+   * 2026-09-08: the bulk endpoint's success response is
+   * `{"status":"success","hasError":false,"data":"...","errors":null,"request_id":"<id>"}` —
+   * `request_id` is the value that shows back up as `requestId` on the matching webhook event. */
   async sendAdPostedConfirmation(
     phone: string,
     vars: { name: string; title1: string; title2: string; location: string },
@@ -315,29 +315,17 @@ export class Msg91Provider {
     }
   }
 
-  /** Best-effort guess at where MSG91 puts a per-message id in a successful bulk-send response —
-   * unverified against a real payload (see sendAdPostedConfirmation's own comment on why this is
-   * a guess, and the `this.logger.log` right before every call site, which is how to check it).
-   * Returns null rather than throwing on anything unexpected: a missing id just means the later
-   * webhook won't correlate to this send, not that the send itself failed. */
+  /** Where MSG91 puts this send's id, confirmed against a real bulk-send response on 2026-09-08
+   * (see sendAdPostedConfirmation's own comment for the exact shape) — `request_id` at the top
+   * level. Returns null rather than throwing on anything unexpected (a differently-shaped
+   * response some future MSG91 change might send): a missing id just means the later webhook
+   * won't correlate to this send, not that the send itself failed. */
   private extractMessageId(responseBody: string): string | null {
     try {
       const parsed = JSON.parse(responseBody) as Record<string, unknown>;
-      const data = parsed.data as Record<string, unknown> | unknown[] | undefined;
-      const candidates: unknown[] = [
-        parsed.messageId,
-        parsed.message_id,
-        parsed.request_id,
-        Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined)?.messageId : undefined,
-        Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined)?.message_id : undefined,
-        !Array.isArray(data) ? data?.messageId : undefined,
-        !Array.isArray(data) ? data?.message_id : undefined,
-        !Array.isArray(data) && Array.isArray((data as Record<string, unknown> | undefined)?.message_uuids)
-          ? ((data as Record<string, unknown>).message_uuids as unknown[])[0]
-          : undefined,
-      ];
-      const found = candidates.find((v) => typeof v === 'string' && v.length > 0);
-      return typeof found === 'string' ? found : null;
+      return typeof parsed.request_id === 'string' && parsed.request_id.length > 0
+        ? parsed.request_id
+        : null;
     } catch {
       return null;
     }
