@@ -730,6 +730,10 @@ export function PostAdWizard({
 
           {error && <Text style={{ color: "#c0554b", fontSize: 13 }}>{error}</Text>}
 
+          <Text style={{ color: colors.muted, fontSize: 12 }}>
+            Your phone/email may be shown to users who unlock this listing&rsquo;s contact details.
+          </Text>
+
           <View style={styles.navRow}>
             <Pressable onPress={() => setStep("details")}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>

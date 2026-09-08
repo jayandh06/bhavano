@@ -2,8 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   ActivityEventDto,
+  AdminDiscountCodesPage,
   AdminListingsPage,
   AdminUsersPage,
+  ContactRevealSettingsDto,
+  DiscountCodeDto,
   ListingBoostsPage,
   ListingDetailDto,
   ListingOwnerDto,
@@ -21,12 +24,16 @@ import { ListingsService } from '../listings/listings.service';
 import { MessagingService } from '../messaging/messaging.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
+import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
 import { ListUsersDto, UserSort } from './dto/list-users.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
+import { ListDiscountCodesDto } from './dto/list-discount-codes.dto';
+import { CreateDiscountCodeDto } from './dto/create-discount-code.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
+import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-settings.dto';
 import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
@@ -115,6 +122,7 @@ export class AdminService {
     private readonly messagingService: MessagingService,
     private readonly notificationsService: NotificationsService,
     private readonly rateLimitService: RateLimitService,
+    private readonly contactRevealService: ContactRevealService,
   ) {}
 
   listListings(query: ListAdminListingsDto): Promise<AdminListingsPage> {
@@ -559,6 +567,88 @@ export class AdminService {
 
   updateRateLimitSettings(dto: UpdateRateLimitsDto): Promise<RateLimitSettingsDto> {
     return this.rateLimitService.updateSettings(dto);
+  }
+
+  getContactRevealSettings(): Promise<ContactRevealSettingsDto> {
+    return this.contactRevealService.getSettings();
+  }
+
+  updateContactRevealSettings(dto: UpdateContactRevealSettingsDto): Promise<ContactRevealSettingsDto> {
+    return this.contactRevealService.updateSettings(dto);
+  }
+
+  /** Admin-managed discount codes — see docs/plans/contact-reveal-credits.md. `redemptionCount`
+   * is derived from DiscountCodeRedemption (only created once a payment is actually `paid`), not
+   * a denormalized counter, same "derive from the log" convention as everything else admin-
+   * facing in this file. */
+  async listDiscountCodes(query: ListDiscountCodesDto): Promise<AdminDiscountCodesPage> {
+    const { cursor, limit } = query;
+
+    const [rows, total] = await Promise.all([
+      this.prisma.discountCode.findMany({
+        include: { _count: { select: { redemptions: true } } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      this.prisma.discountCode.count(),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      items: page.map((row) => this.toDiscountCodeDto(row)),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+      total,
+    };
+  }
+
+  async createDiscountCode(dto: CreateDiscountCodeDto): Promise<DiscountCodeDto> {
+    const row = await this.prisma.discountCode.create({
+      data: {
+        code: dto.code.trim().toUpperCase(),
+        discountPercent: dto.discountPercent,
+        maxRedemptions: dto.maxRedemptions,
+        maxRedemptionsPerUser: dto.maxRedemptionsPerUser ?? 1,
+        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+      },
+      include: { _count: { select: { redemptions: true } } },
+    });
+    return this.toDiscountCodeDto(row);
+  }
+
+  async setDiscountCodeActive(id: string, active: boolean): Promise<DiscountCodeDto> {
+    const row = await this.prisma.discountCode.update({
+      where: { id },
+      data: { active },
+      include: { _count: { select: { redemptions: true } } },
+    });
+    return this.toDiscountCodeDto(row);
+  }
+
+  private toDiscountCodeDto(row: {
+    id: string;
+    code: string;
+    discountPercent: number;
+    maxRedemptions: number | null;
+    maxRedemptionsPerUser: number;
+    expiresAt: Date | null;
+    active: boolean;
+    createdAt: Date;
+    _count: { redemptions: number };
+  }): DiscountCodeDto {
+    return {
+      id: row.id,
+      code: row.code,
+      discountPercent: row.discountPercent,
+      maxRedemptions: row.maxRedemptions,
+      maxRedemptionsPerUser: row.maxRedemptionsPerUser,
+      redemptionCount: row._count.redemptions,
+      expiresAt: row.expiresAt?.toISOString() ?? null,
+      active: row.active,
+      createdAt: row.createdAt.toISOString(),
+    };
   }
 
   /** Every purchased boost, newest first — lets support see what a listing's owner actually

@@ -1,9 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import type {
+  AdminDiscountCodesPage,
   AdminListingsPage,
   AdminUsersPage,
   CampaignPreviewDto,
   CampaignSendsPage,
+  ContactRevealSettingsDto,
+  DiscountCodeDto,
   ImportOutreachContactsResult,
   ListingBoostsPage,
   ListingDetailDto,
@@ -32,6 +35,10 @@ import { ListUsersDto } from './dto/list-users.dto';
 import { SendWelcomeDto } from './dto/send-welcome.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
+import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-settings.dto';
+import { ListDiscountCodesDto } from './dto/list-discount-codes.dto';
+import { CreateDiscountCodeDto } from './dto/create-discount-code.dto';
+import { SetDiscountCodeActiveDto } from './dto/set-discount-code-active.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
 import { RotatePhotoDto } from '../listings/dto/rotate-photo.dto';
 import { ListingPhotosService } from '../listings/listing-photos.service';
@@ -153,6 +160,31 @@ export class AdminController {
   @Patch('rate-limits')
   updateRateLimitSettings(@Body() dto: UpdateRateLimitsDto): Promise<RateLimitSettingsDto> {
     return this.adminService.updateRateLimitSettings(dto);
+  }
+
+  @Get('contact-reveal-settings')
+  getContactRevealSettings(): Promise<ContactRevealSettingsDto> {
+    return this.adminService.getContactRevealSettings();
+  }
+
+  @Patch('contact-reveal-settings')
+  updateContactRevealSettings(@Body() dto: UpdateContactRevealSettingsDto): Promise<ContactRevealSettingsDto> {
+    return this.adminService.updateContactRevealSettings(dto);
+  }
+
+  @Get('discount-codes')
+  listDiscountCodes(@Query() query: ListDiscountCodesDto): Promise<AdminDiscountCodesPage> {
+    return this.adminService.listDiscountCodes(query);
+  }
+
+  @Post('discount-codes')
+  createDiscountCode(@Body() dto: CreateDiscountCodeDto): Promise<DiscountCodeDto> {
+    return this.adminService.createDiscountCode(dto);
+  }
+
+  @Patch('discount-codes/:id')
+  setDiscountCodeActive(@Param('id') id: string, @Body() dto: SetDiscountCodeActiveDto): Promise<DiscountCodeDto> {
+    return this.adminService.setDiscountCodeActive(id, dto.active);
   }
 
   @Get('boosts')

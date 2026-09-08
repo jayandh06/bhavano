@@ -8,12 +8,14 @@ import { signOutAction } from "@/app/actions/auth";
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/", label: "Listings" },
   { href: "/boosts", label: "Boosts" },
+  { href: "/discount-codes", label: "Discount codes" },
   { href: "/outreach/contacts", label: "Contacts" },
   { href: "/outreach/campaigns", label: "Campaigns" },
   { href: "/logins", label: "Recent logins" },
   { href: "/users", label: "Users" },
   { href: "/page-visits", label: "Page visits" },
   { href: "/settings/rate-limits", label: "Rate limits" },
+  { href: "/settings/contact-reveal", label: "Contact reveal" },
 ];
 
 const SCROLL_STEP = 160;

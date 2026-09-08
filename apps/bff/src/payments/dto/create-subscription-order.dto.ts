@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type { SubscriptionTier } from '@bhavano/types';
 
 export class CreateSubscriptionOrderDto {
@@ -13,4 +13,8 @@ export class CreateSubscriptionOrderDto {
   @Min(1)
   @Max(20)
   agentProUnits?: number;
+
+  @IsOptional()
+  @IsString()
+  discountCode?: string;
 }

@@ -6,9 +6,10 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RateLimitModule } from '../rate-limit/rate-limit.module';
 import { OutreachModule } from '../outreach/outreach.module';
+import { ContactRevealModule } from '../contact-reveal/contact-reveal.module';
 
 @Module({
-  imports: [ListingsModule, MessagingModule, NotificationsModule, RateLimitModule, OutreachModule],
+  imports: [ListingsModule, MessagingModule, NotificationsModule, RateLimitModule, OutreachModule, ContactRevealModule],
   controllers: [AdminController],
   providers: [AdminService],
 })

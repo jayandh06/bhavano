@@ -8,6 +8,7 @@ import type {
   ConversationDetailDto,
   ConversationSummaryDto,
   CreateBoostOrderResponseDto,
+  CreateContactRevealCreditsOrderResponseDto,
   CreateListingInput,
   CreateSavedSearchInput,
   CreateSubscriptionOrderResponseDto,
@@ -20,6 +21,7 @@ import type {
   MessageDto,
   PopularSearchDto,
   PropertyTypeFilter,
+  RevealContactResponseDto,
   ReverseGeocodeResultDto,
   SavedSearchDto,
   SubscriptionTier,
@@ -43,6 +45,16 @@ export class BffAuthError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "BffAuthError";
+  }
+}
+
+/** Thrown when POST /listings/:id/reveal-contact returns 402 — the caller opens the
+ * credit-purchase flow rather than showing this as a plain error banner. See
+ * docs/plans/contact-reveal-credits.md. */
+export class InsufficientContactRevealCreditsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InsufficientContactRevealCreditsError";
   }
 }
 
@@ -78,6 +90,7 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
       }
     })();
     if (res.status === 401) throw new BffAuthError(parsedMessage ?? "Login required");
+    if (res.status === 402) throw new InsufficientContactRevealCreditsError(parsedMessage ?? "Insufficient contact reveal credits");
     throw new Error(parsedMessage ?? `BFF request failed (${res.status} ${path}): ${body}`);
   }
   const text = await res.text();
@@ -402,6 +415,18 @@ export function createSubscriptionOrder(
   });
 }
 
+/** Same pattern as createBoostOrder — activates via the webhook, not from this call alone. See
+ * docs/plans/contact-reveal-credits.md. */
+export function createContactRevealCreditsOrder(
+  accessToken: string,
+  discountCode?: string,
+): Promise<CreateContactRevealCreditsOrderResponseDto> {
+  return authedBffFetch(accessToken, "/payments/contact-reveal-credits", {
+    method: "POST",
+    body: JSON.stringify(discountCode ? { discountCode } : {}),
+  });
+}
+
 /** Public — no accessToken, anyone can view an agent's storefront. */
 export function fetchAgentStorefront(userId: string): Promise<AgentStorefrontDto> {
   return bffFetch<AgentStorefrontDto>(`/agents/${userId}`, { cache: "no-store" });
@@ -446,6 +471,13 @@ export function updateProfile(accessToken: string, input: UpdateProfileInput): P
 
 export function createConversation(accessToken: string, listingId: string): Promise<{ id: string }> {
   return authedBffFetch(accessToken, "/conversations", { method: "POST", body: JSON.stringify({ listingId }) });
+}
+
+/** Spends a free reveal or a credit (whichever applies) and permanently unlocks this listing's
+ * owner contact for this user. Throws (status 402) when neither is available — the caller opens
+ * the credit-purchase flow in that case. See docs/plans/contact-reveal-credits.md. */
+export function revealContact(accessToken: string, listingId: string): Promise<RevealContactResponseDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/reveal-contact`, { method: "POST" });
 }
 
 export function fetchConversations(accessToken: string): Promise<ConversationSummaryDto[]> {

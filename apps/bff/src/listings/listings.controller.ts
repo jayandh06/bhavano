@@ -13,7 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { ListingDetailDto, ListingSitemapEntry, ListingsPage, PopularSearchDto } from '@bhavano/types';
+import type { ListingDetailDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RevealContactResponseDto } from '@bhavano/types';
 import { VIDEO_LIMITS } from '@bhavano/types/videoLimits';
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -24,6 +24,7 @@ import { videoMulterOptions } from '../uploads/video-multer.config';
 import { assertDiskSpaceAvailable, videoTmpDir, withVideoUploadSlot } from '../uploads/video-upload.guard-rails';
 import { ingestUploadedVideo } from '../uploads/video-ingest';
 import { R2StorageService } from '../storage/r2-storage.service';
+import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { ListingsService } from './listings.service';
 import { ListingPhotosService } from './listing-photos.service';
 import { ListListingsDto } from './dto/list-listings.dto';
@@ -38,6 +39,7 @@ export class ListingsController {
     private readonly listingsService: ListingsService,
     private readonly storage: R2StorageService,
     private readonly listingPhotos: ListingPhotosService,
+    private readonly contactRevealService: ContactRevealService,
   ) {}
 
   @Get()
@@ -106,6 +108,17 @@ export class ListingsController {
     @CurrentUser() user: RequestUser,
   ): Promise<{ favourited: boolean; likeCount: number }> {
     return this.listingsService.toggleFavourite(id, user.id);
+  }
+
+  /** Spends a free reveal or a credit (whichever applies) and permanently unlocks this listing's
+   * owner contact for this user — see docs/plans/contact-reveal-credits.md. Idempotent: a repeat
+   * call for an already-unlocked listing just returns the same contact again, no double charge.
+   * Throws InsufficientContactRevealCreditsException (402) when neither a free reveal nor a
+   * credit is available — the frontend uses that status to open the purchase sheet. */
+  @Post(':id/reveal-contact')
+  @UseGuards(AuthGuard)
+  revealContact(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<RevealContactResponseDto> {
+    return this.contactRevealService.revealContact(user.id, id);
   }
 
   /** Adds a video to an already-existing listing — a single multipart request, unlike photos'

@@ -1,4 +1,4 @@
-import { IsIn, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class CreateBoostOrderDto {
   @IsString()
@@ -6,4 +6,8 @@ export class CreateBoostOrderDto {
 
   @IsIn([7, 15])
   boostDays!: 7 | 15;
+
+  @IsOptional()
+  @IsString()
+  discountCode?: string;
 }

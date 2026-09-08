@@ -68,6 +68,7 @@ import {
   GoogleAdsConversionProvider,
   POST_AD_SUCCESS_CONVERSION_ACTION_ID,
 } from '../ads/google-ads-conversion.provider';
+import { ContactRevealService, type ContactRevealState } from '../contact-reveal/contact-reveal.service';
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
@@ -151,7 +152,10 @@ const LISTING_MEDIA_INCLUDE = {
   // the tie-breaker — see ListingPhoto.displayOrder's own doc comment.
   listingPhotos: { orderBy: [{ displayOrder: 'asc' as const }, { photoNo: 'asc' as const }] },
   listingVideos: { orderBy: { videoNo: 'asc' as const } },
-  owner: { select: { agentProUntil: true } },
+  // phone/email are never sent to the client directly from toDetailDto — only echoed back into
+  // ownerPhone/ownerEmail once ContactRevealService confirms this viewer has actually unlocked
+  // them (see toDetailDto's revealState param).
+  owner: { select: { agentProUntil: true, phone: true, email: true } },
   listingRenewals: { orderBy: { renewedAt: 'desc' as const } },
 };
 
@@ -186,6 +190,7 @@ export class ListingsService {
     private readonly storage: R2StorageService,
     private readonly listingSlotsService: ListingSlotsService,
     private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
+    private readonly contactRevealService: ContactRevealService,
   ) {}
 
   async list(
@@ -489,6 +494,12 @@ export class ListingsService {
     }
 
     const favouritedIds = await this.getFavouritedIds(currentUser?.id, [id]);
+    const revealState = await this.contactRevealService.getRevealState(
+      currentUser?.id ?? null,
+      id,
+      listing.owner.phone,
+      listing.owner.email,
+    );
     // Ownership is passed separately from isOwnerOrAdmin: an admin looking at someone else's
     // listing is not its owner and may well need the contact actions, so the two cannot share a
     // flag even though they are computed a line apart.
@@ -497,6 +508,7 @@ export class ListingsService {
       favouritedIds,
       isOwnerOrAdmin,
       currentUser?.id === listing.ownerId,
+      revealState,
     );
   }
 
@@ -1258,7 +1270,7 @@ export class ListingsService {
       area: Area;
       listingPhotos: ListingPhoto[];
       listingVideos: ListingVideo[];
-      owner: { agentProUntil: Date | null };
+      owner: { agentProUntil: Date | null; phone: string | null; email: string | null };
       listingRenewals: ListingRenewal[];
     },
     favouritedIds?: Set<string>,
@@ -1270,6 +1282,12 @@ export class ListingsService {
     isOwnerOrAdmin = false,
     /** Strictly the poster — see the call site in `findOne`. */
     isOwner = false,
+    /** Only `findOne` computes a real one (an async ContactRevealService call, done before this
+     * synchronous method runs — same pattern as favouritedIds above). Every other call site
+     * returns a DTO to the listing's own owner right after a mutation (create/update/etc.), where
+     * contact-reveal state is meaningless — those default to "not revealed", which the frontend
+     * never actually renders since isOwner already hides the reveal button entirely. */
+    revealState: ContactRevealState = { contactRevealed: false, ownerPhone: null, ownerEmail: null },
   ): ListingDetailDto {
     const videos = (
       isOwnerOrAdmin
@@ -1327,6 +1345,7 @@ export class ListingsService {
           }))
         : undefined,
       ...this.jitteredLocation(listing),
+      ...revealState,
     };
   }
 

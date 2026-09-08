@@ -8,6 +8,7 @@ import { LocationsService } from '../locations/locations.service';
 import { R2StorageService } from '../storage/r2-storage.service';
 import { ListingSlotsService } from '../listing-slots/listing-slots.service';
 import { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provider';
+import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { ConfigService } from '@nestjs/config';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -39,6 +40,7 @@ function makeService() {
     {} as R2StorageService,
     listingSlotsService,
     {} as GoogleAdsConversionProvider,
+    {} as ContactRevealService,
   );
   return { service, prisma, notificationsService, listingSlotsService };
 }

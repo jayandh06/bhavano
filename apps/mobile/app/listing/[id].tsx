@@ -6,7 +6,7 @@ import * as Crypto from "expo-crypto";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
-import { createConversation, recordView, toggleFavourite } from "../../src/lib/bffClient";
+import { BffError, createConversation, recordView, revealContact, toggleFavourite } from "../../src/lib/bffClient";
 import { Icon } from "../../src/components/Icon";
 
 const VIEWER_KEY_STORAGE = "bhavano.viewerKey";
@@ -33,11 +33,20 @@ export default function ListingDetailScreen() {
   const [isFavourited, setIsFavourited] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [messageError, setMessageError] = useState<string | null>(null);
+  const [contactRevealed, setContactRevealed] = useState(false);
+  const [ownerPhone, setOwnerPhone] = useState<string | null>(null);
+  const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
+  const [revealPending, setRevealPending] = useState(false);
+  const [revealError, setRevealError] = useState<string | null>(null);
+  const [insufficientCredits, setInsufficientCredits] = useState(false);
 
   useEffect(() => {
     if (listing) {
       setIsFavourited(listing.isFavourited);
       setLikeCount(listing.likeCount);
+      setContactRevealed(listing.contactRevealed);
+      setOwnerPhone(listing.ownerPhone);
+      setOwnerEmail(listing.ownerEmail);
     }
   }, [listing]);
 
@@ -69,6 +78,35 @@ export default function ListingDetailScreen() {
       router.push(`/messages/${conversation.id}`);
     } catch (e) {
       setMessageError(e instanceof Error ? e.message : "Failed to start conversation");
+    }
+  }
+
+  /** No in-app purchase flow exists on mobile yet (no native Razorpay integration anywhere in
+   * this app) — adding one is a real native-dependency addition needing a fresh EAS build, not
+   * something to improvise here. The free-quota/existing-credit-balance path works fully
+   * (plain API call); when neither applies, this points the user at buying credits on the web
+   * app instead of a native checkout. See docs/plans/contact-reveal-credits.md. */
+  async function onViewContact() {
+    if (!accessToken) {
+      requireLogin();
+      return;
+    }
+    setRevealPending(true);
+    setRevealError(null);
+    setInsufficientCredits(false);
+    try {
+      const contact = await revealContact(accessToken, id);
+      setContactRevealed(true);
+      setOwnerPhone(contact.ownerPhone);
+      setOwnerEmail(contact.ownerEmail);
+    } catch (e) {
+      if (e instanceof BffError && e.status === 402) {
+        setInsufficientCredits(true);
+      } else {
+        setRevealError(e instanceof Error ? e.message : "Failed to unlock contact");
+      }
+    } finally {
+      setRevealPending(false);
     }
   }
 
@@ -184,17 +222,41 @@ export default function ListingDetailScreen() {
                   <Icon name="message" size={18} color={colors.green} />
                   <Text style={{ fontSize: 10, fontWeight: "700", color: colors.green }}>Message</Text>
                 </Pressable>
-                {/* Credit/free-quota-gated contact reveal — not wired up yet. Shown disabled
-                    rather than omitted so the layout doesn't shift once it's built, and so it
-                    reads as "coming soon" rather than silently missing. */}
-                <Pressable disabled style={[styles.actionButton, { borderColor: colors.border, opacity: 0.5 }]}>
-                  <Icon name="phone" size={18} color={colors.muted} />
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: colors.muted }}>View Contact</Text>
-                </Pressable>
+                {!contactRevealed && (
+                  <Pressable
+                    onPress={onViewContact}
+                    disabled={revealPending}
+                    style={[styles.actionButton, { borderColor: colors.green, opacity: revealPending ? 0.6 : 1 }]}
+                  >
+                    <Icon name="phone" size={18} color={colors.green} />
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.green }}>
+                      {revealPending ? "Unlocking…" : "View Contact"}
+                    </Text>
+                  </Pressable>
+                )}
               </>
             )}
           </View>
           {messageError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{messageError}</Text>}
+          {revealError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{revealError}</Text>}
+          {insufficientCredits && (
+            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>
+              You&rsquo;ve used your free reveals. Buy contact-reveal credits at bhavano.com to unlock more.
+            </Text>
+          )}
+
+          {!listing.isOwner && contactRevealed && (ownerPhone || ownerEmail) && (
+            <View style={[styles.contactBox, { borderColor: colors.border }]}>
+              {ownerPhone && (
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: ownerEmail ? 6 : 0 }}>
+                  📞 {ownerPhone}
+                </Text>
+              )}
+              {ownerEmail && (
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>✉️ {ownerEmail}</Text>
+              )}
+            </View>
+          )}
         </>
       )}
     </ScrollView>
@@ -227,4 +289,5 @@ const styles = StyleSheet.create({
   attributesBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 16 },
   actionsRow: { flexDirection: "row", gap: 10 },
   actionButton: { flex: 1, borderWidth: 1.5, borderRadius: 8, paddingVertical: 12, alignItems: "center", justifyContent: "center", gap: 4 },
+  contactBox: { borderWidth: 1.5, borderRadius: 10, padding: 12, marginTop: 8 },
 });

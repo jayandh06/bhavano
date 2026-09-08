@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ListingStatus, RateLimitSettingsDto } from "@bhavano/types";
+import type { ContactRevealSettingsDto, ListingStatus, RateLimitSettingsDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   approveListing,
@@ -13,6 +13,7 @@ import {
   setCoverPhoto,
   setListingStatus,
   setReviewed,
+  updateContactRevealSettings,
   updateRateLimitSettings,
 } from "@/lib/bff";
 
@@ -86,6 +87,17 @@ export async function updateRateLimitsAction(input: RateLimitSettingsDto): Promi
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update rate limits" };
+  }
+}
+
+export async function updateContactRevealSettingsAction(input: ContactRevealSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateContactRevealSettings(accessToken, input);
+    revalidatePath("/settings/contact-reveal");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update contact-reveal settings" };
   }
 }
 

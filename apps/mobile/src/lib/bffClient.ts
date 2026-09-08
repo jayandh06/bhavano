@@ -10,6 +10,7 @@ import type {
   ListingsPage,
   MessageDto,
   PropertyTypeFilter,
+  RevealContactResponseDto,
   ReverseGeocodeResultDto,
   LinkIdentifierResult,
   UpdateProfileInput,
@@ -148,6 +149,14 @@ export function fetchConversation(accessToken: string, conversationId: string): 
 
 export function createConversation(accessToken: string, listingId: string): Promise<{ id: string }> {
   return authedBffFetch(accessToken, "/conversations", { method: "POST", body: JSON.stringify({ listingId }) });
+}
+
+/** Spends a free reveal or a credit (whichever applies) and permanently unlocks this listing's
+ * owner contact for this user. Throws BffError with status 402 when neither is available — the
+ * caller checks `error.status === 402` to know it should point the user at buying credits.
+ * See docs/plans/contact-reveal-credits.md. */
+export function revealContact(accessToken: string, listingId: string): Promise<RevealContactResponseDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/reveal-contact`, { method: "POST" });
 }
 
 export function fetchConversations(accessToken: string): Promise<ConversationSummaryDto[]> {

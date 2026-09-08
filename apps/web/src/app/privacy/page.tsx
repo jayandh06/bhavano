@@ -87,9 +87,10 @@ export default function PrivacyPage() {
       <PageSection heading="3. What we share">
         <p className="m-0">
           We do not sell your personal information. Your name and the contact details you choose to share are
-          visible to another user only once you message them (or they message you) about a specific listing. We may
-          share information with service providers that host our infrastructure (database, file storage) solely to
-          operate the Platform, and where required by law.
+          visible to another user once you message them (or they message you) about a specific listing, or once
+          they unlock your listing&rsquo;s contact details (a free allowance, then a paid credit — see the listing
+          posting flow for details). We may share information with service providers that host our infrastructure
+          (database, file storage) solely to operate the Platform, and where required by law.
         </p>
       </PageSection>
 

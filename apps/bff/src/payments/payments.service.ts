@@ -8,10 +8,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
-import type { CreateBoostOrderResponseDto, CreateSubscriptionOrderResponseDto, SubscriptionTier } from '@bhavano/types';
+import type {
+  CreateBoostOrderResponseDto,
+  CreateContactRevealCreditsOrderResponseDto,
+  CreateSubscriptionOrderResponseDto,
+  SubscriptionTier,
+} from '@bhavano/types';
 import { boostPriceFor, type BoostDurationDays } from '@bhavano/types/boostPricing';
 import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
 import { PrismaService } from '../prisma/prisma.service';
+import { CONTACT_REVEAL_SETTINGS_ID, DEFAULT_CONTACT_REVEAL_SETTINGS } from '../contact-reveal/contact-reveal.constants';
 
 interface RazorpayWebhookPayload {
   event: string;
@@ -70,7 +76,54 @@ export class PaymentsService {
     });
   }
 
-  async createBoostOrder(userId: string, listingId: string, boostDays: BoostDurationDays): Promise<CreateBoostOrderResponseDto> {
+  /** Validates a discount code (active, not expired, under both its total and per-user
+   * redemption caps) without creating a DiscountCodeRedemption row — that only happens once the
+   * webhook confirms `paid`, so an abandoned checkout never consumes a redemption slot. Redemption
+   * counts are checked against DiscountCodeRedemption (not Payment), since only paid orders ever
+   * create one. Throws rather than silently ignoring an invalid code, so a typo doesn't produce a
+   * surprise full-price charge. */
+  private async resolveDiscountCode(
+    code: string | undefined,
+    userId: string,
+  ): Promise<{ id: string; discountPercent: number } | null> {
+    const normalized = code?.trim().toUpperCase();
+    if (!normalized) return null;
+
+    const discountCode = await this.prisma.discountCode.findUnique({ where: { code: normalized } });
+    if (!discountCode || !discountCode.active) {
+      throw new BadRequestException('Invalid discount code');
+    }
+    if (discountCode.expiresAt && discountCode.expiresAt < new Date()) {
+      throw new BadRequestException('This discount code has expired');
+    }
+
+    const [totalRedemptions, userRedemptions] = await Promise.all([
+      discountCode.maxRedemptions != null
+        ? this.prisma.discountCodeRedemption.count({ where: { discountCodeId: discountCode.id } })
+        : Promise.resolve(0),
+      this.prisma.discountCodeRedemption.count({ where: { discountCodeId: discountCode.id, userId } }),
+    ]);
+    if (discountCode.maxRedemptions != null && totalRedemptions >= discountCode.maxRedemptions) {
+      throw new BadRequestException('This discount code has reached its redemption limit');
+    }
+    if (userRedemptions >= discountCode.maxRedemptionsPerUser) {
+      throw new BadRequestException("You've already used this discount code");
+    }
+
+    return { id: discountCode.id, discountPercent: discountCode.discountPercent };
+  }
+
+  private applyDiscount(amountPaise: number, discountPercent: number | undefined): number {
+    if (!discountPercent) return amountPaise;
+    return Math.round((amountPaise * (100 - discountPercent)) / 100);
+  }
+
+  async createBoostOrder(
+    userId: string,
+    listingId: string,
+    boostDays: BoostDurationDays,
+    discountCode?: string,
+  ): Promise<CreateBoostOrderResponseDto> {
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
     if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
@@ -115,7 +168,8 @@ export class PaymentsService {
       }
     }
 
-    const amountInPaise = boostPriceFor(listing.category, boostDays) * 100;
+    const discount = await this.resolveDiscountCode(discountCode, userId);
+    const amountInPaise = this.applyDiscount(boostPriceFor(listing.category, boostDays) * 100, discount?.discountPercent);
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
@@ -133,6 +187,7 @@ export class PaymentsService {
         purpose: 'listing_boost',
         listingId,
         boostDays,
+        discountCodeId: discount?.id,
       },
     });
 
@@ -150,6 +205,7 @@ export class PaymentsService {
     tier: SubscriptionTier,
     months: number,
     agentProUnits = 1,
+    discountCode?: string,
   ): Promise<CreateSubscriptionOrderResponseDto> {
     if (tier === 'agentPro') {
       if (months !== 1) throw new BadRequestException('Agent/Broker Pro is available as a monthly subscription only');
@@ -158,7 +214,8 @@ export class PaymentsService {
     }
 
     const units = tier === 'agentPro' ? Math.max(1, Math.min(agentProUnits, 20)) : 1;
-    const amountInPaise = subscriptionPriceFor(tier, months, units) * 100;
+    const discount = await this.resolveDiscountCode(discountCode, userId);
+    const amountInPaise = this.applyDiscount(subscriptionPriceFor(tier, months, units) * 100, discount?.discountPercent);
     const purpose =
       tier === 'buyerPremium' ? 'buyer_premium' : tier === 'agentPro' ? 'agent_pro' : 'seller_slot_pack';
 
@@ -178,6 +235,50 @@ export class PaymentsService {
         purpose,
         subscriptionMonths: months,
         agentProUnits: tier === 'agentPro' ? units : null,
+        discountCodeId: discount?.id,
+      },
+    });
+
+    return {
+      paymentId: payment.id,
+      razorpayOrderId: order.id,
+      razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
+      amount: amountInPaise,
+      currency: 'INR',
+    };
+  }
+
+  /** Pack size/price are never client-supplied — always read from the current
+   * ContactRevealSetting row (or its defaults, if no admin has saved it yet), same
+   * find-or-fallback style as RateLimitService.getSettings, just inlined here rather than via a
+   * cross-module service call — this file's other create*Order methods are all direct-Prisma. */
+  async createContactRevealCreditsOrder(
+    userId: string,
+    discountCode?: string,
+  ): Promise<CreateContactRevealCreditsOrderResponseDto> {
+    const settings =
+      (await this.prisma.contactRevealSetting.findUnique({ where: { id: CONTACT_REVEAL_SETTINGS_ID } })) ??
+      DEFAULT_CONTACT_REVEAL_SETTINGS;
+
+    const discount = await this.resolveDiscountCode(discountCode, userId);
+    const amountInPaise = this.applyDiscount(settings.creditPackPriceRupees * 100, discount?.discountPercent);
+
+    const order = await this.getRazorpay().orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `contact_reveal_credits_${userId}_${Date.now()}`,
+      notes: { purpose: 'contact_reveal_credits', creditPackSize: String(settings.creditPackSize) },
+    });
+
+    const payment = await this.prisma.payment.create({
+      data: {
+        userId,
+        razorpayOrderId: order.id,
+        amount: amountInPaise,
+        currency: 'INR',
+        purpose: 'contact_reveal_credits',
+        creditPackSize: settings.creditPackSize,
+        discountCodeId: discount?.id,
       },
     });
 
@@ -254,6 +355,32 @@ export class PaymentsService {
       });
       await this.ensureProBoostCreditForMonth(payment.userId);
       this.logger.log(`agentPro (${units} units) for user ${payment.userId} until ${endsAt.toISOString()}`);
+    }
+
+    if (payment.purpose === 'contact_reveal_credits' && payment.creditPackSize) {
+      const settings =
+        (await this.prisma.contactRevealSetting.findUnique({ where: { id: CONTACT_REVEAL_SETTINGS_ID } })) ??
+        DEFAULT_CONTACT_REVEAL_SETTINGS;
+      const expiresAt = new Date(Date.now() + settings.creditExpiryMonths * 30 * 24 * 60 * 60 * 1000);
+      await this.prisma.contactRevealCreditBatch.create({
+        data: {
+          userId: payment.userId,
+          paymentId: payment.id,
+          creditsGranted: payment.creditPackSize,
+          creditsRemaining: payment.creditPackSize,
+          expiresAt,
+        },
+      });
+      this.logger.log(`${payment.creditPackSize} contact-reveal credits granted to user ${payment.userId}, expiring ${expiresAt.toISOString()}`);
+    }
+
+    // Applies to every purpose above, not just one — a discount code is redeemable across all
+    // paid products. Created only now (payment confirmed paid), never at order-creation, so an
+    // abandoned checkout never consumes a redemption slot.
+    if (payment.discountCodeId) {
+      await this.prisma.discountCodeRedemption.create({
+        data: { discountCodeId: payment.discountCodeId, userId: payment.userId, paymentId: payment.id },
+      });
     }
   }
 }

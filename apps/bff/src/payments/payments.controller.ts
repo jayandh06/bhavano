@@ -1,13 +1,18 @@
 import { Body, Controller, HttpCode, Headers, Post, Req, UseGuards } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
-import type { CreateBoostOrderResponseDto, CreateSubscriptionOrderResponseDto } from '@bhavano/types';
+import type {
+  CreateBoostOrderResponseDto,
+  CreateContactRevealCreditsOrderResponseDto,
+  CreateSubscriptionOrderResponseDto,
+} from '@bhavano/types';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { PaymentsService } from './payments.service';
 import { CreateBoostOrderDto } from './dto/create-boost-order.dto';
 import { CreateSubscriptionOrderDto } from './dto/create-subscription-order.dto';
+import { CreateContactRevealCreditsOrderDto } from './dto/create-contact-reveal-credits-order.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -16,7 +21,7 @@ export class PaymentsController {
   @Post('orders')
   @UseGuards(AuthGuard)
   createOrder(@Body() dto: CreateBoostOrderDto, @CurrentUser() user: RequestUser): Promise<CreateBoostOrderResponseDto> {
-    return this.paymentsService.createBoostOrder(user.id, dto.listingId, dto.boostDays);
+    return this.paymentsService.createBoostOrder(user.id, dto.listingId, dto.boostDays, dto.discountCode);
   }
 
   @Post('subscriptions')
@@ -25,7 +30,16 @@ export class PaymentsController {
     @Body() dto: CreateSubscriptionOrderDto,
     @CurrentUser() user: RequestUser,
   ): Promise<CreateSubscriptionOrderResponseDto> {
-    return this.paymentsService.createSubscriptionOrder(user.id, dto.tier, dto.months, dto.agentProUnits);
+    return this.paymentsService.createSubscriptionOrder(user.id, dto.tier, dto.months, dto.agentProUnits, dto.discountCode);
+  }
+
+  @Post('contact-reveal-credits')
+  @UseGuards(AuthGuard)
+  createContactRevealCreditsOrder(
+    @Body() dto: CreateContactRevealCreditsOrderDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<CreateContactRevealCreditsOrderResponseDto> {
+    return this.paymentsService.createContactRevealCreditsOrder(user.id, dto.discountCode);
   }
 
   /** Public (no AuthGuard) — Razorpay calls this server-to-server, authenticated by HMAC

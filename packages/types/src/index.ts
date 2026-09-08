@@ -35,7 +35,12 @@ export type RateLimitKind = "publish" | "view";
 export type ListingSlotUpsell = import("./listingSlots").ListingSlotUpsell;
 export type { ListingSlotCapErrorBody } from "./listingSlots";
 
-export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro" | "seller_slot_pack";
+export type PaymentPurpose =
+  | "listing_boost"
+  | "buyer_premium"
+  | "agent_pro"
+  | "seller_slot_pack"
+  | "contact_reveal_credits";
 
 /** buyerPremium = Bhavano Plus; agentPro = broker slots + storefront; sellerSlotPack = +5 slots (10 total). */
 export type SubscriptionTier = "buyerPremium" | "agentPro" | "sellerSlotPack";
@@ -176,6 +181,22 @@ export interface ListingDetailDto extends ListingCardDto {
    * at posting time. */
   lat?: number;
   lng?: number;
+  /** Whether the requesting viewer has already unlocked this listing's owner contact — always
+   * derived server-side from a real ContactReveal row (see docs/plans/contact-reveal-credits.md),
+   * never a cached flag. `ownerPhone`/`ownerEmail` are only ever populated when this is true; the
+   * raw JSON response never carries them otherwise, so there's nothing to hide client-side. */
+  contactRevealed: boolean;
+  ownerPhone: string | null;
+  ownerEmail: string | null;
+  /** Only meaningful when `contactRevealed` is false — what unlocking would cost this viewer,
+   * so the "View Contact" button can show the right label without a second round trip.
+   * Undefined for an anonymous viewer (not logged in yet). */
+  revealMethod?: "free" | "credit" | "insufficient";
+  /** The current admin-configured credit pack, inlined here (rather than a separate settings
+   * fetch) so the purchase sheet can render off this same response — present whenever
+   * `revealMethod` is `"credit"` or `"insufficient"`. */
+  creditPackSize?: number;
+  creditPackPriceRupees?: number;
 }
 
 export interface ListingRenewalDto {
@@ -605,6 +626,65 @@ export interface CreateSubscriptionOrderResponseDto {
   razorpayKeyId: string;
   amount: number;
   currency: string;
+}
+
+export interface RevealContactResponseDto {
+  ownerPhone: string | null;
+  ownerEmail: string | null;
+}
+
+/** Admin-editable contact-reveal settings — same singleton-row convention as
+ * RateLimitSettingsDto. See docs/plans/contact-reveal-credits.md. */
+export interface ContactRevealSettingsDto {
+  freeRevealsPerUser: number;
+  creditPackSize: number;
+  creditPackPriceRupees: number;
+  creditExpiryMonths: number;
+}
+
+export type UpdateContactRevealSettingsInput = ContactRevealSettingsDto;
+
+/** Pack size/price are never client-supplied — always read from ContactRevealSetting
+ * server-side. `discountCode` is optional, validated server-side against DiscountCode. */
+export interface CreateContactRevealCreditsOrderInput {
+  discountCode?: string;
+}
+
+/** Same shape as CreateBoostOrderResponseDto/CreateSubscriptionOrderResponseDto — its own named
+ * type for the same reason CreateSubscriptionOrderResponseDto is. */
+export interface CreateContactRevealCreditsOrderResponseDto {
+  paymentId: string;
+  razorpayOrderId: string;
+  razorpayKeyId: string;
+  amount: number;
+  currency: string;
+}
+
+/** Admin-managed coupon — not tied to a referring user — redeemable across every paid purpose. */
+export interface DiscountCodeDto {
+  id: string;
+  code: string;
+  discountPercent: number;
+  maxRedemptions: number | null;
+  maxRedemptionsPerUser: number;
+  redemptionCount: number;
+  expiresAt: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface CreateDiscountCodeInput {
+  code: string;
+  discountPercent: number;
+  maxRedemptions?: number;
+  maxRedemptionsPerUser?: number;
+  expiresAt?: string;
+}
+
+export interface AdminDiscountCodesPage {
+  items: DiscountCodeDto[];
+  nextCursor: string | null;
+  total: number;
 }
 
 /** A public, unauthenticated storefront for any user with active listings — Agent Pro

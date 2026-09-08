@@ -79,6 +79,7 @@ enum PaymentPurpose {
   buyer_premium
   agent_pro
   seller_slot_pack
+  contact_reveal_credits
 }
 
 enum SubscriptionTier {
@@ -222,6 +223,9 @@ model User {
   /** Denormalized seller add-on (10 concurrent slots) — see sellerSlotPack subscription tier. */
   sellerSlotPackUntil   DateTime?
   proBoostCredits       ProBoostCredit[]
+  contactRevealCreditBatches ContactRevealCreditBatch[]
+  contactReveals        ContactReveal[]
+  discountCodeRedemptions DiscountCodeRedemption[]
   /** First-touch attribution: the UTM source/medium/campaign of the link the user first landed
    * on, or the external Referer hostname with medium "referral" if untagged, or source "direct"
    * if neither was present. Captured by apps/web's middleware.ts on the user's very first visit
@@ -327,6 +331,7 @@ model Listing {
   listingBoosts    ListingBoost[]
   notificationLogs ListingNotificationLog[]
   listingRenewals  ListingRenewal[]
+  contactReveals   ContactReveal[]
 
   @@index([cityId, category])
   @@index([cityId, transactionType])
@@ -649,10 +654,20 @@ model Payment {
   subscriptionMonths Int?
   /** agent_pro orders only — number of ₹499 blocks purchased (20 slots each). */
   agentProUnits     Int?
+  /** contact_reveal_credits orders only — how many credits this order buys, read from
+   * ContactRevealSetting at order-creation time (never client-supplied). */
+  creditPackSize    Int?
+  /** Set when a DiscountCode was applied at order-creation. The redemption row itself
+   * (DiscountCodeRedemption) is only created once the webhook confirms `paid` — an abandoned
+   * checkout must not consume a redemption slot. */
+  discountCodeId    String?
+  discountCode      DiscountCode?  @relation(fields: [discountCodeId], references: [id])
   createdAt         DateTime       @default(now())
   paidAt            DateTime?
   listingBoost      ListingBoost?
   subscription      UserSubscription?
+  contactRevealCreditBatch ContactRevealCreditBatch?
+  discountCodeRedemption   DiscountCodeRedemption?
 
   @@index([userId, createdAt])
 }
@@ -766,6 +781,92 @@ model ProBoostCredit {
   createdAt  DateTime  @default(now())
 
   @@unique([userId, monthKey])
+}
+
+/// ---------------------------------------------------------------------------
+/// Contact reveal credits + discount codes — see docs/plans/contact-reveal-credits.md
+/// ---------------------------------------------------------------------------
+
+/** One row per purchased credit pack — a real balance ledger, not a flat counter, so credits can
+ * expire correctly: spending always draws from the batch with the earliest `expiresAt` first
+ * among ones with `creditsRemaining > 0`, and an expired batch's leftover credits just stop being
+ * selected — no cleanup job needed. */
+model ContactRevealCreditBatch {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentId        String   @unique
+  payment          Payment  @relation(fields: [paymentId], references: [id])
+  creditsGranted   Int
+  creditsRemaining Int
+  purchasedAt      DateTime @default(now())
+  expiresAt        DateTime
+  reveals          ContactReveal[]
+
+  @@index([userId, expiresAt])
+}
+
+/** One row per (user, listing) contact reveal — permanent once created, same "derive current
+ * state by querying the log, never trust a cached boolean" convention as the admin Users page's
+ * `welcomed` derivation from UserNotificationLog. `source` is a plain string ("free" | "credit"),
+ * matching ListingNotificationLog/UserNotificationLog's `kind`/`channel` convention rather than
+ * its own enum. */
+model ContactReveal {
+  id            String                    @id @default(cuid())
+  listingId     String
+  listing       Listing                   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source        String
+  creditBatchId String?
+  creditBatch   ContactRevealCreditBatch? @relation(fields: [creditBatchId], references: [id])
+  createdAt     DateTime                  @default(now())
+
+  @@unique([listingId, userId])
+  @@index([userId, createdAt])
+}
+
+/** Singleton row (fixed id "singleton", upserted) — the admin-editable contact-reveal settings,
+ * same convention as RateLimitSetting. */
+model ContactRevealSetting {
+  id                    String   @id
+  freeRevealsPerUser    Int      @default(2)
+  creditPackSize        Int      @default(5)
+  creditPackPriceRupees Int      @default(125)
+  creditExpiryMonths    Int      @default(6)
+  updatedAt             DateTime @updatedAt
+}
+
+/** Admin-managed coupon — not tied to a referring user — redeemable across every paid purpose
+ * (listing_boost, buyer_premium, agent_pro, seller_slot_pack, contact_reveal_credits). `code` is
+ * stored/matched uppercase. */
+model DiscountCode {
+  id                    String    @id @default(cuid())
+  code                  String    @unique
+  discountPercent       Int
+  maxRedemptions        Int?
+  maxRedemptionsPerUser Int       @default(1)
+  expiresAt             DateTime?
+  active                Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  payments              Payment[]
+  redemptions           DiscountCodeRedemption[]
+}
+
+/** Created only once a Payment reaches `paid` (in the webhook), never at order-creation — an
+ * abandoned checkout must not consume a redemption slot. Mirrors ListingBoost/UserSubscription
+ * being created in the webhook branch rather than in createXOrder. */
+model DiscountCodeRedemption {
+  id             String       @id @default(cuid())
+  discountCodeId String
+  discountCode   DiscountCode @relation(fields: [discountCodeId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  paymentId      String       @unique
+  payment        Payment      @relation(fields: [paymentId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([discountCodeId, userId])
 }
 
 /// ---------------------------------------------------------------------------

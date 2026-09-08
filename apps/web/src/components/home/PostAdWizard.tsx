@@ -970,6 +970,10 @@ export function PostAdWizard({
             <p className="text-[#b3413a] text-[13px]">{error}</p>
           ) : null}
 
+          <p className="m-0 text-[12px] text-muted">
+            Your phone/email may be shown to users who unlock this listing&rsquo;s contact details.
+          </p>
+
           <div className="flex gap-2.5">
             <button
               onClick={() => setStep("details")}

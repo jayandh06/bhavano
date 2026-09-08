@@ -1,16 +1,18 @@
 "use server";
 
-import type { CreateListingInput, ListingDetailDto, UpdateListingInput } from "@bhavano/types";
+import type { CreateListingInput, ListingDetailDto, RevealContactResponseDto, UpdateListingInput } from "@bhavano/types";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { ListingSlotCapError } from "@/lib/listingSlotErrors";
 import { auth } from "@/auth";
 import {
   BffAuthError,
+  InsufficientContactRevealCreditsError,
   createListing,
   deleteListingVideo,
   fetchMyListings,
   recordView,
   renewListing,
+  revealContact,
   rotateOwnListingPhoto,
   setOwnListingCoverPhoto,
   toggleFavourite,
@@ -70,6 +72,30 @@ export async function toggleFavouriteAction(listingId: string): Promise<ToggleFa
 
   const result = await toggleFavourite(session.accessToken, listingId);
   return { requiresLogin: false, ...result };
+}
+
+export type RevealContactResult =
+  | { requiresLogin: true }
+  | { requiresLogin: false; insufficientCredits: true }
+  | { requiresLogin: false; insufficientCredits: false; contact: RevealContactResponseDto }
+  | { requiresLogin: false; insufficientCredits: false; error: string };
+
+export async function revealContactAction(listingId: string): Promise<RevealContactResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { requiresLogin: true };
+
+  try {
+    const contact = await revealContact(session.accessToken, listingId);
+    return { requiresLogin: false, insufficientCredits: false, contact };
+  } catch (error) {
+    if (error instanceof BffAuthError) return { requiresLogin: true };
+    if (error instanceof InsufficientContactRevealCreditsError) return { requiresLogin: false, insufficientCredits: true };
+    return {
+      requiresLogin: false,
+      insufficientCredits: false,
+      error: error instanceof Error ? error.message : "Failed to unlock contact",
+    };
+  }
 }
 
 export async function fetchMyListingsAction(): Promise<ListingDetailDto[]> {

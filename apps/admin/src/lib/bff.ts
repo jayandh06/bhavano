@@ -1,11 +1,15 @@
 import "server-only";
 import type {
+  AdminDiscountCodesPage,
   AdminListingsPage,
   AdminUsersPage,
   Area,
   AuthSession,
   City,
+  ContactRevealSettingsDto,
   ConversationSummaryDto,
+  CreateDiscountCodeInput,
+  DiscountCodeDto,
   FlagListingInput,
   ListingBoostsPage,
   ListingCategory,
@@ -323,6 +327,40 @@ export function fetchBoosts(accessToken: string, query: ListBoostsQuery = {}): P
 
 export function revokeBoost(accessToken: string, listingId: string): Promise<{ success: true }> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/revoke-boost`, { method: "POST" });
+}
+
+export function fetchContactRevealSettings(accessToken: string): Promise<ContactRevealSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/contact-reveal-settings", { cache: "no-store" });
+}
+
+export function updateContactRevealSettings(
+  accessToken: string,
+  input: ContactRevealSettingsDto,
+): Promise<ContactRevealSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/contact-reveal-settings", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export interface ListDiscountCodesQuery {
+  cursor?: string;
+  limit?: number;
+}
+
+export function fetchDiscountCodes(
+  accessToken: string,
+  query: ListDiscountCodesQuery = {},
+): Promise<AdminDiscountCodesPage> {
+  const params = new URLSearchParams();
+  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.limit) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/discount-codes?${params.toString()}`, { cache: "no-store" });
+}
+
+export function createDiscountCode(accessToken: string, input: CreateDiscountCodeInput): Promise<DiscountCodeDto> {
+  return authedBffFetch(accessToken, "/admin/discount-codes", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function setDiscountCodeActive(accessToken: string, id: string, active: boolean): Promise<DiscountCodeDto> {
+  return authedBffFetch(accessToken, `/admin/discount-codes/${id}`, { method: "PATCH", body: JSON.stringify({ active }) });
 }
 
 // --- Outreach / campaigns ---------------------------------------------------

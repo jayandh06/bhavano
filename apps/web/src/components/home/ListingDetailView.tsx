@@ -234,6 +234,12 @@ export async function ListingDetailView({
                 initialIsFavourited={listing.isFavourited}
                 initialLikeCount={listing.likeCount}
                 isOwner={listing.isOwner}
+                initialContactRevealed={listing.contactRevealed}
+                initialOwnerPhone={listing.ownerPhone}
+                initialOwnerEmail={listing.ownerEmail}
+                revealMethod={listing.revealMethod}
+                creditPackSize={listing.creditPackSize}
+                creditPackPriceRupees={listing.creditPackPriceRupees}
               />
             )}
           </aside>
