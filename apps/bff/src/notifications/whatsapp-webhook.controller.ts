@@ -10,11 +10,14 @@ import { PrismaService } from '../prisma/prisma.service';
  * so the secret path segment is the only thing standing in for that. Public (no AuthGuard): MSG91
  * calls this server-to-server with no bearer token.
  *
- * The exact payload shape is not confirmed against a real event yet — every call is captured
- * verbatim into WhatsappWebhookEvent regardless of whether it parses (see that model's own doc
- * comment for why), so the real shape can be read back once a live status event actually arrives.
- * `extractStatus` below is a first guess at common MSG91/WhatsApp field names — update it, and
- * only it, once a real payload is on hand rather than trusting this blind.
+ * Every call is still captured verbatim into WhatsappWebhookEvent regardless of whether it parses
+ * (see that model's own doc comment for why) — that stopped being a hedge against total ignorance
+ * once MSG91's dashboard "Test Webhook" button delivered a real sample payload on 2026-09-08, and
+ * is now just a durable audit trail. `extractStatus` below reads real confirmed field names from
+ * that sample (`eventName`, `uuid`, `requestId`) rather than a guess — see its own comment for
+ * what's still unconfirmed (which of `uuid`/`requestId` actually matches what
+ * Msg91Provider.sendAdPostedConfirmation's own send response returns; both are tried until one is
+ * ruled out against a real correlated send).
  */
 @Controller('webhooks')
 export class WhatsappWebhookController {
@@ -40,42 +43,39 @@ export class WhatsappWebhookController {
     });
     this.logger.log(`MSG91 webhook received: ${JSON.stringify(body)}`);
 
-    const { messageId, status } = this.extractStatus(body);
-    if (messageId && status) {
+    const { messageIds, status } = this.extractStatus(body);
+    if (messageIds.length > 0 && status) {
       const updated = await this.prisma.listingNotificationLog.updateMany({
-        where: { providerMessageId: messageId },
+        where: { providerMessageId: { in: messageIds } },
         data: { deliveryStatus: status, deliveryStatusAt: new Date() },
       });
       if (updated.count === 0) {
         this.logger.warn(
-          `MSG91 webhook status "${status}" for unrecognized messageId ${messageId} — no matching ListingNotificationLog row`,
+          `MSG91 webhook status "${status}" for unrecognized message id(s) ${messageIds.join(', ')} — no matching ListingNotificationLog row`,
         );
       }
     } else {
       this.logger.warn(
-        'MSG91 webhook payload did not match any known shape — read WhatsappWebhookEvent to learn the real one and fix extractStatus.',
+        'MSG91 webhook payload missing eventName/uuid/requestId — read WhatsappWebhookEvent to see what actually arrived.',
       );
     }
 
     return { received: true };
   }
 
-  /** Best-effort guess at MSG91's WhatsApp status webhook shape — unverified against a real
-   * payload, so it tries a handful of plausible field names/paths rather than trusting one.
-   * Replace this once WhatsappWebhookEvent has captured a real event to read the actual shape
-   * from — same "trust what MSG91 actually sends, not generic docs" lesson
-   * Msg91Provider.sendWhatsappTemplate's own doc comment already learned once, for the send side. */
-  private extractStatus(body: unknown): { messageId: string | null; status: string | null } {
-    if (!body || typeof body !== 'object') return { messageId: null, status: null };
+  /** Confirmed against a real MSG91 "Test Webhook" sample payload (see this class's own doc
+   * comment) — NOT a guess. Fields seen: `eventName` ("Delivered"/"Sent"/"Read"/"Failed", title
+   * case — lowercased here to match ListingNotificationLog.deliveryStatus's convention), `uuid`
+   * (WhatsApp's own wamid.-prefixed message id) and `requestId` (MSG91's own id for the same
+   * send). Still unconfirmed: which of those two ids is what
+   * Msg91Provider.sendAdPostedConfirmation's send response actually returns and stores as
+   * providerMessageId — both are matched against until a real correlated send settles it, at
+   * which point this can drop to whichever one actually matched. */
+  private extractStatus(body: unknown): { messageIds: string[]; status: string | null } {
+    if (!body || typeof body !== 'object') return { messageIds: [], status: null };
     const b = body as Record<string, unknown>;
-    const data = (b.data ?? {}) as Record<string, unknown>;
-    const messageId = [b.messageId, b.message_id, b.msg_id, b.id, data.messageId, data.message_id, data.id].find(
-      (v) => typeof v === 'string',
-    );
-    const status = [b.status, b.event, b.type, data.status].find((v) => typeof v === 'string');
-    return {
-      messageId: typeof messageId === 'string' ? messageId : null,
-      status: typeof status === 'string' ? status.toLowerCase() : null,
-    };
+    const messageIds = [b.uuid, b.requestId].filter((v): v is string => typeof v === 'string' && v.length > 0);
+    const status = typeof b.eventName === 'string' ? b.eventName.toLowerCase() : null;
+    return { messageIds, status };
   }
 }
