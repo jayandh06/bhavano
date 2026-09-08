@@ -102,6 +102,33 @@ export class LocationsService {
     return this.prisma.area.create({ data: { name: trimmed, cityId, source: 'user-submitted' } });
   }
 
+  /** Haversine nearest curated city — scoped to a single use: `reverseGeocodeGoogle`'s small-town
+   * case, where Google has no distinct sublocality and the old logic created a new city whose name
+   * duplicated its own area name (e.g. "Porvorim, Porvorim"). Not the IP-based automatic-guess
+   * nearest-city lookup removed in docs/plans/remove-automatic-ip-city-detection.md — this only
+   * runs for a pin the user explicitly dropped, and only ever considers curated (seeded) cities so
+   * a bad user-submitted city can never become the "nearest" answer for the next pin dropped near it. */
+  private async findNearestCuratedCity(lat: number, lng: number): Promise<City | null> {
+    const curated = await this.prisma.city.findMany({ where: { source: 'curated' } });
+    if (curated.length === 0) return null;
+
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const distanceKm = (aLat: number, aLng: number, bLat: number, bLng: number) => {
+      const R = 6371;
+      const dLat = toRad(bLat - aLat);
+      const dLng = toRad(bLng - aLng);
+      const a =
+        Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    return curated.reduce((nearest, candidate) => {
+      const candidateDist = distanceKm(lat, lng, candidate.lat, candidate.lng);
+      const nearestDist = distanceKm(lat, lng, nearest.lat, nearest.lng);
+      return candidateDist < nearestDist ? candidate : nearest;
+    });
+  }
+
   /** Case-insensitive match on (name, state) first, so casing variants of an already-known city
    * don't create a duplicate — mirrors `ensureArea`'s semantics. Unlike `ensureArea`, City can
    * come back `null`: a same-slug collision with an existing city in a *different* state would be
@@ -169,6 +196,11 @@ export class LocationsService {
     );
     const state = result.address_components.find((c) => c.types.includes('administrative_area_level_1'));
     const resolvedLocality = sublocality?.long_name ?? locality?.long_name ?? '';
+    // A distinct sublocality means a real neighborhood inside a real city (Koramangala,
+    // Bengaluru) — the normal case below. No sublocality, or one identical to the locality
+    // itself, means Google has nothing finer-grained than the town name: creating a city named
+    // after that same string is exactly what produced "Porvorim, Porvorim".
+    const noDistinctSublocality = !sublocality || sublocality.long_name === locality?.long_name;
 
     let city = locality
       ? await this.prisma.city.findFirst({ where: { name: { equals: locality.long_name, mode: 'insensitive' } } })
@@ -176,8 +208,16 @@ export class LocationsService {
     let isNewCity = false;
 
     if (!city && locality && state) {
-      city = await this.ensureCity(locality.long_name, state.long_name, lat, lng);
-      isNewCity = city !== null;
+      if (noDistinctSublocality) {
+        // Small-town case: don't mint a new self-named city. Attach it as an area under the
+        // nearest curated city instead — ensureArea's own existing-match check means an area
+        // that's already correctly curated there (e.g. Porvorim under Panaji) gets reused
+        // rather than duplicated.
+        city = await this.findNearestCuratedCity(lat, lng);
+      } else {
+        city = await this.ensureCity(locality.long_name, state.long_name, lat, lng);
+        isNewCity = city !== null;
+      }
     }
 
     const area = city && resolvedLocality ? await this.ensureArea(city.id, resolvedLocality) : null;

@@ -78,22 +78,29 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     setShowLoginModal(false);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2200);
-    // The header's logged-in state is a server-resolved `userName` prop (see Header ->
-    // HeaderAuthButtons), so signing in server-side is not enough on its own: without this the
-    // client keeps the RSC payload it rendered while logged out and the header still says
-    // "Login" until the next navigation. Google sign-in avoids this only because it is a
-    // full-page redirect.
-    // A caller that named a destination gets sent there; everyone else stays put. The refresh
-    // is needed either way — the header's logged-in state is a server-rendered prop, so without
-    // it the client keeps the RSC payload it rendered while logged out.
-    if (redirectTo) router.push(redirectTo);
-    router.refresh();
 
     // Cleared before calling, so a caller that somehow triggers another login from inside its
     // own callback cannot re-enter this one.
     const resume = onSuccessRef.current;
     onSuccessRef.current = undefined;
-    resume?.();
+
+    // Run the resume/redirect FIRST, then refresh — not the other way around. `resume` (e.g.
+    // ListingCard's onMessage) often navigates away itself (router.push to /messages/[id]); a
+    // refresh() queued *before* that push targets the page being navigated away from, and since
+    // refresh() is async it can land after the push and briefly repaint the old page before the
+    // push's own render wins — the exact "flashes the destination, then reverts" bug this order
+    // fixes. Running refresh() last means it always applies to whatever the current route
+    // actually is by the time it fires.
+    if (resume) resume();
+    else if (redirectTo) router.push(redirectTo);
+
+    // The header's logged-in state is a server-resolved `userName` prop (see Header ->
+    // HeaderAuthButtons), so signing in server-side is not enough on its own: without this the
+    // client keeps the RSC payload it rendered while logged out and the header still says
+    // "Login" until the next navigation. Google sign-in avoids this only because it is a
+    // full-page redirect. Needed whether or not we navigated above — it just applies to
+    // whichever route is current now.
+    router.refresh();
   }
 
   async function handleSendOtp() {

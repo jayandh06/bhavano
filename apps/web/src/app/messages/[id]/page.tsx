@@ -7,6 +7,7 @@ import { MessageThread } from "@/components/home/MessageThread";
 import { resolveDefaultCity } from "@/lib/defaultCity";
 import { PageHeader } from "@/components/home/PageHeader";
 import { Footer } from "@/components/home/Footer";
+import { Icon } from "@/components/home/Icon";
 
 export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -70,12 +71,18 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
             Messages
           </Link>
           <span aria-hidden className="text-muted">/</span>
+          {/* Styled as an actual link (green, underline on hover, trailing chevron) rather than
+            * plain bold text — the old text-text/font-bold combo read identically to a static
+            * page heading, giving no visual cue that clicking it goes anywhere. Matches the
+            * mobile app's equivalent "View ad" bar, which already uses green + a chevron for the
+            * same reason. */}
           <Link
             href={buildListingPath(conversation.listing)}
-            className="text-text font-bold truncate"
+            className="text-green font-bold truncate hover:underline inline-flex items-center gap-1 min-w-0"
             title={conversation.listing.title}
           >
-            {conversation.listing.title}
+            <span className="truncate">{conversation.listing.title}</span>
+            <Icon name="chevronRight" className="shrink-0 text-[11px]" />
           </Link>
         </nav>
         <MessageThread
