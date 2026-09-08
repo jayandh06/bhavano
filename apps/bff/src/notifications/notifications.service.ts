@@ -337,24 +337,27 @@ export class NotificationsService {
         user.email,
         renderTemplate(tpl.subject, vars),
         text,
-        { html },
+        { html, bcc: 'support@bhavano.com' },
       );
       return 'email';
     }
 
     if (user.phone) {
-      const template = this.config.get<string>(
-        'WHATSAPP_LISTING_POSTED_TEMPLATE',
-      );
-      if (!template) return null;
-      // The button's fixed prefix is baked into the approved template itself (see
-      // whatsapp_create_listing_posted_template.py's BUTTON_URL_BASE) — only the suffix after it
-      // is a per-send variable, so `path` (already leading with "/") has its own leading slash
-      // stripped to avoid a doubled one.
-      const sent = await this.whatsapp.sendTemplate(
+      // Via MSG91's "ad_posted_confirmation" template, not the Meta-direct WhatsappProvider used
+      // elsewhere in this file — see Msg91Provider.sendAdPostedConfirmation. The template repeats
+      // the listing title twice in its own wording (title1/title2), so both map to the same
+      // value; location is "area, city" to match how the rest of the app renders a listing's
+      // location. The button's fixed prefix is baked into the approved template itself — only
+      // the suffix after it is a per-send variable, so `path` (already leading with "/") has its
+      // own leading slash stripped to avoid a doubled one.
+      const sent = await this.msg91.sendAdPostedConfirmation(
         user.phone,
-        template,
-        vars,
+        {
+          name: vars.name,
+          title1: listing.title,
+          title2: listing.title,
+          location: `${listing.area}, ${listing.cityName}`,
+        },
         path.replace(/^\//, ''),
       );
       return sent ? 'whatsapp' : null;

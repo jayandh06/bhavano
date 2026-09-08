@@ -202,4 +202,105 @@ export class Msg91Provider {
       return false;
     }
   }
+
+  /** WhatsApp via MSG91 — the ad-posted-confirmation notification (see
+   * NotificationsService.notifyListingPosted), sent once an advertiser's listing goes live.
+   * Reuses the welcome template's integrated number and namespace above (one WABA account
+   * shared across templates); only the template name is specific to this notification —
+   * MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME = "ad_posted_confirmation".
+   *
+   * Four named body variables (name, title1, title2, location — the approved template repeats
+   * the listing title twice in its own wording, so both map to the same value) plus one dynamic
+   * URL button variable, in the exact shape MSG91's dashboard "Code" snippet gives for this
+   * template — same lesson as sendWhatsappTemplate above: trust that snippet over a generic
+   * docs example. */
+  async sendAdPostedConfirmation(
+    phone: string,
+    vars: { name: string; title1: string; title2: string; location: string },
+    buttonUrlSuffix: string,
+  ): Promise<boolean> {
+    const authKey = this.config.get<string>('MSG91_AUTH_KEY');
+    const integratedNumber = this.config.get<string>(
+      'MSG91_WHATSAPP_INTEGRATED_NUMBER',
+    );
+    const template = this.config.get<string>(
+      'MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME',
+    );
+    const namespace = this.config.get<string>('MSG91_WHATSAPP_NAMESPACE');
+    if (!authKey || !integratedNumber || !template || !namespace) {
+      this.logger.warn(
+        `MSG91 WhatsApp not configured (MSG91_WHATSAPP_INTEGRATED_NUMBER/` +
+          `MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME/MSG91_WHATSAPP_NAMESPACE) — skipping ad-posted WhatsApp to ${phone}`,
+      );
+      return false;
+    }
+
+    try {
+      const res = await fetch(
+        'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
+        {
+          method: 'POST',
+          headers: { authkey: authKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            integrated_number: integratedNumber,
+            content_type: 'template',
+            payload: {
+              messaging_product: 'whatsapp',
+              type: 'template',
+              template: {
+                name: template,
+                language: { code: 'en', policy: 'deterministic' },
+                namespace,
+                to_and_components: [
+                  {
+                    to: [`91${phone}`],
+                    components: {
+                      body_name: {
+                        type: 'text',
+                        value: vars.name,
+                        parameter_name: 'name',
+                      },
+                      body_title1: {
+                        type: 'text',
+                        value: vars.title1,
+                        parameter_name: 'title1',
+                      },
+                      body_title2: {
+                        type: 'text',
+                        value: vars.title2,
+                        parameter_name: 'title2',
+                      },
+                      body_location: {
+                        type: 'text',
+                        value: vars.location,
+                        parameter_name: 'location',
+                      },
+                      button_1: {
+                        subtype: 'url',
+                        type: 'text',
+                        value: buttonUrlSuffix,
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          }),
+        },
+      );
+      const responseBody = await res.text();
+      if (!res.ok || responseBody.includes('"error"')) {
+        this.logger.error(
+          `MSG91 WhatsApp ad-posted send failed (${res.status}): ${responseBody}`,
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to send ad-posted WhatsApp to ${phone}: ${error instanceof Error ? error.message : error}`,
+      );
+      return false;
+    }
+  }
 }
