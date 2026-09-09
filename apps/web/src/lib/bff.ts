@@ -264,6 +264,32 @@ export function setOwnListingCoverPhoto(
   return authedBffFetch(accessToken, `/listings/${listingId}/photos/${photoNo}/set-cover`, { method: "POST" });
 }
 
+/** Not routed through bffFetch/authedBffFetch — same reason as uploadPhoto below: those force a
+ * JSON Content-Type, which would strip the multipart boundary fetch generates for a FormData
+ * body. Photos are capped at 4MB, well under a Server Action's 12MB body limit, so this stays on
+ * the Server Action path (unlike video's addVideoToListing, which has to bypass it via direct
+ * XHR — see lib/videoUpload.ts). */
+export async function addOwnListingPhoto(
+  formData: FormData,
+  accessToken: string,
+  listingId: string,
+): Promise<ListingDetailDto> {
+  const res = await fetch(`${BFF_URL}/listings/${listingId}/photos`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`BFF add photo failed (${res.status}): ${body}`);
+  }
+  return res.json() as Promise<ListingDetailDto>;
+}
+
+export function deleteOwnListingPhoto(accessToken: string, listingId: string, photoNo: number): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/photos/${photoNo}`, { method: "DELETE" });
+}
+
 export function renewListing(accessToken: string, listingId: string): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/listings/${listingId}/renew`, { method: "PATCH" });
 }

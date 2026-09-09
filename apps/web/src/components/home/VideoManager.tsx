@@ -7,12 +7,11 @@ import { addVideoToListing } from "@/lib/videoUpload";
 
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
 
-/** Post-creation video add/delete — the one place a seller can attach media to a listing after
- * the fact (unlike photos, fully immutable post-creation). Exists because boosting (which can
- * elevate an individual seller's video entitlement) only ever happens after a listing already
- * exists — see docs/plans/listing-video-uploads.md. Owns its own copy of the listing so it can
- * re-render immediately from the fresh `ListingDetailDto` every add/delete call already returns,
- * without a full page reload. */
+/** Post-creation video add/delete (EditListingPhotos is photos' equivalent, added later). Exists
+ * because boosting (which can elevate an individual seller's video entitlement) only ever happens
+ * after a listing already exists — see docs/plans/listing-video-uploads.md. Owns its own copy of
+ * the listing so it can re-render immediately from the fresh `ListingDetailDto` every add/delete
+ * call already returns, without a full page reload. */
 export function VideoManager({ listing: initialListing, accessToken }: { listing: ListingDetailDto; accessToken: string }) {
   const [listing, setListing] = useState(initialListing);
   const [pending, setPending] = useState(false);

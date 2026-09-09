@@ -7,8 +7,10 @@ import { auth } from "@/auth";
 import {
   BffAuthError,
   InsufficientContactRevealCreditsError,
+  addOwnListingPhoto,
   createListing,
   deleteListingVideo,
+  deleteOwnListingPhoto,
   fetchMyListings,
   recordView,
   renewListing,
@@ -175,6 +177,39 @@ export async function renewListingAction(listingId: string): Promise<RenewListin
       return { success: false, error: error.message, slotCap: error.body };
     }
     return { success: false, error: error instanceof Error ? error.message : "Failed to renew listing" };
+  }
+}
+
+export type AddPhotoResult = { success: true; listing: ListingDetailDto } | { success: false; error: string };
+
+/** Adds a photo to an already-existing listing — see ListingsService.addPhoto's own doc comment
+ * for why the new photo's URL isn't ready the instant this resolves (variants are generated
+ * asynchronously); the caller should wait briefly before refreshing for real, same as rotate. */
+export async function addOwnPhotoAction(listingId: string, formData: FormData): Promise<AddPhotoResult> {
+  const session = await auth();
+  if (!session || !isAccessTokenValid(session.accessToken)) {
+    return { success: false, error: "You must be logged in." };
+  }
+
+  try {
+    const listing = await addOwnListingPhoto(formData, session.accessToken, listingId);
+    return { success: true, listing };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to add photo" };
+  }
+}
+
+export type DeletePhotoResult = { success: true; listing: ListingDetailDto } | { success: false; error: string };
+
+export async function deleteOwnPhotoAction(listingId: string, photoNo: number): Promise<DeletePhotoResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const listing = await deleteOwnListingPhoto(session.accessToken, listingId, photoNo);
+    return { success: true, listing };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete photo" };
   }
 }
 

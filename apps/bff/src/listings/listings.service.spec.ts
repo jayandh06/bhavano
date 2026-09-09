@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ListingsService } from './listings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
@@ -6,10 +6,15 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { LocationsService } from '../locations/locations.service';
 import { R2StorageService } from '../storage/r2-storage.service';
+import { CdnPurgeService } from '../storage/cdn-purge.service';
 import { ListingSlotsService } from '../listing-slots/listing-slots.service';
 import { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provider';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { ConfigService } from '@nestjs/config';
+
+// computeDHash calls sharp on a real image buffer — stubbed so addPhoto's own logic (cap,
+// duplicate check, counter increment) can be unit-tested without a real image.
+jest.mock('../uploads/photo-hash', () => ({ computeDHash: jest.fn().mockResolvedValue('deadbeef') }));
 
 const HOUR_MS = 60 * 60 * 1000;
 const future = (hours = 1) => new Date(Date.now() + hours * HOUR_MS);
@@ -38,6 +43,7 @@ function makeService() {
     {} as SavedSearchesService,
     {} as LocationsService,
     {} as R2StorageService,
+    {} as CdnPurgeService,
     listingSlotsService,
     {} as GoogleAdsConversionProvider,
     {} as ContactRevealService,
@@ -303,6 +309,132 @@ describe('ListingsService', () => {
           sizeBytes: 1,
         }),
       ).rejects.toThrow("You don't own this listing");
+    });
+  });
+
+  describe('addPhoto / deletePhoto', () => {
+    const file = { buffer: Buffer.from('x'), mimetype: 'image/jpeg' } as Express.Multer.File;
+
+    function makePhotoService(opts: {
+      listingPhotos?: { photoNo: number }[];
+      ownerId?: string;
+      isDuplicate?: boolean;
+    } = {}) {
+      let counter = opts.listingPhotos?.length ?? 0;
+      const prisma = {
+        listing: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'listing1',
+            ownerId: opts.ownerId ?? 'owner1',
+            listingPhotos: opts.listingPhotos ?? [],
+          }),
+          // Mirrors the real atomic { increment: 1 } — a fresh, strictly-higher value every call,
+          // never reused, which is exactly the property the "never collide" test below checks.
+          update: jest.fn().mockImplementation(() => Promise.resolve({ photoNoCounter: ++counter })),
+        },
+        listingPhoto: {
+          findUnique: jest.fn(),
+          create: jest.fn(),
+          delete: jest.fn(),
+        },
+        photoVariantJob: {
+          findMany: jest.fn().mockResolvedValue([{ ext: 'jpg' }]),
+          createMany: jest.fn(),
+          deleteMany: jest.fn(),
+        },
+        $transaction: jest.fn().mockResolvedValue([]),
+      } as unknown as PrismaService;
+
+      const moderationService = {
+        isDuplicatePhotoHash: jest.fn().mockResolvedValue(opts.isDuplicate ?? false),
+      } as unknown as ModerationService;
+      const storage = {
+        putObject: jest.fn().mockResolvedValue(undefined),
+        deleteObject: jest.fn().mockResolvedValue(undefined),
+      } as unknown as R2StorageService;
+      const cdnPurge = { purgeUrls: jest.fn().mockResolvedValue(true) } as unknown as CdnPurgeService;
+
+      const service = new ListingsService(
+        prisma,
+        moderationService,
+        { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
+        {} as NotificationsService,
+        {} as SavedSearchesService,
+        {} as LocationsService,
+        storage,
+        cdnPurge,
+        {} as ListingSlotsService,
+        {} as GoogleAdsConversionProvider,
+        {} as ContactRevealService,
+      );
+      // getMine's own plumbing (toDetailDto etc.) isn't what these tests are about — stubbed so
+      // a resolved add/delete just needs to not throw, not exercise the whole DTO pipeline.
+      jest.spyOn(service, 'getMine').mockResolvedValue({} as any);
+
+      return { service, prisma, moderationService, storage, cdnPurge };
+    }
+
+    it("rejects when the caller doesn't own the listing", async () => {
+      const { service } = makePhotoService({ ownerId: 'someoneElse' });
+      await expect(service.addPhoto('listing1', 'owner1', file)).rejects.toThrow(
+        "You don't own this listing",
+      );
+    });
+
+    it('rejects at MAX_PHOTOS without incrementing the counter', async () => {
+      const { service, prisma } = makePhotoService({
+        listingPhotos: [1, 2, 3, 4, 5, 6].map((photoNo) => ({ photoNo })),
+      });
+      await expect(service.addPhoto('listing1', 'owner1', file)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a duplicate photo hash without incrementing the counter', async () => {
+      const { service, prisma } = makePhotoService({ isDuplicate: true });
+      await expect(service.addPhoto('listing1', 'owner1', file)).rejects.toThrow(
+        'already be in use',
+      );
+      expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    it('two sequential adds never produce the same photoNo', async () => {
+      const { service, prisma } = makePhotoService({ listingPhotos: [{ photoNo: 1 }] });
+      await service.addPhoto('listing1', 'owner1', file);
+      await service.addPhoto('listing1', 'owner1', file);
+      const photoNos = (prisma.listingPhoto.create as jest.Mock).mock.calls.map(
+        (call) => call[0].data.photoNo,
+      );
+      expect(new Set(photoNos).size).toBe(photoNos.length);
+      expect(photoNos.every((n) => n > 1)).toBe(true); // never reissues an already-used number
+    });
+
+    it("deletePhoto rejects when the caller doesn't own the listing", async () => {
+      const { service, prisma } = makePhotoService({ ownerId: 'someoneElse' });
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ ownerId: 'someoneElse' });
+      await expect(service.deletePhoto('listing1', 'owner1', 1)).rejects.toThrow(
+        "You don't own this listing",
+      );
+    });
+
+    it('deletePhoto 404s on a photoNo that was never on this listing', async () => {
+      const { service, prisma } = makePhotoService();
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ ownerId: 'owner1' });
+      (prisma.listingPhoto.findUnique as jest.Mock).mockResolvedValue(null);
+      await expect(service.deletePhoto('listing1', 'owner1', 99)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('deletePhoto reads PhotoVariantJob.ext before deleting, to reconstruct the original R2 key', async () => {
+      const { service, prisma, storage } = makePhotoService();
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ ownerId: 'owner1' });
+      (prisma.listingPhoto.findUnique as jest.Mock).mockResolvedValue({ photoNo: 1 });
+      await service.deletePhoto('listing1', 'owner1', 1);
+      expect(prisma.photoVariantJob.findMany).toHaveBeenCalled();
+      // preview + full + original(jpg) = 3 keys fire-and-forget deleted
+      expect((storage.deleteObject as jest.Mock).mock.calls.length).toBe(3);
     });
   });
 

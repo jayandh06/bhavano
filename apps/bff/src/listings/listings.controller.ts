@@ -21,6 +21,7 @@ import type { RequestUser } from '../auth/guards/auth.guard';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RateLimitAction } from '../rate-limit/rate-limit-kind.decorator';
 import { videoMulterOptions } from '../uploads/video-multer.config';
+import { imageFileInterceptorOptions } from '../uploads/photo-upload.config';
 import { assertDiskSpaceAvailable, videoTmpDir, withVideoUploadSlot } from '../uploads/video-upload.guard-rails';
 import { ingestUploadedVideo } from '../uploads/video-ingest';
 import { R2StorageService } from '../storage/r2-storage.service';
@@ -131,12 +132,14 @@ export class ListingsController {
     return this.contactRevealService.revealContact(user.id, id);
   }
 
-  /** Adds a video to an already-existing listing — a single multipart request, unlike photos'
-   * upload-then-attach two-step (see docs/plans/listing-video-uploads.md for why: the split only
-   * pays for itself while the listing doesn't exist yet, which is never true here). The tier-
-   * specific duration/count check happens in ListingsService.addVideo() once the real listing
-   * (and, for an individual seller, its boost status) is known — ffprobe here only enforces the
-   * absolute ceiling, not the caller's actual entitlement. */
+  /** Adds a video to an already-existing listing — a single multipart request, unlike the
+   * pre-creation wizard's upload-then-attach two-step for photos (see
+   * docs/plans/listing-video-uploads.md for why: that split only pays for itself while the
+   * listing doesn't exist yet). addPhoto below is a single-request post-creation add too, for the
+   * same reason — the two-step split simply doesn't apply once a listing already exists. The
+   * tier-specific duration/count check happens in ListingsService.addVideo() once the real
+   * listing (and, for an individual seller, its boost status) is known — ffprobe here only
+   * enforces the absolute ceiling, not the caller's actual entitlement. */
   @Post(':id/videos')
   @UseGuards(AuthGuard)
   @UseInterceptors(FileInterceptor('file', videoMulterOptions()))
@@ -162,6 +165,31 @@ export class ListingsController {
     @CurrentUser() user: RequestUser,
   ): Promise<ListingDetailDto> {
     return this.listingsService.deleteVideo(id, user.id, videoId);
+  }
+
+  /** Photos' counterpart to addVideo above — no request DTO needed, unlike the pre-creation
+   * /uploads endpoint: listingId comes from the URL and photoNo is server-computed
+   * (Listing.photoNoCounter), so there's nothing client-supplied left to validate. */
+  @Post(':id/photos')
+  @UseGuards(AuthGuard)
+  @UseInterceptors(FileInterceptor('file', imageFileInterceptorOptions()))
+  addPhoto(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() user: RequestUser,
+  ): Promise<ListingDetailDto> {
+    if (!file) throw new BadRequestException('No file uploaded');
+    return this.listingsService.addPhoto(id, user.id, file);
+  }
+
+  @Delete(':id/photos/:photoNo')
+  @UseGuards(AuthGuard)
+  deletePhoto(
+    @Param('id') id: string,
+    @Param('photoNo') photoNo: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<ListingDetailDto> {
+    return this.listingsService.deletePhoto(id, user.id, Number(photoNo));
   }
 
   // The owner-facing counterparts to the admin moderation page's rotate/set-cover controls — see

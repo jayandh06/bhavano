@@ -322,6 +322,14 @@ model Listing {
   // whoever paid first/most permanently squatting the top slot.
   boostedUntil     DateTime?
   boostRank        Float?
+  /// Atomically incremented ({ increment: 1 }) on every post-creation photo add, never
+  /// decremented on delete. ListingPhoto.photoNo is baked into this listing's R2 storage keys
+  /// (apps/bff/src/uploads/photo-keys.ts) and ListingPhoto rows are hard-deleted with no
+  /// tombstone, so MAX(photoNo) over current rows would silently reissue a deleted photo's
+  /// number — colliding with (or resurrecting a stale CDN copy of) its old R2 objects. Set at
+  /// creation to MAX(photo.photoNo) among the initial photos; backfilled for pre-existing
+  /// listings in the migration that added this column.
+  photoNoCounter   Int               @default(0)
   listingPhotos    ListingPhoto[]
   listingVideos    ListingVideo[]
   views            ListingView[]

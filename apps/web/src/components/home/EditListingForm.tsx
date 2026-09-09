@@ -117,21 +117,21 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
 
   return (
     <div className="flex flex-col gap-4">
-      {listing.photosFull.length > 0 && (
-        <EditListingPhotos
-          listingId={listing.id}
-          title={listing.title}
-          photos={listing.photosFull.map((url, i) => ({
-            url,
-            photoNo: listing.photoNos[i],
-            updatedAt: listing.photoUpdatedAts[i],
-          }))}
-        />
-      )}
+      {/* Renders even at zero photos — EditListingPhotos' own "+ Add" control is how a listing
+        * with none gets its first post-creation photo. Was gated on photosFull.length > 0 until
+        * add/delete existed, when a zero-photo listing had no photo section here at all. */}
+      <EditListingPhotos
+        listingId={listing.id}
+        title={listing.title}
+        photos={listing.photosFull.map((url, i) => ({
+          url,
+          photoNo: listing.photoNos[i],
+          updatedAt: listing.photoUpdatedAts[i],
+        }))}
+      />
 
-      {/* Video is the one media type a seller can still add after posting — see VideoManager's
-        * own doc comment for why photos (unlike video) are immutable post-creation today. Was
-        * previously only reachable from the /my-listings row, not this page. */}
+      {/* Video add/delete — was previously only reachable from the /my-listings row, not this
+        * page. */}
       <div>
         <label className={labelClass}>Videos</label>
         <VideoManager listing={listing} accessToken={accessToken} />

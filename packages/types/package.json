@@ -73,6 +73,10 @@
       "types": "./dist/videoLimits.d.ts",
       "default": "./dist/videoLimits.js"
     },
+    "./photoLimits": {
+      "types": "./dist/photoLimits.d.ts",
+      "default": "./dist/photoLimits.js"
+    },
     "./listingSlots": {
       "types": "./dist/listingSlots.d.ts",
       "default": "./dist/listingSlots.js"

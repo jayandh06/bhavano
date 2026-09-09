@@ -17,6 +17,7 @@ import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
+import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
@@ -43,8 +44,6 @@ import { Icon, isIconName } from "./Icon";
 import type { IconName } from "./Icon";
 
 
-const MAX_PHOTOS = 6;
-const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_PHOTO_TYPES = [
   "image/jpeg",
   "image/png",
@@ -330,7 +329,7 @@ export function PostAdWizard({
         );
         continue;
       }
-      if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      if (file.size > MAX_PHOTO_BYTES) {
         setError(`"${file.name}" is over the 4MB limit.`);
         continue;
       }

@@ -31,6 +31,7 @@ import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
 import { getPriceQualifierOptions } from '@bhavano/types/priceQualifiers';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
+import { MAX_PHOTOS } from '@bhavano/types/photoLimits';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -46,8 +47,13 @@ import type {
 import {
   PHOTO_VARIANTS,
   PhotoVariant,
+  extFromMimeType,
+  originalKey,
   publicVariantUrl,
+  variantKey,
+  variantUrl,
 } from '../uploads/photo-keys';
+import { computeDHash } from '../uploads/photo-hash';
 import {
   videoPosterKey,
   videoPosterUrl,
@@ -55,6 +61,7 @@ import {
   videoUrl,
 } from '../uploads/video-keys';
 import { R2StorageService } from '../storage/r2-storage.service';
+import { CdnPurgeService } from '../storage/cdn-purge.service';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import {
@@ -188,6 +195,7 @@ export class ListingsService {
     private readonly savedSearchesService: SavedSearchesService,
     private readonly locationsService: LocationsService,
     private readonly storage: R2StorageService,
+    private readonly cdnPurge: CdnPurgeService,
     private readonly listingSlotsService: ListingSlotsService,
     private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
     private readonly contactRevealService: ContactRevealService,
@@ -539,6 +547,8 @@ export class ListingsService {
   ): Promise<ListingDetailDto> {
     if (!input.photos.length)
       throw new BadRequestException('At least one photo is required');
+    if (input.photos.length > MAX_PHOTOS)
+      throw new BadRequestException(`No more than ${MAX_PHOTOS} photos are allowed`);
     // A token issued before the owner deleted their account still authenticates for up to an
     // hour (stateless JWT, DB-free AuthGuard), and this is the one path that would attach new
     // data to a deleted account. name/email/phone ride along on this same fetch for
@@ -601,6 +611,9 @@ export class ListingsService {
         expiresAt,
         lat: input.lat,
         lng: input.lng,
+        // A post-creation addPhoto atomically increments this — see the field's own doc comment
+        // in schema.prisma for why it must start at least as high as any photoNo already in use.
+        photoNoCounter: Math.max(0, ...input.photos.map((p) => p.photoNo)),
       },
     });
 
@@ -728,12 +741,12 @@ export class ListingsService {
       .slice(0, entitlement.maxVideos);
   }
 
-  /** Adds a video to an already-existing listing — the one place a seller can attach media to a
-   * listing after the fact, unlike photos (fully immutable post-creation). Exists because
-   * boosting (which can elevate the video entitlement) only ever happens after a listing already
-   * exists. `videoNo` is server-computed (existing max + 1); a P2002 unique-constraint retry
-   * covers the one realistic race (two concurrent adds from a double-click), no transaction
-   * needed. See docs/plans/listing-video-uploads.md. */
+  /** Adds a video to an already-existing listing — exists because boosting (which can elevate
+   * the video entitlement) only ever happens after a listing already exists. `videoNo` is
+   * server-computed (existing max + 1); a P2002 unique-constraint retry covers the one realistic
+   * race (two concurrent adds from a double-click), no transaction needed. See
+   * docs/plans/listing-video-uploads.md. addPhoto below is photos' counterpart, added later once
+   * photos stopped being immutable post-creation. */
   async addVideo(
     listingId: string,
     ownerId: string,
@@ -831,6 +844,138 @@ export class ListingsService {
       this.storage.deleteObject(videoTranscodedKey(listingId, video.storageId)),
       this.storage.deleteObject(videoPosterKey(listingId, video.storageId)),
     ]).catch(() => undefined);
+
+    return this.getMine(ownerId, listingId);
+  }
+
+  /** Adds a photo to an already-existing listing — photos' counterpart to addVideo above, added
+   * later once photos stopped being immutable post-creation.
+   *
+   * `photoNo` is claimed via `Listing.photoNoCounter` ({ increment: 1 }, atomic, no race window)
+   * rather than `Math.max(existing photoNo) + 1` the way addVideo computes `videoNo` — unlike
+   * `videoNo`, `photoNo` is baked into this listing's R2 storage keys and `ListingPhoto` rows are
+   * hard-deleted with no tombstone, so a max-over-current-rows approach would silently reissue a
+   * deleted photo's number once any delete has ever happened. See photoNoCounter's own doc
+   * comment in schema.prisma.
+   *
+   * Validation (cap, duplicate hash) happens before the counter is incremented, so a rejected
+   * request never burns a number. If the R2 write below throws after the counter already
+   * advanced, that's an intentionally harmless gap — the number is simply never reused, same as
+   * any other skipped one — and no DB rows exist yet, so the request is safe to retry. */
+  async addPhoto(
+    listingId: string,
+    ownerId: string,
+    file: Express.Multer.File,
+  ): Promise<ListingDetailDto> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      include: { listingPhotos: true },
+    });
+    if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+    if (listing.ownerId !== ownerId)
+      throw new ForbiddenException("You don't own this listing");
+
+    if (listing.listingPhotos.length >= MAX_PHOTOS) {
+      throw new BadRequestException(
+        `You've added the maximum of ${MAX_PHOTOS} photos. Delete one to add another.`,
+      );
+    }
+
+    const hash = await computeDHash(file.buffer);
+    if (await this.moderationService.isDuplicatePhotoHash(hash)) {
+      throw new BadRequestException(
+        'This photo appears to already be in use on another listing',
+      );
+    }
+    const ext = extFromMimeType(file.mimetype);
+
+    const updated = await this.prisma.listing.update({
+      where: { id: listingId },
+      data: { photoNoCounter: { increment: 1 } },
+    });
+    const nextPhotoNo = updated.photoNoCounter;
+
+    await this.storage.putObject(
+      originalKey(listingId, nextPhotoNo, ext),
+      file.buffer,
+      file.mimetype,
+    );
+
+    const variants = Object.keys(PHOTO_VARIANTS) as PhotoVariant[];
+    await this.prisma.$transaction([
+      this.prisma.listingPhoto.create({
+        data: {
+          listingId,
+          photoNo: nextPhotoNo,
+          hash,
+          // Appended at the end — never auto-promoted to cover. The owner uses the existing
+          // "set cover" control if they want the new photo to lead.
+          displayOrder: nextPhotoNo,
+        },
+      }),
+      this.prisma.photoVariantJob.createMany({
+        data: variants.map((variant) => ({
+          listingId,
+          photoNo: nextPhotoNo,
+          ext,
+          variant,
+        })),
+      }),
+    ]);
+
+    return this.getMine(ownerId, listingId);
+  }
+
+  /** Always allowed, mirroring deleteVideo's own "regardless of quota" rule — nothing about
+   * photos has a quota-lapse concept, but there's equally no reason to ever block removing one.
+   * `PhotoVariantJob.ext` is read before anything is deleted — ListingPhoto itself has no `ext`
+   * column, so this is the only place the original's R2 key can still be reconstructed. Job rows
+   * are deleted (not reset), so the processing poller's own `status:'processing'` completion
+   * guard simply matches zero rows if a job was mid-flight when this ran — no orphan writes. */
+  async deletePhoto(
+    listingId: string,
+    ownerId: string,
+    photoNo: number,
+  ): Promise<ListingDetailDto> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { ownerId: true },
+    });
+    if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+    if (listing.ownerId !== ownerId)
+      throw new ForbiddenException("You don't own this listing");
+
+    const photo = await this.prisma.listingPhoto.findUnique({
+      where: { listingId_photoNo: { listingId, photoNo } },
+    });
+    if (!photo) throw new NotFoundException(`Photo ${photoNo} not found`);
+
+    const jobs = await this.prisma.photoVariantJob.findMany({
+      where: { listingId, photoNo },
+      select: { ext: true },
+    });
+
+    await this.prisma.$transaction([
+      this.prisma.listingPhoto.delete({
+        where: { listingId_photoNo: { listingId, photoNo } },
+      }),
+      this.prisma.photoVariantJob.deleteMany({ where: { listingId, photoNo } }),
+    ]);
+
+    const keysToDelete = [
+      variantKey(listingId, photoNo, 'preview'),
+      variantKey(listingId, photoNo, 'full'),
+    ];
+    if (jobs[0]?.ext) keysToDelete.push(originalKey(listingId, photoNo, jobs[0].ext));
+    Promise.all(keysToDelete.map((key) => this.storage.deleteObject(key))).catch(() => undefined);
+
+    const cdnBase = this.cdnBase();
+    this.cdnPurge
+      .purgeUrls([
+        variantUrl(cdnBase, listingId, photoNo, 'preview'),
+        variantUrl(cdnBase, listingId, photoNo, 'full'),
+      ])
+      .catch(() => undefined);
 
     return this.getMine(ownerId, listingId);
   }
