@@ -136,20 +136,22 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
       </div>
 
       <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <RequiredLabel text="Title" />
+        <RequiredLabel text="Title" />
+        {/* Counter sits beside the input rather than sharing the label's row — mirrors
+          * PostAdWizard's own Title field. */}
+        <div className="flex items-center gap-2 max-w-[720px]">
+          <input
+            value={title}
+            maxLength={TITLE_MAX_LENGTH}
+            onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
+            className={`${fieldClass} flex-1`}
+          />
           <span
-            className={`text-xs tabular-nums ${title.length >= TITLE_MAX_LENGTH ? "text-[#b3413a]" : title.length > TITLE_MAX_LENGTH - 20 ? "text-gold" : "text-muted"}`}
+            className={`text-xs tabular-nums shrink-0 ${title.length >= TITLE_MAX_LENGTH ? "text-[#b3413a]" : title.length > TITLE_MAX_LENGTH - 20 ? "text-gold" : "text-muted"}`}
           >
             {title.length}/{TITLE_MAX_LENGTH}
           </span>
         </div>
-        <input
-          value={title}
-          maxLength={TITLE_MAX_LENGTH}
-          onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
-          className={`${fieldClass} max-w-[720px]`}
-        />
       </div>
 
       <div>
@@ -159,7 +161,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
           onChange={(e) => setDescription(e.target.value)}
           rows={5}
           placeholder="Describe the place in your own words — the layout, the neighbourhood, what's nearby."
-          className={`${fieldClass} resize-y min-h-[120px]`}
+          className={`${fieldClass} resize-y min-h-[120px] max-w-[720px]`}
         />
       </div>
 

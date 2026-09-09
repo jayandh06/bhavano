@@ -709,24 +709,26 @@ export function PostAdWizard({
       {step === "details" && category && transactionType && (
         <div className="flex flex-col gap-4">
           <div>
-            <div className="flex items-baseline justify-between gap-2">
-              <RequiredLabel text="Title" />
-              {/* Counts up rather than down, so it reads as progress rather than a warning, and
-                * turns amber near the cap instead of only at it — a poster who has run out of
-                * room mid-sentence wants to know a few characters earlier. */}
+            <RequiredLabel text="Title" />
+            {/* Counter sits beside the input rather than sharing the label's row — reads as
+              * attached to the text box it's counting, not as a second label. Counts up rather
+              * than down, so it reads as progress rather than a warning, and turns amber near
+              * the cap instead of only at it — a poster who has run out of room mid-sentence
+              * wants to know a few characters earlier. */}
+            <div className="flex items-center gap-2 max-w-[720px]">
+              <input
+                required
+                value={title}
+                maxLength={TITLE_MAX_LENGTH}
+                onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
+                className={`${fieldClass} flex-1`}
+              />
               <span
-                className={`text-xs tabular-nums ${title.length >= TITLE_MAX_LENGTH ? "text-[#b3413a]" : title.length > TITLE_MAX_LENGTH - 20 ? "text-gold" : "text-muted"}`}
+                className={`text-xs tabular-nums shrink-0 ${title.length >= TITLE_MAX_LENGTH ? "text-[#b3413a]" : title.length > TITLE_MAX_LENGTH - 20 ? "text-gold" : "text-muted"}`}
               >
                 {title.length}/{TITLE_MAX_LENGTH}
               </span>
             </div>
-            <input
-              required
-              value={title}
-              maxLength={TITLE_MAX_LENGTH}
-              onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
-              className={`${fieldClass} max-w-[720px]`}
-            />
           </div>
 
           <div>
@@ -746,48 +748,50 @@ export function PostAdWizard({
             )}
           </div>
 
-          <div>
-            <RequiredLabel text="City" />
-            <SelectField required value={cityId} onChange={(e) => onCityChange(e.target.value)}>
-              {cities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </SelectField>
-          </div>
-
-          <div ref={areaFieldRef} className="relative">
-            <RequiredLabel text="Area / locality" />
-            <input
-              required
-              value={areaQuery}
-              onChange={(e) => onAreaQueryChange(e.target.value)}
-              onFocus={() => setShowAreaSuggestions(true)}
-              placeholder="Start typing a locality…"
-              autoComplete="off"
-              className={fieldClass}
-            />
-            {showAreaSuggestions && areaSuggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-10 bg-surface border border-border rounded-[9px] mt-1 max-h-[220px] overflow-y-auto">
-                {areaSuggestions.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => onPickArea(a)}
-                    className="block w-full text-left bg-transparent border-0 px-3.5 py-2.5 text-sm text-text cursor-pointer"
-                  >
-                    {a.name}
-                  </button>
+          <div className="flex gap-3 max-w-[720px]">
+            <div className="flex-1">
+              <RequiredLabel text="City" />
+              <SelectField required value={cityId} onChange={(e) => onCityChange(e.target.value)}>
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
                 ))}
-              </div>
-            )}
-            {!areaId && areaQuery.trim() && (
-              <p className="text-xs text-muted mt-1.5">
-                No match selected — &quot;{areaQuery.trim()}&quot; will be added
-                as a new area.
-              </p>
-            )}
+              </SelectField>
+            </div>
+
+            <div ref={areaFieldRef} className="relative flex-1">
+              <RequiredLabel text="Area / locality" />
+              <input
+                required
+                value={areaQuery}
+                onChange={(e) => onAreaQueryChange(e.target.value)}
+                onFocus={() => setShowAreaSuggestions(true)}
+                placeholder="Start typing a locality…"
+                autoComplete="off"
+                className={fieldClass}
+              />
+              {showAreaSuggestions && areaSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-10 bg-surface border border-border rounded-[9px] mt-1 max-h-[220px] overflow-y-auto">
+                  {areaSuggestions.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => onPickArea(a)}
+                      className="block w-full text-left bg-transparent border-0 px-3.5 py-2.5 text-sm text-text cursor-pointer"
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!areaId && areaQuery.trim() && (
+                <p className="text-xs text-muted mt-1.5">
+                  No match selected — &quot;{areaQuery.trim()}&quot; will be added
+                  as a new area.
+                </p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -797,7 +801,7 @@ export function PostAdWizard({
               onChange={(e) => setDescription(e.target.value)}
               rows={5}
               placeholder="Describe the place in your own words — the layout, what the neighbourhood is like, what's nearby, why someone would want to live here."
-              className={`${fieldClass} resize-y min-h-[120px]`}
+              className={`${fieldClass} resize-y min-h-[120px] max-w-[720px]`}
             />
             <p className="text-xs text-muted mt-1">
               Optional, but ads with a description get more responses.
