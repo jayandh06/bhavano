@@ -51,6 +51,61 @@ function makeService() {
   return { service, prisma, notificationsService, listingSlotsService };
 }
 
+describe('ListingsService.list — word match title search', () => {
+  function makeListService() {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const count = jest.fn().mockResolvedValue(0);
+    const prisma = {
+      listing: { findMany, count },
+    } as unknown as PrismaService;
+    const contactRevealService = {
+      getRevealStatesForListings: jest.fn().mockResolvedValue(new Map()),
+    } as unknown as ContactRevealService;
+
+    const service = new ListingsService(
+      prisma,
+      {} as ModerationService,
+      { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
+      {} as NotificationsService,
+      {} as SavedSearchesService,
+      {} as LocationsService,
+      {} as R2StorageService,
+      {} as CdnPurgeService,
+      {} as ListingSlotsService,
+      {} as GoogleAdsConversionProvider,
+      contactRevealService,
+    );
+    return { service, findMany, count };
+  }
+
+  it('requires every word in `q` to appear in the title, not the whole phrase as one substring', async () => {
+    const { service, count } = makeListService();
+    await service.list({ q: 'wooden wardrobe', offset: 0, limit: 20 } as never);
+
+    const where = count.mock.calls[0][0].where;
+    expect(where.AND).toEqual([
+      { title: { contains: 'wooden', mode: 'insensitive' } },
+      { title: { contains: 'wardrobe', mode: 'insensitive' } },
+    ]);
+  });
+
+  it('behaves exactly like the old whole-string contains for a single-word query', async () => {
+    const { service, count } = makeListService();
+    await service.list({ q: 'apartment', offset: 0, limit: 20 } as never);
+
+    const where = count.mock.calls[0][0].where;
+    expect(where.AND).toEqual([{ title: { contains: 'apartment', mode: 'insensitive' } }]);
+  });
+
+  it('omits the AND clause entirely when there is no query text', async () => {
+    const { service, count } = makeListService();
+    await service.list({ offset: 0, limit: 20 } as never);
+
+    const where = count.mock.calls[0][0].where;
+    expect(where.AND).toBeUndefined();
+  });
+});
+
 describe('ListingsService', () => {
   describe('residential attributes', () => {
     const validAttributes = {

@@ -272,6 +272,22 @@ export class ListingsService {
         attributes: { path: ['serviceType'], equals: serviceType },
       });
 
+    // Word match, not phrase match: each word in `q` must appear *somewhere* in the title, in any
+    // order — "wooden wardrobe" now matches "Wooden Wardrobe for sale" as well as "Wardrobe,
+    // wooden, excellent condition". A single-word query behaves exactly as the old whole-string
+    // `contains` did (there is only one word to require), so this is a superset of the prior
+    // behavior rather than a change to it.
+    const titleWordFilters: Prisma.ListingWhereInput[] = q
+      ? q
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((word) => ({
+            title: { contains: word, mode: 'insensitive' as const },
+          }))
+      : [];
+
+    const andFilters = [...attributeFilters, ...titleWordFilters];
+
     const where: Prisma.ListingWhereInput = {
       ...categoryWhere,
       status: 'active',
@@ -286,7 +302,6 @@ export class ListingsService {
         : areaId
           ? { areaId }
           : {}),
-      ...(q ? { title: { contains: q, mode: 'insensitive' } } : {}),
       ...(minPrice !== undefined || maxPrice !== undefined
         ? {
             price: {
@@ -295,7 +310,7 @@ export class ListingsService {
             },
           }
         : {}),
-      ...(attributeFilters.length > 0 ? { AND: attributeFilters } : {}),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 
     // Boosted listings (non-null boostRank) always sort ahead of unboosted ones, regardless of
