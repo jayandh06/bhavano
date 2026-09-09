@@ -20,7 +20,7 @@ import {
   NEW_REGISTRATION_CONVERSION_ACTION_ID,
 } from '../ads/google-ads-conversion.provider';
 
-const ACCESS_TOKEN_TTL = '1h';
+const ACCESS_TOKEN_TTL = '24h';
 
 /** Visit context passed up from the web app at signup — see AuthService.verifyOtp /
  * loginWithGoogle. All fields optional since anonymous/API callers (e.g. dev-login) never send
