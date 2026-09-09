@@ -4,6 +4,8 @@ import { UsersService } from './users.service';
 import { ListingSlotsModule } from '../listing-slots/listing-slots.module';
 import { ListingsModule } from '../listings/listings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ContactRevealModule } from '../contact-reveal/contact-reveal.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { EmailVerificationService } from './email-verification.service';
 import { AccountMergeService } from './account-merge.service';
 import { AccountDeletionService } from './account-deletion.service';
@@ -16,6 +18,8 @@ import { AuthModule } from '../auth/auth.module';
     ListingSlotsModule,
     ListingsModule,
     NotificationsModule,
+    ContactRevealModule,
+    PaymentsModule,
     forwardRef(() => AuthModule),
   ],
   controllers: [UsersController],

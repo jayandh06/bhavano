@@ -5,6 +5,7 @@ import type {
   Area,
   AuthSession,
   City,
+  ContactRevealBalanceDto,
   ContactRevealSettingsDto,
   ConversationDetailDto,
   ConversationSummaryDto,
@@ -20,6 +21,7 @@ import type {
   ListingSitemapEntry,
   ListingsPage,
   MessageDto,
+  PaymentHistoryPage,
   PopularSearchDto,
   PropertyTypeFilter,
   RevealContactResponseDto,
@@ -224,6 +226,15 @@ export function fetchMyListings(accessToken: string): Promise<ListingDetailDto[]
 
 export function fetchMyListing(accessToken: string, listingId: string): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/users/me/listings/${listingId}`, { cache: "no-store" });
+}
+
+export function fetchContactRevealBalance(accessToken: string): Promise<ContactRevealBalanceDto> {
+  return authedBffFetch(accessToken, "/users/me/contact-reveal-credits", { cache: "no-store" });
+}
+
+export function fetchPaymentHistory(accessToken: string, cursor?: string): Promise<PaymentHistoryPage> {
+  const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  return authedBffFetch(accessToken, `/users/me/payments${params}`, { cache: "no-store" });
 }
 
 export function updateListing(accessToken: string, listingId: string, input: UpdateListingInput): Promise<ListingDetailDto> {

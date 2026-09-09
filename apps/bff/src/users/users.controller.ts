@@ -8,19 +8,24 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type {
+  ContactRevealBalanceDto,
   LinkIdentifierResult,
   ListingCardDto,
   ListingDetailDto,
+  PaymentHistoryPage,
   UserProfileDto,
 } from '@bhavano/types';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { ListingsService } from '../listings/listings.service';
+import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
+import { PaymentsService } from '../payments/payments.service';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { RequestEmailCodeDto, VerifyEmailDto } from './dto/verify-email.dto';
@@ -41,6 +46,8 @@ export class UsersController {
     private readonly accountMerge: AccountMergeService,
     private readonly authService: AuthService,
     private readonly accountDeletion: AccountDeletionService,
+    private readonly contactRevealService: ContactRevealService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   @Get()
@@ -158,5 +165,18 @@ export class UsersController {
     @CurrentUser() user: RequestUser,
   ): Promise<ListingDetailDto> {
     return this.listingsService.getMine(user.id, id);
+  }
+
+  @Get('contact-reveal-credits')
+  contactRevealBalance(@CurrentUser() user: RequestUser): Promise<ContactRevealBalanceDto> {
+    return this.contactRevealService.getBalanceForUser(user.id);
+  }
+
+  @Get('payments')
+  payments(
+    @CurrentUser() user: RequestUser,
+    @Query('cursor') cursor?: string,
+  ): Promise<PaymentHistoryPage> {
+    return this.paymentsService.listForUser(user.id, cursor);
   }
 }

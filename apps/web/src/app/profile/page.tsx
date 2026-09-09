@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { BffAuthError, fetchProfile } from "@/lib/bff";
+import { BffAuthError, fetchContactRevealBalance, fetchProfile } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { ProfileForm } from "@/components/home/ProfileForm";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
+import { ContactRevealBalanceCard } from "@/components/home/ContactRevealBalanceCard";
 
 export default async function ProfilePage({
   searchParams,
@@ -26,15 +27,23 @@ export default async function ProfilePage({
         <h1 className="font-lora text-[26px] font-semibold m-0 mb-1">Your profile</h1>
 
         {session?.accessToken && (
-          <Link href="/my-listings" className="text-[13px] text-green font-bold mb-5 inline-block">
-            View and edit your listings →
-          </Link>
+          <div className="flex flex-col gap-1 mb-5">
+            <Link href="/my-listings" className="text-[13px] text-green font-bold inline-block">
+              View and edit your listings →
+            </Link>
+            <Link href="/purchases" className="text-[13px] text-green font-bold inline-block">
+              View your purchase history →
+            </Link>
+          </div>
         )}
 
         {!session?.accessToken ? (
           <RequireLoginPrompt message="Log in to view and edit your profile." />
         ) : (
-          <ProfileFields accessToken={session.accessToken} />
+          <div className="flex flex-col gap-6">
+            <ContactRevealBalanceFields accessToken={session.accessToken} />
+            <ProfileFields accessToken={session.accessToken} />
+          </div>
         )}
       </div>
       <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
@@ -53,4 +62,17 @@ async function ProfileFields({ accessToken }: { accessToken: string }) {
     throw error;
   }
   return <ProfileForm profile={profile} />;
+}
+
+// Own component rather than folded into ProfileFields — a failed balance fetch (BffAuthError
+// aside, which the page-level redirect below already handles) shouldn't take the profile form
+// down with it; the two are independent BFF calls with independent failure modes.
+async function ContactRevealBalanceFields({ accessToken }: { accessToken: string }) {
+  try {
+    const balance = await fetchContactRevealBalance(accessToken);
+    return <ContactRevealBalanceCard balance={balance} />;
+  } catch (error) {
+    if (error instanceof BffAuthError) return null;
+    throw error;
+  }
 }

@@ -12,6 +12,7 @@ import type {
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
+  PaymentHistoryPage,
   SubscriptionTier,
 } from '@bhavano/types';
 import { boostPriceFor, type BoostDurationDays } from '@bhavano/types/boostPricing';
@@ -382,5 +383,42 @@ export class PaymentsService {
         data: { discountCodeId: payment.discountCodeId, userId: payment.userId, paymentId: payment.id },
       });
     }
+  }
+
+  /** A user's own purchase history, every purpose in one feed — see PaymentHistoryItemDto's own
+   * doc comment for why. Newest first, cursor-paginated (same shape as ListingsService.
+   * listForAdmin: `take: limit + 1` to know if there's another page, without a separate count
+   * query). Includes every status (created/failed/refunded, not just paid) — an abandoned or
+   * failed checkout is still something the user attempted and might reasonably wonder about,
+   * not something to hide. */
+  async listForUser(userId: string, cursor?: string, limit = 20): Promise<PaymentHistoryPage> {
+    const rows = await this.prisma.payment.findMany({
+      where: { userId },
+      include: { listing: { select: { title: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      items: page.map((p) => ({
+        id: p.id,
+        purpose: p.purpose,
+        amount: p.amount,
+        currency: p.currency,
+        status: p.status,
+        createdAt: p.createdAt.toISOString(),
+        paidAt: p.paidAt?.toISOString() ?? null,
+        ...(p.listingId ? { listingId: p.listingId, listingTitle: p.listing?.title } : {}),
+        ...(p.boostDays ? { boostDays: p.boostDays } : {}),
+        ...(p.subscriptionMonths ? { subscriptionMonths: p.subscriptionMonths } : {}),
+        ...(p.agentProUnits ? { agentProUnits: p.agentProUnits } : {}),
+        ...(p.creditPackSize ? { creditPackSize: p.creditPackSize } : {}),
+      })),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+    };
   }
 }

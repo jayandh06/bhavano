@@ -15,6 +15,7 @@ export type RateLimitKind = "publish" | "view";
 export type ListingSlotUpsell = import("./listingSlots").ListingSlotUpsell;
 export type { ListingSlotCapErrorBody } from "./listingSlots";
 export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro" | "seller_slot_pack" | "contact_reveal_credits";
+export type PaymentStatus = "created" | "paid" | "failed" | "refunded";
 /** buyerPremium = Bhavano Plus; agentPro = broker slots + storefront; sellerSlotPack = +5 slots (10 total). */
 export type SubscriptionTier = "buyerPremium" | "agentPro" | "sellerSlotPack";
 /** Homepage top-level browsing tab — organized around seeker intent, not a flat
@@ -572,6 +573,43 @@ export interface ContactRevealSettingsDto {
     creditExpiryMonths: number;
 }
 export type UpdateContactRevealSettingsInput = ContactRevealSettingsDto;
+/** A user's own current standing — free reveals left this account has never used, plus the sum
+ * of `creditsRemaining` across every non-expired purchased batch. Derived fresh from
+ * ContactReveal/ContactRevealCreditBatch rows on every request (ContactRevealService.
+ * getBalanceForUser), never a cached counter — same "trust the log, not a flag" convention as
+ * everything else in this feature. `nextCreditExpiryAt` is the earliest expiry among batches
+ * that still have credits left, so the UI can warn before credits lapse unused; null when there's
+ * nothing to expire (no batches, or all already spent/expired). */
+export interface ContactRevealBalanceDto {
+    freeRevealsRemaining: number;
+    creditsRemaining: number;
+    nextCreditExpiryAt: string | null;
+}
+/** One row per `Payment` — every purpose in one feed rather than a separate history per feature,
+ * since that's how a user actually thinks of "things I've bought". Purpose-specific fields are
+ * all optional and only populated for their own purpose (listingId/listingTitle: listing_boost;
+ * boostDays: listing_boost; subscriptionMonths/agentProUnits: buyer_premium/agent_pro/
+ * seller_slot_pack; creditPackSize: contact_reveal_credits) — mirrors Payment's own nullable-
+ * column-per-purpose convention in schema.prisma. */
+export interface PaymentHistoryItemDto {
+    id: string;
+    purpose: PaymentPurpose;
+    amount: number;
+    currency: string;
+    status: PaymentStatus;
+    createdAt: string;
+    paidAt: string | null;
+    listingId?: string;
+    listingTitle?: string;
+    boostDays?: number;
+    subscriptionMonths?: number;
+    agentProUnits?: number;
+    creditPackSize?: number;
+}
+export interface PaymentHistoryPage {
+    items: PaymentHistoryItemDto[];
+    nextCursor: string | null;
+}
 /** Pack size/price are never client-supplied — always read from ContactRevealSetting
  * server-side. `discountCode` is optional, validated server-side against DiscountCode. */
 export interface CreateContactRevealCreditsOrderInput {

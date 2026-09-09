@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
-import type { ContactRevealSettingsDto, RevealContactResponseDto } from '@bhavano/types';
+import type { ContactRevealBalanceDto, ContactRevealSettingsDto, RevealContactResponseDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { CONTACT_REVEAL_SETTINGS_ID, DEFAULT_CONTACT_REVEAL_SETTINGS } from './contact-reveal.constants';
 
@@ -123,6 +123,29 @@ export class ContactRevealService {
       });
     }
     return states;
+  }
+
+  /** A user's own standing, for the profile page's "contact reveal credits" card — see
+   * ContactRevealBalanceDto's own doc comment. Not used by the reveal flow itself (that re-derives
+   * eligibility inline, see getRevealState/revealContact above); this exists purely so a user can
+   * check their balance without the listing-detail-page round trip that state is normally piggy-
+   * backed on. */
+  async getBalanceForUser(userId: string): Promise<ContactRevealBalanceDto> {
+    const settings = await this.getSettings();
+    const [freeUsed, batches] = await Promise.all([
+      this.prisma.contactReveal.count({ where: { userId, source: 'free' } }),
+      this.prisma.contactRevealCreditBatch.findMany({
+        where: { userId, expiresAt: { gt: new Date() }, creditsRemaining: { gt: 0 } },
+        orderBy: { expiresAt: 'asc' },
+        select: { creditsRemaining: true, expiresAt: true },
+      }),
+    ]);
+
+    return {
+      freeRevealsRemaining: Math.max(0, settings.freeRevealsPerUser - freeUsed),
+      creditsRemaining: batches.reduce((sum, b) => sum + b.creditsRemaining, 0),
+      nextCreditExpiryAt: batches[0]?.expiresAt.toISOString() ?? null,
+    };
   }
 
   /** Spends a free reveal or a credit (whichever applies) and permanently unlocks this listing's
