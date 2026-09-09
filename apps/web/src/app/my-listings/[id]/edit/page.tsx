@@ -13,11 +13,11 @@ export default async function EditListingPage({ params }: { params: Promise<{ id
   return (
     <div className="min-h-screen bg-bg text-text">
       <PageHeader />
-      <div className="max-w-[640px] mx-auto p-8">
+      <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-6 pb-20">
         <Link href="/my-listings" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to your listings
         </Link>
-        <h1 className="font-lora text-[26px] font-semibold m-0 mb-5">Edit listing</h1>
+        <h1 className="font-lora text-2xl font-semibold m-0 mb-5">Edit listing</h1>
 
         {!session?.accessToken ? (
           <RequireLoginPrompt message="Log in to edit this listing." />

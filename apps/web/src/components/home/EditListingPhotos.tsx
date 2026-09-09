@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { rotateOwnPhotoAction, setOwnCoverPhotoAction } from "@/app/actions/listings";
+import { labelClass } from "@/lib/formStyles";
 
 /** PhotoProcessingService polls for pending jobs every 3s — this just adds a little margin so a
  * refresh doesn't land in the gap right before the job actually finishes. */
@@ -71,7 +72,7 @@ export function EditListingPhotos({
 
   return (
     <div>
-      <label className="block text-xs font-bold text-muted mb-1.5 uppercase tracking-[0.02em]">Photos</label>
+      <label className={labelClass}>Photos</label>
       {error && <p className="text-[13px] text-[#b3413a] m-0 mb-2">{error}</p>}
       <div className="flex flex-wrap gap-3">
         {photos.map(({ url, photoNo, updatedAt }, i) => {

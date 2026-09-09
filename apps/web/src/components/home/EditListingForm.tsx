@@ -3,20 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
-import {
-  CATEGORY_FIELD_CONFIG,
-  SECTION_LABELS,
-  fieldIsVisible,
-  pruneHiddenAttributes,
-} from "@bhavano/types/categoryFields";
+import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
 import { updateListingAction } from "@/app/actions/listings";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { fieldClass, labelClass, primaryButtonClass } from "@/lib/formStyles";
+import { SelectField } from "./SelectField";
+import { CategoryFieldsAccordion } from "./CategoryFieldsAccordion";
 import { EditListingPhotos } from "./EditListingPhotos";
-
-function sanitizeNonNegative(value: string): string {
-  return value.replace(/-/g, "");
-}
 
 function attributesToStrings(
   attributes: Record<string, unknown>,
@@ -30,6 +24,16 @@ function attributesToStrings(
         : String(value);
   }
   return result;
+}
+
+// Same small helper PostAdWizard.tsx keeps for itself — not shared/exported there, so this is
+// its own copy rather than a cross-file import of a private component.
+function RequiredLabel({ text }: { text: string }) {
+  return (
+    <label className={labelClass}>
+      {text} <span className="text-[#b3413a]">*</span>
+    </label>
+  );
 }
 
 const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
@@ -111,7 +115,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
   }
 
   return (
-    <div className="max-w-[480px] flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       {listing.photosFull.length > 0 && (
         <EditListingPhotos
           listingId={listing.id}
@@ -126,48 +130,26 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
 
       <div>
         <label className={labelClass}>Category / transaction</label>
-        <div className={readOnlyClass}>
+        <div className={`${fieldClass} bg-surface-alt text-text-soft`}>
           {listing.category} · {listing.transactionType}
         </div>
       </div>
 
       <div>
-        <label className={labelClass}>Title *</label>
+        <div className="flex items-baseline justify-between gap-2">
+          <RequiredLabel text="Title" />
+          <span
+            className={`text-xs tabular-nums ${title.length >= TITLE_MAX_LENGTH ? "text-[#b3413a]" : title.length > TITLE_MAX_LENGTH - 20 ? "text-gold" : "text-muted"}`}
+          >
+            {title.length}/{TITLE_MAX_LENGTH}
+          </span>
+        </div>
         <input
           value={title}
           maxLength={TITLE_MAX_LENGTH}
           onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
-          className={inputClass}
+          className={`${fieldClass} max-w-[720px]`}
         />
-      </div>
-
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className={labelClass}>Price (₹) *</label>
-          <input
-            type="number"
-            min={1}
-            value={price}
-            max={maxPriceFor(listing.transactionType)}
-            inputMode="numeric"
-            onChange={(e) => setPrice(clampPrice(e.target.value, listing.transactionType))}
-            className={inputClass}
-          />
-        </div>
-        <div className="flex-1">
-          <label className={labelClass}>Price qualifier *</label>
-          <select
-            value={priceQualifier}
-            onChange={(e) => setPriceQualifier(e.target.value)}
-            className={inputClass}
-          >
-            {priceQualifierChoices.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       <div>
@@ -177,118 +159,61 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
           onChange={(e) => setDescription(e.target.value)}
           rows={5}
           placeholder="Describe the place in your own words — the layout, the neighbourhood, what's nearby."
-          className={`${inputClass} resize-y min-h-[120px]`}
+          className={`${fieldClass} resize-y min-h-[120px]`}
         />
       </div>
 
-
-      {fieldConfig.length > 0 && (
-        <div className="border-t border-border pt-4 flex flex-col gap-4">
-          {visibleFields.map((field, index) => (
-            <div key={field.key}>
-              {field.section &&
-                (index === 0 ||
-                  visibleFields[index - 1].section !== field.section) && (
-                  <div className="text-[13px] font-bold text-text mt-2">
-                    {SECTION_LABELS[field.section]}
-                  </div>
-                )}
-              <label className={labelClass}>
-                {field.label}
-                {field.required ? " *" : ""}
-              </label>
-              {field.type === "multi-select" ? (
-                <select
-                  multiple
-                  value={
-                    Array.isArray(attributes[field.key])
-                      ? attributes[field.key]
-                      : []
-                  }
-                  onChange={(e) =>
-                    setAttributes((prev) => ({
-                      ...prev,
-                      [field.key]: Array.from(
-                        e.target.selectedOptions,
-                        (option) => option.value,
-                      ),
-                    }))
-                  }
-                  className={inputClass}
-                >
-                  {field.options?.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              ) : field.type === "select" ? (
-                <select
-                  value={
-                    typeof attributes[field.key] === "string"
-                      ? attributes[field.key]
-                      : ""
-                  }
-                  onChange={(e) =>
-                    setAttributes((prev) =>
-                      pruneHiddenAttributes(
-                        listing.category,
-                        listing.transactionType,
-                        { ...prev, [field.key]: e.target.value },
-                      ),
-                    )
-                  }
-                  className={inputClass}
-                >
-                  <option value="" disabled>
-                    Select…
-                  </option>
-                  {field.options?.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type={field.type === "number" ? "number" : "text"}
-                  min={field.type === "number" ? (field.min ?? 0) : undefined}
-                  value={
-                    typeof attributes[field.key] === "string"
-                      ? attributes[field.key]
-                      : ""
-                  }
-                  onChange={(e) =>
-                    setAttributes((prev) => ({
-                      ...prev,
-                      [field.key]:
-                        field.type === "number"
-                          ? sanitizeNonNegative(e.target.value)
-                          : e.target.value,
-                    }))
-                  }
-                  placeholder={field.placeholder}
-                  className={inputClass}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Same accordion PostAdWizard.tsx uses for the same CATEGORY_FIELD_CONFIG — Price/Price
+        * qualifier fold into the top of "pricing" via sectionExtras rather than sitting outside
+        * the grouped sections, matching how the wizard treats them (they're not category-specific
+        * fields, but they belong with the rest of "pricing" all the same). */}
+      <div>
+        <CategoryFieldsAccordion
+          category={listing.category}
+          transactionType={listing.transactionType}
+          attributes={attributes}
+          onAttributesChange={setAttributes}
+          sectionExtras={{
+            pricing: (
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <RequiredLabel text="Price (₹)" />
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={maxPriceFor(listing.transactionType)}
+                    inputMode="numeric"
+                    value={price}
+                    onChange={(e) => setPrice(clampPrice(e.target.value, listing.transactionType))}
+                    className={fieldClass}
+                  />
+                </div>
+                <div className="flex-1">
+                  <RequiredLabel text="Price qualifier" />
+                  <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)}>
+                    {priceQualifierChoices.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </SelectField>
+                </div>
+              </div>
+            ),
+          }}
+        />
+      </div>
 
       <div>
         <label className={labelClass}>Status</label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as ListingStatus)}
-          className={inputClass}
-        >
+        <SelectField value={status} onChange={(e) => setStatus(e.target.value as ListingStatus)}>
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}
-        </select>
+        </SelectField>
       </div>
 
       {message && (
@@ -302,22 +227,10 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
       <button
         onClick={onSave}
         disabled={saving || !valid}
-        className={`${saveButtonClass} ${saving || !valid ? "opacity-60" : "opacity-100"}`}
+        className={`${primaryButtonClass} self-start`}
       >
         {saving ? "Saving…" : "Save changes"}
       </button>
     </div>
   );
 }
-
-const labelClass =
-  "block text-xs font-bold text-muted mb-1.5 uppercase tracking-[0.02em]";
-
-const inputClass =
-  "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm outline-none bg-surface text-text";
-
-const readOnlyClass =
-  "w-full border border-border rounded-[9px] px-3.5 py-3 text-sm bg-surface-alt text-text-soft";
-
-const saveButtonClass =
-  "bg-green text-on-green border-0 rounded-lg p-[13px] text-sm font-bold cursor-pointer";
