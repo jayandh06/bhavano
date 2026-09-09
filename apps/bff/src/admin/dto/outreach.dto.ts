@@ -26,10 +26,10 @@ const CAMPAIGN_STATUSES: CampaignStatus[] = ['draft', 'scheduled', 'running', 'p
 const CONSENT_STATES: ConsentState[] = ['none', 'implied', 'explicit', 'opted_out'];
 
 export class ListOutreachContactsDto {
-  @IsOptional() @IsString() cursor?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) offset?: number;
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100)
-  limit: number = 50;
+  limit: number = 25;
 
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsString() cityId?: string;
@@ -110,20 +110,20 @@ export class UpdateOutreachCampaignDto {
 }
 
 export class ListCampaignSendsDto {
-  @IsOptional() @IsString() cursor?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) offset?: number;
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100)
-  limit: number = 50;
+  limit: number = 25;
 
   @IsOptional() @IsString() campaignId?: string;
   @IsOptional() @IsString() contactId?: string;
 }
 
 export class ListOutreachCampaignsDto {
-  @IsOptional() @IsString() cursor?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) offset?: number;
 
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100)
-  limit: number = 50;
+  limit: number = 25;
 }
 
 export class OptOutDto {

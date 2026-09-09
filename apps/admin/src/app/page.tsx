@@ -2,13 +2,13 @@ import Link from "next/link";
 import type { ListingCategory, ModerationState, TransactionType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
-import { str } from "@/lib/searchParams";
+import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { UserPicker } from "@/components/UserPicker";
+import { Pagination } from "@/components/Pagination";
 import { formatDate } from "@/lib/formatDateTime";
 
 type FilterTab = "needsReview" | "flagged" | "all";
-type SearchParams = Record<string, string | string[] | undefined>;
 
 const TABS: { value: FilterTab; label: string }[] = [
   { value: "needsReview", label: "Needs review" },
@@ -50,10 +50,12 @@ function tabToQuery(tab: FilterTab): { moderationState?: ModerationState; adminR
 }
 
 /** Every other filter field survives a tab switch by carrying the full current query string
- * forward — only `tab` itself gets overwritten. */
+ * forward — only `tab` itself gets overwritten, and `page` is dropped (a tab switch changes the
+ * result set, so a page number from the old tab can easily be out of range for the new one). */
 function hrefForTab(sp: SearchParams, tab: FilterTab): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(sp)) {
+    if (key === "page") continue;
     const v = str(value);
     if (v) params.set(key, v);
   }
@@ -78,8 +80,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const cityId = str(sp.cityId);
   const areaId = str(sp.areaId);
   const sort = str(sp.sort) as AdminListingSort | undefined;
+  const currentPage = parsePage(str(sp.page));
+  const limit = parsePageSize(str(sp.limit));
 
-  const [page, cities, areas] = await Promise.all([
+  const [result, cities, areas] = await Promise.all([
     fetchAdminListings(accessToken, {
       ...tabToQuery(tab),
       category,
@@ -92,11 +96,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       updatedFrom,
       updatedTo,
       sort,
-      limit: 50,
+      offset: (currentPage - 1) * limit,
+      limit,
     }),
     fetchCities(undefined, true),
     cityId ? fetchAreas(cityId, undefined, true) : Promise.resolve([]),
   ]);
+  const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -209,6 +215,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <input type="date" name="updatedTo" defaultValue={updatedTo} style={dateInputStyle} />
           </Field>
 
+          <Field label="Per page">
+            <AutoSubmitSelect
+              name="limit"
+              defaultValue={String(limit)}
+              style={selectStyle}
+              options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))}
+            />
+          </Field>
+
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
@@ -217,11 +232,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Link>
         </form>
 
-        {page.items.length === 0 ? (
+        {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>Nothing here.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {page.items.map((item) => (
+            {result.items.map((item) => (
               <Link
                 key={item.id}
                 href={`/listings/${item.id}`}
@@ -260,6 +275,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             ))}
           </div>
         )}
+
+        <Pagination currentPage={currentPage} totalPages={totalPages} buildHref={(p) => buildPageHref("/", sp, p)} />
       </div>
     </div>
   );

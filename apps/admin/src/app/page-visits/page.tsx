@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminPageVisitSort, fetchPageVisits } from "@/lib/bff";
-import { str } from "@/lib/searchParams";
+import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { UserPicker } from "@/components/UserPicker";
-
-type SearchParams = Record<string, string | string[] | undefined>;
+import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { Pagination } from "@/components/Pagination";
 
 const SORT_OPTIONS: { value: AdminPageVisitSort; label: string }[] = [
   { value: "createdAt_desc", label: "Date — newest first" },
@@ -23,22 +23,12 @@ const IST_OFFSET = "+05:30";
 const istDayStart = (d: string | undefined) => (d ? `${d}T00:00:00.000${IST_OFFSET}` : undefined);
 const istDayEnd = (d: string | undefined) => (d ? `${d}T23:59:59.999${IST_OFFSET}` : undefined);
 
-/** Carries every active filter forward alongside a new cursor. */
-function loadMoreHref(sp: SearchParams, nextCursor: string): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(sp)) {
-    const v = str(value);
-    if (v) params.set(key, v);
-  }
-  params.set("cursor", nextCursor);
-  return `/page-visits?${params.toString()}`;
-}
-
 export default async function PageVisitsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accessToken } = await requireAdmin();
   const sp = await searchParams;
 
-  const cursor = str(sp.cursor);
+  const currentPage = parsePage(str(sp.page));
+  const limit = parsePageSize(str(sp.limit));
   const userId = str(sp.userId);
   const userLabel = str(sp.userLabel);
   const from = str(sp.from);
@@ -52,8 +42,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const country = str(sp.country);
   const sort = str(sp.sort) as AdminPageVisitSort | undefined;
 
-  const page = await fetchPageVisits(accessToken, {
-    cursor,
+  const result = await fetchPageVisits(accessToken, {
+    offset: (currentPage - 1) * limit,
     from: istDayStart(from),
     to: istDayEnd(to),
     userId,
@@ -65,8 +55,9 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     region,
     country,
     sort,
-    limit: 50,
+    limit,
   });
+  const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -76,7 +67,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
         </Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>Page visits</h1>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 8px" }}>
-          One row per browser session. {page.total.toLocaleString()} match the current filters. Times and the
+          One row per browser session. {result.total.toLocaleString()} match the current filters. Times and the
           date range are IST.
         </p>
         <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 20px", lineHeight: 1.6 }}>
@@ -142,6 +133,15 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             </select>
           </Field>
 
+          <Field label="Per page">
+            <AutoSubmitSelect
+              name="limit"
+              defaultValue={String(limit)}
+              style={selectStyle}
+              options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))}
+            />
+          </Field>
+
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
@@ -150,7 +150,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
           </Link>
         </form>
 
-        {page.items.length === 0 ? (
+        {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>No visits match these filters.</p>
         ) : (
           <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
@@ -165,7 +165,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                 </tr>
               </thead>
               <tbody>
-                {page.items.map((v) => (
+                {result.items.map((v) => (
                   <tr key={v.id} style={{ borderTop: "1px solid var(--border)" }}>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDateTime(v.createdAt)}</td>
                     <td style={tdStyle}>
@@ -196,14 +196,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
           </div>
         )}
 
-        {page.nextCursor && (
-          <Link
-            href={loadMoreHref(sp, page.nextCursor)}
-            style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--green)" }}
-          >
-            Load more →
-          </Link>
-        )}
+        <Pagination currentPage={currentPage} totalPages={totalPages} buildHref={(p) => buildPageHref("/page-visits", sp, p)} />
       </div>
     </div>
   );

@@ -428,7 +428,6 @@ export interface UpdateProfileInput {
  * `moderationState: 'approved'` filter the public browse endpoint applies. */
 export interface AdminListingsPage {
   items: ListingDetailDto[];
-  nextCursor: string | null;
   total: number;
 }
 
@@ -450,7 +449,6 @@ export interface LoginEventDto {
 
 export interface LoginEventsPage {
   items: LoginEventDto[];
-  nextCursor: string | null;
   total: number;
 }
 
@@ -480,7 +478,6 @@ export interface PageVisitDto {
 
 export interface PageVisitsPage {
   items: PageVisitDto[];
-  nextCursor: string | null;
   total: number;
 }
 
@@ -558,7 +555,6 @@ export interface UserSummaryDto {
 
 export interface AdminUsersPage {
   items: UserSummaryDto[];
-  nextCursor: string | null;
   total: number;
 }
 
@@ -622,7 +618,6 @@ export interface ListingBoostDto {
 
 export interface ListingBoostsPage {
   items: ListingBoostDto[];
-  nextCursor: string | null;
   total: number;
 }
 
@@ -739,7 +734,6 @@ export interface CreateDiscountCodeInput {
 
 export interface AdminDiscountCodesPage {
   items: DiscountCodeDto[];
-  nextCursor: string | null;
   total: number;
 }
 
@@ -830,7 +824,6 @@ export interface OutreachContactDto {
 
 export interface OutreachContactsPage {
   items: OutreachContactDto[];
-  nextCursor: string | null;
   total: number;
 }
 
@@ -867,7 +860,6 @@ export interface OutreachCampaignDto {
 
 export interface OutreachCampaignsPage {
   items: OutreachCampaignDto[];
-  nextCursor: string | null;
   total: number;
 }
 
@@ -888,7 +880,6 @@ export interface CampaignSendDto {
 
 export interface CampaignSendsPage {
   items: CampaignSendDto[];
-  nextCursor: string | null;
   total: number;
 }
 

@@ -368,7 +368,6 @@ export interface UpdateProfileInput {
  * `moderationState: 'approved'` filter the public browse endpoint applies. */
 export interface AdminListingsPage {
     items: ListingDetailDto[];
-    nextCursor: string | null;
     total: number;
 }
 export interface FlagListingInput {
@@ -387,7 +386,6 @@ export interface LoginEventDto {
 }
 export interface LoginEventsPage {
     items: LoginEventDto[];
-    nextCursor: string | null;
     total: number;
 }
 /** One `Visit` row (one browser session) flattened for the admin page-visits screen — the user
@@ -415,7 +413,6 @@ export interface PageVisitDto {
 }
 export interface PageVisitsPage {
     items: PageVisitDto[];
-    nextCursor: string | null;
     total: number;
 }
 /** One entry in a user's merged activity timeline — sourced from several tables
@@ -487,7 +484,6 @@ export interface UserSummaryDto {
 }
 export interface AdminUsersPage {
     items: UserSummaryDto[];
-    nextCursor: string | null;
     total: number;
 }
 export type WelcomeChannel = "email" | "whatsapp";
@@ -541,7 +537,6 @@ export interface ListingBoostDto {
 }
 export interface ListingBoostsPage {
     items: ListingBoostDto[];
-    nextCursor: string | null;
     total: number;
 }
 export interface CreateSubscriptionOrderInput {
@@ -645,7 +640,6 @@ export interface CreateDiscountCodeInput {
 }
 export interface AdminDiscountCodesPage {
     items: DiscountCodeDto[];
-    nextCursor: string | null;
     total: number;
 }
 /** A public, unauthenticated storefront for any user with active listings — Agent Pro
@@ -726,7 +720,6 @@ export interface OutreachContactDto {
 }
 export interface OutreachContactsPage {
     items: OutreachContactDto[];
-    nextCursor: string | null;
     total: number;
 }
 /** Audience is a filter, not a frozen list, so a recurring campaign picks up contacts imported
@@ -760,7 +753,6 @@ export interface OutreachCampaignDto {
 }
 export interface OutreachCampaignsPage {
     items: OutreachCampaignDto[];
-    nextCursor: string | null;
     total: number;
 }
 export interface CampaignSendDto {
@@ -779,7 +771,6 @@ export interface CampaignSendDto {
 }
 export interface CampaignSendsPage {
     items: CampaignSendDto[];
-    nextCursor: string | null;
     total: number;
 }
 export interface CreateOutreachContactInput {

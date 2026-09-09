@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchCampaigns } from "@/lib/bff";
+import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { Pagination } from "@/components/Pagination";
 import { CampaignControls } from "@/components/CampaignControls";
 import { NewCampaignForm } from "@/components/NewCampaignForm";
 import { formatDateTime } from "@/lib/formatDateTime";
@@ -13,16 +16,14 @@ const STATUS_COLORS: Record<string, string> = {
   completed: "var(--muted)",
 };
 
-export default async function CampaignsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function CampaignsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accessToken } = await requireAdmin();
   const sp = await searchParams;
-  const cursor = typeof sp.cursor === "string" ? sp.cursor : undefined;
+  const currentPage = parsePage(str(sp.page));
+  const limit = parsePageSize(str(sp.limit));
 
-  const page = await fetchCampaigns(accessToken, { cursor, limit: 50 });
+  const result = await fetchCampaigns(accessToken, { offset: (currentPage - 1) * limit, limit });
+  const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -53,11 +54,23 @@ export default async function CampaignsPage({
 
         <NewCampaignForm />
 
-        {page.items.length === 0 ? (
+        <form method="get" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>
+            {result.total.toLocaleString()} campaign{result.total === 1 ? "" : "s"}
+          </span>
+          <AutoSubmitSelect
+            name="limit"
+            defaultValue={String(limit)}
+            style={selectStyle}
+            options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: `${n} / page` }))}
+          />
+        </form>
+
+        {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 24 }}>No campaigns yet.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 24 }}>
-            {page.items.map((campaign) => (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+            {result.items.map((campaign) => (
               <div
                 key={campaign.id}
                 style={{
@@ -129,15 +142,21 @@ export default async function CampaignsPage({
           </div>
         )}
 
-        {page.nextCursor && (
-          <Link
-            href={`/outreach/campaigns?cursor=${page.nextCursor}`}
-            style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--green)" }}
-          >
-            Next page →
-          </Link>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          buildHref={(p) => buildPageHref("/outreach/campaigns", sp, p)}
+        />
       </div>
     </div>
   );
 }
+
+const selectStyle: React.CSSProperties = {
+  border: "1px solid var(--border)",
+  borderRadius: 9,
+  padding: "8px 10px",
+  fontSize: 13,
+  background: "var(--surface)",
+  color: "var(--text)",
+};

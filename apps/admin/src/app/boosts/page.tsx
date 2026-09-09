@@ -1,19 +1,20 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchBoosts } from "@/lib/bff";
+import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { Pagination } from "@/components/Pagination";
 import { RevokeBoostButton } from "@/components/RevokeBoostButton";
 import { formatDate } from "@/lib/formatDateTime";
 
-export default async function BoostsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function BoostsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accessToken } = await requireAdmin();
   const sp = await searchParams;
-  const cursor = typeof sp.cursor === "string" ? sp.cursor : undefined;
+  const currentPage = parsePage(str(sp.page));
+  const limit = parsePageSize(str(sp.limit));
 
-  const page = await fetchBoosts(accessToken, { cursor, limit: 50 });
+  const result = await fetchBoosts(accessToken, { offset: (currentPage - 1) * limit, limit });
+  const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -22,16 +23,28 @@ export default async function BoostsPage({
           ← Back to dashboard
         </Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>Listing boosts</h1>
-        <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 20px" }}>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 12px" }}>
           Every purchased boost, newest first. Revoking clears the boost immediately (support/refund
           cases) without touching the payment record itself.
         </p>
 
-        {page.items.length === 0 ? (
+        <form method="get" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>
+            {result.total.toLocaleString()} boost{result.total === 1 ? "" : "s"}
+          </span>
+          <AutoSubmitSelect
+            name="limit"
+            defaultValue={String(limit)}
+            style={selectStyle}
+            options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: `${n} / page` }))}
+          />
+        </form>
+
+        {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>No boosts purchased yet.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {page.items.map((boost) => {
+            {result.items.map((boost) => {
               const isActive = new Date(boost.boostedUntil).getTime() > Date.now();
               return (
                 <div
@@ -75,15 +88,17 @@ export default async function BoostsPage({
           </div>
         )}
 
-        {page.nextCursor && (
-          <Link
-            href={`/boosts?cursor=${page.nextCursor}`}
-            style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--green)" }}
-          >
-            Load more →
-          </Link>
-        )}
+        <Pagination currentPage={currentPage} totalPages={totalPages} buildHref={(p) => buildPageHref("/boosts", sp, p)} />
       </div>
     </div>
   );
 }
+
+const selectStyle: React.CSSProperties = {
+  border: "1px solid var(--border)",
+  borderRadius: 9,
+  padding: "8px 10px",
+  fontSize: 13,
+  background: "var(--surface)",
+  color: "var(--text)",
+};

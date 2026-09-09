@@ -34,13 +34,13 @@ export class OutreachService {
   // --- Contacts -----------------------------------------------------------
 
   async listContacts(query: {
-    cursor?: string;
+    offset?: number;
     limit: number;
     search?: string;
     cityId?: string;
     status?: string;
   }): Promise<OutreachContactsPage> {
-    const { cursor, limit, search, cityId, status } = query;
+    const { offset, limit, search, cityId, status } = query;
 
     const where: Prisma.OutreachContactWhereInput = {
       ...(cityId ? { cityId } : {}),
@@ -61,19 +61,15 @@ export class OutreachService {
       this.prisma.outreachContact.findMany({
         where,
         include: { city: true, area: true },
-        orderBy: { createdAt: 'desc' },
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip: offset ?? 0,
+        take: limit,
       }),
       this.prisma.outreachContact.count({ where }),
     ]);
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-
     return {
-      items: page.map((row) => this.toContactDto(row)),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
+      items: rows.map((row) => this.toContactDto(row)),
       total,
     };
   }
@@ -177,25 +173,22 @@ export class OutreachService {
 
   // --- Campaigns ----------------------------------------------------------
 
-  async listCampaigns(query: { cursor?: string; limit: number }): Promise<OutreachCampaignsPage> {
-    const { cursor, limit } = query;
+  async listCampaigns(query: { offset?: number; limit: number }): Promise<OutreachCampaignsPage> {
+    const { offset, limit } = query;
 
     const [rows, total] = await Promise.all([
       this.prisma.outreachCampaign.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip: offset ?? 0,
+        take: limit,
       }),
       this.prisma.outreachCampaign.count(),
     ]);
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-    const stats = await this.statsFor(page.map((c) => c.id));
+    const stats = await this.statsFor(rows.map((c) => c.id));
 
     return {
-      items: page.map((row) => this.toCampaignDto(row, stats[row.id])),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
+      items: rows.map((row) => this.toCampaignDto(row, stats[row.id])),
       total,
     };
   }
@@ -393,12 +386,12 @@ export class OutreachService {
   // --- Send history -------------------------------------------------------
 
   async listSends(query: {
-    cursor?: string;
+    offset?: number;
     limit: number;
     campaignId?: string;
     contactId?: string;
   }): Promise<CampaignSendsPage> {
-    const { cursor, limit, campaignId, contactId } = query;
+    const { offset, limit, campaignId, contactId } = query;
     const where: Prisma.CampaignSendWhereInput = {
       ...(campaignId ? { campaignId } : {}),
       ...(contactId ? { contactId } : {}),
@@ -408,18 +401,15 @@ export class OutreachService {
       this.prisma.campaignSend.findMany({
         where,
         include: { campaign: { select: { name: true } }, contact: { select: { name: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip: offset ?? 0,
+        take: limit,
       }),
       this.prisma.campaignSend.count({ where }),
     ]);
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-
     return {
-      items: page.map(
+      items: rows.map(
         (row): CampaignSendDto => ({
           id: row.id,
           campaignId: row.campaignId,
@@ -435,7 +425,6 @@ export class OutreachService {
           createdAt: row.createdAt.toISOString(),
         }),
       ),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
   }

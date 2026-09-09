@@ -409,7 +409,7 @@ export class ListingsService {
       updatedFrom,
       updatedTo,
       sort,
-      cursor,
+      offset,
       limit,
     } = query;
     const where: Prisma.ListingWhereInput = {
@@ -450,25 +450,21 @@ export class ListingsService {
           notificationLogs: { where: { kind: 'posted' }, orderBy: { sentAt: 'desc' }, take: 1 },
         },
         orderBy: ADMIN_ORDER_BY[sort ?? 'createdAt_desc'],
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        skip: offset ?? 0,
+        take: limit,
       }),
       this.prisma.listing.count({ where }),
     ]);
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-
     // Admin queue — every viewer here is an admin, so full video status/entitlement visibility.
     return {
-      items: page.map((row) => ({
+      items: rows.map((row) => ({
         ...this.toDetailDto(row, undefined, true),
         postedNotificationSent: row.notificationLogs.length > 0,
         postedNotificationChannel: row.notificationLogs[0]?.channel ?? null,
         postedNotificationSentAt: row.notificationLogs[0]?.sentAt.toISOString() ?? null,
         postedNotificationDeliveryStatus: row.notificationLogs[0]?.deliveryStatus ?? null,
       })),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
   }

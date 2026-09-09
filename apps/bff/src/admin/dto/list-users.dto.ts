@@ -9,8 +9,10 @@ export type UserSort = (typeof USER_SORT_VALUES)[number];
 
 export class ListUsersDto {
   @IsOptional()
-  @IsString()
-  cursor?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
 
   @IsOptional()
   @IsDateString()
@@ -41,5 +43,5 @@ export class ListUsersDto {
   @IsInt()
   @Min(1)
   @Max(100)
-  limit: number = 50;
+  limit: number = 25;
 }

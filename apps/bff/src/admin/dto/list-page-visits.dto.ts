@@ -29,8 +29,10 @@ export type PageVisitSort = (typeof PAGE_VISIT_SORT_VALUES)[number];
  */
 export class ListPageVisitsDto {
   @IsOptional()
-  @IsString()
-  cursor?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
 
   @IsOptional()
   @IsDateString()
@@ -88,5 +90,5 @@ export class ListPageVisitsDto {
   @IsInt()
   @Min(1)
   @Max(100)
-  limit: number = 50;
+  limit: number = 25;
 }

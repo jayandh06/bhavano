@@ -120,7 +120,7 @@ export interface AdminListingsQuery {
   updatedFrom?: string;
   updatedTo?: string;
   sort?: AdminListingSort;
-  cursor?: string;
+  offset?: number;
   limit?: number;
 }
 
@@ -138,7 +138,7 @@ export function fetchAdminListings(accessToken: string, query: AdminListingsQuer
   if (query.updatedFrom) params.set("updatedFrom", query.updatedFrom);
   if (query.updatedTo) params.set("updatedTo", query.updatedTo);
   if (query.sort) params.set("sort", query.sort);
-  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/listings?${params.toString()}`, { cache: "no-store" });
 }
@@ -232,7 +232,7 @@ export function fetchListingOwner(accessToken: string, listingId: string): Promi
 }
 
 export interface RecentLoginsQuery {
-  cursor?: string;
+  offset?: number;
   from?: string;
   to?: string;
   userId?: string;
@@ -243,7 +243,7 @@ export interface RecentLoginsQuery {
 
 export function fetchRecentLogins(accessToken: string, query: RecentLoginsQuery = {}): Promise<LoginEventsPage> {
   const params = new URLSearchParams();
-  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
   if (query.userId) params.set("userId", query.userId);
@@ -254,7 +254,7 @@ export function fetchRecentLogins(accessToken: string, query: RecentLoginsQuery 
 }
 
 export interface PageVisitsQuery {
-  cursor?: string;
+  offset?: number;
   /** Full ISO instants — the page turns its IST date pickers into `+05:30` day bounds. */
   from?: string;
   to?: string;
@@ -283,7 +283,7 @@ export function fetchUserActivity(accessToken: string, userId: string): Promise<
 }
 
 export interface AdminUsersQuery {
-  cursor?: string;
+  offset?: number;
   from?: string;
   to?: string;
   q?: string;
@@ -314,13 +314,13 @@ export function updateRateLimitSettings(accessToken: string, input: RateLimitSet
 }
 
 export interface ListBoostsQuery {
-  cursor?: string;
+  offset?: number;
   limit?: number;
 }
 
 export function fetchBoosts(accessToken: string, query: ListBoostsQuery = {}): Promise<ListingBoostsPage> {
   const params = new URLSearchParams();
-  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/boosts?${params.toString()}`, { cache: "no-store" });
 }
@@ -341,7 +341,7 @@ export function updateContactRevealSettings(
 }
 
 export interface ListDiscountCodesQuery {
-  cursor?: string;
+  offset?: number;
   limit?: number;
 }
 
@@ -350,7 +350,7 @@ export function fetchDiscountCodes(
   query: ListDiscountCodesQuery = {},
 ): Promise<AdminDiscountCodesPage> {
   const params = new URLSearchParams();
-  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/discount-codes?${params.toString()}`, { cache: "no-store" });
 }
@@ -366,7 +366,7 @@ export function setDiscountCodeActive(accessToken: string, id: string, active: b
 // --- Outreach / campaigns ---------------------------------------------------
 
 export interface ListOutreachContactsQuery {
-  cursor?: string;
+  offset?: number;
   limit?: number;
   search?: string;
   cityId?: string;
@@ -403,10 +403,10 @@ export function optOutContact(accessToken: string, contactId: string, reason?: s
 
 export function fetchCampaigns(
   accessToken: string,
-  query: { cursor?: string; limit?: number } = {},
+  query: { offset?: number; limit?: number } = {},
 ): Promise<OutreachCampaignsPage> {
   const params = new URLSearchParams();
-  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/outreach/campaigns?${params.toString()}`, { cache: "no-store" });
 }
@@ -449,7 +449,7 @@ export function runCampaign(
 
 export function fetchCampaignSends(
   accessToken: string,
-  query: { cursor?: string; limit?: number; campaignId?: string; contactId?: string } = {},
+  query: { offset?: number; limit?: number; campaignId?: string; contactId?: string } = {},
 ): Promise<CampaignSendsPage> {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {

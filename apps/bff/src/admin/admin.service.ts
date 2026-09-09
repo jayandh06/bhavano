@@ -224,7 +224,7 @@ export class AdminService {
   }
 
   async listRecentLogins(query: ListLoginsDto): Promise<LoginEventsPage> {
-    const { cursor, from, to, userId, method, sort, limit } = query;
+    const { offset, from, to, userId, method, sort, limit } = query;
     const where: Prisma.LoginEventWhereInput = {
       ...(from || to
         ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
@@ -238,17 +238,14 @@ export class AdminService {
         where,
         include: { user: { select: { name: true, phone: true, email: true } } },
         orderBy: LOGIN_ORDER_BY[sort ?? 'createdAt_desc'],
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        skip: offset ?? 0,
+        take: limit,
       }),
       this.prisma.loginEvent.count({ where }),
     ]);
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-
     return {
-      items: page.map((row) => ({
+      items: rows.map((row) => ({
         id: row.id,
         userId: row.userId,
         userName: row.user.name,
@@ -257,7 +254,6 @@ export class AdminService {
         method: row.method,
         createdAt: row.createdAt.toISOString(),
       })),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
   }
@@ -267,7 +263,7 @@ export class AdminService {
    * strings (the admin page turns its IST date pickers into `+05:30` bounds), so a plain
    * `new Date()` here lands on the right instant. */
   async listPageVisits(query: ListPageVisitsDto): Promise<PageVisitsPage> {
-    const { cursor, from, to, userId, sort, limit } = query;
+    const { offset, from, to, userId, sort, limit } = query;
 
     const where: Prisma.VisitWhereInput = {
       ...(from || to
@@ -294,17 +290,14 @@ export class AdminService {
         where,
         include: { user: { select: { name: true, phone: true, email: true } } },
         orderBy: PAGE_VISIT_ORDER_BY[sort ?? 'createdAt_desc'],
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        skip: offset ?? 0,
+        take: limit,
       }),
       this.prisma.visit.count({ where }),
     ]);
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-
     return {
-      items: page.map((row) => ({
+      items: rows.map((row) => ({
         id: row.id,
         createdAt: row.createdAt.toISOString(),
         userId: row.userId,
@@ -324,7 +317,6 @@ export class AdminService {
         ipRegion: row.ipRegion,
         ipCountry: row.ipCountry,
       })),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
   }
@@ -336,7 +328,7 @@ export class AdminService {
    * docs/plans/whatsapp-welcome-mobile-signups.md's backfill, which found 34 users with the flag
    * set and zero real log rows). */
   async listUsers(query: ListUsersDto): Promise<AdminUsersPage> {
-    const { cursor, from, to, q, role, welcomed, sort, limit } = query;
+    const { offset, from, to, q, role, welcomed, sort, limit } = query;
 
     const where: Prisma.UserWhereInput = {
       deletedAt: null,
@@ -365,17 +357,14 @@ export class AdminService {
           notificationLogs: { where: { kind: 'welcome' }, orderBy: { sentAt: 'desc' }, take: 1 },
         },
         orderBy: USER_ORDER_BY[sort ?? 'createdAt_desc'],
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        skip: offset ?? 0,
+        take: limit,
       }),
       this.prisma.user.count({ where }),
     ]);
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-
     return {
-      items: page.map((u) => ({
+      items: rows.map((u) => ({
         id: u.id,
         name: u.name,
         phone: u.phone,
@@ -387,7 +376,6 @@ export class AdminService {
         welcomedChannel: u.notificationLogs[0]?.channel ?? null,
         welcomedAt: u.notificationLogs[0]?.sentAt.toISOString() ?? null,
       })),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
   }
@@ -582,24 +570,20 @@ export class AdminService {
    * a denormalized counter, same "derive from the log" convention as everything else admin-
    * facing in this file. */
   async listDiscountCodes(query: ListDiscountCodesDto): Promise<AdminDiscountCodesPage> {
-    const { cursor, limit } = query;
+    const { offset, limit } = query;
 
     const [rows, total] = await Promise.all([
       this.prisma.discountCode.findMany({
         include: { _count: { select: { redemptions: true } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        skip: offset ?? 0,
+        take: limit,
       }),
       this.prisma.discountCode.count(),
     ]);
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-
     return {
-      items: page.map((row) => this.toDiscountCodeDto(row)),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
+      items: rows.map((row) => this.toDiscountCodeDto(row)),
       total,
     };
   }
@@ -654,23 +638,20 @@ export class AdminService {
   /** Every purchased boost, newest first — lets support see what a listing's owner actually
    * paid for, alongside `revokeBoost` below for the manual-grant/refund-support case. */
   async listBoosts(query: ListBoostsDto): Promise<ListingBoostsPage> {
-    const { cursor, limit } = query;
+    const { offset, limit } = query;
 
     const [rows, total] = await Promise.all([
       this.prisma.listingBoost.findMany({
         include: { listing: { include: { owner: { select: { name: true } } } }, payment: true },
-        orderBy: { boostedFrom: 'desc' },
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        orderBy: [{ boostedFrom: 'desc' }, { id: 'asc' }],
+        skip: offset ?? 0,
+        take: limit,
       }),
       this.prisma.listingBoost.count(),
     ]);
 
-    const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-
     return {
-      items: page.map((row) => ({
+      items: rows.map((row) => ({
         id: row.id,
         listingId: row.listingId,
         listingTitle: row.listing.title,
@@ -680,7 +661,6 @@ export class AdminService {
         amount: row.payment.amount,
         currency: row.payment.currency,
       })),
-      nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
   }

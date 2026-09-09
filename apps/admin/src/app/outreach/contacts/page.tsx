@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchOutreachContacts } from "@/lib/bff";
-import { str } from "@/lib/searchParams";
+import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams";
 import { OptOutButton } from "@/components/OptOutButton";
+import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { Pagination } from "@/components/Pagination";
 import { formatDate } from "@/lib/formatDateTime";
 
 const CONSENT_COLORS: Record<string, string> = {
@@ -21,13 +23,16 @@ export default async function OutreachContactsPage({
   const sp = await searchParams;
   const search = str(sp.search);
   const status = str(sp.status);
+  const currentPage = parsePage(str(sp.page));
+  const limit = parsePageSize(str(sp.limit));
 
-  const page = await fetchOutreachContacts(accessToken, {
-    cursor: str(sp.cursor),
-    limit: 50,
+  const result = await fetchOutreachContacts(accessToken, {
+    offset: (currentPage - 1) * limit,
+    limit,
     search,
     status,
   });
+  const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -58,6 +63,19 @@ export default async function OutreachContactsPage({
               fontSize: 13,
             }}
           />
+          <AutoSubmitSelect
+            name="limit"
+            defaultValue={String(limit)}
+            style={{
+              padding: "8px 10px",
+              borderRadius: 8,
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              fontSize: 13,
+            }}
+            options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: `${n} / page` }))}
+          />
           <button
             type="submit"
             style={{
@@ -76,14 +94,14 @@ export default async function OutreachContactsPage({
         </form>
 
         <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 12px" }}>
-          {page.total} contact{page.total === 1 ? "" : "s"}
+          {result.total} contact{result.total === 1 ? "" : "s"}
         </p>
 
-        {page.items.length === 0 ? (
+        {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>No contacts yet — import some to get started.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {page.items.map((contact) => (
+            {result.items.map((contact) => (
               <div
                 key={contact.id}
                 style={{
@@ -146,18 +164,11 @@ export default async function OutreachContactsPage({
           </div>
         )}
 
-        {page.nextCursor && (
-          <Link
-            href={`/outreach/contacts?${new URLSearchParams({
-              ...(search ? { search } : {}),
-              ...(status ? { status } : {}),
-              cursor: page.nextCursor,
-            }).toString()}`}
-            style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--green)" }}
-          >
-            Next page →
-          </Link>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          buildHref={(p) => buildPageHref("/outreach/contacts", sp, p)}
+        />
       </div>
     </div>
   );

@@ -9,8 +9,10 @@ export type LoginSort = (typeof LOGIN_SORT_VALUES)[number];
 
 export class ListLoginsDto {
   @IsOptional()
-  @IsString()
-  cursor?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
 
   @IsOptional()
   @IsDateString()
@@ -37,5 +39,5 @@ export class ListLoginsDto {
   @IsInt()
   @Min(1)
   @Max(100)
-  limit: number = 50;
+  limit: number = 25;
 }

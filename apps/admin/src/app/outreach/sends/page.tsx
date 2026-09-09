@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchCampaignSends } from "@/lib/bff";
-import { str } from "@/lib/searchParams";
+import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { Pagination } from "@/components/Pagination";
 import { formatDateTime } from "@/lib/formatDateTime";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -13,22 +15,21 @@ const STATUS_COLORS: Record<string, string> = {
   opted_out: "#b3413a",
 };
 
-export default async function SendsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function SendsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accessToken } = await requireAdmin();
   const sp = await searchParams;
   const campaignId = str(sp.campaignId);
   const contactId = str(sp.contactId);
+  const currentPage = parsePage(str(sp.page));
+  const limit = parsePageSize(str(sp.limit));
 
-  const page = await fetchCampaignSends(accessToken, {
-    cursor: str(sp.cursor),
-    limit: 50,
+  const result = await fetchCampaignSends(accessToken, {
+    offset: (currentPage - 1) * limit,
+    limit,
     campaignId,
     contactId,
   });
+  const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -40,17 +41,28 @@ export default async function SendsPage({
           ← Back to {contactId ? "contacts" : "campaigns"}
         </Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>Send history</h1>
-        <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 20px" }}>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 12px" }}>
           Every send attempt, newest first — including ones that were suppressed or skipped, so the
-          gap between an audience and what actually went out is always explainable. {page.total}{" "}
-          record{page.total === 1 ? "" : "s"}.
+          gap between an audience and what actually went out is always explainable. {result.total}{" "}
+          record{result.total === 1 ? "" : "s"}.
         </p>
 
-        {page.items.length === 0 ? (
+        <form method="get" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+          {campaignId && <input type="hidden" name="campaignId" value={campaignId} />}
+          {contactId && <input type="hidden" name="contactId" value={contactId} />}
+          <AutoSubmitSelect
+            name="limit"
+            defaultValue={String(limit)}
+            style={selectStyle}
+            options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: `${n} / page` }))}
+          />
+        </form>
+
+        {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>Nothing sent yet.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {page.items.map((send) => (
+            {result.items.map((send) => (
               <div
                 key={send.id}
                 style={{
@@ -98,19 +110,21 @@ export default async function SendsPage({
           </div>
         )}
 
-        {page.nextCursor && (
-          <Link
-            href={`/outreach/sends?${new URLSearchParams({
-              ...(campaignId ? { campaignId } : {}),
-              ...(contactId ? { contactId } : {}),
-              cursor: page.nextCursor,
-            }).toString()}`}
-            style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--green)" }}
-          >
-            Next page →
-          </Link>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          buildHref={(p) => buildPageHref("/outreach/sends", sp, p)}
+        />
       </div>
     </div>
   );
 }
+
+const selectStyle: React.CSSProperties = {
+  border: "1px solid var(--border)",
+  borderRadius: 9,
+  padding: "8px 10px",
+  fontSize: 13,
+  background: "var(--surface)",
+  color: "var(--text)",
+};
