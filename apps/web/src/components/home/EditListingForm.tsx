@@ -128,7 +128,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
         />
       )}
 
-      <div>
+      <div className="max-w-[420px]">
         <label className={labelClass}>Category / transaction</label>
         <div className={`${fieldClass} bg-surface-alt text-text-soft`}>
           {listing.category} · {listing.transactionType}
@@ -205,7 +205,7 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
         />
       </div>
 
-      <div>
+      <div className="max-w-[420px]">
         <label className={labelClass}>Status</label>
         <SelectField value={status} onChange={(e) => setStatus(e.target.value as ListingStatus)}>
           {STATUS_OPTIONS.map((opt) => (

@@ -438,7 +438,13 @@ export function CategoryFieldsAccordion({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    // Capped like Title's own max-w-[720px] in PostAdWizard/EditListingForm — a bit wider since
+    // this holds multi-column grids of short fields rather than one text input, but without a
+    // cap a page-width container (both callers now full-width, max-w-[1280px]) stretched every
+    // section's box to match — comically wide for a numeric field, and just as bad for a
+    // col-span-full one (multi-select/text — see FieldRunBlock below), which then filled the
+    // entire page width for something like "Preferred tenant type"'s checkbox dropdown.
+    <div className="flex flex-col gap-3 max-w-[820px]">
       {sections.map(({ section, label, fields }) => (
         <details
           key={section}
