@@ -272,21 +272,34 @@ export class ListingsService {
         attributes: { path: ['serviceType'], equals: serviceType },
       });
 
-    // Word match, not phrase match: each word in `q` must appear *somewhere* in the title, in any
-    // order — "wooden wardrobe" now matches "Wooden Wardrobe for sale" as well as "Wardrobe,
-    // wooden, excellent condition". A single-word query behaves exactly as the old whole-string
-    // `contains` did (there is only one word to require), so this is a superset of the prior
-    // behavior rather than a change to it.
-    const titleWordFilters: Prisma.ListingWhereInput[] = q
-      ? q
-          .split(/\s+/)
-          .filter(Boolean)
-          .map((word) => ({
-            title: { contains: word, mode: 'insensitive' as const },
-          }))
-      : [];
+    // Word match, not phrase match, and typo-tolerant: each word in `q` must appear *somewhere*
+    // in the title, in any order — "wooden wardrobe" matches "Wooden Wardrobe for sale" as well
+    // as "Wardrobe, wooden, excellent condition" — matched either as a literal substring or, via
+    // pg_trgm's word_similarity(), a close-enough spelling variant (so searching "Koramangala"
+    // still finds a title spelled "Kormangala"). ILIKE stays in the OR because trigram similarity
+    // is unreliable for very short words ("PG", "3BHK"), which a plain substring check still
+    // handles correctly. A single-word query is a superset of the old whole-string `contains`
+    // (every title the old check found still has similarity 1.0 against itself), not a change to
+    // its prior behavior.
+    let titleMatchedIds: string[] | undefined;
+    if (q) {
+      const words = q.split(/\s+/).filter(Boolean);
+      if (words.length > 0) {
+        const wordConditions = words.map(
+          (word) =>
+            Prisma.sql`(title ILIKE ${'%' + word + '%'} OR word_similarity(lower(${word}), lower(title)) > 0.3)`,
+        );
+        const rows = await this.prisma.$queryRaw<{ id: string }[]>(
+          Prisma.sql`SELECT id FROM "Listing" WHERE ${Prisma.join(wordConditions, ' AND ')}`,
+        );
+        titleMatchedIds = rows.map((r) => r.id);
+      }
+    }
 
-    const andFilters = [...attributeFilters, ...titleWordFilters];
+    const andFilters = [
+      ...attributeFilters,
+      ...(titleMatchedIds ? [{ id: { in: titleMatchedIds } }] : []),
+    ];
 
     const where: Prisma.ListingWhereInput = {
       ...categoryWhere,

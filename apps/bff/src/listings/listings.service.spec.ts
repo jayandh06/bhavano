@@ -11,6 +11,7 @@ import { ListingSlotsService } from '../listing-slots/listing-slots.service';
 import { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provider';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { ConfigService } from '@nestjs/config';
+import type { Prisma } from '@prisma/client';
 
 // computeDHash calls sharp on a real image buffer — stubbed so addPhoto's own logic (cap,
 // duplicate check, counter increment) can be unit-tested without a real image.
@@ -51,12 +52,18 @@ function makeService() {
   return { service, prisma, notificationsService, listingSlotsService };
 }
 
-describe('ListingsService.list — word match title search', () => {
-  function makeListService() {
+describe('ListingsService.list — word match + fuzzy title search', () => {
+  function makeListService(fuzzyMatchedIds: string[] = []) {
     const findMany = jest.fn().mockResolvedValue([]);
-    const count = jest.fn().mockResolvedValue(0);
+    const count = jest
+      .fn<Promise<number>, [{ where: Prisma.ListingWhereInput }]>()
+      .mockResolvedValue(0);
+    const queryRaw = jest
+      .fn<Promise<{ id: string }[]>, [Prisma.Sql]>()
+      .mockResolvedValue(fuzzyMatchedIds.map((id) => ({ id })));
     const prisma = {
       listing: { findMany, count },
+      $queryRaw: queryRaw,
     } as unknown as PrismaService;
     const contactRevealService = {
       getRevealStatesForListings: jest.fn().mockResolvedValue(new Map()),
@@ -75,32 +82,50 @@ describe('ListingsService.list — word match title search', () => {
       {} as GoogleAdsConversionProvider,
       contactRevealService,
     );
-    return { service, findMany, count };
+    return { service, findMany, count, queryRaw };
   }
 
-  it('requires every word in `q` to appear in the title, not the whole phrase as one substring', async () => {
-    const { service, count } = makeListService();
-    await service.list({ q: 'wooden wardrobe', offset: 0, limit: 20 } as never);
+  it('resolves title matches via a fuzzy/word-match lookup and filters by the ids it returns', async () => {
+    const { service, count, queryRaw } = makeListService([
+      'listing1',
+      'listing2',
+    ]);
+    await service.list({ q: 'wooden wardrobe', offset: 0, limit: 20 });
 
+    expect(queryRaw).toHaveBeenCalledTimes(1);
     const where = count.mock.calls[0][0].where;
-    expect(where.AND).toEqual([
-      { title: { contains: 'wooden', mode: 'insensitive' } },
-      { title: { contains: 'wardrobe', mode: 'insensitive' } },
+    expect(where.AND).toEqual([{ id: { in: ['listing1', 'listing2'] } }]);
+  });
+
+  it('requires every word to independently match — the raw query is built from one condition per word', async () => {
+    const { service, queryRaw } = makeListService();
+    await service.list({ q: 'wooden wardrobe', offset: 0, limit: 20 });
+
+    // Prisma.sql's bound values, in order — two params per word (the ILIKE pattern and the
+    // word_similarity argument), so both "wooden" and "wardrobe" must appear as their own
+    // independent condition rather than one combined phrase.
+    const sqlArg = queryRaw.mock.calls[0][0];
+    expect(sqlArg.values).toEqual([
+      '%wooden%',
+      'wooden',
+      '%wardrobe%',
+      'wardrobe',
     ]);
   });
 
-  it('behaves exactly like the old whole-string contains for a single-word query', async () => {
-    const { service, count } = makeListService();
-    await service.list({ q: 'apartment', offset: 0, limit: 20 } as never);
+  it('returns zero matches (not everything) when the fuzzy lookup finds nothing', async () => {
+    const { service, count } = makeListService([]);
+    await service.list({ q: 'nonexistent keyword', offset: 0, limit: 20 });
 
     const where = count.mock.calls[0][0].where;
-    expect(where.AND).toEqual([{ title: { contains: 'apartment', mode: 'insensitive' } }]);
+    expect(where.AND).toEqual([{ id: { in: [] } }]);
   });
 
-  it('omits the AND clause entirely when there is no query text', async () => {
-    const { service, count } = makeListService();
-    await service.list({ offset: 0, limit: 20 } as never);
+  it('skips the fuzzy lookup entirely and omits the AND clause when there is no query text', async () => {
+    const { service, count, queryRaw } = makeListService();
+    await service.list({ offset: 0, limit: 20 });
 
+    expect(queryRaw).not.toHaveBeenCalled();
     const where = count.mock.calls[0][0].where;
     expect(where.AND).toBeUndefined();
   });
