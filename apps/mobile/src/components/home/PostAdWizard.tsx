@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -118,6 +118,13 @@ export function PostAdWizard({
   const [listingId] = useState(() => Crypto.randomUUID());
 
   const [step, setStep] = useState<Step>("category");
+  const scrollRef = useRef<ScrollView>(null);
+  // Mirrors the web wizard's StepTracker scroll reset (apps/web/src/components/home/
+  // PostAdWizard.tsx) — without it, a step reached after scrolling down on the previous one
+  // rendered wherever that old offset landed, often off-screen on a phone.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [step]);
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
 
@@ -365,7 +372,7 @@ export function PostAdWizard({
 
   return (
     <>
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
+    <ScrollView ref={scrollRef} contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={styles.stepper}>
         {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
           <Text key={s} style={{ fontSize: 11, fontWeight: "700", color: step === s ? colors.green : colors.muted }}>
