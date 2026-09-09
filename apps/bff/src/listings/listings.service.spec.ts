@@ -131,6 +131,94 @@ describe('ListingsService.list — word match + fuzzy title search', () => {
   });
 });
 
+describe('ListingsService.listEngagement', () => {
+  function makeEngagementService(opts: {
+    favourites?: { user: { id: string; name: string | null; phone: string | null; email: string | null }; createdAt: Date }[];
+    views?: { viewerKey: string; createdAt: Date }[];
+    users?: { id: string; name: string | null; phone: string | null; email: string | null }[];
+    favouriteCount?: number;
+    viewCount?: number;
+  }) {
+    const prisma = {
+      favourite: {
+        findMany: jest.fn().mockResolvedValue(opts.favourites ?? []),
+        count: jest.fn().mockResolvedValue(opts.favouriteCount ?? (opts.favourites ?? []).length),
+      },
+      listingView: {
+        findMany: jest.fn().mockResolvedValue(opts.views ?? []),
+        count: jest.fn().mockResolvedValue(opts.viewCount ?? (opts.views ?? []).length),
+      },
+      user: {
+        findMany: jest.fn().mockResolvedValue(opts.users ?? []),
+      },
+    } as unknown as PrismaService;
+
+    const service = new ListingsService(
+      prisma,
+      {} as ModerationService,
+      { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
+      {} as NotificationsService,
+      {} as SavedSearchesService,
+      {} as LocationsService,
+      {} as R2StorageService,
+      {} as CdnPurgeService,
+      {} as ListingSlotsService,
+      {} as GoogleAdsConversionProvider,
+      {} as ContactRevealService,
+    );
+    return { service, prisma };
+  }
+
+  const user = (id: string) => ({ id, name: `User ${id}`, phone: null, email: null });
+
+  it('merges liked and viewed rows sorted newest-first', async () => {
+    const { service } = makeEngagementService({
+      favourites: [{ user: user('u1'), createdAt: past(1) }],
+      views: [{ viewerKey: 'user:u2', createdAt: past(0.5) }],
+      users: [user('u2')],
+    });
+
+    const result = await service.listEngagement('listing1', 0, 25);
+    expect(result.items.map((r) => [r.userId, r.action])).toEqual([
+      ['u2', 'viewed'],
+      ['u1', 'liked'],
+    ]);
+    expect(result.total).toBe(2);
+  });
+
+  it('shows the same user twice if they both liked and viewed', async () => {
+    const { service } = makeEngagementService({
+      favourites: [{ user: user('u1'), createdAt: past(1) }],
+      views: [{ viewerKey: 'user:u1', createdAt: past(0.5) }],
+      users: [user('u1')],
+    });
+
+    const result = await service.listEngagement('listing1', 0, 25);
+    expect(result.items).toHaveLength(2);
+    expect(result.items.map((r) => r.action).sort()).toEqual(['liked', 'viewed']);
+  });
+
+  it('drops a view row whose viewerKey points at a deleted user', async () => {
+    const { service } = makeEngagementService({
+      views: [{ viewerKey: 'user:deleted', createdAt: past(0.5) }],
+      users: [], // the user lookup found nothing — deleted since the view was recorded
+    });
+
+    const result = await service.listEngagement('listing1', 0, 25);
+    expect(result.items).toEqual([]);
+  });
+
+  it('never includes anonymous views — only user-prefixed viewerKeys are queried', async () => {
+    const { service, prisma } = makeEngagementService({});
+    await service.listEngagement('listing1', 0, 25);
+    expect(prisma.listingView.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ viewerKey: { startsWith: 'user:' } }),
+      }),
+    );
+  });
+});
+
 describe('ListingsService', () => {
   describe('residential attributes', () => {
     const validAttributes = {

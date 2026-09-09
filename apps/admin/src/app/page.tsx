@@ -6,7 +6,7 @@ import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from 
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
-import { formatDate } from "@/lib/formatDateTime";
+import { AdminListingsTable } from "@/components/AdminListingsTable";
 
 type FilterTab = "needsReview" | "flagged" | "all";
 
@@ -106,7 +106,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 24px" }}>Listing moderation</h1>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
@@ -226,45 +226,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>Nothing here.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {result.items.map((item) => (
-              <Link
-                key={item.id}
-                href={`/listings/${item.id}`}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 16,
-                  border: "1px solid var(--border)",
-                  borderRadius: 10,
-                  padding: 16,
-                  background: "var(--surface)",
-                  color: "inherit",
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{item.title}</span>
-                    <StatusBadge moderationState={item.moderationState} adminReviewed={item.adminReviewed} />
-                    <PostedNotificationBadge
-                      sent={item.postedNotificationSent}
-                      channel={item.postedNotificationChannel}
-                      sentAt={item.postedNotificationSentAt}
-                      deliveryStatus={item.postedNotificationDeliveryStatus}
-                    />
-                  </div>
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
-                    {item.price} · {item.category} · {item.area}, {item.cityName}
-                  </div>
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0, fontSize: 11.5, color: "var(--muted)" }}>
-                  <div>Created {formatDate(item.createdAt)}</div>
-                  <div>Modified {formatDate(item.updatedAt)}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <AdminListingsTable items={result.items} />
         )}
 
         <Pagination
@@ -285,43 +247,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>{label}</label>
       {children}
     </div>
-  );
-}
-
-function StatusBadge({ moderationState, adminReviewed }: { moderationState: string; adminReviewed: boolean }) {
-  const label = moderationState === "flagged" ? "Flagged" : adminReviewed ? "Reviewed" : "Needs review";
-  const color = moderationState === "flagged" ? "var(--danger)" : adminReviewed ? "var(--green)" : "var(--muted)";
-  return (
-    <span style={{ fontSize: 11, fontWeight: 700, color, border: `1px solid ${color}`, borderRadius: 6, padding: "2px 8px" }}>
-      {label}
-    </span>
-  );
-}
-
-/** Whether the "your ad is live" acknowledgement was confirmed delivered — see
- * ListingDetailDto.postedNotificationSent's doc comment: derived from a real
- * ListingNotificationLog row, not a dispatch-attempted flag. Mirrors UsersTable's "welcomed"
- * badge for the same reason (a missing row could mean the owner has neither email nor phone, or
- * that the send itself failed — this doesn't distinguish those, it only says whether one landed). */
-function PostedNotificationBadge({
-  sent,
-  channel,
-  sentAt,
-  deliveryStatus,
-}: {
-  sent?: boolean;
-  channel?: string | null;
-  sentAt?: string | null;
-  deliveryStatus?: string | null;
-}) {
-  if (sent === undefined) return null;
-  const color = sent ? "var(--green)" : "var(--danger)";
-  return (
-    <span style={{ fontSize: 11, fontWeight: 700, color, border: `1px solid ${color}`, borderRadius: 6, padding: "2px 8px" }}>
-      {sent
-        ? `Sent · ${channel ?? "unknown"}${deliveryStatus ? ` · ${deliveryStatus}` : ""}${sentAt ? ` · ${formatDate(sentAt)}` : ""}`
-        : "Not sent"}
-    </span>
   );
 }
 

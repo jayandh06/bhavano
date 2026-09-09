@@ -213,6 +213,10 @@ export interface ListingDetailDto extends ListingCardDto {
    * first status event arrives, and stays null forever for an email send (no such signal exists
    * there) or a WhatsApp send from before this tracking existed. */
   postedNotificationDeliveryStatus?: string | null;
+  /** Buyer-inquiry (`type: "inquiry"`) conversation count — never counts the admin↔owner
+   * moderation thread. Only populated in the admin moderation queue (ListingsService.listForAdmin),
+   * same precedent as postedNotificationSent above. */
+  messageCount?: number;
 }
 
 export interface ListingRenewalDto {
@@ -428,6 +432,41 @@ export interface UpdateProfileInput {
  * `moderationState: 'approved'` filter the public browse endpoint applies. */
 export interface AdminListingsPage {
   items: ListingDetailDto[];
+  total: number;
+}
+
+/** One row of a listing's "Liked & Viewed" admin table — a `Favourite` or a logged-in-viewer
+ * `ListingView` row, resolved to the real user. Anonymous views are never rows here (no
+ * resolvable user) — see ListingsService.listEngagement for why. The same user can appear twice
+ * (once per action) if they both liked and viewed. */
+export interface ListingEngagementRowDto {
+  userId: string;
+  userName: string | null;
+  userPhone: string | null;
+  userEmail: string | null;
+  action: 'liked' | 'viewed';
+  at: string;
+}
+
+export interface ListingEngagementPage {
+  items: ListingEngagementRowDto[];
+  total: number;
+}
+
+/** One row of a listing's admin "Messages" table — a buyer-inquiry conversation (never the
+ * admin↔owner moderation thread, which shares the same listingId under a different `type`). */
+export interface AdminConversationSummaryDto {
+  id: string;
+  inquirer: { id: string; name: string | null; phone: string | null; email: string | null };
+  lastMessage: MessageDto | null;
+  /** The last message was the buyer's and the owner hasn't read it yet — an admin triage signal,
+   * not a per-viewer unread count (the admin isn't a participant in this conversation). */
+  unreadByOwner: boolean;
+  createdAt: string;
+}
+
+export interface AdminConversationsPage {
+  items: AdminConversationSummaryDto[];
   total: number;
 }
 

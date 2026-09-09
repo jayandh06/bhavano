@@ -14,6 +14,8 @@ import type {
   ListingCardDto,
   ListingCategory,
   ListingDetailDto,
+  ListingEngagementPage,
+  ListingEngagementRowDto,
   ListingSitemapEntry,
   ListingStatus,
   ListingVideoDto,
@@ -448,6 +450,10 @@ export class ListingsService {
           // Newest "posted" row only — mirrors AdminService.listUsers' notificationLogs include
           // for the "welcomed" column. Admin-only: no other listForAdmin caller pays for this.
           notificationLogs: { where: { kind: 'posted' }, orderBy: { sentAt: 'desc' }, take: 1 },
+          // Buyer-inquiry count for the admin dashboard's Messages column — a filtered relation
+          // count, not a second query, and never includes the admin↔owner moderation thread
+          // (same listingId, different `type`).
+          _count: { select: { conversations: { where: { type: 'inquiry' } } } },
         },
         orderBy: ADMIN_ORDER_BY[sort ?? 'createdAt_desc'],
         skip: offset ?? 0,
@@ -464,8 +470,83 @@ export class ListingsService {
         postedNotificationChannel: row.notificationLogs[0]?.channel ?? null,
         postedNotificationSentAt: row.notificationLogs[0]?.sentAt.toISOString() ?? null,
         postedNotificationDeliveryStatus: row.notificationLogs[0]?.deliveryStatus ?? null,
+        messageCount: row._count.conversations,
       })),
       total,
+    };
+  }
+
+  /** One listing's "Liked & Viewed" admin table — merges `Favourite` rows (a real `User` FK
+   * already) with logged-in-viewer `ListingView` rows (`viewerKey` prefixed `user:`, resolved to
+   * a real user by stripping the prefix and batch-fetching). Anonymous views (`viewerKey`
+   * prefixed `anon:`) have no resolvable user and are never included — the listing's own
+   * `viewCount` (which does count them) is the only place that total is visible. Merged and
+   * paginated in memory rather than with raw SQL — the first `$queryRaw` in this codebase would
+   * be a bigger departure than justified for a single listing's rows, and `take: offset + limit`
+   * on each source keeps this bounded (never a global scan) even at the page-size cap. The same
+   * user can appear twice — liked and viewed are two different rows/actions, not deduplicated. */
+  async listEngagement(
+    listingId: string,
+    offset: number,
+    limit: number,
+  ): Promise<ListingEngagementPage> {
+    const take = offset + limit;
+    const [favourites, views, favouriteCount, viewCount] = await Promise.all([
+      this.prisma.favourite.findMany({
+        where: { listingId },
+        include: {
+          user: { select: { id: true, name: true, phone: true, email: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take,
+      }),
+      this.prisma.listingView.findMany({
+        where: { listingId, viewerKey: { startsWith: 'user:' } },
+        orderBy: { createdAt: 'desc' },
+        take,
+      }),
+      this.prisma.favourite.count({ where: { listingId } }),
+      this.prisma.listingView.count({
+        where: { listingId, viewerKey: { startsWith: 'user:' } },
+      }),
+    ]);
+
+    const viewerUserIds = views.map((v) => v.viewerKey.slice('user:'.length));
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: viewerUserIds } },
+      select: { id: true, name: true, phone: true, email: true },
+    });
+    const userById = new Map(users.map((u) => [u.id, u]));
+
+    const merged: ListingEngagementRowDto[] = [
+      ...favourites.map((f): ListingEngagementRowDto => ({
+        userId: f.user.id,
+        userName: f.user.name,
+        userPhone: f.user.phone,
+        userEmail: f.user.email,
+        action: 'liked',
+        at: f.createdAt.toISOString(),
+      })),
+      ...views.flatMap((v): ListingEngagementRowDto[] => {
+        // Dropped, not shown as a broken row — the user behind this view was deleted since.
+        const user = userById.get(v.viewerKey.slice('user:'.length));
+        if (!user) return [];
+        return [
+          {
+            userId: user.id,
+            userName: user.name,
+            userPhone: user.phone,
+            userEmail: user.email,
+            action: 'viewed',
+            at: v.createdAt.toISOString(),
+          },
+        ];
+      }),
+    ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+
+    return {
+      items: merged.slice(offset, offset + limit),
+      total: favouriteCount + viewCount,
     };
   }
 

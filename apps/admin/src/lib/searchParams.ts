@@ -21,17 +21,33 @@ export function parsePage(raw: string | undefined): number {
   return Number.isInteger(n) && n >= 1 ? n : 1;
 }
 
+/** The query-param names one `<Pagination>` instance reads/writes — defaults to plain
+ * `page`/`limit`, but a page with two independently-paginated tables (e.g. a listing detail page
+ * showing both "Liked & Viewed" and "Messages") must give each its own pair
+ * (`likedPage`/`likedLimit`, `msgPage`/`msgLimit`) so paging one doesn't reset the other. */
+export interface PageParamNames {
+  page: string;
+  limit: string;
+}
+
+export const DEFAULT_PAGE_PARAM_NAMES: PageParamNames = { page: "page", limit: "limit" };
+
 /** Carries every current query param forward except `page`, which is set to the target page (and
  * dropped entirely for page 1, so the canonical/no-filter URL never carries a redundant `?page=1`).
  * Replaces every list page's own hand-rolled `loadMoreHref`. */
-export function buildPageHref(basePath: string, sp: SearchParams, page: number): string {
+export function buildPageHref(
+  basePath: string,
+  sp: SearchParams,
+  page: number,
+  paramNames: PageParamNames = DEFAULT_PAGE_PARAM_NAMES,
+): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(sp)) {
-    if (key === "page") continue;
+    if (key === paramNames.page) continue;
     const v = str(value);
     if (v) params.set(key, v);
   }
-  if (page > 1) params.set("page", String(page));
+  if (page > 1) params.set(paramNames.page, String(page));
   const qs = params.toString();
   return qs ? `${basePath}?${qs}` : basePath;
 }

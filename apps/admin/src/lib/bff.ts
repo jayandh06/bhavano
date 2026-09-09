@@ -1,5 +1,6 @@
 import "server-only";
 import type {
+  AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
   AdminUsersPage,
@@ -14,6 +15,7 @@ import type {
   ListingBoostsPage,
   ListingCategory,
   ListingDetailDto,
+  ListingEngagementPage,
   ListingOwnerDto,
   ListingStatus,
   LoginEventsPage,
@@ -229,6 +231,44 @@ export function sendMessage(accessToken: string, conversationId: string, body: s
 
 export function fetchListingOwner(accessToken: string, listingId: string): Promise<ListingOwnerDto | null> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/owner`, { cache: "no-store" });
+}
+
+export function fetchListingEngagement(
+  accessToken: string,
+  listingId: string,
+  query: { offset?: number; limit?: number } = {},
+): Promise<ListingEngagementPage> {
+  const params = new URLSearchParams();
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
+  if (query.limit) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/listings/${listingId}/engagement?${params.toString()}`, {
+    cache: "no-store",
+  });
+}
+
+export function fetchListingConversations(
+  accessToken: string,
+  listingId: string,
+  query: { offset?: number; limit?: number } = {},
+): Promise<AdminConversationsPage> {
+  const params = new URLSearchParams();
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
+  if (query.limit) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/listings/${listingId}/conversations?${params.toString()}`, {
+    cache: "no-store",
+  });
+}
+
+export function fetchListingConversationMessages(
+  accessToken: string,
+  listingId: string,
+  conversationId: string,
+): Promise<MessageDto[]> {
+  return authedBffFetch(
+    accessToken,
+    `/admin/listings/${listingId}/conversations/${conversationId}/messages`,
+    { cache: "no-store" },
+  );
 }
 
 export interface RecentLoginsQuery {

@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ContactRevealSettingsDto, ListingStatus, RateLimitSettingsDto } from "@bhavano/types";
+import type { ContactRevealSettingsDto, ListingStatus, MessageDto, RateLimitSettingsDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   approveListing,
+  fetchListingConversationMessages,
   fetchThread,
   flagListing,
   revokeBoost,
@@ -144,5 +145,22 @@ export async function revokeBoostAction(listingId: string): Promise<ActionResult
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to revoke boost" };
+  }
+}
+
+/** The only path from ConversationsTable's row-click (a client component) to the new admin
+ * conversation-thread route — `apps/admin/src/lib/bff.ts` is server-only and the BFF access
+ * token lives only in the server-side NextAuth session, so a client component cannot fetch the
+ * BFF directly. */
+export async function fetchConversationMessagesAction(
+  listingId: string,
+  conversationId: string,
+): Promise<{ success: true; messages: MessageDto[] } | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const messages = await fetchListingConversationMessages(accessToken, listingId, conversationId);
+    return { success: true, messages };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to load messages" };
   }
 }

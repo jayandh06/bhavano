@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { AutoSubmitSelect } from "./AutoSubmitSelect";
-import { PAGE_SIZE_OPTIONS, str, type SearchParams } from "@/lib/searchParams";
+import {
+  DEFAULT_PAGE_PARAM_NAMES,
+  PAGE_SIZE_OPTIONS,
+  str,
+  type PageParamNames,
+  type SearchParams,
+} from "@/lib/searchParams";
 
 /** Numbered pagination + page-size selector for the admin list pages, together at the bottom of
  * the results — every page a real `<a href>`, no client JS needed to jump around. Modeled on
@@ -76,12 +82,16 @@ export function Pagination({
   buildHref,
   pageSize,
   sp,
+  paramNames = DEFAULT_PAGE_PARAM_NAMES,
 }: {
   currentPage: number;
   totalPages: number;
   buildHref: (page: number) => string;
   pageSize: number;
   sp: SearchParams;
+  /** Which query-param names this instance owns — override when a page has more than one
+   * `<Pagination>` so they don't collide over the same `?page=`/`?limit=` keys. */
+  paramNames?: PageParamNames;
 }) {
   return (
     <div
@@ -124,13 +134,13 @@ export function Pagination({
 
       <form method="get" style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {Object.entries(sp).map(([key, value]) => {
-          if (key === "page" || key === "limit") return null;
+          if (key === paramNames.page || key === paramNames.limit) return null;
           const v = str(value);
           return v ? <input key={key} type="hidden" name={key} value={v} /> : null;
         })}
         <label style={{ fontSize: 12, color: "var(--muted)" }}>Per page</label>
         <AutoSubmitSelect
-          name="limit"
+          name={paramNames.limit}
           defaultValue={String(pageSize)}
           style={selectStyle}
           options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))}

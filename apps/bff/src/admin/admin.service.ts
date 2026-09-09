@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   ActivityEventDto,
+  AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
   AdminUsersPage,
@@ -9,9 +10,11 @@ import type {
   DiscountCodeDto,
   ListingBoostsPage,
   ListingDetailDto,
+  ListingEngagementPage,
   ListingOwnerDto,
   ListingStatus,
   LoginEventsPage,
+  MessageDto,
   PageVisitsPage,
   RateLimitSettingsDto,
   SendWelcomeResponseDto,
@@ -138,6 +141,33 @@ export class AdminService {
   async getThread(id: string, adminId: string): Promise<{ id: string }> {
     const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
     return { id: thread.id };
+  }
+
+  listListingEngagement(
+    listingId: string,
+    offset: number,
+    limit: number,
+  ): Promise<ListingEngagementPage> {
+    return this.listingsService.listEngagement(listingId, offset, limit);
+  }
+
+  listListingConversations(
+    listingId: string,
+    offset: number,
+    limit: number,
+  ): Promise<AdminConversationsPage> {
+    return this.messagingService.listConversationsForListingAsAdmin(
+      listingId,
+      offset,
+      limit,
+    );
+  }
+
+  getListingConversationMessages(
+    listingId: string,
+    conversationId: string,
+  ): Promise<MessageDto[]> {
+    return this.messagingService.getMessagesAsAdmin(listingId, conversationId);
   }
 
   /** The combined soft-delete + notify-owner action: takes the listing offline, posts the

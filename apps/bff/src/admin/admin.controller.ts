@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import type {
+  AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
   AdminUsersPage,
@@ -10,8 +11,10 @@ import type {
   ImportOutreachContactsResult,
   ListingBoostsPage,
   ListingDetailDto,
+  ListingEngagementPage,
   ListingOwnerDto,
   LoginEventsPage,
+  MessageDto,
   PageVisitsPage,
   OutreachCampaignDto,
   OutreachCampaignsPage,
@@ -26,6 +29,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { AdminService } from './admin.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
+import { ListListingEngagementDto } from './dto/list-listing-engagement.dto';
+import { ListListingConversationsDto } from './dto/list-listing-conversations.dto';
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { SetListingStatusDto } from './dto/set-listing-status.dto';
@@ -120,6 +125,38 @@ export class AdminController {
   @Get('listings/:id/owner')
   getListingOwner(@Param('id') id: string): Promise<ListingOwnerDto | null> {
     return this.adminService.getListingOwner(id);
+  }
+
+  @Get('listings/:id/engagement')
+  getListingEngagement(
+    @Param('id') id: string,
+    @Query() query: ListListingEngagementDto,
+  ): Promise<ListingEngagementPage> {
+    return this.adminService.listListingEngagement(
+      id,
+      query.offset ?? 0,
+      query.limit,
+    );
+  }
+
+  @Get('listings/:id/conversations')
+  getListingConversations(
+    @Param('id') id: string,
+    @Query() query: ListListingConversationsDto,
+  ): Promise<AdminConversationsPage> {
+    return this.adminService.listListingConversations(
+      id,
+      query.offset ?? 0,
+      query.limit,
+    );
+  }
+
+  @Get('listings/:id/conversations/:conversationId/messages')
+  getListingConversationMessages(
+    @Param('id') id: string,
+    @Param('conversationId') conversationId: string,
+  ): Promise<MessageDto[]> {
+    return this.adminService.getListingConversationMessages(id, conversationId);
   }
 
   @Get('logins')

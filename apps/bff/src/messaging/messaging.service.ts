@@ -1,11 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
+  AdminConversationsPage,
   ConversationDetailDto,
   ConversationSummaryDto,
   MessageDto,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
-import type { Conversation, Message } from '@prisma/client';
+import type { Conversation, Message, Prisma } from '@prisma/client';
 
 function toMessageDto(message: Message): MessageDto {
   return {
@@ -158,6 +159,75 @@ export class MessagingService {
 
   async getMessages(conversationId: string, userId: string): Promise<MessageDto[]> {
     await this.assertParticipant(conversationId, userId);
+    const messages = await this.prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'asc' },
+    });
+    return messages.map(toMessageDto);
+  }
+
+  /** One listing's admin "Messages" table — buyer-inquiry conversations only (`type: 'inquiry'`),
+   * the admin↔owner moderation thread on the same listingId never appears here. */
+  async listConversationsForListingAsAdmin(
+    listingId: string,
+    offset: number,
+    limit: number,
+  ): Promise<AdminConversationsPage> {
+    const where: Prisma.ConversationWhereInput = { listingId, type: 'inquiry' };
+    const [rows, total] = await Promise.all([
+      this.prisma.conversation.findMany({
+        where,
+        include: {
+          inquirer: {
+            select: { id: true, name: true, phone: true, email: true },
+          },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      this.prisma.conversation.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((c) => {
+        const last = c.messages[0];
+        return {
+          id: c.id,
+          inquirer: c.inquirer,
+          lastMessage: last ? toMessageDto(last) : null,
+          unreadByOwner:
+            last != null &&
+            last.senderId === c.inquirerId &&
+            last.readAt === null,
+          createdAt: c.createdAt.toISOString(),
+        };
+      }),
+      total,
+    };
+  }
+
+  /** Admin-only read of one buyer-inquiry thread — `getMessages` above can't be reused here since
+   * an admin is never a real `posterId`/`inquirerId` participant in a buyer↔seller conversation.
+   * Still scoped, not a blind bypass: 404s unless the conversation actually belongs to the given
+   * listing and is a genuine inquiry (not the moderation thread), so a mismatched conversationId
+   * can't leak a different listing's thread onto this page. Deliberately never calls `markRead` —
+   * an admin looking at a thread must never register as the owner having actually responded. */
+  async getMessagesAsAdmin(
+    listingId: string,
+    conversationId: string,
+  ): Promise<MessageDto[]> {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+    });
+    if (
+      !conversation ||
+      conversation.listingId !== listingId ||
+      conversation.type !== 'inquiry'
+    ) {
+      throw new NotFoundException('Conversation not found');
+    }
     const messages = await this.prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
