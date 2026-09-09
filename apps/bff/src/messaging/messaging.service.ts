@@ -49,9 +49,14 @@ export class MessagingService {
     });
   }
 
+  /** The buyer/seller inbox only — `moderation` threads (admin↔owner, auto-created just by an
+   * admin opening a listing in the separate admin app, see getOrCreateModerationThread) are a
+   * different surface entirely and must never leak into here. An admin who also messages
+   * listings as a buyer would otherwise see a phantom "empty conversation" for every listing
+   * they'd merely opened in the admin panel, alongside their real inquiry for the same listing. */
   async listConversations(userId: string): Promise<ConversationSummaryDto[]> {
     const conversations = await this.prisma.conversation.findMany({
-      where: { OR: [{ posterId: userId }, { inquirerId: userId }] },
+      where: { type: 'inquiry', OR: [{ posterId: userId }, { inquirerId: userId }] },
       include: {
         listing: { select: { title: true } },
         poster: { select: { id: true, name: true, phone: true } },

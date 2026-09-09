@@ -53,6 +53,18 @@ describe('MessagingService.listConversations — Verified Buyer badge (premiumUn
   });
 });
 
+describe('MessagingService.listConversations — excludes moderation threads', () => {
+  it('queries only type: inquiry, so an admin\'s own moderation threads never appear in their inbox', async () => {
+    const { service, prisma } = makeService([]);
+    await service.listConversations('poster1');
+    expect(prisma.conversation.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ type: 'inquiry' }),
+      }),
+    );
+  });
+});
+
 describe('MessagingService.getUnreadTotal', () => {
   it('counts unread messages from others across every conversation the user is a participant in', async () => {
     const count = jest.fn().mockResolvedValue(4);
