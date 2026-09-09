@@ -5,11 +5,13 @@ import type { UnreadUpdateEvent } from "@bhavano/types";
 import {
   fetchAreas,
   fetchCities,
+  fetchContactRevealBalance,
   fetchConversations,
   fetchFavourites,
   fetchListingById,
   fetchListings,
   fetchMessages,
+  fetchPaymentHistory,
   fetchUnreadCount,
   type ListingsQuery,
 } from "./bffClient";
@@ -58,6 +60,26 @@ export function useFavouritesQuery(accessToken: string | null) {
   return useQuery({
     queryKey: ["favourites", accessToken],
     queryFn: () => fetchFavourites(accessToken!),
+    enabled: !!accessToken,
+  });
+}
+
+export function useContactRevealBalanceQuery(accessToken: string | null) {
+  return useQuery({
+    queryKey: ["contactRevealBalance", accessToken],
+    queryFn: () => fetchContactRevealBalance(accessToken!),
+    enabled: !!accessToken,
+  });
+}
+
+/** Same cursor-based infinite-scroll shape as useInfiniteListingsQuery above, for the Purchases
+ * screen's FlatList. */
+export function useInfinitePaymentHistoryQuery(accessToken: string | null) {
+  return useInfiniteQuery({
+    queryKey: ["paymentHistory", accessToken],
+    queryFn: ({ pageParam }: { pageParam: string | undefined }) => fetchPaymentHistory(accessToken!, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!accessToken,
   });
 }

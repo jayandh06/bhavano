@@ -12,7 +12,7 @@ import {
   updateProfile,
   verifyEmail,
 } from "../../src/lib/bffClient";
-import { useUnreadCountQuery } from "../../src/lib/queries";
+import { useContactRevealBalanceQuery, useUnreadCountQuery } from "../../src/lib/queries";
 import { Icon } from "../../src/components/Icon";
 
 type PhoneStep = "idle" | "otpSent";
@@ -66,6 +66,7 @@ export default function AccountScreen() {
       profile={profile}
       refreshProfile={refreshProfile}
       onOpenMessages={() => router.push("/messages")}
+      onOpenPurchases={() => router.push("/purchases")}
       onLogout={onLogout}
       loggingOut={loggingOut}
     />
@@ -77,6 +78,7 @@ function ProfileFields({
   profile,
   refreshProfile,
   onOpenMessages,
+  onOpenPurchases,
   onLogout,
   loggingOut,
 }: {
@@ -84,11 +86,13 @@ function ProfileFields({
   profile: UserProfileDto;
   refreshProfile: () => Promise<void>;
   onOpenMessages: () => void;
+  onOpenPurchases: () => void;
   onLogout: () => void;
   loggingOut: boolean;
 }) {
   const { colors, theme, toggleTheme } = useAppTheme();
   const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
+  const { data: balance } = useContactRevealBalanceQuery(accessToken);
 
   const [name, setName] = useState(profile.name ?? "");
   const [email, setEmail] = useState(profile.email ?? "");
@@ -221,6 +225,14 @@ function ProfileFields({
         )}
       </Pressable>
 
+      <Pressable
+        onPress={onOpenPurchases}
+        style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8 }]}
+      >
+        <Icon name="pack" size={16} color={colors.text} />
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Purchase history</Text>
+      </Pressable>
+
       {/* The other toggle lives in the Home tab's brand row, which is not where anyone looks for
           a preference — and is unreachable from the other three tabs. Appearance belongs on the
           settings screen; Home keeps its copy for the visitor who spots it there first. */}
@@ -233,6 +245,26 @@ function ProfileFields({
           {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         </Text>
       </Pressable>
+
+      {balance && (balance.freeRevealsRemaining > 0 || balance.creditsRemaining > 0) && (
+        <View style={[styles.balanceCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <Icon name="phone" size={15} color={colors.text} />
+            <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Contact reveal credits</Text>
+          </View>
+          {balance.freeRevealsRemaining > 0 && (
+            <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
+              {balance.freeRevealsRemaining} free reveal{balance.freeRevealsRemaining === 1 ? "" : "s"} left
+            </Text>
+          )}
+          {balance.creditsRemaining > 0 && (
+            <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
+              {balance.creditsRemaining} purchased credit{balance.creditsRemaining === 1 ? "" : "s"}
+              {balance.nextCreditExpiryAt ? ` — earliest expires ${new Date(balance.nextCreditExpiryAt).toLocaleDateString()}` : ""}
+            </Text>
+          )}
+        </View>
+      )}
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile</Text>
 
@@ -431,6 +463,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center" },
   scrollContent: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 40 },
   row: { borderWidth: 1, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 24, alignSelf: "flex-start", marginBottom: 28 },
+  balanceCard: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 3, marginBottom: 28 },
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 14 },
   label: { fontSize: 12, fontWeight: "700", marginBottom: 6, marginTop: 16, textTransform: "uppercase", letterSpacing: 0.3 },
   hint: { fontSize: 12.5, marginBottom: 8 },

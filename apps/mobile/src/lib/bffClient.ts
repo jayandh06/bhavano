@@ -1,6 +1,7 @@
 import type {
   Area,
   City,
+  ContactRevealBalanceDto,
   ConversationDetailDto,
   ConversationSummaryDto,
   CreateListingInput,
@@ -9,6 +10,7 @@ import type {
   ListingDetailDto,
   ListingsPage,
   MessageDto,
+  PaymentHistoryPage,
   PropertyTypeFilter,
   RevealContactResponseDto,
   ReverseGeocodeResultDto,
@@ -157,6 +159,15 @@ export function createConversation(accessToken: string, listingId: string): Prom
  * See docs/plans/contact-reveal-credits.md. */
 export function revealContact(accessToken: string, listingId: string): Promise<RevealContactResponseDto> {
   return authedBffFetch(accessToken, `/listings/${listingId}/reveal-contact`, { method: "POST" });
+}
+
+export function fetchContactRevealBalance(accessToken: string): Promise<ContactRevealBalanceDto> {
+  return authedBffFetch(accessToken, "/users/me/contact-reveal-credits");
+}
+
+export function fetchPaymentHistory(accessToken: string, cursor?: string): Promise<PaymentHistoryPage> {
+  const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  return authedBffFetch(accessToken, `/users/me/payments${params}`);
 }
 
 export function fetchConversations(accessToken: string): Promise<ConversationSummaryDto[]> {
