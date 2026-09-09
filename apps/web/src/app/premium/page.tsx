@@ -28,11 +28,11 @@ export default async function PremiumPage({
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader cityName={city?.name} />
-      <div className="flex-1 w-full max-w-[960px] mx-auto p-8">
+      <div className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-6 pb-20">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
-        <h1 className="font-lora text-[26px] font-semibold m-0 mb-1">Plans &amp; upgrades</h1>
+        <h1 className="font-lora text-2xl font-semibold m-0 mb-1">Plans &amp; upgrades</h1>
         <p className="text-[13px] text-muted mb-6">
           Compare free, seller, and buyer plans side by side — or subscribe when you&apos;re ready.
         </p>
