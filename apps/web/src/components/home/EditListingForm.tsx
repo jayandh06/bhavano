@@ -11,6 +11,7 @@ import { fieldClass, labelClass, primaryButtonClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
 import { CategoryFieldsAccordion } from "./CategoryFieldsAccordion";
 import { EditListingPhotos } from "./EditListingPhotos";
+import { VideoManager } from "./VideoManager";
 
 function attributesToStrings(
   attributes: Record<string, unknown>,
@@ -43,7 +44,7 @@ const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
   { value: "deactivated", label: "Deactivated — hidden from search" },
 ];
 
-export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
+export function EditListingForm({ listing, accessToken }: { listing: ListingDetailDto; accessToken: string }) {
   const router = useRouter();
   const [title, setTitle] = useState(listing.title);
   const [price, setPrice] = useState(
@@ -127,6 +128,14 @@ export function EditListingForm({ listing }: { listing: ListingDetailDto }) {
           }))}
         />
       )}
+
+      {/* Video is the one media type a seller can still add after posting — see VideoManager's
+        * own doc comment for why photos (unlike video) are immutable post-creation today. Was
+        * previously only reachable from the /my-listings row, not this page. */}
+      <div>
+        <label className={labelClass}>Videos</label>
+        <VideoManager listing={listing} accessToken={accessToken} />
+      </div>
 
       <div className="max-w-[420px]">
         <label className={labelClass}>Category / transaction</label>

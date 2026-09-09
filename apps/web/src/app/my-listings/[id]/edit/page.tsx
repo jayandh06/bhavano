@@ -39,5 +39,5 @@ async function EditListingFields({ accessToken, id }: { accessToken: string; id:
     }
     notFound();
   }
-  return <EditListingForm listing={listing} />;
+  return <EditListingForm listing={listing} accessToken={accessToken} />;
 }
