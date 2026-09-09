@@ -27,7 +27,10 @@ function removeCaseInsensitive(haystack: string, needle: string): string {
 }
 
 interface Interpretation {
-  targetCityName: string;
+  /** Undefined only when no city is named in the query text AND none is currently being
+   * browsed (e.g. typed from the all-India homepage) — there is then no city to scope a browse
+   * path to at all, and `go()` must fall back to a plain keyword search instead of guessing one. */
+  targetCityName?: string;
   areaCandidate: string;
   category?: ListingCategory;
   transactionGroup?: TransactionGroup;
@@ -38,10 +41,14 @@ interface Interpretation {
 }
 
 /** Shared by both `submit()` (build the destination URL) and the live "interpreted as…" preview
- * — both need the exact same reading of the query text, just rendered two different ways. */
-function interpret(text: string, cityName: string, popularCities: City[]): Interpretation {
+ * — both need the exact same reading of the query text, just rendered two different ways.
+ * `allCities` must be the *complete* city list, not just the curated "popular" subset shown
+ * elsewhere (e.g. the city switcher) — a real city that just isn't flagged popular (like most of
+ * India's smaller towns) would otherwise never be recognized as a city at all, and would instead
+ * get misrouted as a locality guess scoped to whatever city happens to be currently browsed. */
+function interpret(text: string, cityName: string | undefined, allCities: City[]): Interpretation {
   const intent = parseSearchQuery(text);
-  const matchedCity = popularCities.find((c) => intent.residual.toLowerCase().includes(c.name.toLowerCase()));
+  const matchedCity = allCities.find((c) => intent.residual.toLowerCase().includes(c.name.toLowerCase()));
   const targetCityName = matchedCity?.name ?? cityName;
   const areaCandidate = matchedCity ? removeCaseInsensitive(intent.residual, matchedCity.name) : intent.residual;
 
@@ -76,7 +83,10 @@ function describe(result: Interpretation): string[] {
   if (result.transactionGroup) tokens.push(result.transactionGroup === "buy" ? "Buy" : "Rent & Lease");
   if (result.minPrice !== undefined) tokens.push(`above ${formatINR(result.minPrice)}`);
   if (result.maxPrice !== undefined) tokens.push(`under ${formatINR(result.maxPrice)}`);
-  const place = result.areaCandidate ? `${result.areaCandidate}, ${result.targetCityName}` : result.targetCityName;
+  // Display-only fallback — "India" here is never fed back into navigation (see `go()`), just
+  // shown to the visitor so the preview doesn't read as "in undefined".
+  const cityLabel = result.targetCityName ?? "India";
+  const place = result.areaCandidate ? `${result.areaCandidate}, ${cityLabel}` : cityLabel;
   tokens.push(`in ${place}`);
   return tokens;
 }
@@ -85,17 +95,20 @@ export function SearchBar({
   initialQuery,
   cityName,
   areaName,
-  popularCities,
+  allCities,
   popularSearches,
 }: {
   initialQuery: string;
   /** The city currently being browsed — used as the search target when no other city is named
-   * in the query text (e.g. "furniture under 5000" while already on a Bengaluru page). */
-  cityName: string;
+   * in the query text (e.g. "furniture under 5000" while already on a Bengaluru page). Undefined
+   * on national pages (the all-India homepage, /buy) — there is then no city to fall back to. */
+  cityName?: string;
   /** A representative locality for `cityName`, used both for the placeholder and the example
    * chips in the search help dialog. */
   areaName?: string;
-  popularCities: City[];
+  /** The complete city list — used to recognize a city named in the query text. Must not be
+   * pre-filtered to "popular" cities only (see `interpret()`). */
+  allCities: City[];
   /** This city's top (category, transactionType) combinations by view count — shown as a real,
    * directly-navigable "Popular searches" section in the same help dialog, above the free-text
    * "Try searching" examples. Omitted (e.g. the listing-detail page) means that section just
@@ -110,11 +123,15 @@ export function SearchBar({
   useClickOutside(containerRef, () => setOpen(false));
 
   function go(text: string) {
-    const result = interpret(text, cityName, popularCities);
+    const result = interpret(text, cityName, allCities);
 
-    if (!result.somethingRecognized) {
-      // Rule-based parsing didn't find a city/category/price/area in this — fall back to the
-      // plain title-text search the homepage already supports, rather than a dead end.
+    if (!result.somethingRecognized || !result.targetCityName) {
+      // Either rule-based parsing found nothing at all (no city/category/price/area), or it
+      // found *only* leftover text with no city to scope it to (no city named in the query and
+      // none currently being browsed — e.g. typed from the all-India homepage). `buildBrowsePath`
+      // has no "no city" case that isn't a real, indexed city slug, so routing there with a
+      // fabricated placeholder would 404; the plain title-text search the homepage already
+      // supports is the correct fallback either way.
       router.push(buildHomeUrl(searchParams, { q: text }));
       return;
     }
@@ -148,20 +165,21 @@ export function SearchBar({
     go(text);
   }
 
+  const cityLabel = cityName ?? "India";
   const placeholder = areaName
-    ? `Search "2BHK in ${areaName}, ${cityName}", "furniture under 5000"…`
-    : `Search "2BHK in ${cityName}", "PG near IT park", "sofa set"…`;
+    ? `Search "2BHK in ${areaName}, ${cityLabel}", "furniture under 5000"…`
+    : `Search "2BHK in ${cityLabel}", "PG near IT park", "sofa set"…`;
 
-  const place = areaName ?? cityName;
+  const place = areaName ?? cityLabel;
   const exampleChips = [
     `2 BHK in ${place}`,
-    `Furniture under ₹5,000 in ${cityName}`,
-    `PG in ${cityName}`,
-    `Coworking in ${cityName}`,
+    `Furniture under ₹5,000 in ${cityLabel}`,
+    `PG in ${cityLabel}`,
+    `Coworking in ${cityLabel}`,
   ];
 
   const trimmedValue = value.trim();
-  const preview = open && trimmedValue ? describe(interpret(trimmedValue, cityName, popularCities)) : null;
+  const preview = open && trimmedValue ? describe(interpret(trimmedValue, cityName, allCities)) : null;
 
   return (
     <div ref={containerRef} className="flex-1 relative min-w-0">

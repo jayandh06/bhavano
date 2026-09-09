@@ -84,6 +84,7 @@ export async function ListingDetailView({
       <Header
         cityName={viewerCity?.name}
         popularCities={popularCities}
+        allCities={allCities}
         searchQuery=""
         activeCategory="all"
         userName={userName}

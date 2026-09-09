@@ -151,6 +151,7 @@ export default async function HomePage({
       <Header
         cityName={cityName}
         popularCities={popularCities}
+        allCities={allCities}
         searchQuery={q}
         activeCategory={category}
         userName={sessionHeaderName(session)}

@@ -27,6 +27,7 @@ export async function PageHeader({
     <Header
       cityName={cityName}
       popularCities={popularCities}
+      allCities={allCities}
       searchQuery=""
       activeCategory="all"
       userName={sessionHeaderName(session)}

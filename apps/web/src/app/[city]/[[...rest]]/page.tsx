@@ -467,6 +467,12 @@ export default async function CityBrowsePage({
   // path segment), an unresolved `?area=` is silently ignored rather than a 404.
   const areaQueryParam = typeof sp.area === "string" ? sp.area : undefined;
   const areaRowFromQuery = !areaRow && areaQueryParam ? await resolveArea(cityRow.id, areaQueryParam).catch(() => null) : null;
+  // The search bar's leftover text after city/category/price extraction is only ever a
+  // *guess* at a locality — when it doesn't match a real area in this city, it was previously
+  // just dropped on the floor (silently returning the city's unfiltered listings). Falling back
+  // to a real title search here is what lets a plain keyword (or a city-name-shaped word that
+  // isn't actually a locality of the city being browsed) still find something.
+  const qFromUnresolvedArea = areaQueryParam && !areaRow && !areaRowFromQuery ? areaQueryParam : undefined;
 
   // `AreaFilter`'s multi-select — a comma-separated list of area ids (`?areas=`), distinct from
   // the single-locality `?area=`/path-based cases above. No resolution needed, these ids round-trip
@@ -487,6 +493,7 @@ export default async function CityBrowsePage({
           cityId: cityRow.id,
           areaId: areaRow?.id ?? areaRowFromQuery?.id,
           areaIds,
+          q: qFromUnresolvedArea,
           bedrooms: bedroomsFromQuery ?? baseQuery.bedrooms,
           minPrice,
           maxPrice,

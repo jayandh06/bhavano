@@ -123,6 +123,7 @@ export async function BrowseListingsView({
       <Header
         cityName={cityName}
         popularCities={popularCities}
+        allCities={allCities}
         searchQuery=""
         activeCategory={homeCategoryForSegments(currentSegments)}
         userName={userName}

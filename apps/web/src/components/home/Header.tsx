@@ -14,6 +14,7 @@ import { CategoryTabs } from "./CategoryTabs";
 export function Header({
   cityName,
   popularCities,
+  allCities,
   searchQuery,
   activeCategory,
   userName,
@@ -24,7 +25,13 @@ export function Header({
 }: {
   /** Undefined means "All cities" — the national routes (`/`, `/buy`). */
   cityName?: string;
+  /** Curated subset shown in the city switcher (`LocationPicker`) — deliberately short, not
+   * meant for recognizing a city typed into the search box (see `allCities`). */
   popularCities: City[];
+  /** Complete city list, passed straight through to `SearchBar` for query-text city recognition
+   * — must include every city, not just the curated `popularCities` subset, or a real but
+   * non-"popular" city (most of India's smaller towns) can never be matched. */
+  allCities: City[];
   searchQuery: string;
   activeCategory: HomeTabValue;
   userName?: string | null;
@@ -112,9 +119,9 @@ export function Header({
               <Suspense>
                 <SearchBar
                   initialQuery={searchQuery}
-                  cityName={cityName ?? "India"}
+                  cityName={cityName}
                   areaName={areaName}
-                  popularCities={popularCities}
+                  allCities={allCities}
                   popularSearches={popularSearches}
                 />
               </Suspense>
