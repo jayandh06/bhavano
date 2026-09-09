@@ -30,9 +30,12 @@ services:
       MSG91_WHATSAPP_INTEGRATED_NUMBER: ${MSG91_WHATSAPP_INTEGRATED_NUMBER}
       MSG91_WHATSAPP_TEMPLATE_NAME: ${MSG91_WHATSAPP_TEMPLATE_NAME}
       MSG91_WHATSAPP_NAMESPACE: ${MSG91_WHATSAPP_NAMESPACE}
-      # Ad-posted-confirmation WhatsApp — same MSG91 account/namespace as the welcome template
-      # above, just a different approved template name (see Msg91Provider.sendAdPostedConfirmation).
+      # Ad-posted-confirmation WhatsApp — same MSG91 account/integrated number as the welcome
+      # template above, but its own namespace: MSG91 issued this template (recreated as
+      # "listing_posted" to add a location field) a different namespace than welcome's, so it
+      # cannot reuse MSG91_WHATSAPP_NAMESPACE (see Msg91Provider.sendAdPostedConfirmation).
       MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME: ${MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME}
+      MSG91_WHATSAPP_AD_POSTED_NAMESPACE: ${MSG91_WHATSAPP_AD_POSTED_NAMESPACE}
       # Validates inbound MSG91 WhatsApp status webhooks — see WhatsappWebhookController and
       # .env.production.example's own comment on this var.
       MSG91_WEBHOOK_SECRET: ${MSG91_WEBHOOK_SECRET}

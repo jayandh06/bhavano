@@ -205,11 +205,12 @@ export class Msg91Provider {
 
   /** WhatsApp via MSG91 — the ad-posted-confirmation notification (see
    * NotificationsService.notifyListingPosted), sent once an advertiser's listing goes live.
-   * Reuses the welcome template's integrated number and namespace above (one WABA account
-   * shared across templates); only the template name is specific to this notification —
-   * MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME = "ad_posted_confirmation".
+   * Reuses the welcome template's integrated number (one WABA account shared across templates),
+   * but NOT its namespace — MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME = "listing_posted" (recreated
+   * from the earlier "ad_posted_confirmation" specifically to add a Location line to the
+   * approved wording) was issued its own namespace, MSG91_WHATSAPP_AD_POSTED_NAMESPACE.
    *
-   * Four named body variables (name, title1, title2, location — the approved template repeats
+   * Four named body variables (name, title, title2, location — the approved template repeats
    * the listing title twice in its own wording, so both map to the same value) plus one dynamic
    * URL button variable, in the exact shape MSG91's dashboard "Code" snippet gives for this
    * template — same lesson as sendWhatsappTemplate above: trust that snippet over a generic
@@ -223,7 +224,7 @@ export class Msg91Provider {
    * `request_id` is the value that shows back up as `requestId` on the matching webhook event. */
   async sendAdPostedConfirmation(
     phone: string,
-    vars: { name: string; title1: string; title2: string; location: string },
+    vars: { name: string; title: string; title2: string; location: string },
     buttonUrlSuffix: string,
   ): Promise<{ sent: boolean; messageId: string | null }> {
     const authKey = this.config.get<string>('MSG91_AUTH_KEY');
@@ -233,11 +234,17 @@ export class Msg91Provider {
     const template = this.config.get<string>(
       'MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME',
     );
-    const namespace = this.config.get<string>('MSG91_WHATSAPP_NAMESPACE');
+    // Deliberately its own env var, not the shared MSG91_WHATSAPP_NAMESPACE the welcome template
+    // uses — this template (recreated as "listing_posted" to add the location field) was issued
+    // a different namespace by MSG91 despite being the same account/integrated number, so reusing
+    // welcome's would send this template under the wrong namespace and fail.
+    const namespace = this.config.get<string>(
+      'MSG91_WHATSAPP_AD_POSTED_NAMESPACE',
+    );
     if (!authKey || !integratedNumber || !template || !namespace) {
       this.logger.warn(
         `MSG91 WhatsApp not configured (MSG91_WHATSAPP_INTEGRATED_NUMBER/` +
-          `MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME/MSG91_WHATSAPP_NAMESPACE) — skipping ad-posted WhatsApp to ${phone}`,
+          `MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME/MSG91_WHATSAPP_AD_POSTED_NAMESPACE) — skipping ad-posted WhatsApp to ${phone}`,
       );
       return { sent: false, messageId: null };
     }
@@ -267,10 +274,10 @@ export class Msg91Provider {
                         value: vars.name,
                         parameter_name: 'name',
                       },
-                      body_title1: {
+                      body_title: {
                         type: 'text',
-                        value: vars.title1,
-                        parameter_name: 'title1',
+                        value: vars.title,
+                        parameter_name: 'title',
                       },
                       body_title2: {
                         type: 'text',

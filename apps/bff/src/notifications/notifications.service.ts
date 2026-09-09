@@ -343,9 +343,9 @@ export class NotificationsService {
     }
 
     if (user.phone) {
-      // Via MSG91's "ad_posted_confirmation" template, not the Meta-direct WhatsappProvider used
+      // Via MSG91's "listing_posted" template, not the Meta-direct WhatsappProvider used
       // elsewhere in this file — see Msg91Provider.sendAdPostedConfirmation. The template repeats
-      // the listing title twice in its own wording (title1/title2), so both map to the same
+      // the listing title twice in its own wording (title/title2), so both map to the same
       // value; location is "area, city" to match how the rest of the app renders a listing's
       // location. The button's fixed prefix is baked into the approved template itself — only
       // the suffix after it is a per-send variable, so `path` (already leading with "/") has its
@@ -354,7 +354,7 @@ export class NotificationsService {
         user.phone,
         {
           name: vars.name,
-          title1: listing.title,
+          title: listing.title,
           title2: listing.title,
           location: `${listing.area}, ${listing.cityName}`,
         },
