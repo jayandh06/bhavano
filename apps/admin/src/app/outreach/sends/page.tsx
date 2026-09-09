@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchCampaignSends } from "@/lib/bff";
-import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
-import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { Pagination } from "@/components/Pagination";
 import { formatDateTime } from "@/lib/formatDateTime";
 
@@ -46,17 +45,6 @@ export default async function SendsPage({ searchParams }: { searchParams: Promis
           gap between an audience and what actually went out is always explainable. {result.total}{" "}
           record{result.total === 1 ? "" : "s"}.
         </p>
-
-        <form method="get" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-          {campaignId && <input type="hidden" name="campaignId" value={campaignId} />}
-          {contactId && <input type="hidden" name="contactId" value={contactId} />}
-          <AutoSubmitSelect
-            name="limit"
-            defaultValue={String(limit)}
-            style={selectStyle}
-            options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: `${n} / page` }))}
-          />
-        </form>
 
         {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>Nothing sent yet.</p>
@@ -114,17 +102,10 @@ export default async function SendsPage({ searchParams }: { searchParams: Promis
           currentPage={currentPage}
           totalPages={totalPages}
           buildHref={(p) => buildPageHref("/outreach/sends", sp, p)}
+          pageSize={limit}
+          sp={sp}
         />
       </div>
     </div>
   );
 }
-
-const selectStyle: React.CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "8px 10px",
-  fontSize: 13,
-  background: "var(--surface)",
-  color: "var(--text)",
-};

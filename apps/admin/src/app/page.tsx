@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ListingCategory, ModerationState, TransactionType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
-import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
@@ -215,15 +215,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <input type="date" name="updatedTo" defaultValue={updatedTo} style={dateInputStyle} />
           </Field>
 
-          <Field label="Per page">
-            <AutoSubmitSelect
-              name="limit"
-              defaultValue={String(limit)}
-              style={selectStyle}
-              options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))}
-            />
-          </Field>
-
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
@@ -276,7 +267,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         )}
 
-        <Pagination currentPage={currentPage} totalPages={totalPages} buildHref={(p) => buildPageHref("/", sp, p)} />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          buildHref={(p) => buildPageHref("/", sp, p)}
+          pageSize={limit}
+          sp={sp}
+        />
       </div>
     </div>
   );

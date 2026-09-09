@@ -2,9 +2,8 @@ import Link from "next/link";
 import type { UserRole } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminUserSort, fetchUsers } from "@/lib/bff";
-import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { UsersTable } from "@/components/UsersTable";
-import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { Pagination } from "@/components/Pagination";
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -117,15 +116,6 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             </select>
           </Field>
 
-          <Field label="Per page">
-            <AutoSubmitSelect
-              name="limit"
-              defaultValue={String(limit)}
-              style={selectStyle}
-              options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))}
-            />
-          </Field>
-
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
@@ -140,7 +130,13 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <UsersTable users={result.items} />
         )}
 
-        <Pagination currentPage={currentPage} totalPages={totalPages} buildHref={(p) => buildPageHref("/users", sp, p)} />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          buildHref={(p) => buildPageHref("/users", sp, p)}
+          pageSize={limit}
+          sp={sp}
+        />
       </div>
     </div>
   );

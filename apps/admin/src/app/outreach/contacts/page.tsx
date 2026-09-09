@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchOutreachContacts } from "@/lib/bff";
-import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams";
+import { buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams";
 import { OptOutButton } from "@/components/OptOutButton";
-import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { Pagination } from "@/components/Pagination";
 import { formatDate } from "@/lib/formatDateTime";
 
@@ -62,19 +61,6 @@ export default async function OutreachContactsPage({
               color: "var(--text)",
               fontSize: 13,
             }}
-          />
-          <AutoSubmitSelect
-            name="limit"
-            defaultValue={String(limit)}
-            style={{
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontSize: 13,
-            }}
-            options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: `${n} / page` }))}
           />
           <button
             type="submit"
@@ -168,6 +154,8 @@ export default async function OutreachContactsPage({
           currentPage={currentPage}
           totalPages={totalPages}
           buildHref={(p) => buildPageHref("/outreach/contacts", sp, p)}
+          pageSize={limit}
+          sp={sp}
         />
       </div>
     </div>

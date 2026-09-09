@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchBoosts } from "@/lib/bff";
-import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
-import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { Pagination } from "@/components/Pagination";
 import { RevokeBoostButton } from "@/components/RevokeBoostButton";
 import { formatDate } from "@/lib/formatDateTime";
@@ -28,17 +27,9 @@ export default async function BoostsPage({ searchParams }: { searchParams: Promi
           cases) without touching the payment record itself.
         </p>
 
-        <form method="get" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>
-            {result.total.toLocaleString()} boost{result.total === 1 ? "" : "s"}
-          </span>
-          <AutoSubmitSelect
-            name="limit"
-            defaultValue={String(limit)}
-            style={selectStyle}
-            options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: `${n} / page` }))}
-          />
-        </form>
+        <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 16px" }}>
+          {result.total.toLocaleString()} boost{result.total === 1 ? "" : "s"}
+        </p>
 
         {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>No boosts purchased yet.</p>
@@ -88,17 +79,14 @@ export default async function BoostsPage({ searchParams }: { searchParams: Promi
           </div>
         )}
 
-        <Pagination currentPage={currentPage} totalPages={totalPages} buildHref={(p) => buildPageHref("/boosts", sp, p)} />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          buildHref={(p) => buildPageHref("/boosts", sp, p)}
+          pageSize={limit}
+          sp={sp}
+        />
       </div>
     </div>
   );
 }
-
-const selectStyle: React.CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "8px 10px",
-  fontSize: 13,
-  background: "var(--surface)",
-  color: "var(--text)",
-};

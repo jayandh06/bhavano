@@ -2,9 +2,8 @@ import Link from "next/link";
 import type { LoginMethod } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminLoginSort, fetchRecentLogins } from "@/lib/bff";
-import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { UserPicker } from "@/components/UserPicker";
-import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { Pagination } from "@/components/Pagination";
 import { formatDateTime } from "@/lib/formatDateTime";
 
@@ -95,15 +94,6 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
             <input type="date" name="to" defaultValue={to} style={dateInputStyle} />
           </Field>
 
-          <Field label="Per page">
-            <AutoSubmitSelect
-              name="limit"
-              defaultValue={String(limit)}
-              style={selectStyle}
-              options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))}
-            />
-          </Field>
-
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
@@ -149,7 +139,13 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
           </div>
         )}
 
-        <Pagination currentPage={currentPage} totalPages={totalPages} buildHref={(p) => buildPageHref("/logins", sp, p)} />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          buildHref={(p) => buildPageHref("/logins", sp, p)}
+          pageSize={limit}
+          sp={sp}
+        />
       </div>
     </div>
   );

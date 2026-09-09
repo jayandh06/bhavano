@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchCampaigns } from "@/lib/bff";
-import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
-import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { Pagination } from "@/components/Pagination";
 import { CampaignControls } from "@/components/CampaignControls";
 import { NewCampaignForm } from "@/components/NewCampaignForm";
@@ -54,17 +53,9 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
 
         <NewCampaignForm />
 
-        <form method="get" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>
-            {result.total.toLocaleString()} campaign{result.total === 1 ? "" : "s"}
-          </span>
-          <AutoSubmitSelect
-            name="limit"
-            defaultValue={String(limit)}
-            style={selectStyle}
-            options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: `${n} / page` }))}
-          />
-        </form>
+        <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 20 }}>
+          {result.total.toLocaleString()} campaign{result.total === 1 ? "" : "s"}
+        </p>
 
         {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 24 }}>No campaigns yet.</p>
@@ -146,17 +137,10 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           currentPage={currentPage}
           totalPages={totalPages}
           buildHref={(p) => buildPageHref("/outreach/campaigns", sp, p)}
+          pageSize={limit}
+          sp={sp}
         />
       </div>
     </div>
   );
 }
-
-const selectStyle: React.CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "8px 10px",
-  fontSize: 13,
-  background: "var(--surface)",
-  color: "var(--text)",
-};

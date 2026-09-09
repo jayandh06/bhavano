@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminPageVisitSort, fetchPageVisits } from "@/lib/bff";
-import { PAGE_SIZE_OPTIONS, buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { UserPicker } from "@/components/UserPicker";
-import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 import { Pagination } from "@/components/Pagination";
 
 const SORT_OPTIONS: { value: AdminPageVisitSort; label: string }[] = [
@@ -133,15 +132,6 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             </select>
           </Field>
 
-          <Field label="Per page">
-            <AutoSubmitSelect
-              name="limit"
-              defaultValue={String(limit)}
-              style={selectStyle}
-              options={PAGE_SIZE_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))}
-            />
-          </Field>
-
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
@@ -196,7 +186,13 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
           </div>
         )}
 
-        <Pagination currentPage={currentPage} totalPages={totalPages} buildHref={(p) => buildPageHref("/page-visits", sp, p)} />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          buildHref={(p) => buildPageHref("/page-visits", sp, p)}
+          pageSize={limit}
+          sp={sp}
+        />
       </div>
     </div>
   );
