@@ -111,7 +111,14 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   const hasAcquisitionCookie = request.cookies.has(ACQUISITION_COOKIE);
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
   // undefined = this page says nothing about the city; null = it says "all cities".
-  const citySlug = citySlugForRoute(request.nextUrl.pathname, request.nextUrl.searchParams.get("city"));
+  // `rememberCity=0` is the search bar's own marker (see SearchBar.tsx/cityFromRoute.ts) — a
+  // search result page still names a real city in its path, but showing it once is not the
+  // visitor choosing it as their new default the way the city switcher is.
+  const citySlug = citySlugForRoute(
+    request.nextUrl.pathname,
+    request.nextUrl.searchParams.get("city"),
+    request.nextUrl.searchParams.get("rememberCity") !== "0",
+  );
   const currentCity = request.cookies.get(CITY_COOKIE)?.value;
   // Only write when it actually changes, so the steady state stays a bare NextResponse.next()
   // with no Set-Cookie on every page view.

@@ -84,8 +84,21 @@ export const LISTING_SLUG_ID =
  * Not validated against real cities: middleware has no database access, and a lookup on every
  * page navigation would be the wrong trade anyway. `resolveDefaultCity` does that check when the
  * cookie is read, so a junk value costs a fallback to the default, not a wrong page.
+ *
+ * `remember`: false only for a search-bar-driven visit — typing "Bengaluru" (or a "PG in HSR
+ * Layout"-style query the search bar resolves to a city) shows that city's listings on this one
+ * page, but is not the same deliberate act as picking a city from the switcher, and must not
+ * silently become the visitor's new default for every other page from here on. The search bar
+ * marks this by appending `rememberCity=0` to the URL it navigates to (see SearchBar.tsx); when
+ * present, this always returns `undefined` — geography-neutral, leave whatever was remembered
+ * before alone — even though the URL itself still names a real city.
  */
-export function citySlugForRoute(pathname: string, cityParam: string | null): string | undefined | null {
+export function citySlugForRoute(
+  pathname: string,
+  cityParam: string | null,
+  remember = true,
+): string | undefined | null {
+  if (!remember) return undefined;
   if (cityParam) return SLUG_PATTERN.test(cityParam) ? cityParam : undefined;
 
   const first = pathname.split("/")[1];

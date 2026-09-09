@@ -148,6 +148,10 @@ export function SearchBar({
     // Best-effort — the destination page silently ignores this if it doesn't match a real
     // locality, so a wrong guess here never 404s the whole search.
     if (result.areaCandidate) qs.set("area", result.areaCandidate);
+    // Typing a city into search shows that city's listings without adopting it as the visitor's
+    // remembered default (see citySlugForRoute's `remember` param) — only the city switcher does
+    // that.
+    qs.set("rememberCity", "0");
     const query = qs.toString();
     router.push(query ? `${path}?${query}` : path);
   }
@@ -220,7 +224,9 @@ export function SearchBar({
                     {popularSearches.map((s) => (
                       <Link
                         key={`${s.cityName}-${s.category}-${s.transactionType}`}
-                        href={buildBrowsePath({ cityName: s.cityName, transactionGroup: transactionGroupFor(s.transactionType), category: s.category })}
+                        // Same "shows a city without adopting it as the remembered default" rule
+                        // as go() below — this is a search-bar suggestion, not the city switcher.
+                        href={`${buildBrowsePath({ cityName: s.cityName, transactionGroup: transactionGroupFor(s.transactionType), category: s.category })}?rememberCity=0`}
                         onClick={() => setOpen(false)}
                         className="bg-surface-alt border border-border rounded-[20px] px-3.5 py-[7px] text-[13px] text-text no-underline"
                       >

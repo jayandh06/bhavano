@@ -90,6 +90,24 @@ describe("citySlugForRoute", () => {
     expect(citySlugForRoute("/mumbai/andheri/rent-lease/apartment/2bhk-cmrkwg8gk00004qquau1sbbim", null)).toBeUndefined();
   });
 
+  it("leaves the memory alone when remember=false, even though the URL names a real city", () => {
+    // The search bar's own marker: typing "Bengaluru" shows that city's listings without
+    // adopting it as the visitor's remembered default the way the city switcher does.
+    expect(citySlugForRoute("/bengaluru", null, false)).toBeUndefined();
+    expect(citySlugForRoute("/chennai/anna-nagar/buy/house", null, false)).toBeUndefined();
+    // Wins even over an explicit ?city= — the search bar's "don't remember this" signal should
+    // never be second-guessed by another param on the same URL.
+    expect(citySlugForRoute("/post", "mumbai", false)).toBeUndefined();
+    // "All cities" pages already return null regardless, but remember=false must not somehow
+    // turn that into a stronger "forget everything" signal than a plain city-page visit gets.
+    expect(citySlugForRoute("/", null, false)).toBeUndefined();
+  });
+
+  it("remembers as normal when remember is omitted or true", () => {
+    expect(citySlugForRoute("/bengaluru", null, true)).toBe("bengaluru");
+    expect(citySlugForRoute("/bengaluru", null)).toBe("bengaluru");
+  });
+
   it("ignores slugs it could not have emitted", () => {
     // slugify only ever produces lowercase, digits and hyphens, so anything else is a URL nobody
     // legitimately generated — not worth storing, and not worth trusting.
