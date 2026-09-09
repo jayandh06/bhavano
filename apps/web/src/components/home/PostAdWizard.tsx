@@ -694,7 +694,12 @@ export function PostAdWizard({
           </div>
           <button
             onClick={() => setStep("category")}
-            className={`${secondaryButtonClass} mt-1`}
+            // self-start: this button is a direct child of the flex-col above (unlike the
+            // details/review steps' Back buttons, which sit inside their own flex row next to
+            // another button) — without it, the column's default align-items: stretch stretches
+            // the button to the full row width, and a <button>'s centered default text alignment
+            // then makes "← Back" appear floating in the middle instead of at the left edge.
+            className={`${secondaryButtonClass} self-start mt-1`}
           >
             ← Back
           </button>
