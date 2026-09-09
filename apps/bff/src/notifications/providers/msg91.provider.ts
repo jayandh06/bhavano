@@ -5,11 +5,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-/** The image header component on the "bhavano_welcome_2" WhatsApp template — see
- * sendWhatsappTemplate's doc comment. Not worth a config var: it's the site logo, not a secret
- * or environment-dependent value. */
-const WELCOME_HEADER_IMAGE_URL = 'https://www.bhavano.com/logo.png';
-
 /**
  * MSG91 SMS delivery. Requires MSG91_AUTH_KEY (plus MSG91_SENDER_ID / MSG91_DLT_TEMPLATE_ID)
  * to actually send — sendOtp throws until those are configured rather than silently
@@ -123,16 +118,17 @@ export class Msg91Provider {
    * The exact request shape below — namespace required, and the body variable keyed
    * "body_name"/"parameter_name" rather than a plain positional or name-matched key — is copied
    * verbatim from the "Code" snippet MSG91's own dashboard generates for this specific approved
-   * template (Templates -> bhavano_welcome_2 -> Code), after two guesses based on generic docs
-   * examples both failed against real sends: a positional "body_1" key ("Parameter name is
+   * template (Templates -> the template -> Code). Trust that snippet over any generic docs
+   * example for any future template this account adds — two guesses based on generic docs
+   * examples once failed against real sends here: a positional "body_1" key ("Parameter name is
    * missing or empty"), then a plain "name" key (Meta error #132000, "number of localizable_params
-   * (0) does not match the expected number of params (1)" — neither guess was recognized as
-   * populating the template's one variable at all). Trust the dashboard snippet over any generic
-   * docs example for any future template this account adds.
+   * (0) does not match the expected number of params (1)").
    *
-   * The template also has an image header component, previously unknown — WELCOME_HEADER_IMAGE_URL
-   * below, the site logo. WhatsApp templates can't omit a defined component, so this always sends
-   * with it even though the welcome message itself is really about the body text.
+   * MSG91_WHATSAPP_TEMPLATE_NAME = "welcome" (recreated from the earlier "bhavano_welcome_2" to
+   * change the wording to an account-verified confirmation) — no header component this time,
+   * unlike the template it replaced, which had a mandatory image header. Only add one back here
+   * if a future recreation of this template adds one — sending a component the approved template
+   * doesn't define is exactly as much a rejection risk as omitting one it does.
    *
    * Docs: https://docs.msg91.com/whatsapp */
   async sendWhatsappTemplate(phone: string, name: string): Promise<boolean> {
@@ -170,10 +166,6 @@ export class Msg91Provider {
                   {
                     to: [`91${phone}`],
                     components: {
-                      header_1: {
-                        type: 'image',
-                        value: WELCOME_HEADER_IMAGE_URL,
-                      },
                       body_name: {
                         type: 'text',
                         value: name,
