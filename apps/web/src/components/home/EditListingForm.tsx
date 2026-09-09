@@ -117,26 +117,6 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Renders even at zero photos — EditListingPhotos' own "+ Add" control is how a listing
-        * with none gets its first post-creation photo. Was gated on photosFull.length > 0 until
-        * add/delete existed, when a zero-photo listing had no photo section here at all. */}
-      <EditListingPhotos
-        listingId={listing.id}
-        title={listing.title}
-        photos={listing.photosFull.map((url, i) => ({
-          url,
-          photoNo: listing.photoNos[i],
-          updatedAt: listing.photoUpdatedAts[i],
-        }))}
-      />
-
-      {/* Video add/delete — was previously only reachable from the /my-listings row, not this
-        * page. */}
-      <div>
-        <label className={labelClass}>Videos</label>
-        <VideoManager listing={listing} accessToken={accessToken} />
-      </div>
-
       <div className="max-w-[420px]">
         <label className={labelClass}>Category / transaction</label>
         <div className={`${fieldClass} bg-surface-alt text-text-soft`}>
@@ -214,6 +194,28 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
             ),
           }}
         />
+      </div>
+
+      {/* Photos, then Video, then Status/Save below — same order PostAdWizard.tsx uses for
+        * photos/video relative to the rest of the form (right before its own action-button row).
+        * Renders even at zero photos — EditListingPhotos' own "+ Add" control is how a listing
+        * with none gets its first post-creation photo; the caller must not gate this on
+        * photosFull.length. */}
+      <EditListingPhotos
+        listingId={listing.id}
+        title={listing.title}
+        photos={listing.photosFull.map((url, i) => ({
+          url,
+          photoNo: listing.photoNos[i],
+          updatedAt: listing.photoUpdatedAts[i],
+        }))}
+      />
+
+      {/* Video add/delete — was previously only reachable from the /my-listings row, not this
+        * page. `expanded` matches it to EditListingPhotos' UploadZone-style add control above. */}
+      <div>
+        <label className={labelClass}>Videos</label>
+        <VideoManager listing={listing} accessToken={accessToken} expanded />
       </div>
 
       <div className="max-w-[420px]">
