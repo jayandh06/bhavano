@@ -64,7 +64,7 @@ export function HorizontalScroller({
         side === "left" ? "justify-start pl-0.5" : "justify-end pr-0.5"
       } border-0 cursor-pointer bg-gradient-to-${side === "left" ? "r" : "l"} from-bg via-bg to-transparent`}
     >
-      <span className="w-8 h-8 rounded-full bg-surface border border-border shadow-[0_1px_4px_rgba(0,0,0,0.18)] flex items-center justify-center text-text text-xl leading-none pb-0.5">
+      <span className="w-8 h-8 rounded-full bg-green border-0 shadow-[0_1px_4px_rgba(0,0,0,0.22)] flex items-center justify-center text-gold text-xl leading-none pb-0.5">
         {side === "left" ? "‹" : "›"}
       </span>
     </button>

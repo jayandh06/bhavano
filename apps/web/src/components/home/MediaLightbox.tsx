@@ -126,7 +126,7 @@ export function MediaLightbox({
               e.stopPropagation();
               step(-1);
             }}
-            className="absolute left-2 sm:left-5 z-10 w-11 h-11 rounded-full border-0 bg-[#ffffff1f] text-white text-2xl leading-none cursor-pointer"
+            className="absolute left-2 sm:left-5 z-10 w-11 h-11 rounded-full border-0 bg-green text-gold text-2xl leading-none cursor-pointer"
           >
             ‹
           </button>
@@ -137,7 +137,7 @@ export function MediaLightbox({
               e.stopPropagation();
               step(1);
             }}
-            className="absolute right-2 sm:right-5 z-10 w-11 h-11 rounded-full border-0 bg-[#ffffff1f] text-white text-2xl leading-none cursor-pointer"
+            className="absolute right-2 sm:right-5 z-10 w-11 h-11 rounded-full border-0 bg-green text-gold text-2xl leading-none cursor-pointer"
           >
             ›
           </button>
