@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   ActivityEventDto,
@@ -28,6 +28,7 @@ import { MessagingService } from '../messaging/messaging.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
+import { AccountDeletionService } from '../users/account-deletion.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
@@ -126,6 +127,7 @@ export class AdminService {
     private readonly notificationsService: NotificationsService,
     private readonly rateLimitService: RateLimitService,
     private readonly contactRevealService: ContactRevealService,
+    private readonly accountDeletion: AccountDeletionService,
   ) {}
 
   listListings(query: ListAdminListingsDto): Promise<AdminListingsPage> {
@@ -189,6 +191,42 @@ export class AdminService {
     }
 
     return listing;
+  }
+
+  /** Permanent hard-delete with full asset cleanup — see ListingsService.deleteCompletely. No
+   * owner notification: this is for spam/junk/duplicates where "flag & message" doesn't apply.
+   * `adminId` is accepted for call-site symmetry with the other moderation actions; the audit
+   * line is emitted by ListingsService. */
+  async deleteListing(id: string, _adminId: string): Promise<void> {
+    await this.listingsService.deleteCompletely(id);
+  }
+
+  /** Permanent removal of a user: hard-deletes every listing they own (with R2 asset cleanup),
+   * then anonymises the account and drops its saved searches (via AccountDeletionService — the
+   * same code path as a self-serve deletion). The `User` row itself is retained, scrubbed of all
+   * PII with `deletedAt` set, because Payment / Conversation / UserSubscription rows reference it
+   * with a non-nullable, no-cascade FK — a literal row drop would destroy financial and audit
+   * history. Refuses to delete an admin account. */
+  async deleteUser(userId: string, _adminId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, deletedAt: true },
+    });
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+    if (user.role === 'admin') {
+      throw new ForbiddenException('Admin accounts cannot be deleted from here');
+    }
+    if (user.deletedAt) return; // already anonymised — deleting twice is not an error
+
+    const listings = await this.prisma.listing.findMany({
+      where: { ownerId: userId },
+      select: { id: true },
+    });
+    for (const { id } of listings) {
+      await this.listingsService.deleteCompletely(id);
+    }
+
+    await this.accountDeletion.deleteOwnAccount(userId);
   }
 
   async approveListing(id: string, adminId: string): Promise<ListingDetailDto> {

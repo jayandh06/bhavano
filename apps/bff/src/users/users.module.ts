@@ -29,6 +29,6 @@ import { AuthModule } from '../auth/auth.module';
     AccountMergeService,
     AccountDeletionService,
   ],
-  exports: [AccountMergeService],
+  exports: [AccountMergeService, AccountDeletionService],
 })
 export class UsersModule {}

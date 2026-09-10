@@ -3,7 +3,22 @@
 import { revalidatePath } from "next/cache";
 import type { ListingOwnerDto, SendWelcomeResponseDto, WelcomeChannel } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { searchUsers, sendWelcome } from "@/lib/bff";
+import { deleteUser, searchUsers, sendWelcome } from "@/lib/bff";
+
+export type ActionResult = { success: true } | { success: false; error: string };
+
+/** Permanent removal — the caller should navigate away from /users/[id], which will 404 after.
+ * Revalidates the list so the row's PII is gone there too. */
+export async function deleteUserAction(userId: string): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await deleteUser(accessToken, userId);
+    revalidatePath("/users");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete user" };
+  }
+}
 
 /** Backs UserPicker's live search. A read, not a mutation — swallows errors into an empty
  * result set rather than surfacing them, since a failed search just means "no matches yet"

@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -189,6 +190,8 @@ function cardSpecs(listing: { category: ListingCategory; attributes: unknown; sp
 
 @Injectable()
 export class ListingsService {
+  private readonly logger = new Logger(ListingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly moderationService: ModerationService,
@@ -1083,6 +1086,77 @@ export class ListingsService {
       .catch(() => undefined);
 
     return this.getMine(ownerId, listingId);
+  }
+
+  /** Admin hard-delete: drop the Listing row and everything that hangs off it, and purge its R2
+   * photo/video objects plus their CDN copies. Unlike an owner's "deactivate" or admin's "flag",
+   * nothing is left behind.
+   *
+   * - Payments are financial history — they are unlinked (`listingId` → null), never deleted.
+   * - `PhotoVariantJob` has no FK to Listing (jobs outlive the upload step), so it's cleared here.
+   * - Any other listing pointing at this one via `relatedListingId` (a bare string, no FK) is
+   *   nulled so it doesn't dangle.
+   * - Everything else — photos, videos, views, favourites, conversations + their messages,
+   *   boosts, renewals, notification logs, contact reveals — is `onDelete: Cascade` and goes
+   *   with the row.
+   * - R2 deletes + CDN purges are best-effort fire-and-forget (same as deletePhoto/deleteVideo):
+   *   the keys are listing-scoped, so a missed object can never collide with anything else — it
+   *   just sits until an R2 lifecycle rule reaps it. Video *originals* live under a
+   *   `videos/originals/<listingId>/` prefix that already has such a rule, so they're not
+   *   enumerated here.
+   */
+  async deleteCompletely(listingId: string): Promise<void> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      include: {
+        listingPhotos: { select: { photoNo: true } },
+        listingVideos: { select: { storageId: true } },
+      },
+    });
+    if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+
+    const jobExts = await this.prisma.photoVariantJob.findMany({
+      where: { listingId },
+      select: { photoNo: true, ext: true },
+    });
+    const extByPhotoNo = new Map(jobExts.map((j) => [j.photoNo, j.ext]));
+
+    const cdnBase = this.cdnBase();
+    const r2Keys: string[] = [];
+    const cdnUrls: string[] = [];
+    for (const { photoNo } of listing.listingPhotos) {
+      r2Keys.push(variantKey(listingId, photoNo, 'preview'), variantKey(listingId, photoNo, 'full'));
+      const ext = extByPhotoNo.get(photoNo);
+      if (ext) r2Keys.push(originalKey(listingId, photoNo, ext));
+      cdnUrls.push(
+        variantUrl(cdnBase, listingId, photoNo, 'preview'),
+        variantUrl(cdnBase, listingId, photoNo, 'full'),
+      );
+    }
+    for (const { storageId } of listing.listingVideos) {
+      r2Keys.push(videoTranscodedKey(listingId, storageId), videoPosterKey(listingId, storageId));
+      cdnUrls.push(
+        videoUrl(cdnBase, listingId, storageId),
+        videoPosterUrl(cdnBase, listingId, storageId),
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.updateMany({ where: { listingId }, data: { listingId: null } });
+      await tx.photoVariantJob.deleteMany({ where: { listingId } });
+      await tx.listing.updateMany({
+        where: { relatedListingId: listingId },
+        data: { relatedListingId: null },
+      });
+      await tx.listing.delete({ where: { id: listingId } });
+    });
+
+    Promise.all(r2Keys.map((key) => this.storage.deleteObject(key))).catch(() => undefined);
+    this.cdnPurge.purgeUrls(cdnUrls).catch(() => undefined);
+
+    this.logger.log(
+      `Listing ${listingId} hard-deleted (${listing.listingPhotos.length} photos, ${listing.listingVideos.length} videos purged)`,
+    );
   }
 
   async listMine(userId: string): Promise<ListingDetailDto[]> {

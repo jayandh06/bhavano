@@ -5,6 +5,7 @@ import type { ContactRevealSettingsDto, ListingStatus, MessageDto, RateLimitSett
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   approveListing,
+  deleteListing,
   fetchListingConversationMessages,
   fetchThread,
   flagListing,
@@ -41,6 +42,19 @@ export async function flagListingAction(listingId: string, message: string): Pro
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to flag listing" };
+  }
+}
+
+/** Permanent hard-delete — the caller is expected to navigate away from `/listings/[id]`, which
+ * no longer exists. Revalidates the queue so the row is gone there too. */
+export async function deleteListingAction(listingId: string): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await deleteListing(accessToken, listingId);
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete listing" };
   }
 }
 

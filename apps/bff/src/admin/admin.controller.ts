@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
@@ -92,6 +92,22 @@ export class AdminController {
   @Post('listings/:id/approve')
   approveListing(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
     return this.adminService.approveListing(id, user.id);
+  }
+
+  /** Permanent hard-delete with full R2 + DB cleanup. For spam/junk/duplicates — the softer
+   * "flag & message owner" is the tool for a fixable listing. */
+  @Delete('listings/:id')
+  @HttpCode(204)
+  deleteListing(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<void> {
+    return this.adminService.deleteListing(id, user.id);
+  }
+
+  /** Permanent removal of a user — deletes all their listings + media, then anonymises the
+   * account (payment/conversation FKs mean the row is scrubbed, not dropped). Refuses admins. */
+  @Delete('users/:id')
+  @HttpCode(204)
+  deleteUser(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<void> {
+    return this.adminService.deleteUser(id, user.id);
   }
 
   @Patch('listings/:id/status')

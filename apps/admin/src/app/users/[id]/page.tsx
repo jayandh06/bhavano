@@ -4,6 +4,7 @@ import type { ActivityEventDto, VisitDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchUserActivity } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
+import { DeleteUserPanel } from "@/components/DeleteUserPanel";
 
 const EVENT_ICONS: Record<ActivityEventDto["type"], string> = {
   login: "🔑",
@@ -59,6 +60,8 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
               : "unknown (predates acquisition tracking)"}
           </div>
         </div>
+
+        <DeleteUserPanel userId={id} />
 
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 12px" }}>Recent activity</h2>
         {events.length === 0 ? (

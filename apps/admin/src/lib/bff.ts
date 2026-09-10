@@ -183,6 +183,17 @@ export function approveListing(accessToken: string, id: string): Promise<Listing
   return authedBffFetch(accessToken, `/admin/listings/${id}/approve`, { method: "POST" });
 }
 
+/** Permanent hard-delete with full R2 + DB cleanup — see BFF ListingsService.deleteCompletely. */
+export function deleteListing(accessToken: string, id: string): Promise<void> {
+  return authedBffFetch(accessToken, `/admin/listings/${id}`, { method: "DELETE" });
+}
+
+/** Deletes every listing the user owns (with asset cleanup), then anonymises the account — see
+ * BFF AdminService.deleteUser. Rejected for admin accounts. */
+export function deleteUser(accessToken: string, id: string): Promise<void> {
+  return authedBffFetch(accessToken, `/admin/users/${id}`, { method: "DELETE" });
+}
+
 export function setListingStatus(accessToken: string, id: string, status: ListingStatus): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/admin/listings/${id}/status`, {
     method: "PATCH",

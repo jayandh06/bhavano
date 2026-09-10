@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ListingStatus, MessageDto, ModerationState } from "@bhavano/types";
 import {
   approveListingAction,
+  deleteListingAction,
   flagListingAction,
   sendThreadMessageAction,
   setListingStatusAction,
@@ -27,8 +29,11 @@ export function ModerationPanel({
   messages: MessageDto[];
   currentUserId: string;
 }) {
+  const router = useRouter();
   const [flagMessage, setFlagMessage] = useState("");
   const [showFlagBox, setShowFlagBox] = useState(false);
+  const [showDeleteBox, setShowDeleteBox] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const [reply, setReply] = useState("");
   const [statusChoice, setStatusChoice] = useState<ListingStatus>(status);
   const [pending, setPending] = useState(false);
@@ -82,6 +87,19 @@ export function ModerationPanel({
     if (!result.success) setError(result.error);
   }
 
+  async function onDelete() {
+    if (deleteConfirm.trim().toUpperCase() !== "DELETE") return;
+    setPending(true);
+    setError(null);
+    const result = await deleteListingAction(listingId);
+    if (result.success) {
+      router.push("/");
+      return; // leave `pending` true — the page is navigating away
+    }
+    setPending(false);
+    setError(result.error);
+  }
+
   async function onSendReply() {
     if (!reply.trim()) return;
     setPending(true);
@@ -128,7 +146,39 @@ export function ModerationPanel({
         >
           Update status
         </button>
+
+        <button
+          onClick={() => setShowDeleteBox((v) => !v)}
+          disabled={pending}
+          style={{ ...dangerButtonStyle, marginLeft: "auto" }}
+        >
+          Delete permanently
+        </button>
       </div>
+
+      {showDeleteBox && (
+        <div style={{ border: "1.5px solid var(--danger)", borderRadius: 10, padding: 14, background: "var(--surface)" }}>
+          <p style={{ fontSize: 13, color: "var(--text-soft)", margin: "0 0 10px" }}>
+            Removes the listing, its photos and videos (storage + CDN), all views, favourites,
+            conversations, boosts and renewal history. Payments are kept but unlinked. This{" "}
+            <strong>cannot be undone</strong> and the owner is not notified. Use{" "}
+            <em>Flag &amp; message owner</em> instead for anything fixable.
+          </p>
+          <input
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            placeholder="Type DELETE to confirm"
+            style={{ ...inputStyle, flex: "unset", width: "100%", marginBottom: 8 }}
+          />
+          <button
+            onClick={onDelete}
+            disabled={pending || deleteConfirm.trim().toUpperCase() !== "DELETE"}
+            style={{ ...dangerButtonStyle, background: "var(--danger)", color: "#fff", borderColor: "var(--danger)", opacity: pending || deleteConfirm.trim().toUpperCase() !== "DELETE" ? 0.5 : 1 }}
+          >
+            {pending ? "Deleting…" : "Permanently delete this listing"}
+          </button>
+        </div>
+      )}
 
       {showFlagBox && (
         <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 14, background: "var(--surface)" }}>
