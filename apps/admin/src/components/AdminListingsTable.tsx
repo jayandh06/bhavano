@@ -68,7 +68,18 @@ function StatusBadge({ moderationState, adminReviewed }: { moderationState: stri
   const label = moderationState === "flagged" ? "Flagged" : adminReviewed ? "Reviewed" : "Needs review";
   const color = moderationState === "flagged" ? "var(--danger)" : adminReviewed ? "var(--green)" : "var(--muted)";
   return (
-    <span style={{ fontSize: 11, fontWeight: 700, color, border: `1px solid ${color}`, borderRadius: 6, padding: "2px 8px" }}>
+    <span
+      style={{
+        display: "inline-block",
+        whiteSpace: "nowrap",
+        fontSize: 11,
+        fontWeight: 700,
+        color,
+        border: `1px solid ${color}`,
+        borderRadius: 6,
+        padding: "2px 8px",
+      }}
+    >
       {label}
     </span>
   );
@@ -93,7 +104,18 @@ function PostedNotificationBadge({
   if (sent === undefined) return dash;
   const color = sent ? "var(--green)" : "var(--danger)";
   return (
-    <span style={{ fontSize: 11, fontWeight: 700, color, border: `1px solid ${color}`, borderRadius: 6, padding: "2px 8px" }}>
+    <span
+      style={{
+        display: "inline-block",
+        whiteSpace: "nowrap",
+        fontSize: 11,
+        fontWeight: 700,
+        color,
+        border: `1px solid ${color}`,
+        borderRadius: 6,
+        padding: "2px 8px",
+      }}
+    >
       {sent
         ? `Sent · ${channel ?? "unknown"}${deliveryStatus ? ` · ${deliveryStatus}` : ""}${sentAt ? ` · ${formatDate(sentAt)}` : ""}`
         : "Not sent"}

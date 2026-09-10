@@ -277,10 +277,10 @@ export function AdminNav() {
 
 const arrowButtonStyle: React.CSSProperties = {
   flexShrink: 0,
-  border: "1px solid var(--border)",
+  border: "none",
   borderRadius: 8,
-  background: "var(--surface)",
-  color: "var(--text-soft)",
+  background: "var(--green)",
+  color: "var(--gold)",
   width: 26,
   height: 26,
   display: "flex",
