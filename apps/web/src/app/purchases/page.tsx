@@ -60,7 +60,7 @@ export default async function PurchasesPage({
   const loggedIn = isAccessTokenValid(accessToken);
 
   return (
-    <div className="min-h-screen lg:min-h-[640px] flex flex-col bg-bg text-text">
+    <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader cityName={city?.name} />
       <div className="flex-1 w-full max-w-[1280px] mx-auto p-8">
         <Link href="/profile" className="text-[13px] text-muted mb-4 inline-block">

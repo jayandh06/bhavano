@@ -147,7 +147,7 @@ export default async function HomePage({
   }
 
   return (
-    <div className="min-h-screen lg:min-h-[640px] flex flex-col bg-bg text-text">
+    <div className="min-h-screen flex flex-col bg-bg text-text">
       <Header
         cityName={cityName}
         popularCities={popularCities}

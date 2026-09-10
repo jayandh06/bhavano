@@ -5,7 +5,7 @@ import { PageHeader } from "./PageHeader";
 
 export async function StaticPageLayout({ title, updated, children }: { title: string; updated?: string; children: ReactNode }) {
   return (
-    <div className="min-h-screen lg:min-h-[640px] flex flex-col bg-bg text-text">
+    <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader />
       <div className="flex-1 w-full max-w-[1280px] mx-auto p-8">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">

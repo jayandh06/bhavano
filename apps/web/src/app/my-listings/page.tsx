@@ -45,7 +45,7 @@ export default async function MyListingsPage({
   const [session, { city, cityAreas, allCities }] = await Promise.all([auth(), resolvePageCityContext(citySlug)]);
 
   return (
-    <div className="min-h-screen lg:min-h-[640px] flex flex-col bg-bg text-text">
+    <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader cityName={city?.name} />
       <div className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-6 pb-20">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
