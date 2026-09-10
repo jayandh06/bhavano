@@ -225,14 +225,6 @@ function ProfileFields({
         )}
       </Pressable>
 
-      <Pressable
-        onPress={onOpenPurchases}
-        style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8 }]}
-      >
-        <Icon name="pack" size={16} color={colors.text} />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Purchase history</Text>
-      </Pressable>
-
       {/* The other toggle lives in the Home tab's brand row, which is not where anyone looks for
           a preference — and is unreachable from the other three tabs. Appearance belongs on the
           settings screen; Home keeps its copy for the visitor who spots it there first. */}
@@ -245,26 +237,6 @@ function ProfileFields({
           {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         </Text>
       </Pressable>
-
-      {balance && (balance.freeRevealsRemaining > 0 || balance.creditsRemaining > 0) && (
-        <View style={[styles.balanceCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-            <Icon name="phone" size={15} color={colors.text} />
-            <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Contact reveal credits</Text>
-          </View>
-          {balance.freeRevealsRemaining > 0 && (
-            <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
-              {balance.freeRevealsRemaining} free reveal{balance.freeRevealsRemaining === 1 ? "" : "s"} left
-            </Text>
-          )}
-          {balance.creditsRemaining > 0 && (
-            <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
-              {balance.creditsRemaining} purchased credit{balance.creditsRemaining === 1 ? "" : "s"}
-              {balance.nextCreditExpiryAt ? ` — earliest expires ${new Date(balance.nextCreditExpiryAt).toLocaleDateString()}` : ""}
-            </Text>
-          )}
-        </View>
-      )}
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile</Text>
 
@@ -441,6 +413,37 @@ function ProfileFields({
       >
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>{saving ? "Saving…" : "Save changes"}</Text>
       </Pressable>
+
+      {/* Below Save rather than up with Messages/theme — these aren't things you check while
+          editing the form, and putting them after Save keeps the primary action from competing
+          with them for attention on first load. */}
+      <Pressable
+        onPress={onOpenPurchases}
+        style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8, marginTop: 28 }]}
+      >
+        <Icon name="pack" size={16} color={colors.text} />
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Purchase history</Text>
+      </Pressable>
+
+      {balance && (balance.freeRevealsRemaining > 0 || balance.creditsRemaining > 0) && (
+        <View style={[styles.balanceCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <Icon name="phone" size={15} color={colors.text} />
+            <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Contact reveal credits</Text>
+          </View>
+          {balance.freeRevealsRemaining > 0 && (
+            <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
+              {balance.freeRevealsRemaining} free reveal{balance.freeRevealsRemaining === 1 ? "" : "s"} left
+            </Text>
+          )}
+          {balance.creditsRemaining > 0 && (
+            <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
+              {balance.creditsRemaining} purchased credit{balance.creditsRemaining === 1 ? "" : "s"}
+              {balance.nextCreditExpiryAt ? ` — earliest expires ${new Date(balance.nextCreditExpiryAt).toLocaleDateString()}` : ""}
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* Below Save, above the legal footer: reachable but not adjacent to the primary action,
           so it can't be hit by mistake while editing the profile. */}

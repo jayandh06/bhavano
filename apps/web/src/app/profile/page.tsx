@@ -26,23 +26,28 @@ export default async function ProfilePage({
         </Link>
         <h1 className="font-lora text-[26px] font-semibold m-0 mb-1">Your profile</h1>
 
-        {session?.accessToken && (
-          <div className="flex flex-col gap-1 mb-5">
-            <Link href="/my-listings" className="text-[13px] text-green font-bold inline-block">
-              View and edit your listings →
-            </Link>
-            <Link href="/purchases" className="text-[13px] text-green font-bold inline-block">
-              View your purchase history →
-            </Link>
-          </div>
-        )}
-
         {!session?.accessToken ? (
           <RequireLoginPrompt message="Log in to view and edit your profile." />
         ) : (
-          <div className="flex flex-col gap-6">
-            <ContactRevealBalanceFields accessToken={session.accessToken} />
-            <ProfileFields accessToken={session.accessToken} />
+          // Row on desktop (form left, credits/links right) — stacks to a single column on
+          // mobile with DOM order doing the work: the sidebar comes after the form in markup,
+          // so on mobile it lands below the form's own "Save changes" button for free, no
+          // separate mobile-only ordering needed.
+          <div className="flex flex-col lg:flex-row gap-8 items-start">
+            <div className="flex-1 min-w-0 w-full">
+              <ProfileFields accessToken={session.accessToken} />
+            </div>
+            <div className="w-full lg:w-[300px] lg:shrink-0 flex flex-col gap-5">
+              <ContactRevealBalanceFields accessToken={session.accessToken} />
+              <div className="flex flex-col gap-1">
+                <Link href="/my-listings" className="text-[13px] text-green font-bold inline-block">
+                  View and edit your listings →
+                </Link>
+                <Link href="/purchases" className="text-[13px] text-green font-bold inline-block">
+                  View your purchase history →
+                </Link>
+              </div>
+            </div>
           </div>
         )}
       </div>
