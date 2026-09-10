@@ -23,8 +23,12 @@ export function HeaderDrawerAccount({ userName, cityName }: { userName?: string 
 
   if (!userName) {
     return (
-      <button type="button" onClick={() => requireLogin()} className={`${row} w-full border-0 bg-transparent cursor-pointer text-left`}>
-        <Icon name="user" className="text-muted" /> Log in
+      <button
+        type="button"
+        onClick={() => requireLogin()}
+        className="w-full inline-flex items-center justify-center gap-2 bg-green text-on-green rounded-lg px-4 py-2.5 text-sm font-bold cursor-pointer border-0 shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
+      >
+        <Icon name="user" /> Log in / Sign up
       </button>
     );
   }

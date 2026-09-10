@@ -46,6 +46,15 @@ export function HeaderDrawer({
         </Suspense>
       </div>
 
+      {/* Logged out: the sign-in CTA sits here, next to the city control and styled like Post ad
+        * — not a plain row buried under the nav where you'd have to go looking for it. Once
+        * signed in it moves to the account list at the bottom instead. */}
+      {!userName && (
+        <div className="px-1 py-1.5">
+          <HeaderDrawerAccount userName={userName} cityName={cityName} />
+        </div>
+      )}
+
       <div className="flex items-center justify-between px-3 pt-2 pb-1">
         <span className="text-[11px] font-bold uppercase tracking-[0.04em] text-muted">Browse</span>
         <ThemeToggle />
@@ -80,9 +89,12 @@ export function HeaderDrawer({
         <Icon name="help" className="text-muted" /> Help
       </Link>
 
-      <div className="my-1.5 border-t border-border" />
-
-      <HeaderDrawerAccount userName={userName} cityName={cityName} />
+      {userName && (
+        <>
+          <div className="my-1.5 border-t border-border" />
+          <HeaderDrawerAccount userName={userName} cityName={cityName} />
+        </>
+      )}
     </>
   );
 }
