@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
 import { AuthGateProvider } from "@/components/home/AuthGateProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
+import { ProfileCompletionDialog } from "@/components/home/ProfileCompletionDialog";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
 import { JsonLd } from "@/components/JsonLd";
 import "./globals.css";
@@ -106,6 +107,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <AuthGateProvider>
             <SignupConversionTracker />
             <ProfileCompletionBanner />
+            <ProfileCompletionDialog />
             {children}
           </AuthGateProvider>
         </ThemeProvider>

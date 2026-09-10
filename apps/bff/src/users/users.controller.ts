@@ -18,6 +18,7 @@ import type {
   ListingCardDto,
   ListingDetailDto,
   PaymentHistoryPage,
+  ProfileNudgeDto,
   UserProfileDto,
 } from '@bhavano/types';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -61,6 +62,20 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ): Promise<UserProfileDto> {
     return this.usersService.updateProfile(user.id, dto);
+  }
+
+  /** Whether the deferred profile-completion dialog should show + what to ask for — see
+   * docs/plans/profile-completion-dialog.md. */
+  @Get('profile-nudge')
+  profileNudge(@CurrentUser() user: RequestUser): Promise<ProfileNudgeDto> {
+    return this.usersService.getProfileNudge(user.id);
+  }
+
+  @Post('profile-nudge/snooze')
+  @HttpCode(200)
+  async snoozeProfileNudge(@CurrentUser() user: RequestUser): Promise<{ success: true }> {
+    await this.usersService.snoozeProfileNudge(user.id);
+    return { success: true };
   }
 
   /** Sending a code costs an email and reveals whether an address is taken, so it gets the same

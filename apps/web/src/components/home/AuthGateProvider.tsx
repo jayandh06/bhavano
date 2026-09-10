@@ -132,13 +132,10 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
         method: "phone",
         ...(phoneE164 ? { user_data: { phone_number: phoneE164 } } : {}),
       });
-      // Asked here, while they are already in a form, rather than by a banner they will ignore.
-      // A verified email is what lets a later Google sign-in land in THIS account instead of
-      // silently creating a second one — see docs/plans/account-linking-phone-and-email.md.
-      // Skippable on purpose: someone who signed in to message a seller should not be trapped.
-      setError(null);
-      setLoginStep("email");
-      return;
+      // The missing-email ask no longer happens here — the first session is left alone. It's
+      // raised on a later login by ProfileCompletionDialog (docs/plans/profile-completion-dialog.md).
+      // The "email"/"emailCode" step markup below is now unreachable but left in place: it's
+      // inert, and the dialog may fold the same in-sheet email step back here later.
     }
 
     onLoginSuccess();

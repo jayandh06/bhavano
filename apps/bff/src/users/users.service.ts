@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { UserProfileDto } from '@bhavano/types';
+import type { ProfileNudgeDto, UserProfileDto } from '@bhavano/types';
 import type { User, City } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -32,6 +32,43 @@ export class UsersService {
     const { activeCount, allowance } =
       await this.listingSlotsService.getSummary(userId);
     return toProfileDto(user, activeCount, allowance);
+  }
+
+  /** Lifetime cap on how many times the profile-completion dialog may appear before it gives up
+   * and leaves only the (dismissible) banner. */
+  private static readonly PROFILE_NUDGE_CAP = 3;
+  private static readonly PROFILE_NUDGE_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+
+  /** See docs/plans/profile-completion-dialog.md. Does NOT consider first-vs-return login — the
+   * web client gates that on `session.isNewUser`. */
+  async getProfileNudge(userId: string): Promise<ProfileNudgeDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, phone: true, profileNudgeCount: true, profileNudgeSnoozedUntil: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const missing: ('email' | 'phone')[] = [];
+    if (!user.email) missing.push('email');
+    if (!user.phone) missing.push('phone');
+
+    const snoozed = user.profileNudgeSnoozedUntil != null && user.profileNudgeSnoozedUntil.getTime() > Date.now();
+    const show =
+      missing.length > 0 && user.profileNudgeCount < UsersService.PROFILE_NUDGE_CAP && !snoozed;
+
+    return { show, missing };
+  }
+
+  /** "Not now" (or an ignored, navigated-away-from dialog) — push it a week out and count it
+   * toward the cap. */
+  async snoozeProfileNudge(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        profileNudgeSnoozedUntil: new Date(Date.now() + UsersService.PROFILE_NUDGE_SNOOZE_MS),
+        profileNudgeCount: { increment: 1 },
+      },
+    });
   }
 
   async updateProfile(

@@ -1,13 +1,15 @@
 "use server";
 
-import type { LinkIdentifierResult, UpdateProfileInput, UserProfileDto } from "@bhavano/types";
+import type { LinkIdentifierResult, ProfileNudgeDto, UpdateProfileInput, UserProfileDto } from "@bhavano/types";
 import { auth } from "@/auth";
 import {
   BffAuthError,
   confirmAccountMerge,
   deleteAccount,
   fetchProfile,
+  fetchProfileNudge,
   requestEmailCode,
+  snoozeProfileNudge,
   updateProfile,
   verifyEmail,
 } from "@/lib/bff";
@@ -36,6 +38,30 @@ export async function getUserContactAction(): Promise<{ email?: string; phone?: 
     return { email: profile.email ?? undefined, phone: profile.phone ?? undefined };
   } catch {
     return {};
+  }
+}
+
+/** Whether to show the deferred profile-completion dialog — see
+ * docs/plans/profile-completion-dialog.md. Returns `show: false` on logout or any failure so the
+ * dialog simply doesn't appear. The caller additionally gates on a return login. */
+export async function fetchProfileNudgeAction(): Promise<ProfileNudgeDto> {
+  const session = await auth();
+  if (!session?.accessToken) return { show: false, missing: [] };
+  try {
+    return await fetchProfileNudge(session.accessToken);
+  } catch {
+    return { show: false, missing: [] };
+  }
+}
+
+/** "Not now" / dismissed — pushes the dialog a week out and counts it toward the lifetime cap. */
+export async function snoozeProfileNudgeAction(): Promise<void> {
+  const session = await auth();
+  if (!session?.accessToken) return;
+  try {
+    await snoozeProfileNudge(session.accessToken);
+  } catch {
+    // Best-effort — a failed snooze just means the dialog may reappear next session.
   }
 }
 

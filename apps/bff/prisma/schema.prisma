@@ -194,6 +194,13 @@ model User {
    * AuthService from sending it again. Backfilled to createdAt for pre-existing users so they
    * don't retroactively get a "Welcome!" message. */
   welcomedAt            DateTime?
+  /** Drives the deferred profile-completion dialog (docs/plans/profile-completion-dialog.md).
+   * The dialog shows on a return login when the profile is missing an email or phone AND now is
+   * past this instant; "Not now" pushes it a week out and bumps `profileNudgeCount`. Once the
+   * count hits the cap the dialog never shows again — only the dismissible banner remains. A
+   * complete profile makes the check false regardless of either field. */
+  profileNudgeSnoozedUntil DateTime?
+  profileNudgeCount        Int          @default(0)
   listings              Listing[]
   favourites            Favourite[]
   conversationsAsPoster Conversation[] @relation("ConversationPoster")

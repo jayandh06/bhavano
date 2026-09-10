@@ -23,6 +23,7 @@ import type {
   MessageDto,
   PaymentHistoryPage,
   PopularSearchDto,
+  ProfileNudgeDto,
   PropertyTypeFilter,
   RevealContactResponseDto,
   ReverseGeocodeResultDto,
@@ -352,6 +353,14 @@ export function verifyEmail(accessToken: string, email: string, code: string): P
 
 export function sendOtp(phone: string): Promise<{ success: true }> {
   return bffFetch("/auth/otp/send", { method: "POST", body: JSON.stringify({ phone }) });
+}
+
+export function fetchProfileNudge(accessToken: string): Promise<ProfileNudgeDto> {
+  return authedBffFetch(accessToken, "/users/me/profile-nudge", { cache: "no-store" });
+}
+
+export function snoozeProfileNudge(accessToken: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/users/me/profile-nudge/snooze", { method: "POST" });
 }
 
 const ACQUISITION_COOKIE = "bhavano_acq";

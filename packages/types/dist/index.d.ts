@@ -364,6 +364,15 @@ export interface UserProfileDto {
     activeListingCount: number;
     listingSlotAllowance: number;
 }
+/** Whether to show the deferred profile-completion dialog and what it should ask for. Computed
+ * BFF-side (it owns the snooze/count fields and profile completeness) so the answer is the same
+ * on every device — see docs/plans/profile-completion-dialog.md. `show` already folds in the
+ * per-user snooze window and the lifetime cap; the client additionally gates it on a *return*
+ * login (`!session.isNewUser`). */
+export interface ProfileNudgeDto {
+    show: boolean;
+    missing: ("email" | "phone")[];
+}
 export interface UpdateProfileInput {
     name?: string;
     cityId?: string;
