@@ -36,10 +36,10 @@ export function AdminListingsTable({ items }: { items: ListingDetailDto[] }) {
                 />
                 {item.title}
               </td>
-              <td style={tdStyle}>
+              <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                 <StatusBadge moderationState={item.moderationState} adminReviewed={item.adminReviewed} />
               </td>
-              <td style={tdStyle}>
+              <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                 <PostedNotificationBadge
                   sent={item.postedNotificationSent}
                   channel={item.postedNotificationChannel}
