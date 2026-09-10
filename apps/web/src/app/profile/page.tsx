@@ -39,12 +39,20 @@ export default async function ProfilePage({
             </div>
             <div className="w-full lg:w-[300px] lg:shrink-0 flex flex-col gap-5">
               <ContactRevealBalanceFields accessToken={session.accessToken} />
-              <div className="flex flex-col gap-1">
-                <Link href="/my-listings" className="text-[13px] text-green font-bold inline-block">
-                  View and edit your listings →
+              <div className="flex flex-col gap-2.5">
+                {/* Same outline-button style as "View" on my-listings, so the sidebar's actions
+                  * read as buttons rather than plain links. */}
+                <Link
+                  href="/my-listings"
+                  className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 text-center whitespace-nowrap cursor-pointer bg-transparent"
+                >
+                  View and edit your listings
                 </Link>
-                <Link href="/purchases" className="text-[13px] text-green font-bold inline-block">
-                  View your purchase history →
+                <Link
+                  href="/purchases"
+                  className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 text-center whitespace-nowrap cursor-pointer bg-transparent"
+                >
+                  View your purchase history
                 </Link>
               </div>
             </div>
