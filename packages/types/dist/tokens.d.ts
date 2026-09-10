@@ -10,10 +10,14 @@ export interface ThemeColors {
     muted: string;
     green: string;
     onGreen: string;
+    /** `onGreen` at reduced opacity — an inactive/secondary state against a green background,
+     * same relationship `onChromeMuted` has to `onChrome`. */
+    onGreenMuted: string;
     gold: string;
-    /** App chrome — the top status-bar strip and the bottom tab bar. A deliberate high-contrast
-     * frame around the warm `bg` content area; the status-bar clock/battery and the tab labels
-     * sit on it, so the app forces light status-bar content on both themes. */
+    /** App chrome — the top status-bar strip only (the bottom tab bar uses `green`/`onGreen`
+     * instead, matching every button). A deliberate high-contrast frame around the warm `bg`
+     * content area; the status-bar clock/battery sits on it, so the app forces light status-bar
+     * content on both themes. */
     chrome: string;
     onChrome: string;
     onChromeMuted: string;

@@ -12,10 +12,14 @@ export interface ThemeColors {
   muted: string;
   green: string;
   onGreen: string;
+  /** `onGreen` at reduced opacity — an inactive/secondary state against a green background,
+   * same relationship `onChromeMuted` has to `onChrome`. */
+  onGreenMuted: string;
   gold: string;
-  /** App chrome — the top status-bar strip and the bottom tab bar. A deliberate high-contrast
-   * frame around the warm `bg` content area; the status-bar clock/battery and the tab labels
-   * sit on it, so the app forces light status-bar content on both themes. */
+  /** App chrome — the top status-bar strip only (the bottom tab bar uses `green`/`onGreen`
+   * instead, matching every button). A deliberate high-contrast frame around the warm `bg`
+   * content area; the status-bar clock/battery sits on it, so the app forces light status-bar
+   * content on both themes. */
   chrome: string;
   onChrome: string;
   onChromeMuted: string;
@@ -32,6 +36,7 @@ export const themeColors: Record<ThemeName, ThemeColors> = {
     muted: "#8a8478",
     green: "#0B3D2E",
     onGreen: "#EFE9DC",
+    onGreenMuted: "rgba(239,233,220,0.6)",
     gold: "#C9A15A",
     chrome: "#0B3D2E",
     onChrome: "#EFE9DC",
@@ -47,10 +52,11 @@ export const themeColors: Record<ThemeName, ThemeColors> = {
     muted: "#9A9483",
     green: "#3FA980",
     onGreen: "#0E1710",
+    onGreenMuted: "rgba(14,23,16,0.6)",
     gold: "#D9B36B",
     // Saturated deep green, not a near-black: against the neutral `bg` (#14140F) it separates on
-    // hue as well as luminance, so the top strip / tab bar read as a distinct frame the way the
-    // light theme's #0B3D2E does. A near-neutral value here just vanished into the background.
+    // hue as well as luminance, so the top strip reads as a distinct frame the way the light
+    // theme's #0B3D2E does. A near-neutral value here just vanished into the background.
     chrome: "#0E4A37",
     onChrome: "#EDEAE0",
     onChromeMuted: "rgba(237,234,224,0.6)",

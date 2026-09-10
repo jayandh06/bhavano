@@ -16,9 +16,11 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.onChrome,
-        tabBarInactiveTintColor: colors.onChromeMuted,
-        tabBarStyle: { backgroundColor: colors.chrome, borderTopColor: colors.chrome },
+        // Same green as every button, not the frame's separate `chrome` tone (that one's still
+        // used for the top status-bar strip) — text/icon colors follow suit for contrast.
+        tabBarActiveTintColor: colors.onGreen,
+        tabBarInactiveTintColor: colors.onGreenMuted,
+        tabBarStyle: { backgroundColor: colors.green, borderTopColor: colors.green },
         // `color` is the resolved active/inactive tint — pass it straight to the icon so the
         // whole bar shifts together on tab change.
         tabBarIcon: ({ color }) => <Icon name={TAB_ICONS[route.name]} size={20} color={color} />,
