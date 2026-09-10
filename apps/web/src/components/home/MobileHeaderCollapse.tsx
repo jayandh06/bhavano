@@ -70,7 +70,13 @@ export function MobileHeaderCollapse({
     <>
       <div ref={sentinelRef} aria-hidden className="h-px w-full" />
 
-      <div className={collapsed ? "max-sm:hidden" : undefined}>{children}</div>
+      {/* `display: contents` so this wrapper adds no box of its own — otherwise it becomes the
+        * containing block for the sticky <header> inside `children`, shrinking its sticky range
+        * to this wrapper's ~150px height and unpinning it as soon as you scroll (the util bar
+        * scrolling away while identity/search/tabs stay put is the behaviour this restores).
+        * When collapsed on a phone, `max-sm:hidden`'s media rule overrides `contents` with
+        * `display: none`. */}
+      <div className={collapsed ? "contents max-sm:hidden" : "contents"}>{children}</div>
 
       <div
         ref={barRef}
