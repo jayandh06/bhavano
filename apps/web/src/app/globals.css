@@ -66,7 +66,11 @@
   html,
   body {
     max-width: 100vw;
-    overflow-x: hidden;
+    /* `hidden` (not `clip`) makes body a scroll container for position:sticky purposes in
+     * Chrome even though it's the window that actually scrolls, not body itself — every sticky
+     * top:0 descendant (the header included) silently stops sticking as a result. `clip` clips
+     * the same overflow without establishing that scroll container. */
+    overflow-x: clip;
   }
 
   body {
