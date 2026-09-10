@@ -35,9 +35,11 @@ function priceBracketsFor(category: ListingCategory, isSale: boolean): PriceBrac
 
 type OpenFilter = "price" | "furnished" | null;
 
+// See the matching comment in AreaFilter.tsx — the filter row is now a surface-alt strip, so
+// pill tones shift accordingly (active: green tint, inactive: surface rather than bg).
 export const buttonClass = (active: boolean) =>
   `flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold cursor-pointer border ${
-    active ? "bg-surface-alt border-green text-green" : "bg-bg border-border text-text-soft"
+    active ? "bg-green/10 border-green text-green" : "bg-surface border-border text-text-soft"
   }`;
 
 const dropdownClass =

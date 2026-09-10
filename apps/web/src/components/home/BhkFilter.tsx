@@ -93,7 +93,9 @@ export function BhkFilter({
       <button
         onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold cursor-pointer border ${
-          active ? "bg-surface-alt border-green text-green" : "bg-bg border-border text-text-soft"
+          // See the matching comment in AreaFilter.tsx — the filter row is now a surface-alt
+          // strip, so pill tones shift accordingly.
+          active ? "bg-green/10 border-green text-green" : "bg-surface border-border text-text-soft"
         }`}
       >
         <Icon name="bed" /> {label} <Icon name="chevronDown" className="text-muted" />

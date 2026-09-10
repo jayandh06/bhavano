@@ -85,7 +85,10 @@ export function Header({
         </div>
       </div>
 
-      <header className="bg-bg border-b border-border sticky top-0 z-40">
+      {/* Border alone doesn't read as "above" scrolling content once that content shares the
+        * same bg tone — a soft downward shadow gives it the separation the sticky position
+        * implies. */}
+      <header className="bg-bg border-b border-border sticky top-0 z-40 shadow-[0_2px_6px_rgba(0,0,0,0.05)]">
         {/* Two explicit rows. The first is identity — logo and account — and the second is what
           * a visitor acts on. This started as one row that wrapped on a phone, which worked but
           * left the layout dependent on how the widths happened to add up; stating the rows means

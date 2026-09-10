@@ -112,7 +112,11 @@ export function AreaFilter({
       <button
         onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-semibold cursor-pointer border ${
-          active ? "bg-surface-alt border-green text-green" : "bg-bg border-border text-text-soft"
+          // Sits on the filter row's own surface-alt strip now, so "inactive" needs to be the
+          // lighter surface tone (not bg, which would blend into the strip) to still read as a
+          // distinct pill; "active" moves to a green tint rather than surface-alt for the same
+          // reason — surface-alt no longer means "selected" once the whole row is that color.
+          active ? "bg-green/10 border-green text-green" : "bg-surface border-border text-text-soft"
         }`}
       >
         <Icon name="pin" /> {label} <Icon name="chevronDown" className="text-muted" />

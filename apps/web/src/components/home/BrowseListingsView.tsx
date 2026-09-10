@@ -147,7 +147,10 @@ export async function BrowseListingsView({
             cityAreas={cityAreas}
           />
         )}
-        <div className="flex gap-2.5 mb-3 flex-wrap items-start">
+        {/* Its own surface-alt panel rather than sitting directly on the page bg — this row is a
+          * distinct control surface (narrowing the results below), not page content, and the flat
+          * bg-on-bg treatment it used to have gave it no visual identity of its own. */}
+        <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
           <div className="flex gap-2.5 flex-wrap">
             {cityName && <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />}
             {cityName && (filterCategory === "house" || filterCategory === "apartment") && (

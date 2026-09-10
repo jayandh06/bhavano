@@ -69,7 +69,7 @@ export function CategoryTabs({
               onClick={() => onTabClick(tab.value)}
               onMouseEnter={(e) => tab.column1.length > 0 && onTabHover(tab.value, e.currentTarget)}
               className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold cursor-pointer whitespace-nowrap ${
-                isActive ? "bg-surface-alt text-text" : "bg-transparent text-text-soft"
+                isActive ? "bg-green text-on-green" : "bg-transparent text-text-soft"
               } ${highlighted ? "border-b-gold" : "border-b-transparent"}`}
             >
               <Icon name={tab.icon} />
@@ -85,7 +85,11 @@ export function CategoryTabs({
                 * correctly still shows this on, say, a small browser window on a desktop, or a
                 * tablet with a mouse attached — width was never actually the right test. */}
               {tab.column1.length > 0 && (
-                <span className="hidden [@media(hover:hover)]:inline text-[10px] text-muted">▾</span>
+                <span
+                  className={`hidden [@media(hover:hover)]:inline text-[10px] ${isActive ? "text-on-green/60" : "text-muted"}`}
+                >
+                  ▾
+                </span>
               )}
             </button>
           );
@@ -96,7 +100,7 @@ export function CategoryTabs({
           href="/tools"
           prefetch={false}
           className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
-            toolsActive ? "bg-surface-alt text-text border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
+            toolsActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
           }`}
         >
           <Icon name="calculator" />
@@ -106,7 +110,7 @@ export function CategoryTabs({
           href={plansHref}
           prefetch={false}
           className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
-            plansActive ? "bg-surface-alt text-text border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
+            plansActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
           }`}
         >
           <Icon name="sparkles" />

@@ -146,7 +146,9 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     // use, not a new one, so an elevated card matches what "elevated" already looks like
     // elsewhere in the app. Border and shadow only, no scale/translate: the grid's columns sit
     // close together, and a card that grows or shifts on hover jostles its neighbours' edges.
-    <div className="bg-surface border border-border rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both] transition-[box-shadow,border-color] duration-200 sm:hover:border-green/40 sm:hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+    // A faint resting shadow (border alone read flat against the page's own near-white bg) plus
+    // a lighter border, since the two together at full strength double up on the same job.
+    <div className="bg-surface border border-border/70 rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both] transition-[box-shadow,border-color] duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.04)] sm:hover:border-green/40 sm:hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
       <div
         className="relative h-[200px]"
         // Dynamic per-listing placeholder gradient stays inline — it's data, not a static style.
