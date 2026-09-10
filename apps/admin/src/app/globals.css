@@ -76,3 +76,21 @@ button {
 .admin-nav-logout:hover {
   color: var(--danger);
 }
+
+/* Mobile: the AdminNav tab strip collapses into a hamburger dropdown (the ✕/☰ button next to
+   the wordmark; Logout stays visible on the right). Desktop keeps the horizontally-scrolling
+   strip and hides the hamburger. Kept as a media query rather than JS so there's no
+   render-then-swap flash on load. */
+.admin-nav-hamburger {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .admin-nav-tabs-row {
+    display: none !important;
+  }
+
+  .admin-nav-hamburger {
+    display: inline-flex !important;
+  }
+}
