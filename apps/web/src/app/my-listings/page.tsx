@@ -157,7 +157,10 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
         {item.status === "active" && !item.isExpired && !item.isBoosted && (
           <BoostButton listingId={item.id} category={item.category} />
         )}
-        <Link href={buildListingPath(item)} className="text-[13px] font-bold text-text whitespace-nowrap">
+        <Link
+          href={buildListingPath(item)}
+          className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 whitespace-nowrap cursor-pointer bg-transparent"
+        >
           View
         </Link>
         <Link
