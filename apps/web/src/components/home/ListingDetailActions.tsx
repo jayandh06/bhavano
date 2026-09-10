@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGate } from "./AuthGateProvider";
+import { useBuyCredits } from "./BuyCreditsProvider";
 import { toggleFavouriteAction, revealContactAction } from "@/app/actions/listings";
 import { startConversationAction } from "@/app/actions/messaging";
-import { createContactRevealCreditsOrderAction } from "@/app/actions/payments";
-import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
 
@@ -39,6 +38,7 @@ export function ListingDetailActions({
   creditPackPriceRupees?: number;
 }) {
   const { requireLogin } = useAuthGate();
+  const { buyCredits } = useBuyCredits();
   const router = useRouter();
   const [isFavourited, setIsFavourited] = useState(initialIsFavourited);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -49,10 +49,6 @@ export function ListingDetailActions({
   const [ownerEmail, setOwnerEmail] = useState(initialOwnerEmail);
   const [revealPending, setRevealPending] = useState(false);
   const [revealError, setRevealError] = useState<string | null>(null);
-  const [showPurchase, setShowPurchase] = useState(false);
-  const [discountCode, setDiscountCode] = useState("");
-  const [purchasePending, setPurchasePending] = useState(false);
-  const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
 
   async function onToggleFavourite() {
@@ -91,7 +87,20 @@ export function ListingDetailActions({
       return;
     }
     if (result.insufficientCredits) {
-      setShowPurchase(true);
+      buyCredits({
+        listingId,
+        creditPackSize,
+        creditPackPriceRupees,
+        onPurchased: () => {
+          // The webhook (not the checkout callback) grants the credit batch — give it a few
+          // seconds, then retry the reveal, which should now succeed.
+          setUnlocking(true);
+          setTimeout(async () => {
+            await onViewContact();
+            setUnlocking(false);
+          }, 4000);
+        },
+      });
       return;
     }
     if ("error" in result) {
@@ -102,60 +111,6 @@ export function ListingDetailActions({
     setOwnerPhone(result.contact.ownerPhone);
     setOwnerEmail(result.contact.ownerEmail);
     pushDataLayerEvent("contact_reveal", { listingId });
-  }
-
-  async function onBuyCredits() {
-    setPurchasePending(true);
-    setPurchaseError(null);
-
-    const result = await createContactRevealCreditsOrderAction(discountCode.trim() || undefined);
-    if (!result.success) {
-      setPurchasePending(false);
-      setPurchaseError(result.error);
-      return;
-    }
-
-    pushDataLayerEvent("begin_checkout_contact_reveal_credits", {
-      transactionId: result.order.paymentId,
-      listingId,
-      value: result.order.amount / 100,
-      currency: result.order.currency,
-    });
-
-    try {
-      await loadRazorpayScript();
-      const { order } = result;
-      const razorpay = new window.Razorpay({
-        key: order.razorpayKeyId,
-        amount: order.amount,
-        currency: order.currency,
-        order_id: order.razorpayOrderId,
-        name: "Bhavano",
-        description: "Contact reveal credits",
-        handler: () => {
-          pushDataLayerEvent("contact_reveal_credits_purchase", {
-            transactionId: order.paymentId,
-            listingId,
-            value: order.amount / 100,
-            currency: order.currency,
-          });
-          setShowPurchase(false);
-          setPurchasePending(false);
-          setUnlocking(true);
-          // The webhook (not this callback) is what actually grants the credit batch — give it
-          // a few seconds, then retry the reveal, which should now succeed.
-          setTimeout(async () => {
-            await onViewContact();
-            setUnlocking(false);
-          }, 4000);
-        },
-        modal: { ondismiss: () => setPurchasePending(false) },
-      });
-      razorpay.open();
-    } catch {
-      setPurchasePending(false);
-      setPurchaseError("Couldn't open checkout — please try again.");
-    }
   }
 
   return (
@@ -216,45 +171,6 @@ export function ListingDetailActions({
         </div>
       )}
 
-      {showPurchase && (
-        <div
-          onClick={() => !purchasePending && setShowPurchase(false)}
-          className="fixed inset-0 bg-[var(--modal-scrim)] z-[100] flex items-center justify-center p-5"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-surface rounded-2xl w-[360px] max-w-full p-6 animate-[modalIn_0.2s_ease_both]"
-          >
-            <div className="font-lora font-bold text-[17px] text-text mb-1">Buy contact-reveal credits</div>
-            <p className="text-[13px] text-muted mb-4 m-0">
-              You&rsquo;ve used your free reveals. {creditPackSize ?? 5} credits for ₹{creditPackPriceRupees ?? 125} —
-              each credit unlocks one listing&rsquo;s contact, permanently.
-            </p>
-            <label className="block text-[11.5px] font-bold text-muted mb-1.5">Discount code (optional)</label>
-            <input
-              value={discountCode}
-              onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-              placeholder="e.g. LAUNCH25"
-              className="w-full border-[1.5px] border-border rounded-[10px] px-3 py-2.5 text-sm text-text bg-surface mb-4"
-            />
-            <button
-              onClick={onBuyCredits}
-              disabled={purchasePending}
-              className="w-full bg-green text-on-green border-0 rounded-lg py-3 text-sm font-extrabold cursor-pointer disabled:opacity-60"
-            >
-              {purchasePending ? "Opening checkout…" : `Buy ${creditPackSize ?? 5} credits — ₹${creditPackPriceRupees ?? 125}`}
-            </button>
-            {purchaseError && <p className="text-[#b3413a] text-[13px] mt-3 mb-0">{purchaseError}</p>}
-            <button
-              onClick={() => setShowPurchase(false)}
-              disabled={purchasePending}
-              className="mt-4 bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

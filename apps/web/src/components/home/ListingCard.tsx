@@ -6,16 +6,16 @@ import Link from "next/link";
 import type { ListingCardDto } from "@bhavano/types";
 import { useRouter } from "next/navigation";
 import { useAuthGate } from "./AuthGateProvider";
+import { useBuyCredits } from "./BuyCreditsProvider";
 import { toggleFavouriteAction, revealContactAction } from "@/app/actions/listings";
 import { startConversationAction } from "@/app/actions/messaging";
-import { createContactRevealCreditsOrderAction } from "@/app/actions/payments";
-import { loadRazorpayScript } from "@/lib/razorpay";
 import { buildListingPath } from "@/lib/listingPath";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
   const { requireLogin } = useAuthGate();
+  const { buyCredits } = useBuyCredits();
   const router = useRouter();
   const [isFavourited, setIsFavourited] = useState(item.isFavourited);
   const [likeCount, setLikeCount] = useState(item.likeCount);
@@ -26,10 +26,6 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   const [ownerPhone, setOwnerPhone] = useState(item.ownerPhone);
   const [ownerEmail, setOwnerEmail] = useState(item.ownerEmail);
   const [revealPending, setRevealPending] = useState(false);
-  const [showPurchase, setShowPurchase] = useState(false);
-  const [discountCode, setDiscountCode] = useState("");
-  const [purchasePending, setPurchasePending] = useState(false);
-  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   async function onToggleFavourite(e: React.MouseEvent) {
     e.preventDefault();
@@ -64,19 +60,26 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     router.push(`/messages/${result.conversationId}`);
   }
 
-  async function onViewContact(e: React.MouseEvent) {
-    e.preventDefault();
+  async function onViewContact(e?: React.MouseEvent) {
+    e?.preventDefault();
     setRevealPending(true);
     setContactError(null);
     const result = await revealContactAction(item.id);
     setRevealPending(false);
 
     if (result.requiresLogin) {
-      requireLogin({ onSuccess: () => void onViewContact(e) });
+      requireLogin({ onSuccess: () => void onViewContact() });
       return;
     }
     if (result.insufficientCredits) {
-      setShowPurchase(true);
+      buyCredits({
+        listingId: item.id,
+        creditPackSize: item.creditPackSize,
+        creditPackPriceRupees: item.creditPackPriceRupees,
+        // The webhook grants the credit batch, not the checkout callback — wait a beat, then
+        // retry the reveal, which should now succeed.
+        onPurchased: () => setTimeout(() => void onViewContact(), 4000),
+      });
       return;
     }
     if ("error" in result) {
@@ -87,55 +90,6 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     setOwnerPhone(result.contact.ownerPhone);
     setOwnerEmail(result.contact.ownerEmail);
     pushDataLayerEvent("contact_reveal", { listingId: item.id });
-  }
-
-  async function onBuyCredits(e: React.MouseEvent) {
-    e.preventDefault();
-    setPurchasePending(true);
-    setPurchaseError(null);
-
-    const result = await createContactRevealCreditsOrderAction(discountCode.trim() || undefined);
-    if (!result.success) {
-      setPurchasePending(false);
-      setPurchaseError(result.error);
-      return;
-    }
-
-    pushDataLayerEvent("begin_checkout_contact_reveal_credits", {
-      transactionId: result.order.paymentId,
-      listingId: item.id,
-      value: result.order.amount / 100,
-      currency: result.order.currency,
-    });
-
-    try {
-      await loadRazorpayScript();
-      const { order } = result;
-      const razorpay = new window.Razorpay({
-        key: order.razorpayKeyId,
-        amount: order.amount,
-        currency: order.currency,
-        order_id: order.razorpayOrderId,
-        name: "Bhavano",
-        description: "Contact reveal credits",
-        handler: () => {
-          pushDataLayerEvent("contact_reveal_credits_purchase", {
-            transactionId: order.paymentId,
-            listingId: item.id,
-            value: order.amount / 100,
-            currency: order.currency,
-          });
-          setShowPurchase(false);
-          setPurchasePending(false);
-          setTimeout(() => void onViewContact(e), 4000);
-        },
-        modal: { ondismiss: () => setPurchasePending(false) },
-      });
-      razorpay.open();
-    } catch {
-      setPurchasePending(false);
-      setPurchaseError("Couldn't open checkout — please try again.");
-    }
   }
 
   return (
@@ -262,52 +216,6 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
         </div>
         {contactError && <p className="text-[#b3413a] text-[12px] mt-1.5">{contactError}</p>}
       </div>
-
-      {showPurchase && (
-        <div
-          onClick={(e) => {
-            e.preventDefault();
-            if (!purchasePending) setShowPurchase(false);
-          }}
-          className="fixed inset-0 bg-[var(--modal-scrim)] z-[100] flex items-center justify-center p-5"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-surface rounded-2xl w-[360px] max-w-full p-6 animate-[modalIn_0.2s_ease_both]"
-          >
-            <div className="font-lora font-bold text-[17px] text-text mb-1">Buy contact-reveal credits</div>
-            <p className="text-[13px] text-muted mb-4 m-0">
-              You&rsquo;ve used your free reveals. {item.creditPackSize ?? 5} credits for ₹{item.creditPackPriceRupees ?? 125} —
-              each credit unlocks one listing&rsquo;s contact, permanently.
-            </p>
-            <label className="block text-[11.5px] font-bold text-muted mb-1.5">Discount code (optional)</label>
-            <input
-              value={discountCode}
-              onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-              placeholder="e.g. LAUNCH25"
-              className="w-full border-[1.5px] border-border rounded-[10px] px-3 py-2.5 text-sm text-text bg-surface mb-4"
-            />
-            <button
-              onClick={onBuyCredits}
-              disabled={purchasePending}
-              className="w-full bg-green text-on-green border-0 rounded-lg py-3 text-sm font-extrabold cursor-pointer disabled:opacity-60"
-            >
-              {purchasePending ? "Opening checkout…" : `Buy ${item.creditPackSize ?? 5} credits — ₹${item.creditPackPriceRupees ?? 125}`}
-            </button>
-            {purchaseError && <p className="text-[#b3413a] text-[13px] mt-3 mb-0">{purchaseError}</p>}
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                if (!purchasePending) setShowPurchase(false);
-              }}
-              disabled={purchasePending}
-              className="mt-4 bg-transparent border-0 text-muted text-[13px] font-bold cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

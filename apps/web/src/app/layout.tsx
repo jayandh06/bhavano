@@ -4,6 +4,8 @@ import Script from "next/script";
 import { ThemeProvider } from "next-themes";
 import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
 import { AuthGateProvider } from "@/components/home/AuthGateProvider";
+import { BuyCreditsProvider } from "@/components/home/BuyCreditsProvider";
+import { BoostProvider } from "@/components/home/BoostProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
 import { ProfileCompletionDialog } from "@/components/home/ProfileCompletionDialog";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
@@ -105,10 +107,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         )}
         <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <AuthGateProvider>
-            <SignupConversionTracker />
-            <ProfileCompletionBanner />
-            <ProfileCompletionDialog />
-            {children}
+            <BuyCreditsProvider>
+              <BoostProvider>
+                <SignupConversionTracker />
+                <ProfileCompletionBanner />
+                <ProfileCompletionDialog />
+                {children}
+              </BoostProvider>
+            </BuyCreditsProvider>
           </AuthGateProvider>
         </ThemeProvider>
       </body>
