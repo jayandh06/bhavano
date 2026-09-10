@@ -940,32 +940,56 @@ export function PostAdWizard({
       )}
 
       {step === "success" && createdListing && (
-        <div className="flex flex-col gap-4 text-center py-4">
-          <div className="text-3xl text-green"><Icon name="celebrate" /></div>
-          <div>
-            <div className="font-lora text-xl font-bold text-text mb-1.5">
-              Your ad is live!
+        <div className="w-full max-w-[440px] mx-auto flex flex-col items-center gap-5 py-4 px-1">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <span className="w-14 h-14 rounded-full bg-green/10 text-green text-2xl flex items-center justify-center">
+              <Icon name="celebrate" />
+            </span>
+            <div>
+              <div className="font-lora text-xl sm:text-2xl font-bold text-text">Your ad is live!</div>
+              <p className="text-sm text-muted mt-1 mb-0">It&apos;s now visible to buyers searching your area.</p>
             </div>
-            <p className="text-[13px] text-muted m-0">
-              Want it seen faster? Boosted ads get a gold Featured badge,
-              rank ahead of regular listings, and rotate fairly through the top
-              slots — plus we&apos;ll notify you the moment someone likes it.
-            </p>
           </div>
 
-          <div className="flex flex-col items-center gap-3 mt-1">
+          {/* Boost pitch — a card, not a paragraph, so the benefits scan and the CTA reads as
+            * the primary action. Gold accent + tokens so it holds up in light and dark. */}
+          <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Icon name="boost" className="text-[color:var(--gold)] text-lg" />
+              <span className="font-lora font-bold text-[15px] text-text">Reach more buyers, faster</span>
+            </div>
+            <ul className="flex flex-col gap-2 m-0 p-0 list-none">
+              {(
+                [
+                  ["featured", "A gold Featured badge on your ad"],
+                  ["check", "Ranks above regular listings in search"],
+                  ["check", "Rotates fairly through the top slots"],
+                  ["bell", "Alerts you the moment someone likes it"],
+                ] as const
+              ).map(([icon, text]) => (
+                <li key={text} className="flex items-start gap-2 text-[13px] text-text-soft">
+                  <Icon name={icon} className="text-green mt-[3px] shrink-0" />
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
             <BoostButton
               listingId={createdListing.id}
               category={createdListing.category}
+              className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-green text-on-green border-0 rounded-lg px-4 py-3 text-sm font-bold cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
             />
-            <VideoManager listing={createdListing} accessToken={token ?? ""} />
-            <Link
-              href={buildListingPath(createdListing)}
-              className="text-[13px] font-bold text-text-soft"
-            >
-              Skip for now — view my ad →
-            </Link>
           </div>
+
+          <div className="w-full flex justify-center">
+            <VideoManager listing={createdListing} accessToken={token ?? ""} />
+          </div>
+
+          <Link
+            href={buildListingPath(createdListing)}
+            className="text-[13px] font-bold text-muted hover:text-text transition-colors"
+          >
+            View my ad &rarr;
+          </Link>
         </div>
       )}
     </div>
