@@ -32,11 +32,14 @@ import {
   Eye,
   FerrisWheel,
   Heart,
+  HelpCircle,
   Home,
   IndianRupee,
   Key,
   Landmark,
   LayoutGrid,
+  List,
+  LogOut,
   MapPin,
   MessageCircle,
   Moon,
@@ -53,6 +56,7 @@ import {
   Star,
   Sun,
   BedDouble,
+  User,
   Video,
   Waves,
   X,
@@ -146,6 +150,12 @@ export const ICONS = {
   gym: Dumbbell,
   swimmingPool: Waves,
   clubHouse: Landmark,
+
+  // Account menu.
+  user: User,
+  list: List,
+  help: HelpCircle,
+  logout: LogOut,
 } satisfies Record<string, LucideIcon>;
 
 /** Narrows a name that crossed a package boundary as a plain string — `iconName` on the shared
