@@ -12,6 +12,7 @@ import type { HomeTabValue } from "@/lib/homeCategories";
 import { CategoryTabs } from "./CategoryTabs";
 import { MobileHeaderCollapse } from "./MobileHeaderCollapse";
 import { HeaderDrawer } from "./HeaderDrawer";
+import { Icon } from "./Icon";
 
 export function Header({
   cityName,
@@ -59,9 +60,9 @@ export function Header({
           <span className="flex-1" />
           <Link
             href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
-            className="shrink-0 bg-green text-on-green rounded-lg px-4 py-2 text-[13px] font-bold whitespace-nowrap shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
+            className="shrink-0 inline-flex items-center gap-1.5 bg-green text-on-green rounded-lg px-4 py-2 text-[13px] font-bold whitespace-nowrap shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
           >
-            Post ad
+            <Icon name="plus" /> Post ad
           </Link>
         </>
       }
@@ -70,8 +71,8 @@ export function Header({
           cityName={cityName}
           popularCities={popularCities}
           currentSegments={currentSegments}
+          activeCategory={activeCategory}
           userName={userName}
-          accessToken={accessToken}
         />
       }
     >
@@ -165,7 +166,9 @@ export function Header({
               href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
               className="ml-auto sm:ml-0 shrink-0 bg-green text-on-green border-0 rounded-lg px-4 sm:px-5 py-[10px] text-[13px] sm:text-sm font-bold whitespace-nowrap shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
             >
-              <span className="sm:hidden">Post ad</span>
+              <span className="sm:hidden inline-flex items-center gap-1.5">
+                <Icon name="plus" /> Post ad
+              </span>
               <span className="hidden sm:inline">+ Post free ad</span>
             </Link>
           </div>

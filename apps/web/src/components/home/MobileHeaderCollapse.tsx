@@ -78,9 +78,13 @@ export function MobileHeaderCollapse({
         * `display: none`. */}
       <div className={collapsed ? "contents max-sm:hidden" : "contents"}>{children}</div>
 
+      {/* Reserves the fixed bar's height in flow (only when it's actually shown: mobile +
+        * collapsed) so page content isn't hidden behind it. */}
+      {collapsed && <div aria-hidden className="sm:hidden h-[52px]" />}
+
       <div
         ref={barRef}
-        className={`sm:hidden sticky top-0 z-40 bg-[linear-gradient(180deg,var(--surface),var(--bg))] border-b border-border shadow-[0_2px_8px_rgba(11,61,46,0.09)] ${
+        className={`sm:hidden fixed top-0 inset-x-0 z-40 bg-[linear-gradient(180deg,var(--surface),var(--bg))] border-b border-border shadow-[0_2px_8px_rgba(11,61,46,0.09)] ${
           collapsed ? "" : "hidden"
         }`}
       >

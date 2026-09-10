@@ -5,9 +5,9 @@ import { slugify } from "@bhavano/types/slugify";
 import type { ParsedSegments } from "@/lib/seoRoute";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
 import { buildBrowsePath } from "@/lib/listingPath";
-import { HOME_TABS } from "@/lib/homeCategories";
+import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
 import { LocationPicker } from "./LocationPicker";
-import { HeaderAuthButtons } from "./HeaderAuthButtons";
+import { HeaderDrawerAccount } from "./HeaderDrawerAccount";
 import { ThemeToggle } from "./ThemeToggle";
 import { Icon } from "./Icon";
 
@@ -19,21 +19,24 @@ import { Icon } from "./Icon";
  * them, and derives the category links from the same `HOME_TABS` vocabulary `CategoryTabs` does.
  */
 
-const rowClass =
-  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-text-soft hover:bg-surface-alt hover:text-text transition-colors";
+const rowBase = "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors";
+const rowClass = `${rowBase} text-text-soft hover:bg-surface-alt hover:text-text`;
+/** The category the current page is showing — a filled row with a gold leading rule, the drawer
+ * equivalent of the highlighted tab in `CategoryTabs`. */
+const rowActiveClass = `${rowBase} text-green bg-surface-alt border-l-[3px] border-gold pl-[9px]`;
 
 export function HeaderDrawer({
   cityName,
   popularCities,
   currentSegments,
+  activeCategory,
   userName,
-  accessToken,
 }: {
   cityName?: string;
   popularCities: City[];
   currentSegments?: ParsedSegments;
+  activeCategory?: HomeTabValue;
   userName?: string | null;
-  accessToken?: string;
 }) {
   return (
     <>
@@ -47,12 +50,20 @@ export function HeaderDrawer({
         <span className="text-[11px] font-bold uppercase tracking-[0.04em] text-muted">Browse</span>
         <ThemeToggle />
       </div>
-      {HOME_TABS.map((tab) => (
-        <Link key={tab.value} href={buildBrowsePath({ cityName, ...segmentsForHomeCategory(tab.value) })} className={rowClass}>
-          <Icon name={tab.icon} className="text-muted" />
-          {tab.label}
-        </Link>
-      ))}
+      {HOME_TABS.map((tab) => {
+        const isActive = tab.value === activeCategory;
+        return (
+          <Link
+            key={tab.value}
+            href={buildBrowsePath({ cityName, ...segmentsForHomeCategory(tab.value) })}
+            aria-current={isActive ? "page" : undefined}
+            className={isActive ? rowActiveClass : rowClass}
+          >
+            <Icon name={tab.icon} className={isActive ? "text-green" : "text-muted"} />
+            {tab.label}
+          </Link>
+        );
+      })}
       <Link href="/tools" prefetch={false} className={rowClass}>
         <Icon name="calculator" className="text-muted" /> Tools
       </Link>
@@ -71,9 +82,7 @@ export function HeaderDrawer({
 
       <div className="my-1.5 border-t border-border" />
 
-      <div className="px-1 pb-1">
-        <HeaderAuthButtons userName={userName} cityName={cityName} accessToken={accessToken} />
-      </div>
+      <HeaderDrawerAccount userName={userName} cityName={cityName} />
     </>
   );
 }

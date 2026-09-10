@@ -140,9 +140,15 @@ layered bar + account dropdown (room for words there).
       collapse. Replace the `hidden` toggle with a `max-height` + `opacity` transition — but the
       wrapper must stay `overflow: visible` on desktop or it breaks `<header>`'s `position:
       sticky`, so gate the clip to `max-sm:` only.
-- [ ] **Nested drawer polish.** `HeaderDrawer` reuses `HeaderAuthButtons` wholesale, so the
-      account dropdown opens *inside* the scrollable drawer and can clip / force an x-scroll.
-      Either give it a drawer-specific flat list, or portal the dropdown.
+- [x] **Nested drawer polish.** Done — `HeaderDrawerAccount` replaces the reused
+      `HeaderAuthButtons` with a flat row list, so there's no `position: absolute` popover to
+      clip inside the scrollable drawer.
+- [x] **Active-tab highlight.** Done — `activeCategory` is passed to `HeaderDrawer`; the current
+      category row gets a filled `surface-alt` background, green text/icon, a gold left rule and
+      `aria-current="page"`.
+- [x] **Scroll-lock vs. sticky.** Done — the collapsed bar is `position: fixed` (+ a flow
+      spacer) instead of `sticky`, so `body { overflow: hidden }` while the drawer is open no
+      longer un-pins it.
 - [ ] **Per-route pinned tabs.** On browse/listing routes keep a thin horizontally-scrollable
       category strip visible even when collapsed (tabs are primary nav there); drawer-only
       elsewhere.
