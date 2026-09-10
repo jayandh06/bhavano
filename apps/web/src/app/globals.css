@@ -130,6 +130,25 @@
   }
 }
 
+/* Mobile header hamburger panel + its scrim (see MobileHeaderCollapse). */
+@keyframes drawerInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Hides the horizontal scrollbar on the category tab row, which is scrolled by its own arrows
    or a swipe (see CategoryTabs). A bar drawn under the tabs reads as a second border. The row
    stays keyboard- and wheel-scrollable — this hides the indicator, not the behaviour. */

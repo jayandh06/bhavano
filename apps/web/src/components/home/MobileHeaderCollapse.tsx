@@ -118,7 +118,11 @@ export function MobileHeaderCollapse({
           <>
             {/* Scrim — dims the page and is the tap target to dismiss. Starts under the 52px bar
               * so the bar and its ✕ stay visible and tappable above it. */}
-            <div aria-hidden onClick={() => setMenuOpen(false)} className="fixed inset-x-0 top-[52px] bottom-0 z-40 bg-black/35" />
+            <div
+              aria-hidden
+              onClick={() => setMenuOpen(false)}
+              className="fixed inset-x-0 top-[52px] bottom-0 z-40 bg-black/35 animate-[scrimIn_0.2s_ease-out]"
+            />
             {/* A panel, not a takeover — ~84vw capped at 19rem, so a strip of the page stays
               * visible and it reads as a menu over content. Height follows its content (it only
               * scrolls if that would overflow the viewport), so it ends where the menu ends
@@ -129,7 +133,7 @@ export function MobileHeaderCollapse({
               onClick={(e) => {
                 if ((e.target as HTMLElement).closest("a")) setMenuOpen(false);
               }}
-              className="fixed left-0 top-[52px] z-40 w-[19rem] max-w-[84vw] max-h-[calc(100dvh-52px)] overflow-y-auto overscroll-contain bg-surface border-r border-b border-border rounded-br-2xl shadow-[6px_8px_28px_rgba(0,0,0,0.18)] px-3 py-3 flex flex-col gap-0.5"
+              className="fixed left-0 top-[52px] z-40 w-[19rem] max-w-[84vw] max-h-[calc(100dvh-52px)] overflow-y-auto overscroll-contain bg-surface border-r border-b border-border rounded-br-2xl shadow-[6px_8px_28px_rgba(0,0,0,0.18)] px-3 py-3 flex flex-col gap-0.5 animate-[drawerInLeft_0.2s_ease-out] motion-reduce:animate-none"
             >
               {drawer}
             </div>

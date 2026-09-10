@@ -55,9 +55,8 @@ export function HeaderDrawer({
         </div>
       )}
 
-      <div className="flex items-center justify-between px-3 pt-2 pb-1">
+      <div className="px-3 pt-2 pb-1">
         <span className="text-[11px] font-bold uppercase tracking-[0.04em] text-muted">Browse</span>
-        <ThemeToggle />
       </div>
       {HOME_TABS.map((tab) => {
         const isActive = tab.value === activeCategory;
@@ -95,6 +94,12 @@ export function HeaderDrawer({
           <HeaderDrawerAccount userName={userName} cityName={cityName} />
         </>
       )}
+
+      <div className="my-1.5 border-t border-border" />
+      <div className="flex items-center justify-between px-3 py-1.5">
+        <span className="text-sm font-bold text-text-soft">Appearance</span>
+        <ThemeToggle />
+      </div>
     </>
   );
 }

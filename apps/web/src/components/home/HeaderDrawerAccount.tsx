@@ -33,8 +33,18 @@ export function HeaderDrawerAccount({ userName, cityName }: { userName?: string 
     );
   }
 
+  const initial = userName.trim().charAt(0).toUpperCase();
+
   return (
     <>
+      {/* Whose session this is — the drawer equivalent of the desktop AccountMenu's header. */}
+      <div className="flex items-center gap-3 px-3 py-2">
+        <span className="flex items-center justify-center shrink-0 w-9 h-9 rounded-full bg-green text-on-green text-[15px] font-bold">
+          {initial || <Icon name="user" />}
+        </span>
+        <span className="min-w-0 text-sm font-bold text-text truncate">{userName}</span>
+      </div>
+
       <Link href={`/profile${cityQuery}`} className={row}>
         <Icon name="user" className="text-muted" /> Profile
       </Link>
