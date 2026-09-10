@@ -267,7 +267,10 @@ export class PaymentsService {
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
       currency: 'INR',
-      receipt: `contact_reveal_credits_${userId}_${Date.now()}`,
+      // Razorpay caps `receipt` at 56 chars — `contact_reveal_credits_<cuid>_<ms>` is 62 and
+      // gets rejected with input_validation_failed. Keep this prefix short; the full purpose is
+      // already on `notes` and the Payment row.
+      receipt: `crc_${userId}_${Date.now()}`,
       notes: { purpose: 'contact_reveal_credits', creditPackSize: String(settings.creditPackSize) },
     });
 
