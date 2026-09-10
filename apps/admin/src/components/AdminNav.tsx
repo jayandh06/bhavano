@@ -68,10 +68,23 @@ export function AdminNav() {
   }
 
   return (
-    <div style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+    // Sticky + a soft shadow, same treatment as the web app's header — stays reachable while
+    // reviewing a long scrolled-down page instead of requiring a scroll back to the top for the
+    // next action. 1280 (not the old 1000) to match the dashboard table's own width, so the nav
+    // no longer reads as a narrower strip floating above wider page content.
+    <div
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        borderBottom: "1px solid var(--border)",
+        background: "var(--surface)",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+      }}
+    >
       <div
         style={{
-          maxWidth: 1000,
+          maxWidth: 1280,
           margin: "0 auto",
           padding: "14px 24px 10px",
           display: "flex",
@@ -79,11 +92,25 @@ export function AdminNav() {
           alignItems: "center",
         }}
       >
-        <span style={{ fontSize: 14, fontWeight: 700 }}>Bhavano Admin</span>
+        <span style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+          <span style={{ fontSize: 17, fontWeight: 800, color: "var(--green)", letterSpacing: "-0.01em" }}>Bhavano</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Admin
+          </span>
+        </span>
         <form action={signOutAction}>
           <button
             type="submit"
-            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 13, fontWeight: 700 }}
+            className="admin-nav-logout"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--muted)",
+              fontSize: 13,
+              fontWeight: 700,
+              padding: "6px 4px",
+            }}
           >
             Logout
           </button>
@@ -92,7 +119,7 @@ export function AdminNav() {
 
       <div
         style={{
-          maxWidth: 1000,
+          maxWidth: 1280,
           margin: "0 auto",
           padding: "0 24px 12px",
           display: "flex",
@@ -122,6 +149,7 @@ export function AdminNav() {
               <Link
                 key={link.href}
                 href={link.href}
+                className="admin-nav-link"
                 style={{
                   fontSize: 13,
                   fontWeight: 700,
@@ -130,7 +158,9 @@ export function AdminNav() {
                   whiteSpace: "nowrap",
                   flexShrink: 0,
                   color: active ? "var(--green)" : "var(--text-soft)",
-                  background: active ? "var(--surface-alt)" : "transparent",
+                  // Left unset (not "transparent") when inactive — the stylesheet's :hover rule
+                  // can only take effect when this inline style doesn't also claim `background`.
+                  ...(active ? { background: "var(--surface-alt)" } : {}),
                 }}
               >
                 {link.label}

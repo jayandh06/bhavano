@@ -14,7 +14,10 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  /* `hidden` (not `clip`) makes body a scroll container for position:sticky purposes in Chrome
+     even though the window (not body) is what actually scrolls — a sticky nav would silently
+     stop sticking. `clip` clips the same overflow without creating that scroll container. */
+  overflow-x: clip;
 }
 
 body {
@@ -52,4 +55,24 @@ button {
 
 .admin-nav-scroll::-webkit-scrollbar {
   display: none;
+}
+
+/* Inline styles set `background` only for the active tab, leaving it out entirely for inactive
+   ones — so this hover rule (an external stylesheet) isn't fighting a same-property inline value,
+   which always wins over any stylesheet rule regardless of specificity or :hover. */
+.admin-nav-link {
+  background: transparent;
+  transition: background-color 0.12s ease;
+}
+
+.admin-nav-link:hover {
+  background: var(--surface-alt);
+}
+
+.admin-nav-logout {
+  transition: color 0.12s ease;
+}
+
+.admin-nav-logout:hover {
+  color: var(--danger);
 }
