@@ -1,9 +1,28 @@
 # Mobile collapsing header + colourful header bands
 
-Status: **proposed** (not started). Two related but independently shippable pieces:
+Status: **v1 shipped** — colour bands + a working mobile collapse. Refinements still open
+(the height snap, nested drawer polish, tests, per-route pinned tabs) — see the checklist at
+the end.
+
+Two related but independently shippable pieces:
 
 1. **Colourful header bands** — small, safe, no behaviour change. Do first.
 2. **Mobile collapsing header** — new client leaf + one drawer. Larger; own section below.
+
+## What shipped (v1)
+
+- `Header.tsx` colour bands: gold hairline under the green utility bar, gold hover on its links,
+  `surface → bg` vertical gradient + green-tinted shadow on `<header>`, warm-sand
+  (`surface-alt`) band behind the category tabs.
+- `MobileHeaderCollapse.tsx` (new, `"use client"`) — IntersectionObserver sentinel; on `< sm`,
+  once scrolled past the top the full header is `hidden` and a `[☰] logo ··· Post ad` bar pins.
+- `HeaderDrawer.tsx` (new, Server Component) — the `☰` drawer: city picker, the `HOME_TABS`
+  category links, Tools, Plans, For Owners, Help, the account menu, theme toggle. Every link is
+  in the server HTML (verified on `/help`), so nothing is hidden from crawlers.
+- `Header.tsx` stays a Server Component; it passes the drawer + collapsed-bar as slots into the
+  client leaf.
+
+Desktop is byte-identical to before. Production build + typecheck + lint pass.
 
 ---
 
@@ -110,6 +129,32 @@ layered bar + account dropdown (room for words there).
 ### Open questions
 
 - Collapsed band: keep a small logo *mark* (icon only) for a home tap-target, or let `☰` double
-  as it?
-- Does desktop want a milder condense on scroll too, or stay fully as-is?
+  as it?  → v1 keeps the logo mark.
+- Does desktop want a milder condense on scroll too, or stay fully as-is?  → v1 leaves desktop
+  as-is.
 - Search bar is already `hidden sm:block` (absent on phone) — confirmed out of scope for mobile.
+
+## Refinement checklist (post-v1)
+
+- [ ] **Height snap.** Swapping the ~140px header for the ~52px bar jumps the page up once per
+      collapse. Replace the `hidden` toggle with a `max-height` + `opacity` transition — but the
+      wrapper must stay `overflow: visible` on desktop or it breaks `<header>`'s `position:
+      sticky`, so gate the clip to `max-sm:` only.
+- [ ] **Nested drawer polish.** `HeaderDrawer` reuses `HeaderAuthButtons` wholesale, so the
+      account dropdown opens *inside* the scrollable drawer and can clip / force an x-scroll.
+      Either give it a drawer-specific flat list, or portal the dropdown.
+- [ ] **Per-route pinned tabs.** On browse/listing routes keep a thin horizontally-scrollable
+      category strip visible even when collapsed (tabs are primary nav there); drawer-only
+      elsewhere.
+- [ ] **Desktop re-render churn.** The IO fires on desktop too and flips `collapsed` on every
+      scroll past the top, causing a cheap re-render that changes nothing visible. Gate the
+      observer behind a `matchMedia("(max-width: 639px)")` check (with a listener so a
+      desktop→mobile resize starts it).
+- [ ] **a11y.** Add a focus trap + focus-return for the drawer, and `role="dialog"` /
+      `aria-modal`. `Esc`, outside-click, and body scroll-lock are already in.
+- [ ] **Playwright** (`apps/web/e2e`): collapse on scroll-down, re-expand on scroll-up, drawer
+      open/close, every link reachable, no horizontal body scroll at 360px, desktop unaffected.
+- [ ] **Local dev note:** the homepage 500s locally without `AUTH_SECRET` in `apps/web/.env` and
+      because demo photo URLs carry a `?t=` query string not listed in `images.localPatterns`
+      (Next 16). Pre-existing, unrelated to this work, but blocks a local visual check of the
+      homepage — use `/help` or fix the env.

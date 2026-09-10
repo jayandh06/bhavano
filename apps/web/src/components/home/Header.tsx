@@ -10,6 +10,8 @@ import { ThemeToggle } from "./ThemeToggle";
 import { HeaderAuthButtons } from "./HeaderAuthButtons";
 import type { HomeTabValue } from "@/lib/homeCategories";
 import { CategoryTabs } from "./CategoryTabs";
+import { MobileHeaderCollapse } from "./MobileHeaderCollapse";
+import { HeaderDrawer } from "./HeaderDrawer";
 
 export function Header({
   cityName,
@@ -48,8 +50,32 @@ export function Header({
   popularSearches?: PopularSearchDto[];
 }) {
   return (
-    <>
-      <div className="bg-green text-on-green text-[13px] py-1.5">
+    <MobileHeaderCollapse
+      collapsedBar={
+        <>
+          <Link href="/" aria-label="Bhavano — home" className="flex items-center shrink-0">
+            <Image src="/logo.png" alt="" width={30} height={30} className="rounded-lg w-[30px] h-[30px]" />
+          </Link>
+          <span className="flex-1" />
+          <Link
+            href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
+            className="shrink-0 bg-green text-on-green rounded-lg px-4 py-2 text-[13px] font-bold whitespace-nowrap shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
+          >
+            Post ad
+          </Link>
+        </>
+      }
+      drawer={
+        <HeaderDrawer
+          cityName={cityName}
+          popularCities={popularCities}
+          currentSegments={currentSegments}
+          userName={userName}
+          accessToken={accessToken}
+        />
+      }
+    >
+      <div className="bg-green text-on-green text-[13px] py-1.5 border-b border-[color:var(--gold)]/30">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 sm:gap-0">
           {/* Hidden on phones, where it cost a whole line of a small screen to say something a
             * visitor who just tapped an ad does not need. Deliberately `hidden` rather than
@@ -69,16 +95,16 @@ export function Header({
               * into a payload that the router may then serve after you have moved to the
               * all-cities home — the chip showing a city you left behind. These are low-traffic
               * utility pages; a fresh fetch on click costs nothing worth this. */}
-            <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} prefetch={false} className="text-inherit">
+            <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
               For Owners
             </Link>
-            <Link href="/tools" prefetch={false} className="text-inherit">
+            <Link href="/tools" prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
               Tools
             </Link>
-            <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} prefetch={false} className="text-inherit">
+            <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
               Plans
             </Link>
-            <Link href="/help" prefetch={false} className="text-inherit">
+            <Link href="/help" prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
               Help
             </Link>
           </div>
@@ -89,7 +115,7 @@ export function Header({
         * scrolls away, and only this row (identity, search, category tabs) stays pinned. Border
         * alone doesn't read as "above" scrolling content once that content shares the same bg
         * tone — a soft downward shadow gives it the separation the sticky position implies. */}
-      <header className="bg-bg border-b border-border sticky top-0 z-40 shadow-[0_2px_6px_rgba(0,0,0,0.05)]">
+      <header className="bg-[linear-gradient(180deg,var(--surface),var(--bg))] border-b border-border sticky top-0 z-40 shadow-[0_2px_8px_rgba(11,61,46,0.09)]">
         {/* Two explicit rows. The first is identity — logo and account — and the second is what
           * a visitor acts on. This started as one row that wrapped on a phone, which worked but
           * left the layout dependent on how the widths happened to add up; stating the rows means
@@ -145,12 +171,17 @@ export function Header({
           </div>
         </div>
 
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
-          <Suspense>
-            <CategoryTabs active={activeCategory} cityName={cityName} />
-          </Suspense>
+        {/* A distinct warm-sand band rather than a continuation of the header ground — the
+          * category row reads as its own strip, and the gold accents in CategoryTabs sit on a
+          * tone that isn't the same near-white as everything above. */}
+        <div className="bg-surface-alt border-t border-border">
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-8">
+            <Suspense>
+              <CategoryTabs active={activeCategory} cityName={cityName} />
+            </Suspense>
+          </div>
         </div>
       </header>
-    </>
+    </MobileHeaderCollapse>
   );
 }
