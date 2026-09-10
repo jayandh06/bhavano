@@ -159,15 +159,19 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
         )}
         <Link
           href={buildListingPath(item)}
-          className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 whitespace-nowrap cursor-pointer bg-transparent"
+          aria-label="View listing"
+          title="View listing"
+          className="text-[15px] font-bold text-green border-[1.5px] border-green rounded-lg px-2.5 py-2 inline-flex items-center cursor-pointer bg-transparent"
         >
-          View
+          <Icon name="eye" />
         </Link>
         <Link
           href={`/my-listings/${item.id}/edit`}
-          className="text-[13px] font-bold text-on-green bg-green rounded-lg px-3.5 py-2 whitespace-nowrap"
+          aria-label="Edit listing"
+          title="Edit listing"
+          className="text-[15px] font-bold text-on-green bg-green rounded-lg px-2.5 py-2 inline-flex items-center"
         >
-          Edit
+          <Icon name="edit" />
         </Link>
       </div>
       {item.status === "active" && !item.isExpired && (

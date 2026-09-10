@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Icon } from "./Icon";
 
 /**
  * Mobile-only (`< sm`) progressive collapse for the site header.
@@ -107,9 +108,9 @@ export function MobileHeaderCollapse({
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((o) => !o)}
-            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-border bg-surface-alt text-text text-lg leading-none cursor-pointer"
+            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-border bg-surface-alt text-text text-[19px] cursor-pointer"
           >
-            {menuOpen ? "✕" : "☰"}
+            <Icon name={menuOpen ? "close" : "menu"} />
           </button>
           <div className="flex-1 min-w-0 flex items-center gap-2">{collapsedBar}</div>
         </div>

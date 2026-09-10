@@ -105,7 +105,7 @@ export function BoostButton({ listingId, category }: { listingId: string; catego
         onClick={() => setOpen(true)}
         className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 whitespace-nowrap cursor-pointer bg-transparent"
       >
-        <Icon name="boost" /> Boost this ad
+        <Icon name="boost" /> Boost Ad
       </button>
 
       {open && (
