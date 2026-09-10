@@ -48,7 +48,10 @@ export function Header({
   popularSearches?: PopularSearchDto[];
 }) {
   return (
-    <>
+    // Both bars pinned together as one unit — pinning just the lower row left the tagline/utility
+    // links bar as the one thing that still moved, which read as inconsistent rather than as a
+    // deliberate space-saving choice once the header below it was already static.
+    <div className="sticky top-0 z-40">
       <div className="bg-green text-on-green text-[13px] py-1.5">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 sm:gap-0">
           {/* Hidden on phones, where it cost a whole line of a small screen to say something a
@@ -87,8 +90,9 @@ export function Header({
 
       {/* Border alone doesn't read as "above" scrolling content once that content shares the
         * same bg tone — a soft downward shadow gives it the separation the sticky position
-        * implies. */}
-      <header className="bg-bg border-b border-border sticky top-0 z-40 shadow-[0_2px_6px_rgba(0,0,0,0.05)]">
+        * implies. Sticky positioning itself now lives on the outer wrapper, which pins this
+        * together with the bar above it. */}
+      <header className="bg-bg border-b border-border shadow-[0_2px_6px_rgba(0,0,0,0.05)]">
         {/* Two explicit rows. The first is identity — logo and account — and the second is what
           * a visitor acts on. This started as one row that wrapped on a phone, which worked but
           * left the layout dependent on how the widths happened to add up; stating the rows means
@@ -150,6 +154,6 @@ export function Header({
           </Suspense>
         </div>
       </header>
-    </>
+    </div>
   );
 }
