@@ -31,7 +31,6 @@ export function MobileHeaderCollapse({
   drawer: ReactNode;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -53,16 +52,31 @@ export function MobileHeaderCollapse({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
     };
-    const onDown = (e: PointerEvent) => {
-      if (barRef.current && !barRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
     document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onDown);
+
+    // Pin the page behind the panel. `overflow: hidden` on <body> is ignored by iOS Safari, so
+    // pin with position:fixed and restore the scroll offset on close (same approach as
+    // MediaLightbox) — otherwise the listing scrolls behind the menu, and closing it drops a
+    // mid-page reader back at the top.
+    const scrollY = window.scrollY;
+    const prev = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+      overflow: document.body.style.overflow,
+    };
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onDown);
-      document.body.style.overflow = "";
+      document.body.style.position = prev.position;
+      document.body.style.top = prev.top;
+      document.body.style.width = prev.width;
+      document.body.style.overflow = prev.overflow;
+      window.scrollTo(0, scrollY);
     };
   }, [menuOpen]);
 
@@ -83,7 +97,6 @@ export function MobileHeaderCollapse({
       {collapsed && <div aria-hidden className="sm:hidden h-[52px]" />}
 
       <div
-        ref={barRef}
         className={`sm:hidden fixed top-0 inset-x-0 z-40 bg-[linear-gradient(180deg,var(--surface),var(--bg))] border-b border-border shadow-[0_2px_8px_rgba(11,61,46,0.09)] ${
           collapsed ? "" : "hidden"
         }`}
@@ -102,19 +115,23 @@ export function MobileHeaderCollapse({
         </div>
 
         {menuOpen && (
-          <div className="absolute left-0 right-0 top-full max-h-[calc(100dvh-52px)] overflow-y-auto bg-surface border-b border-border shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
-            {/* Delegated close: any activated link inside the drawer (tap or keyboard) navigates,
-              * so the drawer should go with it. Buttons within — the city picker, the account
-              * menu — are not `<a>`, so using them leaves the drawer open, which is what you want. */}
+          <>
+            {/* Scrim — dims the page and is the tap target to dismiss. Starts under the 52px bar
+              * so the bar and its ✕ stay visible and tappable above it. */}
+            <div aria-hidden onClick={() => setMenuOpen(false)} className="fixed inset-x-0 top-[52px] bottom-0 z-40 bg-black/35" />
+            {/* A panel, not a takeover — ~84vw capped at 19rem, so a strip of the page stays
+              * visible and it reads as a menu over content. Delegated close: activating any link
+              * inside navigates, so the panel goes with it; the city picker / account rows are
+              * buttons, not <a>, so those leave it open. */}
             <div
               onClick={(e) => {
                 if ((e.target as HTMLElement).closest("a")) setMenuOpen(false);
               }}
-              className="max-w-[1280px] mx-auto px-4 py-3 flex flex-col gap-0.5"
+              className="fixed left-0 top-[52px] bottom-0 z-40 w-[19rem] max-w-[84vw] overflow-y-auto overscroll-contain bg-surface border-r border-border shadow-[8px_0_28px_rgba(0,0,0,0.18)] px-3 py-3 flex flex-col gap-0.5"
             >
               {drawer}
             </div>
-          </div>
+          </>
         )}
       </div>
     </>

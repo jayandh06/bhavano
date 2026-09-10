@@ -149,6 +149,11 @@ layered bar + account dropdown (room for words there).
 - [x] **Scroll-lock vs. sticky.** Done — the collapsed bar is `position: fixed` (+ a flow
       spacer) instead of `sticky`, so `body { overflow: hidden }` while the drawer is open no
       longer un-pins it.
+- [x] **Panel, not a takeover.** Done — the drawer is a left `fixed` panel (`19rem` / `84vw`
+      max) with a dismiss scrim, so a strip of the page stays visible and it reads as a menu.
+- [x] **iOS-safe scroll-lock.** Done — `position: fixed` on `<body>` with the offset restored
+      on close (same as `MediaLightbox`); `overflow: hidden` alone let the listing scroll behind
+      the menu on iOS Safari.
 - [ ] **Per-route pinned tabs.** On browse/listing routes keep a thin horizontally-scrollable
       category strip visible even when collapsed (tabs are primary nav there); drawer-only
       elsewhere.
