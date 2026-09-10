@@ -119,7 +119,7 @@ export async function BrowseListingsView({
   if (page > 1 && page > totalPages) notFound();
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg text-text">
+    <div className="min-h-screen lg:min-h-[640px] flex flex-col bg-bg text-text">
       <Header
         cityName={cityName}
         popularCities={popularCities}

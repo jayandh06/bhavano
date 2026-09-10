@@ -36,7 +36,7 @@ export default async function PostAdPage({
     : resolveVideoEntitlement({ agentProUntil: null });
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg text-text">
+    <div className="min-h-screen lg:min-h-[640px] flex flex-col bg-bg text-text">
       <PageHeader cityName={city?.name} />
       <PostPageTracker loggedIn={loggedIn} />
       {/* 1280px to match every other page, so the back link and heading start at the same left
