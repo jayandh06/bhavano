@@ -1,5 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'node:crypto';
+import { readFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { Prisma } from '@prisma/client';
 import type { OutreachContact, OutreachCampaign } from '@prisma/client';
 import type {
@@ -12,6 +15,7 @@ import type {
   CreateOutreachContactInput,
   ImportOutreachContactsInput,
   ImportOutreachContactsResult,
+  ListingDetailDto,
   OutreachCampaignDto,
   OutreachCampaignsPage,
   OutreachContactDto,
@@ -25,6 +29,10 @@ import { EmailProvider } from '../notifications/providers/email.provider';
 import { renderEmail } from '../notifications/emailLayout';
 import { loadTemplate, renderTemplate as renderEmailTemplate } from '../notifications/templateLoader';
 import { toE164India } from './phone';
+import { ListingsService } from '../listings/listings.service';
+import { R2StorageService } from '../storage/r2-storage.service';
+import { computeDHash } from '../uploads/photo-hash';
+import { extFromMimeType, originalKey } from '../uploads/photo-keys';
 
 const SEND_STATUSES: SendStatus[] = ['queued', 'sent', 'delivered', 'failed', 'suppressed', 'opted_out'];
 
@@ -33,6 +41,51 @@ const SEND_STATUSES: SendStatus[] = ['queued', 'sent', 'delivered', 'failed', 's
  * before it reaches an audience. */
 const OPT_OUT_HINT = /\b(stop|unsubscribe|opt.?out)\b/i;
 
+/** Same phone/seed as apps/bff/prisma/seedBulkImportOwner.ts — every listing created this way
+ * (or via bulk_upload_listings.py) is posted under this dedicated system account, never the
+ * scraped business's own, until they actually claim it. Not imported as a shared constant since
+ * the seed script is a standalone one-off (`pnpm prisma:seed:bulk-import-owner`), not a module. */
+const BULK_IMPORT_OWNER_PHONE = '9000000002';
+
+const MAX_SCRAPED_PHOTOS = 6;
+
+/** Mirrors export_outreach_contacts_for_listings.py's guess_gender() — kept in sync by hand
+ * (Python and TypeScript can't share a source of truth here). Deliberately not matching bare
+ * "men"/"women": "women" contains "men" as a substring, which would tag every women-only PG as
+ * also-for-men. \b word boundaries additionally stop a keyword matching inside an unrelated
+ * longer word. See that function's own test cases (verified in this session) before changing
+ * either side without changing both. */
+const MEN_NAME_KEYWORDS = /\b(gents?|boys?)\b/i;
+const WOMEN_NAME_KEYWORDS = /\b(ladies|girls?)\b/i;
+const COLIVING_NAME_KEYWORDS = /\bco[\s-]?liv(?:e|ing)\b/i;
+
+/** googlePlaceId-prefixed filenames — matches get_pg_coworking_leads.py's download_photos()
+ * naming exactly (`{place_id}_{i}.jpg`). No googlePlaceId at all (a manually-added contact,
+ * never scraped) means there's nothing to look for. Exported standalone (doesn't need `this`)
+ * so it's directly testable against a real temp directory rather than mocking fs. */
+export async function findLocalPhotos(photosDir: string, googlePlaceId: string | null): Promise<string[]> {
+  if (!googlePlaceId) return [];
+  let entries: string[];
+  try {
+    entries = await readdir(photosDir);
+  } catch {
+    return [];
+  }
+  return entries
+    .filter((name) => name.startsWith(`${googlePlaceId}_`) && name.endsWith('.jpg'))
+    .sort()
+    .slice(0, MAX_SCRAPED_PHOTOS)
+    .map((name) => join(photosDir, name));
+}
+
+export function guessGender(name: string): string[] {
+  if (COLIVING_NAME_KEYWORDS.test(name)) return ['coed', 'men', 'women'];
+  const values: string[] = [];
+  if (MEN_NAME_KEYWORDS.test(name)) values.push('men');
+  if (WOMEN_NAME_KEYWORDS.test(name)) values.push('women');
+  return values;
+}
+
 @Injectable()
 export class OutreachService {
   constructor(
@@ -40,6 +93,8 @@ export class OutreachService {
     private readonly config: ConfigService,
     private readonly msg91: Msg91Provider,
     private readonly emailProvider: EmailProvider,
+    private readonly listingsService: ListingsService,
+    private readonly storage: R2StorageService,
   ) {}
 
   // --- Contacts -----------------------------------------------------------
@@ -73,7 +128,7 @@ export class OutreachService {
     const [rows, total] = await Promise.all([
       this.prisma.outreachContact.findMany({
         where,
-        include: { city: true, area: true },
+        include: { city: true, area: true, claimedListing: { select: { claimedAt: true } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip: offset ?? 0,
         take: limit,
@@ -297,6 +352,100 @@ export class OutreachService {
       data: { lastContactedAt: new Date(), contactedCount: { increment: 1 } },
     });
     return { sent: true, channels };
+  }
+
+  /** Skips the CSV/bulk_upload_listings.py round-trip entirely — creates a real Listing straight
+   * from a scraped OutreachContact, using only what's actually known plus a sensible default for
+   * whatever a real poster would otherwise have to answer (sharingType/seatType), on the
+   * philosophy that the business claiming the listing later is responsible for completing the
+   * rest (description, real pricing, its own photos) — see docs/plans/outreach-direct-listing-
+   * creation.md. Reuses ListingsService.create() completely unmodified: no validation is
+   * bypassed, every default here is chosen specifically to already satisfy it (a real
+   * sharingType/seatType value, at least one real photo), so a normal poster's requirements never
+   * get quietly relaxed for anyone else.
+   *
+   * Photos come from wherever get_pg_coworking_leads.py downloaded them when it ran — on the
+   * app server itself now (SCRAPED_PHOTOS_DIR), not a laptop, so this can read them straight off
+   * disk. A contact with none is refused outright rather than creating a photo-less listing. */
+  async createListingFromContact(contactId: string): Promise<ListingDetailDto> {
+    const contact = await this.prisma.outreachContact.findUnique({
+      where: { id: contactId },
+      include: { city: true, area: true, claimedListing: { select: { id: true } } },
+    });
+    if (!contact) throw new NotFoundException(`Contact ${contactId} not found`);
+    if (contact.claimedListing) {
+      throw new BadRequestException('This contact already has a listing linked to it');
+    }
+    if (contact.businessCategory !== 'pg' && contact.businessCategory !== 'coworking') {
+      throw new BadRequestException(
+        `Direct listing creation only knows pg/coworking's required attributes, not '${contact.businessCategory}'`,
+      );
+    }
+    if (!contact.cityId) {
+      throw new BadRequestException('This contact has no city on file — resolve that first');
+    }
+
+    const photosDir = this.config.get<string>('SCRAPED_PHOTOS_DIR');
+    if (!photosDir) {
+      throw new BadRequestException('SCRAPED_PHOTOS_DIR is not configured on this server');
+    }
+    const localPhotoPaths = await findLocalPhotos(photosDir, contact.googlePlaceId);
+    if (localPhotoPaths.length === 0) {
+      throw new BadRequestException(
+        'No downloaded photos found for this contact under SCRAPED_PHOTOS_DIR — re-run the ' +
+          'scraper for it, or use the CSV path if photos genuinely never downloaded',
+      );
+    }
+
+    const owner = await this.prisma.user.findUniqueOrThrow({ where: { phone: BULK_IMPORT_OWNER_PHONE } });
+
+    const listingId = randomUUID();
+    const photos = await this.uploadLocalPhotos(listingId, localPhotoPaths);
+
+    const attributes: Record<string, unknown> =
+      contact.businessCategory === 'pg'
+        ? { sharingType: 'single', ...(guessGender(contact.name).length ? { gender: guessGender(contact.name) } : {}) }
+        : { seatType: 'hot-desk' };
+
+    return this.listingsService.create(
+      {
+        id: listingId,
+        category: contact.businessCategory,
+        transactionType: 'rent',
+        price: 0,
+        title: contact.name,
+        cityId: contact.cityId,
+        areaId: contact.areaId ?? undefined,
+        photos,
+        attributes,
+        lat: contact.lat ?? undefined,
+        lng: contact.lng ?? undefined,
+        claimContactId: contact.id,
+      },
+      owner.id,
+    );
+  }
+
+  /** Same three pieces UploadsController.upload() uses per file — computeDHash + putObject under
+   * the listing's own originalKey — just driven from local disk instead of a multipart request,
+   * since there's no browser in this flow to have uploaded anything. Google's Photo API always
+   * returns JPEG for the maxwidth request get_pg_coworking_leads.py makes, so the mime type is
+   * fixed rather than sniffed. */
+  private async uploadLocalPhotos(
+    listingId: string,
+    paths: string[],
+  ): Promise<{ photoNo: number; hash: string; ext: string }[]> {
+    const mimeType = 'image/jpeg';
+    const ext = extFromMimeType(mimeType);
+    const results: { photoNo: number; hash: string; ext: string }[] = [];
+    for (const [i, path] of paths.entries()) {
+      const buffer = await readFile(path);
+      const hash = await computeDHash(buffer);
+      const photoNo = i + 1;
+      await this.storage.putObject(originalKey(listingId, photoNo, ext), buffer, mimeType);
+      results.push({ photoNo, hash, ext });
+    }
+    return results;
   }
 
   /** The claim-verification email's content — see notification-templates/email/claim-listing/
@@ -603,7 +752,11 @@ export class OutreachService {
   }
 
   private toContactDto(
-    row: OutreachContact & { city?: { name: string } | null; area?: { name: string } | null },
+    row: OutreachContact & {
+      city?: { name: string } | null;
+      area?: { name: string } | null;
+      claimedListing?: { claimedAt: Date | null } | null;
+    },
   ): OutreachContactDto {
     return {
       id: row.id,
@@ -633,6 +786,8 @@ export class OutreachService {
       contactedCount: row.contactedCount,
       userId: row.userId,
       createdAt: row.createdAt.toISOString(),
+      hasClaimableListing: !!row.claimedListing && !row.claimedListing.claimedAt,
+      hasListing: !!row.claimedListing,
     };
   }
 

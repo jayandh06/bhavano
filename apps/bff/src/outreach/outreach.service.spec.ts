@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-import { OutreachService, renderTemplate } from './outreach.service';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { OutreachService, renderTemplate, guessGender, findLocalPhotos } from './outreach.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -21,8 +24,22 @@ function makeService() {
   const emailProvider = {
     send: jest.fn(),
   } as unknown as import('../notifications/providers/email.provider').EmailProvider;
+  const listingsService = {
+    create: jest.fn(),
+  } as unknown as import('../listings/listings.service').ListingsService;
+  const storage = {
+    putObject: jest.fn(),
+  } as unknown as import('../storage/r2-storage.service').R2StorageService;
 
-  return { service: new OutreachService(prisma, config, msg91, emailProvider), prisma, config, msg91, emailProvider };
+  return {
+    service: new OutreachService(prisma, config, msg91, emailProvider, listingsService, storage),
+    prisma,
+    config,
+    msg91,
+    emailProvider,
+    listingsService,
+    storage,
+  };
 }
 
 function contact(overrides: Record<string, unknown> = {}) {
@@ -189,5 +206,69 @@ describe('renderTemplate', () => {
 
   it('renders an empty string for a contact with no city', () => {
     expect(renderTemplate('Hi {{name}} in {{city}}', contact() as never, null)).toBe('Hi Acme Realty in ');
+  });
+});
+
+describe('guessGender', () => {
+  // Same cases already verified against export_outreach_contacts_for_listings.py's Python
+  // version this mirrors — kept identical here so a future edit to either side that breaks
+  // parity gets caught by whichever test suite runs.
+  it.each([
+    ['Sunrise Gents PG', ['men']],
+    ['Green Boys Hostel', ['men']],
+    ['Elite Ladies PG', ['women']],
+    ['Happy Girls Hostel', ['women']],
+    ['Metro Gents and Ladies PG', ['men', 'women']],
+    ['Urban CoLiving Spaces', ['coed', 'men', 'women']],
+    ['Downtown Co-Living PG', ['coed', 'men', 'women']],
+    ['Cozy Co living Hub', ['coed', 'men', 'women']],
+    ['Nova Colive PG', ['coed', 'men', 'women']],
+    ["Women's Paradise PG", []], // "women" must not trip the men-keyword regex via substring
+    ['Regular PG near station', []],
+    ['Amenities PG', []], // must not match "men" inside "Amenities"
+  ])('%s -> %j', (name, expected) => {
+    expect(guessGender(name)).toEqual(expected);
+  });
+});
+
+describe('findLocalPhotos', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'bhavano-photos-'));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('returns [] when there is no googlePlaceId at all', async () => {
+    expect(await findLocalPhotos(dir, null)).toEqual([]);
+  });
+
+  it('returns [] when the directory does not exist rather than throwing', async () => {
+    expect(await findLocalPhotos(join(dir, 'missing'), 'place1')).toEqual([]);
+  });
+
+  it('matches only this place\'s files, sorted, capped at 6, ignoring unrelated files', async () => {
+    const names = [
+      'place1_2.jpg',
+      'place1_0.jpg',
+      'place1_1.jpg',
+      'place2_0.jpg', // a different place — must not be picked up
+      'place1_readme.txt', // right prefix, wrong extension
+      'place1_3.jpg',
+      'place1_4.jpg',
+      'place1_5.jpg',
+      'place1_6.jpg', // 7th match for place1 — should be dropped by the cap
+    ];
+    await Promise.all(names.map((name) => writeFile(join(dir, name), 'x')));
+
+    const found = await findLocalPhotos(dir, 'place1');
+    expect(found).toEqual(
+      ['place1_0.jpg', 'place1_1.jpg', 'place1_2.jpg', 'place1_3.jpg', 'place1_4.jpg', 'place1_5.jpg'].map((n) =>
+        join(dir, n),
+      ),
+    );
   });
 });

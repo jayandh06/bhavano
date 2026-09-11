@@ -291,6 +291,12 @@ export class AdminController {
     return this.outreachService.sendClaimVerification(id);
   }
 
+  /** Skips the CSV/bulk_upload_listings.py round-trip — see OutreachService.createListingFromContact. */
+  @Post('outreach/contacts/:id/create-listing')
+  createListingFromContact(@Param('id') id: string): Promise<ListingDetailDto> {
+    return this.outreachService.createListingFromContact(id);
+  }
+
   // --- Campaigns ----------------------------------------------------------
 
   @Get('outreach/campaigns')

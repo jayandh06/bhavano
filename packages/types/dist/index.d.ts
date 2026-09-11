@@ -811,6 +811,15 @@ export interface OutreachContactDto {
     /** Set once this prospect signed up — outreach → real-user attribution. */
     userId: string | null;
     createdAt: string;
+    /** True only when this contact has a linked-but-unclaimed listing (claimContactId) — i.e. it's
+     * actually eligible for POST .../send-claim-verification right now. False both when no listing
+     * was ever created against this contact, and when one was but has already been claimed — the
+     * admin UI's bulk "send claim verification" action uses this to decide what's selectable. */
+    hasClaimableListing: boolean;
+    /** True as soon as any listing is linked (claimContactId), claimed or not — the complement of
+     * this is what the admin UI's "create listing directly" action (createListingFromContact) is
+     * offered for, since Listing.claimContactId is unique: at most one listing per contact ever. */
+    hasListing: boolean;
 }
 export interface OutreachContactsPage {
     items: OutreachContactDto[];
