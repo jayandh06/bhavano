@@ -572,9 +572,12 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       required: true,
     },
     {
+      // Multi-select, not select — a PG can genuinely take more than one (e.g. co-living: coed
+      // + men + women all at once). See get_pg_coworking_leads.py's build_contact() for the
+      // scraper-side keyword heuristic that pre-fills this from the business name.
       key: "gender",
       label: "Preferred for",
-      type: "select",
+      type: "multi-select",
       section: "roomDetails",
       options: [
         { value: "men", label: "Men" },
