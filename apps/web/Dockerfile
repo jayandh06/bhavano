@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM node:22-alpine AS base
 RUN apk add --no-cache libc6-compat
 RUN corepack enable
@@ -22,9 +23,17 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_GTM_ID=$NEXT_PUBLIC_GTM_ID
 ENV NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY
 COPY --from=pruner /app/out/json/ .
-RUN pnpm install --frozen-lockfile
+# Cache mounts persist across builds (on the host's BuildKit cache, not in the image layer) —
+# `pnpm-store` is shared with the admin/bff Dockerfiles' own install steps since pnpm's store is
+# content-addressed, so a package fetched for one app is already there for the others. `turbo-cache`
+# and `next-cache-web` similarly let unchanged packages/routes skip rebuilding entirely instead of
+# redoing a full install + build from zero on every deploy.
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
-RUN pnpm turbo run build --filter=@bhavano/web...
+RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
+    --mount=type=cache,id=next-cache-web,target=/app/apps/web/.next/cache \
+    pnpm turbo run build --filter=@bhavano/web...
 
 # --- Slim runtime image ---
 FROM base AS runner

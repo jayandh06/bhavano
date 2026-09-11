@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM node:22-alpine AS base
 RUN apk add --no-cache libc6-compat
 RUN corepack enable
@@ -12,9 +13,15 @@ RUN npx turbo prune @bhavano/admin --docker
 FROM base AS installer
 WORKDIR /app
 COPY --from=pruner /app/out/json/ .
-RUN pnpm install --frozen-lockfile
+# See apps/web/Dockerfile's own comment — `pnpm-store` is shared across all three Dockerfiles'
+# install steps (content-addressed, so already-fetched packages are reused), `turbo-cache` and
+# `next-cache-admin` let unchanged packages/routes skip rebuilding on every deploy.
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
-RUN pnpm turbo run build --filter=@bhavano/admin...
+RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
+    --mount=type=cache,id=next-cache-admin,target=/app/apps/admin/.next/cache \
+    pnpm turbo run build --filter=@bhavano/admin...
 
 # --- Slim runtime image ---
 FROM base AS runner

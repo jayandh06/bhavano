@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM node:22-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
 RUN corepack enable
@@ -12,13 +13,18 @@ RUN npx turbo prune @bhavano/bff --docker
 FROM base AS installer
 WORKDIR /app
 COPY --from=pruner /app/out/json/ .
-RUN pnpm install --frozen-lockfile
+# See apps/web/Dockerfile's own comment — `pnpm-store` is shared across all three Dockerfiles'
+# install steps (content-addressed, so already-fetched packages are reused), `turbo-cache` lets
+# unchanged packages (e.g. packages/types when only bff itself changed) skip rebuilding.
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
 # Prisma generate only reads the schema — this placeholder just satisfies prisma.config.ts's
 # env("DATABASE_URL") lookup at generate time; the real value is supplied at container runtime.
 RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" \
     pnpm --filter=@bhavano/bff exec prisma generate
-RUN pnpm turbo run build --filter=@bhavano/bff...
+RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
+    pnpm turbo run build --filter=@bhavano/bff...
 
 # --- Slim runtime image ---
 FROM base AS runner

@@ -373,6 +373,162 @@ docker compose -f docker-compose.prod.yml up -d --build admin
 - Tail logs for just the one service you touched: `docker compose -f docker-compose.prod.yml logs
   -f bff` (swap in `web`/`admin`/`caddy` as needed) — much less noise than `logs -f` across all four.
 
+## Speeding up deploys: build on the DB instance's spare CPU (remote Buildx builder)
+
+Building three Next.js/NestJS images from scratch is the actual CPU cost behind a slow deploy, not
+runtime traffic — the app instance does that work on the same 2 vCPUs currently serving live
+requests. If the DB instance is comfortably below its own CPU/IO limits, it's a better place for
+that build work than adding new inbound ports for a live *service* there (moving `admin` or the
+logging stack to the DB instance would mean new security-group rules, a second TLS/reverse-proxy
+setup, and a container permanently sharing runtime CPU with Postgres). Docker's `buildx` remote
+builder offloads *build* CPU only, over SSH — nothing about where the running containers live
+changes, and nothing runs on the DB instance except during a build.
+
+Both instances are the same `t4g.medium`/arm64, so this is a same-architecture remote build, not
+cross-compilation — no QEMU emulation, no new `sharp`/native-binary concerns beyond what already
+applies building on the app instance today (see step 9's note above).
+
+**Trade-off to accept going in:** the DB instance's CPU (and some memory/disk I/O for build cache
+layers) gets used for the few minutes a build takes. It's idle *right now*, but that's not the same
+as idle during your busiest hour — if a deploy ever lands during peak traffic, Postgres is
+contending with a `next build` on the same box. Worth watching instance CPU graphs (or
+`pg_stat_activity`) the first few times this runs, and preferring a quieter window for deploys until
+you've seen it under real load.
+
+### 1. Open SSH from the app instance to the DB instance
+
+`bhavano-db-sg` currently only allows SSH from your own IP (see the topology table above). Add a
+second inbound rule so the app instance can reach it too, referencing the SG rather than an IP, same
+reasoning as the Postgres rule:
+
+| Security group | Type | Port | Source |
+|---|---|---|---|
+| `bhavano-db-sg` | SSH | 22 | `bhavano-app-sg` |
+
+### 2. Create a restricted user on the DB instance for this — not `ubuntu`
+
+The app instance SSHing in for builds shouldn't come with the `sudo` access your own login has — if
+the app instance is ever compromised, that shouldn't hand over the DB instance too. On the DB
+instance:
+
+```bash
+sudo adduser --disabled-password --gecos "" docker-builder
+sudo usermod -aG docker docker-builder   # needs Docker installed first — step 3 below
+sudo mkdir -p /home/docker-builder/.ssh
+sudo chmod 700 /home/docker-builder/.ssh
+```
+
+`docker-builder` is in the `docker` group and nothing else — no `sudo`, so it can start build
+containers but can't touch Postgres, its data directory, or anything else on the box.
+
+### 3. Install Docker on the DB instance
+
+Same steps as app-instance step 7 above — Docker isn't there yet, since Postgres runs directly on
+the host rather than containerized:
+
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+```
+
+(No need to add your own login user to the `docker` group here — only `docker-builder` needs it.)
+
+### 4. Generate a dedicated keypair on the app instance and authorize it
+
+Don't reuse the app instance's existing GitHub deploy key (`~/.ssh/id_ed25519` from step 8) — a
+separate key keeps "can pull from GitHub" and "can build on the DB instance" as independent,
+individually revocable grants:
+
+```bash
+# On the app instance
+ssh-keygen -t ed25519 -C "app-to-db-builder" -f ~/.ssh/db_builder -N ""
+cat ~/.ssh/db_builder.pub
+```
+
+Paste that public key into `/home/docker-builder/.ssh/authorized_keys` on the **DB instance**, then
+back on the DB instance:
+
+```bash
+sudo chown -R docker-builder:docker-builder /home/docker-builder/.ssh
+sudo chmod 600 /home/docker-builder/.ssh/authorized_keys
+```
+
+From the app instance, confirm it connects non-interactively before wiring it into buildx:
+
+```bash
+ssh -i ~/.ssh/db_builder docker-builder@<db-private-ip> docker version
+```
+
+### 5. Create the remote builder and switch to it
+
+On the app instance:
+
+```bash
+docker buildx create --name db-builder --driver docker-container \
+  ssh://docker-builder@<db-private-ip>
+docker buildx use db-builder
+docker buildx inspect --bootstrap   # first run pulls the buildkit image onto the DB instance
+```
+
+`docker buildx use` sets this as the default builder for the shell/user — `docker compose build`
+picks it up automatically from here on, no compose file changes needed. Buildx's Compose
+integration loads the finished image layers back onto the app instance for you; no registry or
+`--push` required for this to work.
+
+### 6. Deploy as usual
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+```
+
+Compilation now happens on the DB instance's CPU; only the finished layers come back over the
+private VPC link, and `up -d` still recreates/restarts the containers on the app instance exactly
+as before.
+
+**To go back to building locally** (e.g. to rule this out if something looks wrong):
+```bash
+docker buildx use default
+```
+
+## Cleaning up old Docker build artifacts
+
+Every `--build` leaves the previous image's layers behind as dangling (`<none>`) images once the
+new one replaces it, and BuildKit's cache mounts (the `pnpm-store`/`turbo-cache`/`next-cache-*`
+caches baked into the Dockerfiles, plus the DB instance's own builder cache if using the remote
+builder above) grow without bound — none of this is reclaimed automatically. Worth checking
+periodically, on whichever instance is actually doing the building:
+
+```bash
+df -h /                      # confirm there's an actual problem before reclaiming anything
+docker system df             # breakdown of what Docker is holding — images/containers/cache
+```
+
+**Safe, routine cleanup** — dangling images plus build cache older than a week; never removes an
+image or volume something running still depends on:
+```bash
+docker image prune -f
+docker builder prune -f --filter "until=168h"
+```
+
+**If using the remote builder (DB instance):** its cache lives inside the `db-builder` builder's
+own container, not the local `docker builder prune` above — clear it separately, from the app
+instance:
+```bash
+docker buildx prune -f --builder db-builder
+```
+
+**Don't run `docker system prune -a` (or `-a --volumes`) on either instance without checking
+first.** `-a` removes every image not currently referenced by a running container — on the app
+instance that's usually just the previous `web`/`bff`/`admin` image, fine to lose, but you're also
+throwing away the layer cache that made the *next* build fast, trading disk space back for build
+time. `--volumes` additionally removes unused named volumes — run `docker volume ls` first so
+nothing unexpected gets swept up. Never run either casually on the DB instance; confirm `docker ps`
+first, since that box's only job is the builder container.
+
 ## Logging & observability (Loki + Grafana)
 
 Every BFF request/response gets a structured JSON log line (method, path, status, duration,
