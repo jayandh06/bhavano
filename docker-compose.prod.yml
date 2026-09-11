@@ -82,6 +82,12 @@ services:
       # docs/plans/visit-ip-city-logging.md). Optional: unset, or pointing at a file that is not
       # there, simply leaves every visit's ipCity/ipRegion/ipCountry null.
       GEOIP_DB_PATH: /app/data/geoip/GeoLite2-City.mmdb
+      # Where get_pg_coworking_leads.py's downloaded photos land when the scraper is run on this
+      # same instance (see docs/deployment.md's "Direct listing creation from OutreachContact"
+      # section) — OutreachService.createListingFromContact reads them straight off this path.
+      # Unset, or a contact with no matching files here, just means that contact isn't eligible
+      # for direct creation yet — never a hard error for the rest of the app.
+      SCRAPED_PHOTOS_DIR: /app/leads_output/photos
     volumes:
       # Rotating request/response logs, shared read-only with the alloy container below —
       # see docs/plans/bff-loki-grafana-logging.md.
@@ -98,6 +104,12 @@ services:
       # periodically under MaxMind's licence, so keeping it out of the image means a refresh is
       # ./scripts/update-geolite.sh + a bff restart, with no rebuild and no per-deploy disk cost.
       - ./data/geoip:/app/data/geoip:ro
+      # get_pg_coworking_leads.py's default --photos-dir is ./leads_output relative to wherever
+      # it's run — on the app instance, that's this same repo checkout, so ./leads_output/photos
+      # here is exactly what SCRAPED_PHOTOS_DIR above points at inside the container. Read-only:
+      # the container only ever reads these, the scraper (run directly on the host, not
+      # containerized) is what writes them.
+      - ./leads_output/photos:/app/leads_output/photos:ro
     expose:
       - "4000"
     healthcheck:
