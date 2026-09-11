@@ -319,16 +319,20 @@ inside the running `bff` container — no separate worker process/deploy step. I
 appearing after a few seconds, `docker compose -f docker-compose.prod.yml logs bff | grep -i photo`
 and check the `PhotoVariantJob.status`/`error` columns for stuck/failed rows.
 
-## Running the Google Places scraper on the app instance
+## Running the Google Places / Apify scraper on the app instance
 
-`get_pg_coworking_leads.py` used to be run from a developer's own machine. For the admin
-"Create listing directly from OutreachContact" action to see its downloaded photos (see
+`get_pg_coworking_leads.py` (Google Places API) and `get_pg_coworking_leads_apify.py` (Apify's
+`compass/crawler-google-places` Actor — a separate script, see its own module docstring for why)
+used to be run from a developer's own machine. For the admin "Create listing directly from
+OutreachContact" action to see downloaded photos (see
 [docs/plans/outreach-direct-listing-creation.md](./plans/outreach-direct-listing-creation.md)),
-run it **on the app instance itself** instead — same script, same command, just over SSH there:
+run either **on the app instance itself** instead — same script, same command, just over SSH
+there:
 
 ```bash
 # On the app instance, from the repo checkout (~/bhavano)
-python3 get_pg_coworking_leads.py --cities "Bengaluru,Pune" --bff-url http://localhost:4000
+.venv/bin/python get_pg_coworking_leads.py --cities "Bengaluru,Pune" --bff-url http://localhost:4000
+.venv/bin/python get_pg_coworking_leads_apify.py --cities "Bengaluru,Pune" --bff-url http://localhost:4000
 ```
 
 `--photos-dir` defaults to `./leads_output`, which from `~/bhavano` lands at
@@ -337,10 +341,21 @@ into the `bff` container at `SCRAPED_PHOTOS_DIR` (`/app/leads_output/photos`). N
 configure beyond that mount already being in place; a contact with no matching local files simply
 isn't offered the "Create listing" action, same as any other missing-required-data case.
 
-This still requires `python3`/`pip install -r requirements.txt`-equivalent deps and
-`AUTH_JWT_SECRET`/`GOOGLE_MAPS_SERVER_KEY` in the app instance's own `.env` (already there for
-the running `bff` container — the script reads `apps/bff/.env` directly, see its own module
-docstring). No admin-triggered scraping UI exists — this is still a manual, deliberate SSH step.
+**Python deps — no `requirements.txt` in this repo, so a one-time local venv on the app instance
+is the setup** (the base AMI ships with no system `pip` at all, so `pip install` alone fails until
+the venv module itself is installed):
+
+```bash
+sudo apt-get install -y python3.14-venv   # match whatever `python3 --version` reports
+cd ~/bhavano
+python3 -m venv .venv
+.venv/bin/pip install requests python-dotenv
+```
+
+Both scripts need `AUTH_JWT_SECRET`/`GOOGLE_MAPS_SERVER_KEY` (Google) or `APIFY_API_TOKEN`
+(Apify) in the app instance's own root `.env` (already there for the running `bff` container —
+the script reads it directly via `load_dotenv`, see its own module docstring). No
+admin-triggered scraping UI exists — this is still a manual, deliberate SSH step.
 
 ## SEO: Search Console verification + analytics
 
