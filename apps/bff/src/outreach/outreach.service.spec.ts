@@ -395,15 +395,18 @@ describe('OutreachService.listClaimVerificationSends', () => {
 });
 
 describe('OutreachService.listFetchedPairs / createPlacesFetchLog / updatePlacesFetchLogCounts — PlacesFetchLog', () => {
-  it('matches by cityId when one was resolved', async () => {
+  it('matches by cityId when one was resolved, keyed by (areaId, category, queryPrefix)', async () => {
     const { service, prisma } = makeService();
     (prisma.placesFetchLog.findMany as jest.Mock).mockResolvedValue([
-      { areaId: 'area1', businessCategory: 'pg' },
+      { areaId: 'area1', businessCategory: 'pg', queryPrefix: 'Gents PG' },
     ]);
     const result = await service.listFetchedPairs('Bengaluru', 'city1');
-    expect(result).toEqual([{ areaId: 'area1', businessCategory: 'pg' }]);
+    expect(result).toEqual([{ areaId: 'area1', businessCategory: 'pg', queryPrefix: 'Gents PG' }]);
     expect(prisma.placesFetchLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { cityId: 'city1' } }),
+      expect.objectContaining({
+        where: { cityId: 'city1' },
+        distinct: ['areaId', 'businessCategory', 'queryPrefix'],
+      }),
     );
   });
 
@@ -426,6 +429,7 @@ describe('OutreachService.listFetchedPairs / createPlacesFetchLog / updatePlaces
       areaSearched: 'Koramangala',
       areaId: 'area1',
       businessCategory: 'pg',
+      queryPrefix: 'PG accommodation',
       query: 'PG accommodation in Koramangala, Bengaluru',
       minRatingFilter: 3.5,
     });
@@ -437,6 +441,7 @@ describe('OutreachService.listFetchedPairs / createPlacesFetchLog / updatePlaces
         areaSearched: 'Koramangala',
         areaId: 'area1',
         businessCategory: 'pg',
+        queryPrefix: 'PG accommodation',
         query: 'PG accommodation in Koramangala, Bengaluru',
         minRatingFilter: 3.5,
       },
@@ -450,6 +455,7 @@ describe('OutreachService.listFetchedPairs / createPlacesFetchLog / updatePlaces
     await service.createPlacesFetchLog({
       citySearched: 'Newtown',
       businessCategory: 'pg',
+      queryPrefix: 'PG accommodation',
       query: 'PG accommodation in Newtown',
     });
     expect(prisma.placesFetchLog.create).toHaveBeenCalledWith({
@@ -482,7 +488,8 @@ describe('OutreachService.listFetchedPairs / createPlacesFetchLog / updatePlaces
         areaSearched: 'Koramangala',
         areaId: 'area1',
         businessCategory: 'pg',
-        query: 'PG accommodation in Koramangala, Bengaluru',
+        queryPrefix: 'Gents PG',
+        query: 'Gents PG in Koramangala, Bengaluru',
         resultsFound: 20,
         resultsImported: 15,
         minRatingFilter: 3.5,
@@ -502,7 +509,8 @@ describe('OutreachService.listFetchedPairs / createPlacesFetchLog / updatePlaces
         areaSearched: 'Koramangala',
         areaId: 'area1',
         businessCategory: 'pg',
-        query: 'PG accommodation in Koramangala, Bengaluru',
+        queryPrefix: 'Gents PG',
+        query: 'Gents PG in Koramangala, Bengaluru',
         resultsFound: 20,
         resultsImported: 15,
         minRatingFilter: 3.5,

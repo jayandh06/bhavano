@@ -155,6 +155,7 @@ export class CreatePlacesFetchLogDto {
   @IsOptional() @IsString() areaSearched?: string;
   @IsOptional() @IsString() areaId?: string;
   @IsString() businessCategory!: string;
+  @IsString() queryPrefix!: string;
   @IsString() query!: string;
   @IsOptional() @IsNumber() minRatingFilter?: number;
 }

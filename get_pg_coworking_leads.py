@@ -212,8 +212,10 @@ def resolve_locations(bff_url, city, max_areas, no_areas):
     return city_obj["id"], [{"area": a["name"], "areaId": a["id"]} for a in areas]
 
 
-def build_query(category, city, area):
-    noun = QUERY_NOUNS[category]
+def build_query(noun, city, area):
+    """noun is the search term itself — QUERY_NOUNS[category] by default, or a custom
+    --query-prefix like "Gents PG" / "Ladies PG" / "Coliving PG" when one was given. Takes the
+    resolved noun directly rather than a category, so the caller decides which one applies."""
     return f"{noun} in {area}, {city}" if area else f"{noun} in {city}"
 
 
@@ -353,7 +355,7 @@ def build_contact(city, area, category, query, details, photo_paths, city_id, ar
     }
 
 
-def collect_city(api_key, city, city_id, locations, categories, max_results, out_dir, download, max_photos, counter, fetched_pairs, force, min_rating=None, bff_url=None, use_geocode=True, token=None, dry_run=False):
+def collect_city(api_key, city, city_id, locations, categories, max_results, out_dir, download, max_photos, counter, fetched_pairs, force, min_rating=None, bff_url=None, use_geocode=True, token=None, dry_run=False, query_prefix=None):
     """Runs one Places Text Search per (area, category) pair not already in `fetched_pairs`
     (unless force), deduping by place_id across every area/category combo within this city — the
     same PG can plausibly surface from more than one neighbouring area's query — so Place Details
@@ -361,6 +363,12 @@ def collect_city(api_key, city, city_id, locations, categories, max_results, out
     maps every (area, category) pair actually queried this run to
     {"areaId", "logId", "query", "found", "imported"} — the caller PATCHes each row's real counts
     via update_places_fetch_log_counts() once known.
+
+    query_prefix, if given, replaces QUERY_NOUNS[category] as the search term for every pair this
+    call makes — e.g. "Gents PG" instead of the default "PG accommodation", city/area still
+    substituted in dynamically exactly as before. The resolved term (custom or default) is part
+    of the fetched_pairs skip check alongside (areaId, category), so running a different prefix
+    against an area already scraped under another one is never mistaken for a repeat.
 
     A PlacesFetchLog row is created *before* that pair's Text Search runs (skipped entirely in
     `dry_run`, which never writes to the BFF) — its id is what every contact this pair produces
@@ -378,9 +386,10 @@ def collect_city(api_key, city, city_id, locations, categories, max_results, out
     pair_stats = {}
     for loc in locations:
         for category in categories:
-            if (loc["areaId"], category) in fetched_pairs and not force:
+            noun = query_prefix or QUERY_NOUNS[category]
+            if (loc["areaId"], category, noun) in fetched_pairs and not force:
                 continue
-            query = build_query(category, city, loc["area"])
+            query = build_query(noun, city, loc["area"])
             print(f"  searching: {query}", file=sys.stderr)
             log_id = None
             if not dry_run:
@@ -390,6 +399,7 @@ def collect_city(api_key, city, city_id, locations, categories, max_results, out
                     "areaSearched": loc["area"],
                     "areaId": loc["areaId"],
                     "businessCategory": category,
+                    "queryPrefix": noun,
                     "query": query,
                     "minRatingFilter": min_rating,
                 })
@@ -456,10 +466,12 @@ def parse_cities(args):
 
 def fetch_fetched_pairs(bff_url, token, city, city_id):
     """GET /admin/outreach/places-fetch-log/fetched-pairs — the PlacesFetchLog-backed replacement
-    for the old local fetched_state.json. Returns a {(areaId_or_None, category), ...} set for
-    this city — matched server-side by cityId when resolved, else by citySearched text (an
-    unseeded city's fetch history is only findable by the name it was searched under, same as
-    how its OutreachContact rows have no cityId either)."""
+    for the old local fetched_state.json. Returns a {(areaId_or_None, category, queryPrefix), ...}
+    set for this city — matched server-side by cityId when resolved, else by citySearched text
+    (an unseeded city's fetch history is only findable by the name it was searched under, same as
+    how its OutreachContact rows have no cityId either). queryPrefix is part of the key so a
+    different --query-prefix for an already-scraped area is a genuinely new thing to search, not
+    a repeat — e.g. "Ladies PG" isn't skipped just because "Gents PG" already ran for that area."""
     try:
         resp = requests.get(
             f"{bff_url}/admin/outreach/places-fetch-log/fetched-pairs",
@@ -468,7 +480,7 @@ def fetch_fetched_pairs(bff_url, token, city, city_id):
             timeout=15,
         )
         resp.raise_for_status()
-        return {(p["areaId"], p["businessCategory"]) for p in resp.json()}
+        return {(p["areaId"], p["businessCategory"], p["queryPrefix"]) for p in resp.json()}
     except requests.RequestException as e:
         print(f"  warning: fetch-log lookup failed ({e}) — treating this city as never fetched", file=sys.stderr)
         return set()
@@ -533,6 +545,17 @@ def main():
         help="Only keep places with a Google rating >= this (e.g. 4.0). Filtered out before "
         "Place Details/photos are fetched, so it also cuts API cost, not just the output. A "
         "place with no rating at all (no reviews yet) is excluded whenever this is set.",
+    )
+    parser.add_argument(
+        "--query-prefix",
+        default=None,
+        help="Override the search term instead of the category default ('PG accommodation' / "
+        "'coworking space') — city/area are still substituted in dynamically exactly as before, "
+        "e.g. --query-prefix 'Gents PG' searches 'Gents PG in <area>, <city>'. Run once per term "
+        "you want (e.g. once with 'Gents PG', once with 'Ladies PG', once with 'Coliving PG') — "
+        "each is tracked as its own thing in PlacesFetchLog, so a different prefix for an "
+        "already-scraped area is never skipped as a repeat. Typically used with a single "
+        "--categories value; applies to every category requested if more than one is given.",
     )
     parser.add_argument(
         "--no-reverse-geocode",
@@ -602,7 +625,7 @@ def main():
             (loc["area"], cat)
             for loc in locations
             for cat in categories
-            if (loc["areaId"], cat) in fetched_pairs
+            if (loc["areaId"], cat, args.query_prefix or QUERY_NOUNS[cat]) in fetched_pairs
         ]
         if already_done and not args.force:
             print(
@@ -629,6 +652,7 @@ def main():
             not args.no_reverse_geocode,
             token,
             args.dry_run,
+            args.query_prefix,
         )
         all_contacts.extend(contacts)
 

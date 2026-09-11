@@ -966,9 +966,17 @@ model PlacesFetchLog {
   areaId           String?
   area             Area?     @relation(fields: [areaId], references: [id])
   businessCategory String
+  /** The search term itself — "PG accommodation" (the plain category default) or a custom one
+   * like "Gents PG" / "Ladies PG" / "Coliving PG" via get_pg_coworking_leads.py's
+   * --query-prefix. Stored separately from `query` below (which has city/area already baked in)
+   * specifically so runs can be grouped/filtered by *what* was searched for, independent of
+   * *where*. Part of the fetched-pairs skip check, alongside (areaId, businessCategory) — a
+   * different prefix for an already-scraped area is a genuinely new thing to search, not a
+   * repeat. */
+  queryPrefix      String
   /** The literal Places Text Search query string sent to Google, e.g.
-   * "PG accommodation in Koramangala, Bengaluru" — kept for debugging a surprising result count
-   * without having to reconstruct it from the other columns. */
+   * "Gents PG in Koramangala, Bengaluru" — kept for debugging a surprising result count without
+   * having to reconstruct it from the other columns. */
   query            String
   /** Raw Text Search result count, before any --min-rating filtering. Defaults to 0: the row is
    * created *before* the search actually runs (see contacts' own placesFetchLogId below, which

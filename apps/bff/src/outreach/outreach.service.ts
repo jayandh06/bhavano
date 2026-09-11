@@ -174,10 +174,10 @@ export class OutreachService {
       where: cityId
         ? { cityId }
         : { cityId: null, citySearched: { equals: citySearched, mode: 'insensitive' } },
-      select: { areaId: true, businessCategory: true },
-      distinct: ['areaId', 'businessCategory'],
+      select: { areaId: true, businessCategory: true, queryPrefix: true },
+      distinct: ['areaId', 'businessCategory', 'queryPrefix'],
     });
-    return rows.map((r) => ({ areaId: r.areaId, businessCategory: r.businessCategory }));
+    return rows.map((r) => ({ areaId: r.areaId, businessCategory: r.businessCategory, queryPrefix: r.queryPrefix }));
   }
 
   /** Paginated, newest-first — powers the admin "Scrape history" page. Distinct from
@@ -212,6 +212,7 @@ export class OutreachService {
         areaSearched: row.areaSearched,
         areaId: row.areaId,
         businessCategory: row.businessCategory,
+        queryPrefix: row.queryPrefix,
         query: row.query,
         resultsFound: row.resultsFound,
         resultsImported: row.resultsImported,
@@ -236,6 +237,7 @@ export class OutreachService {
         areaSearched: input.areaSearched ?? null,
         areaId: input.areaId ?? null,
         businessCategory: input.businessCategory,
+        queryPrefix: input.queryPrefix,
         query: input.query,
         minRatingFilter: input.minRatingFilter ?? null,
       },

@@ -848,6 +848,10 @@ export interface PlacesFetchLogEntryDto {
     areaSearched: string | null;
     areaId: string | null;
     businessCategory: string;
+    /** The search term used — "PG accommodation" (category default) or a custom one via
+     * get_pg_coworking_leads.py's --query-prefix, e.g. "Gents PG" / "Ladies PG" / "Coliving PG".
+     * Stored separately from `query`, which has city/area already baked in. */
+    queryPrefix: string;
     query: string;
     resultsFound: number;
     resultsImported: number;
@@ -864,6 +868,7 @@ export interface CreatePlacesFetchLogInput {
     areaSearched?: string;
     areaId?: string;
     businessCategory: string;
+    queryPrefix: string;
     query: string;
     minRatingFilter?: number;
 }
@@ -878,6 +883,7 @@ export interface UpdatePlacesFetchLogCountsInput {
 export interface FetchedPairDto {
     areaId: string | null;
     businessCategory: string;
+    queryPrefix: string;
 }
 export interface PlacesFetchLogPage {
     items: PlacesFetchLogEntryDto[];

@@ -105,9 +105,49 @@ normal run's contacts carry the real `logId` while a `--dry-run`'s carry `None` 
 matching, `createPlacesFetchLog`'s null-defaulting and returned id, and
 `updatePlacesFetchLogCounts`'s patch payload.
 
+## Admin UI — `/outreach/scrapes`
+
+Built after the FK above: a paginated table of every `PlacesFetchLog` row, newest first, with a
+"Contacts →" link per row to `/outreach/contacts?placesFetchLogId=<id>` — filtering the contacts
+page down to exactly what that run produced, via the real FK. Cross-linked from
+`/outreach/contacts` too, including a "showing only contacts from this scrape run" banner (with a
+Clear link) when filtered that way.
+
+## `--query-prefix` — custom search terms, not fixed variants
+
+The original ask ("run once for Gents-only PG, once for ladies, once for coliving") could have
+been built as a fixed list of hardcoded variants baked into the script. Deliberately not built
+that way — a free-text `--query-prefix` CLI flag is more general and doesn't require guessing
+exact wording or hardcoding gender logic into the script for every term someone might want to try:
+
+```bash
+python3 get_pg_coworking_leads.py --cities Bengaluru --categories pg --query-prefix "Gents PG"
+python3 get_pg_coworking_leads.py --cities Bengaluru --categories pg --query-prefix "Ladies PG"
+python3 get_pg_coworking_leads.py --cities Bengaluru --categories pg --query-prefix "Coliving PG"
+```
+
+City/area are still substituted in dynamically exactly as before (`build_query()` just takes the
+resolved noun directly now, instead of looking it up from `QUERY_NOUNS[category]` internally).
+Omitting the flag falls back to the existing category default, unchanged.
+
+**`PlacesFetchLog.queryPrefix`** stores the term itself, separately from `query` (which has
+city/area already baked in) — specifically so runs can be grouped/filtered by *what* was searched
+for, independent of *where*. Surfaced as its own column ("Search term") on `/outreach/scrapes`,
+with the full query shown as a small reference line underneath.
+
+**The fetched-pairs skip check is now keyed on `(areaId, businessCategory, queryPrefix)`, not just
+`(areaId, businessCategory)`** — this is the part that actually makes multiple targeted runs work
+correctly. Without it, running `--query-prefix "Ladies PG"` against an area already scraped under
+`--query-prefix "Gents PG"` would have been wrongly skipped as "already fetched." Verified with a
+dedicated stub test proving a different prefix is *not* skipped, while the same prefix against an
+already-fetched area still is.
+
+No gender-inference change: `guess_gender()` still works purely off the business *name* text,
+regardless of which search term found it. A custom prefix changes what gets searched, not how
+gender gets tagged — keeping that logic simple and not dependent on the prefix being one of a
+fixed set of recognized strings.
+
 ## Not built (yet)
 
-An admin page to actually *browse* this log (or drill from a log row into the contacts it
-produced, now that the FK makes that a real join). The data is fully there and queryable — this
-plan covers making it exist and populating it correctly, not a UI for looking at it. A natural
-next step if wanted.
+Filtering `/outreach/scrapes` by `queryPrefix` itself (e.g. "show me only the 'Gents PG' runs") —
+the data supports it, no UI control for it yet. A natural next step if wanted.
