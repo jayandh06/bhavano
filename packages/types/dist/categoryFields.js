@@ -517,6 +517,13 @@ exports.CATEGORY_FIELD_CONFIG = {
                 { value: "no", label: "No" },
             ],
         },
+        {
+            key: "website",
+            label: "Website (optional)",
+            type: "text",
+            section: "roomDetails",
+            placeholder: "https://yourpg.com",
+        },
     ],
     storage: [
         {
@@ -535,6 +542,13 @@ exports.CATEGORY_FIELD_CONFIG = {
                 { value: "24x7", label: "24/7" },
                 { value: "business", label: "Business hours only" },
             ],
+        },
+        {
+            key: "website",
+            label: "Website (optional)",
+            type: "text",
+            section: "spaceDetails",
+            placeholder: "https://yourbusiness.com",
         },
     ],
     coworking: [
@@ -556,6 +570,13 @@ exports.CATEGORY_FIELD_CONFIG = {
             type: "text",
             section: "workspaceDetails",
             placeholder: "24/7 access, meeting rooms, high-speed wifi…",
+        },
+        {
+            key: "website",
+            label: "Website (optional)",
+            type: "text",
+            section: "workspaceDetails",
+            placeholder: "https://yourspace.com",
         },
     ],
     furniture: [
@@ -596,6 +617,13 @@ exports.CATEGORY_FIELD_CONFIG = {
             type: "text",
             section: "itemDetails",
         },
+        {
+            key: "website",
+            label: "Website (optional)",
+            type: "text",
+            section: "itemDetails",
+            placeholder: "https://yourstore.com",
+        },
     ],
     interiors: [
         {
@@ -612,6 +640,13 @@ exports.CATEGORY_FIELD_CONFIG = {
                 { value: "other", label: "Other" },
             ],
             required: true,
+        },
+        {
+            key: "website",
+            label: "Website (optional)",
+            type: "text",
+            section: "serviceDetails",
+            placeholder: "https://yourstudio.com",
         },
     ],
     plot: [
@@ -696,6 +731,13 @@ exports.CATEGORY_FIELD_CONFIG = {
                 { value: "semi", label: "Semi-furnished" },
                 { value: "furnished", label: "Furnished" },
             ],
+        },
+        {
+            key: "website",
+            label: "Website (optional)",
+            type: "text",
+            section: "spaceDetails",
+            placeholder: "https://yourbusiness.com",
         },
     ],
 };

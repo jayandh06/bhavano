@@ -210,7 +210,19 @@ export async function ListingDetailView({
                             {isIconName(field.iconName) && <Icon name={field.iconName} className="mr-1.5 text-muted" />}
                             {field.label}
                           </span>
-                          : {formatAttributeValue(attributes[field.key])}
+                          :{" "}
+                          {field.key === "website" && attributes[field.key] ? (
+                            <a
+                              href={websiteHref(String(attributes[field.key]))}
+                              target="_blank"
+                              rel="noopener noreferrer nofollow"
+                              className="text-green font-semibold break-all"
+                            >
+                              {String(attributes[field.key])}
+                            </a>
+                          ) : (
+                            formatAttributeValue(attributes[field.key])
+                          )}
                         </div>
                       ))}
                     </div>
@@ -248,6 +260,14 @@ export async function ListingDetailView({
       </div>
     </div>
   );
+}
+
+/** A seller typing "yourbusiness.com" into the plain-text website field means it without the
+ * scheme — as `href`, that resolves as a relative link (to this listing's own URL) instead of
+ * leaving the site. Only bare domain/path input is affected; a value that already carries a
+ * scheme (including a deliberate `mailto:`/`tel:`) is left alone. */
+function websiteHref(value: string): string {
+  return /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
 }
 
 function formatAttributeValue(value: unknown): string {

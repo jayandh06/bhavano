@@ -592,6 +592,13 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "no", label: "No" },
       ],
     },
+    {
+      key: "website",
+      label: "Website (optional)",
+      type: "text",
+      section: "roomDetails",
+      placeholder: "https://yourpg.com",
+    },
   ],
   storage: [
     {
@@ -610,6 +617,13 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "24x7", label: "24/7" },
         { value: "business", label: "Business hours only" },
       ],
+    },
+    {
+      key: "website",
+      label: "Website (optional)",
+      type: "text",
+      section: "spaceDetails",
+      placeholder: "https://yourbusiness.com",
     },
   ],
   coworking: [
@@ -631,6 +645,13 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       type: "text",
       section: "workspaceDetails",
       placeholder: "24/7 access, meeting rooms, high-speed wifi…",
+    },
+    {
+      key: "website",
+      label: "Website (optional)",
+      type: "text",
+      section: "workspaceDetails",
+      placeholder: "https://yourspace.com",
     },
   ],
   furniture: [
@@ -671,6 +692,13 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       type: "text",
       section: "itemDetails",
     },
+    {
+      key: "website",
+      label: "Website (optional)",
+      type: "text",
+      section: "itemDetails",
+      placeholder: "https://yourstore.com",
+    },
   ],
   interiors: [
     {
@@ -687,6 +715,13 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "other", label: "Other" },
       ],
       required: true,
+    },
+    {
+      key: "website",
+      label: "Website (optional)",
+      type: "text",
+      section: "serviceDetails",
+      placeholder: "https://yourstudio.com",
     },
   ],
   plot: [
@@ -771,6 +806,13 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "semi", label: "Semi-furnished" },
         { value: "furnished", label: "Furnished" },
       ],
+    },
+    {
+      key: "website",
+      label: "Website (optional)",
+      type: "text",
+      section: "spaceDetails",
+      placeholder: "https://yourbusiness.com",
     },
   ],
 };
