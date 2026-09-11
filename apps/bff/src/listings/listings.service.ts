@@ -33,7 +33,7 @@ import { slugify } from '@bhavano/types/slugify';
 import { deriveTag } from '@bhavano/types/listingTag';
 import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
-import { getPriceQualifierOptions } from '@bhavano/types/priceQualifiers';
+import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from '@bhavano/types/priceQualifiers';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { MAX_PHOTOS } from '@bhavano/types/photoLimits';
@@ -155,12 +155,6 @@ const ADMIN_ORDER_BY: Record<
 };
 
 const priceFormatter = new Intl.NumberFormat('en-IN');
-
-/** Categories where a poster's plans genuinely vary by option (PG sharing type, coworking seat
- * type) enough that `price: 0` — "Contact for price" — is a legitimate posting, not a shortcut
- * to avoid entering one. Deliberately not every category: a 0-priced house/apartment/plot
- * listing has no such justification and would just be an easy way to post something misleading. */
-const PRICE_ON_REQUEST_CATEGORIES = new Set<ListingCategory>(['pg', 'coworking']);
 
 // `owner` (just agentProUntil) is included here too, alongside every photo/video, since it's
 // needed to resolve the poster's video entitlement on every read that also needs videos — folding

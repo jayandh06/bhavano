@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PRICE_QUALIFIER_OPTIONS = void 0;
+exports.PRICE_ON_REQUEST_CATEGORIES = exports.PRICE_QUALIFIER_OPTIONS = void 0;
 exports.getPriceQualifierOptions = getPriceQualifierOptions;
 /** "" (Fixed price) is a deliberately valid, selectable option for sell listings — it submits
  * as a blank priceQualifier, matching pre-existing sell listings that show no suffix at all. */
@@ -36,3 +36,12 @@ exports.PRICE_QUALIFIER_OPTIONS = {
 function getPriceQualifierOptions(category, transactionType) {
     return exports.PRICE_QUALIFIER_OPTIONS[category]?.[transactionType] ?? [];
 }
+/** Categories where `price: 0` ("Contact for price") is a legitimate posting — plans/pricing
+ * vary enough (PG sharing type, coworking seat type) that no single number is always honest.
+ * Single source of truth: `ListingsService.assertValidPrice` enforces this server-side, and
+ * PostAdWizard/EditListingForm (web + mobile) gate their own "can I submit?" checks on the same
+ * set, so a client-side validity gate can never silently disagree with what the API accepts. */
+exports.PRICE_ON_REQUEST_CATEGORIES = new Set([
+    "pg",
+    "coworking",
+]);

@@ -47,3 +47,13 @@ export function getPriceQualifierOptions(
 ): PriceQualifierOption[] {
   return PRICE_QUALIFIER_OPTIONS[category]?.[transactionType] ?? [];
 }
+
+/** Categories where `price: 0` ("Contact for price") is a legitimate posting — plans/pricing
+ * vary enough (PG sharing type, coworking seat type) that no single number is always honest.
+ * Single source of truth: `ListingsService.assertValidPrice` enforces this server-side, and
+ * PostAdWizard/EditListingForm (web + mobile) gate their own "can I submit?" checks on the same
+ * set, so a client-side validity gate can never silently disagree with what the API accepts. */
+export const PRICE_ON_REQUEST_CATEGORIES: ReadonlySet<ListingCategory> = new Set<ListingCategory>([
+  "pg",
+  "coworking",
+]);

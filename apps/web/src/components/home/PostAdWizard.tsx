@@ -14,7 +14,7 @@ import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, fieldIsVisible } from "@bh
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
-import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
+import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
@@ -422,8 +422,12 @@ export function PostAdWizard({
       : (value ?? "").length > 0;
   });
 
+  // 0 is a real, submittable price ("Contact for price") for pg/coworking — see
+  // PRICE_ON_REQUEST_CATEGORIES's own doc comment. Every other category still needs a real one.
+  const priceOnRequestAllowed = !!category && PRICE_ON_REQUEST_CATEGORIES.has(category);
+  const priceValid = Number(price) > 0 || priceOnRequestAllowed;
   const detailsValid =
-    Number(price) > 0 &&
+    priceValid &&
     title.length > 0 &&
     areaQuery.trim().length > 0 &&
     !!cityId &&
@@ -758,8 +762,11 @@ export function PostAdWizard({
                       <RequiredLabel text="Price (₹)" />
                       <input
                         type="number"
-                        required
-                        min={1}
+                        // Native constraints have to agree with `priceValid` above, or a browser
+                        // that enforces them (native form submission) blocks a legitimate
+                        // "Contact for price" pg/coworking post that the JS state already allows.
+                        required={!priceOnRequestAllowed}
+                        min={priceOnRequestAllowed ? 0 : 1}
                         max={maxPriceFor(transactionType)}
                         inputMode="numeric"
                         value={price}

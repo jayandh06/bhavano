@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
-import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
+import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { updateListingAction } from "@/app/actions/listings";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass, primaryButtonClass } from "@/lib/formStyles";
@@ -74,8 +74,11 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
     const value = attributes[field.key];
     return Array.isArray(value) ? value.length > 0 : (value ?? "").length > 0;
   });
+  // 0 is a real, submittable price ("Contact for price") for pg/coworking — see
+  // PRICE_ON_REQUEST_CATEGORIES's own doc comment. Every other category still needs a real one.
+  const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(listing.category);
   const valid =
-    priceValue > 0 && title.trim().length > 0 && requiredAttributesFilled;
+    (priceValue > 0 || priceOnRequestAllowed) && title.trim().length > 0 && requiredAttributesFilled;
 
   // The stored value may not appear in today's fixed option list (legacy free-text data from
   // before this dropdown existed) — keep it selectable rather than silently swapping it out.
@@ -171,8 +174,11 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
                   <RequiredLabel text="Price (₹)" />
                   <input
                     type="number"
-                    required
-                    min={1}
+                    // Native constraints have to agree with `valid` above, or a browser that
+                    // enforces them blocks a legitimate "Contact for price" pg/coworking save
+                    // that the JS state already allows.
+                    required={!priceOnRequestAllowed}
+                    min={priceOnRequestAllowed ? 0 : 1}
                     max={maxPriceFor(listing.transactionType)}
                     inputMode="numeric"
                     value={price}

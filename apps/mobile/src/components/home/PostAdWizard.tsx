@@ -13,7 +13,7 @@ import {
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
-import { getPriceQualifierOptions } from "@bhavano/types/priceQualifiers";
+import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon, isIconName } from "../Icon";
 import { createListing, fetchAreas, uploadPhoto } from "../../lib/bffClient";
@@ -82,10 +82,12 @@ function clampDigits(value: string, maxDigits: number | undefined): string {
   return maxDigits === undefined ? value : value.slice(0, maxDigits);
 }
 
-/** A price is what the listing is for; 0 or blank is not a listing. Kept as its own predicate so
- * the Review gate and the inline message can never disagree about what counts as valid. */
-function priceIsValid(price: string): boolean {
-  return Number(price) > 0;
+/** A price is what the listing is for; 0 or blank is not a listing — except for pg/coworking,
+ * where "Contact for price" (0) is a legitimate posting, see PRICE_ON_REQUEST_CATEGORIES's own
+ * doc comment. Kept as its own predicate so the Review gate and the inline message can never
+ * disagree about what counts as valid. */
+function priceIsValid(price: string, category: ListingCategory | null): boolean {
+  return Number(price) > 0 || (category !== null && PRICE_ON_REQUEST_CATEGORIES.has(category));
 }
 
 /** Wide enough for any realistic rupee amount, narrow enough that a stuck key can't produce a
@@ -320,7 +322,7 @@ export function PostAdWizard({
     : true;
 
   const detailsValid =
-    priceIsValid(price) &&
+    priceIsValid(price, category) &&
     title.length > 0 &&
     areaQuery.trim().length > 0 &&
     !!cityId &&
@@ -436,7 +438,7 @@ export function PostAdWizard({
             placeholderTextColor={colors.muted}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
-          {price.length > 0 && !priceIsValid(price) && (
+          {price.length > 0 && !priceIsValid(price, category) && (
             <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
           )}
 
