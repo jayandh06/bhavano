@@ -10,9 +10,22 @@ const SELL_OPTIONS = [
     { value: "negotiable", label: "Negotiable" },
 ];
 const MONTHLY_OPTIONS = [{ value: "/month", label: "Per month" }];
+/** PG plans commonly run shorter than a month (a trial week, a per-day short stay) or vary enough
+ * by sharing type that the owner wants to signal "starting from" rather than a single fixed rate
+ * — see PRICE_ON_REQUEST_CATEGORIES's own note on why PG/coworking pricing doesn't fit one number
+ * cleanly. `onwards` mirrors SELL_OPTIONS' same qualifier below, just offered here too. */
+const PG_RENT_OPTIONS = [
+    { value: "/month", label: "Per month" },
+    { value: "/week", label: "Per week" },
+    { value: "/day", label: "Per day" },
+    { value: "onwards", label: "Onwards" },
+];
 const COWORKING_RENT_OPTIONS = [
     { value: "/seat/month", label: "Per seat / month" },
     { value: "/month", label: "Per month (whole space)" },
+    { value: "/week", label: "Per week" },
+    { value: "/day", label: "Per day" },
+    { value: "onwards", label: "Onwards" },
 ];
 const FURNITURE_RENT_OPTIONS = [
     { value: "/day", label: "Per day" },
@@ -25,7 +38,7 @@ exports.PRICE_QUALIFIER_OPTIONS = {
     house: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
     apartment: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
     villa: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
-    pg: { rent: MONTHLY_OPTIONS },
+    pg: { rent: PG_RENT_OPTIONS },
     storage: { rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
     coworking: { rent: COWORKING_RENT_OPTIONS, lease: COWORKING_RENT_OPTIONS },
     furniture: { sell: SELL_OPTIONS, rent: FURNITURE_RENT_OPTIONS },

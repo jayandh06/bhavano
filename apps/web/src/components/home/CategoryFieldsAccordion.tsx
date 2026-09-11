@@ -6,6 +6,8 @@ import {
   fieldIsVisible,
   groupFieldsBySection,
   pruneHiddenAttributes,
+  SECTION_LABELS,
+  SECTION_ORDER,
 } from "@bhavano/types/categoryFields";
 import { clampDigits } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass } from "@/lib/formStyles";
@@ -426,7 +428,21 @@ export function CategoryFieldsAccordion({
   const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) =>
     fieldIsVisible(field, transactionType, attributes),
   );
-  const sections = groupFieldsBySection(visibleFields);
+  const fieldSections = groupFieldsBySection(visibleFields);
+  // A category can have no field of its own in a given section (e.g. pg/coworking have no
+  // category-specific "pricing" field — no maintenance fee, no brokerage) while a caller still
+  // passes a sectionExtras entry for it (PostAdWizard/EditListingForm fold the shared Price/Price
+  // qualifier inputs into "pricing" this way). groupFieldsBySection alone would drop that
+  // section's box entirely, silently hiding the extra along with it — so any section named in
+  // sectionExtras gets a (possibly field-less) box of its own too.
+  const extraOnlySections = SECTION_ORDER.filter(
+    (section) => sectionExtras?.[section] && !fieldSections.some((s) => s.section === section),
+  ).map((section) => ({ section, label: SECTION_LABELS[section], fields: [] as FieldDef[] }));
+  const orderIndex = (section: FieldSection | "other") =>
+    section === "other" ? SECTION_ORDER.length : SECTION_ORDER.indexOf(section);
+  const sections = [...fieldSections, ...extraOnlySections].sort(
+    (a, b) => orderIndex(a.section) - orderIndex(b.section),
+  );
 
   function setFieldValue(field: FieldDef, value: string | string[]) {
     onAttributesChange((prev) =>
