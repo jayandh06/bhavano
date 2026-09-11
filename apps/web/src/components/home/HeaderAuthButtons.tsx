@@ -58,7 +58,7 @@ export function HeaderAuthButtons({
         ) : (
           <button
             onClick={() => requireLogin()}
-            className="bg-transparent border-0 text-text text-sm font-bold cursor-pointer whitespace-nowrap"
+            className="bg-transparent border-[1.5px] border-green text-green rounded-lg px-3.5 py-[7px] text-sm font-bold cursor-pointer whitespace-nowrap"
           >
             Login
           </button>
