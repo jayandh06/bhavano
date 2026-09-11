@@ -4,7 +4,7 @@
  * Everything the form, the BFF DTO, and the Prisma enum need to agree on lives here, so a
  * topic or a size cap can't drift between the client-side check and the server that enforces
  * it. */
-export declare const CONTACT_TOPICS: readonly ["posting", "subscription", "account", "listing_report", "website", "other"];
+export declare const CONTACT_TOPICS: readonly ["posting", "posting_feedback", "subscription", "account", "listing_report", "website", "other"];
 export type ContactTopic = (typeof CONTACT_TOPICS)[number];
 export declare const CONTACT_TOPIC_LABELS: Record<ContactTopic, string>;
 /** Topics where a link to the listing in question is the single most useful thing support can

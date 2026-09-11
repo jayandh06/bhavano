@@ -1093,6 +1093,7 @@ model SuppressionEntry {
  * would silently lose a user's only copy of a bug report. */
 enum ContactTopic {
   posting
+  posting_feedback
   subscription
   account
   listing_report

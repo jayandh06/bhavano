@@ -44,6 +44,10 @@ import { Icon, isIconName } from "./Icon";
 import { UploadZone } from "./UploadZone";
 
 
+// Same fallback BrowseListingsView.tsx uses — buildListingPath is relative, and the "Feedback"
+// link below needs a full URL a support agent can open directly, no site context assumed.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
+
 const ALLOWED_PHOTO_TYPES = [
   "image/jpeg",
   "image/png",
@@ -991,12 +995,24 @@ export function PostAdWizard({
             <VideoManager listing={createdListing} accessToken={token ?? ""} />
           </div>
 
-          <Link
-            href={buildListingPath(createdListing)}
-            className="text-[13px] font-bold text-muted hover:text-text transition-colors"
-          >
-            View my ad &rarr;
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href={buildListingPath(createdListing)}
+              className="text-[13px] font-bold text-muted hover:text-text transition-colors"
+            >
+              View my ad &rarr;
+            </Link>
+            {/* Every category funnels here — not gated on `category`, since the whole point is
+              * catching "this category is missing an attribute" feedback regardless of which
+              * one was just posted. Pre-selects the posting_feedback topic and this listing's
+              * link so a submission needs nothing more than the actual feedback text. */}
+            <Link
+              href={`/contact?topic=posting_feedback&listingUrl=${encodeURIComponent(`${SITE_URL}${buildListingPath(createdListing)}`)}`}
+              className="text-[13px] font-bold text-muted hover:text-text transition-colors"
+            >
+              Feedback on posting &rarr;
+            </Link>
+          </div>
         </div>
       )}
     </div>

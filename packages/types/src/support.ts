@@ -7,6 +7,7 @@
 
 export const CONTACT_TOPICS = [
   "posting",
+  "posting_feedback",
   "subscription",
   "account",
   "listing_report",
@@ -18,6 +19,11 @@ export type ContactTopic = (typeof CONTACT_TOPICS)[number];
 
 export const CONTACT_TOPIC_LABELS: Record<ContactTopic, string> = {
   posting: "Trouble posting or editing an ad",
+  // Deliberately distinct from "posting" above — that one is "something's broken", this one is
+  // "it worked, but here's what would make it better" (e.g. a missing attribute for the
+  // category just posted). Reached from the "Feedback" link on the post-ad success screen,
+  // pre-selected there — see PostAdWizard.tsx.
+  posting_feedback: "Feedback about posting an ad",
   subscription: "Subscription, boost, or payment",
   account: "Login, OTP, or profile",
   listing_report: "Report a listing",
@@ -29,6 +35,7 @@ export const CONTACT_TOPIC_LABELS: Record<ContactTopic, string> = {
  * be given — the form reveals the field only for these. */
 export const TOPICS_WITH_LISTING_URL: ReadonlySet<ContactTopic> = new Set<ContactTopic>([
   "posting",
+  "posting_feedback",
   "listing_report",
 ]);
 

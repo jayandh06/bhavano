@@ -32,16 +32,22 @@ export function ContactForm({
   defaultName,
   defaultEmail,
   defaultPhone,
+  defaultTopic,
+  defaultListingUrl,
 }: {
   defaultName?: string;
   defaultEmail?: string;
   defaultPhone?: string;
+  /** Pre-selects a topic — e.g. the post-ad success screen's "Feedback" link arrives here with
+   * "posting_feedback" already chosen, via /contact?topic=. */
+  defaultTopic?: ContactTopic;
+  defaultListingUrl?: string;
 }) {
-  const [topic, setTopic] = useState<ContactTopic>("posting");
+  const [topic, setTopic] = useState<ContactTopic>(defaultTopic ?? "posting");
   const [name, setName] = useState(defaultName ?? "");
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [phone, setPhone] = useState(defaultPhone ?? "");
-  const [listingUrl, setListingUrl] = useState("");
+  const [listingUrl, setListingUrl] = useState(defaultListingUrl ?? "");
   const [paymentId, setPaymentId] = useState("");
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);

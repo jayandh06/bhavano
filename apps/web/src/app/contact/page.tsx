@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
+import { CONTACT_TOPICS, type ContactTopic } from "@bhavano/types/support";
 import { auth } from "@/auth";
+import { fetchProfile } from "@/lib/bff";
+import { isAccessTokenValid } from "@/lib/session";
 import { ContactForm } from "@/components/home/ContactForm";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
@@ -11,11 +14,28 @@ export const metadata = {
 
 const SUPPORT_EMAIL = LEGAL_ENTITY.supportEmail;
 
-export default async function ContactPage() {
+export default async function ContactPage({
+  searchParams,
+}: {
+  // Reached from the post-ad success screen's "Feedback" link (?topic=posting_feedback&
+  // listingUrl=...) as well as directly/logged out — both params are optional and validated
+  // below rather than trusted as-is, same as claim/[id]/page.tsx's `via`.
+  searchParams: Promise<{ topic?: string; listingUrl?: string }>;
+}) {
   const addressLines = entityAddressLines();
-  // Prefill only — the form works logged out on purpose, since "I can't log in" is one of the
-  // topics. Reading the session here keeps the page a Server Component (see .claude/CLAUDE.md).
-  const session = await auth();
+  const [sp, session] = await Promise.all([searchParams, auth()]);
+  const defaultTopic = CONTACT_TOPICS.includes(sp.topic as ContactTopic)
+    ? (sp.topic as ContactTopic)
+    : undefined;
+  const defaultListingUrl = sp.listingUrl?.trim() || undefined;
+
+  // Phone isn't on the NextAuth session itself (see auth.ts — only id/name/email are), so it's
+  // a separate profile fetch. Best-effort: a failure here shouldn't block loading the page, it
+  // just means the phone field starts blank instead of prefilled.
+  const accessToken = session?.accessToken;
+  const profile = isAccessTokenValid(accessToken)
+    ? await fetchProfile(accessToken).catch(() => null)
+    : null;
 
   return (
     <StaticPageLayout title="Contact us" updated="26 August 2026">
@@ -56,6 +76,9 @@ export default async function ContactPage() {
         <ContactForm
           defaultName={session?.user?.name ?? undefined}
           defaultEmail={session?.user?.email ?? undefined}
+          defaultPhone={profile?.phone ?? undefined}
+          defaultTopic={defaultTopic}
+          defaultListingUrl={defaultListingUrl}
         />
       </PageSection>
 

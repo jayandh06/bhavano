@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MIN_DWELL_MS = exports.HONEYPOT_FIELD = exports.ACCEPTED_ATTACHMENT_MIME_TYPES = exports.MAX_ATTACHMENTS_TOTAL_BYTES = exports.MAX_ATTACHMENT_BYTES = exports.MAX_ATTACHMENTS = exports.MESSAGE_MAX_LENGTH = exports.MESSAGE_MIN_LENGTH = exports.TOPICS_WITH_PAYMENT_ID = exports.TOPICS_WITH_LISTING_URL = exports.CONTACT_TOPIC_LABELS = exports.CONTACT_TOPICS = void 0;
 exports.CONTACT_TOPICS = [
     "posting",
+    "posting_feedback",
     "subscription",
     "account",
     "listing_report",
@@ -17,6 +18,11 @@ exports.CONTACT_TOPICS = [
 ];
 exports.CONTACT_TOPIC_LABELS = {
     posting: "Trouble posting or editing an ad",
+    // Deliberately distinct from "posting" above — that one is "something's broken", this one is
+    // "it worked, but here's what would make it better" (e.g. a missing attribute for the
+    // category just posted). Reached from the "Feedback" link on the post-ad success screen,
+    // pre-selected there — see PostAdWizard.tsx.
+    posting_feedback: "Feedback about posting an ad",
     subscription: "Subscription, boost, or payment",
     account: "Login, OTP, or profile",
     listing_report: "Report a listing",
@@ -27,6 +33,7 @@ exports.CONTACT_TOPIC_LABELS = {
  * be given — the form reveals the field only for these. */
 exports.TOPICS_WITH_LISTING_URL = new Set([
     "posting",
+    "posting_feedback",
     "listing_report",
 ]);
 /** Likewise for the Razorpay payment id, which turns a payment complaint into a lookup. */
