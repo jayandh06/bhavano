@@ -13,7 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { ContactRevealSettingsDto, ListingDetailDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RevealContactResponseDto } from '@bhavano/types';
+import type { ContactRevealSettingsDto, ListingDetailDto, ListingMetaDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RevealContactResponseDto } from '@bhavano/types';
 import { VIDEO_LIMITS } from '@bhavano/types/videoLimits';
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -77,6 +77,12 @@ export class ListingsController {
     return this.listingsService.findOne(id, user);
   }
 
+  /** No guard — nothing here is viewer-dependent. See ListingMetaDto's doc comment. */
+  @Get(':id/meta')
+  findMeta(@Param('id') id: string): Promise<ListingMetaDto> {
+    return this.listingsService.findMetaById(id);
+  }
+
   @Post()
   @UseGuards(AuthGuard)
   create(@Body() dto: CreateListingDto, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
@@ -97,6 +103,14 @@ export class ListingsController {
   @UseGuards(AuthGuard)
   renew(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
     return this.listingsService.renew(id, user.id);
+  }
+
+  /** Not an ownership check like the routes around it — this is how a listing GETS an owner
+   * other than the Bulk Import account. See ListingsService.claimListing. */
+  @Post(':id/claim')
+  @UseGuards(AuthGuard)
+  claim(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
+    return this.listingsService.claimListing(id, user.id);
   }
 
   @Post(':id/view')

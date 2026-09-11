@@ -3,6 +3,10 @@ export type ListingCategory = "house" | "apartment" | "villa" | "pg" | "storage"
 export type TransactionType = "buy" | "sell" | "rent" | "lease";
 export type ListingStatus = "active" | "sold" | "rented" | "deactivated";
 export type ListingCondition = "new" | "used";
+/** How the ad itself was created. "direct" (the owner posted it through the wizard) is the
+ * only path that exists today and the default for every row; "manual"/"google_api" are for
+ * future admin tooling. Admin-visible only — see ListingDetailDto.source. */
+export type ListingSource = "direct" | "manual" | "google_api";
 export type UserRole = "user" | "admin";
 /** approved = normal/visible; flagged = an admin took it offline pending a fix from the
  * owner — this IS the soft-delete, there's no separate "deleted" state. */
@@ -50,6 +54,11 @@ export interface ListingCardDto {
     tag: string;
     price: string;
     priceQualifier: string;
+    /** True when `price` reads "Contact for price" rather than a real ₹ amount — pg/coworking
+     * only (see ListingsService.assertValidPrice), for a poster whose plans vary by option and
+     * hasn't set one yet. Buyer-facing pages use this instead of string-matching `price` to decide
+     * whether to render the "reach out for a quote" note or include a price in JSON-LD. */
+    priceOnRequest: boolean;
     title: string;
     area: string;
     cityName: string;
@@ -180,11 +189,37 @@ export interface ListingDetailDto extends ListingCardDto {
      * moderation thread. Only populated in the admin moderation queue (ListingsService.listForAdmin),
      * same precedent as postedNotificationSent above. */
     messageCount?: number;
+    /** direct / manual / google_api — never populated outside the admin moderation queue
+     * (ListingsService.listForAdmin), same precedent as messageCount above. */
+    source?: ListingSource;
 }
 export interface ListingRenewalDto {
     from: string;
     to: string;
     renewedAt: string;
+}
+/** Just what a listing page's `generateMetadata` needs (title/description/canonical-path/OG
+ * image) — deliberately not the full ListingDetailDto. That fetch runs a second time
+ * independent of the page component's own full fetch (React's `cache()` does not dedupe across
+ * generateMetadata and the page component in Next's App Router — confirmed empirically, see
+ * apps/web/src/lib/bff.ts's fetchListingById), so this exists to make the unavoidable second
+ * call cheap (no attributes/videos/reveal-state joins) rather than free. Public/anonymous only —
+ * nothing here is viewer-dependent, unlike ListingDetailDto's contactRevealed/isOwner/etc. */
+export interface ListingMetaDto {
+    id: string;
+    slug: string;
+    category: ListingCategory;
+    transactionType: TransactionType;
+    cityName: string;
+    area: string;
+    title: string;
+    price: string;
+    priceQualifier: string;
+    priceOnRequest: boolean;
+    description: string | null;
+    specs: string[];
+    /** Full-size CDN URL of the first photo, or null if the listing has none yet. */
+    ogImage: string | null;
 }
 /** Fields an owner can change after posting — from the my-listings edit form. */
 export interface UpdateListingInput {
@@ -251,6 +286,9 @@ export interface CreateListingInput {
      * possible). Never returned as-is; see ListingDetailDto.lat/lng for why. */
     lat?: number;
     lng?: number;
+    /** Links this listing to the OutreachContact it was bulk-imported from — bulk_upload_listings.py
+     * only, never set by the normal posting wizard. See ListingsService.claimListing. */
+    claimContactId?: string;
 }
 /** Response from reverse-geocoding a dropped map pin — a suggestion the poster can accept or
  * override, never an auto-locked value (Google's locality boundaries won't line up perfectly

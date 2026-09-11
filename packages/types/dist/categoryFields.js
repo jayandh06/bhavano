@@ -524,6 +524,116 @@ exports.CATEGORY_FIELD_CONFIG = {
             section: "roomDetails",
             placeholder: "https://yourpg.com",
         },
+        {
+            key: "twoWheelerParking",
+            label: "Two-wheeler parking",
+            type: "select",
+            icon: "🛵",
+            iconName: "twoWheelerParking",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "fourWheelerParking",
+            label: "Four-wheeler parking",
+            type: "select",
+            icon: "🚗",
+            iconName: "fourWheelerParking",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "tv",
+            label: "TV",
+            type: "select",
+            icon: "📺",
+            iconName: "tv",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "internet",
+            label: "Internet / WiFi",
+            type: "select",
+            icon: "📶",
+            iconName: "internet",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+            // No default — unlike coworking, whether a PG actually has WiFi varies enough that
+            // defaulting it would risk stating a fact that isn't true, rather than just costing a click.
+        },
+        {
+            key: "attachedBathroom",
+            label: "Attached bathroom",
+            type: "select",
+            icon: "🚿",
+            iconName: "attachedBathroom",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "ac",
+            label: "AC",
+            type: "select",
+            icon: "❄️",
+            iconName: "ac",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "laundryService",
+            label: "Laundry service",
+            type: "select",
+            icon: "🧺",
+            iconName: "laundryService",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "powerBackup",
+            label: "Power backup",
+            type: "select",
+            icon: "🔋",
+            iconName: "powerBackup",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "cctv",
+            label: "CCTV",
+            type: "select",
+            icon: "📹",
+            iconName: "cctv",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
     ],
     storage: [
         {
@@ -577,6 +687,107 @@ exports.CATEGORY_FIELD_CONFIG = {
             type: "text",
             section: "workspaceDetails",
             placeholder: "https://yourspace.com",
+        },
+        {
+            // Same key/options as storage's own accessHours field — one vocabulary for "is this
+            // always open" across categories that both actually have the concept.
+            key: "accessHours",
+            label: "Access hours",
+            type: "select",
+            section: "workspaceDetails",
+            options: [
+                { value: "24x7", label: "24/7" },
+                { value: "business", label: "Business hours only" },
+            ],
+        },
+        {
+            key: "twoWheelerParking",
+            label: "Two-wheeler parking",
+            type: "select",
+            icon: "🛵",
+            iconName: "twoWheelerParking",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "fourWheelerParking",
+            label: "Four-wheeler parking",
+            type: "select",
+            icon: "🚗",
+            iconName: "fourWheelerParking",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "internet",
+            label: "Internet / WiFi",
+            type: "select",
+            icon: "📶",
+            iconName: "internet",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+            // Defaults to "Yes" — near-universal for a coworking space, and unlike a guessed
+            // price/area (see FieldDef.defaultValue's own doc comment) a wrong default here costs the
+            // lister one click to correct rather than misstating a fact about the space itself. Same
+            // reasoning RESIDENTIAL_FIELDS.vegetariansOnly already uses for its own default.
+            defaultValue: "yes",
+        },
+        {
+            key: "meetingRoomAccess",
+            label: "Meeting room access",
+            type: "select",
+            icon: "🗓️",
+            iconName: "meetingRoomAccess",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "printerAccess",
+            label: "Printer / scanner access",
+            type: "select",
+            icon: "🖨️",
+            iconName: "printerAccess",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "pantry",
+            label: "Pantry / cafeteria",
+            type: "select",
+            icon: "☕",
+            iconName: "pantry",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "powerBackup",
+            label: "Power backup",
+            type: "select",
+            icon: "🔋",
+            iconName: "powerBackup",
+            section: "amenities",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
         },
     ],
     furniture: [

@@ -1,12 +1,14 @@
-import { IsArray, IsIn, IsInt, IsObject, IsOptional, IsPositive, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsArray, IsIn, IsInt, IsObject, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
 import type { ListingStatus } from '@bhavano/types';
 
 const LISTING_STATUSES: ListingStatus[] = ['active', 'sold', 'rented', 'deactivated'];
 
 export class UpdateListingDto {
+  // 0 ("Contact for price") is valid for pg/coworking only — enforced in
+  // ListingsService.assertValidPrice, not here, since it depends on the listing's category.
   @IsOptional()
   @IsInt()
-  @IsPositive()
+  @Min(0)
   price?: number;
 
   @IsOptional()

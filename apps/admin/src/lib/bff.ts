@@ -422,6 +422,7 @@ export interface ListOutreachContactsQuery {
   search?: string;
   cityId?: string;
   status?: string;
+  businessCategory?: string;
 }
 
 export function fetchOutreachContacts(
@@ -433,6 +434,13 @@ export function fetchOutreachContacts(
     if (value != null && value !== "") params.set(key, String(value));
   }
   return authedBffFetch(accessToken, `/admin/outreach/contacts?${params.toString()}`, { cache: "no-store" });
+}
+
+/** Distinct businessCategory values actually present, for the filter dropdown — see
+ * OutreachService.listBusinessCategories's doc comment for why this stays derived from data
+ * rather than a hardcoded list. */
+export function fetchOutreachContactCategories(accessToken: string): Promise<string[]> {
+  return authedBffFetch(accessToken, "/admin/outreach/contacts/categories", { cache: "no-store" });
 }
 
 export function importOutreachContacts(

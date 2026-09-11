@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ListingDetailDto } from "@bhavano/types";
+import type { ListingDetailDto, ListingSource } from "@bhavano/types";
 import { formatDate } from "@/lib/formatDateTime";
 
 /** The dashboard's listing moderation queue as an actual table — was previously a card list
@@ -16,7 +16,7 @@ export function AdminListingsTable({ items }: { items: ListingDetailDto[] }) {
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
         <thead>
           <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
-            {["Title", "Status", "Notification", "Views", "Likes", "Messages", "Price", "Created", "Modified"].map(
+            {["Title", "Status", "Source", "Notification", "Views", "Likes", "Messages", "Price", "Created", "Modified"].map(
               (h) => (
                 <th key={h} style={thStyle}>
                   {h}
@@ -38,6 +38,9 @@ export function AdminListingsTable({ items }: { items: ListingDetailDto[] }) {
               </td>
               <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                 <StatusBadge moderationState={item.moderationState} adminReviewed={item.adminReviewed} />
+              </td>
+              <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                <SourceBadge source={item.source} />
               </td>
               <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                 <PostedNotificationBadge
@@ -81,6 +84,32 @@ function StatusBadge({ moderationState, adminReviewed }: { moderationState: stri
       }}
     >
       {label}
+    </span>
+  );
+}
+
+const SOURCE_LABELS: Record<ListingSource, string> = {
+  direct: "Direct",
+  manual: "Manual",
+  google_api: "Google API",
+};
+
+function SourceBadge({ source }: { source?: ListingSource }) {
+  if (!source) return dash;
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        whiteSpace: "nowrap",
+        fontSize: 11,
+        fontWeight: 700,
+        color: "var(--muted)",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        padding: "2px 8px",
+      }}
+    >
+      {SOURCE_LABELS[source]}
     </span>
   );
 }

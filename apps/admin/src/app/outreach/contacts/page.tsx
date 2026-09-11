@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchOutreachContacts } from "@/lib/bff";
+import { fetchOutreachContacts, fetchOutreachContactCategories } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams";
 import { OptOutButton } from "@/components/OptOutButton";
 import { Pagination } from "@/components/Pagination";
@@ -22,15 +22,20 @@ export default async function OutreachContactsPage({
   const sp = await searchParams;
   const search = str(sp.search);
   const status = str(sp.status);
+  const businessCategory = str(sp.businessCategory);
   const currentPage = parsePage(str(sp.page));
   const limit = parsePageSize(str(sp.limit));
 
-  const result = await fetchOutreachContacts(accessToken, {
-    offset: (currentPage - 1) * limit,
-    limit,
-    search,
-    status,
-  });
+  const [result, categories] = await Promise.all([
+    fetchOutreachContacts(accessToken, {
+      offset: (currentPage - 1) * limit,
+      limit,
+      search,
+      status,
+      businessCategory,
+    }),
+    fetchOutreachContactCategories(accessToken),
+  ]);
   const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
   return (
@@ -62,6 +67,25 @@ export default async function OutreachContactsPage({
               fontSize: 13,
             }}
           />
+          <select
+            name="businessCategory"
+            defaultValue={businessCategory ?? ""}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              fontSize: 13,
+            }}
+          >
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
           <button
             type="submit"
             style={{

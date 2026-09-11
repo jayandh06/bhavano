@@ -7,7 +7,6 @@ import {
   IsLongitude,
   IsObject,
   IsOptional,
-  IsPositive,
   IsString,
   IsUUID,
   MaxLength,
@@ -69,8 +68,10 @@ export class CreateListingDto {
   @IsIn(TRANSACTION_TYPES)
   transactionType!: TransactionType;
 
+  // 0 ("Contact for price") is valid for pg/coworking only — enforced in
+  // ListingsService.assertValidPrice, not here, since it depends on `category`.
   @IsInt()
-  @IsPositive()
+  @Min(0)
   price!: number;
 
   @IsOptional()
@@ -129,4 +130,10 @@ export class CreateListingDto {
   @IsOptional()
   @IsLongitude()
   lng?: number;
+
+  /// Links this listing to the OutreachContact it was bulk-imported from (bulk_upload_listings.py
+  /// only — never set by the normal posting wizard) — see ListingsService.claimListing.
+  @IsOptional()
+  @IsString()
+  claimContactId?: string;
 }

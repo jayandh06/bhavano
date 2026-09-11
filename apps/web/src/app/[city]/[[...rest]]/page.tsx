@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import type { ListingCategory, ListingDetailDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
-import { fetchAreas, fetchCities, fetchListingById, fetchListings } from "@/lib/bff";
+import { fetchAreas, fetchCities, fetchListingById, fetchListingMeta, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity } from "@/lib/browseRoute";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
@@ -177,7 +177,7 @@ function numericAttribute(value: unknown): number | undefined {
  *
  * Whitespace collapsed: the description comes from a textarea and carries the line breaks the
  * seller typed. Those belong on the page (see ListingDetailView), not inside a meta tag. */
-function listingSummary(listing: ListingDetailDto): string {
+function listingSummary(listing: Pick<ListingDetailDto, "description" | "specs" | "title">): string {
   const own = listing.description?.replace(/\s+/g, " ").trim();
   return own || listing.specs.join(", ") || listing.title;
 }
@@ -193,14 +193,18 @@ function truncateForMeta(text: string, max = 160): string {
 }
 
 function listingJsonLd(listing: ListingDetailDto) {
-  const numericPrice = listing.price.replace(/[^\d]/g, "");
-  const offers = {
-    "@type": "Offer",
-    price: numericPrice,
-    priceCurrency: "INR",
-    availability: listing.status === "active" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
-    url: `${SITE_URL}${buildListingPath(listing)}`,
-  };
+  // priceOnRequest listings ("Contact for price") have no real amount to report — emitting
+  // `price: "0"` would be actively misleading to crawlers/rich results, so the whole Offer is
+  // omitted rather than reporting a fake price. See docs/plans/pg-coworking-google-places-leadgen.md.
+  const offers = listing.priceOnRequest
+    ? undefined
+    : {
+        "@type": "Offer",
+        price: listing.price.replace(/[^\d]/g, ""),
+        priceCurrency: "INR",
+        availability: listing.status === "active" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
+        url: `${SITE_URL}${buildListingPath(listing)}`,
+      };
 
   if (!REAL_ESTATE_CATEGORIES.has(listing.category)) {
     return {
@@ -209,7 +213,7 @@ function listingJsonLd(listing: ListingDetailDto) {
       description: listingSummary(listing),
       category: listing.category,
       image: listing.photosFull,
-      offers,
+      ...(offers ? { offers } : {}),
     };
   }
 
@@ -221,7 +225,7 @@ function listingJsonLd(listing: ListingDetailDto) {
     "@type": "RealEstateListing",
     name: listing.title,
     description: listingSummary(listing),
-    url: offers.url,
+    url: `${SITE_URL}${buildListingPath(listing)}`,
     image: listing.photosFull,
     address: {
       "@type": "PostalAddress",
@@ -234,7 +238,7 @@ function listingJsonLd(listing: ListingDetailDto) {
       : {}),
     ...(bedrooms !== undefined ? { numberOfRooms: bedrooms } : {}),
     ...(sqft !== undefined ? { floorSize: { "@type": "QuantitativeValue", value: sqft, unitCode: "FTK" } } : {}),
-    offers,
+    ...(offers ? { offers } : {}),
   };
 }
 
@@ -337,17 +341,23 @@ export async function generateMetadata({
   if (!parsed) return {};
 
   if (parsed.listingSlugId) {
-    const listing = await fetchListingById(extractListingId(parsed.listingSlugId)).catch(() => null);
+    // The page component below fetches the full listing separately (fetchListingById) — this
+    // is the lean, public, metadata-only endpoint (see ListingMetaDto's doc comment) so
+    // generateMetadata's unavoidable second fetch (confirmed via testing that Next's App Router
+    // doesn't dedupe generateMetadata against the page component here — see fetchListingById's
+    // own comment) is cheap rather than a second full detail fetch.
+    const listing = await fetchListingMeta(extractListingId(parsed.listingSlugId)).catch(() => null);
     if (!listing) return {};
     const canonicalPath = buildListingPath(listing);
+    const priceText = [listing.price, listing.priceQualifier].filter(Boolean).join(" ");
     const description = truncateForMeta(
-      `${listing.price} ${listing.priceQualifier} — ${listingSummary(listing)} in ${listing.area}, ${listing.cityName}.`,
+      `${priceText} — ${listingSummary(listing)} in ${listing.area}, ${listing.cityName}.`,
     );
     return {
       title: listing.title,
       description,
       alternates: { canonical: canonicalPath },
-      openGraph: { title: listing.title, description, images: listing.photosFull.slice(0, 1) },
+      openGraph: { title: listing.title, description, images: listing.ogImage ? [listing.ogImage] : [] },
       twitter: { title: listing.title, description },
     };
   }

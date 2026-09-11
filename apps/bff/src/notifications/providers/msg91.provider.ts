@@ -314,6 +314,99 @@ export class Msg91Provider {
     }
   }
 
+  /** WhatsApp via MSG91 — "verify your listing" sent to a scraped PG/coworking business, asking
+   * them to claim the listing bulk_upload_listings.py created for them (see
+   * ListingsService.claimListing). Approved template: "claim_listing_pg". Component shape below
+   * is copied verbatim from this template's own MSG91 dashboard "Code" snippet (Templates ->
+   * claim_listing_pg -> Code) — genuinely different from sendAdPostedConfirmation's shape above,
+   * confirming that comment's own warning not to guess: positional `body_1`..`body_5` keys with
+   * no `parameter_name` at all, and `namespace: null` (this account/template combination doesn't
+   * use one, unlike welcome/ad-posted). Order matches the approved copy's own placeholder order:
+   * business name, area, city, phone, then the full claim link (the plain-text one in the body —
+   * separate from button_1's value, which is only the URL *suffix* appended to a base URL baked
+   * into the template itself).
+   *
+   * MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME is expected to be "claim_listing_pg" and
+   * MSG91_WHATSAPP_CLAIM_NAMESPACE to be left unset (namespace is sent as `null` either way). */
+  async sendListingVerificationRequest(
+    phone: string,
+    vars: { businessName: string; area: string; city: string; phone: string; claimLink: string },
+    buttonUrlSuffix: string,
+  ): Promise<{ sent: boolean; messageId: string | null }> {
+    const authKey = this.config.get<string>('MSG91_AUTH_KEY');
+    const integratedNumber = this.config.get<string>(
+      'MSG91_WHATSAPP_INTEGRATED_NUMBER',
+    );
+    const template = this.config.get<string>(
+      'MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME',
+    );
+    if (!authKey || !integratedNumber || !template) {
+      this.logger.warn(
+        `MSG91 WhatsApp not configured (MSG91_WHATSAPP_INTEGRATED_NUMBER/` +
+          `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME) — skipping claim-verification WhatsApp to ${phone}`,
+      );
+      return { sent: false, messageId: null };
+    }
+    // Real dashboard snippet has this literally `null`, not a namespace string — the env var is
+    // kept only in case a future recreation of this template (see ad-posted's own history of
+    // getting re-namespaced on recreation) needs one.
+    const namespace = this.config.get<string>('MSG91_WHATSAPP_CLAIM_NAMESPACE') ?? null;
+
+    try {
+      const res = await fetch(
+        'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
+        {
+          method: 'POST',
+          headers: { authkey: authKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            integrated_number: integratedNumber,
+            content_type: 'template',
+            payload: {
+              messaging_product: 'whatsapp',
+              type: 'template',
+              template: {
+                name: template,
+                language: { code: 'en', policy: 'deterministic' },
+                namespace,
+                to_and_components: [
+                  {
+                    to: [`91${phone}`],
+                    components: {
+                      body_1: { type: 'text', value: vars.businessName },
+                      body_2: { type: 'text', value: vars.area },
+                      body_3: { type: 'text', value: vars.city },
+                      body_4: { type: 'text', value: vars.phone },
+                      body_5: { type: 'text', value: vars.claimLink },
+                      button_1: {
+                        subtype: 'url',
+                        type: 'text',
+                        value: buttonUrlSuffix,
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          }),
+        },
+      );
+      const responseBody = await res.text();
+      if (!res.ok || responseBody.includes('"error"')) {
+        this.logger.error(
+          `MSG91 WhatsApp claim-verification send failed (${res.status}): ${responseBody}`,
+        );
+        return { sent: false, messageId: null };
+      }
+      this.logger.log(`MSG91 WhatsApp claim-verification send response: ${responseBody}`);
+      return { sent: true, messageId: this.extractMessageId(responseBody) };
+    } catch (error) {
+      this.logger.error(
+        `Failed to send claim-verification WhatsApp to ${phone}: ${error instanceof Error ? error.message : error}`,
+      );
+      return { sent: false, messageId: null };
+    }
+  }
+
   /** Where MSG91 puts this send's id, confirmed against a real bulk-send response on 2026-09-08
    * (see sendAdPostedConfirmation's own comment for the exact shape) — `request_id` at the top
    * level. Returns null rather than throwing on anything unexpected (a differently-shaped

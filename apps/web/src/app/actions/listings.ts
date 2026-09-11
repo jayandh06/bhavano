@@ -8,6 +8,7 @@ import {
   BffAuthError,
   InsufficientContactRevealCreditsError,
   addOwnListingPhoto,
+  claimListing,
   createListing,
   deleteListingVideo,
   deleteOwnListingPhoto,
@@ -96,6 +97,28 @@ export async function revealContactAction(listingId: string): Promise<RevealCont
       requiresLogin: false,
       insufficientCredits: false,
       error: error instanceof Error ? error.message : "Failed to unlock contact",
+    };
+  }
+}
+
+export type ClaimListingResult =
+  | { requiresLogin: true }
+  | { requiresLogin: false; success: true; listing: ListingDetailDto }
+  | { requiresLogin: false; success: false; error: string };
+
+export async function claimListingAction(listingId: string): Promise<ClaimListingResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { requiresLogin: true };
+
+  try {
+    const listing = await claimListing(session.accessToken, listingId);
+    return { requiresLogin: false, success: true, listing };
+  } catch (error) {
+    if (error instanceof BffAuthError) return { requiresLogin: true };
+    return {
+      requiresLogin: false,
+      success: false,
+      error: error instanceof Error ? error.message : "Couldn't claim this listing",
     };
   }
 }

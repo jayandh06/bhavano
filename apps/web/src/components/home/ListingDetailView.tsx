@@ -132,6 +132,11 @@ export async function ListingDetailView({
                   </div>
                 )}
               </div>
+              {listing.priceOnRequest && (
+                <p className="text-[13px] text-muted mb-2">
+                  Plans and pricing vary — reach out to the owner for a quote.
+                </p>
+              )}
 
               <h1 className="font-lora text-[22px] font-semibold m-0 mb-2">
                 {listing.title}

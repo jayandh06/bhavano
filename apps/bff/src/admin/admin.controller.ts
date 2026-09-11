@@ -258,6 +258,11 @@ export class AdminController {
     return this.outreachService.listContacts(query);
   }
 
+  @Get('outreach/contacts/categories')
+  listOutreachContactCategories(): Promise<string[]> {
+    return this.outreachService.listBusinessCategories();
+  }
+
   @Post('outreach/contacts')
   createOutreachContact(@Body() dto: CreateOutreachContactDto): Promise<OutreachContactDto> {
     return this.outreachService.createContact(dto);
@@ -276,6 +281,11 @@ export class AdminController {
   async optOutContact(@Param('id') id: string, @Body() dto: OptOutDto): Promise<{ success: true }> {
     await this.outreachService.optOut(id, dto.reason);
     return { success: true };
+  }
+
+  @Post('outreach/contacts/:id/send-claim-whatsapp')
+  sendClaimWhatsapp(@Param('id') id: string): Promise<{ sent: boolean; reason?: string }> {
+    return this.outreachService.sendClaimVerification(id);
   }
 
   // --- Campaigns ----------------------------------------------------------

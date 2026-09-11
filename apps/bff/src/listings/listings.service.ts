@@ -17,6 +17,7 @@ import type {
   ListingDetailDto,
   ListingEngagementPage,
   ListingEngagementRowDto,
+  ListingMetaDto,
   ListingSitemapEntry,
   ListingStatus,
   ListingVideoDto,
@@ -36,6 +37,7 @@ import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { MAX_PHOTOS } from '@bhavano/types/photoLimits';
 import { PrismaService } from '../prisma/prisma.service';
+import { toE164India } from '../outreach/phone';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
@@ -152,6 +154,12 @@ const ADMIN_ORDER_BY: Record<
 };
 
 const priceFormatter = new Intl.NumberFormat('en-IN');
+
+/** Categories where a poster's plans genuinely vary by option (PG sharing type, coworking seat
+ * type) enough that `price: 0` — "Contact for price" — is a legitimate posting, not a shortcut
+ * to avoid entering one. Deliberately not every category: a 0-priced house/apartment/plot
+ * listing has no such justification and would just be an easy way to post something misleading. */
+const PRICE_ON_REQUEST_CATEGORIES = new Set<ListingCategory>(['pg', 'coworking']);
 
 // `owner` (just agentProUntil) is included here too, alongside every photo/video, since it's
 // needed to resolve the poster's video entitlement on every read that also needs videos — folding
@@ -474,6 +482,7 @@ export class ListingsService {
         postedNotificationSentAt: row.notificationLogs[0]?.sentAt.toISOString() ?? null,
         postedNotificationDeliveryStatus: row.notificationLogs[0]?.deliveryStatus ?? null,
         messageCount: row._count.conversations,
+        source: row.source,
       })),
       total,
     };
@@ -649,6 +658,48 @@ export class ListingsService {
     );
   }
 
+  /** Lean counterpart to findOne, for generateMetadata's independent second fetch — see
+   * ListingMetaDto's own doc comment for why this exists. Public/anonymous only: no
+   * favouritedIds/revealState/isOwnerOrAdmin resolution, and a flagged listing 404s exactly like
+   * findOne does for a non-owner/admin (no currentUser here, so that's every caller), so a
+   * flagged listing can't leak real metadata into search results independent of the page itself
+   * already 404ing for it. */
+  async findMetaById(id: string): Promise<ListingMetaDto> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id },
+      include: {
+        city: { select: { name: true } },
+        area: { select: { name: true } },
+        listingPhotos: {
+          orderBy: [{ displayOrder: 'asc' }, { photoNo: 'asc' }],
+          take: 1,
+        },
+      },
+    });
+    if (!listing || listing.moderationState === 'flagged') {
+      throw new NotFoundException(`Listing ${id} not found`);
+    }
+
+    const firstPhoto = listing.listingPhotos[0];
+    return {
+      id: listing.id,
+      slug: listing.slug,
+      category: listing.category,
+      transactionType: listing.transactionType,
+      cityName: listing.city.name,
+      area: listing.area.name,
+      title: listing.title,
+      price: listing.price === 0 ? 'Contact for price' : `₹${priceFormatter.format(listing.price)}`,
+      priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
+      priceOnRequest: listing.price === 0,
+      description: listing.description,
+      specs: cardSpecs(listing),
+      ogImage: firstPhoto
+        ? publicVariantUrl(this.cdnBase(), listing.id, firstPhoto.photoNo, 'full', firstPhoto.updatedAt)
+        : null,
+    };
+  }
+
   async create(
     input: CreateListingInput,
     ownerId: string,
@@ -687,6 +738,7 @@ export class ListingsService {
       input.transactionType,
       input.priceQualifier,
     );
+    this.assertValidPrice(input.category, input.price);
 
     const moderation = await this.moderationService.moderate(input);
     if (!moderation.ok) throw new BadRequestException(moderation.reason);
@@ -719,6 +771,7 @@ export class ListingsService {
         expiresAt,
         lat: input.lat,
         lng: input.lng,
+        claimContactId: input.claimContactId ?? null,
         // A post-creation addPhoto atomically increments this — see the field's own doc comment
         // in schema.prisma for why it must start at least as high as any photoNo already in use.
         photoNoCounter: Math.max(0, ...input.photos.map((p) => p.photoNo)),
@@ -1206,6 +1259,9 @@ export class ListingsService {
         dto.priceQualifier,
       );
     }
+    if (dto.price !== undefined) {
+      this.assertValidPrice(existing.category, dto.price);
+    }
 
     const listing = await this.prisma.listing.update({
       where: { id },
@@ -1273,6 +1329,52 @@ export class ListingsService {
       this.prisma.listing.update({
         where: { id },
         data: { expiresAt: newExpiresAt },
+        include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+      }),
+    ]);
+
+    return this.toDetailDto(listing, undefined, true);
+  }
+
+  /** Transfers a bulk-imported listing (Listing.claimContactId set — see
+   * bulk_upload_listings.py) to the real business owner, once they've proven they hold the
+   * exact phone number Google/the scrape recorded for that business. One-shot: `claimedAt`
+   * being already set means it was claimed before, by design (no re-claiming/hijacking a
+   * listing once it's a real owner's). Not an ownership check like every other mutation here —
+   * the whole point is transferring away from the Bulk Import account, not verifying against it. */
+  async claimListing(listingId: string, userId: string): Promise<ListingDetailDto> {
+    const existing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      include: { claimContact: { select: { phoneE164: true } } },
+    });
+    if (!existing) throw new NotFoundException(`Listing ${listingId} not found`);
+    if (!existing.claimContactId || !existing.claimContact) {
+      throw new BadRequestException('This listing is not claimable');
+    }
+    if (existing.claimedAt) {
+      throw new BadRequestException('This listing has already been claimed');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+    const userPhoneE164 = toE164India(user?.phone);
+    if (!userPhoneE164 || userPhoneE164 !== existing.claimContact.phoneE164) {
+      throw new ForbiddenException(
+        "This phone number doesn't match the one on file for this business listing.",
+      );
+    }
+
+    const claimedAt = new Date();
+    const [, listing] = await this.prisma.$transaction([
+      this.prisma.outreachContact.update({
+        where: { id: existing.claimContactId },
+        data: { userId },
+      }),
+      this.prisma.listing.update({
+        where: { id: listingId },
+        data: { ownerId: userId, claimedAt },
         include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
       }),
     ]);
@@ -1618,6 +1720,17 @@ export class ListingsService {
     }
   }
 
+  /** price: 0 ("Contact for price") is only valid for PRICE_ON_REQUEST_CATEGORIES — see that
+   * constant's doc comment. CreateListingDto/UpdateListingDto only enforce price >= 0 at the
+   * shape level; this is the actual business rule. */
+  private assertValidPrice(category: ListingCategory, price: number): void {
+    if (price === 0 && !PRICE_ON_REQUEST_CATEGORIES.has(category)) {
+      throw new BadRequestException(
+        `A ${category} listing needs a real price — "Contact for price" isn't available for this category`,
+      );
+    }
+  }
+
   private cdnBase(): string {
     return this.config.get<string>('CDN_BASE_URL') ?? '';
   }
@@ -1762,8 +1875,12 @@ export class ListingsService {
       transactionType: listing.transactionType,
       slug: listing.slug,
       tag: listing.tag,
-      price: `₹${priceFormatter.format(listing.price)}`,
-      priceQualifier: listing.priceQualifier,
+      price: listing.price === 0 ? 'Contact for price' : `₹${priceFormatter.format(listing.price)}`,
+      // A qualifier ("/month") next to "Contact for price" reads oddly, so it's suppressed here
+      // rather than at posting time — the stored value (if any) survives for if/when the owner
+      // sets a real price.
+      priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
+      priceOnRequest: listing.price === 0,
       title: listing.title,
       area: listing.area.name,
       cityName: listing.city.name,

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import type { OutreachContact, OutreachCampaign } from '@prisma/client';
 import type {
@@ -18,6 +19,7 @@ import type {
   UpdateOutreachCampaignInput,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { Msg91Provider } from '../notifications/providers/msg91.provider';
 import { toE164India } from './phone';
 
 const SEND_STATUSES: SendStatus[] = ['queued', 'sent', 'delivered', 'failed', 'suppressed', 'opted_out'];
@@ -29,7 +31,11 @@ const OPT_OUT_HINT = /\b(stop|unsubscribe|opt.?out)\b/i;
 
 @Injectable()
 export class OutreachService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly msg91: Msg91Provider,
+  ) {}
 
   // --- Contacts -----------------------------------------------------------
 
@@ -39,12 +45,14 @@ export class OutreachService {
     search?: string;
     cityId?: string;
     status?: string;
+    businessCategory?: string;
   }): Promise<OutreachContactsPage> {
-    const { offset, limit, search, cityId, status } = query;
+    const { offset, limit, search, cityId, status, businessCategory } = query;
 
     const where: Prisma.OutreachContactWhereInput = {
       ...(cityId ? { cityId } : {}),
       ...(status ? { status: status as OutreachContact['status'] } : {}),
+      ...(businessCategory ? { businessCategory } : {}),
       ...(search
         ? {
             OR: [
@@ -72,6 +80,20 @@ export class OutreachService {
       items: rows.map((row) => this.toContactDto(row)),
       total,
     };
+  }
+
+  /** Distinct `businessCategory` values actually present, for the admin filter dropdown —
+   * derived from real data rather than a hardcoded list, so a newly-scraped category (this
+   * table currently holds "pg"/"coworking" from Google Maps, but nothing stops a future import
+   * adding others) shows up as a filter option without a code change. */
+  async listBusinessCategories(): Promise<string[]> {
+    const rows = await this.prisma.outreachContact.findMany({
+      where: { businessCategory: { not: null } },
+      select: { businessCategory: true },
+      distinct: ['businessCategory'],
+      orderBy: { businessCategory: 'asc' },
+    });
+    return rows.map((r) => r.businessCategory!).filter(Boolean);
   }
 
   /** Bulk import from a Maps pull or CSV. Upserts on googlePlaceId so re-running the same scrape
@@ -169,6 +191,68 @@ export class OutreachService {
         }),
       ),
     ]);
+  }
+
+  /** Sends the "verify your listing" WhatsApp to a bulk-imported business, so they can claim
+   * the listing bulk_upload_listings.py created for them (see ListingsService.claimListing).
+   * Not routed through OutreachCampaign/CampaignSend — this is a deliberate, one-contact,
+   * script-triggered send (bulk_upload_listings.py --send-whatsapp), not an automated recurring
+   * blast, so the full audience-resolution/audit-trail machinery doesn't apply. Still respects
+   * the same compliance gates that machinery would (MSG91_MARKETING_ENABLED, consent/
+   * suppression), since this is a cold, business-initiated contact just like a campaign send. */
+  async sendClaimVerification(contactId: string): Promise<{ sent: boolean; reason?: string }> {
+    if (this.config.get<string>('MSG91_MARKETING_ENABLED') !== 'true') {
+      return { sent: false, reason: 'Marketing sending is disabled (set MSG91_MARKETING_ENABLED=true)' };
+    }
+
+    const contact = await this.prisma.outreachContact.findUnique({
+      where: { id: contactId },
+      include: {
+        claimedListing: { select: { id: true, claimedAt: true } },
+        city: { select: { name: true } },
+        area: { select: { name: true } },
+      },
+    });
+    if (!contact) throw new NotFoundException(`Contact ${contactId} not found`);
+    if (!contact.phoneE164) return { sent: false, reason: 'No phone number on file for this contact' };
+    if (!contact.claimedListing) return { sent: false, reason: 'No claimable listing linked to this contact' };
+    if (contact.claimedListing.claimedAt) return { sent: false, reason: 'This listing has already been claimed' };
+    if (contact.consentState === 'opted_out') return { sent: false, reason: 'This contact has opted out' };
+    // The approved template's body names both — a send with either blank would either fail or
+    // read as broken to the recipient, so this is checked rather than sending "undefined".
+    if (!contact.city || !contact.area) {
+      return { sent: false, reason: 'This contact has no city/area on file' };
+    }
+
+    const suppressed = await this.prisma.suppressionEntry.findUnique({
+      where: { value: contact.phoneE164 },
+    });
+    if (suppressed) return { sent: false, reason: 'This phone number is on the suppression list' };
+
+    // Same fallback NotificationsService uses for every other outbound link — see its own calls
+    // to PUBLIC_SITE_URL.
+    const siteUrl = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const result = await this.msg91.sendListingVerificationRequest(
+      // Msg91Provider's WhatsApp methods all build `91${phone}` themselves (see
+      // NotificationsService's calls, which pass the bare User.phone, never a +91-prefixed
+      // one) — phoneE164 already carries the +91, so it's stripped here to avoid doubling it.
+      contact.phoneE164.replace(/^\+91/, ''),
+      {
+        businessName: contact.name,
+        area: contact.area.name,
+        city: contact.city.name,
+        phone: contact.phoneE164,
+        claimLink: `${siteUrl}/claim/${contact.claimedListing.id}`,
+      },
+      contact.claimedListing.id,
+    );
+    if (result.sent) {
+      await this.prisma.outreachContact.update({
+        where: { id: contactId },
+        data: { lastContactedAt: new Date(), contactedCount: { increment: 1 } },
+      });
+    }
+    return { sent: result.sent, reason: result.sent ? undefined : 'MSG91 send failed — check server logs' };
   }
 
   // --- Campaigns ----------------------------------------------------------

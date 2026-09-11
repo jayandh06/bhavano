@@ -38,6 +38,17 @@ enum ListingCondition {
   used
 }
 
+/** How the ad itself was created — admin-visible provenance, not shown to public
+ * viewers. direct = the owner posted it through the normal wizard (the only path that
+ * exists today, and the default for every row). manual/google_api are for future admin
+ * tooling (an admin-created listing, or one seeded from a Google Places import) — added
+ * now so the column exists ahead of those write paths. */
+enum ListingSource {
+  direct
+  manual
+  google_api
+}
+
 enum UserRole {
   user
   admin
@@ -298,6 +309,7 @@ model Listing {
   adminReviewed    Boolean           @default(false)
   moderatedAt      DateTime?
   condition        ListingCondition?
+  source           ListingSource     @default(direct)
   price            Int
   priceQualifier   String            @default("")
   title            String
@@ -317,6 +329,15 @@ model Listing {
   attributes       Json              @default("{}")
   ownerId          String
   owner            User              @relation(fields: [ownerId], references: [id])
+  /// Set only on a bulk-imported listing (bulk_upload_listings.py) — the OutreachContact it was
+  /// created from, so the real business's phone number can be checked against whoever tries to
+  /// claim ownership (POST /listings/:id/claim). @unique: one claimable listing per contact.
+  claimContactId   String?           @unique
+  claimContact     OutreachContact?  @relation(fields: [claimContactId], references: [id])
+  /// Null until a real claim succeeds — see ListingsService.claimListing. Distinguishes "never
+  /// claimable" (claimContactId null) from "claimable but not yet claimed" (claimedAt null) from
+  /// "claimed" (both set).
+  claimedAt        DateTime?
   relatedListingId String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -969,6 +990,10 @@ model OutreachContact {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   sends             CampaignSend[]
+  /// The bulk-imported Listing this contact's business corresponds to, if any — the other side
+  /// of Listing.claimContactId. A contact can be linked to at most one claimable listing today
+  /// (bulk_upload_listings.py creates one Listing per OutreachContact).
+  claimedListing    Listing?
 
   @@index([cityId, businessCategory])
   @@index([phoneE164])

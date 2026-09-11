@@ -34,6 +34,7 @@ export class ListOutreachContactsDto {
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsString() cityId?: string;
   @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsString() businessCategory?: string;
 }
 
 export class OutreachContactInputDto {

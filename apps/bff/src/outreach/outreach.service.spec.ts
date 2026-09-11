@@ -14,7 +14,12 @@ function makeService() {
     $transaction: jest.fn(),
   } as unknown as PrismaService;
 
-  return { service: new OutreachService(prisma), prisma };
+  const config = { get: jest.fn() } as unknown as import('@nestjs/config').ConfigService;
+  const msg91 = {
+    sendListingVerificationRequest: jest.fn(),
+  } as unknown as import('../notifications/providers/msg91.provider').Msg91Provider;
+
+  return { service: new OutreachService(prisma, config, msg91), prisma, config, msg91 };
 }
 
 function contact(overrides: Record<string, unknown> = {}) {

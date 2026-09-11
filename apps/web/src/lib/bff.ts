@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import type {
   AgentStorefrontDto,
@@ -18,6 +19,7 @@ import type {
   ListingCardDto,
   ListingCategory,
   ListingDetailDto,
+  ListingMetaDto,
   ListingSitemapEntry,
   ListingsPage,
   MessageDto,
@@ -209,10 +211,28 @@ export function fetchContactRevealSettings(): Promise<ContactRevealSettingsDto> 
   return bffFetch<ContactRevealSettingsDto>("/listings/contact-reveal-settings", { cache: "no-store" });
 }
 
-export function fetchListingById(id: string, accessToken?: string): Promise<ListingDetailDto> {
+/** app/[city]/[[...rest]]/page.tsx's page component calls this for the full listing — its
+ * generateMetadata calls fetchListingMeta below instead, a separate lean endpoint, not this one.
+ * They used to both call this function; an intentional-looking `cache()` wrap was tried to dedupe
+ * that but measured no effect (confirmed via both `next dev` and a real `next build` +
+ * standalone-server run, so not a dev-only/HMR artifact — generateMetadata and the page component
+ * just don't share React's per-request cache scope in this Next.js App Router setup). Left
+ * wrapped since it's harmless and correct for genuinely same-render callers elsewhere. */
+export const fetchListingById = cache(function fetchListingById(
+  id: string,
+  accessToken?: string,
+): Promise<ListingDetailDto> {
   return accessToken
     ? authedBffFetch(accessToken, `/listings/${id}`, { cache: "no-store" })
     : bffFetch<ListingDetailDto>(`/listings/${id}`, { cache: "no-store" });
+});
+
+/** The lean counterpart generateMetadata actually uses — see ListingMetaDto's own doc comment.
+ * Doesn't need cache()/accessToken: this endpoint is public/anonymous, nothing it returns is
+ * viewer-dependent. Still a real second network call on every listing-page load (that part is
+ * the unavoidable Next.js limitation above), just a cheap one instead of the full detail fetch. */
+export function fetchListingMeta(id: string): Promise<ListingMetaDto> {
+  return bffFetch<ListingMetaDto>(`/listings/${id}/meta`, { cache: "no-store" });
 }
 
 // TEMP(auth-gate): posting is open without login for now — see CreateListingInput/BFF for the anonymous-owner fallback.
@@ -293,6 +313,13 @@ export function deleteOwnListingPhoto(accessToken: string, listingId: string, ph
 
 export function renewListing(accessToken: string, listingId: string): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/listings/${listingId}/renew`, { method: "PATCH" });
+}
+
+/** Transfers a bulk-imported listing to the logged-in caller, if their verified phone matches
+ * the one on file for that business. Throws (400) if the listing isn't claimable or was already
+ * claimed, or (403) if the phone doesn't match. See ListingsService.claimListing. */
+export function claimListing(accessToken: string, listingId: string): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/claim`, { method: "POST" });
 }
 
 /** Unlike adding a video (which uploads a file and so must bypass Server Actions' 1MB body limit
