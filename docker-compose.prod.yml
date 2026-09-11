@@ -112,6 +112,15 @@ services:
       - ./leads_output/photos:/app/leads_output/photos:ro
     expose:
       - "4000"
+    ports:
+      # Loopback-only — not 0.0.0.0:4000 — so get_pg_coworking_leads.py /
+      # get_pg_coworking_leads_apify.py (run directly on this host, not containerized) can reach
+      # the BFF at http://localhost:4000 as docs/deployment.md documents, without exposing the
+      # BFF (which has unauthenticated-by-design endpoints like reverse-geocode, and admin
+      # endpoints gated only by JWT) to anything outside this instance. Caddy already reaches it
+      # over the internal Docker network regardless of this — this is purely for host-side
+      # scripts.
+      - "127.0.0.1:4000:4000"
     healthcheck:
       test:
         [
