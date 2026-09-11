@@ -161,6 +161,14 @@ export default function ListingDetailScreen() {
           </View>
         )}
       </View>
+      {/* Mirrors ListingDetailView.tsx's own note on web — pg/coworking's price=0 ("Contact for
+        * price") is already rendered as that literal string by the BFF's toCardDto, but the
+        * reason behind it needs spelling out so it doesn't just look like a missing price. */}
+      {listing.priceOnRequest && (
+        <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>
+          Plans and pricing vary — reach out to the owner for a quote.
+        </Text>
+      )}
 
       <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginTop: 8 }}>{listing.title}</Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
