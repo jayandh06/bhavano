@@ -1,18 +1,15 @@
 """Pull PG and coworking-space businesses via an Apify Google Maps Scraper Actor instead of
 Google's own paid Places API — a separate script from get_pg_coworking_leads.py, not a
 modification of it, so the original (already validated) Google-API-based path stays exactly as
-it was. See docs/plans/pg-coworking-scraping-api-costs.md and
-docs/plans/pg-coworking-apify-scraper.md for the cost comparison and design reasoning this was
-built after.
+it was. See docs/plans/pg-coworking-scraping-api-costs.md for the Google-side cost/field
+reasoning this was compared against.
 
-See docs/plans/pg-coworking-scraping-api-costs.md for the Google-side cost/field reasoning this
-was compared against. Reuses every Bhavano-side piece from get_pg_coworking_leads.py unchanged —
-city/area resolution, reverse-geocoding, PlacesFetchLog bookkeeping, contact import, the
---query-prefix mechanism — imported, not duplicated. Only the actual place-search mechanism
-differs: one Apify Actor run per (area, category, query-prefix) pair replaces Google's Text
-Search + Place Details + Place Photo calls combined, since the Actor's single result already
-carries phone/website/rating/photos — no separate "Details" step needed the way Google's API
-requires.
+Reuses every Bhavano-side piece from get_pg_coworking_leads.py unchanged — city/area resolution,
+reverse-geocoding, PlacesFetchLog bookkeeping, contact import, the --query-prefix mechanism —
+imported, not duplicated. Only the actual place-search mechanism differs: one Apify Actor run per
+(area, category, query-prefix) pair replaces Google's Text Search + Place Details + Place Photo
+calls combined, since the Actor's single result already carries phone/website/rating/photo(s) —
+no separate "Details" step needed the way Google's API requires.
 
 IMPORTANT — read before running this for real, not just get_pg_coworking_leads.py's usual caveats:
   - This scrapes Google Maps' own web interface via third-party automation (an Apify Actor), not
@@ -20,18 +17,25 @@ IMPORTANT — read before running this for real, not just get_pg_coworking_leads
     Google-API-based script — a deliberate decision to weigh consciously, not a default to reach
     for just because it's cheaper. See the cost-comparison plan doc for the fuller discussion.
   - Field names below (title/address/phone/website/location/totalScore/reviewsCount/categories/
-    imageUrls) are compass/crawler-google-places's documented output shape as of when this was
-    written. Apify Actors are third-party-maintained and can change their output without notice
-    — spot-check a --dry-run before trusting a real run at volume.
-  - `businessStatus` is always left null here — not confirmed to exist in this Actor's output
-    (unlike Google's Text Search, which does have it), so it's left unset rather than guessing a
-    field name that might not be real. The businessStatus admin quality-gate (refusing to create
-    a listing for a closed business) simply has nothing to check for an Apify-sourced contact
-    until this is verified against a real run.
-  - Photos: `imageUrls` are direct image links — no separate Photo API call needed, unlike
-    Google. Downloaded into the exact same <photos-dir>/photos/{googlePlaceId}_{i}.jpg layout
-    get_pg_coworking_leads.py already uses, so bulk_upload_listings.py and the admin's
-    "Create listing" action work completely unchanged regardless of which script produced them.
+    imageUrl/permanentlyClosed/temporarilyClosed) were confirmed against a real, live run's
+    output (5 "Gents PG" results in Whitefield, Bengaluru), not just the Actor's documented
+    input/output schema pages — those turned out to describe a different shape than what a real
+    run actually returns (the docs said `imageUrls`, a plural array; the real output has a
+    single `imageUrl`). Apify Actors are third-party-maintained and can change their output
+    without notice — spot-check a --dry-run before trusting a real run at volume, and don't
+    assume the documented schema matches the live one without checking.
+  - `businessStatus` is derived from the Actor's own `permanentlyClosed`/`temporarilyClosed`
+    booleans (both confirmed present in real output) — CLOSED_PERMANENTLY / CLOSED_TEMPORARILY /
+    OPERATIONAL, matching Google's own enum values so the existing businessStatus quality gate
+    in createListingFromContact works the same regardless of which script sourced the contact.
+  - Photos: a default run's output carries exactly one free `imageUrl` per place (bundled with
+    the base place scrape, confirmed live). Getting more than one requires the Actor's own
+    `maxImages` input, which its live input schema says triggers a separate "additional place
+    details scraped" charge per place — not wired up here, so --max-photos above 1 currently has
+    nothing extra to fetch; see download_apify_photos()'s own docstring. Downloaded into the
+    exact same <photos-dir>/photos/{googlePlaceId}_{i}.jpg layout get_pg_coworking_leads.py
+    already uses, so bulk_upload_listings.py and the admin's "Create listing" action work
+    unchanged regardless of which script produced them.
 
 Run: python get_pg_coworking_leads_apify.py --cities "Bengaluru,Pune" --apify-token <token>
 (or set APIFY_API_TOKEN in .env instead of passing --apify-token every time)
@@ -69,7 +73,7 @@ APIFY_API_BASE = "https://api.apify.com/v2"
 # Apify's own run-sync endpoint caps out at 300s by default; override via --actor-timeout for a
 # --max-results large enough that the Actor genuinely needs longer than that to finish.
 DEFAULT_ACTOR_TIMEOUT_SECONDS = 300
-MAX_PHOTOS_DEFAULT = 6
+MAX_PHOTOS_DEFAULT = 1
 REQUEST_DELAY_SECONDS = 0.2
 
 
@@ -118,9 +122,15 @@ def apify_search(apify_token, actor_id, query, location_text, max_results, timeo
 
 
 def download_apify_photos(image_urls, place_id, out_dir, max_photos, counter):
-    """Apify's imageUrls are already direct, downloadable image links — no photo_reference /
-    separate Photo API call needed the way Google requires. Same output layout as
-    get_pg_coworking_leads.py's own download_photos(): <out_dir>/photos/{place_id}_{i}.jpg."""
+    """Apify's image URLs are already direct, downloadable links — no photo_reference / separate
+    Photo API call needed the way Google requires. Same output layout as
+    get_pg_coworking_leads.py's own download_photos(): <out_dir>/photos/{place_id}_{i}.jpg.
+
+    A default run's output carries exactly one `imageUrl` per place, free (bundled with the base
+    place scrape) — confirmed against a real run's output, not just the docs. Getting more than
+    one requires setting the Actor's `maxImages` input, which its own live input schema states
+    triggers a separate "additional place details scraped" charge per place — not wired up here,
+    so --max-photos beyond 1 currently has nothing extra to cap; see this module's docstring."""
     photo_dir = os.path.join(out_dir, "photos")
     os.makedirs(photo_dir, exist_ok=True)
     saved_paths = []
@@ -144,9 +154,11 @@ def build_contact(city, area, category, query, place, photo_paths, city_id, area
     """Apify-field-reading twin of get_pg_coworking_leads.py's own build_contact() — same
     OutreachContactInputDto shape out, same reverse-geocode precision logic, just reading the
     Actor's field names (title/address/phone/website/location/totalScore/reviewsCount/
-    categories) instead of Google's (name/formatted_address/formatted_phone_number/website/
-    geometry/rating/user_ratings_total/types). No separate "details" param needed — Apify's one
-    result already has everything Google's Text Search + Details combined would."""
+    categories/permanentlyClosed/temporarilyClosed) instead of Google's (name/formatted_address/
+    formatted_phone_number/website/geometry/rating/user_ratings_total/types/business_status). No
+    separate "details" param needed — Apify's one result already has everything Google's Text
+    Search + Details combined would. Field names confirmed against a real run's output, not just
+    the Actor's documented input/output schema pages — see this module's own docstring."""
     location = place.get("location") or {}
     lat, lng = location.get("lat"), location.get("lng")
 
@@ -188,9 +200,11 @@ def build_contact(city, area, category, query, place, photo_paths, city_id, area
         "googleReviewCount": place.get("reviewsCount"),
         "googlePlaceId": place.get("placeId") or None,
         "businessCategory": category,
-        # Not confirmed in this Actor's documented output — see this module's own docstring.
-        # Left null rather than guessing a field name that might not exist.
-        "businessStatus": None,
+        "businessStatus": (
+            "CLOSED_PERMANENTLY" if place.get("permanentlyClosed")
+            else "CLOSED_TEMPORARILY" if place.get("temporarilyClosed")
+            else "OPERATIONAL"
+        ),
         "placesFetchLogId": places_fetch_log_id,
         "website": place.get("website") or None,
         "sourceRef": query,
@@ -250,7 +264,8 @@ def collect_city(apify_token, actor_id, city, city_id, locations, categories, ma
     for place_id, (category, query, loc, log_id, place) in seen.items():
         photo_paths = []
         if download:
-            photo_paths = download_apify_photos(place.get("imageUrls"), place_id, out_dir, max_photos, counter)
+            image_url = place.get("imageUrl")
+            photo_paths = download_apify_photos([image_url] if image_url else [], place_id, out_dir, max_photos, counter)
 
         contacts.append(
             build_contact(
@@ -315,7 +330,14 @@ def main():
     )
     parser.add_argument("--photos-dir", default="./leads_output", help="Where downloaded photos are saved (default ./leads_output)")
     parser.add_argument("--no-photos", action="store_true", help="Don't download photos at all")
-    parser.add_argument("--max-photos", type=int, default=MAX_PHOTOS_DEFAULT, help=f"Max photos to fetch per place (default {MAX_PHOTOS_DEFAULT})")
+    parser.add_argument(
+        "--max-photos",
+        type=int,
+        default=MAX_PHOTOS_DEFAULT,
+        help=f"Max photos to fetch per place (default {MAX_PHOTOS_DEFAULT}). A default Actor run "
+        "only returns 1 free image per place — going above 1 currently has nothing extra to "
+        "fetch, since the paid maxImages Actor input isn't wired up here.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Fetch and print counts, but don't write anything to the BFF")
     parser.add_argument(
         "--force",
