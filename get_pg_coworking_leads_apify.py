@@ -75,6 +75,12 @@ APIFY_API_BASE = "https://api.apify.com/v2"
 DEFAULT_ACTOR_TIMEOUT_SECONDS = 300
 MAX_PHOTOS_DEFAULT = 1
 REQUEST_DELAY_SECONDS = 0.2
+# apps/bff/src/main.ts sets no explicit JSON body-size limit, so it's Express's default 100kb —
+# easily exceeded by one city's full contact list in a single POST (confirmed in production: a
+# 413 on a city with enough contacts killed the entire run, no per-city isolation). Chunking
+# keeps each import_contacts() call comfortably under that regardless of how many contacts one
+# city produces.
+IMPORT_BATCH_SIZE = 20
 
 
 class RequestCounter:
@@ -277,6 +283,29 @@ def collect_city(apify_token, actor_id, city, city_id, locations, categories, ma
     return contacts, pair_stats
 
 
+def import_contacts_batched(bff_url, token, contacts, batch_size=IMPORT_BATCH_SIZE):
+    """Chunks contacts into batches before calling get_pg_coworking_leads.py's own
+    import_contacts() — see IMPORT_BATCH_SIZE's own comment for why. Best-effort per batch: a
+    failed batch is logged and skipped rather than raising, so one bad batch (network hiccup,
+    unexpected 413/500) doesn't lose every other already-successful city in the same run —
+    import_contacts()'s own SystemExit (on 401/403, a bad JWT) still propagates immediately,
+    since that won't fix itself on the next batch either."""
+    totals = {"created": 0, "updated": 0, "skipped": 0, "failed_batches": 0}
+    for i in range(0, len(contacts), batch_size):
+        batch = contacts[i : i + batch_size]
+        try:
+            result = import_contacts(bff_url, token, batch)
+            totals["created"] += result.get("created", 0)
+            totals["updated"] += result.get("updated", 0)
+            totals["skipped"] += result.get("skipped", 0)
+        except SystemExit:
+            raise
+        except requests.RequestException as e:
+            totals["failed_batches"] += 1
+            print(f"  warning: import batch ({len(batch)} contacts) failed: {e}", file=sys.stderr)
+    return totals
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--cities", help="Comma-separated city names, e.g. 'Bengaluru,Pune'")
@@ -367,7 +396,7 @@ def main():
 
     counter = RequestCounter()
     all_contacts = []
-    totals = {"created": 0, "updated": 0, "skipped": 0}
+    totals = {"created": 0, "updated": 0, "skipped": 0, "failed_batches": 0}
     for city in cities:
         print(f"Resolving locations for {city}...", file=sys.stderr)
         city_id, locations = resolve_locations(args.bff_url, city, args.max_areas_per_city, args.no_areas)
@@ -421,13 +450,15 @@ def main():
         # finishes meant a run interrupted partway (Ctrl+C, SSH drop, a crash) saved nothing at
         # all to OutreachContact, even for cities that had already completed successfully.
         if not args.dry_run and contacts:
-            result = import_contacts(args.bff_url, bff_token, contacts)
-            totals["created"] += result.get("created", 0)
-            totals["updated"] += result.get("updated", 0)
-            totals["skipped"] += result.get("skipped", 0)
+            result = import_contacts_batched(args.bff_url, bff_token, contacts)
+            totals["created"] += result["created"]
+            totals["updated"] += result["updated"]
+            totals["skipped"] += result["skipped"]
+            totals["failed_batches"] += result["failed_batches"]
             print(
-                f"  imported ({city}) — created: {result.get('created', 0)}, "
-                f"updated: {result.get('updated', 0)}, skipped (no phone/email): {result.get('skipped', 0)}",
+                f"  imported ({city}) — created: {result['created']}, "
+                f"updated: {result['updated']}, skipped (no phone/email): {result['skipped']}"
+                + (f", FAILED BATCHES: {result['failed_batches']}" if result["failed_batches"] else ""),
                 file=sys.stderr,
             )
 
@@ -443,6 +474,14 @@ def main():
         f"updated: {totals['updated']}, skipped (no phone/email): {totals['skipped']}",
         file=sys.stderr,
     )
+    if totals["failed_batches"]:
+        print(
+            f"WARNING: {totals['failed_batches']} import batch(es) failed outright — some scraped "
+            "contacts were NOT saved to OutreachContact. Their PlacesFetchLog rows are already "
+            "marked fetched, so a plain rerun will skip re-searching them; rerun the affected "
+            "city/cities with --force to pick them back up.",
+            file=sys.stderr,
+        )
     print("consentState defaults to 'none' — review in /outreach/contacts before campaigning.", file=sys.stderr)
 
 
