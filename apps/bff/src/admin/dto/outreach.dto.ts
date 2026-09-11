@@ -35,6 +35,7 @@ export class ListOutreachContactsDto {
   @IsOptional() @IsString() cityId?: string;
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsString() businessCategory?: string;
+  @IsOptional() @IsString() placesFetchLogId?: string;
 }
 
 export class OutreachContactInputDto {
@@ -52,6 +53,7 @@ export class OutreachContactInputDto {
   @IsOptional() @IsString() businessCategory?: string;
   @IsOptional() @IsString() businessStatus?: string;
   @IsOptional() @IsString() website?: string;
+  @IsOptional() @IsString() placesFetchLogId?: string;
   @IsOptional() @IsEnum(CONTACT_SOURCES) source?: ContactSource;
   @IsOptional() @IsString() sourceRef?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[];
@@ -130,4 +132,34 @@ export class ListOutreachCampaignsDto {
 
 export class OptOutDto {
   @IsOptional() @IsString() reason?: string;
+}
+
+export class FetchedPairsQueryDto {
+  @IsString() citySearched!: string;
+  @IsOptional() @IsString() cityId?: string;
+}
+
+export class ListPlacesFetchLogDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) offset?: number;
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100)
+  limit: number = 25;
+
+  @IsOptional() @IsString() cityId?: string;
+  @IsOptional() @IsString() businessCategory?: string;
+}
+
+export class CreatePlacesFetchLogDto {
+  @IsString() citySearched!: string;
+  @IsOptional() @IsString() cityId?: string;
+  @IsOptional() @IsString() areaSearched?: string;
+  @IsOptional() @IsString() areaId?: string;
+  @IsString() businessCategory!: string;
+  @IsString() query!: string;
+  @IsOptional() @IsNumber() minRatingFilter?: number;
+}
+
+export class UpdatePlacesFetchLogCountsDto {
+  @IsInt() @Min(0) resultsFound!: number;
+  @IsInt() @Min(0) resultsImported!: number;
 }

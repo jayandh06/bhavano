@@ -10,6 +10,8 @@ import type {
   CampaignSendsPage,
   ContactRevealSettingsDto,
   DiscountCodeDto,
+  FetchedPairDto,
+  PlacesFetchLogPage,
   ImportOutreachContactsResult,
   ListingBoostsPage,
   ListingDetailDto,
@@ -52,11 +54,15 @@ import { ListingPhotosService } from '../listings/listing-photos.service';
 import {
   CreateOutreachCampaignDto,
   CreateOutreachContactDto,
+  FetchedPairsQueryDto,
+  ListPlacesFetchLogDto,
   ImportOutreachContactsDto,
   ListCampaignSendsDto,
   ListOutreachCampaignsDto,
   ListOutreachContactsDto,
   OptOutDto,
+  CreatePlacesFetchLogDto,
+  UpdatePlacesFetchLogCountsDto,
   UpdateOutreachCampaignDto,
 } from './dto/outreach.dto';
 import { OutreachService } from '../outreach/outreach.service';
@@ -263,6 +269,36 @@ export class AdminController {
   @Get('outreach/contacts/categories')
   listOutreachContactCategories(): Promise<string[]> {
     return this.outreachService.listBusinessCategories();
+  }
+
+  /** Paginated scrape history — the admin "Scrape history" page. */
+  @Get('outreach/places-fetch-log')
+  listPlacesFetchLog(@Query() query: ListPlacesFetchLogDto): Promise<PlacesFetchLogPage> {
+    return this.outreachService.listPlacesFetchLog(query);
+  }
+
+  /** What get_pg_coworking_leads.py checks before running a Text Search — see
+   * OutreachService.listFetchedPairs. Public within admin auth, no different from the rest of
+   * this controller — the scraper already authenticates as admin to reach the import endpoint. */
+  @Get('outreach/places-fetch-log/fetched-pairs')
+  listFetchedPairs(@Query() query: FetchedPairsQueryDto): Promise<FetchedPairDto[]> {
+    return this.outreachService.listFetchedPairs(query.citySearched, query.cityId);
+  }
+
+  /** Created before the Text Search runs, so its id can be threaded onto every contact that
+   * search produces — see OutreachService.createPlacesFetchLog. */
+  @Post('outreach/places-fetch-log')
+  createPlacesFetchLog(@Body() dto: CreatePlacesFetchLogDto): Promise<{ id: string }> {
+    return this.outreachService.createPlacesFetchLog(dto);
+  }
+
+  @Patch('outreach/places-fetch-log/:id')
+  async updatePlacesFetchLogCounts(
+    @Param('id') id: string,
+    @Body() dto: UpdatePlacesFetchLogCountsDto,
+  ): Promise<{ success: true }> {
+    await this.outreachService.updatePlacesFetchLogCounts(id, dto);
+    return { success: true };
   }
 
   @Post('outreach/contacts')

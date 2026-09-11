@@ -170,6 +170,7 @@ model City {
   users     User[]
   savedSearches SavedSearch[]
   outreachContacts OutreachContact[]
+  placesFetchLogs PlacesFetchLog[]
 
   @@unique([name, state])
 }
@@ -185,6 +186,7 @@ model Area {
   listings Listing[]
   savedSearches SavedSearch[]
   outreachContacts OutreachContact[]
+  placesFetchLogs PlacesFetchLog[]
 
   @@unique([name, cityId])
   @@index([cityId])
@@ -943,6 +945,52 @@ model DiscountCodeRedemption {
 /// Outreach / marketing campaigns — see docs/plans/outreach-campaign-contacts.md
 /// ---------------------------------------------------------------------------
 
+/** A durable audit trail of every Google Places search get_pg_coworking_leads.py has run — one
+ * row per (city, area, category) query actually made, replacing the old fetched_state.json local
+ * file (see docs/plans/pg-coworking-places-fetch-log.md). Deliberately a log, not a cache: a
+ * combo that's been searched more than once (e.g. re-run with --force to pick up new listings)
+ * gets a new row each time rather than overwriting the last one, so "how many times, and when,
+ * have we searched Koramangala for pg" stays a real answerable question. "Already fetched" (the
+ * skip-unless---force check) means "does at least one row exist for this combo", same semantics
+ * the JSON file had. */
+model PlacesFetchLog {
+  id               String    @id @default(cuid())
+  /** The --cities entry as typed, always present even when it didn't resolve to a real City
+   * (an unseeded city gets searched at the city level, cityId stays null). */
+  citySearched     String
+  cityId           String?
+  city             City?     @relation(fields: [cityId], references: [id])
+  /** Null means a city-level-only query (--no-areas, or the city has no curated areas yet) —
+   * mirrors get_pg_coworking_leads.py's own CITY_LEVEL sentinel. */
+  areaSearched     String?
+  areaId           String?
+  area             Area?     @relation(fields: [areaId], references: [id])
+  businessCategory String
+  /** The literal Places Text Search query string sent to Google, e.g.
+   * "PG accommodation in Koramangala, Bengaluru" — kept for debugging a surprising result count
+   * without having to reconstruct it from the other columns. */
+  query            String
+  /** Raw Text Search result count, before any --min-rating filtering. Defaults to 0: the row is
+   * created *before* the search actually runs (see contacts' own placesFetchLogId below, which
+   * needs this row's id to exist first), then patched with the real counts once known —
+   * PATCH /admin/outreach/places-fetch-log/:id. */
+  resultsFound     Int       @default(0)
+  /** How many of those actually became new/updated OutreachContact rows — smaller than
+   * resultsFound whenever --min-rating filtered some out, or a place was already known (an
+   * upsert still counts here; this is "results that mattered", not "results that were new"). */
+  resultsImported  Int       @default(0)
+  /** Null when --min-rating wasn't used for this run. */
+  minRatingFilter  Float?
+  fetchedAt        DateTime  @default(now())
+  /** The actual contacts this specific run produced — precise, unlike matching on
+   * OutreachContact.sourceRef/query text, which can't tell apart two separate runs of the same
+   * (city, area, category) that happen to share the same query string. */
+  contacts         OutreachContact[]
+
+  @@index([cityId, areaId, businessCategory])
+  @@index([fetchedAt])
+}
+
 /** A prospective customer sourced externally (Google Maps, scraping, CSV upload) — deliberately
  * NOT a User row: these never authenticate, and mixing them into User would leak marketing
  * prospects into every auth/listing/payment query. `userId` links a prospect to the User they
@@ -982,6 +1030,12 @@ model OutreachContact {
   businessStatus    String?
   website           String?
 
+  /** The exact scrape run this contact came from — precise version of sourceRef (which just
+   * carries the query text, ambiguous across repeated --force runs of the same area). Null for
+   * anything not from get_pg_coworking_leads.py (manual/CSV imports). */
+  placesFetchLogId  String?
+  placesFetchLog    PlacesFetchLog? @relation(fields: [placesFetchLogId], references: [id])
+
   source            ContactSource
   /** The query/URL/filename that produced this row, so a bad import can be traced and undone. */
   sourceRef         String?
@@ -1015,6 +1069,7 @@ model OutreachContact {
   @@index([cityId, businessCategory])
   @@index([phoneE164])
   @@index([status])
+  @@index([placesFetchLogId])
 }
 
 /** A promotional campaign. The audience is stored as a *filter*, not a frozen contact list, so a

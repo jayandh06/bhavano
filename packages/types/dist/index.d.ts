@@ -802,6 +802,9 @@ export interface OutreachContactDto {
      * pre-migration row, or a non-Maps source) — treated as "don't block," not "known good." */
     businessStatus: string | null;
     website: string | null;
+    /** The exact scrape run this contact came from — see PlacesFetchLog. Null for anything not
+     * from get_pg_coworking_leads.py (manual/CSV imports). */
+    placesFetchLogId: string | null;
     source: ContactSource;
     sourceRef: string | null;
     status: ContactStatus;
@@ -833,6 +836,51 @@ export interface OutreachContactDto {
 }
 export interface OutreachContactsPage {
     items: OutreachContactDto[];
+    total: number;
+}
+/** One row per Google Places search get_pg_coworking_leads.py has actually run — see
+ * PlacesFetchLog in schema.prisma. A log, not a cache: the same (city, area, category) combo can
+ * have more than one row if it was ever re-searched with --force. */
+export interface PlacesFetchLogEntryDto {
+    id: string;
+    citySearched: string;
+    cityId: string | null;
+    areaSearched: string | null;
+    areaId: string | null;
+    businessCategory: string;
+    query: string;
+    resultsFound: number;
+    resultsImported: number;
+    minRatingFilter: number | null;
+    fetchedAt: string;
+}
+/** Created *before* the actual Text Search runs, specifically so its id exists in time to be
+ * threaded onto each contact that search produces (OutreachContact.placesFetchLogId) — counts
+ * aren't known yet at this point, hence no resultsFound/resultsImported here; see
+ * UpdatePlacesFetchLogCountsInput for the follow-up patch once they are. */
+export interface CreatePlacesFetchLogInput {
+    citySearched: string;
+    cityId?: string;
+    areaSearched?: string;
+    areaId?: string;
+    businessCategory: string;
+    query: string;
+    minRatingFilter?: number;
+}
+export interface UpdatePlacesFetchLogCountsInput {
+    resultsFound: number;
+    resultsImported: number;
+}
+/** One (areaId|null, businessCategory) pair per already-searched combo for a city — what
+ * get_pg_coworking_leads.py checks before querying, replacing the old fetched_state.json file.
+ * areaSearched/query/counts aren't needed for this check, just "has this combo been done at
+ * all" — a lighter response than the full log for a city with a long history. */
+export interface FetchedPairDto {
+    areaId: string | null;
+    businessCategory: string;
+}
+export interface PlacesFetchLogPage {
+    items: PlacesFetchLogEntryDto[];
     total: number;
 }
 /** Audience is a filter, not a frozen list, so a recurring campaign picks up contacts imported
@@ -918,6 +966,7 @@ export interface CreateOutreachContactInput {
     businessCategory?: string;
     businessStatus?: string;
     website?: string;
+    placesFetchLogId?: string;
     source: ContactSource;
     sourceRef?: string;
     tags?: string[];

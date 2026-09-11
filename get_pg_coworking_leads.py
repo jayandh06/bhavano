@@ -34,9 +34,14 @@ docs/plans/pg-coworking-google-places-leadgen.md for the full design and its cav
     BFF's own secret — this only works against a BFF instance whose .env has the same value,
     i.e. your local dev BFF by default. Do NOT point --bff-url at production unless you're
     certain AUTH_JWT_SECRET is identical there, which usually isn't a safe assumption).
-  - A --state-file (default ./leads_output/fetched_state.json) tracks every (city, area,
-    category) already pulled, so a later run skips it — no repeat Places API cost — unless
-    --force is passed.
+  - Every (city, area, category) query actually run gets logged into PlacesFetchLog (a real
+    table, not a local file — see the PlacesFetchLog model in schema.prisma), via
+    POST /admin/outreach/places-fetch-log: when, the exact query string, how many results Google
+    returned, how many were actually imported, and the --min-rating filter in effect. A later run
+    checks GET .../fetched-pairs first and skips anything already logged — no repeat Places API
+    cost — unless --force is passed. This replaced an earlier local fetched_state.json file,
+    specifically so fetch history is shared (queryable from the admin panel, not stranded on
+    whichever machine happened to run the scrape) rather than living on one person's laptop.
 
 Run: python get_pg_coworking_leads.py --cities "Bengaluru,Pune,Hyderabad"
 """
@@ -93,9 +98,6 @@ REQUEST_DELAY_SECONDS = 0.2
 RETRYABLE_STATUSES = {"OVER_QUERY_LIMIT", "UNKNOWN_ERROR"}
 MAX_RETRIES = 3
 JWT_TTL_SECONDS = 3600
-# "(city-level)" is a real, non-empty state-file key segment for the no-areas fallback case, so
-# it can never collide with an actual area name (which would never contain parentheses like this).
-CITY_LEVEL = "(city-level)"
 
 
 class RequestCounter:
@@ -280,10 +282,14 @@ def download_photos(api_key, place_id, photos, out_dir, max_photos, counter):
     return saved_paths
 
 
-def build_contact(city, area, category, query, details, photo_paths, city_id, area_id, bff_url=None, use_geocode=True):
+def build_contact(city, area, category, query, details, photo_paths, city_id, area_id, bff_url=None, use_geocode=True, places_fetch_log_id=None):
     """Shape a Places Details result into OutreachContactInputDto (apps/bff/src/admin/dto/
     outreach.dto.ts) — only the fields that map onto a real column; description/facilities/
     business status/local photo paths have no column of their own, so they go into `notes`.
+
+    places_fetch_log_id links this contact back to the exact PlacesFetchLog row its search came
+    from — precise, unlike sourceRef (just the query text, ambiguous across repeated --force runs
+    of the same pair). None when create_places_fetch_log() itself failed for this pair.
 
     city_id/area_id default to whichever (city, area) search query surfaced this place — accurate
     most of the time, but only as precise as Google's text-search radius for that named area. When
@@ -342,47 +348,66 @@ def build_contact(city, area, category, query, details, photo_paths, city_id, ar
         "businessStatus": details.get("business_status") or None,
         "website": details.get("website") or None,
         "sourceRef": query,
+        "placesFetchLogId": places_fetch_log_id,
         "notes": "\n".join(notes_parts),
     }
 
 
-def state_key(city, area, category):
-    return f"{city.strip().lower()}|{(area or CITY_LEVEL).strip().lower()}|{category}"
+def collect_city(api_key, city, city_id, locations, categories, max_results, out_dir, download, max_photos, counter, fetched_pairs, force, min_rating=None, bff_url=None, use_geocode=True, token=None, dry_run=False):
+    """Runs one Places Text Search per (area, category) pair not already in `fetched_pairs`
+    (unless force), deduping by place_id across every area/category combo within this city — the
+    same PG can plausibly surface from more than one neighbouring area's query — so Place Details
+    is never fetched twice for one business. Returns (contacts, pair_stats), where pair_stats
+    maps every (area, category) pair actually queried this run to
+    {"areaId", "logId", "query", "found", "imported"} — the caller PATCHes each row's real counts
+    via update_places_fetch_log_counts() once known.
 
-
-def collect_city(api_key, city, city_id, locations, categories, max_results, out_dir, download, max_photos, counter, state, force, min_rating=None, bff_url=None, use_geocode=True):
-    """Runs one Places Text Search per (area, category) pair not already in `state` (unless
-    force), deduping by place_id across every area/category combo within this city — the same
-    PG can plausibly surface from more than one neighbouring area's query — so Place Details is
-    never fetched twice for one business. Returns (contacts, pair_counts), where pair_counts
-    maps every (area, category) pair actually queried this run to how many places it found (0
-    included) — that's what the caller records into the state file.
+    A PlacesFetchLog row is created *before* that pair's Text Search runs (skipped entirely in
+    `dry_run`, which never writes to the BFF) — its id is what every contact this pair produces
+    carries as its own placesFetchLogId, which is why the row has to exist first rather than
+    being recorded after the fact the way the old fetched_state.json / counts-only version of
+    this worked.
 
     `min_rating`, if set, is applied here against the Text Search result's own `rating` field
     (the legacy API returns it directly, no separate Details call needed to see it) — a place
     below the bar, or with no rating at all, never enters `seen` and so never costs a Details or
-    Photos call either. The (area, category) pair is still marked fetched in the state file
-    either way — the filter shouldn't cause a later run to re-query the same area."""
+    Photos call either. `found` still counts it though — it reflects what Google actually
+    returned, not what survived our own filtering — the pair is still logged as fetched either
+    way, so a later run doesn't re-query it just because everything got filtered out."""
     seen = {}
-    pair_counts = {}
+    pair_stats = {}
     for loc in locations:
         for category in categories:
-            key = state_key(city, loc["area"], category)
-            if key in state and not force:
+            if (loc["areaId"], category) in fetched_pairs and not force:
                 continue
-            pair_counts[(loc["area"], category)] = 0
             query = build_query(category, city, loc["area"])
             print(f"  searching: {query}", file=sys.stderr)
-            for result in text_search(api_key, query, max_results, counter):
+            log_id = None
+            if not dry_run:
+                log_id = create_places_fetch_log(bff_url, token, {
+                    "citySearched": city,
+                    "cityId": city_id,
+                    "areaSearched": loc["area"],
+                    "areaId": loc["areaId"],
+                    "businessCategory": category,
+                    "query": query,
+                    "minRatingFilter": min_rating,
+                })
+            results = text_search(api_key, query, max_results, counter)
+            pair_stats[(loc["area"], category)] = {
+                "areaId": loc["areaId"], "logId": log_id, "query": query,
+                "found": len(results), "imported": 0,
+            }
+            for result in results:
                 place_id = result.get("place_id")
                 if not place_id or place_id in seen:
                     continue
                 if min_rating is not None and (result.get("rating") or 0) < min_rating:
                     continue
-                seen[place_id] = (category, query, loc)
+                seen[place_id] = (category, query, loc, log_id)
 
     contacts = []
-    for place_id, (category, query, loc) in seen.items():
+    for place_id, (category, query, loc, log_id) in seen.items():
         time.sleep(REQUEST_DELAY_SECONDS)
         details = place_details(api_key, place_id, counter)
         if not details:
@@ -398,11 +423,11 @@ def collect_city(api_key, city, city_id, locations, categories, max_results, out
         contacts.append(
             build_contact(
                 city, loc["area"], category, query, details, photo_paths, city_id, loc["areaId"],
-                bff_url=bff_url, use_geocode=use_geocode,
+                bff_url=bff_url, use_geocode=use_geocode, places_fetch_log_id=log_id,
             )
         )
-        pair_counts[(loc["area"], category)] += 1
-    return contacts, pair_counts
+        pair_stats[(loc["area"], category)]["imported"] += 1
+    return contacts, pair_stats
 
 
 def import_contacts(bff_url, token, contacts):
@@ -429,17 +454,66 @@ def parse_cities(args):
     return [c.strip() for c in args.cities.split(",") if c.strip()]
 
 
-def load_state(path):
-    if not os.path.exists(path):
-        return {}
-    with open(path) as f:
-        return json.load(f)
+def fetch_fetched_pairs(bff_url, token, city, city_id):
+    """GET /admin/outreach/places-fetch-log/fetched-pairs — the PlacesFetchLog-backed replacement
+    for the old local fetched_state.json. Returns a {(areaId_or_None, category), ...} set for
+    this city — matched server-side by cityId when resolved, else by citySearched text (an
+    unseeded city's fetch history is only findable by the name it was searched under, same as
+    how its OutreachContact rows have no cityId either)."""
+    try:
+        resp = requests.get(
+            f"{bff_url}/admin/outreach/places-fetch-log/fetched-pairs",
+            params={"citySearched": city, **({"cityId": city_id} if city_id else {})},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return {(p["areaId"], p["businessCategory"]) for p in resp.json()}
+    except requests.RequestException as e:
+        print(f"  warning: fetch-log lookup failed ({e}) — treating this city as never fetched", file=sys.stderr)
+        return set()
 
 
-def save_state(path, state):
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(state, f, indent=2, sort_keys=True)
+def create_places_fetch_log(bff_url, token, payload):
+    """POST /admin/outreach/places-fetch-log — called *before* the Text Search for this (area,
+    category) pair runs, specifically so the returned id can be threaded onto every contact that
+    search produces (OutreachContact.placesFetchLogId) — see build_contact()'s own
+    places_fetch_log_id param. Best-effort: on failure, returns None rather than raising — the
+    pair still gets searched, its contacts just end up with no fetch-log link (same degrade the
+    old JSON file had on a failed write), and since no row got created, a later run will
+    legitimately re-query this same pair too (it isn't in `fetched_pairs` either)."""
+    try:
+        resp = requests.post(
+            f"{bff_url}/admin/outreach/places-fetch-log",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json()["id"]
+    except requests.RequestException as e:
+        print(f"  warning: failed to create fetch-log entry for {payload.get('query')}: {e}", file=sys.stderr)
+        return None
+
+
+def update_places_fetch_log_counts(bff_url, token, log_id, results_found, results_imported):
+    """PATCH /admin/outreach/places-fetch-log/:id — fills in the counts once the pair's search +
+    detail-fetch + import cycle is done. Best-effort, same reasoning as create_places_fetch_log:
+    a failure here just leaves that row's counts at their schema default (0), which is misleading
+    but not incorrect in a way that breaks anything else (the row still exists, still blocks a
+    redundant re-fetch, and contacts are already correctly linked to it regardless)."""
+    if not log_id:
+        return
+    try:
+        resp = requests.patch(
+            f"{bff_url}/admin/outreach/places-fetch-log/{log_id}",
+            json={"resultsFound": results_found, "resultsImported": results_imported},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        print(f"  warning: failed to update fetch-log counts for {log_id}: {e}", file=sys.stderr)
 
 
 def main():
@@ -484,18 +558,11 @@ def main():
     parser.add_argument("--photos-dir", default="./leads_output", help="Where downloaded photos are saved (default ./leads_output)")
     parser.add_argument("--no-photos", action="store_true", help="Don't download photos at all")
     parser.add_argument("--max-photos", type=int, default=6, help="Max photos to fetch per place (default 6)")
-    parser.add_argument("--dry-run", action="store_true", help="Fetch and print counts, but don't POST to the BFF")
-    parser.add_argument(
-        "--state-file",
-        default="./leads_output/fetched_state.json",
-        help="Tracks which (city, area, category) triples were already fetched, so re-running "
-        "the script skips them instead of burning API quota on the same location again "
-        "(default ./leads_output/fetched_state.json)",
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Fetch and print counts, but don't write anything to the BFF (no contacts import, no fetch-log entries)")
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Refetch every requested (city, area, category) triple even if the state file says it's already done",
+        help="Refetch every requested (city, area, category) triple even if PlacesFetchLog says it's already been done",
     )
     args = parser.parse_args()
 
@@ -507,8 +574,12 @@ def main():
         raise SystemExit("GOOGLE_MAPS_SERVER_KEY not found — check .env")
 
     jwt_secret = os.environ.get("AUTH_JWT_SECRET")
-    if not args.dry_run and not jwt_secret:
+    # Needed even in --dry-run now: checking PlacesFetchLog for already-fetched pairs is an
+    # admin-guarded BFF call (unlike the plain city/area lookups above), not just something
+    # skipped by reading a local file the way the old fetched_state.json was.
+    if not jwt_secret:
         raise SystemExit("AUTH_JWT_SECRET not found — check apps/bff/.env")
+    token = mint_admin_jwt(jwt_secret)
 
     categories = [c.strip() for c in args.categories.split(",") if c.strip()]
     for c in categories:
@@ -517,7 +588,6 @@ def main():
 
     cities = parse_cities(args)
     os.makedirs(args.photos_dir, exist_ok=True)
-    state = load_state(args.state_file)
 
     counter = RequestCounter()
     all_contacts = []
@@ -527,20 +597,21 @@ def main():
         area_label = "city-level only" if len(locations) == 1 and locations[0]["area"] is None else f"{len(locations)} areas"
         print(f"  {area_label}", file=sys.stderr)
 
+        fetched_pairs = fetch_fetched_pairs(args.bff_url, token, city, city_id)
         already_done = [
             (loc["area"], cat)
             for loc in locations
             for cat in categories
-            if state_key(city, loc["area"], cat) in state
+            if (loc["areaId"], cat) in fetched_pairs
         ]
         if already_done and not args.force:
             print(
                 f"  skipping {len(already_done)} already-fetched (area, category) pairs "
-                f"(see {args.state_file}; use --force to refetch)",
+                "(see PlacesFetchLog; use --force to refetch)",
                 file=sys.stderr,
             )
 
-        contacts, pair_counts = collect_city(
+        contacts, pair_stats = collect_city(
             api_key,
             city,
             city_id,
@@ -551,26 +622,19 @@ def main():
             not args.no_photos,
             args.max_photos,
             counter,
-            state,
+            fetched_pairs,
             args.force,
             args.min_rating,
             args.bff_url,
             not args.no_reverse_geocode,
+            token,
+            args.dry_run,
         )
         all_contacts.extend(contacts)
 
-        fetched_at = datetime.now().isoformat(timespec="seconds")
-        for (area, category), count in pair_counts.items():
-            state[state_key(city, area, category)] = {
-                "city": city,
-                "area": area,
-                "category": category,
-                "fetchedAt": fetched_at,
-                "placeCount": count,
-            }
-        # Saved after every city, not just at the end, so an interrupted multi-city run still
-        # remembers the cities/areas it already finished.
-        save_state(args.state_file, state)
+        if not args.dry_run:
+            for stats in pair_stats.values():
+                update_places_fetch_log_counts(args.bff_url, token, stats["logId"], stats["found"], stats["imported"])
 
     print(f"\nFetched {len(all_contacts)} places total.", file=sys.stderr)
     print(counter.summary(), file=sys.stderr)
@@ -583,7 +647,6 @@ def main():
         print("\nNothing new to import.", file=sys.stderr)
         return
 
-    token = mint_admin_jwt(jwt_secret)
     result = import_contacts(args.bff_url, token, all_contacts)
     print(
         f"\nImported into OutreachContact — created: {result.get('created', 0)}, "

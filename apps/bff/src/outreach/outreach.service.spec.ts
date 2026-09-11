@@ -15,6 +15,12 @@ function makeService() {
     campaignSend: { groupBy: jest.fn().mockResolvedValue([]) },
     suppressionEntry: { findMany: jest.fn().mockResolvedValue([]) },
     listingNotificationLog: { create: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+    placesFetchLog: {
+      findMany: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+      update: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
+    },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
 
@@ -384,6 +390,130 @@ describe('OutreachService.listClaimVerificationSends', () => {
     ]);
     expect(prisma.listingNotificationLog.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { listingId: 'listing1', kind: 'claim_verification' } }),
+    );
+  });
+});
+
+describe('OutreachService.listFetchedPairs / createPlacesFetchLog / updatePlacesFetchLogCounts — PlacesFetchLog', () => {
+  it('matches by cityId when one was resolved', async () => {
+    const { service, prisma } = makeService();
+    (prisma.placesFetchLog.findMany as jest.Mock).mockResolvedValue([
+      { areaId: 'area1', businessCategory: 'pg' },
+    ]);
+    const result = await service.listFetchedPairs('Bengaluru', 'city1');
+    expect(result).toEqual([{ areaId: 'area1', businessCategory: 'pg' }]);
+    expect(prisma.placesFetchLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { cityId: 'city1' } }),
+    );
+  });
+
+  it('falls back to citySearched (case-insensitive) when no cityId — an unseeded city', async () => {
+    const { service, prisma } = makeService();
+    await service.listFetchedPairs('Newtown', undefined);
+    expect(prisma.placesFetchLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { cityId: null, citySearched: { equals: 'Newtown', mode: 'insensitive' } },
+      }),
+    );
+  });
+
+  it('creates a fetch-log row (no counts yet) and returns its id', async () => {
+    const { service, prisma } = makeService();
+    (prisma.placesFetchLog.create as jest.Mock).mockResolvedValue({ id: 'log1' });
+    const result = await service.createPlacesFetchLog({
+      citySearched: 'Bengaluru',
+      cityId: 'city1',
+      areaSearched: 'Koramangala',
+      areaId: 'area1',
+      businessCategory: 'pg',
+      query: 'PG accommodation in Koramangala, Bengaluru',
+      minRatingFilter: 3.5,
+    });
+    expect(result).toEqual({ id: 'log1' });
+    expect(prisma.placesFetchLog.create).toHaveBeenCalledWith({
+      data: {
+        citySearched: 'Bengaluru',
+        cityId: 'city1',
+        areaSearched: 'Koramangala',
+        areaId: 'area1',
+        businessCategory: 'pg',
+        query: 'PG accommodation in Koramangala, Bengaluru',
+        minRatingFilter: 3.5,
+      },
+      select: { id: true },
+    });
+  });
+
+  it('defaults optional fields to null rather than undefined', async () => {
+    const { service, prisma } = makeService();
+    (prisma.placesFetchLog.create as jest.Mock).mockResolvedValue({ id: 'log1' });
+    await service.createPlacesFetchLog({
+      citySearched: 'Newtown',
+      businessCategory: 'pg',
+      query: 'PG accommodation in Newtown',
+    });
+    expect(prisma.placesFetchLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        cityId: null,
+        areaSearched: null,
+        areaId: null,
+        minRatingFilter: null,
+      }),
+      select: { id: true },
+    });
+  });
+
+  it('patches an existing row with the real counts once known', async () => {
+    const { service, prisma } = makeService();
+    await service.updatePlacesFetchLogCounts('log1', { resultsFound: 20, resultsImported: 15 });
+    expect(prisma.placesFetchLog.update).toHaveBeenCalledWith({
+      where: { id: 'log1' },
+      data: { resultsFound: 20, resultsImported: 15 },
+    });
+  });
+
+  it('lists paginated, newest first, filtered by city/category when given', async () => {
+    const { service, prisma } = makeService();
+    (prisma.placesFetchLog.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'log1',
+        citySearched: 'Bengaluru',
+        cityId: 'city1',
+        areaSearched: 'Koramangala',
+        areaId: 'area1',
+        businessCategory: 'pg',
+        query: 'PG accommodation in Koramangala, Bengaluru',
+        resultsFound: 20,
+        resultsImported: 15,
+        minRatingFilter: 3.5,
+        fetchedAt: new Date('2026-09-01T00:00:00Z'),
+      },
+    ]);
+    (prisma.placesFetchLog.count as jest.Mock).mockResolvedValue(1);
+
+    const result = await service.listPlacesFetchLog({ limit: 25, cityId: 'city1', businessCategory: 'pg' });
+
+    expect(result.total).toBe(1);
+    expect(result.items).toEqual([
+      {
+        id: 'log1',
+        citySearched: 'Bengaluru',
+        cityId: 'city1',
+        areaSearched: 'Koramangala',
+        areaId: 'area1',
+        businessCategory: 'pg',
+        query: 'PG accommodation in Koramangala, Bengaluru',
+        resultsFound: 20,
+        resultsImported: 15,
+        minRatingFilter: 3.5,
+        fetchedAt: '2026-09-01T00:00:00.000Z',
+      },
+    ]);
+    expect(prisma.placesFetchLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { cityId: 'city1', businessCategory: 'pg' },
+        orderBy: [{ fetchedAt: 'desc' }, { id: 'asc' }],
+      }),
     );
   });
 });

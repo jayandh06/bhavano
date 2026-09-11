@@ -21,6 +21,10 @@ import type {
   OutreachCampaignsPage,
   OutreachContactDto,
   OutreachContactsPage,
+  FetchedPairDto,
+  PlacesFetchLogEntryDto,
+  CreatePlacesFetchLogInput,
+  UpdatePlacesFetchLogCountsInput,
   SendStatus,
   UpdateOutreachCampaignInput,
 } from '@bhavano/types';
@@ -107,13 +111,15 @@ export class OutreachService {
     cityId?: string;
     status?: string;
     businessCategory?: string;
+    placesFetchLogId?: string;
   }): Promise<OutreachContactsPage> {
-    const { offset, limit, search, cityId, status, businessCategory } = query;
+    const { offset, limit, search, cityId, status, businessCategory, placesFetchLogId } = query;
 
     const where: Prisma.OutreachContactWhereInput = {
       ...(cityId ? { cityId } : {}),
       ...(status ? { status: status as OutreachContact['status'] } : {}),
       ...(businessCategory ? { businessCategory } : {}),
+      ...(placesFetchLogId ? { placesFetchLogId } : {}),
       ...(search
         ? {
             OR: [
@@ -157,6 +163,94 @@ export class OutreachService {
     return rows.map((r) => r.businessCategory!).filter(Boolean);
   }
 
+  /** What get_pg_coworking_leads.py checks before running a Text Search for a city — replaces
+   * the old fetched_state.json file. Matched by cityId when the city resolved to a real one;
+   * falls back to citySearched (case-insensitive) for a city that hasn't been seeded yet, same
+   * as PlacesFetchLog's own write side records it. "Already fetched" means at least one row
+   * exists for that (area, category) — deliberately not deduped further here, since the caller
+   * only needs presence, not the count or history. */
+  async listFetchedPairs(citySearched: string, cityId?: string): Promise<FetchedPairDto[]> {
+    const rows = await this.prisma.placesFetchLog.findMany({
+      where: cityId
+        ? { cityId }
+        : { cityId: null, citySearched: { equals: citySearched, mode: 'insensitive' } },
+      select: { areaId: true, businessCategory: true },
+      distinct: ['areaId', 'businessCategory'],
+    });
+    return rows.map((r) => ({ areaId: r.areaId, businessCategory: r.businessCategory }));
+  }
+
+  /** Paginated, newest-first — powers the admin "Scrape history" page. Distinct from
+   * listFetchedPairs above, which is the lightweight skip-check the scraper itself calls. */
+  async listPlacesFetchLog(query: {
+    offset?: number;
+    limit: number;
+    cityId?: string;
+    businessCategory?: string;
+  }): Promise<{ items: PlacesFetchLogEntryDto[]; total: number }> {
+    const { offset, limit, cityId, businessCategory } = query;
+    const where: Prisma.PlacesFetchLogWhereInput = {
+      ...(cityId ? { cityId } : {}),
+      ...(businessCategory ? { businessCategory } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.placesFetchLog.findMany({
+        where,
+        orderBy: [{ fetchedAt: 'desc' }, { id: 'asc' }],
+        skip: offset ?? 0,
+        take: limit,
+      }),
+      this.prisma.placesFetchLog.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        citySearched: row.citySearched,
+        cityId: row.cityId,
+        areaSearched: row.areaSearched,
+        areaId: row.areaId,
+        businessCategory: row.businessCategory,
+        query: row.query,
+        resultsFound: row.resultsFound,
+        resultsImported: row.resultsImported,
+        minRatingFilter: row.minRatingFilter,
+        fetchedAt: row.fetchedAt.toISOString(),
+      })),
+      total,
+    };
+  }
+
+  /** Created *before* get_pg_coworking_leads.py actually runs the Text Search for this (area,
+   * category) pair — resultsFound/resultsImported start at their schema default (0) and get
+   * filled in by updatePlacesFetchLogCounts() once known. The id returned here is what the
+   * script threads onto every contact that search produces (OutreachContact.placesFetchLogId),
+   * which is the whole reason this is a create-then-patch flow rather than one call at the end
+   * the way the counts-only version of this worked before. */
+  async createPlacesFetchLog(input: CreatePlacesFetchLogInput): Promise<{ id: string }> {
+    const row = await this.prisma.placesFetchLog.create({
+      data: {
+        citySearched: input.citySearched,
+        cityId: input.cityId ?? null,
+        areaSearched: input.areaSearched ?? null,
+        areaId: input.areaId ?? null,
+        businessCategory: input.businessCategory,
+        query: input.query,
+        minRatingFilter: input.minRatingFilter ?? null,
+      },
+      select: { id: true },
+    });
+    return { id: row.id };
+  }
+
+  async updatePlacesFetchLogCounts(id: string, input: UpdatePlacesFetchLogCountsInput): Promise<void> {
+    await this.prisma.placesFetchLog.update({
+      where: { id },
+      data: { resultsFound: input.resultsFound, resultsImported: input.resultsImported },
+    });
+  }
+
   /** Bulk import from a Maps pull or CSV. Upserts on googlePlaceId so re-running the same scrape
    * refreshes ratings instead of duplicating businesses, and drops rows with no usable channel
    * (a contact we can't message is just noise in every audience count). */
@@ -188,6 +282,7 @@ export class OutreachService {
         googleRatingAt: raw.googleRating != null ? new Date() : null,
         businessCategory: raw.businessCategory ?? null,
         businessStatus: raw.businessStatus ?? null,
+        placesFetchLogId: raw.placesFetchLogId ?? null,
         website: raw.website ?? null,
         source: input.source,
         sourceRef: raw.sourceRef ?? input.sourceRef ?? null,
@@ -850,6 +945,7 @@ export class OutreachService {
       googlePlaceId: row.googlePlaceId,
       businessCategory: row.businessCategory,
       businessStatus: row.businessStatus,
+      placesFetchLogId: row.placesFetchLogId,
       website: row.website,
       source: row.source,
       sourceRef: row.sourceRef,
