@@ -15,6 +15,7 @@ export default async function OutreachContactsPage({
   const search = str(sp.search);
   const status = str(sp.status);
   const businessCategory = str(sp.businessCategory);
+  const placesFetchLogId = str(sp.placesFetchLogId);
   const currentPage = parsePage(str(sp.page));
   const limit = parsePageSize(str(sp.limit));
 
@@ -25,6 +26,7 @@ export default async function OutreachContactsPage({
       search,
       status,
       businessCategory,
+      placesFetchLogId,
     }),
     fetchOutreachContactCategories(accessToken),
   ]);
@@ -40,8 +42,39 @@ export default async function OutreachContactsPage({
           can&apos;t resurrect them.{" "}
           <Link href="/outreach/campaigns" style={{ color: "var(--green)", fontWeight: 700 }}>
             Campaigns →
+          </Link>{" "}
+          <Link href="/outreach/scrapes" style={{ color: "var(--green)", fontWeight: 700 }}>
+            Scrape history →
           </Link>
         </p>
+
+        {placesFetchLogId && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 16,
+              padding: "10px 14px",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              background: "var(--surface)",
+              fontSize: 13,
+            }}
+          >
+            Showing only contacts from{" "}
+            <Link href="/outreach/scrapes" style={{ fontWeight: 700, color: "var(--text)" }}>
+              this scrape run
+            </Link>
+            .
+            <Link
+              href={buildPageHref("/outreach/contacts", { ...sp, placesFetchLogId: undefined }, 1)}
+              style={{ marginLeft: "auto", color: "var(--muted)", fontWeight: 700 }}
+            >
+              Clear
+            </Link>
+          </div>
+        )}
 
         <form method="get" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
           <input

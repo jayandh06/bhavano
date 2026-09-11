@@ -36,6 +36,7 @@ import type {
   CampaignPreviewDto,
   CampaignSendsPage,
   ClaimVerificationSendDto,
+  PlacesFetchLogPage,
   CreateOutreachCampaignInput,
   UpdateOutreachCampaignInput,
   ImportOutreachContactsInput,
@@ -425,6 +426,7 @@ export interface ListOutreachContactsQuery {
   cityId?: string;
   status?: string;
   businessCategory?: string;
+  placesFetchLogId?: string;
 }
 
 export function fetchOutreachContacts(
@@ -474,6 +476,19 @@ export function sendClaimVerification(
 export function createListingFromContact(accessToken: string, contactId: string): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/admin/outreach/contacts/${contactId}/create-listing`, {
     method: "POST",
+  });
+}
+
+export function fetchPlacesFetchLog(
+  accessToken: string,
+  query: { offset?: number; limit?: number; cityId?: string; businessCategory?: string } = {},
+): Promise<PlacesFetchLogPage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value != null && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/outreach/places-fetch-log?${params.toString()}`, {
+    cache: "no-store",
   });
 }
 
