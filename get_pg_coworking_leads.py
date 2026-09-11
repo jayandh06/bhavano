@@ -11,9 +11,14 @@ docs/plans/pg-coworking-google-places-leadgen.md for the full design and its cav
     GET /locations/areas (the same one behind the SEO locality pages, seeded in
     apps/bff/prisma/seedCities.ts — "good coverage of major areas, not exhaustive", which is
     exactly the "important areas" bar to use here) and runs one query per area instead of one
-    for the whole city. cityId/areaId are set on the imported OutreachContact rows from this
-    same lookup. Falls back to a single city-level query if the city isn't in Bhavano's DB yet
-    (a brand-new city) or --no-areas is passed.
+    for the whole city. cityId/areaId on the imported OutreachContact row default to this same
+    lookup's target, then get refined per-place by reverse-geocoding that place's own exact
+    lat/lng (POST /locations/reverse-geocode — the same lookup the web app's map pin-picker
+    uses) for a precise Area match, not just "whichever area's search query happened to surface
+    it" — see reverse_geocode()/build_contact()'s own docstrings; --no-reverse-geocode disables
+    this. Falls back to a single city-level query if the city isn't in Bhavano's DB yet (a
+    brand-new city) or --no-areas is passed — reverse-geocoding still applies in that case and
+    is what actually assigns an Area at all when there was no known area to start from.
   - No "contact person name" field exists in Places API. OutreachContact has no such column
     either — the business `name` is imported as-is.
   - "description" (editorial summary) and "facilities" (Google's own category `types`, not a
@@ -148,6 +153,25 @@ def lookup_city(bff_url, city_name):
     return matches[0] if matches else None
 
 
+def reverse_geocode(bff_url, lat, lng):
+    """POST /locations/reverse-geocode — the same Google-backed lookup the web app's own map
+    pin-picker uses (apps/bff/src/locations/locations.service.ts), fed here with the Place's own
+    geometry.location instead of a manually-dropped pin. Public, no auth. Can both match an
+    *existing* Area/City and, per that service's own documented semantics, silently create a new
+    one (Area always; City only when the resolved locality+state matches nothing yet) — same
+    match-or-create policy a human posting via the map pin-picker already triggers, just applied
+    here unattended. Returns None on any failure (network error, or Google returning nothing
+    usable) — the caller falls back to the search-query's own city/area in that case."""
+    try:
+        resp = requests.post(f"{bff_url}/locations/reverse-geocode", json={"lat": lat, "lng": lng}, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException as e:
+        print(f"    warning: reverse-geocode failed ({e}) — keeping search-area assignment", file=sys.stderr)
+        return None
+    return data if data.get("areaId") else None
+
+
 def lookup_areas(bff_url, city_id):
     """GET /locations/areas?cityId=...&all=true — the full curated area list (seeded in
     apps/bff/prisma/seedCities.ts, "good coverage of major areas, not exhaustive" — that curation
@@ -256,16 +280,42 @@ def download_photos(api_key, place_id, photos, out_dir, max_photos, counter):
     return saved_paths
 
 
-def build_contact(city, area, category, query, details, photo_paths, city_id, area_id):
+def build_contact(city, area, category, query, details, photo_paths, city_id, area_id, bff_url=None, use_geocode=True):
     """Shape a Places Details result into OutreachContactInputDto (apps/bff/src/admin/dto/
     outreach.dto.ts) — only the fields that map onto a real column; description/facilities/
-    business status/local photo paths have no column of their own, so they go into `notes`."""
+    business status/local photo paths have no column of their own, so they go into `notes`.
+
+    city_id/area_id default to whichever (city, area) search query surfaced this place — accurate
+    most of the time, but only as precise as Google's text-search radius for that named area. When
+    `use_geocode` and lat/lng are available, reverse_geocode() is tried against the place's own
+    exact coordinates for a more precise Area (same lookup the map pin-picker itself uses). Its
+    city is only trusted when it agrees with the one actually searched for (or none was known yet,
+    e.g. a brand-new city) — a disagreement is kept as the original search-area assignment plus a
+    note in `notes`, rather than silently jumping the contact to an unexpected city."""
     location = (details.get("geometry") or {}).get("location") or {}
+    lat, lng = location.get("lat"), location.get("lng")
     editorial = (details.get("editorial_summary") or {}).get("overview", "")
+
+    resolved_city_id, resolved_area_id, geocode_note = city_id, area_id, None
+    if use_geocode and bff_url and lat is not None and lng is not None:
+        geo = reverse_geocode(bff_url, lat, lng)
+        if geo:
+            if city_id is None or geo.get("cityId") == city_id:
+                resolved_city_id = geo.get("cityId") or city_id
+                resolved_area_id = geo["areaId"]
+            else:
+                geocode_note = (
+                    f"Reverse-geocode placed this in '{geo.get('cityName')}' near "
+                    f"{geo.get('formattedAddress')}, not the searched city '{city}' — kept the "
+                    "search-area assignment; verify manually."
+                )
+
     notes_parts = [
         f"City searched: {city}" + (f" ({area})" if area else ""),
         f"Business status: {details.get('business_status', 'UNKNOWN')}",
     ]
+    if geocode_note:
+        notes_parts.append(geocode_note)
     if editorial:
         notes_parts.append(f"Description: {editorial}")
     types = details.get("types", [])
@@ -278,10 +328,10 @@ def build_contact(city, area, category, query, details, photo_paths, city_id, ar
         "name": details.get("name", "").strip() or "(no name)",
         "phone": details.get("formatted_phone_number") or None,
         "address": details.get("formatted_address") or None,
-        "lat": location.get("lat"),
-        "lng": location.get("lng"),
-        "cityId": city_id,
-        "areaId": area_id,
+        "lat": lat,
+        "lng": lng,
+        "cityId": resolved_city_id,
+        "areaId": resolved_area_id,
         "googleRating": details.get("rating"),
         "googleReviewCount": details.get("user_ratings_total"),
         "googlePlaceId": details.get("place_id") or None,
@@ -296,7 +346,7 @@ def state_key(city, area, category):
     return f"{city.strip().lower()}|{(area or CITY_LEVEL).strip().lower()}|{category}"
 
 
-def collect_city(api_key, city, city_id, locations, categories, max_results, out_dir, download, max_photos, counter, state, force, min_rating=None):
+def collect_city(api_key, city, city_id, locations, categories, max_results, out_dir, download, max_photos, counter, state, force, min_rating=None, bff_url=None, use_geocode=True):
     """Runs one Places Text Search per (area, category) pair not already in `state` (unless
     force), deduping by place_id across every area/category combo within this city — the same
     PG can plausibly surface from more than one neighbouring area's query — so Place Details is
@@ -342,7 +392,10 @@ def collect_city(api_key, city, city_id, locations, categories, max_results, out
             )
 
         contacts.append(
-            build_contact(city, loc["area"], category, query, details, photo_paths, city_id, loc["areaId"])
+            build_contact(
+                city, loc["area"], category, query, details, photo_paths, city_id, loc["areaId"],
+                bff_url=bff_url, use_geocode=use_geocode,
+            )
         )
         pair_counts[(loc["area"], category)] += 1
     return contacts, pair_counts
@@ -402,6 +455,15 @@ def main():
         help="Only keep places with a Google rating >= this (e.g. 4.0). Filtered out before "
         "Place Details/photos are fetched, so it also cuts API cost, not just the output. A "
         "place with no rating at all (no reviews yet) is excluded whenever this is set.",
+    )
+    parser.add_argument(
+        "--no-reverse-geocode",
+        action="store_true",
+        help="Skip reverse-geocoding each place's exact lat/lng for a precise City/Area match "
+        "(POST /locations/reverse-geocode — the same lookup the map pin-picker uses). On by "
+        "default; disabling it falls back to assigning whichever (city, area) the search query "
+        "itself targeted, which is faster and doesn't spend extra Google Geocoding API quota on "
+        "the GOOGLE_MAPS_SERVER_KEY project, but is only as precise as that query's search radius.",
     )
     parser.add_argument(
         "--no-areas",
@@ -488,6 +550,8 @@ def main():
             state,
             args.force,
             args.min_rating,
+            args.bff_url,
+            not args.no_reverse_geocode,
         )
         all_contacts.extend(contacts)
 

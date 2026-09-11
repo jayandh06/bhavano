@@ -23,6 +23,7 @@ Run: python export_outreach_contacts_for_listings.py --category pg --out leads_o
 import argparse
 import csv
 import os
+import re
 import sys
 
 import requests
@@ -37,6 +38,32 @@ load_dotenv(".env")
 # Shared with bulk_upload_listings.py, which imports these to validate rows before posting.
 POSTABLE_TRANSACTION_TYPES = {"pg": {"rent"}, "coworking": {"rent", "lease"}}
 DEFAULT_TRANSACTION_TYPE = {"pg": "rent", "coworking": "rent"}
+
+# pg's "gender" field ("Preferred for") is multi-select — packages/types/src/categoryFields.ts —
+# so more than one of these can apply at once (e.g. "Gents and Ladies" matches both). Deliberately
+# NOT matching bare "men"/"women": "women" itself contains "men" as a substring, so that would
+# tag every women-only PG as also-for-men. \b word boundaries additionally stop a keyword from
+# matching inside an unrelated longer word.
+MEN_NAME_KEYWORDS = re.compile(r"\b(gents?|boys?)\b", re.IGNORECASE)
+WOMEN_NAME_KEYWORDS = re.compile(r"\b(ladies|girls?)\b", re.IGNORECASE)
+# Covers "coliving", "co-living", "co living", "colive", "co-live", "co live".
+COLIVING_NAME_KEYWORDS = re.compile(r"\bco[\s-]?liv(?:e|ing)\b", re.IGNORECASE)
+
+
+def guess_gender(name):
+    """Best-effort "Preferred for" suggestion from a scraped business name — never a guess when
+    there's no signal at all (returns ""), and never overrides a human's own judgement: this only
+    pre-fills the CSV cell, which stays fully editable before upload. Encoded as `;`-joined values
+    for build_attributes() in bulk_upload_listings.py, which is what actually turns this into the
+    string[] the multi-select field expects."""
+    if COLIVING_NAME_KEYWORDS.search(name):
+        return "coed;men;women"
+    values = []
+    if MEN_NAME_KEYWORDS.search(name):
+        values.append("men")
+    if WOMEN_NAME_KEYWORDS.search(name):
+        values.append("women")
+    return ";".join(values)
 
 # Mirrors ListingsService.PRICE_ON_REQUEST_CATEGORIES — these are the only categories where
 # price: 0 ("Contact for price") is a valid posting, so it's the only default worth pre-filling.
@@ -150,6 +177,8 @@ def main():
             }
             for col in attr_columns:
                 row.setdefault(col, "")
+            if category == "pg" and "attr_gender" in attr_columns:
+                row["attr_gender"] = guess_gender(c.get("name") or "")
             writer.writerow(row)
 
     print(f"Wrote {len(contacts)} rows to {args.out}", file=sys.stderr)

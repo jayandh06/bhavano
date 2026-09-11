@@ -42,6 +42,14 @@ load_dotenv(".env")
 
 MAX_PHOTOS = 6
 
+# Attribute keys whose field is `multi-select` in packages/types/src/categoryFields.ts, so the
+# API needs a JSON array, not a plain string, for these — assertValidAttributes rejects a bare
+# string for a multi-select field outright. A CSV cell for one of these is `;`-joined (see
+# export_outreach_contacts_for_listings.py's guess_gender()); every other attr_ column stays a
+# plain string, same as before. Extend this set if another multi-select attribute joins the
+# pg/coworking CSV pipeline later.
+MULTI_SELECT_ATTRIBUTE_KEYS = {"gender"}
+
 
 def attribute_key(column_name):
     """"attr_sharingType_REQUIRED" -> "sharingType"; "attr_amenities" -> "amenities"."""
@@ -89,8 +97,13 @@ def build_attributes(row):
     for col in row:
         if col.startswith("attr_"):
             value = row[col].strip()
-            if value:
-                attrs[attribute_key(col)] = value
+            if not value:
+                continue
+            key = attribute_key(col)
+            if key in MULTI_SELECT_ATTRIBUTE_KEYS:
+                attrs[key] = [v.strip() for v in value.split(";") if v.strip()]
+            else:
+                attrs[key] = value
     return attrs
 
 
