@@ -296,13 +296,19 @@ def state_key(city, area, category):
     return f"{city.strip().lower()}|{(area or CITY_LEVEL).strip().lower()}|{category}"
 
 
-def collect_city(api_key, city, city_id, locations, categories, max_results, out_dir, download, max_photos, counter, state, force):
+def collect_city(api_key, city, city_id, locations, categories, max_results, out_dir, download, max_photos, counter, state, force, min_rating=None):
     """Runs one Places Text Search per (area, category) pair not already in `state` (unless
     force), deduping by place_id across every area/category combo within this city — the same
     PG can plausibly surface from more than one neighbouring area's query — so Place Details is
     never fetched twice for one business. Returns (contacts, pair_counts), where pair_counts
     maps every (area, category) pair actually queried this run to how many places it found (0
-    included) — that's what the caller records into the state file."""
+    included) — that's what the caller records into the state file.
+
+    `min_rating`, if set, is applied here against the Text Search result's own `rating` field
+    (the legacy API returns it directly, no separate Details call needed to see it) — a place
+    below the bar, or with no rating at all, never enters `seen` and so never costs a Details or
+    Photos call either. The (area, category) pair is still marked fetched in the state file
+    either way — the filter shouldn't cause a later run to re-query the same area."""
     seen = {}
     pair_counts = {}
     for loc in locations:
@@ -316,6 +322,8 @@ def collect_city(api_key, city, city_id, locations, categories, max_results, out
             for result in text_search(api_key, query, max_results, counter):
                 place_id = result.get("place_id")
                 if not place_id or place_id in seen:
+                    continue
+                if min_rating is not None and (result.get("rating") or 0) < min_rating:
                     continue
                 seen[place_id] = (category, query, loc)
 
@@ -387,6 +395,14 @@ def main():
         help="Comma-separated: pg, coworking, or both (default: both)",
     )
     parser.add_argument("--max-results", type=int, default=40, help="Max results per (area, category) query (default 40)")
+    parser.add_argument(
+        "--min-rating",
+        type=float,
+        default=None,
+        help="Only keep places with a Google rating >= this (e.g. 4.0). Filtered out before "
+        "Place Details/photos are fetched, so it also cuts API cost, not just the output. A "
+        "place with no rating at all (no reviews yet) is excluded whenever this is set.",
+    )
     parser.add_argument(
         "--no-areas",
         action="store_true",
@@ -471,6 +487,7 @@ def main():
             counter,
             state,
             args.force,
+            args.min_rating,
         )
         all_contacts.extend(contacts)
 
