@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ListingDetailDto, ListingSource } from "@bhavano/types";
+import type { ClaimSource, ListingDetailDto, ListingSource } from "@bhavano/types";
 import { formatDate } from "@/lib/formatDateTime";
 
 /** The dashboard's listing moderation queue as an actual table — was previously a card list
@@ -16,7 +16,7 @@ export function AdminListingsTable({ items }: { items: ListingDetailDto[] }) {
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
         <thead>
           <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
-            {["Title", "Status", "Source", "Notification", "Views", "Likes", "Messages", "Price", "Created", "Modified"].map(
+            {["Title", "Status", "Source", "Claimed via", "Notification", "Views", "Likes", "Messages", "Price", "Created", "Modified"].map(
               (h) => (
                 <th key={h} style={thStyle}>
                   {h}
@@ -41,6 +41,9 @@ export function AdminListingsTable({ items }: { items: ListingDetailDto[] }) {
               </td>
               <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                 <SourceBadge source={item.source} />
+              </td>
+              <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                <ClaimSourceBadge source={item.claimSource} />
               </td>
               <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                 <PostedNotificationBadge
@@ -110,6 +113,34 @@ function SourceBadge({ source }: { source?: ListingSource }) {
       }}
     >
       {SOURCE_LABELS[source]}
+    </span>
+  );
+}
+
+const CLAIM_SOURCE_LABELS: Record<ClaimSource, string> = {
+  email: "Email",
+  whatsapp: "WhatsApp",
+};
+
+/** Which outreach channel's claim link the owner actually clicked — see
+ * Listing.claimSource's doc comment. Blank for a never-claimed (or non-bulk-imported) listing —
+ * the overwhelming majority of rows. */
+function ClaimSourceBadge({ source }: { source?: ClaimSource | null }) {
+  if (!source) return dash;
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        whiteSpace: "nowrap",
+        fontSize: 11,
+        fontWeight: 700,
+        color: "var(--muted)",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        padding: "2px 8px",
+      }}
+    >
+      {CLAIM_SOURCE_LABELS[source]}
     </span>
   );
 }

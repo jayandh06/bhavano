@@ -106,12 +106,15 @@ export type ClaimListingResult =
   | { requiresLogin: false; success: true; listing: ListingDetailDto }
   | { requiresLogin: false; success: false; error: string };
 
-export async function claimListingAction(listingId: string): Promise<ClaimListingResult> {
+export async function claimListingAction(
+  listingId: string,
+  source?: "email" | "whatsapp",
+): Promise<ClaimListingResult> {
   const session = await auth();
   if (!session?.accessToken) return { requiresLogin: true };
 
   try {
-    const listing = await claimListing(session.accessToken, listingId);
+    const listing = await claimListing(session.accessToken, listingId, source);
     return { requiresLogin: false, success: true, listing };
   } catch (error) {
     if (error instanceof BffAuthError) return { requiresLogin: true };

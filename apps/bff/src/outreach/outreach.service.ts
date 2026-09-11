@@ -7,6 +7,7 @@ import type {
   CampaignPreviewDto,
   CampaignSendDto,
   CampaignSendsPage,
+  ClaimSource,
   CreateOutreachCampaignInput,
   CreateOutreachContactInput,
   ImportOutreachContactsInput,
@@ -20,6 +21,9 @@ import type {
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { Msg91Provider } from '../notifications/providers/msg91.provider';
+import { EmailProvider } from '../notifications/providers/email.provider';
+import { renderEmail } from '../notifications/emailLayout';
+import { loadTemplate, renderTemplate as renderEmailTemplate } from '../notifications/templateLoader';
 import { toE164India } from './phone';
 
 const SEND_STATUSES: SendStatus[] = ['queued', 'sent', 'delivered', 'failed', 'suppressed', 'opted_out'];
@@ -35,6 +39,7 @@ export class OutreachService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly msg91: Msg91Provider,
+    private readonly emailProvider: EmailProvider,
   ) {}
 
   // --- Contacts -----------------------------------------------------------
@@ -200,9 +205,18 @@ export class OutreachService {
    * blast, so the full audience-resolution/audit-trail machinery doesn't apply. Still respects
    * the same compliance gates that machinery would (MSG91_MARKETING_ENABLED, consent/
    * suppression), since this is a cold, business-initiated contact just like a campaign send. */
-  async sendClaimVerification(contactId: string): Promise<{ sent: boolean; reason?: string }> {
+  /** Sends the claim-verification nudge on **every** channel the contact actually has (email
+   * AND WhatsApp, not one-or-the-other) — a deliberate departure from
+   * NotificationsService.dispatchEmailPreferWhatsapp's usual email-preferred/WhatsApp-fallback
+   * rule, chosen for this flow because "claim your free business listing" is worth the
+   * redundancy. Each channel's claim link carries its own `?via=email`/`?via=whatsapp` so
+   * ListingsService.claimListing can record which one the owner actually clicked — see
+   * Listing.claimSource, surfaced as an admin column. */
+  async sendClaimVerification(
+    contactId: string,
+  ): Promise<{ sent: boolean; channels: ClaimSource[]; reason?: string }> {
     if (this.config.get<string>('MSG91_MARKETING_ENABLED') !== 'true') {
-      return { sent: false, reason: 'Marketing sending is disabled (set MSG91_MARKETING_ENABLED=true)' };
+      return { sent: false, channels: [], reason: 'Marketing sending is disabled (set MSG91_MARKETING_ENABLED=true)' };
     }
 
     const contact = await this.prisma.outreachContact.findUnique({
@@ -214,45 +228,102 @@ export class OutreachService {
       },
     });
     if (!contact) throw new NotFoundException(`Contact ${contactId} not found`);
-    if (!contact.phoneE164) return { sent: false, reason: 'No phone number on file for this contact' };
-    if (!contact.claimedListing) return { sent: false, reason: 'No claimable listing linked to this contact' };
-    if (contact.claimedListing.claimedAt) return { sent: false, reason: 'This listing has already been claimed' };
-    if (contact.consentState === 'opted_out') return { sent: false, reason: 'This contact has opted out' };
-    // The approved template's body names both — a send with either blank would either fail or
+    if (!contact.claimedListing) return { sent: false, channels: [], reason: 'No claimable listing linked to this contact' };
+    if (contact.claimedListing.claimedAt) return { sent: false, channels: [], reason: 'This listing has already been claimed' };
+    if (contact.consentState === 'opted_out') return { sent: false, channels: [], reason: 'This contact has opted out' };
+    if (!contact.phoneE164 && !contact.email) {
+      return { sent: false, channels: [], reason: 'No phone number or email on file for this contact' };
+    }
+    // The approved WhatsApp template names both — a send with either blank would either fail or
     // read as broken to the recipient, so this is checked rather than sending "undefined".
     if (!contact.city || !contact.area) {
-      return { sent: false, reason: 'This contact has no city/area on file' };
+      return { sent: false, channels: [], reason: 'This contact has no city/area on file' };
     }
 
-    const suppressed = await this.prisma.suppressionEntry.findUnique({
-      where: { value: contact.phoneE164 },
-    });
-    if (suppressed) return { sent: false, reason: 'This phone number is on the suppression list' };
-
-    // Same fallback NotificationsService uses for every other outbound link — see its own calls
-    // to PUBLIC_SITE_URL.
-    const siteUrl = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
-    const result = await this.msg91.sendListingVerificationRequest(
-      // Msg91Provider's WhatsApp methods all build `91${phone}` themselves (see
-      // NotificationsService's calls, which pass the bare User.phone, never a +91-prefixed
-      // one) — phoneE164 already carries the +91, so it's stripped here to avoid doubling it.
-      contact.phoneE164.replace(/^\+91/, ''),
-      {
-        businessName: contact.name,
-        area: contact.area.name,
-        city: contact.city.name,
-        phone: contact.phoneE164,
-        claimLink: `${siteUrl}/claim/${contact.claimedListing.id}`,
-      },
-      contact.claimedListing.id,
+    // One query for both channels' suppression status rather than two — audiences run large
+    // elsewhere in this service, same reasoning as resolveEligible's own batched lookup.
+    const suppressedValues = new Set(
+      (
+        await this.prisma.suppressionEntry.findMany({
+          where: {
+            value: { in: [contact.phoneE164, contact.email?.toLowerCase()].filter((v): v is string => !!v) },
+          },
+          select: { value: true },
+        })
+      ).map((s) => s.value),
     );
-    if (result.sent) {
-      await this.prisma.outreachContact.update({
-        where: { id: contactId },
-        data: { lastContactedAt: new Date(), contactedCount: { increment: 1 } },
-      });
+
+    const siteUrl = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const listingId = contact.claimedListing.id;
+    const channels: ClaimSource[] = [];
+
+    if (contact.email && !suppressedValues.has(contact.email.toLowerCase())) {
+      const sent = await this.sendClaimEmail(
+        { name: contact.name, email: contact.email, area: contact.area, city: contact.city },
+        listingId,
+        siteUrl,
+      );
+      if (sent) channels.push('email');
     }
-    return { sent: result.sent, reason: result.sent ? undefined : 'MSG91 send failed — check server logs' };
+
+    if (contact.phoneE164 && !suppressedValues.has(contact.phoneE164)) {
+      const result = await this.msg91.sendListingVerificationRequest(
+        // Msg91Provider's WhatsApp methods all build `91${phone}` themselves (see
+        // NotificationsService's calls, which pass the bare User.phone, never a +91-prefixed
+        // one) — phoneE164 already carries the +91, so it's stripped here to avoid doubling it.
+        contact.phoneE164.replace(/^\+91/, ''),
+        {
+          businessName: contact.name,
+          area: contact.area.name,
+          city: contact.city.name,
+          phone: contact.phoneE164,
+          claimLink: `${siteUrl}/claim/${listingId}?via=whatsapp`,
+        },
+        `${listingId}?via=whatsapp`,
+      );
+      if (result.sent) channels.push('whatsapp');
+    }
+
+    if (channels.length === 0) {
+      return {
+        sent: false,
+        channels: [],
+        reason: 'No eligible channel to send on — missing, suppressed, or every send attempt failed (check server logs)',
+      };
+    }
+
+    await this.prisma.outreachContact.update({
+      where: { id: contactId },
+      data: { lastContactedAt: new Date(), contactedCount: { increment: 1 } },
+    });
+    return { sent: true, channels };
+  }
+
+  /** The claim-verification email's content — see notification-templates/email/claim-listing/
+   * for the copy itself. BCC to support@ mirrors buildWelcomeEmailContent's own convention, so
+   * someone at support@ can see every one of these actually going out. */
+  private async sendClaimEmail(
+    contact: { name: string; email: string; area: { name: string }; city: { name: string } },
+    listingId: string,
+    siteUrl: string,
+  ): Promise<boolean> {
+    const tpl = loadTemplate('email/claim-listing');
+    const vars = { name: contact.name, area: contact.area.name, city: contact.city.name };
+    const paragraphs = tpl.paragraphs.map((p) => renderEmailTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel ? renderEmailTemplate(tpl.buttonLabel, vars) : undefined;
+    const claimUrl = `${siteUrl}/claim/${listingId}?via=email`;
+    const html = renderEmail({
+      heading: renderEmailTemplate(tpl.heading, vars),
+      preheader: renderEmailTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel ? { label: buttonLabel, url: claimUrl } : undefined,
+    });
+    const text = paragraphs.join('\n\n') + (buttonLabel ? `\n\n${buttonLabel}: ${claimUrl}` : '');
+
+    return this.emailProvider.send(contact.email, renderEmailTemplate(tpl.subject, vars), text, {
+      html,
+      bcc: 'support@bhavano.com',
+    });
   }
 
   // --- Campaigns ----------------------------------------------------------

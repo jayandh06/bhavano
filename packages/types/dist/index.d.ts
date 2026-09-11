@@ -7,6 +7,9 @@ export type ListingCondition = "new" | "used";
  * only path that exists today and the default for every row; "manual"/"google_api" are for
  * future admin tooling. Admin-visible only — see ListingDetailDto.source. */
 export type ListingSource = "direct" | "manual" | "google_api";
+/** Which outreach channel's claim link was actually clicked to complete a listing claim — see
+ * Listing.claimSource and ListingsService.claimListing. */
+export type ClaimSource = "email" | "whatsapp";
 export type UserRole = "user" | "admin";
 /** approved = normal/visible; flagged = an admin took it offline pending a fix from the
  * owner — this IS the soft-delete, there's no separate "deleted" state. */
@@ -192,6 +195,10 @@ export interface ListingDetailDto extends ListingCardDto {
     /** direct / manual / google_api — never populated outside the admin moderation queue
      * (ListingsService.listForAdmin), same precedent as messageCount above. */
     source?: ListingSource;
+    /** email / whatsapp — which outreach channel's claim link the owner actually clicked, for the
+     * admin claim-rate-by-channel breakdown. Undefined for a never-claimed listing; same
+     * admin-moderation-queue-only precedent as source above. */
+    claimSource?: ClaimSource | null;
 }
 export interface ListingRenewalDto {
     from: string;

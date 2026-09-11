@@ -5,6 +5,7 @@ import type {
   AdminListingsPage,
   AdminUsersPage,
   CampaignPreviewDto,
+  ClaimSource,
   CampaignSendsPage,
   ContactRevealSettingsDto,
   DiscountCodeDto,
@@ -283,8 +284,10 @@ export class AdminController {
     return { success: true };
   }
 
-  @Post('outreach/contacts/:id/send-claim-whatsapp')
-  sendClaimWhatsapp(@Param('id') id: string): Promise<{ sent: boolean; reason?: string }> {
+  /** Renamed from the earlier send-claim-whatsapp — sends both email and WhatsApp now, not just
+   * WhatsApp. See OutreachService.sendClaimVerification. */
+  @Post('outreach/contacts/:id/send-claim-verification')
+  sendClaimVerification(@Param('id') id: string): Promise<{ sent: boolean; channels: ClaimSource[]; reason?: string }> {
     return this.outreachService.sendClaimVerification(id);
   }
 

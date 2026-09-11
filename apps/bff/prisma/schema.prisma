@@ -49,6 +49,12 @@ enum ListingSource {
   google_api
 }
 
+/** Which outreach channel's claim link was actually clicked — see Listing.claimSource. */
+enum ClaimSource {
+  email
+  whatsapp
+}
+
 enum UserRole {
   user
   admin
@@ -338,6 +344,11 @@ model Listing {
   /// claimable" (claimContactId null) from "claimable but not yet claimed" (claimedAt null) from
   /// "claimed" (both set).
   claimedAt        DateTime?
+  /// Which outreach channel's link was actually clicked to complete the claim — set from the
+  /// `?via=` param on the claim link (email and WhatsApp each send their own tagged link to the
+  /// same listing), for the admin-visible email-vs-WhatsApp claim-rate breakdown. Null for a
+  /// claim reached without that param (e.g. someone pasted the bare /claim/<id> URL).
+  claimSource      ClaimSource?
   relatedListingId String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt

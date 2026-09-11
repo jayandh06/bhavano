@@ -155,14 +155,44 @@ their listing" needs a way to hand over a specific listing without a pre-existin
   - Env vars (scaffolded in `.env.production.example`, unset locally):
     `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME=claim_listing_pg`, `MSG91_WHATSAPP_CLAIM_NAMESPACE` left
     unset (reuses the existing `MSG91_WHATSAPP_INTEGRATED_NUMBER`).
-  - `bulk_upload_listings.py --send-whatsapp` — after each successful listing creation, calls
-    `POST /admin/outreach/contacts/:id/send-claim-whatsapp` for rows that had a `contactId`.
+  - `bulk_upload_listings.py --send-claim-verification` — after each successful listing
+    creation, calls `POST /admin/outreach/contacts/:id/send-claim-verification` for rows that
+    had a `contactId`.
   - Verified end-to-end against the local BFF with throwaway rows: the marketing-disabled gate,
     no-claimable-listing, already-claimed, opted-out, and missing-city/area rejection paths all
     return the right `reason` without ever reaching MSG91. The exact outbound request body was
     also verified byte-for-byte against the real dashboard snippet, with `fetch` stubbed to
     capture rather than send — no real network call was made, so the live MSG91 send itself is
     still unconfirmed until a real `MSG91_AUTH_KEY` is configured and a real send is tried.
+
+  **Update — sends both email and WhatsApp, not one-or-the-other**, a deliberate departure from
+  `NotificationsService.dispatchEmailPreferWhatsapp`'s usual email-preferred/WhatsApp-fallback
+  rule (chosen because "claim your free business listing" is worth the redundancy):
+  - `notification-templates/email/claim-listing/` — the email copy (bulleted benefits, matching
+    the approved WhatsApp template's structure), rendered via the existing `renderEmail`/
+    `loadTemplate` machinery, BCC'd to support@bhavano.com same as the welcome email.
+  - `Listing.claimSource` (`email`/`whatsapp`, nullable) — which channel's link was actually
+    clicked to complete the claim, driven by a `?via=` param unique to each channel's link
+    (`OutreachService.sendClaimVerification` tags each one), read by `POST /listings/:id/claim`
+    and persisted. Surfaced as a "Claimed via" column in `AdminListingsTable` — this is the
+    email-vs-WhatsApp claim-rate breakdown.
+  - Per-channel suppression checked independently (a contact's email and phone can be suppressed
+    independently of each other); `consentState: opted_out` still blocks both.
+  - Verified end-to-end: a contact with both email and phone attempts both channels (confirmed
+    via BFF logs — both `EmailProvider`'s and `Msg91Provider`'s "not configured" warnings fired,
+    template variables correctly substituted into the logged subject line); a contact with only
+    email correctly skips the WhatsApp attempt entirely rather than failing it; claiming via
+    `POST /listings/:id/claim?via=email` correctly persisted `claimSource: "email"`, confirmed
+    both directly in the DB and in the exact `GET /admin/listings` response the admin table
+    consumes.
+  - Not yet built: read/delivery-status tracking for either channel. WhatsApp has partial
+    infrastructure already (`WhatsappWebhookController` receives MSG91's delivery/read
+    callbacks, confirmed working for another notification type) but isn't correlated to this
+    send yet — `sendListingVerificationRequest`'s returned message id is currently discarded
+    rather than persisted anywhere to match a webhook event against. Email has no native
+    read-receipt path at all (raw SMTP via Zoho, not Zoho's own API) — would need a tracking
+    pixel, with the usual caveat that Apple Mail's image pre-fetching inflates "read" counts
+    industry-wide. Deliberately deferred rather than folded into this change.
 
 Verified end-to-end against the local BFF with throwaway test rows: wrong-phone claim → 403,
 matching-phone claim → 201 + ownership transferred + `OutreachContact.userId` set, re-claim →

@@ -125,14 +125,17 @@ def create_listing(bff_url, token, payload):
     return resp
 
 
-def send_claim_whatsapp(bff_url, admin_token, contact_id):
-    """POST /admin/outreach/contacts/:id/send-claim-whatsapp — see
-    OutreachService.sendClaimVerification. Requires MSG91_MARKETING_ENABLED=true and the
-    MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME/_NAMESPACE env vars set on the BFF; returns a clear
-    `reason` rather than sending if either is missing, an opt-out/suppression matches, or the
-    listing's already claimed — never raises for those, only for a genuine HTTP-level failure."""
+def send_claim_verification(bff_url, admin_token, contact_id):
+    """POST /admin/outreach/contacts/:id/send-claim-verification — see
+    OutreachService.sendClaimVerification. Sends on every channel the contact actually has
+    (email AND WhatsApp, not either/or). Requires MSG91_MARKETING_ENABLED=true plus
+    MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME/_NAMESPACE (WhatsApp) and SMTP_HOST/USER/PASS (email) set
+    on the BFF; returns a clear `reason` rather than sending if none of that's configured, an
+    opt-out/suppression matches every channel, or the listing's already claimed — never raises
+    for those, only for a genuine HTTP-level failure. Response includes `channels`: which ones
+    actually went out."""
     resp = requests.post(
-        f"{bff_url}/admin/outreach/contacts/{contact_id}/send-claim-whatsapp",
+        f"{bff_url}/admin/outreach/contacts/{contact_id}/send-claim-verification",
         headers={"Authorization": f"Bearer {admin_token}"},
         timeout=30,
     )
@@ -149,12 +152,13 @@ def main():
     parser.add_argument("--max-photos", type=int, default=MAX_PHOTOS, help=f"Max photos per listing (API caps at {MAX_PHOTOS})")
     parser.add_argument("--dry-run", action="store_true", help="Validate every row and report what would happen, without uploading anything")
     parser.add_argument(
-        "--send-whatsapp",
+        "--send-claim-verification",
         action="store_true",
-        help="After each successful listing creation, send the 'verify your listing' WhatsApp "
-        "via MSG91 to the business's phone (see OutreachService.sendClaimVerification). "
-        "Requires MSG91_MARKETING_ENABLED=true and the MSG91_WHATSAPP_CLAIM_* env vars set on "
-        "the BFF, and only applies to rows that had a contactId (skipped otherwise).",
+        help="After each successful listing creation, send the 'verify your listing' nudge on "
+        "every channel the contact has — email AND WhatsApp, not either/or (see "
+        "OutreachService.sendClaimVerification). Requires MSG91_MARKETING_ENABLED=true plus "
+        "MSG91_WHATSAPP_CLAIM_*/SMTP_* env vars set on the BFF, and only applies to rows that "
+        "had a contactId (skipped otherwise).",
     )
     args = parser.parse_args()
 
@@ -166,14 +170,14 @@ def main():
     # the admin-only outreach-import endpoint that script calls.
     token = mint_admin_jwt(jwt_secret, sub=args.owner_id, role="user")
     # Separate token, default sub/role (admin) — POST /admin/outreach/contacts/:id/send-claim-
-    # whatsapp is AdminGuard-protected, unlike listing creation above.
+    # verification is AdminGuard-protected, unlike listing creation above.
     admin_token = mint_admin_jwt(jwt_secret)
 
     with open(args.csv, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
 
     created, skipped, failed = [], [], []
-    whatsapp_sent, whatsapp_skipped = [], []
+    verification_sent, verification_skipped = [], []
     for i, row in enumerate(rows, start=1):
         label = row.get("title") or row.get("googlePlaceId") or f"row {i}"
 
@@ -200,7 +204,7 @@ def main():
         }
         if row.get("contactId", "").strip():
             # Links the listing back to its OutreachContact so the real owner can claim it later
-            # via WhatsApp + OTP — see ListingsService.claimListing.
+            # via email/WhatsApp + OTP — see ListingsService.claimListing.
             payload["claimContactId"] = row["contactId"].strip()
         if row.get("priceQualifier", "").strip():
             payload["priceQualifier"] = row["priceQualifier"].strip()
@@ -232,17 +236,18 @@ def main():
         created.append(label)
         print(f"created: {label} -> listing {listing_id}", file=sys.stderr)
 
-        if args.send_whatsapp and payload.get("claimContactId"):
+        if args.send_claim_verification and payload.get("claimContactId"):
             try:
-                result = send_claim_whatsapp(args.bff_url, admin_token, payload["claimContactId"])
+                result = send_claim_verification(args.bff_url, admin_token, payload["claimContactId"])
             except requests.RequestException as e:
-                whatsapp_skipped.append((label, f"request failed: {e}"))
+                verification_skipped.append((label, f"request failed: {e}"))
             else:
                 if result.get("sent"):
-                    whatsapp_sent.append(label)
-                    print(f"  whatsapp sent to {label}'s owner", file=sys.stderr)
+                    verification_sent.append(label)
+                    channels = ", ".join(result.get("channels", []))
+                    print(f"  sent to {label}'s owner via {channels}", file=sys.stderr)
                 else:
-                    whatsapp_skipped.append((label, result.get("reason", "unknown reason")))
+                    verification_skipped.append((label, result.get("reason", "unknown reason")))
 
     print(f"\n{len(created)} created, {len(skipped)} skipped, {len(failed)} failed.", file=sys.stderr)
     if skipped:
@@ -253,10 +258,10 @@ def main():
         print("\nFailed (API rejected these — check the error):", file=sys.stderr)
         for label, reason in failed:
             print(f"  {label}: {reason}", file=sys.stderr)
-    if args.send_whatsapp:
-        print(f"\nWhatsApp: {len(whatsapp_sent)} sent, {len(whatsapp_skipped)} not sent.", file=sys.stderr)
-        if whatsapp_skipped:
-            for label, reason in whatsapp_skipped:
+    if args.send_claim_verification:
+        print(f"\nClaim verification: {len(verification_sent)} sent, {len(verification_skipped)} not sent.", file=sys.stderr)
+        if verification_skipped:
+            for label, reason in verification_skipped:
                 print(f"  {label}: {reason}", file=sys.stderr)
 
 

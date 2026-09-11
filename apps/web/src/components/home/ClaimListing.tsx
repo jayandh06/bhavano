@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { claimListingAction } from "@/app/actions/listings";
 import { useAuthGate } from "./AuthGateProvider";
 
-/** Where a "verify your listing on Bhavano" WhatsApp link lands. Not logged in → the normal OTP
- * modal (nothing new — AuthGateProvider already auto-creates a User on first-ever OTP verify),
- * then the claim is retried in place via `onSuccess` rather than reloading this page. Success →
- * straight into the edit form, since setting a real price is the entire point of the nudge. */
-export function ClaimListing({ listingId }: { listingId: string }) {
+/** Where a "verify your listing on Bhavano" email or WhatsApp link lands. Not logged in → the
+ * normal OTP modal (nothing new — AuthGateProvider already auto-creates a User on first-ever OTP
+ * verify), then the claim is retried in place via `onSuccess` rather than reloading this page.
+ * Success → straight into the edit form, since setting a real price is the entire point of the
+ * nudge. `source` (email/whatsapp, from the page's own `?via=` param) is forwarded so the BFF can
+ * record which channel's link was actually clicked — see Listing.claimSource. */
+export function ClaimListing({ listingId, source }: { listingId: string; source?: "email" | "whatsapp" }) {
   const { requireLogin } = useAuthGate();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export function ClaimListing({ listingId }: { listingId: string }) {
 
   async function attemptClaim() {
     setError(null);
-    const result = await claimListingAction(listingId);
+    const result = await claimListingAction(listingId, source);
     if (result.requiresLogin) {
       requireLogin({ onSuccess: () => void attemptClaim() });
       return;

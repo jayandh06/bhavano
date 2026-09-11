@@ -317,9 +317,16 @@ export function renewListing(accessToken: string, listingId: string): Promise<Li
 
 /** Transfers a bulk-imported listing to the logged-in caller, if their verified phone matches
  * the one on file for that business. Throws (400) if the listing isn't claimable or was already
- * claimed, or (403) if the phone doesn't match. See ListingsService.claimListing. */
-export function claimListing(accessToken: string, listingId: string): Promise<ListingDetailDto> {
-  return authedBffFetch(accessToken, `/listings/${listingId}/claim`, { method: "POST" });
+ * claimed, or (403) if the phone doesn't match. See ListingsService.claimListing. `source`
+ * (email/whatsapp) records which outreach channel's link was actually clicked — see
+ * Listing.claimSource. */
+export function claimListing(
+  accessToken: string,
+  listingId: string,
+  source?: "email" | "whatsapp",
+): Promise<ListingDetailDto> {
+  const params = source ? `?via=${source}` : "";
+  return authedBffFetch(accessToken, `/listings/${listingId}/claim${params}`, { method: "POST" });
 }
 
 /** Unlike adding a video (which uploads a file and so must bypass Server Actions' 1MB body limit

@@ -106,11 +106,19 @@ export class ListingsController {
   }
 
   /** Not an ownership check like the routes around it — this is how a listing GETS an owner
-   * other than the Bulk Import account. See ListingsService.claimListing. */
+   * other than the Bulk Import account. See ListingsService.claimListing. `via` (email/whatsapp)
+   * comes from the claim link the outreach message sent — see OutreachService.sendClaimVerification
+   * — and is what lets the admin panel show a claim-rate-by-channel breakdown. Any other value
+   * (or none) is dropped rather than persisted, since it isn't a real ClaimSource. */
   @Post(':id/claim')
   @UseGuards(AuthGuard)
-  claim(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
-    return this.listingsService.claimListing(id, user.id);
+  claim(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+    @Query('via') via?: string,
+  ): Promise<ListingDetailDto> {
+    const source = via === 'email' || via === 'whatsapp' ? via : undefined;
+    return this.listingsService.claimListing(id, user.id, source);
   }
 
   @Post(':id/view')

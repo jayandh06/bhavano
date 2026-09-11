@@ -18,8 +18,11 @@ function makeService() {
   const msg91 = {
     sendListingVerificationRequest: jest.fn(),
   } as unknown as import('../notifications/providers/msg91.provider').Msg91Provider;
+  const emailProvider = {
+    send: jest.fn(),
+  } as unknown as import('../notifications/providers/email.provider').EmailProvider;
 
-  return { service: new OutreachService(prisma, config, msg91), prisma, config, msg91 };
+  return { service: new OutreachService(prisma, config, msg91, emailProvider), prisma, config, msg91, emailProvider };
 }
 
 function contact(overrides: Record<string, unknown> = {}) {

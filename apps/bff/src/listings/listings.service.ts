@@ -9,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type {
   AdminListingsPage,
+  ClaimSource,
   CreateListingInput,
   CreatedVideoInput,
   HomeCategoryFilter,
@@ -483,6 +484,7 @@ export class ListingsService {
         postedNotificationDeliveryStatus: row.notificationLogs[0]?.deliveryStatus ?? null,
         messageCount: row._count.conversations,
         source: row.source,
+        claimSource: row.claimSource,
       })),
       total,
     };
@@ -1342,7 +1344,7 @@ export class ListingsService {
    * being already set means it was claimed before, by design (no re-claiming/hijacking a
    * listing once it's a real owner's). Not an ownership check like every other mutation here —
    * the whole point is transferring away from the Bulk Import account, not verifying against it. */
-  async claimListing(listingId: string, userId: string): Promise<ListingDetailDto> {
+  async claimListing(listingId: string, userId: string, source?: ClaimSource): Promise<ListingDetailDto> {
     const existing = await this.prisma.listing.findUnique({
       where: { id: listingId },
       include: { claimContact: { select: { phoneE164: true } } },
@@ -1374,7 +1376,7 @@ export class ListingsService {
       }),
       this.prisma.listing.update({
         where: { id: listingId },
-        data: { ownerId: userId, claimedAt },
+        data: { ownerId: userId, claimedAt, claimSource: source },
         include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
       }),
     ]);
