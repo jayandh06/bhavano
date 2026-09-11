@@ -2,16 +2,8 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchOutreachContacts, fetchOutreachContactCategories } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams";
-import { OptOutButton } from "@/components/OptOutButton";
+import { OutreachContactsList } from "@/components/OutreachContactsList";
 import { Pagination } from "@/components/Pagination";
-import { formatDate } from "@/lib/formatDateTime";
-
-const CONSENT_COLORS: Record<string, string> = {
-  none: "var(--muted)",
-  implied: "var(--text-soft)",
-  explicit: "var(--green)",
-  opted_out: "#b3413a",
-};
 
 export default async function OutreachContactsPage({
   searchParams,
@@ -107,72 +99,7 @@ export default async function OutreachContactsPage({
           {result.total} contact{result.total === 1 ? "" : "s"}
         </p>
 
-        {result.items.length === 0 ? (
-          <p style={{ color: "var(--muted)", fontSize: 14 }}>No contacts yet — import some to get started.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {result.items.map((contact) => (
-              <div
-                key={contact.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 16,
-                  border: "1px solid var(--border)",
-                  borderRadius: 10,
-                  padding: 14,
-                  background: "var(--surface)",
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{contact.name}</span>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: CONSENT_COLORS[contact.consentState] ?? "var(--muted)",
-                        border: `1px solid ${CONSENT_COLORS[contact.consentState] ?? "var(--border)"}`,
-                        borderRadius: 6,
-                        padding: "2px 8px",
-                      }}
-                    >
-                      {contact.consentState.replace("_", " ")}
-                    </span>
-                    {contact.googleRating != null && (
-                      <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                        ★ {contact.googleRating} ({contact.googleReviewCount ?? 0})
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3 }}>
-                    {[contact.phoneE164 ?? contact.phone, contact.email, contact.cityName, contact.businessCategory]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>
-                    {contact.contactedCount === 0
-                      ? "Never contacted"
-                      : `Contacted ${contact.contactedCount}× · last ${formatDate(contact.lastContactedAt!)}`}
-                    {" · via "}
-                    {contact.source.replace("_", " ")}
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Link
-                    href={`/outreach/sends?contactId=${contact.id}`}
-                    style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}
-                  >
-                    History
-                  </Link>
-                  {contact.consentState !== "opted_out" && <OptOutButton contactId={contact.id} />}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <OutreachContactsList contacts={result.items} />
 
         <Pagination
           currentPage={currentPage}

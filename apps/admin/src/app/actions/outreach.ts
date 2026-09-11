@@ -10,9 +10,11 @@ import type {
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   createCampaign,
+  createListingFromContact,
   importOutreachContacts,
   optOutContact,
   runCampaign,
+  sendClaimVerification,
   updateCampaign,
 } from "@/lib/bff";
 import type { ActionResult } from "./admin";
@@ -41,6 +43,78 @@ export async function importContactsAction(input: ImportOutreachContactsInput): 
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Import failed" };
   }
+}
+
+export type SendClaimVerificationBulkResult = {
+  contactId: string;
+  name: string;
+  sent: boolean;
+  channels: string[];
+  reason?: string;
+};
+
+/** Multi-select follow-up for contacts a scraping/upload run didn't send claim-verification for
+ * at the time (bulk_upload_listings.py's --send-claim-verification flag is optional) — sends
+ * each selected contact through the same POST .../send-claim-verification the flag itself calls,
+ * sequentially rather than in parallel so a batch doesn't burst MSG91/SMTP all at once. Every
+ * contact's own eligibility (unclaimed linked listing, not opted out, city/area present,
+ * per-channel suppression) is still enforced server-side in OutreachService.sendClaimVerification
+ * — this loop is purely "call it once per selection," not a bypass of any of that. */
+export async function sendClaimVerificationBulkAction(
+  contacts: { id: string; name: string }[],
+): Promise<SendClaimVerificationBulkResult[]> {
+  const { accessToken } = await requireAdmin();
+  const results: SendClaimVerificationBulkResult[] = [];
+  for (const contact of contacts) {
+    try {
+      const result = await sendClaimVerification(accessToken, contact.id);
+      results.push({ contactId: contact.id, name: contact.name, ...result });
+    } catch (error) {
+      results.push({
+        contactId: contact.id,
+        name: contact.name,
+        sent: false,
+        channels: [],
+        reason: error instanceof Error ? error.message : "Request failed",
+      });
+    }
+  }
+  revalidatePath("/outreach/contacts");
+  return results;
+}
+
+export type CreateListingBulkResult = { contactId: string; name: string; ok: true; listingId: string } | {
+  contactId: string;
+  name: string;
+  ok: false;
+  error: string;
+};
+
+/** Same sequential-not-parallel reasoning as sendClaimVerificationBulkAction — a batch shouldn't
+ * burst photo uploads to R2 all at once. See OutreachService.createListingFromContact for what
+ * actually gets created: real data where scraping found it (name/city/area/lat-lng/photos), a
+ * default sharing/seat type otherwise, on the premise that the business claiming it later fills
+ * in the rest. */
+export async function createListingFromContactBulkAction(
+  contacts: { id: string; name: string }[],
+): Promise<CreateListingBulkResult[]> {
+  const { accessToken } = await requireAdmin();
+  const results: CreateListingBulkResult[] = [];
+  for (const contact of contacts) {
+    try {
+      const listing = await createListingFromContact(accessToken, contact.id);
+      results.push({ contactId: contact.id, name: contact.name, ok: true, listingId: listing.id });
+    } catch (error) {
+      results.push({
+        contactId: contact.id,
+        name: contact.name,
+        ok: false,
+        error: error instanceof Error ? error.message : "Request failed",
+      });
+    }
+  }
+  revalidatePath("/outreach/contacts");
+  return results;
 }
 
 export async function createCampaignAction(input: CreateOutreachCampaignInput): Promise<ActionResult> {

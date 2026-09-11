@@ -7,6 +7,7 @@ import type {
   Area,
   AuthSession,
   City,
+  ClaimSource,
   ContactRevealSettingsDto,
   ConversationSummaryDto,
   CreateDiscountCodeInput,
@@ -457,6 +458,21 @@ export function optOutContact(accessToken: string, contactId: string, reason?: s
   return authedBffFetch(accessToken, `/admin/outreach/contacts/${contactId}/opt-out`, {
     method: "POST",
     body: JSON.stringify({ reason }),
+  });
+}
+
+export function sendClaimVerification(
+  accessToken: string,
+  contactId: string,
+): Promise<{ sent: boolean; channels: ClaimSource[]; reason?: string }> {
+  return authedBffFetch(accessToken, `/admin/outreach/contacts/${contactId}/send-claim-verification`, {
+    method: "POST",
+  });
+}
+
+export function createListingFromContact(accessToken: string, contactId: string): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/admin/outreach/contacts/${contactId}/create-listing`, {
+    method: "POST",
   });
 }
 
