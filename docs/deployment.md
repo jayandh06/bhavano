@@ -115,8 +115,13 @@ sudo systemctl restart postgresql
 ### 5. Launch the app instance
 
 EC2 → Launch instance → Ubuntu Server 26.04 LTS (arm64) → `t4g.medium` → security group
-`bhavano-app-sg` → 20-30GB gp3 root volume, no extra file system. Allocate/associate an **Elastic
-IP** so the public address survives a stop/start.
+`bhavano-app-sg` → **at least 30GB** gp3 root volume, no extra file system. Allocate/associate an
+**Elastic IP** so the public address survives a stop/start.
+
+**Learned the hard way:** a 19-20GB root volume ran out of space mid-deploy once `web`+`bff`+`admin`
++`caddy`+`alloy`+`loki`+`grafana` were all running together (that's before ever generating a
+dangling image) — see "Resizing the app instance's root volume" below for the recovery, and start
+new instances bigger than this to skip that entirely.
 
 ### 6. Point DNS at the app instance
 
@@ -528,6 +533,57 @@ throwing away the layer cache that made the *next* build fast, trading disk spac
 time. `--volumes` additionally removes unused named volumes — run `docker volume ls` first so
 nothing unexpected gets swept up. Never run either casually on the DB instance; confirm `docker ps`
 first, since that box's only job is the builder container.
+
+**If `docker system df` / `docker builder prune` / `docker image prune` all report 0B reclaimed
+but `df -h` still shows the disk nearly full, don't trust those numbers — verify directly.** This
+app instance runs Docker with the containerd image store (`docker info | grep -i "driver-type"`
+shows `io.containerd.snapshotter.v1` rather than classic `overlay2`), and under that mode the
+prune commands' own bookkeeping doesn't always reconcile with what's actually on disk — every
+prune command can genuinely return `0B` while real usage sits at 90%+. Skip straight to checking
+the filesystem itself:
+```bash
+docker info 2>/dev/null | grep -i "root dir"     # confirms /var/lib/docker vs elsewhere
+sudo du -xh / 2>/dev/null | sort -rh | head -30  # -x stays on this filesystem, doesn't cross into /boot
+docker images -a                                  # newer CLI table shows an explicit "U" (in use) column per image
+```
+If every image shown is genuinely `U` (in use) by a running container, there's nothing left to
+safely prune — the disk is just full of real, currently-needed data, not cruft. At that point the
+fix isn't a better prune command, it's more disk — see the next section.
+
+## Resizing the app instance's root volume
+
+For when cleanup genuinely won't free enough — every image is legitimately in use, and the disk is
+just too small for what's actually running. This is an online resize; no stop, no reboot, no
+downtime for the running containers.
+
+### 1. Check the current layout first
+
+```bash
+lsblk
+df -hT /
+```
+Confirms which disk/partition `/` actually lives on (on this instance: disk `nvme0n1`, partition 1
+→ device `/dev/nvme0n1p1`, filesystem `ext4`) — don't assume these names without checking, they're
+not the same on every instance type.
+
+### 2. Grow the EBS volume itself
+
+AWS Console → EC2 → Volumes → find the app instance's root volume → **Actions → Modify volume** →
+increase the size (e.g. 20GB → 40GB) → confirm. The volume state moves through
+`modifying` → `optimizing` (a background performance-tuning pass that can take hours) →
+`completed` — **you don't need to wait for `completed`**; the new size is usable as soon as the
+console shows the bigger number, "optimizing" doesn't block anything.
+
+### 3. Extend the partition, then the filesystem, on the instance
+
+```bash
+sudo growpart /dev/nvme0n1 1      # extend partition 1 to fill the newly-grown disk
+sudo resize2fs /dev/nvme0n1p1     # extend the ext4 filesystem to fill the now-larger partition
+df -h                              # confirm `/` now shows the new size
+```
+(If `df -hT /` in step 1 showed `xfs` instead of `ext4`, the last command is `sudo xfs_growfs /`
+instead of `resize2fs`.) Both commands are safe to run against the live, mounted root filesystem —
+no unmounting, no downtime for the containers already running.
 
 ## Logging & observability (Loki + Grafana)
 
