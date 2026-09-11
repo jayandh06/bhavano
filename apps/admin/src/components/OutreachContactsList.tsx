@@ -27,7 +27,10 @@ const DIRECT_CREATE_CATEGORIES = new Set(["pg", "coworking"]);
  * are mutually exclusive once combined with "already claimed"): "Create listing" for one that's
  * never had one made yet, "Send claim verification" for one that has an unclaimed listing
  * already. Both mirror the eligibility OutreachService itself enforces server-side, so a row
- * offered here never just comes back with a generic failure reason. */
+ * offered here never just comes back with a generic failure reason.
+ *
+ * Table, not cards — matches AdminListingsTable.tsx's own convention (that one's th/tdStyle
+ * aren't exported, so these are a local copy of the same values rather than a shared import). */
 export function OutreachContactsList({ contacts }: { contacts: OutreachContactDto[] }) {
   const [selectedForCreate, setSelectedForCreate] = useState<Set<string>>(new Set());
   const [selectedForSend, setSelectedForSend] = useState<Set<string>>(new Set());
@@ -37,7 +40,13 @@ export function OutreachContactsList({ contacts }: { contacts: OutreachContactDt
   const [sendResults, setSendResults] = useState<SendClaimVerificationBulkResult[] | null>(null);
 
   const createEligible = contacts.filter(
-    (c) => !c.hasListing && c.consentState !== "opted_out" && DIRECT_CREATE_CATEGORIES.has(c.businessCategory ?? ""),
+    (c) =>
+      !c.hasListing &&
+      c.consentState !== "opted_out" &&
+      DIRECT_CREATE_CATEGORIES.has(c.businessCategory ?? "") &&
+      // null (unknown) is left through — this only excludes a business Google has actually
+      // told us is closed, never one we simply haven't checked.
+      (!c.businessStatus || c.businessStatus === "OPERATIONAL"),
   );
   const sendEligible = contacts.filter((c) => c.hasClaimableListing && c.consentState !== "opted_out");
   const allCreateSelected = createEligible.length > 0 && createEligible.every((c) => selectedForCreate.has(c.id));
@@ -166,48 +175,53 @@ export function OutreachContactsList({ contacts }: { contacts: OutreachContactDt
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {contacts.map((contact) => {
-          const creatable = createEligible.includes(contact);
-          const sendable = sendEligible.includes(contact);
-          return (
-            <div
-              key={contact.id}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 16,
-                border: "1px solid var(--border)",
-                borderRadius: 10,
-                padding: 14,
-                background: "var(--surface)",
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
-                {creatable ? (
-                  <input
-                    type="checkbox"
-                    checked={selectedForCreate.has(contact.id)}
-                    onChange={() => toggle(setSelectedForCreate, contact.id)}
-                    aria-label={`Select ${contact.name} to create a listing`}
-                  />
-                ) : sendable ? (
-                  <input
-                    type="checkbox"
-                    checked={selectedForSend.has(contact.id)}
-                    onChange={() => toggle(setSelectedForSend, contact.id)}
-                    aria-label={`Select ${contact.name} to send claim verification`}
-                  />
-                ) : (
-                  // Reserves the same width as a real checkbox — keeps names aligned in a mixed
-                  // list of selectable/non-selectable rows instead of a ragged left edge.
-                  <span style={{ width: 13, flexShrink: 0 }} />
-                )}
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{contact.name}</span>
+      <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+          <thead>
+            <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
+              <th style={thStyle} />
+              <th style={thStyle}>Name</th>
+              <th style={thStyle}>Listing</th>
+              <th style={thStyle}>Notification</th>
+              <th style={thStyle}>Consent</th>
+              <th style={thStyle}>Rating</th>
+              <th style={thStyle}>Contact</th>
+              <th style={thStyle}>City / category</th>
+              <th style={thStyle}>Source</th>
+              <th style={thStyle} />
+            </tr>
+          </thead>
+          <tbody>
+            {contacts.map((contact) => {
+              const creatable = createEligible.includes(contact);
+              const sendable = sendEligible.includes(contact);
+              return (
+                <tr key={contact.id} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td style={{ ...tdStyle, width: 1 }}>
+                    {creatable ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedForCreate.has(contact.id)}
+                        onChange={() => toggle(setSelectedForCreate, contact.id)}
+                        aria-label={`Select ${contact.name} to create a listing`}
+                      />
+                    ) : sendable ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedForSend.has(contact.id)}
+                        onChange={() => toggle(setSelectedForSend, contact.id)}
+                        aria-label={`Select ${contact.name} to send claim verification`}
+                      />
+                    ) : null}
+                  </td>
+                  <td style={{ ...tdStyle, fontWeight: 700, maxWidth: 220 }}>{contact.name}</td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                    <ListingStatus contact={contact} />
+                  </td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                    <NotificationStatus contact={contact} />
+                  </td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                     <span
                       style={{
                         fontSize: 11,
@@ -220,47 +234,106 @@ export function OutreachContactsList({ contacts }: { contacts: OutreachContactDt
                     >
                       {contact.consentState.replace("_", " ")}
                     </span>
-                    {contact.googleRating != null && (
-                      <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                        ★ {contact.googleRating} ({contact.googleReviewCount ?? 0})
-                      </span>
-                    )}
-                    {contact.hasClaimableListing && (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gold, #b8860b)" }}>
-                        Unclaimed listing
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3 }}>
-                    {[contact.phoneE164 ?? contact.phone, contact.email, contact.cityName, contact.businessCategory]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>
-                    {contact.contactedCount === 0
-                      ? "Never contacted"
-                      : `Contacted ${contact.contactedCount}× · last ${formatDate(contact.lastContactedAt!)}`}
-                    {" · via "}
-                    {contact.source.replace("_", " ")}
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Link
-                  href={`/outreach/sends?contactId=${contact.id}`}
-                  style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}
-                >
-                  History
-                </Link>
-                {contact.consentState !== "opted_out" && <OptOutButton contactId={contact.id} />}
-              </div>
-            </div>
-          );
-        })}
+                  </td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                    <RatingCell contact={contact} />
+                  </td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                    {[contact.phoneE164 ?? contact.phone, contact.email].filter(Boolean).join(" · ") || dash}
+                  </td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                    {[contact.cityName, contact.businessCategory].filter(Boolean).join(" · ") || dash}
+                  </td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{contact.source.replace("_", " ")}</td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <Link
+                        href={`/outreach/sends?contactId=${contact.id}`}
+                        style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}
+                      >
+                        History
+                      </Link>
+                      {contact.consentState !== "opted_out" && <OptOutButton contactId={contact.id} />}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
+
+const dash = <span style={{ color: "var(--muted)" }}>—</span>;
+
+/** All three states are real, queryable facts (hasListing/hasClaimableListing), unlike the
+ * Notification column next to it — this one isn't hedged. */
+function ListingStatus({ contact }: { contact: OutreachContactDto }) {
+  if (!contact.hasListing) return dash;
+  if (contact.hasClaimableListing) {
+    return (
+      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gold, #b8860b)" }}>Created — unclaimed</span>
+    );
+  }
+  return <span style={{ fontSize: 11, fontWeight: 700, color: "var(--green)" }}>Claimed</span>;
+}
+
+const CLOSED_STATUSES = new Set(["CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
+/** Soft warning only — never blocks selection the way businessStatus does. A low rating is a
+ * judgement call (a genuinely good PG can have a mediocre Google rating), not a fact like
+ * "closed", so this just asks the admin to look twice rather than refusing the action. */
+const LOW_RATING_THRESHOLD = 3.5;
+
+function RatingCell({ contact }: { contact: OutreachContactDto }) {
+  if (contact.businessStatus && CLOSED_STATUSES.has(contact.businessStatus)) {
+    return (
+      <span style={{ fontSize: 11, fontWeight: 700, color: "#b3413a" }}>
+        {contact.businessStatus === "CLOSED_PERMANENTLY" ? "Closed permanently" : "Closed temporarily"}
+      </span>
+    );
+  }
+  if (contact.googleRating == null) return dash;
+  const low = contact.googleRating < LOW_RATING_THRESHOLD;
+  return (
+    <span style={{ color: low ? "#b3413a" : undefined, fontWeight: low ? 700 : undefined }}>
+      ★ {contact.googleRating} ({contact.googleReviewCount ?? 0})
+    </span>
+  );
+}
+
+/** "Success" only appears once claimedViaChannel is set — a claim is the one thing that actually
+ * proves a send was delivered and acted on. Short of that, "Sent Nx" is genuinely all that's
+ * known: OutreachContact.contactedCount/lastContactedAt is a coarse attempt counter that
+ * conflates email and WhatsApp and was recorded even when the *other* channel silently failed.
+ * There is deliberately no "Failed" state rendered here — nothing distinguishes a failed send
+ * from a delivered-but-ignored one in what's persisted today (see
+ * docs/plans/outreach-direct-listing-creation.md). */
+function NotificationStatus({ contact }: { contact: OutreachContactDto }) {
+  if (contact.claimedViaChannel) {
+    return (
+      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--green)" }}>
+        Success — via {contact.claimedViaChannel}
+      </span>
+    );
+  }
+  if (contact.contactedCount === 0) return <span style={{ color: "var(--muted)" }}>Not sent</span>;
+  return (
+    <span style={{ color: "var(--muted)" }}>
+      Sent {contact.contactedCount}× · {formatDate(contact.lastContactedAt!)}
+    </span>
+  );
+}
+
+const thStyle: CSSProperties = {
+  padding: "10px 12px",
+  fontSize: 11.5,
+  fontWeight: 700,
+  color: "var(--muted)",
+  whiteSpace: "nowrap",
+};
+const tdStyle: CSSProperties = { padding: "9px 12px", verticalAlign: "top" };
 
 const toolbarStyle: CSSProperties = {
   display: "flex",

@@ -35,6 +35,7 @@ import type {
   OutreachCampaignDto,
   CampaignPreviewDto,
   CampaignSendsPage,
+  ClaimVerificationSendDto,
   CreateOutreachCampaignInput,
   UpdateOutreachCampaignInput,
   ImportOutreachContactsInput,
@@ -531,4 +532,13 @@ export function fetchCampaignSends(
     if (value != null && value !== "") params.set(key, String(value));
   }
   return authedBffFetch(accessToken, `/admin/outreach/sends?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchClaimVerificationSends(
+  accessToken: string,
+  contactId: string,
+): Promise<ClaimVerificationSendDto[]> {
+  return authedBffFetch(accessToken, `/admin/outreach/contacts/${contactId}/notification-log`, {
+    cache: "no-store",
+  });
 }
