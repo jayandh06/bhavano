@@ -904,6 +904,9 @@ export interface OutreachContactDto {
   googleRatingAt: string | null;
   googlePlaceId: string | null;
   businessCategory: string | null;
+  /** Google's OPERATIONAL / CLOSED_TEMPORARILY / CLOSED_PERMANENTLY. Null means unknown (a
+   * pre-migration row, or a non-Maps source) — treated as "don't block," not "known good." */
+  businessStatus: string | null;
   website: string | null;
   source: ContactSource;
   sourceRef: string | null;
@@ -926,6 +929,13 @@ export interface OutreachContactDto {
    * this is what the admin UI's "create listing directly" action (createListingFromContact) is
    * offered for, since Listing.claimContactId is unique: at most one listing per contact ever. */
   hasListing: boolean;
+  /** Which channel's claim link was actually clicked — set only once the listing is genuinely
+   * claimed (mirrors Listing.claimSource, which is null both before a claim and, rarely, on a
+   * claim reached without a ?via= param). This is the one place a notification's *success* is
+   * provable today: a claim proves that specific send was delivered and acted on. There's no
+   * equivalent "failed" signal — a send that was delivered but ignored and a send that silently
+   * failed both just look like "sent, not yet claimed" (contactedCount > 0, this still null). */
+  claimedViaChannel: ClaimSource | null;
 }
 
 export interface OutreachContactsPage {
@@ -984,6 +994,24 @@ export interface CampaignSendDto {
   createdAt: string;
 }
 
+/** One row per channel attempted for a claim-verification send — ListingNotificationLog with
+ * kind: "claim_verification", surfaced for the admin contacts page's "History" link (the same
+ * link CampaignSend-backed campaign sends already use, extended to show this too — see
+ * apps/admin/src/app/outreach/sends/page.tsx). Unlike CampaignSend, there's no separate
+ * `failed`/`sent`/`delivered` enum here: `deliveryStatus` starts null (sent, nothing further
+ * known) or "failed" (the provider call itself errored, set immediately at write time), and for
+ * WhatsApp only, WhatsappWebhookController advances it to "delivered"/"read" as MSG91 reports
+ * status — email has no equivalent webhook, so its deliveryStatus never moves past its initial
+ * value. */
+export interface ClaimVerificationSendDto {
+  id: string;
+  channel: string;
+  sentAt: string;
+  providerMessageId: string | null;
+  deliveryStatus: string | null;
+  deliveryStatusAt: string | null;
+}
+
 export interface CampaignSendsPage {
   items: CampaignSendDto[];
   total: number;
@@ -1002,6 +1030,7 @@ export interface CreateOutreachContactInput {
   googleReviewCount?: number;
   googlePlaceId?: string;
   businessCategory?: string;
+  businessStatus?: string;
   website?: string;
   source: ContactSource;
   sourceRef?: string;

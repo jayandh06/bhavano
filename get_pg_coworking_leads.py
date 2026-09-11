@@ -336,6 +336,10 @@ def build_contact(city, area, category, query, details, photo_paths, city_id, ar
         "googleReviewCount": details.get("user_ratings_total"),
         "googlePlaceId": details.get("place_id") or None,
         "businessCategory": category,
+        # Structured now (also still folded into `notes` as text above, for anyone reading the
+        # freeform history) — the admin "Create listing" bulk action refuses anything but
+        # OPERATIONAL/unknown, see OutreachService.createListingFromContact.
+        "businessStatus": details.get("business_status") or None,
         "website": details.get("website") or None,
         "sourceRef": query,
         "notes": "\n".join(notes_parts),

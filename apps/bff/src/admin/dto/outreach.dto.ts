@@ -50,6 +50,7 @@ export class OutreachContactInputDto {
   @IsOptional() @IsInt() googleReviewCount?: number;
   @IsOptional() @IsString() googlePlaceId?: string;
   @IsOptional() @IsString() businessCategory?: string;
+  @IsOptional() @IsString() businessStatus?: string;
   @IsOptional() @IsString() website?: string;
   @IsOptional() @IsEnum(CONTACT_SOURCES) source?: ContactSource;
   @IsOptional() @IsString() sourceRef?: string;

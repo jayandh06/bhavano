@@ -6,6 +6,7 @@ import type {
   AdminUsersPage,
   CampaignPreviewDto,
   ClaimSource,
+  ClaimVerificationSendDto,
   CampaignSendsPage,
   ContactRevealSettingsDto,
   DiscountCodeDto,
@@ -295,6 +296,11 @@ export class AdminController {
   @Post('outreach/contacts/:id/create-listing')
   createListingFromContact(@Param('id') id: string): Promise<ListingDetailDto> {
     return this.outreachService.createListingFromContact(id);
+  }
+
+  @Get('outreach/contacts/:id/notification-log')
+  listClaimVerificationSends(@Param('id') id: string): Promise<ClaimVerificationSendDto[]> {
+    return this.outreachService.listClaimVerificationSends(id);
   }
 
   // --- Campaigns ----------------------------------------------------------

@@ -11,6 +11,7 @@ import type {
   CampaignSendDto,
   CampaignSendsPage,
   ClaimSource,
+  ClaimVerificationSendDto,
   CreateOutreachCampaignInput,
   CreateOutreachContactInput,
   ImportOutreachContactsInput,
@@ -128,7 +129,7 @@ export class OutreachService {
     const [rows, total] = await Promise.all([
       this.prisma.outreachContact.findMany({
         where,
-        include: { city: true, area: true, claimedListing: { select: { claimedAt: true } } },
+        include: { city: true, area: true, claimedListing: { select: { claimedAt: true, claimSource: true } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip: offset ?? 0,
         take: limit,
@@ -186,6 +187,7 @@ export class OutreachService {
         googleReviewCount: raw.googleReviewCount ?? null,
         googleRatingAt: raw.googleRating != null ? new Date() : null,
         businessCategory: raw.businessCategory ?? null,
+        businessStatus: raw.businessStatus ?? null,
         website: raw.website ?? null,
         source: input.source,
         sourceRef: raw.sourceRef ?? input.sourceRef ?? null,
@@ -319,6 +321,16 @@ export class OutreachService {
         siteUrl,
       );
       if (sent) channels.push('email');
+      // Every attempt gets a row, success or failure — not just the ones that went out (unlike
+      // notifyListingPosted's own ListingNotificationLog write, which only logs on success).
+      // Without this, a failed send and a delivered-but-ignored one were indistinguishable: both
+      // just left contactedCount un-incremented or incremented with no further trace. Raw SMTP
+      // has no delivery-status webhook the way MSG91 does (see EmailProvider's own module notes
+      // on why — no read-receipt support without a tracking pixel, deliberately not built yet),
+      // so `deliveryStatus` for an email row is set directly at write time rather than left for
+      // a webhook to fill in later: 'failed' now, or left null meaning "sent, no further signal
+      // possible" — never advances to 'delivered'/'read' the way a WhatsApp row's can.
+      await this.logClaimVerificationAttempt(listingId, 'email', sent, null);
     }
 
     if (contact.phoneE164 && !suppressedValues.has(contact.phoneE164)) {
@@ -337,6 +349,12 @@ export class OutreachService {
         `${listingId}?via=whatsapp`,
       );
       if (result.sent) channels.push('whatsapp');
+      // Unlike email, this row's providerMessageId lets WhatsappWebhookController's existing,
+      // completely generic `updateMany({ where: { providerMessageId } })` advance deliveryStatus
+      // to delivered/read on its own — no change needed there at all, it was never filtering by
+      // `kind`. This is the one channel where "success" can genuinely mean delivered-and-read,
+      // not just "our API call didn't error."
+      await this.logClaimVerificationAttempt(listingId, 'whatsapp', result.sent, result.messageId);
     }
 
     if (channels.length === 0) {
@@ -352,6 +370,32 @@ export class OutreachService {
       data: { lastContactedAt: new Date(), contactedCount: { increment: 1 } },
     });
     return { sent: true, channels };
+  }
+
+  /** Read side of logClaimVerificationAttempt — every ListingNotificationLog row (kind:
+   * "claim_verification") for this contact's linked listing, newest first. Powers the "History"
+   * link's claim-verification section on /outreach/sends. A contact with no linked listing at
+   * all just has nothing to show — never an error, since "never sent anything" is a completely
+   * normal state, not a broken one. */
+  async listClaimVerificationSends(contactId: string): Promise<ClaimVerificationSendDto[]> {
+    const contact = await this.prisma.outreachContact.findUnique({
+      where: { id: contactId },
+      select: { claimedListing: { select: { id: true } } },
+    });
+    if (!contact?.claimedListing) return [];
+
+    const rows = await this.prisma.listingNotificationLog.findMany({
+      where: { listingId: contact.claimedListing.id, kind: 'claim_verification' },
+      orderBy: { sentAt: 'desc' },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      channel: row.channel,
+      sentAt: row.sentAt.toISOString(),
+      providerMessageId: row.providerMessageId,
+      deliveryStatus: row.deliveryStatus,
+      deliveryStatusAt: row.deliveryStatusAt?.toISOString() ?? null,
+    }));
   }
 
   /** Skips the CSV/bulk_upload_listings.py round-trip entirely — creates a real Listing straight
@@ -379,6 +423,14 @@ export class OutreachService {
     if (contact.businessCategory !== 'pg' && contact.businessCategory !== 'coworking') {
       throw new BadRequestException(
         `Direct listing creation only knows pg/coworking's required attributes, not '${contact.businessCategory}'`,
+      );
+    }
+    // Not merely a UI hint — refused here too, so nothing (a stale selection, a direct API call)
+    // can create a listing for a business Google itself reports as closed. null (status unknown,
+    // e.g. a pre-migration row) is left through deliberately — "unknown" isn't "known closed".
+    if (contact.businessStatus && contact.businessStatus !== 'OPERATIONAL') {
+      throw new BadRequestException(
+        `This business is marked '${contact.businessStatus}' on Google — refusing to create a listing for it`,
       );
     }
     if (!contact.cityId) {
@@ -451,6 +503,28 @@ export class OutreachService {
   /** The claim-verification email's content — see notification-templates/email/claim-listing/
    * for the copy itself. BCC to support@ mirrors buildWelcomeEmailContent's own convention, so
    * someone at support@ can see every one of these actually going out. */
+  /** kind: 'claim_verification' — a plain string field, same table `notifyListingPosted` already
+   * writes to with kind: 'posted' (see listings.service.ts). No new table, no schema change: this
+   * reuses ListingNotificationLog exactly as designed, which is also why
+   * WhatsappWebhookController never needed touching to pick these rows up too. */
+  private async logClaimVerificationAttempt(
+    listingId: string,
+    channel: 'email' | 'whatsapp',
+    sent: boolean,
+    providerMessageId: string | null,
+  ): Promise<void> {
+    await this.prisma.listingNotificationLog.create({
+      data: {
+        listingId,
+        kind: 'claim_verification',
+        channel,
+        providerMessageId,
+        deliveryStatus: sent ? null : 'failed',
+        deliveryStatusAt: sent ? null : new Date(),
+      },
+    });
+  }
+
   private async sendClaimEmail(
     contact: { name: string; email: string; area: { name: string }; city: { name: string } },
     listingId: string,
@@ -755,7 +829,7 @@ export class OutreachService {
     row: OutreachContact & {
       city?: { name: string } | null;
       area?: { name: string } | null;
-      claimedListing?: { claimedAt: Date | null } | null;
+      claimedListing?: { claimedAt: Date | null; claimSource?: ClaimSource | null } | null;
     },
   ): OutreachContactDto {
     return {
@@ -775,6 +849,7 @@ export class OutreachService {
       googleRatingAt: row.googleRatingAt?.toISOString() ?? null,
       googlePlaceId: row.googlePlaceId,
       businessCategory: row.businessCategory,
+      businessStatus: row.businessStatus,
       website: row.website,
       source: row.source,
       sourceRef: row.sourceRef,
@@ -788,6 +863,12 @@ export class OutreachService {
       createdAt: row.createdAt.toISOString(),
       hasClaimableListing: !!row.claimedListing && !row.claimedListing.claimedAt,
       hasListing: !!row.claimedListing,
+      /** Set only once claimedAt is set too — see Listing.claimSource's own doc comment: the
+       * channel is recorded at claim time, from the ?via= the claim link carried, not at send
+       * time. A claimed listing with this still null just means the ?via param was missing
+       * (e.g. someone pasted the bare /claim/<id> URL) — still a real claim, just an unknown
+       * channel, not a failure of anything. */
+      claimedViaChannel: row.claimedListing?.claimedAt ? (row.claimedListing.claimSource ?? null) : null,
     };
   }
 

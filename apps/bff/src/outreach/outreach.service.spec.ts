@@ -14,6 +14,7 @@ function makeService() {
     outreachCampaign: { findUnique: jest.fn(), update: jest.fn() },
     campaignSend: { groupBy: jest.fn().mockResolvedValue([]) },
     suppressionEntry: { findMany: jest.fn().mockResolvedValue([]) },
+    listingNotificationLog: { create: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
 
@@ -270,5 +271,157 @@ describe('findLocalPhotos', () => {
         join(dir, n),
       ),
     );
+  });
+});
+
+describe('OutreachService.sendClaimVerification — ListingNotificationLog write', () => {
+  function setup(overrides: {
+    emailSent?: boolean;
+    whatsappSent?: boolean;
+    whatsappMessageId?: string | null;
+  } = {}) {
+    const { service, prisma, config, msg91, emailProvider } = makeService();
+    (config.get as jest.Mock).mockImplementation((key: string) =>
+      key === 'MSG91_MARKETING_ENABLED' ? 'true' : key === 'PUBLIC_SITE_URL' ? 'https://bhavano.com' : undefined,
+    );
+    (prisma.outreachContact.findUnique as jest.Mock).mockResolvedValue(
+      contact({
+        email: 'owner@example.com',
+        phoneE164: '+919876543210',
+        city: { name: 'Bengaluru' },
+        area: { name: 'Koramangala' },
+        claimedListing: { id: 'listing1', claimedAt: null },
+      }),
+    );
+    (emailProvider.send as jest.Mock).mockResolvedValue(overrides.emailSent ?? true);
+    (msg91.sendListingVerificationRequest as jest.Mock).mockResolvedValue({
+      sent: overrides.whatsappSent ?? true,
+      messageId: 'whatsappMessageId' in overrides ? overrides.whatsappMessageId : 'msg-123',
+    });
+    return { service, prisma };
+  }
+
+  it('logs one row per channel, both successful', async () => {
+    const { service, prisma } = setup();
+    const result = await service.sendClaimVerification('c1');
+    expect(result).toEqual({ sent: true, channels: ['email', 'whatsapp'] });
+
+    const calls = (prisma.listingNotificationLog.create as jest.Mock).mock.calls.map((c) => c[0].data);
+    expect(calls).toContainEqual(
+      expect.objectContaining({
+        listingId: 'listing1',
+        kind: 'claim_verification',
+        channel: 'email',
+        providerMessageId: null,
+        deliveryStatus: null,
+        deliveryStatusAt: null,
+      }),
+    );
+    expect(calls).toContainEqual(
+      expect.objectContaining({
+        listingId: 'listing1',
+        kind: 'claim_verification',
+        channel: 'whatsapp',
+        providerMessageId: 'msg-123',
+        deliveryStatus: null,
+        deliveryStatusAt: null,
+      }),
+    );
+  });
+
+  it('marks a failed WhatsApp attempt as failed immediately, with no message id to correlate', async () => {
+    const { service, prisma } = setup({ whatsappSent: false, whatsappMessageId: null });
+    await service.sendClaimVerification('c1');
+
+    const whatsappCall = (prisma.listingNotificationLog.create as jest.Mock).mock.calls
+      .map((c) => c[0].data)
+      .find((d) => d.channel === 'whatsapp');
+    expect(whatsappCall).toMatchObject({ providerMessageId: null, deliveryStatus: 'failed' });
+    expect(whatsappCall.deliveryStatusAt).toBeInstanceOf(Date);
+  });
+
+  it('marks a failed email attempt as failed too, distinguishable from a silent one', async () => {
+    const { service, prisma } = setup({ emailSent: false });
+    await service.sendClaimVerification('c1');
+
+    const emailCall = (prisma.listingNotificationLog.create as jest.Mock).mock.calls
+      .map((c) => c[0].data)
+      .find((d) => d.channel === 'email');
+    expect(emailCall).toMatchObject({ deliveryStatus: 'failed' });
+  });
+});
+
+describe('OutreachService.listClaimVerificationSends', () => {
+  it('returns [] for a contact with no linked listing at all', async () => {
+    const { service, prisma } = makeService();
+    (prisma.outreachContact.findUnique as jest.Mock).mockResolvedValue({ claimedListing: null });
+    await expect(service.listClaimVerificationSends('c1')).resolves.toEqual([]);
+    expect(prisma.listingNotificationLog.findMany).not.toHaveBeenCalled();
+  });
+
+  it('maps rows for a contact that does have one', async () => {
+    const { service, prisma } = makeService();
+    (prisma.outreachContact.findUnique as jest.Mock).mockResolvedValue({ claimedListing: { id: 'listing1' } });
+    (prisma.listingNotificationLog.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'log1',
+        channel: 'whatsapp',
+        sentAt: new Date('2026-09-01T00:00:00Z'),
+        providerMessageId: 'msg-123',
+        deliveryStatus: 'delivered',
+        deliveryStatusAt: new Date('2026-09-01T00:05:00Z'),
+      },
+    ]);
+    await expect(service.listClaimVerificationSends('c1')).resolves.toEqual([
+      {
+        id: 'log1',
+        channel: 'whatsapp',
+        sentAt: '2026-09-01T00:00:00.000Z',
+        providerMessageId: 'msg-123',
+        deliveryStatus: 'delivered',
+        deliveryStatusAt: '2026-09-01T00:05:00.000Z',
+      },
+    ]);
+    expect(prisma.listingNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { listingId: 'listing1', kind: 'claim_verification' } }),
+    );
+  });
+});
+
+describe('OutreachService.createListingFromContact — the businessStatus gate', () => {
+  it('refuses a business Google reports as permanently closed', async () => {
+    const { service, prisma } = makeService();
+    (prisma.outreachContact.findUnique as jest.Mock).mockResolvedValue(
+      contact({ businessCategory: 'pg', cityId: 'city1', claimedListing: null, businessStatus: 'CLOSED_PERMANENTLY' }),
+    );
+    await expect(service.createListingFromContact('c1')).rejects.toThrow(/CLOSED_PERMANENTLY/);
+  });
+
+  it('refuses a business Google reports as temporarily closed', async () => {
+    const { service, prisma } = makeService();
+    (prisma.outreachContact.findUnique as jest.Mock).mockResolvedValue(
+      contact({ businessCategory: 'pg', cityId: 'city1', claimedListing: null, businessStatus: 'CLOSED_TEMPORARILY' }),
+    );
+    await expect(service.createListingFromContact('c1')).rejects.toThrow(/CLOSED_TEMPORARILY/);
+  });
+
+  it('does not block on a null businessStatus (unknown, not known-closed)', async () => {
+    const { service, prisma, config } = makeService();
+    (prisma.outreachContact.findUnique as jest.Mock).mockResolvedValue(
+      contact({ businessCategory: 'pg', cityId: 'city1', claimedListing: null, businessStatus: null }),
+    );
+    (config.get as jest.Mock).mockReturnValue(undefined); // SCRAPED_PHOTOS_DIR unset
+    // Gets past the businessStatus gate and fails at the next real check instead (not configured)
+    // — proves null didn't trip the same refusal as an actual CLOSED_* status would.
+    await expect(service.createListingFromContact('c1')).rejects.toThrow(/SCRAPED_PHOTOS_DIR/);
+  });
+
+  it('does not block an operational business either', async () => {
+    const { service, prisma, config } = makeService();
+    (prisma.outreachContact.findUnique as jest.Mock).mockResolvedValue(
+      contact({ businessCategory: 'pg', cityId: 'city1', claimedListing: null, businessStatus: 'OPERATIONAL' }),
+    );
+    (config.get as jest.Mock).mockReturnValue(undefined);
+    await expect(service.createListingFromContact('c1')).rejects.toThrow(/SCRAPED_PHOTOS_DIR/);
   });
 });

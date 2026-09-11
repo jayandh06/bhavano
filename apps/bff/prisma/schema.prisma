@@ -974,6 +974,12 @@ model OutreachContact {
   googlePlaceId     String?        @unique
   /** e.g. "real_estate_agency" — the primary targeting dimension alongside city. */
   businessCategory  String?
+  /** Google's own OPERATIONAL / CLOSED_TEMPORARILY / CLOSED_PERMANENTLY, straight from Place
+   * Details — the admin contacts page's "Create listing" action refuses anything not
+   * OPERATIONAL (and null, no status known yet, is left selectable rather than blocked, since
+   * that's "unknown" not "known closed"). Previously only ever landed as unstructured text
+   * inside `notes`. */
+  businessStatus    String?
   website           String?
 
   source            ContactSource
