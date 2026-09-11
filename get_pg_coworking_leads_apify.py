@@ -367,6 +367,7 @@ def main():
 
     counter = RequestCounter()
     all_contacts = []
+    totals = {"created": 0, "updated": 0, "skipped": 0}
     for city in cities:
         print(f"Resolving locations for {city}...", file=sys.stderr)
         city_id, locations = resolve_locations(args.bff_url, city, args.max_areas_per_city, args.no_areas)
@@ -415,6 +416,21 @@ def main():
             for stats in pair_stats.values():
                 update_places_fetch_log_counts(args.bff_url, bff_token, stats["logId"], stats["found"], stats["imported"])
 
+        # Imported per city, not once at the very end — a run spanning many cities can take a
+        # while (each area is its own paid Apify call), and importing only after every city
+        # finishes meant a run interrupted partway (Ctrl+C, SSH drop, a crash) saved nothing at
+        # all to OutreachContact, even for cities that had already completed successfully.
+        if not args.dry_run and contacts:
+            result = import_contacts(args.bff_url, bff_token, contacts)
+            totals["created"] += result.get("created", 0)
+            totals["updated"] += result.get("updated", 0)
+            totals["skipped"] += result.get("skipped", 0)
+            print(
+                f"  imported ({city}) — created: {result.get('created', 0)}, "
+                f"updated: {result.get('updated', 0)}, skipped (no phone/email): {result.get('skipped', 0)}",
+                file=sys.stderr,
+            )
+
     print(f"\nFetched {len(all_contacts)} places total.", file=sys.stderr)
     print(counter.summary(), file=sys.stderr)
 
@@ -422,14 +438,9 @@ def main():
         print("\n--dry-run: not importing into OutreachContact.", file=sys.stderr)
         return
 
-    if not all_contacts:
-        print("\nNothing new to import.", file=sys.stderr)
-        return
-
-    result = import_contacts(args.bff_url, bff_token, all_contacts)
     print(
-        f"\nImported into OutreachContact — created: {result.get('created', 0)}, "
-        f"updated: {result.get('updated', 0)}, skipped (no phone/email): {result.get('skipped', 0)}",
+        f"\nImported into OutreachContact — created: {totals['created']}, "
+        f"updated: {totals['updated']}, skipped (no phone/email): {totals['skipped']}",
         file=sys.stderr,
     )
     print("consentState defaults to 'none' — review in /outreach/contacts before campaigning.", file=sys.stderr)
