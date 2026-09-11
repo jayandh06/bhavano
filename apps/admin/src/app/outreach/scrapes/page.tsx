@@ -67,7 +67,7 @@ export default async function ScrapesPage({
                   <th style={thStyle}>City</th>
                   <th style={thStyle}>Area</th>
                   <th style={thStyle}>Category</th>
-                  <th style={thStyle}>Query</th>
+                  <th style={thStyle}>Search term</th>
                   <th style={thStyle}>Found</th>
                   <th style={thStyle}>Imported</th>
                   <th style={thStyle}>Min rating</th>
@@ -86,7 +86,10 @@ export default async function ScrapesPage({
                     </td>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{row.areaSearched ?? "(city-level)"}</td>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{row.businessCategory}</td>
-                    <td style={{ ...tdStyle, maxWidth: 320 }}>{row.query}</td>
+                    <td style={{ ...tdStyle, maxWidth: 260 }}>
+                      {row.queryPrefix}
+                      <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 2 }}>{row.query}</div>
+                    </td>
                     <td style={tdStyle}>{row.resultsFound}</td>
                     <td style={tdStyle}>{row.resultsImported}</td>
                     <td style={tdStyle}>{row.minRatingFilter ?? dash}</td>
