@@ -63,6 +63,18 @@ sit before that return without making the common path expensive — it is string
 `nextUrl`, no I/O, so this is cheap, but the early return needs restructuring rather than
 deleting.
 
+**Bug found and fixed 2026-09-12: prefetch requests were treated as real visits.** Next.js's
+client router prefetches every `<Link>` it renders (the Footer alone puts a link to every other
+city on nearly every page), and each prefetch is a genuine HTTP request that runs through this
+same middleware. A prefetched `/{city}` link — a bare city route, which is exactly what this
+step treats as "the visitor chose this city" — could silently overwrite `bhavano_city` with
+whichever background prefetch happened to resolve last, with no click involved at all. Reported
+as "the city selector randomly changes after browsing for a bit." Fixed with a one-line early
+return on the `next-router-prefetch` request header, before any cookie logic runs — see the
+comment at the top of `middleware()`. This also stopped `bhavano_acq`/`bhavano_sid` and the
+`/analytics/visit` log from firing for pages nobody actually viewed, which was a real but
+separate inflation of visit counts.
+
 Then `page.tsx` and `PageHeader.tsx` read the cookie as the fallback ahead of Bengaluru.
 
 **Validate the cookie against the city list before trusting it.** It is user-controllable input,

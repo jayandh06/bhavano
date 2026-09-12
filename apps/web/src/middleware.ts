@@ -108,6 +108,17 @@ function safeHostname(url: string | null): string | undefined {
  *    docs/plans/visitor-location-default-city.md.
  */
 export function middleware(request: NextRequest, event: NextFetchEvent): NextResponse {
+  // Next.js's client router prefetches every `<Link>` it can see (Footer alone renders one per
+  // city — 40+ links — and the homepage/listing/browse grids add dozens more per page), issuing
+  // a real HTTP request for each one's RSC payload, tagged with this header. Nothing below this
+  // point is a real visit: skip it, or the *last prefetch to resolve* — not the last page the
+  // visitor actually chose — silently overwrites bhavano_city, and bhavano_acq/bhavano_sid get
+  // set (and a Visit row logged) for pages nobody looked at. This was the cause of the "city
+  // changes to something random after browsing for a bit" reports: any page whose Footer/grid
+  // happened to render a link to `/{city}` (a bare city browse route, which `citySlugForRoute`
+  // below treats as a deliberate city choice) would eventually get prefetched and silently win.
+  if (request.headers.get('next-router-prefetch')) return NextResponse.next();
+
   const hasAcquisitionCookie = request.cookies.has(ACQUISITION_COOKIE);
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
   // undefined = this page says nothing about the city; null = it says "all cities".
