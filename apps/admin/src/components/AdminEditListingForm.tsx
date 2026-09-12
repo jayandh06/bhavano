@@ -295,9 +295,16 @@ function CategoryField({
 type FieldRun = { fields: FieldDef[] };
 
 /** Keeps a `dependsOn` chain (e.g. "Posted by broker" → "Brokerage fee") adjacent in the layout
- * instead of letting the toggle/other-fields split below scatter its parent and child apart —
- * same grouping the web app's CategoryFieldsAccordion does, copied here since it's plain data
- * logic with no Tailwind/React-DOM dependency. */
+ * instead of letting the toggle/other-fields split below scatter its parent and child apart — same
+ * grouping the web app's CategoryFieldsAccordion does, copied here since it's plain data logic with
+ * no Tailwind/React-DOM dependency.
+ *
+ * Crucially, every *un*-chained field in a section accumulates into one shared standalone run
+ * rather than each getting a run of its own — a first pass at this port dropped that
+ * accumulation, so every independent field in "Property details"/"Amenities"/etc. rendered as its
+ * own single-item grid, one per row, which read as a flat linear list instead of the packed
+ * multi-column layout the web app's post/edit forms use. A chain still gets its own run so its
+ * parent and child(ren) stay visually adjacent instead of being folded into the shared batch. */
 function groupFieldsByChain(fields: FieldDef[]): FieldRun[] {
   const keysInSection = new Set(fields.map((field) => field.key));
   const childrenOf = new Map<string, FieldDef[]>();
@@ -316,7 +323,23 @@ function groupFieldsByChain(fields: FieldDef[]): FieldRun[] {
     const children = childrenOf.get(field.key) ?? [];
     return [field, ...children.flatMap(collectChain)];
   }
-  return roots.map((root) => ({ fields: collectChain(root) }));
+
+  const runs: FieldRun[] = [];
+  let standaloneRun: FieldDef[] = [];
+  for (const root of roots) {
+    const chain = collectChain(root);
+    if (chain.length === 1) {
+      standaloneRun.push(root);
+      continue;
+    }
+    if (standaloneRun.length > 0) {
+      runs.push({ fields: standaloneRun });
+      standaloneRun = [];
+    }
+    runs.push({ fields: chain });
+  }
+  if (standaloneRun.length > 0) runs.push({ fields: standaloneRun });
+  return runs;
 }
 
 /** Renders one run: its Yes/No fields in a compact grid, its other fields in a wider grid,
