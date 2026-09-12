@@ -15,6 +15,7 @@ import type {
   ImportOutreachContactsResult,
   ListingBoostsPage,
   ListingDetailDto,
+  ListingEditLogPage,
   ListingEngagementPage,
   ListingOwnerDto,
   LoginEventsPage,
@@ -34,6 +35,7 @@ import type { RequestUser } from '../auth/guards/auth.guard';
 import { AdminService } from './admin.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListListingEngagementDto } from './dto/list-listing-engagement.dto';
+import { ListListingEditHistoryDto } from './dto/list-listing-edit-history.dto';
 import { ListListingConversationsDto } from './dto/list-listing-conversations.dto';
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
@@ -157,6 +159,18 @@ export class AdminController {
     @Query() query: ListListingEngagementDto,
   ): Promise<ListingEngagementPage> {
     return this.adminService.listListingEngagement(
+      id,
+      query.offset ?? 0,
+      query.limit,
+    );
+  }
+
+  @Get('listings/:id/edit-history')
+  getListingEditHistory(
+    @Param('id') id: string,
+    @Query() query: ListListingEditHistoryDto,
+  ): Promise<ListingEditLogPage> {
+    return this.adminService.listListingEditHistory(
       id,
       query.offset ?? 0,
       query.limit,

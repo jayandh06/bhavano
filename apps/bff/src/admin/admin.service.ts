@@ -10,6 +10,7 @@ import type {
   DiscountCodeDto,
   ListingBoostsPage,
   ListingDetailDto,
+  ListingEditLogPage,
   ListingEngagementPage,
   ListingOwnerDto,
   ListingStatus,
@@ -153,6 +154,14 @@ export class AdminService {
     return this.listingsService.listEngagement(listingId, offset, limit);
   }
 
+  listListingEditHistory(
+    listingId: string,
+    offset: number,
+    limit: number,
+  ): Promise<ListingEditLogPage> {
+    return this.listingsService.listEditHistory(listingId, offset, limit);
+  }
+
   listListingConversations(
     listingId: string,
     offset: number,
@@ -176,7 +185,7 @@ export class AdminService {
    * discrepancy as the first message of the admin↔owner moderation thread, and emails/texts
    * the owner so they don't have to notice the message on their own. */
   async flagListing(id: string, adminId: string, message: string): Promise<ListingDetailDto> {
-    const listing = await this.listingsService.flag(id);
+    const listing = await this.listingsService.flag(id, adminId);
     const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
     await this.messagingService.sendMessage(thread.id, adminId, message);
 
@@ -230,7 +239,7 @@ export class AdminService {
   }
 
   async approveListing(id: string, adminId: string): Promise<ListingDetailDto> {
-    const listing = await this.listingsService.approve(id);
+    const listing = await this.listingsService.approve(id, adminId);
     const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
     await this.messagingService.sendMessage(thread.id, adminId, APPROVED_MESSAGE);
 
@@ -253,7 +262,7 @@ export class AdminService {
    * owner already sees. No push/SMS/WhatsApp notification here (unlike flag/approve) — this is a
    * support/correction action, not something that needs to interrupt the owner. */
   async setListingStatus(id: string, status: ListingStatus, adminId: string): Promise<ListingDetailDto> {
-    const listing = await this.listingsService.setStatusAsAdmin(id, status);
+    const listing = await this.listingsService.setStatusAsAdmin(id, status, adminId);
     const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
     await this.messagingService.sendMessage(thread.id, adminId, `Status changed to "${status}" by an admin.`);
     return listing;

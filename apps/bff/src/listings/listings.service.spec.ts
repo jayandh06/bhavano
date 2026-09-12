@@ -26,6 +26,7 @@ function makeService() {
     favourite: { findUnique: jest.fn(), create: jest.fn(), delete: jest.fn() },
     listing: { update: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), count: jest.fn() },
     listingRenewal: { create: jest.fn() },
+    listingEditLog: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
     user: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn() },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
@@ -824,5 +825,128 @@ describe('ListingsService.listForAdmin — status filter and sort', () => {
 
   it('still defaults to newest-created when no sort is given', async () => {
     expect((await callWith({})).orderBy).toEqual([{ createdAt: 'desc' }, { id: 'asc' }]);
+  });
+});
+
+describe('ListingsService.update — writes a ListingEditLog diff', () => {
+  it('logs only the fields that actually changed, with their before/after values', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({
+      id: 'l1',
+      ownerId: 'owner1',
+      category: 'pg',
+      transactionType: 'rent',
+      price: 5000,
+      priceQualifier: '/month',
+      title: 'Old title',
+      specs: ['Single'],
+      description: 'Old description',
+      attributes: { sharingType: 'single' },
+      status: 'active',
+      moderationState: 'approved',
+    });
+    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+    // toDetailDto isn't relevant to this test — let it throw on the incomplete mock row above
+    // rather than fully mocking city/area/media/owner just to reach a return value we don't check.
+    await service.update('l1', 'owner1', { price: 6000 } as never).catch(() => undefined);
+
+    expect(prisma.listingEditLog.create).toHaveBeenCalledWith({
+      data: {
+        listingId: 'l1',
+        actorType: 'owner',
+        actorId: 'owner1',
+        action: 'updated',
+        changes: { price: { before: 5000, after: 6000 } },
+      },
+    });
+  });
+
+  it('does not write a log row when nothing in the dto actually changed the value', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({
+      id: 'l1',
+      ownerId: 'owner1',
+      category: 'pg',
+      transactionType: 'rent',
+      price: 5000,
+      priceQualifier: '/month',
+      title: 'Same title',
+      specs: [],
+      description: null,
+      attributes: {},
+      status: 'active',
+      moderationState: 'approved',
+    });
+    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+
+    await service.update('l1', 'owner1', { price: 5000, title: 'Same title' } as never).catch(() => undefined);
+
+    expect(prisma.listingEditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('ListingsService.flag/approve/setStatusAsAdmin — attribute the change to the admin', () => {
+  it('flag() logs the moderationState before/after and the admin as actor', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ moderationState: 'approved' });
+    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+
+    await service.flag('l1', 'admin1').catch(() => undefined);
+
+    expect(prisma.listingEditLog.create).toHaveBeenCalledWith({
+      data: {
+        listingId: 'l1',
+        actorType: 'admin',
+        actorId: 'admin1',
+        action: 'flagged',
+        changes: { moderationState: { before: 'approved', after: 'flagged' } },
+      },
+    });
+  });
+
+  it('approve() logs the moderationState before/after and the admin as actor', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ moderationState: 'flagged' });
+    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+
+    await service.approve('l1', 'admin1').catch(() => undefined);
+
+    expect(prisma.listingEditLog.create).toHaveBeenCalledWith({
+      data: {
+        listingId: 'l1',
+        actorType: 'admin',
+        actorId: 'admin1',
+        action: 'approved',
+        changes: { moderationState: { before: 'flagged', after: 'approved' } },
+      },
+    });
+  });
+
+  it('setStatusAsAdmin() logs the status change when it actually changes', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ status: 'active' });
+    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+
+    await service.setStatusAsAdmin('l1', 'deactivated', 'admin1').catch(() => undefined);
+
+    expect(prisma.listingEditLog.create).toHaveBeenCalledWith({
+      data: {
+        listingId: 'l1',
+        actorType: 'admin',
+        actorId: 'admin1',
+        action: 'status_changed',
+        changes: { status: { before: 'active', after: 'deactivated' } },
+      },
+    });
+  });
+
+  it('setStatusAsAdmin() does not log when the status is unchanged', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ status: 'active' });
+    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+
+    await service.setStatusAsAdmin('l1', 'active', 'admin1').catch(() => undefined);
+
+    expect(prisma.listingEditLog.create).not.toHaveBeenCalled();
   });
 });

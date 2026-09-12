@@ -633,6 +633,29 @@ export interface ListingBoostsPage {
     items: ListingBoostDto[];
     total: number;
 }
+/** One field's before/after value in a ListingEditLogEntryDto's `changes` — values are
+ * `unknown` because different actions touch completely different field types (a number for
+ * price, a string for status, an object for attributes). */
+export interface ListingFieldChange {
+    before: unknown;
+    after: unknown;
+}
+/** admin/listings/[id]'s History tab — one row per ListingsService/AdminService mutation to a
+ * listing. `actorType`/`actorId`/`actorName` describe who did it (a real User for 'owner' and
+ * 'admin', null for 'system'); `changes` is null only for 'created', which has no "before". */
+export interface ListingEditLogEntryDto {
+    id: string;
+    actorType: "owner" | "admin" | "system";
+    actorId: string | null;
+    actorName: string | null;
+    action: string;
+    changes: Record<string, ListingFieldChange> | null;
+    createdAt: string;
+}
+export interface ListingEditLogPage {
+    items: ListingEditLogEntryDto[];
+    total: number;
+}
 export interface CreateSubscriptionOrderInput {
     tier: SubscriptionTier;
     /** buyerPremium: 1, 6, or 12; sellerSlotPack and agentPro: 1 month only. */

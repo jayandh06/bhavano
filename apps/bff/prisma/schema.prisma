@@ -252,6 +252,7 @@ model User {
   contactRevealCreditBatches ContactRevealCreditBatch[]
   contactReveals        ContactReveal[]
   discountCodeRedemptions DiscountCodeRedemption[]
+  listingEditLogs       ListingEditLog[]
   /** First-touch attribution: the UTM source/medium/campaign of the link the user first landed
    * on, or the external Referer hostname with medium "referral" if untagged, or source "direct"
    * if neither was present. Captured by apps/web's middleware.ts on the user's very first visit
@@ -381,6 +382,7 @@ model Listing {
   notificationLogs ListingNotificationLog[]
   listingRenewals  ListingRenewal[]
   contactReveals   ContactReveal[]
+  editLogs         ListingEditLog[]
 
   @@index([cityId, category])
   @@index([cityId, transactionType])
@@ -763,6 +765,38 @@ model ListingRenewal {
   renewedAt         DateTime @default(now())
 
   @@index([listingId])
+}
+
+/** One row per mutation to a listing — created, an owner's own edit, an admin moderation action,
+ * or a status change. `changes` holds a before/after diff per changed field (null only for
+ * `created`, which has no "before"). `actorId` is a User.id for both 'owner' and 'admin' — an
+ * owner editing their own listing and an admin moderating someone else's listing are both real
+ * User rows, just playing different roles for this one action; 'system' (no actorId) is reserved
+ * for anything not attributable to a specific logged-in actor, which nothing currently writes but
+ * keeps the shape honest for e.g. a future scheduled job.
+ *
+ * Deliberately NOT written on ListingsService.deleteListing — a hard delete cascades this table
+ * away with the rest of the listing's rows, so logging a delete here would just delete itself;
+ * an audit trail that must survive the listing being gone needs a different, non-cascading
+ * design, out of scope for now (see docs/plans/listing-edit-history.md). */
+model ListingEditLog {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  actorType String // 'owner' | 'admin' | 'system'
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  /** 'created' | 'updated' | 'approved' | 'flagged' | 'status_changed' | 'photo_added' |
+   * 'photo_removed' | 'video_added' | 'video_removed'. Plain string, not an enum — same reasoning
+   * as ListingNotificationLog.kind: a new action never needs a migration to log through here. */
+  action    String
+  /** { fieldName: { before, after } } — arbitrary JSON since different actions touch completely
+   * different fields (a price edit vs. a moderationState flip vs. a photo being added). Null for
+   * 'created' (nothing to diff against). */
+  changes   Json?
+  createdAt DateTime @default(now())
+
+  @@index([listingId, createdAt])
 }
 
 /** Send log for every listing-scoped notification — "posted", "liked", "expiry_reminder_7d",

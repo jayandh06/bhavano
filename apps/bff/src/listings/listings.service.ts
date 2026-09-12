@@ -16,6 +16,8 @@ import type {
   ListingCardDto,
   ListingCategory,
   ListingDetailDto,
+  ListingEditLogEntryDto,
+  ListingEditLogPage,
   ListingEngagementPage,
   ListingEngagementRowDto,
   ListingMetaDto,
@@ -200,6 +202,26 @@ function cardSpecs(listing: { category: ListingCategory; attributes: unknown; sp
     listing.attributes as Record<string, unknown>,
   );
   return derived.length > 0 ? derived.slice(0, 3) : listing.specs;
+}
+
+/** update()'s own before/after diff for ListingEditLog — only the keys actually present in
+ * `updates` (an UpdateListingDto field left undefined means "not touched", not "set to
+ * undefined") and only where the value genuinely changed. JSON.stringify comparison rather than
+ * `!==` because `attributes` is an object — reference inequality would flag it as "changed" on
+ * every edit even when its content is identical. */
+function diffFields(
+  existing: Record<string, unknown>,
+  updates: Record<string, unknown>,
+): Record<string, { before: unknown; after: unknown }> {
+  const changes: Record<string, { before: unknown; after: unknown }> = {};
+  for (const [key, after] of Object.entries(updates)) {
+    if (after === undefined) continue;
+    const before = existing[key];
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      changes[key] = { before, after };
+    }
+  }
+  return changes;
 }
 
 @Injectable()
@@ -497,6 +519,35 @@ export class ListingsService {
     };
   }
 
+  /** A listing's "History" tab — every ListingEditLog row, newest first. `actorName` is resolved
+   * here (not stored denormalized on the log row) so a later name change is reflected
+   * retroactively rather than freezing whatever the actor was called at the time — same tradeoff
+   * ListingBoostDto.ownerName already makes. Null for 'system' rows (no actorId at all). */
+  async listEditHistory(listingId: string, offset: number, limit: number): Promise<ListingEditLogPage> {
+    const [rows, total] = await Promise.all([
+      this.prisma.listingEditLog.findMany({
+        where: { listingId },
+        include: { actor: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      this.prisma.listingEditLog.count({ where: { listingId } }),
+    ]);
+
+    const items: ListingEditLogEntryDto[] = rows.map((row) => ({
+      id: row.id,
+      actorType: row.actorType as ListingEditLogEntryDto['actorType'],
+      actorId: row.actorId,
+      actorName: row.actor?.name ?? null,
+      action: row.action,
+      changes: row.changes as ListingEditLogEntryDto['changes'],
+      createdAt: row.createdAt.toISOString(),
+    }));
+
+    return { items, total };
+  }
+
   /** One listing's "Liked & Viewed" admin table — merges `Favourite` rows (a real `User` FK
    * already) with logged-in-viewer `ListingView` rows (`viewerKey` prefixed `user:`, resolved to
    * a real user by stripping the prefix and batch-fetching). Anonymous views (`viewerKey`
@@ -586,7 +637,11 @@ export class ListingsService {
   /** Takes a listing offline (this IS the soft-delete — see ModerationState) and marks it
    * reviewed. Posting the discrepancy message to the owner is the caller's (AdminService's)
    * job, via MessagingService, so this stays a plain listing-state mutation. */
-  async flag(id: string): Promise<ListingDetailDto> {
+  async flag(id: string, adminId: string): Promise<ListingDetailDto> {
+    const existing = await this.prisma.listing.findUnique({
+      where: { id },
+      select: { moderationState: true },
+    });
     const listing = await this.prisma.listing.update({
       where: { id },
       data: {
@@ -596,11 +651,18 @@ export class ListingsService {
       },
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
+    await this.logEdit(id, 'admin', adminId, 'flagged', {
+      moderationState: { before: existing?.moderationState ?? null, after: 'flagged' },
+    });
     return this.toDetailDto(listing, undefined, true);
   }
 
   /** Puts a previously-flagged listing back in front of buyers. */
-  async approve(id: string): Promise<ListingDetailDto> {
+  async approve(id: string, adminId: string): Promise<ListingDetailDto> {
+    const existing = await this.prisma.listing.findUnique({
+      where: { id },
+      select: { moderationState: true },
+    });
     const listing = await this.prisma.listing.update({
       where: { id },
       data: {
@@ -609,6 +671,9 @@ export class ListingsService {
         moderatedAt: new Date(),
       },
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+    });
+    await this.logEdit(id, 'admin', adminId, 'approved', {
+      moderationState: { before: existing?.moderationState ?? null, after: 'approved' },
     });
     return this.toDetailDto(listing, undefined, true);
   }
@@ -619,12 +684,21 @@ export class ListingsService {
    * can't be reached to fix it themselves). Always called through AdminService.setListingStatus,
    * which posts an explanation into the moderation thread — never silent, same principle as
    * flag()/approve() above. */
-  async setStatusAsAdmin(id: string, status: ListingStatus): Promise<ListingDetailDto> {
+  async setStatusAsAdmin(id: string, status: ListingStatus, adminId: string): Promise<ListingDetailDto> {
+    const existing = await this.prisma.listing.findUnique({
+      where: { id },
+      select: { status: true },
+    });
     const listing = await this.prisma.listing.update({
       where: { id },
       data: { status },
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
+    if (existing && existing.status !== status) {
+      await this.logEdit(id, 'admin', adminId, 'status_changed', {
+        status: { before: existing.status, after: status },
+      });
+    }
     return this.toDetailDto(listing, undefined, true);
   }
 
@@ -894,6 +968,8 @@ export class ListingsService {
         .catch(() => undefined);
     }
 
+    await this.logEdit(listing.id, isBulkImportOwner ? 'system' : 'owner', ownerId, 'created', null);
+
     return this.toDetailDto(listing, undefined, true);
   }
 
@@ -987,6 +1063,8 @@ export class ListingsService {
       }
     }
 
+    await this.logEdit(listingId, 'owner', ownerId, 'video_added', null);
+
     return this.getMine(ownerId, listingId);
   }
 
@@ -1018,6 +1096,8 @@ export class ListingsService {
       this.storage.deleteObject(videoTranscodedKey(listingId, video.storageId)),
       this.storage.deleteObject(videoPosterKey(listingId, video.storageId)),
     ]).catch(() => undefined);
+
+    await this.logEdit(listingId, 'owner', ownerId, 'video_removed', null);
 
     return this.getMine(ownerId, listingId);
   }
@@ -1097,6 +1177,8 @@ export class ListingsService {
       }),
     ]);
 
+    await this.logEdit(listingId, 'owner', ownerId, 'photo_added', null);
+
     return this.getMine(ownerId, listingId);
   }
 
@@ -1150,6 +1232,8 @@ export class ListingsService {
         variantUrl(cdnBase, listingId, photoNo, 'full'),
       ])
       .catch(() => undefined);
+
+    await this.logEdit(listingId, 'owner', ownerId, 'photo_removed', null);
 
     return this.getMine(ownerId, listingId);
   }
@@ -1303,6 +1387,30 @@ export class ListingsService {
       },
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
+
+    const changes = diffFields(
+      {
+        price: existing.price,
+        priceQualifier: existing.priceQualifier,
+        title: existing.title,
+        specs: existing.specs,
+        description: existing.description,
+        attributes: existing.attributes,
+        status: existing.status,
+      },
+      {
+        price: dto.price,
+        priceQualifier: dto.priceQualifier,
+        title: dto.title,
+        specs: dto.specs,
+        description: dto.description,
+        attributes: dto.attributes,
+        status: dto.status,
+      },
+    );
+    if (Object.keys(changes).length > 0) {
+      await this.logEdit(id, 'owner', userId, 'updated', changes);
+    }
 
     return this.toDetailDto(listing, undefined, true);
   }
@@ -1740,6 +1848,38 @@ export class ListingsService {
     if (price === 0 && !PRICE_ON_REQUEST_CATEGORIES.has(category)) {
       throw new BadRequestException(
         `A ${category} listing needs a real price — "Contact for price" isn't available for this category`,
+      );
+    }
+  }
+
+  /** Writes one ListingEditLog row — see that model's own doc comment for the shape. Awaited
+   * (not fire-and-forget) since this is meant to be a reliable audit trail, not a best-effort
+   * notification like ListingNotificationLog — but a logging failure still must never fail or
+   * roll back the real mutation it's describing, hence the catch-and-log-only rather than letting
+   * it throw. AdminService writes its own rows directly (its moderation actions aren't
+   * ListingsService methods) rather than through this — same shape, no cross-service call. */
+  private async logEdit(
+    listingId: string,
+    actorType: 'owner' | 'admin' | 'system',
+    actorId: string | null,
+    action: string,
+    changes: Record<string, { before: unknown; after: unknown }> | null,
+  ): Promise<void> {
+    try {
+      await this.prisma.listingEditLog.create({
+        data: {
+          listingId,
+          actorType,
+          actorId,
+          action,
+          ...(changes && Object.keys(changes).length > 0
+            ? { changes: changes as Prisma.InputJsonValue }
+            : {}),
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to write ListingEditLog for ${listingId} (${action}): ${error instanceof Error ? error.message : error}`,
       );
     }
   }
