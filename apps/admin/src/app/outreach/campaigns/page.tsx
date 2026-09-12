@@ -26,7 +26,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>Campaigns</h1>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 8px" }}>
           Promotional SMS/WhatsApp to outreach contacts.{" "}

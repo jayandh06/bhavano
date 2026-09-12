@@ -39,7 +39,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "32px 24px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
         <Link href="/logins" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
           ← Back to logins
         </Link>

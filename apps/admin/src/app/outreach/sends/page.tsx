@@ -38,7 +38,7 @@ export default async function SendsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
         <Link
           href={contactId ? "/outreach/contacts" : "/outreach/campaigns"}
           style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}
