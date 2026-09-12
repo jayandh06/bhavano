@@ -64,6 +64,17 @@ export class InsufficientContactRevealCreditsError extends Error {
   }
 }
 
+/** Thrown when POST /listings/:id/claim returns 409 — someone else already claimed it. Its own
+ * type so ClaimListing.tsx can render this as informational ("already taken care of, by someone
+ * else") rather than the generic "Couldn't verify this listing" failure copy, which reads as a
+ * malfunction for what's actually an expected outcome. */
+export class ListingAlreadyClaimedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ListingAlreadyClaimedError";
+  }
+}
+
 async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BFF_URL}${path}`, {
     ...init,
@@ -97,6 +108,7 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
     })();
     if (res.status === 401) throw new BffAuthError(parsedMessage ?? "Login required");
     if (res.status === 402) throw new InsufficientContactRevealCreditsError(parsedMessage ?? "Insufficient contact reveal credits");
+    if (res.status === 409) throw new ListingAlreadyClaimedError(parsedMessage ?? "This listing has already been claimed");
     throw new Error(parsedMessage ?? `BFF request failed (${res.status} ${path}): ${body}`);
   }
   const text = await res.text();

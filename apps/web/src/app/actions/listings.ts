@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import {
   BffAuthError,
   InsufficientContactRevealCreditsError,
+  ListingAlreadyClaimedError,
   addOwnListingPhoto,
   claimListing,
   createListing,
@@ -104,7 +105,8 @@ export async function revealContactAction(listingId: string): Promise<RevealCont
 export type ClaimListingResult =
   | { requiresLogin: true }
   | { requiresLogin: false; success: true; listing: ListingDetailDto }
-  | { requiresLogin: false; success: false; error: string };
+  | { requiresLogin: false; success: false; alreadyClaimed: true }
+  | { requiresLogin: false; success: false; alreadyClaimed: false; error: string };
 
 export async function claimListingAction(
   listingId: string,
@@ -118,9 +120,16 @@ export async function claimListingAction(
     return { requiresLogin: false, success: true, listing };
   } catch (error) {
     if (error instanceof BffAuthError) return { requiresLogin: true };
+    // Someone else already claimed it — an expected outcome (a stale link reopened, a race with
+    // another claim attempt), not a malfunction, so this is its own branch rather than folding
+    // into the generic error message ClaimListing.tsx shows under "Couldn't verify this listing".
+    if (error instanceof ListingAlreadyClaimedError) {
+      return { requiresLogin: false, success: false, alreadyClaimed: true };
+    }
     return {
       requiresLogin: false,
       success: false,
+      alreadyClaimed: false,
       error: error instanceof Error ? error.message : "Couldn't claim this listing",
     };
   }

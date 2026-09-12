@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { claimListingAction } from "@/app/actions/listings";
 import { useAuthGate } from "./AuthGateProvider";
+
+type ClaimOutcome = { kind: "error"; message: string } | { kind: "alreadyClaimed" };
 
 /** Where a "verify your listing on Bhavano" email or WhatsApp link lands. Not logged in → the
  * normal OTP modal (nothing new — AuthGateProvider already auto-creates a User on first-ever OTP
@@ -14,7 +17,7 @@ import { useAuthGate } from "./AuthGateProvider";
 export function ClaimListing({ listingId, source }: { listingId: string; source?: "email" | "whatsapp" }) {
   const { requireLogin } = useAuthGate();
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<ClaimOutcome | null>(null);
   const attempted = useRef(false);
 
   useEffect(() => {
@@ -25,7 +28,7 @@ export function ClaimListing({ listingId, source }: { listingId: string; source?
   }, []);
 
   async function attemptClaim() {
-    setError(null);
+    setOutcome(null);
     const result = await claimListingAction(listingId, source);
     if (result.requiresLogin) {
       // phoneOnly: the backend only ever accepts a claim from an account whose own phone number
@@ -38,15 +41,34 @@ export function ClaimListing({ listingId, source }: { listingId: string; source?
       router.replace(`/my-listings/${listingId}/edit`);
       return;
     }
-    setError(result.error);
+    // Someone else already claimed it — a normal outcome (the same account that already owns it
+    // clicking its own link again is handled server-side as a silent success, not this branch),
+    // not a malfunction, so it gets its own calm framing rather than the red "couldn't verify"
+    // copy below.
+    if (result.alreadyClaimed) {
+      setOutcome({ kind: "alreadyClaimed" });
+      return;
+    }
+    setOutcome({ kind: "error", message: result.error });
   }
 
   return (
     <div className="min-h-dvh flex items-center justify-center bg-bg text-text p-6">
-      {error ? (
+      {outcome?.kind === "alreadyClaimed" ? (
+        <div className="text-center max-w-sm">
+          <p className="text-sm font-bold text-text mb-2">This listing has already been claimed</p>
+          <p className="text-sm text-muted mb-4">
+            Someone has already verified ownership of this listing — if that wasn&apos;t you, this link
+            has already done its job.
+          </p>
+          <Link href="/my-listings" className="text-sm font-bold text-green">
+            Go to my listings →
+          </Link>
+        </div>
+      ) : outcome?.kind === "error" ? (
         <div className="text-center max-w-sm">
           <p className="text-sm font-bold text-[#b3413a] mb-2">Couldn&apos;t verify this listing</p>
-          <p className="text-sm text-muted">{error}</p>
+          <p className="text-sm text-muted">{outcome.message}</p>
         </div>
       ) : (
         <p className="text-sm text-muted">Verifying…</p>
