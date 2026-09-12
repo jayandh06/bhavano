@@ -24,7 +24,7 @@ const past = (hours = 1) => new Date(Date.now() - hours * HOUR_MS);
 function makeService() {
   const prisma = {
     favourite: { findUnique: jest.fn(), create: jest.fn(), delete: jest.fn() },
-    listing: { update: jest.fn(), findUnique: jest.fn() },
+    listing: { update: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), count: jest.fn() },
     listingRenewal: { create: jest.fn() },
     user: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn() },
     $transaction: jest.fn(),
@@ -789,5 +789,40 @@ describe('ListingsService', () => {
 
       expect(notificationsService.notifyListingLiked).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('ListingsService.listForAdmin — status filter and sort', () => {
+  // findMany resolving to [] means toDetailDto (which needs a fully-shaped row: city, area,
+  // owner, media, etc.) is never actually called — this only needs to inspect what where/orderBy
+  // the method builds, not exercise the DTO mapping.
+  async function callWith(query: Record<string, unknown>) {
+    const { service, prisma } = makeService();
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.listing.count as jest.Mock).mockResolvedValue(0);
+    await service.listForAdmin({ limit: 25, ...query } as never);
+    return {
+      where: (prisma.listing.findMany as jest.Mock).mock.calls[0][0].where,
+      orderBy: (prisma.listing.findMany as jest.Mock).mock.calls[0][0].orderBy,
+    };
+  }
+
+  it('filters by status when given', async () => {
+    const { where } = await callWith({ status: 'deactivated' });
+    expect(where).toMatchObject({ status: 'deactivated' });
+  });
+
+  it('omits status from the where clause when not given', async () => {
+    const { where } = await callWith({});
+    expect(where).not.toHaveProperty('status');
+  });
+
+  it('sorts by status ascending and descending', async () => {
+    expect((await callWith({ sort: 'status_asc' })).orderBy).toEqual([{ status: 'asc' }, { id: 'asc' }]);
+    expect((await callWith({ sort: 'status_desc' })).orderBy).toEqual([{ status: 'desc' }, { id: 'asc' }]);
+  });
+
+  it('still defaults to newest-created when no sort is given', async () => {
+    expect((await callWith({})).orderBy).toEqual([{ createdAt: 'desc' }, { id: 'asc' }]);
   });
 });

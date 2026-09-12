@@ -161,6 +161,8 @@ const ADMIN_ORDER_BY: Record<
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
   updatedAt_desc: [{ updatedAt: 'desc' }, { id: 'asc' }],
   updatedAt_asc: [{ updatedAt: 'asc' }, { id: 'asc' }],
+  status_asc: [{ status: 'asc' }, { id: 'asc' }],
+  status_desc: [{ status: 'desc' }, { id: 'asc' }],
 };
 
 const priceFormatter = new Intl.NumberFormat('en-IN');
@@ -418,6 +420,7 @@ export class ListingsService {
       adminReviewed,
       category,
       transactionType,
+      status,
       cityId,
       areaId,
       userId,
@@ -434,6 +437,7 @@ export class ListingsService {
       ...(adminReviewed !== undefined ? { adminReviewed } : {}),
       ...(category ? { category } : {}),
       ...(transactionType ? { transactionType } : {}),
+      ...(status ? { status } : {}),
       ...(cityId ? { cityId } : {}),
       ...(areaId ? { areaId } : {}),
       ...(userId ? { ownerId: userId } : {}),

@@ -1,6 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import type { ListingCategory, ModerationState, TransactionType } from '@bhavano/types';
+import type { ListingCategory, ListingStatus, ModerationState, TransactionType } from '@bhavano/types';
 
 const LISTING_CATEGORIES: ListingCategory[] = [
   'house',
@@ -16,7 +16,15 @@ const LISTING_CATEGORIES: ListingCategory[] = [
 ];
 const MODERATION_STATES: ModerationState[] = ['approved', 'flagged'];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
-const ADMIN_LISTING_SORT_VALUES = ['createdAt_desc', 'createdAt_asc', 'updatedAt_desc', 'updatedAt_asc'] as const;
+const LISTING_STATUSES: ListingStatus[] = ['active', 'sold', 'rented', 'deactivated'];
+const ADMIN_LISTING_SORT_VALUES = [
+  'createdAt_desc',
+  'createdAt_asc',
+  'updatedAt_desc',
+  'updatedAt_asc',
+  'status_asc',
+  'status_desc',
+] as const;
 
 export type AdminListingSort = (typeof ADMIN_LISTING_SORT_VALUES)[number];
 
@@ -39,6 +47,10 @@ export class ListAdminListingsDto {
   @IsOptional()
   @IsIn(TRANSACTION_TYPES)
   transactionType?: TransactionType;
+
+  @IsOptional()
+  @IsIn(LISTING_STATUSES)
+  status?: ListingStatus;
 
   @IsOptional()
   @IsString()
