@@ -213,6 +213,28 @@ export function setListingStatus(accessToken: string, id: string, status: Listin
   });
 }
 
+/** Admin override of a listing's own content — same fields the owner's own edit form sends,
+ * just via the admin-only PATCH /admin/listings/:id (see ListingsService.updateAsAdmin). Only
+ * the fields actually being changed need to be included — same partial-update semantics as the
+ * owner-facing update. */
+export function updateListingAsAdmin(
+  accessToken: string,
+  id: string,
+  input: {
+    price?: number;
+    priceQualifier?: string;
+    title?: string;
+    specs?: string[];
+    description?: string;
+    attributes?: Record<string, unknown>;
+  },
+): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/admin/listings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
 export function rotateListingPhoto(
   accessToken: string,
   id: string,

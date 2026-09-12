@@ -16,6 +16,7 @@ import {
   setListingStatus,
   setReviewed,
   updateContactRevealSettings,
+  updateListingAsAdmin,
   updateRateLimitSettings,
 } from "@/lib/bff";
 
@@ -79,6 +80,28 @@ export async function setListingStatusAction(listingId: string, status: ListingS
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update status" };
+  }
+}
+
+export async function updateListingAction(
+  listingId: string,
+  input: {
+    price?: number;
+    priceQualifier?: string;
+    title?: string;
+    specs?: string[];
+    description?: string;
+    attributes?: Record<string, unknown>;
+  },
+): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateListingAsAdmin(accessToken, listingId, input);
+    revalidatePath("/");
+    revalidatePath(`/listings/${listingId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update listing" };
   }
 }
 
