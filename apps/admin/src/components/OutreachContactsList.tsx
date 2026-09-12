@@ -184,9 +184,15 @@ export function OutreachContactsList({ contacts, sp }: { contacts: OutreachConta
               <th style={thStyle}>
                 <SortableHeader label="Name" field="name" sp={sp} />
               </th>
-              <th style={thStyle}>Listing</th>
-              <th style={thStyle}>Notification</th>
-              <th style={thStyle}>Consent</th>
+              <th style={thStyle}>
+                <SortableHeader label="Listing" field="listing" sp={sp} />
+              </th>
+              <th style={thStyle}>
+                <SortableHeader label="Notification" field="notification" sp={sp} />
+              </th>
+              <th style={thStyle}>
+                <SortableHeader label="Consent" field="consent" sp={sp} />
+              </th>
               <th style={thStyle}>
                 <SortableHeader label="Rating" field="rating" sp={sp} />
               </th>
