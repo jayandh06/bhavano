@@ -45,6 +45,7 @@ import argparse
 import os
 import sys
 import time
+from datetime import datetime
 
 import requests
 from dotenv import load_dotenv
@@ -90,6 +91,26 @@ class RequestCounter:
 
     def summary(self):
         return f"Apify requests — actor runs: {self.actor_runs}, photo downloads: {self.photos}"
+
+
+class Tee:
+    """Every print() in this script already writes to sys.stderr — wrapping sys.stderr itself
+    with this, once, at startup means the whole run's output lands in both the terminal and a
+    persistent log file with no changes to any individual print call. Line-buffered (flushed on
+    every write) so `tail -f` on the log file shows progress live, not just after the run ends or
+    exits abnormally."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for s in self.streams:
+            s.write(data)
+            s.flush()
+
+    def flush(self):
+        for s in self.streams:
+            s.flush()
 
 
 def apify_search(apify_token, actor_id, query, location_text, max_results, timeout_sec, counter):
@@ -373,7 +394,22 @@ def main():
         action="store_true",
         help="Refetch every requested (city, area, category) triple even if PlacesFetchLog says it's already been done",
     )
+    parser.add_argument(
+        "--log-file",
+        default=None,
+        help="Persist this run's full output here too, not just the terminal, so it can be "
+        "reviewed after the run ends (or if it crashes) — default: "
+        "<photos-dir>/logs/run_<timestamp>.log. Pass 'none' to disable.",
+    )
     args = parser.parse_args()
+
+    if args.log_file != "none":
+        log_path = args.log_file or os.path.join(
+            args.photos_dir, "logs", f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        )
+        os.makedirs(os.path.dirname(log_path) or ".", exist_ok=True)
+        sys.stderr = Tee(sys.stderr, open(log_path, "a", buffering=1))
+        print(f"Logging this run's full output to {log_path}", file=sys.stderr)
 
     if not args.cities and not args.cities_file:
         parser.error("one of --cities or --cities-file is required")
