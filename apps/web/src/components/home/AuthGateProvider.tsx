@@ -29,8 +29,14 @@ interface AuthGateContextValue {
    * `onSuccess` resumes whatever the login interrupted, in place. The posting wizard uses it to
    * carry on submitting the ad the user just pressed Publish on: without it they would log in,
    * find the form exactly as they left it, and have to press the same button a second time —
-   * which reads as the first press having failed. */
-  requireLogin: (options?: { redirectTo?: string; onSuccess?: () => void }) => void;
+   * which reads as the first press having failed.
+   *
+   * `phoneOnly` hides the Google option — for a flow like claim-listing where the backend only
+   * ever accepts a login whose own phone number matches a specific one on file
+   * (ListingsService.claimListing): a Google/email account can be signed into successfully and
+   * still always fail that check, so offering it here is a guaranteed dead end, not a real
+   * choice. */
+  requireLogin: (options?: { redirectTo?: string; onSuccess?: () => void; phoneOnly?: boolean }) => void;
 }
 
 const AuthGateContext = createContext<AuthGateContextValue | null>(null);
@@ -52,12 +58,14 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [redirectTo, setRedirectTo] = useState<string | undefined>(undefined);
+  const [phoneOnly, setPhoneOnly] = useState(false);
   const onSuccessRef = useRef<(() => void) | undefined>(undefined);
 
   const router = useRouter();
 
-  function requireLogin(options?: { redirectTo?: string; onSuccess?: () => void }) {
+  function requireLogin(options?: { redirectTo?: string; onSuccess?: () => void; phoneOnly?: boolean }) {
     setRedirectTo(options?.redirectTo);
+    setPhoneOnly(options?.phoneOnly ?? false);
     // A ref, not state: this fires once from inside onLoginSuccess and must not cause a render
     // of its own on the way in.
     onSuccessRef.current = options?.onSuccess;
@@ -302,14 +310,19 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                   * colour mark, not the app's own green: Google's own button guidelines call for
                   * a neutral surface so the coloured logo itself is what reads as "Google," the
                   * same convention practically every Google sign-in button follows regardless of
-                  * the host app's own palette. */}
-                <button
-                  onClick={handleGoogle}
-                  disabled={pending}
-                  className="w-full flex items-center justify-center gap-2.5 bg-surface text-text border-[1.5px] border-border rounded-lg p-[13px] text-sm font-bold cursor-pointer mb-2.5"
-                >
-                  <GoogleIcon /> Continue with Google
-                </button>
+                  * the host app's own palette.
+                  *
+                  * Hidden entirely when phoneOnly — offering it would just be a guaranteed dead
+                  * end, see requireLogin's own doc comment. */}
+                {!phoneOnly && (
+                  <button
+                    onClick={handleGoogle}
+                    disabled={pending}
+                    className="w-full flex items-center justify-center gap-2.5 bg-surface text-text border-[1.5px] border-border rounded-lg p-[13px] text-sm font-bold cursor-pointer mb-2.5"
+                  >
+                    <GoogleIcon /> Continue with Google
+                  </button>
+                )}
                 <button onClick={() => setLoginStep("phone")} className={outlineButtonClass}>
                   Continue with Phone OTP
                 </button>

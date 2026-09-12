@@ -28,7 +28,10 @@ export function ClaimListing({ listingId, source }: { listingId: string; source?
     setError(null);
     const result = await claimListingAction(listingId, source);
     if (result.requiresLogin) {
-      requireLogin({ onSuccess: () => void attemptClaim() });
+      // phoneOnly: the backend only ever accepts a claim from an account whose own phone number
+      // matches this business's phone on file (ListingsService.claimListing) — a Google/email
+      // login can succeed and still always fail that check, so it's not offered here at all.
+      requireLogin({ onSuccess: () => void attemptClaim(), phoneOnly: true });
       return;
     }
     if (result.success) {
