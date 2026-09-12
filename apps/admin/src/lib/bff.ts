@@ -16,6 +16,7 @@ import type {
   ListingBoostsPage,
   ListingCategory,
   ListingDetailDto,
+  ListingEditLogPage,
   ListingEngagementPage,
   ListingOwnerDto,
   ListingStatus,
@@ -264,6 +265,19 @@ export function fetchListingEngagement(
   if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/engagement?${params.toString()}`, {
+    cache: "no-store",
+  });
+}
+
+export function fetchListingEditHistory(
+  accessToken: string,
+  listingId: string,
+  query: { offset?: number; limit?: number } = {},
+): Promise<ListingEditLogPage> {
+  const params = new URLSearchParams();
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
+  if (query.limit) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/listings/${listingId}/edit-history?${params.toString()}`, {
     cache: "no-store",
   });
 }

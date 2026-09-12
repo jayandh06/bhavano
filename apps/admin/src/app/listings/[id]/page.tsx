@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
+import type { ListingEditLogEntryDto } from "@bhavano/types";
 import {
   fetchListingById,
   fetchListingConversations,
+  fetchListingEditHistory,
   fetchListingEngagement,
   fetchListingOwner,
   fetchMessages,
@@ -18,6 +20,54 @@ import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 
 const LIKED_PARAM_NAMES = { page: "likedPage", limit: "likedLimit" };
 const MSG_PARAM_NAMES = { page: "msgPage", limit: "msgLimit" };
+const HISTORY_PARAM_NAMES = { page: "historyPage", limit: "historyLimit" };
+
+const ACTION_LABELS: Record<string, string> = {
+  created: "Created",
+  updated: "Edited",
+  approved: "Approved",
+  flagged: "Flagged",
+  status_changed: "Status changed",
+  photo_added: "Photo added",
+  photo_removed: "Photo removed",
+  video_added: "Video added",
+  video_removed: "Video removed",
+};
+
+/** `changes` values are `unknown` (see ListingFieldChange) since different actions touch
+ * completely different field types — stringified generically rather than assuming a shape. */
+function formatChangeValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function EditHistoryEntry({ entry }: { entry: ListingEditLogEntryDto }) {
+  const actorLabel =
+    entry.actorType === "system"
+      ? "System (bulk import)"
+      : entry.actorName
+        ? `${entry.actorName} (${entry.actorType})`
+        : `Unknown ${entry.actorType}`;
+  return (
+    <div style={{ borderTop: "1px solid var(--border)", padding: "10px 0" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
+        <span style={{ fontWeight: 700 }}>{ACTION_LABELS[entry.action] ?? entry.action}</span>
+        <span style={{ color: "var(--muted)" }}>{formatDateTime(entry.createdAt)}</span>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{actorLabel}</div>
+      {entry.changes && Object.keys(entry.changes).length > 0 && (
+        <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", fontSize: 12 }}>
+          {Object.entries(entry.changes).map(([field, change]) => (
+            <li key={field} style={{ color: "var(--text-soft)" }}>
+              <strong>{field}</strong>: {formatChangeValue(change.before)} → {formatChangeValue(change.after)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default async function ListingModerationPage({
   params,
@@ -37,8 +87,10 @@ export default async function ListingModerationPage({
   const likedLimit = parsePageSize(str(sp.likedLimit));
   const msgPage = parsePage(str(sp.msgPage));
   const msgLimit = parsePageSize(str(sp.msgLimit));
+  const historyPage = parsePage(str(sp.historyPage));
+  const historyLimit = parsePageSize(str(sp.historyLimit));
 
-  const [thread, owner, engagement, conversations] = await Promise.all([
+  const [thread, owner, engagement, conversations, history] = await Promise.all([
     fetchThread(accessToken, id),
     fetchListingOwner(accessToken, id),
     fetchListingEngagement(accessToken, id, {
@@ -49,10 +101,15 @@ export default async function ListingModerationPage({
       offset: (msgPage - 1) * msgLimit,
       limit: msgLimit,
     }),
+    fetchListingEditHistory(accessToken, id, {
+      offset: (historyPage - 1) * historyLimit,
+      limit: historyLimit,
+    }),
   ]);
   const messages = await fetchMessages(accessToken, thread.id);
   const likedTotalPages = Math.max(1, Math.ceil(engagement.total / likedLimit));
   const msgTotalPages = Math.max(1, Math.ceil(conversations.total / msgLimit));
+  const historyTotalPages = Math.max(1, Math.ceil(history.total / historyLimit));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -237,6 +294,26 @@ export default async function ListingModerationPage({
             pageSize={msgLimit}
             sp={sp}
             paramNames={MSG_PARAM_NAMES}
+          />
+        </div>
+
+        <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginTop: 20, background: "var(--surface)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>History ({history.total})</div>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 8px" }}>
+            Every edit, moderation action, and status change on this listing — who, what, and when.
+          </p>
+          {history.items.length === 0 ? (
+            <p style={{ color: "var(--muted)", fontSize: 14 }}>No history recorded yet.</p>
+          ) : (
+            history.items.map((entry) => <EditHistoryEntry key={entry.id} entry={entry} />)
+          )}
+          <Pagination
+            currentPage={historyPage}
+            totalPages={historyTotalPages}
+            buildHref={(p) => buildPageHref(`/listings/${id}`, sp, p, HISTORY_PARAM_NAMES)}
+            pageSize={historyLimit}
+            sp={sp}
+            paramNames={HISTORY_PARAM_NAMES}
           />
         </div>
       </div>
