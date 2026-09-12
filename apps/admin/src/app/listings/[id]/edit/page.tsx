@@ -18,7 +18,7 @@ export default async function AdminEditListingPage({ params }: { params: Promise
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
         <Link href={`/listings/${id}`} style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
           ← Back to listing
         </Link>
