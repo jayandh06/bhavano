@@ -26,6 +26,7 @@ import type {
   OutreachContactDto,
   OutreachContactsPage,
   RateLimitSettingsDto,
+  SendPostedNotificationResponseDto,
   SendWelcomeResponseDto,
   UserActivityDto,
 } from '@bhavano/types';
@@ -45,6 +46,7 @@ import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { ListUsersDto } from './dto/list-users.dto';
 import { SendWelcomeDto } from './dto/send-welcome.dto';
+import { SendPostedNotificationDto } from './dto/notify-posted.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-settings.dto';
@@ -84,6 +86,15 @@ export class AdminController {
   @Get('listings')
   listListings(@Query() query: ListAdminListingsDto): Promise<AdminListingsPage> {
     return this.adminService.listListings(query);
+  }
+
+  /** Admin-triggered (re)send of the "your ad is live" acknowledgement for one or many listings
+   * at once — see AdminService.sendPostedNotification's own doc comment. Declared before any
+   * `listings/:id/...` route it might otherwise collide with, though Nest matches this literal
+   * segment ('notify-posted') ahead of the `:id` param regardless of declaration order. */
+  @Post('listings/notify-posted')
+  sendPostedNotification(@Body() dto: SendPostedNotificationDto): Promise<SendPostedNotificationResponseDto> {
+    return this.adminService.sendPostedNotification(dto.listingIds);
   }
 
   @Patch('listings/:id/review')

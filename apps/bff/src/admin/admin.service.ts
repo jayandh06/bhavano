@@ -19,6 +19,8 @@ import type {
   MessageDto,
   PageVisitsPage,
   RateLimitSettingsDto,
+  SendPostedNotificationResponseDto,
+  SendPostedNotificationResultDto,
   SendWelcomeResponseDto,
   SendWelcomeResultDto,
   UserActivityDto,
@@ -119,6 +121,11 @@ function parseTextFilter(raw: string | undefined): Prisma.StringNullableFilter |
   // `mode: 'insensitive'` at this level applies to the comparison whether it is negated or not.
   return negate ? { not: op, mode: 'insensitive' } : { ...op, mode: 'insensitive' };
 }
+
+// Same literal as ListingsService/OutreachService's own BULK_IMPORT_OWNER_PHONE and
+// seedBulkImportOwner.ts — the placeholder account bulk-imported listings are posted under
+// until claimed. Never a real recipient for "your ad is live".
+const BULK_IMPORT_OWNER_PHONE = '9000000002';
 
 @Injectable()
 export class AdminService {
@@ -513,6 +520,71 @@ export class AdminService {
 
       await this.prisma.userNotificationLog.create({ data: { userId, kind: 'welcome', channel: sentChannel } });
       results.push({ userId, success: true });
+    }
+
+    return {
+      sent: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
+    };
+  }
+
+  /** Admin-triggered (re)send of the "your ad is live" acknowledgement (see
+   * docs/plans/post-ad-acknowledgement.md and NotificationsService.notifyListingPosted) for one
+   * or many listings at once — the resend path that plan explicitly left out of scope, for
+   * listings whose one-shot, fire-and-forget send at creation time never landed (an email/
+   * WhatsApp failure, or an owner who had neither on file yet). Unlike sendWelcome above, this
+   * DOES gate on an existing ListingNotificationLog('posted') row: the point is "send it for the
+   * ones that slipped through", not a deliberate unconditional resend, so an admin can select a
+   * mixed batch (some already sent, some not) without double-sending the ones that already went
+   * out. Sequential, not `Promise.all` — hits an external API (SMTP / MSG91) per listing. */
+  async sendPostedNotification(listingIds: string[]): Promise<SendPostedNotificationResponseDto> {
+    const listings = await this.prisma.listing.findMany({
+      where: { id: { in: listingIds } },
+      include: {
+        owner: { select: { name: true, email: true, phone: true } },
+        city: true,
+        area: true,
+        notificationLogs: { where: { kind: 'posted' }, take: 1 },
+      },
+    });
+    const byId = new Map(listings.map((l) => [l.id, l]));
+
+    const results: SendPostedNotificationResultDto[] = [];
+    for (const listingId of listingIds) {
+      const listing = byId.get(listingId);
+      if (!listing) {
+        results.push({ listingId, success: false, error: 'Listing not found' });
+        continue;
+      }
+      if (listing.notificationLogs.length > 0) {
+        results.push({ listingId, success: false, error: 'Already sent' });
+        continue;
+      }
+      if (listing.owner.phone === BULK_IMPORT_OWNER_PHONE) {
+        results.push({ listingId, success: false, error: 'Bulk-import placeholder owner — no real recipient' });
+        continue;
+      }
+
+      const sent = await this.notificationsService.notifyListingPosted(listing.owner, {
+        id: listing.id,
+        slug: listing.slug,
+        category: listing.category,
+        transactionType: listing.transactionType,
+        cityName: listing.city.name,
+        area: listing.area.name,
+        title: listing.title,
+      });
+
+      if (!sent) {
+        results.push({ listingId, success: false, error: 'Owner has no email or phone on file' });
+        continue;
+      }
+
+      await this.prisma.listingNotificationLog.create({
+        data: { listingId, kind: 'posted', channel: sent.channel, providerMessageId: sent.messageId ?? null },
+      });
+      results.push({ listingId, success: true });
     }
 
     return {
