@@ -500,7 +500,7 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
           <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "12px 16px 16px" }}>
             {section.section === "pricing" && (
               <div style={{ display: "flex", gap: 10 }}>
-                <label style={{ ...labelStyle, flex: 1, maxWidth: 200 }}>
+                <label style={{ ...stackedFieldStyle, flex: 1, maxWidth: 200 }}>
                   Price (₹) {!priceOnRequestAllowed && <span style={{ color: "var(--danger)" }}>*</span>}
                   <input
                     type="number"
@@ -510,7 +510,7 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
                     style={inputStyle}
                   />
                 </label>
-                <label style={{ ...labelStyle, flex: 1, maxWidth: 220 }}>
+                <label style={{ ...stackedFieldStyle, flex: 1, maxWidth: 220 }}>
                   Price qualifier
                   <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={inputStyle}>
                     {priceQualifierChoices.map((o) => (
@@ -529,7 +529,7 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
         </details>
       ))}
 
-      <label style={{ ...labelStyle, maxWidth: 720 }}>
+      <label style={{ ...stackedFieldStyle, maxWidth: 720 }}>
         Specs (comma-separated)
         <input value={specsValue} onChange={(e) => setSpecsValue(e.target.value)} style={inputStyle} />
       </label>
@@ -544,13 +544,25 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
   );
 }
 
+// Text-only — a bare `<label>Text <span>*</span></label>` with no `display`/`flexDirection` of
+// its own renders its children inline, on one line, the way a label reads everywhere else in the
+// app. `flexDirection: "column"` here (an earlier version had it) turns every child — the label
+// text and the asterisk `<span>` are two separate children — into its own stacked flex item, so
+// the asterisk wrapped onto its own line below the label instead of sitting next to it.
 const labelStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 4,
   fontSize: 12,
   fontWeight: 700,
   color: "var(--muted)",
+};
+
+// For the few labels that wrap their own input/select directly (Price, Price qualifier, Specs)
+// rather than rendering it as a sibling — these need the label's text stacked above the control,
+// which does need `flexDirection: "column"`.
+const stackedFieldStyle: React.CSSProperties = {
+  ...labelStyle,
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
 };
 
 const inputStyle: React.CSSProperties = {
