@@ -86,6 +86,15 @@ import { ContactRevealService, type ContactRevealState } from '../contact-reveal
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
 const DEFAULT_LISTING_DURATION_DAYS = 30;
+// Same literal as OutreachService's own BULK_IMPORT_OWNER_PHONE and seedBulkImportOwner.ts —
+// the system account bulk_upload_listings.py and OutreachService.createListingFromContact post
+// under instead of a real user's. Checked here so create()'s owner-facing side effects (the
+// "your ad was posted" WhatsApp/email/SMS, the Google Ads "post ad success" conversion upload)
+// don't fire for a phone number nobody's actually monitoring, or attribute a fake acquisition
+// event to a system account. savedSearchesService.notifyMatchingBuyers below is NOT skipped —
+// real buyers with a matching saved search should hear about a real new listing regardless of
+// which account technically posted it.
+const BULK_IMPORT_OWNER_PHONE = '9000000002';
 
 /** Property types nested under each of the Buy / Rent & Lease browsing tabs — nobody
  * buys/sells Storage or Coworking, so those only appear under Rent & Lease. */
@@ -838,7 +847,9 @@ export class ListingsService {
     // GoogleAdsConversionProvider.uploadClickConversion's doc comment). Never blocks or fails the
     // listing creation itself — uploadClickConversion already never throws, .catch() is
     // belt-and-braces.
-    if (owner?.acquisitionGclid || owner?.email || owner?.phone) {
+    const isBulkImportOwner = owner?.phone === BULK_IMPORT_OWNER_PHONE;
+
+    if (!isBulkImportOwner && (owner?.acquisitionGclid || owner?.email || owner?.phone)) {
       void this.googleAdsConversionProvider
         .uploadClickConversion({
           gclid: owner.acquisitionGclid ?? undefined,
@@ -854,28 +865,30 @@ export class ListingsService {
     // Same fire-and-forget rule for the poster's own acknowledgement — see
     // docs/plans/post-ad-acknowledgement.md. `owner` is never null here: `assertCanPublish`
     // above and the `deletedAt` check both already require the row to exist.
-    this.notificationsService
-      .notifyListingPosted(owner!, {
-        id: listing.id,
-        slug: listing.slug,
-        category: listing.category,
-        transactionType: listing.transactionType,
-        cityName: listing.city.name,
-        area: listing.area.name,
-        title: listing.title,
-      })
-      .then((result) => {
-        if (!result) return;
-        return this.prisma.listingNotificationLog.create({
-          data: {
-            listingId: listing.id,
-            kind: 'posted',
-            channel: result.channel,
-            providerMessageId: result.messageId ?? null,
-          },
-        });
-      })
-      .catch(() => undefined);
+    if (!isBulkImportOwner) {
+      this.notificationsService
+        .notifyListingPosted(owner!, {
+          id: listing.id,
+          slug: listing.slug,
+          category: listing.category,
+          transactionType: listing.transactionType,
+          cityName: listing.city.name,
+          area: listing.area.name,
+          title: listing.title,
+        })
+        .then((result) => {
+          if (!result) return;
+          return this.prisma.listingNotificationLog.create({
+            data: {
+              listingId: listing.id,
+              kind: 'posted',
+              channel: result.channel,
+              providerMessageId: result.messageId ?? null,
+            },
+          });
+        })
+        .catch(() => undefined);
+    }
 
     return this.toDetailDto(listing, undefined, true);
   }
