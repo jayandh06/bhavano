@@ -500,8 +500,10 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
           <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "12px 16px 16px" }}>
             {section.section === "pricing" && (
               <div style={{ display: "flex", gap: 10 }}>
-                <label style={{ ...stackedFieldStyle, flex: 1, maxWidth: 200 }}>
-                  Price (₹) {!priceOnRequestAllowed && <span style={{ color: "var(--danger)" }}>*</span>}
+                <div style={{ flex: 1, maxWidth: 200 }}>
+                  <label style={labelStyle}>
+                    Price (₹) {!priceOnRequestAllowed && <span style={{ color: "var(--danger)" }}>*</span>}
+                  </label>
                   <input
                     type="number"
                     min={priceOnRequestAllowed ? 0 : 1}
@@ -509,9 +511,9 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
                     onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
                     style={inputStyle}
                   />
-                </label>
-                <label style={{ ...stackedFieldStyle, flex: 1, maxWidth: 220 }}>
-                  Price qualifier
+                </div>
+                <div style={{ flex: 1, maxWidth: 220 }}>
+                  <label style={labelStyle}>Price qualifier</label>
                   <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={inputStyle}>
                     {priceQualifierChoices.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -519,7 +521,7 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
                       </option>
                     ))}
                   </SelectField>
-                </label>
+                </div>
               </div>
             )}
             {groupFieldsByChain(section.fields).map((run) => (
@@ -529,10 +531,10 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
         </details>
       ))}
 
-      <label style={{ ...stackedFieldStyle, maxWidth: 720 }}>
-        Specs (comma-separated)
+      <div style={{ maxWidth: 720 }}>
+        <label style={labelStyle}>Specs (comma-separated)</label>
         <input value={specsValue} onChange={(e) => setSpecsValue(e.target.value)} style={inputStyle} />
-      </label>
+      </div>
 
       {error && <p style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{error}</p>}
       {saved && !error && <p style={{ color: "var(--green)", fontSize: 13, margin: 0 }}>Saved.</p>}
@@ -544,25 +546,29 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
   );
 }
 
-// Text-only — a bare `<label>Text <span>*</span></label>` with no `display`/`flexDirection` of
-// its own renders its children inline, on one line, the way a label reads everywhere else in the
-// app. `flexDirection: "column"` here (an earlier version had it) turns every child — the label
-// text and the asterisk `<span>` are two separate children — into its own stacked flex item, so
-// the asterisk wrapped onto its own line below the label instead of sitting next to it.
+// `display: "block"` is the whole fix, twice over. A `<label>` defaults to `inline`, so an
+// earlier version that gave it no `display` at all let a following sibling that's *also*
+// inline-level by default (a bare `<input>`/`<textarea>`, unlike SelectField/Stepper/
+// CheckboxDropdown, which each wrap themselves in a block-level `<div>`) sit beside it on the
+// same line instead of stacking below — that showed up as Description's textarea, and every
+// plain text/number field in Property details, running next to its label instead of under it.
+// A *different*, earlier version had `flexDirection: "column"` instead, which fixed that but
+// broke the opposite thing: it turned the label's own inline children — the label text and a
+// required-field asterisk `<span>` are two separate children — into their own stacked flex
+// items, wrapping the asterisk onto its own line below the label text.
+// `display: "block"` gets both right: it forces the *label itself* onto its own line (so
+// whatever comes after it always starts on the next line, regardless of that sibling's own
+// display type), while leaving the label's *own* children — text and the asterisk span — to
+// flow inline with each other exactly as normal, unstyled HTML would. Every field in this form
+// now follows one shape: a block label, then its control as a plain sibling (never nested
+// inside the label) — see the Price/Price-qualifier/Specs fields below, which used to nest their
+// input inside the label and needed their own separate flex-column style for it.
 const labelStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: 4,
   fontSize: 12,
   fontWeight: 700,
   color: "var(--muted)",
-};
-
-// For the few labels that wrap their own input/select directly (Price, Price qualifier, Specs)
-// rather than rendering it as a sibling — these need the label's text stacked above the control,
-// which does need `flexDirection: "column"`.
-const stackedFieldStyle: React.CSSProperties = {
-  ...labelStyle,
-  display: "flex",
-  flexDirection: "column",
-  gap: 4,
 };
 
 const inputStyle: React.CSSProperties = {
