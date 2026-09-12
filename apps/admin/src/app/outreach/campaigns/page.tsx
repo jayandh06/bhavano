@@ -32,6 +32,9 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           Promotional SMS/WhatsApp to outreach contacts.{" "}
           <Link href="/outreach/contacts" style={{ color: "var(--green)", fontWeight: 700 }}>
             Contacts →
+          </Link>{" "}
+          <Link href="/outreach/scrapes" style={{ color: "var(--green)", fontWeight: 700 }}>
+            Scrape history →
           </Link>
         </p>
         <p
