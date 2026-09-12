@@ -28,11 +28,12 @@ IMPORTANT — read before running this for real, not just get_pg_coworking_leads
     booleans (both confirmed present in real output) — CLOSED_PERMANENTLY / CLOSED_TEMPORARILY /
     OPERATIONAL, matching Google's own enum values so the existing businessStatus quality gate
     in createListingFromContact works the same regardless of which script sourced the contact.
-  - Photos: a default run's output carries exactly one free `imageUrl` per place (bundled with
-    the base place scrape, confirmed live). Getting more than one requires the Actor's own
-    `maxImages` input, which its live input schema says triggers a separate "additional place
-    details scraped" charge per place — not wired up here, so --max-photos above 1 currently has
-    nothing extra to fetch; see download_apify_photos()'s own docstring. Downloaded into the
+  - Photos: --max-photos 1 (default) gets one free `imageUrl` per place, bundled with the base
+    place scrape. --max-photos above 1 sets the Actor's own `maxImages` input (confirmed live to
+    return a plural `imageUrls` array), which its live pricing schema says triggers a separate
+    "additional place details scraped" charge per place — a deliberate cost tradeoff the caller
+    opts into by raising --max-photos, not a default. See apify_search()'s and
+    download_apify_photos()'s own docstrings. Downloaded into the
     exact same <photos-dir>/photos/{googlePlaceId}_{i}.jpg layout get_pg_coworking_leads.py
     already uses, so bulk_upload_listings.py and the admin's "Create listing" action work
     unchanged regardless of which script produced them.
@@ -113,22 +114,31 @@ class Tee:
             s.flush()
 
 
-def apify_search(apify_token, actor_id, query, location_text, max_results, timeout_sec, counter):
+def apify_search(apify_token, actor_id, query, location_text, max_results, timeout_sec, counter, max_images=1):
     """POST .../actors/:actorId/run-sync-get-dataset-items — runs the Actor and returns its
     result dataset directly in this one HTTP response (Apify handles the run-then-wait
     internally), rather than the separate search+details Google's own API needs. Returns []
     on any failure — a network error, a timeout, or the Actor erroring — so one bad pair never
-    aborts an otherwise-working multi-city run."""
+    aborts an otherwise-working multi-city run.
+
+    max_images > 1 sets the Actor's own `maxImages` input, confirmed live to populate a plural
+    `imageUrls` array (vs. just the free singular `imageUrl` when omitted) — but per the Actor's
+    own live pricing schema, this triggers a separate "additional place details scraped" charge
+    per place, so it's only sent when the caller explicitly asks for more than the 1 free image
+    (max_images == 1 omits the parameter entirely, preserving the free-only default)."""
+    body = {
+        "searchStringsArray": [query],
+        "locationQuery": location_text,
+        "maxCrawledPlacesPerSearch": max_results,
+    }
+    if max_images > 1:
+        body["maxImages"] = max_images
     try:
         resp = requests.post(
             f"{APIFY_API_BASE}/actors/{actor_id}/run-sync-get-dataset-items",
             params={"timeout": timeout_sec},
             headers={"Authorization": f"Bearer {apify_token}"},
-            json={
-                "searchStringsArray": [query],
-                "locationQuery": location_text,
-                "maxCrawledPlacesPerSearch": max_results,
-            },
+            json=body,
             # HTTP client timeout comfortably above Apify's own run timeout, so we see Apify's
             # own 408 response rather than our own connection just dying first.
             timeout=timeout_sec + 30,
@@ -153,11 +163,11 @@ def download_apify_photos(image_urls, place_id, out_dir, max_photos, counter):
     Photo API call needed the way Google requires. Same output layout as
     get_pg_coworking_leads.py's own download_photos(): <out_dir>/photos/{place_id}_{i}.jpg.
 
-    A default run's output carries exactly one `imageUrl` per place, free (bundled with the base
-    place scrape) — confirmed against a real run's output, not just the docs. Getting more than
-    one requires setting the Actor's `maxImages` input, which its own live input schema states
-    triggers a separate "additional place details scraped" charge per place — not wired up here,
-    so --max-photos beyond 1 currently has nothing extra to cap; see this module's docstring."""
+    --max-photos 1 (the default) gets exactly one free `imageUrl` per place, bundled with the
+    base place scrape. --max-photos above 1 sets the Actor's `maxImages` input (see
+    apify_search()), which per its own live pricing schema triggers a separate "additional place
+    details scraped" charge per place — a real cost tradeoff the caller opts into explicitly by
+    raising --max-photos, not a default."""
     photo_dir = os.path.join(out_dir, "photos")
     os.makedirs(photo_dir, exist_ok=True)
     saved_paths = []
@@ -274,7 +284,7 @@ def collect_city(apify_token, actor_id, city, city_id, locations, categories, ma
                     "query": query,
                     "minRatingFilter": min_rating,
                 })
-            places = apify_search(apify_token, actor_id, noun, location_text, max_results, actor_timeout, counter)
+            places = apify_search(apify_token, actor_id, noun, location_text, max_results, actor_timeout, counter, max_images=max_photos)
             pair_stats[(loc["area"], category)] = {
                 "areaId": loc["areaId"], "logId": log_id, "query": query,
                 "found": len(places), "imported": 0,
@@ -291,8 +301,10 @@ def collect_city(apify_token, actor_id, city, city_id, locations, categories, ma
     for place_id, (category, query, loc, log_id, place) in seen.items():
         photo_paths = []
         if download:
-            image_url = place.get("imageUrl")
-            photo_paths = download_apify_photos([image_url] if image_url else [], place_id, out_dir, max_photos, counter)
+            # imageUrls (plural) only appears when maxImages was set on the request (max_photos
+            # > 1) — confirmed live; otherwise only the free singular imageUrl is present.
+            image_urls = place.get("imageUrls") or ([place["imageUrl"]] if place.get("imageUrl") else [])
+            photo_paths = download_apify_photos(image_urls, place_id, out_dir, max_photos, counter)
 
         contacts.append(
             build_contact(
@@ -384,9 +396,10 @@ def main():
         "--max-photos",
         type=int,
         default=MAX_PHOTOS_DEFAULT,
-        help=f"Max photos to fetch per place (default {MAX_PHOTOS_DEFAULT}). A default Actor run "
-        "only returns 1 free image per place — going above 1 currently has nothing extra to "
-        "fetch, since the paid maxImages Actor input isn't wired up here.",
+        help=f"Max photos to fetch per place (default {MAX_PHOTOS_DEFAULT}, free). Above 1, this "
+        "sets the Actor's own maxImages input, which triggers a separate paid "
+        "'additional place details scraped' charge per place — a deliberate cost tradeoff, not "
+        "the default.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Fetch and print counts, but don't write anything to the BFF")
     parser.add_argument(
