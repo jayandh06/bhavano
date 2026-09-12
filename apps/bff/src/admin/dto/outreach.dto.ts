@@ -40,8 +40,9 @@ export class ListOutreachContactsDto {
   @IsOptional() @IsEnum(CONSENT_STATES) consentState?: ConsentState;
   @IsOptional() @IsEnum(['true', 'false']) hasListing?: 'true' | 'false';
   @IsOptional() @IsEnum(['not_sent', 'sent', 'confirmed']) notificationStatus?: 'not_sent' | 'sent' | 'confirmed';
-  /** Table-header sort — 'name' | 'rating' | 'city', optionally '-'-prefixed for descending.
-   * Any other/unknown value silently falls back to the default order (see buildContactOrderBy). */
+  /** Table-header sort — 'name' | 'rating' | 'city' | 'listing' | 'notification' | 'consent',
+   * optionally '-'-prefixed for descending. Any other/unknown value silently falls back to the
+   * default order (see buildContactOrderBy). */
   @IsOptional() @IsString() sort?: string;
 }
 

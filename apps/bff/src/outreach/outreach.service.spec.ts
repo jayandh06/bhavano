@@ -623,7 +623,7 @@ describe('OutreachService.createListingFromContact — the full success path', (
   });
 });
 
-describe('buildContactOrderBy — the admin table\'s sortable Name/Rating/City headers', () => {
+describe('buildContactOrderBy — the admin table\'s sortable Name/Rating/City/Listing/Notification/Consent headers', () => {
   it('defaults to newest-first when no sort is given', () => {
     expect(buildContactOrderBy(undefined)).toEqual([{ createdAt: 'desc' }, { id: 'asc' }]);
   });
@@ -645,6 +645,21 @@ describe('buildContactOrderBy — the admin table\'s sortable Name/Rating/City h
   it('sorts by the related City.name ascending and descending', () => {
     expect(buildContactOrderBy('city')).toEqual([{ city: { name: 'asc' } }, { id: 'asc' }]);
     expect(buildContactOrderBy('-city')).toEqual([{ city: { name: 'desc' } }, { id: 'asc' }]);
+  });
+
+  it('sorts by the claimed listing\'s claimedAt as the Listing-column proxy', () => {
+    expect(buildContactOrderBy('listing')).toEqual([{ claimedListing: { claimedAt: 'asc' } }, { id: 'asc' }]);
+    expect(buildContactOrderBy('-listing')).toEqual([{ claimedListing: { claimedAt: 'desc' } }, { id: 'asc' }]);
+  });
+
+  it('sorts by contactedCount as the Notification-column proxy', () => {
+    expect(buildContactOrderBy('notification')).toEqual([{ contactedCount: 'asc' }, { id: 'asc' }]);
+    expect(buildContactOrderBy('-notification')).toEqual([{ contactedCount: 'desc' }, { id: 'asc' }]);
+  });
+
+  it('sorts by consentState ascending and descending', () => {
+    expect(buildContactOrderBy('consent')).toEqual([{ consentState: 'asc' }, { id: 'asc' }]);
+    expect(buildContactOrderBy('-consent')).toEqual([{ consentState: 'desc' }, { id: 'asc' }]);
   });
 });
 

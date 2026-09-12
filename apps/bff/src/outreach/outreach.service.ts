@@ -91,10 +91,25 @@ export function guessGender(name: string): string[] {
   return values;
 }
 
-/** The admin contacts table's sortable column headers (Name/Rating/City) — 'field' ascending or
- * '-field' descending; anything else (unset, a typo'd value) falls back to the page's original
- * default (newest first). `id: 'asc'` is always the tiebreaker so equal-value rows don't
- * reshuffle between pages. */
+/** The admin contacts table's sortable column headers (Name/Rating/City/Listing/Notification/
+ * Consent) — 'field' ascending or '-field' descending; anything else (unset, a typo'd value)
+ * falls back to the page's original default (newest first). `id: 'asc'` is always the tiebreaker
+ * so equal-value rows don't reshuffle between pages.
+ *
+ * 'listing' and 'notification' don't have a single scalar column that captures what the table
+ * actually shows (both are derived from `claimedListing`, an optional to-one relation — see
+ * ListingStatus/NotificationStatus in OutreachContactsList.tsx and this file's own
+ * listContacts() filter logic for the exact 3-state definitions). Prisma can't express "order by
+ * whether an optional relation is null" as a tri-state alongside a raw SQL CASE without dropping
+ * to $queryRaw, so both use the closest scalar proxy instead:
+ *   - 'listing' sorts by claimedListing.claimedAt — real claims land in date order; "no listing
+ *     at all" and "linked but not yet claimed" both have no claimedAt and collapse together at
+ *     the unsorted end.
+ *   - 'notification' sorts by contactedCount — 0 is reliably "not sent"; higher counts usually
+ *     but don't always mean "confirmed" (a listing created directly and claimed without ever
+ *     being messaged would show 0 despite being confirmed). Good enough for "show me the most/
+ *     least contacted", not a precise not_sent/sent/confirmed ordering.
+ * 'consent' sorts directly on consentState — a real enum column, so this one's exact. */
 export function buildContactOrderBy(sort?: string): Prisma.OutreachContactOrderByWithRelationInput[] {
   const desc = sort?.startsWith('-') ?? false;
   const field = desc ? sort!.slice(1) : sort;
@@ -106,6 +121,12 @@ export function buildContactOrderBy(sort?: string): Prisma.OutreachContactOrderB
       return [{ googleRating: direction }, { id: 'asc' }];
     case 'city':
       return [{ city: { name: direction } }, { id: 'asc' }];
+    case 'listing':
+      return [{ claimedListing: { claimedAt: direction } }, { id: 'asc' }];
+    case 'notification':
+      return [{ contactedCount: direction }, { id: 'asc' }];
+    case 'consent':
+      return [{ consentState: direction }, { id: 'asc' }];
     default:
       return [{ createdAt: 'desc' }, { id: 'asc' }];
   }
