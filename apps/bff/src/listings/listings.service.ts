@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   UnauthorizedException,
   ForbiddenException,
   Injectable,
@@ -1473,7 +1474,14 @@ export class ListingsService {
       throw new BadRequestException('This listing is not claimable');
     }
     if (existing.claimedAt) {
-      throw new BadRequestException('This listing has already been claimed');
+      // The same person who already claimed this clicking the link again (a stale WhatsApp/
+      // email message reopened, a double-tap) isn't an error at all — it's just "you're already
+      // in", so this returns the listing exactly like a fresh claim would rather than throwing.
+      // Only a genuinely different account hitting an already-claimed listing is a real conflict.
+      if (existing.ownerId === userId) {
+        return this.getMine(userId, listingId);
+      }
+      throw new ConflictException('This listing has already been claimed by someone else.');
     }
 
     const user = await this.prisma.user.findUnique({

@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ListingsService } from './listings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
@@ -948,5 +948,39 @@ describe('ListingsService.flag/approve/setStatusAsAdmin — attribute the change
     await service.setStatusAsAdmin('l1', 'active', 'admin1').catch(() => undefined);
 
     expect(prisma.listingEditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('ListingsService.claimListing — re-clicking an already-claimed link', () => {
+  it('the same owner clicking the link again is a silent no-op success, not an error', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({
+      id: 'l1',
+      ownerId: 'owner1',
+      claimContactId: 'contact1',
+      claimContact: { phoneE164: '+919876543210' },
+      claimedAt: new Date(),
+    });
+
+    // toDetailDto isn't relevant here — this only checks that the already-claiming-user path
+    // never reaches the claim transaction at all, not what getMine() ultimately returns.
+    await service.claimListing('l1', 'owner1').catch(() => undefined);
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('a different account hitting an already-claimed listing gets a clear conflict, not a generic error', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({
+      id: 'l1',
+      ownerId: 'owner1',
+      claimContactId: 'contact1',
+      claimContact: { phoneE164: '+919876543210' },
+      claimedAt: new Date(),
+    });
+
+    await expect(service.claimListing('l1', 'someone-else')).rejects.toThrow(ConflictException);
+    await expect(service.claimListing('l1', 'someone-else')).rejects.toThrow(/already been claimed by someone else/);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
