@@ -46,7 +46,13 @@ import type {
 /** Mirrors the BFF's ADMIN_LISTING_SORT_VALUES (apps/bff/src/admin/dto/list-admin-listings.dto.ts)
  * — sort-key unions aren't shared via @bhavano/types in this codebase, kept in sync by convention
  * (same pattern as the public site's ListingsQuery.sort). */
-export type AdminListingSort = "createdAt_desc" | "createdAt_asc" | "updatedAt_desc" | "updatedAt_asc";
+export type AdminListingSort =
+  | "createdAt_desc"
+  | "createdAt_asc"
+  | "updatedAt_desc"
+  | "updatedAt_asc"
+  | "status_asc"
+  | "status_desc";
 
 /** Mirrors the BFF's LOGIN_SORT_VALUES (apps/bff/src/admin/dto/list-logins.dto.ts). */
 export type AdminLoginSort = "createdAt_desc" | "createdAt_asc";
@@ -117,6 +123,7 @@ export interface AdminListingsQuery {
   adminReviewed?: boolean;
   category?: ListingCategory;
   transactionType?: TransactionType;
+  status?: ListingStatus;
   cityId?: string;
   areaId?: string;
   userId?: string;
@@ -135,6 +142,7 @@ export function fetchAdminListings(accessToken: string, query: AdminListingsQuer
   if (query.adminReviewed !== undefined) params.set("adminReviewed", String(query.adminReviewed));
   if (query.category) params.set("category", query.category);
   if (query.transactionType) params.set("transactionType", query.transactionType);
+  if (query.status) params.set("status", query.status);
   if (query.cityId) params.set("cityId", query.cityId);
   if (query.areaId) params.set("areaId", query.areaId);
   if (query.userId) params.set("userId", query.userId);

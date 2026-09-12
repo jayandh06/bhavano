@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ListingCategory, ModerationState, TransactionType } from "@bhavano/types";
+import type { ListingCategory, ListingStatus, ModerationState, TransactionType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
@@ -36,11 +36,11 @@ const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }[] = [
   { value: "lease", label: "Lease" },
 ];
 
-const SORT_OPTIONS: { value: AdminListingSort; label: string }[] = [
-  { value: "createdAt_desc", label: "Newest created" },
-  { value: "createdAt_asc", label: "Oldest created" },
-  { value: "updatedAt_desc", label: "Recently modified" },
-  { value: "updatedAt_asc", label: "Least recently modified" },
+const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
+  { value: "active", label: "Active" },
+  { value: "sold", label: "Sold" },
+  { value: "rented", label: "Rented" },
+  { value: "deactivated", label: "Deactivated" },
 ];
 
 function tabToQuery(tab: FilterTab): { moderationState?: ModerationState; adminReviewed?: boolean } {
@@ -77,6 +77,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const updatedTo = str(sp.updatedTo);
   const category = str(sp.category) as ListingCategory | undefined;
   const transactionType = str(sp.transactionType) as TransactionType | undefined;
+  const status = str(sp.status) as ListingStatus | undefined;
   const cityId = str(sp.cityId);
   const areaId = str(sp.areaId);
   const sort = str(sp.sort) as AdminListingSort | undefined;
@@ -88,6 +89,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       ...tabToQuery(tab),
       category,
       transactionType,
+      status,
       cityId,
       areaId,
       userId,
@@ -192,9 +194,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </select>
           </Field>
 
-          <Field label="Sort by">
-            <select name="sort" defaultValue={sort ?? "createdAt_desc"} style={selectStyle}>
-              {SORT_OPTIONS.map((o) => (
+          <Field label="Status">
+            <select name="status" defaultValue={status ?? ""} style={selectStyle}>
+              <option value="">Any status</option>
+              {STATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
@@ -215,6 +218,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <input type="date" name="updatedTo" defaultValue={updatedTo} style={dateInputStyle} />
           </Field>
 
+          {/* Not a filter field itself — carries whatever column sort is currently active
+            * through a filter-form submit, which would otherwise drop it (plain GET, only
+            * named inputs survive). */}
+          {sort && <input type="hidden" name="sort" value={sort} />}
+
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
@@ -226,7 +234,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>Nothing here.</p>
         ) : (
-          <AdminListingsTable items={result.items} />
+          <AdminListingsTable items={result.items} sp={sp} />
         )}
 
         <Pagination
