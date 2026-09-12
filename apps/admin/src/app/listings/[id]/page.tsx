@@ -13,20 +13,10 @@ import {
 } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { ModerationPanel } from "@/components/ModerationPanel";
-import { AdminEditListingPanel } from "@/components/AdminEditListingPanel";
 import { RotatablePhotoGrid } from "@/components/RotatablePhotoGrid";
 import { ConversationsTable } from "@/components/ConversationsTable";
 import { Pagination } from "@/components/Pagination";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
-
-/** ListingDetailDto.price is display-formatted ("₹15,000" / "Contact for price"), not the raw
- * stored integer the edit form needs to pre-fill — but the formatting (see
- * ListingsService.toDetailDto: price === 0 ? 'Contact for price' : `₹${priceFormatter.format(...)}`)
- * is simple and lossless to reverse: strip everything but digits, or 0 when priceOnRequest. */
-function parseRawPrice(formattedPrice: string, priceOnRequest: boolean): number {
-  if (priceOnRequest) return 0;
-  return Number(formattedPrice.replace(/[^\d]/g, ""));
-}
 
 const LIKED_PARAM_NAMES = { page: "likedPage", limit: "likedLimit" };
 const MSG_PARAM_NAMES = { page: "msgPage", limit: "msgLimit" };
@@ -232,17 +222,9 @@ export default async function ListingModerationPage({
         />
 
         <div style={{ marginTop: 16 }}>
-          <AdminEditListingPanel
-            listingId={listing.id}
-            category={listing.category}
-            transactionType={listing.transactionType}
-            title={listing.title}
-            price={parseRawPrice(listing.price, listing.priceOnRequest)}
-            priceQualifier={listing.priceQualifier}
-            description={listing.description}
-            specs={listing.specs}
-            attributes={listing.attributes}
-          />
+          <Link href={`/listings/${listing.id}/edit`} style={outlineButtonStyle}>
+            Edit listing details
+          </Link>
         </div>
 
         <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginTop: 20, background: "var(--surface)" }}>
@@ -353,3 +335,15 @@ const engagementThStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 const engagementTdStyle: React.CSSProperties = { padding: "9px 12px", verticalAlign: "top" };
+
+const outlineButtonStyle: React.CSSProperties = {
+  display: "inline-block",
+  background: "var(--surface)",
+  color: "var(--text)",
+  border: "1.5px solid var(--border)",
+  borderRadius: 8,
+  padding: "10px 16px",
+  fontSize: 13.5,
+  fontWeight: 700,
+  textDecoration: "none",
+};
