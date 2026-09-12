@@ -43,6 +43,7 @@ Run: python get_pg_coworking_leads_apify.py --cities "Bengaluru,Pune" --apify-to
 """
 
 import argparse
+import csv
 import os
 import sys
 import time
@@ -57,6 +58,8 @@ from get_pg_coworking_leads import (
     create_places_fetch_log,
     fetch_fetched_pairs,
     import_contacts,
+    lookup_areas,
+    lookup_city,
     mint_admin_jwt,
     parse_cities,
     resolve_locations,
@@ -83,6 +86,16 @@ REQUEST_DELAY_SECONDS = 0.2
 # keeps each import_contacts() call comfortably under that regardless of how many contacts one
 # city produces.
 IMPORT_BATCH_SIZE = 20
+# --areas-csv city names are the common/colloquial ones; Bhavano's own City table (see
+# apps/bff/prisma/seedCities.ts) is seeded under the current official names. Without this,
+# lookup_city()'s substring-ish match on e.g. "Bangalore" would find nothing under "Bengaluru"
+# and every one of that city's areas would silently lose their City/Area FK link — the search
+# itself still works either way (Apify/Google resolve either name fine), this only affects
+# whether the resulting contacts get tied to a real City/Area row in Bhavano's own DB.
+CITY_NAME_ALIASES = {
+    "Bangalore": "Bengaluru",
+    "Gurgaon": "Gurugram",
+}
 
 
 class RequestCounter:
@@ -339,10 +352,54 @@ def import_contacts_batched(bff_url, token, contacts, batch_size=IMPORT_BATCH_SI
     return totals
 
 
+def load_areas_csv(path):
+    """Parses a City,Rank,Area CSV (e.g. pg_hub_areas_by_city.csv — a hand-curated list of
+    PG-dense areas per city, an alternative to relying on whatever Bhavano's own curated Area
+    table happens to have) into {city: [area names in ascending Rank order]}. Cities appear in
+    the order first seen in the file; ties in Rank keep the file's own row order (Python's sort
+    is stable)."""
+    cities = {}
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            city, area = row["City"].strip(), row["Area"].strip()
+            rank = int(row["Rank"])
+            cities.setdefault(city, []).append((rank, area))
+    return {city: [area for _, area in sorted(areas)] for city, areas in cities.items()}
+
+
+def resolve_locations_from_csv(bff_url, city, area_names):
+    """--areas-csv's counterpart to get_pg_coworking_leads.py's own resolve_locations() — same
+    return shape (cityId, [{"area", "areaId"}, ...]), but the area list comes from the CSV
+    verbatim instead of Bhavano's own curated Area table. Still looks up Bhavano's City/Area
+    records (via CITY_NAME_ALIASES for cases like "Bangalore" vs. the DB's "Bengaluru") purely to
+    attach a real areaId where one matches by name — an unmatched area still gets searched, just
+    without that FK link, same graceful-degrade as an unseeded city elsewhere in this pipeline."""
+    city_obj = lookup_city(bff_url, CITY_NAME_ALIASES.get(city, city))
+    if not city_obj:
+        print(f"  '{city}' not found in Bhavano's City table — areas will have no areaId", file=sys.stderr)
+        return None, [{"area": a, "areaId": None} for a in area_names]
+
+    known_areas = {a["name"].strip().lower(): a["id"] for a in lookup_areas(bff_url, city_obj["id"])}
+    locations = []
+    for name in area_names:
+        area_id = known_areas.get(name.strip().lower())
+        if not area_id:
+            print(f"  '{name}' not in Bhavano's curated Area list for {city} — no areaId", file=sys.stderr)
+        locations.append({"area": name, "areaId": area_id})
+    return city_obj["id"], locations
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--cities", help="Comma-separated city names, e.g. 'Bengaluru,Pune'")
     parser.add_argument("--cities-file", help="Path to a file with one city name per line")
+    parser.add_argument(
+        "--areas-csv",
+        help="Path to a City,Rank,Area CSV (e.g. pg_hub_areas_by_city.csv) of specific "
+        "hand-picked areas to search per city, instead of --cities/--cities-file and "
+        "Bhavano's own curated Area list. Mutually exclusive with --cities/--cities-file/"
+        "--max-areas-per-city/--no-areas.",
+    )
     parser.add_argument(
         "--categories",
         default="pg,coworking",
@@ -424,8 +481,11 @@ def main():
         sys.stderr = Tee(sys.stderr, open(log_path, "a", buffering=1))
         print(f"Logging this run's full output to {log_path}", file=sys.stderr)
 
-    if not args.cities and not args.cities_file:
-        parser.error("one of --cities or --cities-file is required")
+    if args.areas_csv:
+        if args.cities or args.cities_file or args.max_areas_per_city or args.no_areas:
+            parser.error("--areas-csv can't be combined with --cities/--cities-file/--max-areas-per-city/--no-areas")
+    elif not args.cities and not args.cities_file:
+        parser.error("one of --cities, --cities-file, or --areas-csv is required")
 
     if not args.apify_token:
         raise SystemExit("Apify API token not found — pass --apify-token or set APIFY_API_TOKEN in .env")
@@ -440,7 +500,8 @@ def main():
         if c not in QUERY_NOUNS:
             raise SystemExit(f"Unknown category '{c}' — must be one of {list(QUERY_NOUNS)}")
 
-    cities = parse_cities(args)
+    csv_areas = load_areas_csv(args.areas_csv) if args.areas_csv else None
+    cities = list(csv_areas) if csv_areas else parse_cities(args)
     os.makedirs(args.photos_dir, exist_ok=True)
 
     counter = RequestCounter()
@@ -448,7 +509,10 @@ def main():
     totals = {"created": 0, "updated": 0, "skipped": 0, "failed_batches": 0}
     for city in cities:
         print(f"Resolving locations for {city}...", file=sys.stderr)
-        city_id, locations = resolve_locations(args.bff_url, city, args.max_areas_per_city, args.no_areas)
+        if csv_areas:
+            city_id, locations = resolve_locations_from_csv(args.bff_url, city, csv_areas[city])
+        else:
+            city_id, locations = resolve_locations(args.bff_url, city, args.max_areas_per_city, args.no_areas)
         area_label = "city-level only" if len(locations) == 1 and locations[0]["area"] is None else f"{len(locations)} areas"
         print(f"  {area_label}", file=sys.stderr)
 

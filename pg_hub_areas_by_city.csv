@@ -1,0 +1,101 @@
+City,Rank,Area
+Bangalore,1,Koramangala
+Bangalore,2,HSR Layout
+Bangalore,3,Marathahalli
+Bangalore,4,BTM Layout
+Bangalore,5,Bellandur
+Bangalore,6,Whitefield
+Bangalore,7,Indiranagar
+Bangalore,8,Electronic City
+Bangalore,9,JP Nagar
+Bangalore,10,Banashankari
+Mumbai,1,Andheri East
+Mumbai,2,Andheri West
+Mumbai,3,Powai
+Mumbai,4,Malad
+Mumbai,5,Goregaon
+Mumbai,6,Borivali
+Mumbai,7,Kandivali
+Mumbai,8,Kurla
+Mumbai,9,Chembur
+Mumbai,10,Thane (Ghodbunder Road area)
+Delhi,1,Mukherjee Nagar
+Delhi,2,Laxmi Nagar
+Delhi,3,Karol Bagh
+Delhi,4,Rajouri Garden
+Delhi,5,Munirka
+Delhi,6,Vijay Nagar
+Delhi,7,Patel Nagar
+Delhi,8,Kalkaji
+Delhi,9,Rohini
+Delhi,10,Dwarka
+Pune,1,Hinjewadi
+Pune,2,Wakad
+Pune,3,Kothrud
+Pune,4,Baner
+Pune,5,Viman Nagar
+Pune,6,Aundh
+Pune,7,Hadapsar
+Pune,8,Kharadi
+Pune,9,Magarpatta
+Pune,10,Katraj
+Hyderabad,1,Madhapur
+Hyderabad,2,Gachibowli
+Hyderabad,3,Kondapur
+Hyderabad,4,Kukatpally
+Hyderabad,5,Ameerpet
+Hyderabad,6,Miyapur
+Hyderabad,7,Hitech City
+Hyderabad,8,Begumpet
+Hyderabad,9,Manikonda
+Hyderabad,10,Uppal
+Chennai,1,OMR (Sholinganallur)
+Chennai,2,Velachery
+Chennai,3,Thoraipakkam
+Chennai,4,Adyar
+Chennai,5,Guindy
+Chennai,6,Porur
+Chennai,7,Anna Nagar
+Chennai,8,T Nagar
+Chennai,9,Perungudi
+Chennai,10,Tambaram
+Gurgaon,1,DLF Phase 1
+Gurgaon,2,DLF Phase 2
+Gurgaon,3,DLF Phase 3
+Gurgaon,4,Sushant Lok
+Gurgaon,5,Sector 14
+Gurgaon,6,Sector 15
+Gurgaon,7,Udyog Vihar
+Gurgaon,8,MG Road area
+Gurgaon,9,Sohna Road
+Gurgaon,10,Cyber City vicinity
+Noida,1,Sector 62
+Noida,2,Sector 18
+Noida,3,Sector 63
+Noida,4,Sector 15
+Noida,5,Sector 50
+Noida,6,Sector 137
+Noida,7,Sector 76
+Noida,8,Greater Noida (Alpha/Beta sectors)
+Noida,9,Sector 16
+Noida,10,Sector 78
+Kolkata,1,Salt Lake Sector V
+Kolkata,2,Jadavpur
+Kolkata,3,Ballygunge
+Kolkata,4,Garia
+Kolkata,5,Behala
+Kolkata,6,New Town
+Kolkata,7,Dum Dum
+Kolkata,8,Tollygunge
+Kolkata,9,Rajarhat
+Kolkata,10,Park Street area
+Ahmedabad,1,Navrangpura
+Ahmedabad,2,Satellite
+Ahmedabad,3,Vastrapur
+Ahmedabad,4,Bopal
+Ahmedabad,5,Maninagar
+Ahmedabad,6,Prahlad Nagar
+Ahmedabad,7,SG Highway corridor
+Ahmedabad,8,Chandkheda
+Ahmedabad,9,Naranpura
+Ahmedabad,10,Gota
