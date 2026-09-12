@@ -8,8 +8,11 @@ import {
   fieldIsVisible,
   groupFieldsBySection,
   pruneHiddenAttributes,
+  SECTION_LABELS,
+  SECTION_ORDER,
   type FieldDef,
   type FieldOption,
+  type FieldSection,
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
@@ -36,6 +39,10 @@ function parseRawPrice(formattedPrice: string, priceOnRequest: boolean): number 
 
 function sanitizeNonNegative(value: string): string {
   return value.replace(/-/g, "");
+}
+
+function sectionOrderIndex(section: FieldSection | "other"): number {
+  return section === "other" ? SECTION_ORDER.length : SECTION_ORDER.indexOf(section);
 }
 
 /** A `select` field is really a Yes/No question if its only two options are exactly
@@ -373,7 +380,18 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
 
   const fieldConfig = CATEGORY_FIELD_CONFIG[category];
   const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, transactionType, attributes));
-  const sections = groupFieldsBySection(visibleFields);
+  const fieldSections = groupFieldsBySection(visibleFields);
+  // Price/Price qualifier aren't category-specific fields, but they belong with the rest of
+  // "pricing" all the same — same reasoning as the web app's sectionExtras (CategoryFieldsAccordion),
+  // folded into the SAME "Pricing & fees" box as any category-specific pricing fields (maintenance
+  // fee, brokerage, etc.) rather than a separate, always-first box of their own. A category with no
+  // pricing field of its own (pg/coworking) still needs a "Pricing & fees" box to hold them, so one
+  // is added here even when groupFieldsBySection found nothing for that section.
+  const sections = fieldSections.some((s) => s.section === "pricing")
+    ? fieldSections
+    : [{ section: "pricing" as const, label: SECTION_LABELS.pricing, fields: [] as FieldDef[] }, ...fieldSections].sort(
+        (a, b) => sectionOrderIndex(a.section) - sectionOrderIndex(b.section),
+      );
 
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(category);
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
@@ -453,44 +471,40 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
         />
       </div>
 
-      <details open style={sectionStyle}>
-        <summary style={sectionSummaryStyle}>Pricing &amp; fees</summary>
-        <div style={{ display: "flex", gap: 10, padding: "12px 16px 16px" }}>
-          <label style={{ ...labelStyle, flex: 1, maxWidth: 200 }}>
-            Price (₹) {!priceOnRequestAllowed && <span style={{ color: "var(--danger)" }}>*</span>}
-            <input
-              type="number"
-              min={priceOnRequestAllowed ? 0 : 1}
-              value={price}
-              onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
-              style={inputStyle}
-            />
-          </label>
-          <label style={{ ...labelStyle, flex: 1, maxWidth: 220 }}>
-            Price qualifier
-            <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={inputStyle}>
-              {priceQualifierChoices.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label || "(none)"}
-                </option>
-              ))}
-            </SelectField>
-          </label>
-        </div>
-      </details>
-
-      {sections
-        .filter((section) => section.fields.length > 0)
-        .map((section) => (
-          <details key={section.section} open style={sectionStyle}>
-            <summary style={sectionSummaryStyle}>{section.label}</summary>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "12px 16px 16px" }}>
-              {groupFieldsByChain(section.fields).map((run) => (
-                <FieldRunBlock key={run.fields[0].key} run={run} attributes={attributes} onChange={setFieldValue} />
-              ))}
-            </div>
-          </details>
-        ))}
+      {sections.map((section) => (
+        <details key={section.section} open style={sectionStyle}>
+          <summary style={sectionSummaryStyle}>{section.label}</summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "12px 16px 16px" }}>
+            {section.section === "pricing" && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <label style={{ ...labelStyle, flex: 1, maxWidth: 200 }}>
+                  Price (₹) {!priceOnRequestAllowed && <span style={{ color: "var(--danger)" }}>*</span>}
+                  <input
+                    type="number"
+                    min={priceOnRequestAllowed ? 0 : 1}
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
+                    style={inputStyle}
+                  />
+                </label>
+                <label style={{ ...labelStyle, flex: 1, maxWidth: 220 }}>
+                  Price qualifier
+                  <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={inputStyle}>
+                    {priceQualifierChoices.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label || "(none)"}
+                      </option>
+                    ))}
+                  </SelectField>
+                </label>
+              </div>
+            )}
+            {groupFieldsByChain(section.fields).map((run) => (
+              <FieldRunBlock key={run.fields[0].key} run={run} attributes={attributes} onChange={setFieldValue} />
+            ))}
+          </div>
+        </details>
+      ))}
 
       <label style={{ ...labelStyle, maxWidth: 720 }}>
         Specs (comma-separated)
