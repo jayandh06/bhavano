@@ -91,6 +91,26 @@ export function guessGender(name: string): string[] {
   return values;
 }
 
+/** The admin contacts table's sortable column headers (Name/Rating/City) — 'field' ascending or
+ * '-field' descending; anything else (unset, a typo'd value) falls back to the page's original
+ * default (newest first). `id: 'asc'` is always the tiebreaker so equal-value rows don't
+ * reshuffle between pages. */
+export function buildContactOrderBy(sort?: string): Prisma.OutreachContactOrderByWithRelationInput[] {
+  const desc = sort?.startsWith('-') ?? false;
+  const field = desc ? sort!.slice(1) : sort;
+  const direction: Prisma.SortOrder = desc ? 'desc' : 'asc';
+  switch (field) {
+    case 'name':
+      return [{ name: direction }, { id: 'asc' }];
+    case 'rating':
+      return [{ googleRating: direction }, { id: 'asc' }];
+    case 'city':
+      return [{ city: { name: direction } }, { id: 'asc' }];
+    default:
+      return [{ createdAt: 'desc' }, { id: 'asc' }];
+  }
+}
+
 @Injectable()
 export class OutreachService {
   constructor(
@@ -109,17 +129,47 @@ export class OutreachService {
     limit: number;
     search?: string;
     cityId?: string;
+    areaId?: string;
     status?: string;
     businessCategory?: string;
     placesFetchLogId?: string;
+    consentState?: string;
+    hasListing?: string;
+    notificationStatus?: string;
+    sort?: string;
   }): Promise<OutreachContactsPage> {
-    const { offset, limit, search, cityId, status, businessCategory, placesFetchLogId } = query;
+    const {
+      offset,
+      limit,
+      search,
+      cityId,
+      areaId,
+      status,
+      businessCategory,
+      placesFetchLogId,
+      consentState,
+      hasListing,
+      notificationStatus,
+      sort,
+    } = query;
 
     const where: Prisma.OutreachContactWhereInput = {
       ...(cityId ? { cityId } : {}),
+      ...(areaId ? { areaId } : {}),
       ...(status ? { status: status as OutreachContact['status'] } : {}),
       ...(businessCategory ? { businessCategory } : {}),
       ...(placesFetchLogId ? { placesFetchLogId } : {}),
+      ...(consentState ? { consentState: consentState as OutreachContact['consentState'] } : {}),
+      ...(hasListing === 'true' ? { claimedListing: { isNot: null } } : {}),
+      ...(hasListing === 'false' ? { claimedListing: null } : {}),
+      // Mirrors NotificationStatus's own rendering logic in OutreachContactsList.tsx: "confirmed"
+      // is claimedListing.claimSource being set (a claim is the one thing that actually proves a
+      // send was delivered and acted on); short of that, "sent" is just contactedCount > 0.
+      ...(notificationStatus === 'confirmed' ? { claimedListing: { claimSource: { not: null } } } : {}),
+      ...(notificationStatus === 'sent'
+        ? { contactedCount: { gt: 0 }, NOT: { claimedListing: { claimSource: { not: null } } } }
+        : {}),
+      ...(notificationStatus === 'not_sent' ? { contactedCount: 0 } : {}),
       ...(search
         ? {
             OR: [
@@ -136,7 +186,7 @@ export class OutreachService {
       this.prisma.outreachContact.findMany({
         where,
         include: { city: true, area: true, claimedListing: { select: { claimedAt: true, claimSource: true } } },
-        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        orderBy: buildContactOrderBy(sort),
         skip: offset ?? 0,
         take: limit,
       }),

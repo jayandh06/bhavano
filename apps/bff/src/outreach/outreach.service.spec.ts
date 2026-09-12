@@ -2,7 +2,13 @@ import { BadRequestException } from '@nestjs/common';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { OutreachService, renderTemplate, guessGender, findLocalPhotos } from './outreach.service';
+import {
+  OutreachService,
+  renderTemplate,
+  guessGender,
+  findLocalPhotos,
+  buildContactOrderBy,
+} from './outreach.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -561,5 +567,89 @@ describe('OutreachService.createListingFromContact — the businessStatus gate',
     );
     (config.get as jest.Mock).mockReturnValue(undefined);
     await expect(service.createListingFromContact('c1')).rejects.toThrow(/SCRAPED_PHOTOS_DIR/);
+  });
+});
+
+describe('buildContactOrderBy — the admin table\'s sortable Name/Rating/City headers', () => {
+  it('defaults to newest-first when no sort is given', () => {
+    expect(buildContactOrderBy(undefined)).toEqual([{ createdAt: 'desc' }, { id: 'asc' }]);
+  });
+
+  it('falls back to the default for an unrecognized field', () => {
+    expect(buildContactOrderBy('notARealField')).toEqual([{ createdAt: 'desc' }, { id: 'asc' }]);
+  });
+
+  it('sorts by name ascending, and descending with a leading -', () => {
+    expect(buildContactOrderBy('name')).toEqual([{ name: 'asc' }, { id: 'asc' }]);
+    expect(buildContactOrderBy('-name')).toEqual([{ name: 'desc' }, { id: 'asc' }]);
+  });
+
+  it('sorts by rating ascending and descending', () => {
+    expect(buildContactOrderBy('rating')).toEqual([{ googleRating: 'asc' }, { id: 'asc' }]);
+    expect(buildContactOrderBy('-rating')).toEqual([{ googleRating: 'desc' }, { id: 'asc' }]);
+  });
+
+  it('sorts by the related City.name ascending and descending', () => {
+    expect(buildContactOrderBy('city')).toEqual([{ city: { name: 'asc' } }, { id: 'asc' }]);
+    expect(buildContactOrderBy('-city')).toEqual([{ city: { name: 'desc' } }, { id: 'asc' }]);
+  });
+});
+
+describe('OutreachService.listContacts — admin filters', () => {
+  async function whereUsedFor(overrides: Record<string, unknown>) {
+    const { service, prisma } = makeService();
+    (prisma.outreachContact.findMany as jest.Mock).mockResolvedValue([contact({ createdAt: new Date() })]);
+    (prisma.outreachContact.count as jest.Mock).mockResolvedValue(1);
+    await service.listContacts({ limit: 25, ...overrides });
+    return (prisma.outreachContact.findMany as jest.Mock).mock.calls[0][0].where;
+  }
+
+  it('filters by areaId', async () => {
+    expect(await whereUsedFor({ areaId: 'area1' })).toMatchObject({ areaId: 'area1' });
+  });
+
+  it('filters by consentState', async () => {
+    expect(await whereUsedFor({ consentState: 'explicit' })).toMatchObject({ consentState: 'explicit' });
+  });
+
+  it('hasListing=true means claimedListing is not null', async () => {
+    expect(await whereUsedFor({ hasListing: 'true' })).toMatchObject({ claimedListing: { isNot: null } });
+  });
+
+  it('hasListing=false means no claimedListing at all', async () => {
+    expect(await whereUsedFor({ hasListing: 'false' })).toMatchObject({ claimedListing: null });
+  });
+
+  it('notificationStatus=confirmed means claimedListing.claimSource is set', async () => {
+    expect(await whereUsedFor({ notificationStatus: 'confirmed' })).toMatchObject({
+      claimedListing: { claimSource: { not: null } },
+    });
+  });
+
+  it('notificationStatus=sent means contacted but not yet confirmed via a claim', async () => {
+    const where = await whereUsedFor({ notificationStatus: 'sent' });
+    expect(where).toMatchObject({ contactedCount: { gt: 0 } });
+    expect(where.NOT).toEqual({ claimedListing: { claimSource: { not: null } } });
+  });
+
+  it('notificationStatus=not_sent means contactedCount is exactly 0', async () => {
+    expect(await whereUsedFor({ notificationStatus: 'not_sent' })).toMatchObject({ contactedCount: 0 });
+  });
+
+  it('passes sort through to orderBy via buildContactOrderBy', async () => {
+    const { service, prisma } = makeService();
+    (prisma.outreachContact.findMany as jest.Mock).mockResolvedValue([contact({ createdAt: new Date() })]);
+    (prisma.outreachContact.count as jest.Mock).mockResolvedValue(1);
+    await service.listContacts({ limit: 25, sort: '-rating' });
+    const orderBy = (prisma.outreachContact.findMany as jest.Mock).mock.calls[0][0].orderBy;
+    expect(orderBy).toEqual([{ googleRating: 'desc' }, { id: 'asc' }]);
+  });
+
+  it('omits filters entirely when not provided, matching the pre-filter behavior', async () => {
+    const where = await whereUsedFor({});
+    expect(where).not.toHaveProperty('areaId');
+    expect(where).not.toHaveProperty('consentState');
+    expect(where).not.toHaveProperty('claimedListing');
+    expect(where).not.toHaveProperty('contactedCount');
   });
 });

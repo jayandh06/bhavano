@@ -33,9 +33,16 @@ export class ListOutreachContactsDto {
 
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsString() cityId?: string;
+  @IsOptional() @IsString() areaId?: string;
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsString() businessCategory?: string;
   @IsOptional() @IsString() placesFetchLogId?: string;
+  @IsOptional() @IsEnum(CONSENT_STATES) consentState?: ConsentState;
+  @IsOptional() @IsEnum(['true', 'false']) hasListing?: 'true' | 'false';
+  @IsOptional() @IsEnum(['not_sent', 'sent', 'confirmed']) notificationStatus?: 'not_sent' | 'sent' | 'confirmed';
+  /** Table-header sort — 'name' | 'rating' | 'city', optionally '-'-prefixed for descending.
+   * Any other/unknown value silently falls back to the default order (see buildContactOrderBy). */
+  @IsOptional() @IsString() sort?: string;
 }
 
 export class OutreachContactInputDto {
