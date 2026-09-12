@@ -144,7 +144,13 @@ their listing" needs a way to hand over a specific listing without a pre-existin
   URL *suffix* appended to a base URL baked into the template) via positional `body_1`..`body_5`
   keys with **no** `parameter_name` field — a genuinely different shape from
   `sendAdPostedConfirmation`'s `body_name`/`parameter_name`-keyed one, confirming the shape truly
-  isn't guessable by analogy. `namespace` is sent as `null` (this template doesn't use one).
+  isn't guessable by analogy. **Correction (2026-09-12, against the real MSG91 dashboard "Code"
+  snippet, which this doc originally didn't have)**: `namespace` is NOT null — this template does
+  carry a real one (`b809c8aa_8ca6_40f4_81fd_6d3858c888dc`), same as `sendAdPostedConfirmation`'s.
+  The "sent as null" line above was a guess made before the snippet was available and turned out
+  wrong; `Msg91Provider.sendListingVerificationRequest` itself was already written correctly
+  (reads `MSG91_WHATSAPP_CLAIM_NAMESPACE` from config, `?? null` only as the unset-fallback) — only
+  this doc's claim and the env var's actual value needed fixing, not the code.
   - `OutreachService.sendClaimVerification` — gates on `MSG91_MARKETING_ENABLED=true`, a manual
     suppression/`consentState` check (mirroring `resolveEligible`'s logic, since this bypasses the
     `OutreachCampaign`/`CampaignSend` audience-resolution machinery entirely — a deliberate,
@@ -152,9 +158,13 @@ their listing" needs a way to hand over a specific listing without a pre-existin
     the contact to have a city/area on file (both feed the template). Builds the claim link from
     `PUBLIC_SITE_URL` (same fallback `NotificationsService` uses) + `/claim/<listingId>`. On
     success updates `OutreachContact.lastContactedAt`/`contactedCount`.
-  - Env vars (scaffolded in `.env.production.example`, unset locally):
-    `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME=claim_listing_pg`, `MSG91_WHATSAPP_CLAIM_NAMESPACE` left
-    unset (reuses the existing `MSG91_WHATSAPP_INTEGRATED_NUMBER`).
+  - Env vars — `MSG91_MARKETING_ENABLED`, `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME=claim_listing_pg`,
+    `MSG91_WHATSAPP_CLAIM_NAMESPACE=b809c8aa_8ca6_40f4_81fd_6d3858c888dc`.
+    `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME`/`MSG91_WHATSAPP_CLAIM_NAMESPACE` were already scaffolded
+    (empty) in `.env.production.example`; `MSG91_MARKETING_ENABLED` was not (added there now).
+    None of the three were wired into `docker-compose.prod.yml`'s `bff` service, though — so none
+    of them ever actually reached the running container regardless of what `.env` had. Wired into
+    `docker-compose.prod.yml` on 2026-09-12; set for real in prod's `.env` the same day.
   - `bulk_upload_listings.py --send-claim-verification` — after each successful listing
     creation, calls `POST /admin/outreach/contacts/:id/send-claim-verification` for rows that
     had a `contactId`.

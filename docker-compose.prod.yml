@@ -36,6 +36,20 @@ services:
       # cannot reuse MSG91_WHATSAPP_NAMESPACE (see Msg91Provider.sendAdPostedConfirmation).
       MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME: ${MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME}
       MSG91_WHATSAPP_AD_POSTED_NAMESPACE: ${MSG91_WHATSAPP_AD_POSTED_NAMESPACE}
+      # Promotional, not transactional — a different DLT template category and different consent
+      # rules in India, which is exactly why this is a separate, explicit opt-in from every
+      # MSG91_WHATSAPP_* var above (see OutreachSenderService's own doc comment). Nothing outreach
+      # sends — OutreachService.sendClaimVerification, the campaign-send job — goes out unless
+      # this is exactly "true". Unset/anything else disables it (fails closed).
+      MSG91_MARKETING_ENABLED: ${MSG91_MARKETING_ENABLED}
+      # The approved WhatsApp template for OutreachService.sendClaimVerification specifically —
+      # "claim_listing_pg", 5 positional body variables + a url button, WITH a real namespace
+      # (confirmed against MSG91's own dashboard snippet on 2026-09-12 — docs/plans/
+      # pg-coworking-google-places-leadgen.md previously assumed this template sent namespace as
+      # null like the welcome one; that assumption was wrong, corrected there too). Unset disables
+      # just this one send (logs and skips), same degrade as every other MSG91_WHATSAPP_* var here.
+      MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME: ${MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME}
+      MSG91_WHATSAPP_CLAIM_NAMESPACE: ${MSG91_WHATSAPP_CLAIM_NAMESPACE}
       # Validates inbound MSG91 WhatsApp status webhooks — see WhatsappWebhookController and
       # .env.production.example's own comment on this var.
       MSG91_WEBHOOK_SECRET: ${MSG91_WEBHOOK_SECRET}
