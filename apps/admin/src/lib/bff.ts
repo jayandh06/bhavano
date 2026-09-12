@@ -26,6 +26,8 @@ import type {
   PageVisitsPage,
   ModerationState,
   RateLimitSettingsDto,
+  SendPostedNotificationInput,
+  SendPostedNotificationResponseDto,
   SendWelcomeInput,
   SendWelcomeResponseDto,
   TransactionType,
@@ -401,6 +403,15 @@ export function fetchUsers(accessToken: string, query: AdminUsersQuery = {}): Pr
 
 export function sendWelcome(accessToken: string, input: SendWelcomeInput): Promise<SendWelcomeResponseDto> {
   return authedBffFetch(accessToken, "/admin/users/welcome", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** Admin-triggered (re)send of the "your ad is live" acknowledgement for listings whose
+ * creation-time send never landed — see AdminService.sendPostedNotification. */
+export function sendPostedNotification(
+  accessToken: string,
+  input: SendPostedNotificationInput,
+): Promise<SendPostedNotificationResponseDto> {
+  return authedBffFetch(accessToken, "/admin/listings/notify-posted", { method: "POST", body: JSON.stringify(input) });
 }
 
 export function fetchRateLimitSettings(accessToken: string): Promise<RateLimitSettingsDto> {

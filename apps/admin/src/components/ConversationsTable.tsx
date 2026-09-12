@@ -11,7 +11,7 @@ const dash = <span style={{ color: "var(--muted)" }}>—</span>;
  * inline. Threads are fetched on demand (not pre-loaded for the whole page) since most rows on a
  * page of 25 never get expanded; fetched once per conversation id and cached in local state so
  * re-toggling the same row doesn't refetch. `"use client"` only because of that click/expand
- * state — everything else about this table is as plain as AdminListingsTable. */
+ * state — everything else about this table is as plain as, say, a read-only listing card grid. */
 export function ConversationsTable({
   listingId,
   items,

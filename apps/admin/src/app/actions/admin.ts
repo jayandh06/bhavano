@@ -1,7 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ContactRevealSettingsDto, ListingStatus, MessageDto, RateLimitSettingsDto } from "@bhavano/types";
+import type {
+  ContactRevealSettingsDto,
+  ListingStatus,
+  MessageDto,
+  RateLimitSettingsDto,
+  SendPostedNotificationResponseDto,
+} from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   approveListing,
@@ -12,6 +18,7 @@ import {
   revokeBoost,
   rotateListingPhoto,
   sendMessage,
+  sendPostedNotification,
   setCoverPhoto,
   setListingStatus,
   setReviewed,
@@ -102,6 +109,22 @@ export async function updateListingAction(
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update listing" };
+  }
+}
+
+/** Backs the listings dashboard's bulk "Send notification" action — a deliberate resend for
+ * whichever selected listings never got the creation-time acknowledgement, see
+ * AdminService.sendPostedNotification's own doc comment for the already-sent gate. */
+export async function sendPostedNotificationAction(
+  listingIds: string[],
+): Promise<SendPostedNotificationResponseDto | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const result = await sendPostedNotification(accessToken, { listingIds });
+    revalidatePath("/");
+    return result;
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to send notification" };
   }
 }
 

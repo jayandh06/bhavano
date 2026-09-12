@@ -78,6 +78,18 @@ button {
   color: var(--danger);
 }
 
+/* Same inline-style-wins caveat as .admin-nav-link above: a row that also sets its own
+   `background` inline (e.g. a selected-row highlight) would silently defeat this hover rule, so
+   callers must leave `background` unset inline and only ever set it via this class or an
+   explicit modifier class. Used by any admin table whose rows are click-to-open. */
+.admin-table-row {
+  cursor: pointer;
+}
+
+.admin-table-row:hover {
+  background: var(--surface-alt);
+}
+
 /* Mobile: the AdminNav tab strip collapses into a hamburger dropdown (the ✕/☰ button next to
    the wordmark; Logout stays visible on the right). Desktop keeps the horizontally-scrolling
    strip and hides the hamburger. Kept as a media query rather than JS so there's no
