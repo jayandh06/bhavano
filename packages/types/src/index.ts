@@ -675,6 +675,24 @@ export interface SendWelcomeResponseDto {
   results: SendWelcomeResultDto[];
 }
 
+export interface SendPostedNotificationInput {
+  listingIds: string[];
+}
+
+export interface SendPostedNotificationResultDto {
+  listingId: string;
+  success: boolean;
+  /** e.g. "Already sent", "Owner has no email or phone on file" — shown inline per listing in
+   * the admin UI. */
+  error?: string;
+}
+
+export interface SendPostedNotificationResponseDto {
+  sent: number;
+  failed: number;
+  results: SendPostedNotificationResultDto[];
+}
+
 export interface RateLimitSettingsDto {
   publishLimit: number;
   publishWindowMinutes: number;
