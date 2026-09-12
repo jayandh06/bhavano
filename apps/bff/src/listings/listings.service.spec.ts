@@ -885,6 +885,41 @@ describe('ListingsService.update — writes a ListingEditLog diff', () => {
   });
 });
 
+describe('ListingsService.updateAsAdmin — the admin content-override endpoint', () => {
+  it('edits a listing regardless of who owns it, with no ownership check at all', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({
+      id: 'l1',
+      ownerId: 'someone-else-entirely',
+      category: 'pg',
+      transactionType: 'rent',
+      price: 5000,
+      priceQualifier: '/month',
+      title: 'Old title',
+      specs: [],
+      description: null,
+      attributes: {},
+      status: 'active',
+      moderationState: 'approved',
+    });
+    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+
+    // Would throw ForbiddenException if this checked ownership the way update() does —
+    // completing without one confirms the admin path genuinely has no such check.
+    await service.updateAsAdmin('l1', { title: 'Fixed by support' } as never, 'admin1').catch(() => undefined);
+
+    expect(prisma.listingEditLog.create).toHaveBeenCalledWith({
+      data: {
+        listingId: 'l1',
+        actorType: 'admin',
+        actorId: 'admin1',
+        action: 'updated',
+        changes: { title: { before: 'Old title', after: 'Fixed by support' } },
+      },
+    });
+  });
+});
+
 describe('ListingsService.flag/approve/setStatusAsAdmin — attribute the change to the admin', () => {
   it('flag() logs the moderationState before/after and the admin as actor', async () => {
     const { service, prisma } = makeService();

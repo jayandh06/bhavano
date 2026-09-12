@@ -40,6 +40,7 @@ import { ListListingConversationsDto } from './dto/list-listing-conversations.dt
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { SetListingStatusDto } from './dto/set-listing-status.dto';
+import { UpdateListingDto } from '../listings/dto/update-listing.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { ListUsersDto } from './dto/list-users.dto';
@@ -127,6 +128,19 @@ export class AdminController {
     @CurrentUser() user: RequestUser,
   ): Promise<ListingDetailDto> {
     return this.adminService.setListingStatus(id, dto.status, user.id);
+  }
+
+  /** Admin override of a listing's own content (price, title, description, specs, attributes) —
+   * same fields and validation the owner's own PATCH /listings/:id uses, just without the
+   * ownership check and logged to ListingEditLog as an admin action instead of an owner one. See
+   * ListingsService.updateAsAdmin. */
+  @Patch('listings/:id')
+  updateListing(
+    @Param('id') id: string,
+    @Body() dto: UpdateListingDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<ListingDetailDto> {
+    return this.adminService.updateListing(id, dto, user.id);
   }
 
   @Post('listings/:id/photos/:photoNo/rotate')

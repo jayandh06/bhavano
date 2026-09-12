@@ -14,6 +14,7 @@ import type {
   ListingEngagementPage,
   ListingOwnerDto,
   ListingStatus,
+  UpdateListingInput,
   LoginEventsPage,
   MessageDto,
   PageVisitsPage,
@@ -265,6 +266,17 @@ export class AdminService {
     const listing = await this.listingsService.setStatusAsAdmin(id, status, adminId);
     const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
     await this.messagingService.sendMessage(thread.id, adminId, `Status changed to "${status}" by an admin.`);
+    return listing;
+  }
+
+  /** Same "never silent" principle as flag/approve/setListingStatus above — the owner sees a
+   * message in the moderation thread whenever an admin edits their listing's content, even
+   * though (unlike a status change) there's no separate notification for this. What exactly
+   * changed is visible in ListingEditLog for anyone who needs the precise diff. */
+  async updateListing(id: string, dto: UpdateListingInput, adminId: string): Promise<ListingDetailDto> {
+    const listing = await this.listingsService.updateAsAdmin(id, dto, adminId);
+    const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
+    await this.messagingService.sendMessage(thread.id, adminId, "This listing's details were updated by an admin.");
     return listing;
   }
 

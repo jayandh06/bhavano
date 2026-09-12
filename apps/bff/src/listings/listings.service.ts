@@ -1344,6 +1344,33 @@ export class ListingsService {
     if (existing.ownerId !== userId)
       throw new ForbiddenException("You don't own this listing");
 
+    return this.applyUpdate(id, existing, dto, 'owner', userId);
+  }
+
+  /** Admin override of a listing's own content — price, title, description, specs, attributes —
+   * on top of the owner-only `update()` above. Same validation and the same ListingEditLog diff,
+   * just without the ownership check and attributed to the admin instead of the owner. For
+   * support cases where the owner can't be reached to fix something themselves (a typo in the
+   * title, a price that's clearly wrong), mirroring why setStatusAsAdmin exists for status
+   * specifically. */
+  async updateAsAdmin(
+    id: string,
+    dto: UpdateListingDto,
+    adminId: string,
+  ): Promise<ListingDetailDto> {
+    const existing = await this.prisma.listing.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Listing ${id} not found`);
+
+    return this.applyUpdate(id, existing, dto, 'admin', adminId);
+  }
+
+  private async applyUpdate(
+    id: string,
+    existing: Listing,
+    dto: UpdateListingDto,
+    actorType: 'owner' | 'admin',
+    actorId: string,
+  ): Promise<ListingDetailDto> {
     if (dto.attributes !== undefined)
       this.assertValidAttributes(
         existing.category,
@@ -1381,7 +1408,10 @@ export class ListingsService {
         ...(dto.status !== undefined ? { status: dto.status } : {}),
         // An owner editing a flagged listing IS the resubmission — flip adminReviewed back
         // to false so it resurfaces in the admin queue as needing another look. Approving/
-        // flagging again is still required to actually change moderationState.
+        // flagging again is still required to actually change moderationState. An admin editing
+        // it is not a resubmission the same way, but there's no harm in the same flip — an admin
+        // fixing a flagged listing's content is exactly the kind of thing that should resurface
+        // for a second look too.
         ...(existing.moderationState === 'flagged'
           ? { adminReviewed: false }
           : {}),
@@ -1410,7 +1440,7 @@ export class ListingsService {
       },
     );
     if (Object.keys(changes).length > 0) {
-      await this.logEdit(id, 'owner', userId, 'updated', changes);
+      await this.logEdit(id, actorType, actorId, 'updated', changes);
     }
 
     return this.toDetailDto(listing, undefined, true);
