@@ -517,7 +517,7 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { city: true } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-    const [logins, listings, messages, favourites, views, visits] =
+    const [logins, listings, listingEdits, messages, favourites, views, visits] =
       await Promise.all([
         this.prisma.loginEvent.findMany({
           where: { userId },
@@ -528,7 +528,19 @@ export class AdminService {
           where: { ownerId: userId },
           orderBy: { createdAt: 'desc' },
           take: ACTIVITY_LIMIT_PER_SOURCE,
-          select: { id: true, title: true, createdAt: true, updatedAt: true },
+          select: { id: true, title: true, createdAt: true },
+        }),
+        // A real content edit, not "the row got touched" — view/like counters and boost
+        // rotation all call prisma.listing.update() too, which bumps updatedAt via Prisma's own
+        // @updatedAt regardless of which field actually changed. Comparing updatedAt to
+        // createdAt used to flag literally every listing as "updated" the moment it got its
+        // first view (routinely the owner's own view, right after posting) — ListingEditLog
+        // exists specifically so this can be a precise "did the content actually change" signal.
+        this.prisma.listingEditLog.findMany({
+          where: { actorId: userId, actorType: 'owner', action: 'updated' },
+          orderBy: { createdAt: 'desc' },
+          take: ACTIVITY_LIMIT_PER_SOURCE,
+          include: { listing: { select: { title: true } } },
         }),
         this.prisma.message.findMany({
           where: { senderId: userId },
@@ -568,14 +580,12 @@ export class AdminService {
         summary: `Posted listing "${l.title}"`,
         refId: l.id,
       })),
-      ...listings
-        .filter((l) => l.updatedAt.getTime() !== l.createdAt.getTime())
-        .map((l) => ({
-          type: 'listing_updated' as const,
-          timestamp: l.updatedAt.toISOString(),
-          summary: `Updated listing "${l.title}"`,
-          refId: l.id,
-        })),
+      ...listingEdits.map((e) => ({
+        type: 'listing_updated' as const,
+        timestamp: e.createdAt.toISOString(),
+        summary: `Updated listing "${e.listing.title}"`,
+        refId: e.listingId,
+      })),
       ...messages.map((m) => ({
         type: 'message_sent' as const,
         timestamp: m.createdAt.toISOString(),
