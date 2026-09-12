@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { SelectField } from "@/components/SelectField";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { AdminListingsTable } from "@/components/AdminListingsTable";
@@ -162,47 +163,47 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Field>
 
           <Field label="Area">
-            <select name="areaId" defaultValue={areaId ?? ""} disabled={!cityId} style={selectStyle}>
+            <SelectField name="areaId" defaultValue={areaId ?? ""} disabled={!cityId} style={selectStyle}>
               <option value="">{cityId ? "Any area" : "Select a city first"}</option>
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <Field label="Category">
-            <select name="category" defaultValue={category ?? ""} style={selectStyle}>
+            <SelectField name="category" defaultValue={category ?? ""} style={selectStyle}>
               <option value="">Any category</option>
               {CATEGORY_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <Field label="Transaction type">
-            <select name="transactionType" defaultValue={transactionType ?? ""} style={selectStyle}>
+            <SelectField name="transactionType" defaultValue={transactionType ?? ""} style={selectStyle}>
               <option value="">Any type</option>
               {TRANSACTION_TYPE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <Field label="Status">
-            <select name="status" defaultValue={status ?? ""} style={selectStyle}>
+            <SelectField name="status" defaultValue={status ?? ""} style={selectStyle}>
               <option value="">Any status</option>
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <Field label="Created from">

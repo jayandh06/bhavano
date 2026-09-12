@@ -11,6 +11,7 @@ import {
   setListingStatusAction,
   setReviewedAction,
 } from "@/app/actions/admin";
+import { SelectField } from "./SelectField";
 
 const LISTING_STATUSES: ListingStatus[] = ["active", "sold", "rented", "deactivated"];
 
@@ -127,7 +128,7 @@ export function ModerationPanel({
           </button>
         )}
 
-        <select
+        <SelectField
           value={statusChoice}
           onChange={(e) => setStatusChoice(e.target.value as ListingStatus)}
           disabled={pending}
@@ -138,7 +139,7 @@ export function ModerationPanel({
               {s}
             </option>
           ))}
-        </select>
+        </SelectField>
         <button
           onClick={onSetStatus}
           disabled={pending || statusChoice === status}

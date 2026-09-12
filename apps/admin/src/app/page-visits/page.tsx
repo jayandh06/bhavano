@@ -5,6 +5,7 @@ import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from 
 import { formatDateTime } from "@/lib/formatDateTime";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
+import { SelectField } from "@/components/SelectField";
 
 const SORT_OPTIONS: { value: AdminPageVisitSort; label: string }[] = [
   { value: "createdAt_desc", label: "Date — newest first" },
@@ -123,13 +124,13 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
           </Field>
 
           <Field label="Sort by">
-            <select name="sort" defaultValue={sort ?? "createdAt_desc"} style={selectStyle}>
+            <SelectField name="sort" defaultValue={sort ?? "createdAt_desc"} style={selectStyle}>
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <button type="submit" style={applyButtonStyle}>

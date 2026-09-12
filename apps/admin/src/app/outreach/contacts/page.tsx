@@ -4,6 +4,7 @@ import { fetchOutreachContacts, fetchOutreachContactCategories, fetchCities, fet
 import { buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams";
 import { OutreachContactsList } from "@/components/OutreachContactsList";
 import { Pagination } from "@/components/Pagination";
+import { SelectField } from "@/components/SelectField";
 
 const selectStyle: React.CSSProperties = {
   padding: "8px 12px",
@@ -117,23 +118,23 @@ export default async function OutreachContactsPage({
               fontSize: 13,
             }}
           />
-          <select name="businessCategory" defaultValue={businessCategory ?? ""} style={selectStyle}>
+          <SelectField name="businessCategory" defaultValue={businessCategory ?? ""} style={selectStyle}>
             <option value="">All categories</option>
             {categories.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
-          </select>
-          <select name="cityId" defaultValue={cityId ?? ""} style={selectStyle}>
+          </SelectField>
+          <SelectField name="cityId" defaultValue={cityId ?? ""} style={selectStyle}>
             <option value="">All cities</option>
             {cities.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
-          </select>
-          <select
+          </SelectField>
+          <SelectField
             name="areaId"
             defaultValue={areaId ?? ""}
             disabled={!cityId}
@@ -146,25 +147,25 @@ export default async function OutreachContactsPage({
                 {a.name}
               </option>
             ))}
-          </select>
-          <select name="consentState" defaultValue={consentState ?? ""} style={selectStyle}>
+          </SelectField>
+          <SelectField name="consentState" defaultValue={consentState ?? ""} style={selectStyle}>
             <option value="">All consent states</option>
             <option value="none">None</option>
             <option value="implied">Implied</option>
             <option value="explicit">Explicit</option>
             <option value="opted_out">Opted out</option>
-          </select>
-          <select name="hasListing" defaultValue={hasListing ?? ""} style={selectStyle}>
+          </SelectField>
+          <SelectField name="hasListing" defaultValue={hasListing ?? ""} style={selectStyle}>
             <option value="">Listing: any</option>
             <option value="true">Listing created</option>
             <option value="false">No listing yet</option>
-          </select>
-          <select name="notificationStatus" defaultValue={notificationStatus ?? ""} style={selectStyle}>
+          </SelectField>
+          <SelectField name="notificationStatus" defaultValue={notificationStatus ?? ""} style={selectStyle}>
             <option value="">Notification: any</option>
             <option value="not_sent">Not sent</option>
             <option value="sent">Sent</option>
             <option value="confirmed">Confirmed (claimed)</option>
-          </select>
+          </SelectField>
           {sort && <input type="hidden" name="sort" value={sort} />}
           <button
             type="submit"

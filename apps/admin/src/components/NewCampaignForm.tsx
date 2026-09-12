@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { OutreachChannel } from "@bhavano/types";
 import { createCampaignAction } from "@/app/actions/outreach";
+import { SelectField } from "./SelectField";
 
 const input: React.CSSProperties = {
   padding: "8px 12px",
@@ -88,11 +89,11 @@ export function NewCampaignForm() {
 
       <input style={input} placeholder="Campaign name" value={name} onChange={(e) => setName(e.target.value)} required />
 
-      <select style={input} value={channel} onChange={(e) => setChannel(e.target.value as OutreachChannel)}>
+      <SelectField style={input} value={channel} onChange={(e) => setChannel(e.target.value as OutreachChannel)}>
         <option value="sms">SMS</option>
         <option value="whatsapp">WhatsApp</option>
         <option value="email">Email</option>
-      </select>
+      </SelectField>
 
       <textarea
         style={{ ...input, minHeight: 80, fontFamily: "inherit" }}

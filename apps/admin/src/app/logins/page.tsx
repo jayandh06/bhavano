@@ -5,6 +5,7 @@ import { AdminLoginSort, fetchRecentLogins } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
+import { SelectField } from "@/components/SelectField";
 import { formatDateTime } from "@/lib/formatDateTime";
 
 const METHOD_OPTIONS: { value: LoginMethod; label: string }[] = [
@@ -67,24 +68,24 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
           </Field>
 
           <Field label="Method">
-            <select name="method" defaultValue={method ?? ""} style={selectStyle}>
+            <SelectField name="method" defaultValue={method ?? ""} style={selectStyle}>
               <option value="">Any method</option>
               {METHOD_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <Field label="Sort by">
-            <select name="sort" defaultValue={sort ?? "createdAt_desc"} style={selectStyle}>
+            <SelectField name="sort" defaultValue={sort ?? "createdAt_desc"} style={selectStyle}>
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <Field label="From">

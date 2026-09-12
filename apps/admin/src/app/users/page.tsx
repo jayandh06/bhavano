@@ -5,6 +5,7 @@ import { AdminUserSort, fetchUsers } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { UsersTable } from "@/components/UsersTable";
 import { Pagination } from "@/components/Pagination";
+import { SelectField } from "@/components/SelectField";
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "user", label: "User" },
@@ -78,25 +79,25 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           </Field>
 
           <Field label="Role">
-            <select name="role" defaultValue={role ?? ""} style={selectStyle}>
+            <SelectField name="role" defaultValue={role ?? ""} style={selectStyle}>
               <option value="">Any role</option>
               {ROLE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <Field label="Notification status">
-            <select name="welcomed" defaultValue={welcomed ?? ""} style={selectStyle}>
+            <SelectField name="welcomed" defaultValue={welcomed ?? ""} style={selectStyle}>
               <option value="">Any status</option>
               {WELCOMED_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <Field label="From">
@@ -107,13 +108,13 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           </Field>
 
           <Field label="Sort by">
-            <select name="sort" defaultValue={sort ?? "createdAt_desc"} style={selectStyle}>
+            <SelectField name="sort" defaultValue={sort ?? "createdAt_desc"} style={selectStyle}>
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </Field>
 
           <button type="submit" style={applyButtonStyle}>

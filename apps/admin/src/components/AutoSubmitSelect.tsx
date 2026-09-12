@@ -1,5 +1,7 @@
 "use client";
 
+import { SelectField } from "./SelectField";
+
 export function AutoSubmitSelect({
   name,
   defaultValue,
@@ -17,7 +19,7 @@ export function AutoSubmitSelect({
   style?: React.CSSProperties;
 }) {
   return (
-    <select
+    <SelectField
       name={name}
       defaultValue={defaultValue ?? ""}
       onChange={(e) => {
@@ -37,6 +39,6 @@ export function AutoSubmitSelect({
           {o.label}
         </option>
       ))}
-    </select>
+    </SelectField>
   );
 }
