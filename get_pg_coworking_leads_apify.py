@@ -45,6 +45,7 @@ Run: python get_pg_coworking_leads_apify.py --cities "Bengaluru,Pune" --apify-to
 import argparse
 import csv
 import os
+import re
 import sys
 import time
 from datetime import datetime
@@ -125,6 +126,13 @@ class Tee:
     def flush(self):
         for s in self.streams:
             s.flush()
+
+
+def slugify(text):
+    """Lowercased, filesystem-safe form of e.g. a --query-prefix ('Gents PG' -> 'gents-pg') for
+    use in a log filename — so multiple runs' log files are distinguishable in a directory
+    listing without opening each one."""
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
 def apify_search(apify_token, actor_id, query, location_text, max_results, timeout_sec, counter, max_images=1):
@@ -469,13 +477,14 @@ def main():
         default=None,
         help="Persist this run's full output here too, not just the terminal, so it can be "
         "reviewed after the run ends (or if it crashes) — default: "
-        "<photos-dir>/logs/run_<timestamp>.log. Pass 'none' to disable.",
+        "<photos-dir>/logs/run_<prefix-or-categories>_<timestamp>.log. Pass 'none' to disable.",
     )
     args = parser.parse_args()
 
     if args.log_file != "none":
+        label = slugify(args.query_prefix or args.categories)
         log_path = args.log_file or os.path.join(
-            args.photos_dir, "logs", f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+            args.photos_dir, "logs", f"run_{label}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
         )
         os.makedirs(os.path.dirname(log_path) or ".", exist_ok=True)
         sys.stderr = Tee(sys.stderr, open(log_path, "a", buffering=1))
