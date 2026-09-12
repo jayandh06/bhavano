@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/outreach";
 import { OptOutButton } from "./OptOutButton";
 import { formatDate } from "@/lib/formatDateTime";
+import { buildSortHref, sortDirectionFor, type SearchParams } from "@/lib/searchParams";
 
 const CONSENT_COLORS: Record<string, string> = {
   none: "var(--muted)",
@@ -31,7 +32,7 @@ const DIRECT_CREATE_CATEGORIES = new Set(["pg", "coworking"]);
  *
  * Table, not cards — matches AdminListingsTable.tsx's own convention (that one's th/tdStyle
  * aren't exported, so these are a local copy of the same values rather than a shared import). */
-export function OutreachContactsList({ contacts }: { contacts: OutreachContactDto[] }) {
+export function OutreachContactsList({ contacts, sp }: { contacts: OutreachContactDto[]; sp: SearchParams }) {
   const [selectedForCreate, setSelectedForCreate] = useState<Set<string>>(new Set());
   const [selectedForSend, setSelectedForSend] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
@@ -180,13 +181,19 @@ export function OutreachContactsList({ contacts }: { contacts: OutreachContactDt
           <thead>
             <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
               <th style={thStyle} />
-              <th style={thStyle}>Name</th>
+              <th style={thStyle}>
+                <SortableHeader label="Name" field="name" sp={sp} />
+              </th>
               <th style={thStyle}>Listing</th>
               <th style={thStyle}>Notification</th>
               <th style={thStyle}>Consent</th>
-              <th style={thStyle}>Rating</th>
+              <th style={thStyle}>
+                <SortableHeader label="Rating" field="rating" sp={sp} />
+              </th>
               <th style={thStyle}>Contact</th>
-              <th style={thStyle}>City / category</th>
+              <th style={thStyle}>
+                <SortableHeader label="City" field="city" sp={sp} /> / category
+              </th>
               <th style={thStyle}>Source</th>
               <th style={thStyle} />
             </tr>
@@ -267,6 +274,26 @@ export function OutreachContactsList({ contacts }: { contacts: OutreachContactDt
 }
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
+
+/** Name/Rating/City column headers — clicking toggles ascending/descending on that field
+ * (buildSortHref/sortDirectionFor handle the actual URL logic), replacing what would otherwise
+ * be a separate "Sort by" filter control. A full-page navigation like every other filter on this
+ * page, not a client-side re-sort — the server is the source of truth for order (and pagination
+ * needs it sorted server-side anyway). */
+function SortableHeader({ label, field, sp }: { label: string; field: string; sp: SearchParams }) {
+  const direction = sortDirectionFor(sp, field);
+  return (
+    <Link
+      href={buildSortHref("/outreach/contacts", sp, field)}
+      style={{ color: "inherit", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
+    >
+      {label}
+      <span style={{ color: direction ? "var(--text)" : "var(--muted)", fontSize: 10 }}>
+        {direction === "asc" ? "▲" : direction === "desc" ? "▼" : "↕"}
+      </span>
+    </Link>
+  );
+}
 
 /** All three states are real, queryable facts (hasListing/hasClaimableListing), unlike the
  * Notification column next to it — this one isn't hedged. */

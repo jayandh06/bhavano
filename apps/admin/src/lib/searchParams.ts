@@ -51,3 +51,29 @@ export function buildPageHref(
   const qs = params.toString();
   return qs ? `${basePath}?${qs}` : basePath;
 }
+
+/** A sortable `<th>`'s href — toggles `field` ascending/descending (via a leading `-` on the
+ * `sort` param) and clears pagination back to page 1, same as changing any other filter would.
+ * Clicking a column that isn't currently sorted starts it ascending; clicking the active column
+ * again flips direction. */
+export function buildSortHref(basePath: string, sp: SearchParams, field: string): string {
+  const currentSort = str(sp.sort);
+  const nextSort = currentSort === field ? `-${field}` : field;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (key === "sort" || key === "page") continue;
+    const v = str(value);
+    if (v) params.set(key, v);
+  }
+  params.set("sort", nextSort);
+  return `${basePath}?${params.toString()}`;
+}
+
+/** `null` (not sorted on this field), `"asc"`, or `"desc"` — for rendering a sort-direction arrow
+ * on the active column header. */
+export function sortDirectionFor(sp: SearchParams, field: string): "asc" | "desc" | null {
+  const currentSort = str(sp.sort);
+  if (currentSort === field) return "asc";
+  if (currentSort === `-${field}`) return "desc";
+  return null;
+}

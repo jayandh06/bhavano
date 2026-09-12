@@ -424,9 +424,14 @@ export interface ListOutreachContactsQuery {
   limit?: number;
   search?: string;
   cityId?: string;
+  areaId?: string;
   status?: string;
   businessCategory?: string;
   placesFetchLogId?: string;
+  consentState?: string;
+  hasListing?: string;
+  notificationStatus?: string;
+  sort?: string;
 }
 
 export function fetchOutreachContacts(

@@ -1,9 +1,18 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchOutreachContacts, fetchOutreachContactCategories } from "@/lib/bff";
+import { fetchOutreachContacts, fetchOutreachContactCategories, fetchCities, fetchAreas } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams";
 import { OutreachContactsList } from "@/components/OutreachContactsList";
 import { Pagination } from "@/components/Pagination";
+
+const selectStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  background: "var(--surface)",
+  color: "var(--text)",
+  fontSize: 13,
+};
 
 export default async function OutreachContactsPage({
   searchParams,
@@ -16,10 +25,16 @@ export default async function OutreachContactsPage({
   const status = str(sp.status);
   const businessCategory = str(sp.businessCategory);
   const placesFetchLogId = str(sp.placesFetchLogId);
+  const cityId = str(sp.cityId);
+  const areaId = str(sp.areaId);
+  const consentState = str(sp.consentState);
+  const hasListing = str(sp.hasListing);
+  const notificationStatus = str(sp.notificationStatus);
+  const sort = str(sp.sort);
   const currentPage = parsePage(str(sp.page));
   const limit = parsePageSize(str(sp.limit));
 
-  const [result, categories] = await Promise.all([
+  const [result, categories, cities, areas] = await Promise.all([
     fetchOutreachContacts(accessToken, {
       offset: (currentPage - 1) * limit,
       limit,
@@ -27,8 +42,18 @@ export default async function OutreachContactsPage({
       status,
       businessCategory,
       placesFetchLogId,
+      cityId,
+      areaId,
+      consentState,
+      hasListing,
+      notificationStatus,
+      sort,
     }),
     fetchOutreachContactCategories(accessToken),
+    fetchCities(undefined, true),
+    // Only this city's areas — an area picker isn't meaningful before a city is chosen, same as
+    // the post-ad location picker's own cascading behavior.
+    cityId ? fetchAreas(cityId, undefined, true) : Promise.resolve([]),
   ]);
   const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
@@ -92,18 +117,7 @@ export default async function OutreachContactsPage({
               fontSize: 13,
             }}
           />
-          <select
-            name="businessCategory"
-            defaultValue={businessCategory ?? ""}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontSize: 13,
-            }}
-          >
+          <select name="businessCategory" defaultValue={businessCategory ?? ""} style={selectStyle}>
             <option value="">All categories</option>
             {categories.map((c) => (
               <option key={c} value={c}>
@@ -111,6 +125,47 @@ export default async function OutreachContactsPage({
               </option>
             ))}
           </select>
+          <select name="cityId" defaultValue={cityId ?? ""} style={selectStyle}>
+            <option value="">All cities</option>
+            {cities.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <select
+            name="areaId"
+            defaultValue={areaId ?? ""}
+            disabled={!cityId}
+            style={selectStyle}
+            title={cityId ? undefined : "Pick a city first"}
+          >
+            <option value="">{cityId ? "All areas" : "All areas (pick a city first)"}</option>
+            {areas.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          <select name="consentState" defaultValue={consentState ?? ""} style={selectStyle}>
+            <option value="">All consent states</option>
+            <option value="none">None</option>
+            <option value="implied">Implied</option>
+            <option value="explicit">Explicit</option>
+            <option value="opted_out">Opted out</option>
+          </select>
+          <select name="hasListing" defaultValue={hasListing ?? ""} style={selectStyle}>
+            <option value="">Listing: any</option>
+            <option value="true">Listing created</option>
+            <option value="false">No listing yet</option>
+          </select>
+          <select name="notificationStatus" defaultValue={notificationStatus ?? ""} style={selectStyle}>
+            <option value="">Notification: any</option>
+            <option value="not_sent">Not sent</option>
+            <option value="sent">Sent</option>
+            <option value="confirmed">Confirmed (claimed)</option>
+          </select>
+          {sort && <input type="hidden" name="sort" value={sort} />}
           <button
             type="submit"
             style={{
@@ -132,7 +187,7 @@ export default async function OutreachContactsPage({
           {result.total} contact{result.total === 1 ? "" : "s"}
         </p>
 
-        <OutreachContactsList contacts={result.items} />
+        <OutreachContactsList contacts={result.items} sp={sp} />
 
         <Pagination
           currentPage={currentPage}
