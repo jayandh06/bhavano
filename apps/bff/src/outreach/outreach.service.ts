@@ -612,6 +612,11 @@ export class OutreachService {
         category: contact.businessCategory,
         transactionType: 'rent',
         price: 0,
+        // price: 0 ("Contact for price") is only valid for pg/coworking alongside a real
+        // priceQualifier — 'onwards' is the one that actually fits "no fixed number yet" (see
+        // PRICE_ON_REQUEST_CATEGORIES's own doc comment), not left blank like a sell listing's
+        // "Fixed price" option, which doesn't exist for rent at all.
+        priceQualifier: 'onwards',
         title: contact.name,
         cityId: contact.cityId,
         areaId: contact.areaId ?? undefined,

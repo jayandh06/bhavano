@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import sharp from 'sharp';
 import {
   OutreachService,
   renderTemplate,
@@ -17,6 +18,7 @@ const daysAgo = (n: number) => new Date(Date.now() - n * DAY_MS);
 function makeService() {
   const prisma = {
     outreachContact: { findMany: jest.fn(), count: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    user: { findUniqueOrThrow: jest.fn() },
     outreachCampaign: { findUnique: jest.fn(), update: jest.fn() },
     campaignSend: { groupBy: jest.fn().mockResolvedValue([]) },
     suppressionEntry: { findMany: jest.fn().mockResolvedValue([]) },
@@ -567,6 +569,57 @@ describe('OutreachService.createListingFromContact — the businessStatus gate',
     );
     (config.get as jest.Mock).mockReturnValue(undefined);
     await expect(service.createListingFromContact('c1')).rejects.toThrow(/SCRAPED_PHOTOS_DIR/);
+  });
+});
+
+describe('OutreachService.createListingFromContact — the full success path', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'bhavano-create-listing-'));
+    // A real, tiny, decodable JPEG — uploadLocalPhotos calls computeDHash (sharp) on the actual
+    // file bytes, so a dummy text file (fine for findLocalPhotos' own filename-only tests above)
+    // would throw here. sharp can synthesize one directly, no fixture file needed.
+    const jpeg = await sharp({ create: { width: 4, height: 4, channels: 3, background: 'red' } })
+      .jpeg()
+      .toBuffer();
+    await writeFile(join(dir, 'place1_0.jpg'), jpeg);
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('sends a price-on-request pg listing through with priceQualifier: onwards', async () => {
+    const { service, prisma, config, storage, listingsService } = makeService();
+    (prisma.outreachContact.findUnique as jest.Mock).mockResolvedValue(
+      contact({
+        businessCategory: 'pg',
+        cityId: 'city1',
+        areaId: 'area1',
+        claimedListing: null,
+        businessStatus: 'OPERATIONAL',
+        googlePlaceId: 'place1',
+        lat: 12.9,
+        lng: 77.6,
+      }),
+    );
+    (config.get as jest.Mock).mockReturnValue(dir);
+    (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({ id: 'owner1' });
+    (storage.putObject as jest.Mock).mockResolvedValue(undefined);
+    (listingsService.create as jest.Mock).mockResolvedValue({ id: 'listing1' });
+
+    await service.createListingFromContact('c1');
+
+    expect(listingsService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'pg',
+        transactionType: 'rent',
+        price: 0,
+        priceQualifier: 'onwards',
+      }),
+      'owner1',
+    );
   });
 });
 
