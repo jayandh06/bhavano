@@ -1818,27 +1818,39 @@ export class ListingsService {
     }
 
     this.assertConditionalFee(
+      category,
+      transactionType,
       attributes,
       'brokerageFeeApplicable',
-      'brokerageFee',
       'Brokerage fee',
     );
     this.assertConditionalFee(
+      category,
+      transactionType,
       attributes,
       'maintenanceFeeApplicable',
-      'monthlyMaintenanceFee',
       'Monthly maintenance fee',
     );
   }
 
+  /** `applicableKey`'s amount isn't always the same field: brokerage is quoted as a flat ₹
+   * amount for rent/lease (`brokerageFee`) but as a % of sale price for a sell listing
+   * (`brokerageCommissionPercent`) — two distinct keys sharing one applicability toggle (see
+   * their `dependsOn`/`transactionTypes` in categoryFields.ts). This used to hardcode
+   * `brokerageFee` regardless of transactionType, so turning the toggle on for a *sell* listing
+   * always failed with "Brokerage fee amount is required" no matter what the admin entered —
+   * `brokerageFee` isn't even a field a sell listing shows, `brokerageCommissionPercent` is.
+   * Resolving the actual amount field from CATEGORY_FIELD_CONFIG itself (rather than a second,
+   * hardcoded per-transactionType mapping here) keeps this in sync with that file automatically;
+   * `monthlyMaintenanceFee` has no transactionTypes split, so it always resolves to itself. */
   private assertConditionalFee(
+    category: ListingCategory,
+    transactionType: TransactionType,
     attributes: Record<string, unknown>,
     applicableKey: string,
-    amountKey: string,
     label: string,
   ): void {
     const applicable = attributes[applicableKey];
-    const amount = attributes[amountKey];
     if (
       applicable !== undefined &&
       applicable !== 'yes' &&
@@ -1848,6 +1860,19 @@ export class ListingsService {
         `Invalid ${label.toLowerCase()} applicability`,
       );
     }
+
+    const amountField = CATEGORY_FIELD_CONFIG[category].find(
+      (field) =>
+        field.dependsOn?.key === applicableKey &&
+        field.dependsOn.value === 'yes' &&
+        (!field.transactionTypes ||
+          field.transactionTypes.includes(transactionType)),
+    );
+    // No amount field applies at all for this category/transactionType combination — nothing to
+    // require or reject.
+    if (!amountField) return;
+
+    const amount = attributes[amountField.key];
     if (applicable === 'yes') {
       const numericAmount =
         typeof amount === 'number'
@@ -1856,10 +1881,10 @@ export class ListingsService {
             ? Number(amount)
             : NaN;
       if (!Number.isInteger(numericAmount) || numericAmount < 0)
-        throw new BadRequestException(`${label} amount is required`);
+        throw new BadRequestException(`${amountField.label} is required`);
     } else if (amount !== undefined && amount !== null && amount !== '') {
       throw new BadRequestException(
-        `${label} amount requires applicability to be Yes`,
+        `${amountField.label} requires applicability to be Yes`,
       );
     }
   }

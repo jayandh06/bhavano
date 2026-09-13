@@ -277,6 +277,49 @@ describe('ListingsService', () => {
       ).not.toThrow();
     });
 
+    // Regression test: a sell listing quotes brokerage as a % of sale price
+    // (brokerageCommissionPercent), not the flat ₹ amount rent/lease listings use
+    // (brokerageFee) — assertConditionalFee used to hardcode 'brokerageFee' regardless of
+    // transactionType, so turning brokerageFeeApplicable on for a sell listing always failed
+    // with "Brokerage fee amount is required" no matter what commission percentage was entered,
+    // since brokerageFee is never a field a sell listing shows in the first place.
+    it('accepts a sell listing with brokerage quoted as a commission percentage', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('house', 'sell', {
+          bedrooms: '2',
+          bathrooms: '2',
+          carpetAreaSqft: '950',
+          fromBroker: 'yes',
+          brokerageFeeApplicable: 'yes',
+          brokerageCommissionPercent: '2',
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects a sell listing with brokerage applicable but no commission percentage set', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('house', 'sell', {
+          bedrooms: '2',
+          bathrooms: '2',
+          carpetAreaSqft: '950',
+          fromBroker: 'yes',
+          brokerageFeeApplicable: 'yes',
+        }),
+      ).toThrow('Brokerage commission (%) is required');
+    });
+
+    it('still requires the flat brokerage fee (not a commission percentage) for a rent listing', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('apartment', 'rent', {
+          ...validAttributes,
+          brokerageFee: undefined,
+        }),
+      ).toThrow('Brokerage fee (₹) is required');
+    });
+
     it('rejects furnishing inventory when the residence is not furnished', () => {
       const { service } = makeService();
       expect(() =>
