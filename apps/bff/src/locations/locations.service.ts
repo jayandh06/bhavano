@@ -93,6 +93,14 @@ export class LocationsService {
   async ensureArea(cityId: string, name?: string): Promise<Area> {
     if (!name?.trim()) throw new BadRequestException('Either areaId or areaName is required');
     const trimmed = name.trim();
+    // slugify() strips anything outside [a-z0-9] — a name entirely in a non-Latin script (or
+    // entirely punctuation/emoji) collapses to "", which can never be resolved back from a URL
+    // (see resolveArea in apps/web/src/lib/browseRoute.ts, an exact slugify(name) match). Refuse
+    // it here rather than silently creating an area no listing under it could ever be reached
+    // through — see ensureCity's own guard below for the real incident this was found from.
+    if (!slugify(trimmed)) {
+      throw new BadRequestException('That location name needs at least one letter or number to build a URL from');
+    }
 
     const existing = await this.prisma.area.findFirst({
       where: { cityId, name: { equals: trimmed, mode: 'insensitive' } },
@@ -145,8 +153,18 @@ export class LocationsService {
     });
     if (existing) return existing;
 
+    // Real incident this guards against: Google's Geocoding API returned "मुंबई"/"महाराष्ट्र"
+    // (Devanagari) for a dropped pin instead of "Mumbai"/"Maharashtra" — reverseGeocodeGoogle's
+    // request didn't pin a response language, so Google fell back to the locality's local script.
+    // slugify() strips anything outside [a-z0-9], so a non-Latin name collapses to "" — the
+    // listing that got created under that city was permanently unreachable (every one of its
+    // URLs, e.g. buildListingPath's `/${citySlug}/...`, had an empty first segment, which a
+    // browser or <Link> then resolves as protocol-relative to a bogus host instead of a same-site
+    // path). Treated the same as the existing same-slug-collision case below: decline rather than
+    // create a city no listing under it could ever be reached through.
+    const newSlug = slugify(trimmedName);
     const allCities = await this.prisma.city.findMany();
-    if (allCities.some((c) => slugify(c.name) === slugify(trimmedName))) return null;
+    if (!newSlug || allCities.some((c) => slugify(c.name) === newSlug)) return null;
 
     return this.prisma.city.create({
       data: { name: trimmedName, state: trimmedState, lat, lng, source: 'user-submitted' },
@@ -174,7 +192,13 @@ export class LocationsService {
       throw new ServiceUnavailableException('Location lookup is not configured on this server yet');
     }
 
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
+    // `language=en`: without it, Google answers in the locality's local script when it has one
+    // (confirmed live — a Kharghar/Navi Mumbai pin came back with locality "मुंबई" and
+    // administrative_area_level_1 "महाराष्ट्र", not "Mumbai"/"Maharashtra"). Every city/area name
+    // in this app is otherwise Latin-script, and slugify() can't build a URL segment from
+    // anything else — see ensureCity/ensureArea's own guards against that, added after this was
+    // exactly what let one such city through.
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=en`;
     const res = await fetch(url);
     if (!res.ok) {
       this.logger.warn(`Google Geocoding API request failed: ${res.status}`);
