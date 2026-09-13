@@ -130,15 +130,17 @@ export function LocationPicker({
 
   return (
     <>
+      {/* `py-3` matches SearchBar's own input padding exactly (not the previous `py-2.5`) — this
+        * used to be a two-line chip ("Showing ads near" + the city), tall enough on its own to
+        * roughly match the search bar and Post-ad button beside it without needing to think about
+        * it. Now that it's a single line, the padding has to do that work explicitly instead. */}
       <button
         onClick={openModal}
-        className="flex items-center gap-2 bg-surface-alt border border-border rounded-[10px] px-3.5 py-2.5 cursor-pointer shrink-0"
+        aria-label="Change city"
+        className="flex items-center gap-2 bg-surface-alt border border-border rounded-[10px] px-3.5 py-3 cursor-pointer shrink-0"
       >
         <Icon name="pin" className="text-base" />
-        <div className="text-left">
-          <div className="text-[10px] text-muted leading-[1.2]">Showing ads near</div>
-          <div className="text-sm font-bold text-text leading-[1.3]">{currentCityName ?? "All cities"}</div>
-        </div>
+        <span className="text-sm font-bold text-text">{currentCityName ?? "All cities"}</span>
         <span className="text-[11px] text-muted ml-0.5">▾</span>
       </button>
 

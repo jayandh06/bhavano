@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
-/** Selects a city via the header's `LocationPicker` ("Showing ads near" chip) and waits for the
+/** Selects a city via the header's `LocationPicker` (the "Change city" chip) and waits for the
  * resulting navigation — shared by every spec that needs a specific city selected first. */
 export async function selectCity(page: Page, cityName: string) {
   // If this follows a just-completed client-side navigation (e.g. a Link click elsewhere on
@@ -12,7 +12,8 @@ export async function selectCity(page: Page, cityName: string) {
   await page.waitForLoadState("networkidle");
   await page.waitForTimeout(500);
 
-  await page.getByText("Showing ads near").click();
+  const cityChip = page.getByRole("button", { name: "Change city" });
+  await cityChip.click();
   await expect(page.getByText("Choose your location")).toBeVisible();
   // LocationPicker's `CityRow` is the only <button> anywhere on the page named after a city
   // (footer/mega-menu city links are <a> elements, a different accessible role).
@@ -21,7 +22,7 @@ export async function selectCity(page: Page, cityName: string) {
   // The click triggers a client-side (soft) navigation — wait for the header chip to actually
   // reflect the new city before returning, so callers don't race the in-flight re-render (e.g.
   // clicking a "?city=" link built from the *old* props a moment too early).
-  await expect(page.getByText("Showing ads near").locator("..").getByText(cityName, { exact: true })).toBeVisible();
+  await expect(cityChip.getByText(cityName, { exact: true })).toBeVisible();
 
   // The text updating doesn't guarantee every Link on the page has finished re-hydrating its
   // click handler yet — without this, a caller that immediately clicks a nav link right after

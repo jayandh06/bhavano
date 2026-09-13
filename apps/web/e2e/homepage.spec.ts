@@ -4,7 +4,7 @@ test.describe("homepage", () => {
   test("loads with a default city and renders seeded listings", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByText("Showing ads near")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Change city" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     // Seeded demo listings (apps/bff/prisma/seed.ts) span multiple categories/cities — the
     // default (Buy) tab on the default city should render at least one card.

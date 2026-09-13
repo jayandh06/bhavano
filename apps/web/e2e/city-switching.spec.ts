@@ -9,7 +9,7 @@ test.describe("city switching", () => {
     await selectCity(page, "Pune");
 
     await expect(page).toHaveURL(/city=/);
-    await expect(page.getByText("Showing ads near")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Change city" })).toBeVisible();
     await expect(page.getByText("Areas in Pune", { exact: true })).toBeVisible();
 
     // "Browse Cities" excludes the currently-selected city (see Footer.tsx) — Pune itself
@@ -46,6 +46,6 @@ test.describe("city switching", () => {
     // A full reload forces the header to re-resolve the remembered city from the cookie alone —
     // if a stray prefetch had won, this is where it would show up as something other than Pune.
     await page.reload();
-    await expect(page.getByText("Showing ads near").locator("..").getByText("Pune", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Change city" }).getByText("Pune", { exact: true })).toBeVisible();
   });
 });

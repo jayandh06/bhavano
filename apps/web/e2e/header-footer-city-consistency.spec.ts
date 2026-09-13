@@ -18,7 +18,7 @@ async function navigateViaLink(page: Page, linkName: string, urlPattern: RegExp)
 }
 
 async function assertCityConsistent(page: Page, cityName: string) {
-  await expect(page.getByText("Showing ads near").locator("..").getByText(cityName, { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change city" }).getByText(cityName, { exact: true })).toBeVisible();
   await expect(page.getByText(`Areas in ${cityName}`, { exact: true })).toBeVisible();
 }
 
