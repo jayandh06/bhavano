@@ -1,4 +1,4 @@
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG, fieldIsVisible, groupFieldsBySection } from "@bhavano/types/categoryFields";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -59,17 +59,25 @@ export function ListingAttributeSections({
           ) : (
             <View style={styles.grid}>
               {fields.map((field) => (
-                <View key={field.key} style={styles.gridCell}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                    {isIconName(field.iconName) && <Icon name={field.iconName} size={13} color={colors.muted} />}
-                    <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.text }}>{field.label}</Text>
-                  </View>
+                <View key={field.key} style={[styles.gridCell, { flexDirection: "row", alignItems: "flex-start", gap: 5 }]}>
+                  {isIconName(field.iconName) && <Icon name={field.iconName} size={13} color={colors.muted} />}
                   {field.key === "website" && attrs[field.key] ? (
-                    <Pressable onPress={() => Linking.openURL(websiteHref(String(attrs[field.key])))}>
-                      <Text style={{ fontSize: 13, color: colors.green, fontWeight: "600" }}>{String(attrs[field.key])}</Text>
-                    </Pressable>
+                    <Text style={{ fontSize: 13, color: colors.textSoft, flexShrink: 1 }}>
+                      <Text style={{ fontWeight: "700", color: colors.text }}>{field.label}</Text>
+                      {": "}
+                      <Text
+                        onPress={() => Linking.openURL(websiteHref(String(attrs[field.key])))}
+                        style={{ color: colors.green, fontWeight: "600" }}
+                      >
+                        {String(attrs[field.key])}
+                      </Text>
+                    </Text>
                   ) : (
-                    <Text style={{ fontSize: 13, color: colors.textSoft }}>{formatAttributeValue(attrs[field.key])}</Text>
+                    <Text style={{ fontSize: 13, color: colors.textSoft, flexShrink: 1 }}>
+                      <Text style={{ fontWeight: "700", color: colors.text }}>{field.label}</Text>
+                      {": "}
+                      {formatAttributeValue(attrs[field.key])}
+                    </Text>
                   )}
                 </View>
               ))}
