@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
@@ -8,6 +8,16 @@ import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
 import { BffError, createConversation, recordView, revealContact, toggleFavourite } from "../../src/lib/bffClient";
 import { Icon } from "../../src/components/Icon";
+import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
+import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
+
+/** Same URL shape as the website's ListingDetailView.tsx — no origin, so Google Maps prompts for
+ * the visitor's own location instead. `lat`/`lng` are already a server-side jittered
+ * approximation of the real pin (see ListingDetailDto's own doc comment), never the exact one,
+ * regardless of who's asking. */
+function directionsUrl(lat: number, lng: number): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+}
 
 const VIEWER_KEY_STORAGE = "bhavano.viewerKey";
 
@@ -131,27 +141,15 @@ export default function ListingDetailScreen() {
         <Text style={{ color: colors.muted, fontSize: 13 }}>Back</Text>
       </Pressable>
 
-      <View
-        style={[
-          styles.imageArea,
-          { backgroundColor: listing.imgColors[0] },
-        ]}
-      >
-        <View style={[styles.imageOverlay, { backgroundColor: listing.imgColors[1] }]} />
-        {listing.photosFull[0] ? (
-          <Image source={{ uri: listing.photosFull[0] }} style={StyleSheet.absoluteFill} />
-        ) : (
-          <Text style={styles.imageCaption}>{listing.imgLabel}</Text>
-        )}
-        <View style={[styles.tag, { backgroundColor: colors.green }]}>
-          <Text style={{ color: colors.onGreen, fontSize: 11, fontWeight: "700" }}>{listing.tag}</Text>
-        </View>
-        {listing.isExpired && (
-          <View style={[styles.expiredTag]}>
-            <Text style={{ color: "#F5F1E6", fontSize: 11, fontWeight: "700" }}>Expired</Text>
-          </View>
-        )}
-      </View>
+      <ListingMediaGallery
+        photosFull={listing.photosFull}
+        videos={listing.videos}
+        title={listing.title}
+        tag={listing.tag}
+        isExpired={listing.isExpired}
+        imgColors={listing.imgColors}
+        imgLabel={listing.imgLabel}
+      />
 
       <View style={styles.priceRow}>
         <Text style={{ fontSize: 22, fontWeight: "700", color: colors.green }}>{listing.price}</Text>
@@ -197,16 +195,23 @@ export default function ListingDetailScreen() {
           "Bedrooms: 3", in the seller's spelling rather than the app's. The chips are for the
           browse cards, which render none of these sections. */}
 
-      {Object.entries(listing.attributes).length > 0 && (
-        <View style={[styles.attributesBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-          <Text style={{ fontWeight: "700", fontSize: 13, color: colors.text, marginBottom: 8 }}>Details</Text>
-          {Object.entries(listing.attributes).map(([key, value]) => (
-            <Text key={key} style={{ fontSize: 13, color: colors.textSoft, marginBottom: 4 }}>
-              <Text style={{ fontWeight: "600", textTransform: "capitalize" }}>{key}</Text>: {String(value)}
-            </Text>
-          ))}
-        </View>
+      {listing.lat !== undefined && listing.lng !== undefined && (
+        <Pressable
+          onPress={() => Linking.openURL(directionsUrl(listing.lat!, listing.lng!))}
+          style={[styles.directionsButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt, marginTop: 16 }]}
+        >
+          <Icon name="compass" size={16} color={colors.green} />
+          <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.green }}>Get directions</Text>
+        </Pressable>
       )}
+
+      <View style={{ marginTop: 16 }}>
+        <ListingAttributeSections
+          category={listing.category}
+          transactionType={listing.transactionType}
+          attributes={listing.attributes}
+        />
+      </View>
 
       {listing.isExpired ? (
         <Text style={{ fontSize: 13, color: colors.muted, marginTop: 16 }}>
@@ -272,29 +277,17 @@ export default function ListingDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  imageArea: { height: 220, borderRadius: 16, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  imageOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.5 },
-  imageCaption: {
-    fontSize: 12,
-    color: "#ffffffcc",
-    backgroundColor: "#00000030",
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-  },
-  tag: { position: "absolute", top: 12, left: 12, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6 },
-  expiredTag: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    backgroundColor: "#242420",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-  },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16 },
   qualifierChip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6 },
-  attributesBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 16 },
+  directionsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
   actionsRow: { flexDirection: "row", gap: 10 },
   actionButton: { flex: 1, borderWidth: 1.5, borderRadius: 8, paddingVertical: 12, alignItems: "center", justifyContent: "center", gap: 4 },
   contactBox: { borderWidth: 1.5, borderRadius: 10, padding: 12, marginTop: 8 },
