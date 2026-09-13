@@ -320,6 +320,33 @@ describe('ListingsService', () => {
       ).toThrow('Brokerage fee (₹) is required');
     });
 
+    // plot is sell-only (POSTABLE_TRANSACTION_TYPES), so it only ever needs the commission-
+    // percentage variant, same as a residential sale — added on request alongside the same
+    // fromBroker/brokerageFeeApplicable/brokerageCommissionPercent chain house/apartment/villa
+    // already have.
+    it('accepts a plot sale with brokerage quoted as a commission percentage', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('plot', 'sell', {
+          plotAreaSqft: '1200',
+          fromBroker: 'yes',
+          brokerageFeeApplicable: 'yes',
+          brokerageCommissionPercent: '2',
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects a plot sale with brokerage applicable but no commission percentage set', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('plot', 'sell', {
+          plotAreaSqft: '1200',
+          fromBroker: 'yes',
+          brokerageFeeApplicable: 'yes',
+        }),
+      ).toThrow('Brokerage commission (%) is required');
+    });
+
     it('rejects furnishing inventory when the residence is not furnished', () => {
       const { service } = makeService();
       expect(() =>

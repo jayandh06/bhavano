@@ -904,6 +904,40 @@ exports.CATEGORY_FIELD_CONFIG = {
             section: "plotDetails",
             placeholder: "e.g. BDA, Panchayat, DTCP",
         },
+        {
+            key: "fromBroker",
+            label: "Posted by broker",
+            type: "select",
+            section: "pricing",
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            key: "brokerageFeeApplicable",
+            label: "Has brokerage fee",
+            type: "select",
+            section: "pricing",
+            dependsOn: { key: "fromBroker", value: "yes" },
+            options: [
+                { value: "yes", label: "Yes" },
+                { value: "no", label: "No" },
+            ],
+        },
+        {
+            // plot is sell-only (see POSTABLE_TRANSACTION_TYPES), so this is the only brokerage-amount
+            // field it ever needs — no flat-₹ brokerageFee variant, unlike RESIDENTIAL_FIELDS, which
+            // also supports rent/lease.
+            key: "brokerageCommissionPercent",
+            label: "Brokerage commission (%)",
+            type: "number",
+            min: 0,
+            maxDigits: 2,
+            section: "pricing",
+            transactionTypes: ["sell"],
+            dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
+        },
     ],
     commercial: [
         {
