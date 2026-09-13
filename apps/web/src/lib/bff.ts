@@ -150,7 +150,7 @@ export interface ListingsQuery {
    * see docs/plans/seo-distinct-window-pagination.md. Mutually exclusive with `cursor`. */
   offset?: number;
   limit?: number;
-  sort?: "newest" | "price_asc" | "price_desc" | "popular";
+  sort?: "auto" | "newest" | "price_asc" | "price_desc" | "popular";
 }
 
 export function fetchListings(query: ListingsQuery, accessToken?: string): Promise<ListingsPage> {

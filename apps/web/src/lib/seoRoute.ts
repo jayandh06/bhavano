@@ -147,10 +147,12 @@ export const SHARING_TYPE_VALUES = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key ==
 export const CONDITION_VALUES = CATEGORY_FIELD_CONFIG.furniture.find((f) => f.key === "condition")!.options!.map((o) => o.value);
 export const SERVICE_TYPE_VALUES = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")!.options!.map((o) => o.value);
 
-/** Same 4 sort dimensions for every category — all plain top-level `Listing` columns
- * (createdAt/price/viewCount). See ListingsService.list()'s `ORDER_BY` lookup for how each maps
- * to a Prisma `orderBy`. */
-export const SORT_VALUES = ["newest", "price_asc", "price_desc", "popular"] as const;
+/** "auto" (default) is the recent-listings mix + boosted-page-cap (see
+ * docs/plans/homepage-category-mix-and-boost-page-cap.md) — the other 3 are plain top-level
+ * `Listing` columns (createdAt/price/viewCount) with no mixing. "newest" is kept as an accepted
+ * (but no longer UI-produced) value so already-shared `?sort=newest` links keep resolving; it
+ * behaves identically to "auto". See ListingsService.list()'s `ORDER_BY`/`wantsExplicitSort`. */
+export const SORT_VALUES = ["auto", "newest", "price_asc", "price_desc", "popular"] as const;
 
 export type FacetKind = "bedrooms" | "sharingType" | "condition" | "serviceType" | "none";
 

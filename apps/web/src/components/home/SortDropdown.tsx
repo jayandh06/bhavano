@@ -5,10 +5,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { buttonClass, DropdownOption } from "./BrowseFilterBar";
 
-/** Same 4 options for every category — all plain top-level `Listing` columns (see
- * ListingsService's `ORDER_BY` lookup). */
+/** "Auto" (default) mixes recently-added listings across categories/facets instead of a flat
+ * newest-first feed, and caps how many boosted listings can occupy guaranteed top slots — see
+ * docs/plans/homepage-category-mix-and-boost-page-cap.md. Picking any other option here is an
+ * explicit ask for a literal sort, so the mix turns off (boosted listings still sort first, just
+ * uncapped, same as before that feature). */
 const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: "newest", label: "Newest first" },
+  { value: "auto", label: "Auto" },
   { value: "price_asc", label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },
   { value: "popular", label: "Most viewed" },
@@ -25,11 +28,14 @@ export function SortDropdown({ activeSort }: { activeSort?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
 
-  const sortLabel = SORT_OPTIONS.find((s) => s.value === activeSort)?.label ?? "Newest first";
+  // A bookmarked `?sort=newest` link (the old default's value, before it was renamed to "auto")
+  // must still resolve to the same "Auto" option — see SORT_VALUES' note in seoRoute.ts.
+  const normalizedSort = activeSort === "newest" ? "auto" : activeSort;
+  const sortLabel = SORT_OPTIONS.find((s) => s.value === normalizedSort)?.label ?? "Auto";
 
   function selectSort(value: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value === "newest") params.delete("sort");
+    if (value === "auto") params.delete("sort");
     else params.set("sort", value);
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
@@ -48,7 +54,7 @@ export function SortDropdown({ activeSort }: { activeSort?: string }) {
             <DropdownOption
               key={s.value}
               label={s.label}
-              active={(activeSort ?? "newest") === s.value}
+              active={(normalizedSort ?? "auto") === s.value}
               onClick={() => selectSort(s.value)}
             />
           ))}
