@@ -6,7 +6,9 @@ import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { LegalFooter } from "../../src/components/home/LegalFooter";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
+import { LocationMapPicker } from "../../src/components/home/LocationMapPicker";
 import {
+  deleteAccount,
   fetchCities,
   linkPhone,
   requestEmailCode,
@@ -99,6 +101,8 @@ function ProfileFields({
   loggingOut: boolean;
 }) {
   const { colors, theme, toggleTheme } = useAppTheme();
+  const { logout } = useHomeSheets();
+  const router = useRouter();
   const { data: balance } = useContactRevealBalanceQuery(accessToken);
 
   const [name, setName] = useState(profile.name ?? "");
@@ -109,6 +113,13 @@ function ProfileFields({
   const [cityQuery, setCityQuery] = useState("");
   const [citySuggestions, setCitySuggestions] = useState<City[]>([]);
   const cityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Same "no match — find it on the map" fallback as the website's ProfileForm, reusing the
+  // posting wizard's own pin picker (LocationMapPicker) rather than sending the visitor
+  // somewhere else — dropping a pin reverse-geocodes and creates the city if Bhavano doesn't
+  // already cover it (LocationsService.ensureCity), the same path the wizard already uses.
+  const [cityNoResults, setCityNoResults] = useState(false);
+  const [showCityMap, setShowCityMap] = useState(false);
+  const [newCityNote, setNewCityNote] = useState<string | null>(null);
   const [email, setEmail] = useState(profile.email ?? "");
   const [phoneInput, setPhoneInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
@@ -121,6 +132,14 @@ function ProfileFields({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // App Store guideline 5.1.1(v) requires deletion to be startable in-app, and the DPDP Act
+  // requires it regardless of the store — mirrors the website's identical flow.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteCode, setDeleteCode] = useState("");
+  const [deleteSent, setDeleteSent] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const emailMissing = !profile.email;
   const canSave = !!profile.phone && !emailMissing;
@@ -196,13 +215,18 @@ function ProfileFields({
   function onCityQueryChange(value: string) {
     setCityQuery(value);
     setCityId(undefined);
+    setCityNoResults(false);
     if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
     if (!value.trim()) {
       setCitySuggestions([]);
       return;
     }
     cityDebounceRef.current = setTimeout(async () => {
-      setCitySuggestions(await fetchCities(value));
+      const results = await fetchCities(value);
+      setCitySuggestions(results);
+      // Two characters in with nothing back is worth explaining — cities are a curated set, and
+      // silence leaves the visitor unsure whether they mistyped or the city just isn't covered.
+      setCityNoResults(results.length === 0 && value.trim().length >= 2);
     }, 300);
   }
 
@@ -210,6 +234,42 @@ function ProfileFields({
     setCityId(city.id);
     setCityQuery(city.name);
     setCitySuggestions([]);
+    setCityNoResults(false);
+  }
+
+  /** Sends the confirmation code to whichever identifier the account holds — phone first, since
+   * that is the one every account has. Mirrors the website's identical helper. */
+  async function sendDeleteCode() {
+    setDeletePending(true);
+    setDeleteError(null);
+    try {
+      if (profile.phone) await sendOtp(profile.phone);
+      else await requestEmailCode(accessToken, profile.email ?? "");
+      setDeleteSent(true);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Couldn't send the code");
+    } finally {
+      setDeletePending(false);
+    }
+  }
+
+  async function confirmDelete() {
+    setDeletePending(true);
+    setDeleteError(null);
+    try {
+      await deleteAccount(
+        accessToken,
+        profile.phone ? { phone: profile.phone, code: deleteCode } : { email: profile.email ?? "", code: deleteCode },
+      );
+      // The session now points at an account with nothing behind it, so end it rather than
+      // leave the visitor looking at an empty profile.
+      await logout();
+      router.replace("/");
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Couldn't delete the account");
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   async function onSave() {
@@ -289,30 +349,79 @@ function ProfileFields({
           ))}
         </View>
       )}
+      {cityNoResults && !showCityMap && (
+        <Text style={[styles.hint, { color: colors.muted }]}>
+          No match yet.{" "}
+          <Text style={{ color: colors.green, fontWeight: "700" }} onPress={() => setShowCityMap(true)}>
+            Find it on the map
+          </Text>{" "}
+          and we&rsquo;ll add it.
+        </Text>
+      )}
+      {showCityMap && (
+        <View style={{ marginTop: 8 }}>
+          <LocationMapPicker
+            defaultCenter={{ lat: 20.5937, lng: 78.9629 }}
+            onPinChange={(_pin, suggestion) => {
+              if (!suggestion?.cityId) return;
+              setCityId(suggestion.cityId);
+              setCityQuery(suggestion.cityName ?? "");
+              setCityNoResults(false);
+              setShowCityMap(false);
+              setNewCityNote(
+                suggestion.isNewCity ? `Added ${suggestion.cityName} — select Save to use it.` : null,
+              );
+            }}
+          />
+          <Pressable onPress={() => setShowCityMap(false)} style={{ marginTop: 8 }}>
+            <Text style={{ color: colors.muted, fontSize: 12.5 }}>Cancel</Text>
+          </Pressable>
+        </View>
+      )}
+      {newCityNote && (
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5, marginTop: 6 }}>{newCityNote}</Text>
+      )}
 
       <Text style={[styles.label, { color: colors.muted }]}>
         Email{!profile.email ? " *" : ""}
       </Text>
-      {profile.email ? (
+      {profile.email && (
         <View style={[styles.readOnly, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
           <Text style={{ color: colors.textSoft, fontSize: 14 }}>{profile.email}</Text>
+          {profile.emailVerified ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 }}>
+              <Icon name="check" size={12} color={colors.green} />
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>Verified</Text>
+            </View>
+          ) : (
+            <Text style={{ color: colors.muted, fontSize: 12.5, marginTop: 4 }}>Not verified</Text>
+          )}
         </View>
-      ) : (
+      )}
+      {/* Covers both "no email at all" and "saved but unverified" — an unverified address still
+          reaches the visitor, but it isn't proof of who they are, so Google sign-in only merges
+          into this account once it's verified. Without this a phone-first user who later typed
+          an email in (but never got asked to prove it) kept ending up with two accounts. */}
+      {!profile.emailVerified && (
         <>
           <Text style={[styles.hint, { color: colors.muted }]}>
-            You signed in with your phone number — add an email so we have another way to reach you.
+            {profile.email
+              ? "Verify this address so signing in with Google brings you back to this same account."
+              : "You signed in with your phone number — add an email so we have another way to reach you."}
           </Text>
           {emailStep === "idle" ? (
             <>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={colors.muted}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-              />
+              {!profile.email && (
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                />
+              )}
               <Pressable
                 onPress={onSendEmailCode}
                 disabled={emailPending || !email.includes("@")}
@@ -437,6 +546,67 @@ function ProfileFields({
         </Text>
       )}
 
+      {/* App Store guideline 5.1.1(v) requires deletion to be startable in-app, and the DPDP Act
+          requires it regardless of the store — mirrors the website's identical section. */}
+      <View style={[styles.deleteSection, { borderColor: colors.border }]}>
+        {!deleteOpen ? (
+          <Pressable onPress={() => setDeleteOpen(true)}>
+            <Text style={{ color: "#b3413a", fontWeight: "700", fontSize: 13 }}>Delete my account</Text>
+          </Pressable>
+        ) : (
+          <View>
+            <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13, marginBottom: 8 }}>
+              Delete your account?
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 12.5, marginBottom: 12 }}>
+              Your ads come offline, your saved searches are removed, and your name, email and
+              phone number are erased. Records of payments you made are kept for accounting, but
+              no longer identify you. This can&rsquo;t be undone.
+            </Text>
+            {!deleteSent ? (
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable
+                  onPress={sendDeleteCode}
+                  disabled={deletePending}
+                  style={[styles.dangerButton, { opacity: deletePending ? 0.6 : 1 }]}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                    {deletePending ? "Sending…" : `Send code to my ${profile.phone ? "phone" : "email"}`}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setDeleteOpen(false)}
+                  style={[styles.secondaryButton, { borderColor: colors.border }]}
+                >
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>Cancel</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                <TextInput
+                  value={deleteCode}
+                  onChangeText={(t) => setDeleteCode(t.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="6-digit code"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="number-pad"
+                  style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface, marginBottom: 0 }]}
+                />
+                <Pressable
+                  onPress={confirmDelete}
+                  disabled={deletePending || deleteCode.length !== 6}
+                  style={[styles.dangerButton, { alignSelf: "flex-start", opacity: deletePending || deleteCode.length !== 6 ? 0.6 : 1 }]}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                    {deletePending ? "Deleting…" : "Delete permanently"}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+            {deleteError && <Text style={styles.errorText}>{deleteError}</Text>}
+          </View>
+        )}
+      </View>
+
       {!canSave && (
         <Text style={[styles.hint, { color: colors.muted, marginTop: 14 }]}>
           {!profile.phone && emailMissing
@@ -521,4 +691,6 @@ const styles = StyleSheet.create({
   primaryButton: { borderRadius: 8, paddingVertical: 13, alignItems: "center", marginTop: 24 },
   logoutButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 13, alignItems: "center", marginTop: 32 },
   errorText: { color: "#c0554b", fontSize: 13, marginBottom: 8 },
+  deleteSection: { borderTopWidth: 1, paddingTop: 18, marginTop: 18 },
+  dangerButton: { backgroundColor: "#b3413a", borderRadius: 8, paddingVertical: 11, paddingHorizontal: 16, alignItems: "center" },
 });

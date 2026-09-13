@@ -372,3 +372,14 @@ export function linkPhone(
 ): Promise<LinkIdentifierResult> {
   return authedBffFetch(accessToken, "/auth/otp/link", { method: "POST", body: JSON.stringify({ phone, code }) });
 }
+
+/** Mirrors the website's identical call (bff.ts's deleteAccount) — gated behind a freshly-sent
+ * code (sendOtp for a phone-holding account, requestEmailCode otherwise) since it's
+ * irreversible. Required in-app by App Store guideline 5.1.1(v) and the DPDP Act regardless of
+ * platform. */
+export function deleteAccount(
+  accessToken: string,
+  identifier: { phone?: string; email?: string; code: string },
+): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/users/me", { method: "DELETE", body: JSON.stringify(identifier) });
+}

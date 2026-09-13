@@ -86,6 +86,13 @@ piece of work satisfying two obligations.
 Apple accepts anonymisation where records must be retained for legal or financial reasons,
 provided the account is genuinely unusable and the personal data is gone.
 
+**Update: item 4's mobile half now landed.** `DELETE /users/me` (item 1) and web's `/profile` UI
+(item 4, web half) already existed — the mobile Account screen had no equivalent at all,
+completely missing rather than a simplified version. `apps/mobile/app/(tabs)/account.tsx` now has
+the same OTP/emailed-code-gated flow as web's `ProfileForm`, calling the same endpoint
+(`deleteAccount` added to `apps/mobile/src/lib/bffClient.ts`). No BFF change needed — items 2/3
+(anonymise, release identifiers) were already implemented for web's callers of the same endpoint.
+
 ---
 
 ## Also required before submitting
