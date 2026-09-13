@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
-import type { Area, City, ListingCategory, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
+import type { Area, City, CreatedVideoInput, ListingCategory, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
@@ -15,10 +15,11 @@ import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCatego
 import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
+import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLimits";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName } from "../Icon";
-import { createListing, fetchAreas, uploadPhoto } from "../../lib/bffClient";
+import { createListing, fetchAreas, uploadPhoto, uploadVideo } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 
@@ -98,6 +99,15 @@ function priceIsValid(price: string, category: ListingCategory | null): boolean 
 const MAX_PHOTOS = 6;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
+
+interface SelectedVideo {
+  uri: string;
+  /** Read from the picker's own asset metadata — RN has no client-side ffprobe equivalent, but
+   * unlike the website's browser-`<video>` trick this is never `undefined` in practice; still
+   * only a courtesy check either way, since the server verifies via ffprobe regardless. */
+  durationSec?: number;
+}
 
 const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   sell: "Sell",
@@ -120,9 +130,17 @@ export function PostAdWizard({
   accessToken?: string;
 }) {
   const { colors } = useAppTheme();
-  const { requireLogin } = useHomeSheets();
+  const { requireLogin, profile } = useHomeSheets();
   const router = useRouter();
   const [listingId] = useState(() => Crypto.randomUUID());
+
+  // Same rule as the website's /post/page.tsx: at wizard time the listing doesn't exist yet to be
+  // boosted, so only an active Agent Pro subscription can elevate the tier — falls back to the
+  // default (unelevated) tier for a logged-out visitor exactly like the website does.
+  const videoEntitlement = useMemo(
+    () => resolveVideoEntitlement(profile ?? { agentProUntil: null }),
+    [profile],
+  );
 
   const [step, setStep] = useState<Step>("category");
   const scrollRef = useRef<ScrollView>(null);
@@ -159,6 +177,8 @@ export function PostAdWizard({
   // typed Record<string, unknown> on the wire, so an array round-trips as-is.
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>({});
   const [photoUris, setPhotoUris] = useState<string[]>([]);
+  const [videos, setVideos] = useState<SelectedVideo[]>([]);
+  const [videoError, setVideoError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -213,6 +233,43 @@ export function PostAdWizard({
 
   function removePhoto(uri: string) {
     setPhotoUris((prev) => prev.filter((u) => u !== uri));
+  }
+
+  async function pickVideo() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+    setVideoError(null);
+    if (videos.length >= videoEntitlement.maxVideos) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["videos"], quality: 0.8 });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (!asset) return;
+
+    if (asset.mimeType && !ALLOWED_VIDEO_MIME_TYPES.includes(asset.mimeType)) {
+      setVideoError(`"${asset.fileName ?? "That video"}" isn't a supported format.`);
+      return;
+    }
+    if (asset.fileSize && asset.fileSize > MAX_VIDEO_BYTES) {
+      setVideoError(`"${asset.fileName ?? "That video"}" is over the ${Math.round(MAX_VIDEO_BYTES / (1024 * 1024))}MB limit.`);
+      return;
+    }
+    // Courtesy check only — ffprobe on the server is the real authority (see SelectedVideo's own
+    // doc comment), so an indeterminate duration never blocks the file.
+    const durationSec = asset.duration ? asset.duration / 1000 : undefined;
+    if (durationSec !== undefined && durationSec > videoEntitlement.maxDurationSec) {
+      setVideoError(
+        videoEntitlement.canUpgradeByBoosting
+          ? `That video is longer than ${videoEntitlement.maxDurationSec}s. Boost this listing after posting to add longer videos.`
+          : `That video is longer than the ${videoEntitlement.maxDurationSec}s limit.`,
+      );
+      return;
+    }
+    setVideos((prev) => [...prev, { uri: asset.uri, durationSec }]);
+  }
+
+  function removeVideo(uri: string) {
+    setVideos((prev) => prev.filter((v) => v.uri !== uri));
   }
 
   function onAreaQueryChange(value: string) {
@@ -367,6 +424,19 @@ export function PostAdWizard({
         uploadedPhotos.push({ photoNo, hash: upload.hash, ext: upload.ext });
       }
 
+      // Video never blocks the post — a failed upload is dropped and submission continues,
+      // unlike a failed photo upload above (photos are required, video is additive).
+      // ListingsService.create() also re-validates and silently trims against the caller's
+      // current entitlement, so this array is best-effort even before it gets there.
+      const uploadedVideos: CreatedVideoInput[] = [];
+      for (const video of videos) {
+        try {
+          uploadedVideos.push(await uploadVideo(video.uri, listingId, activeToken));
+        } catch (uploadError) {
+          setError(uploadError instanceof Error ? uploadError.message : "Failed to upload a video");
+        }
+      }
+
       const listing = await createListing(
         {
           id: listingId,
@@ -383,6 +453,7 @@ export function PostAdWizard({
             .map((s) => s.trim())
             .filter(Boolean),
           photos: uploadedPhotos,
+          videos: uploadedVideos.length > 0 ? uploadedVideos : undefined,
           attributes: pruneHiddenAttributes(category, transactionType, attributes),
           lat: pin?.lat,
           lng: pin?.lng,
@@ -728,6 +799,55 @@ export function PostAdWizard({
               ))}
             </View>
           )}
+
+          <Text style={[styles.label, { color: colors.textSoft, marginTop: 18 }]}>
+            Video (optional, up to {videoEntitlement.maxVideos})
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: 12 }}>
+            Up to {videoEntitlement.maxDurationSec}s each.
+            {videoEntitlement.canUpgradeByBoosting
+              ? " Boost this listing after posting to add up to 3 videos, up to 2 minutes each."
+              : ""}
+          </Text>
+          {videos.length < videoEntitlement.maxVideos && (
+            <Pressable onPress={pickVideo} style={[styles.photoButton, { borderColor: colors.green, backgroundColor: colors.surfaceAlt, marginTop: 8 }]}>
+              <Icon name="video" size={24} color={colors.green} />
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 15 }}>
+                {videos.length > 0 ? "Add another video" : "Add a video"}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 12 }}>
+                MP4 or MOV · up to {videoEntitlement.maxDurationSec}s
+              </Text>
+            </Pressable>
+          )}
+          {videos.length > 0 && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+              {videos.map((video) => (
+                <View key={video.uri}>
+                  {/* No live thumbnail/preview player — that needs expo-av/expo-video, a new
+                      native dependency this app doesn't otherwise have, just to show what upload
+                      already confirms happened. A duration badge is enough to say "this is your
+                      video, and it's this long." */}
+                  <View style={[styles.videoThumb, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+                    <Icon name="video" size={22} color={colors.textSoft} />
+                    {video.durationSec !== undefined && (
+                      <Text style={{ color: colors.textSoft, fontSize: 11, fontWeight: "700", marginTop: 4 }}>
+                        {Math.round(video.durationSec)}s
+                      </Text>
+                    )}
+                  </View>
+                  <Pressable
+                    onPress={() => removeVideo(video.uri)}
+                    style={[styles.removeBadge, { backgroundColor: colors.surface }]}
+                  >
+                    <Icon name="close" size={13} color="#c0554b" />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
+          {videoError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{videoError}</Text>}
+
           {error && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{error}</Text>}
 
           <View style={styles.navRow}>
@@ -891,6 +1011,14 @@ const styles = StyleSheet.create({
   // opened at all.
   photoButton: { borderWidth: 1.5, borderStyle: "dashed", borderRadius: 12, paddingVertical: 20, alignItems: "center", gap: 6 },
   photoThumb: { width: 90, height: 90, borderRadius: 8 },
+  videoThumb: {
+    width: 90,
+    height: 90,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   removeBadge: {
     position: "absolute",
     top: -6,

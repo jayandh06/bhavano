@@ -4,6 +4,7 @@ import type {
   ContactRevealBalanceDto,
   ConversationDetailDto,
   ConversationSummaryDto,
+  CreatedVideoInput,
   CreateListingInput,
   HomeCategoryFilter,
   ListingCardDto,
@@ -251,6 +252,39 @@ export async function uploadPhoto(
     throw new Error(`BFF upload failed (${res.status}): ${body}`);
   }
   return res.json() as Promise<{ hash: string; ext: string }>;
+}
+
+const VIDEO_MIME_BY_EXT: Record<string, string> = {
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  "3gp": "video/3gpp",
+  mkv: "video/x-matroska",
+};
+
+/** Mirrors uploadPhoto's shape exactly (raw fetch, RN's `{uri,name,type}` multipart field, not
+ * routed through authedBffFetch's JSON-forcing wrapper) — `/uploads/video` is the same one-request
+ * upload endpoint the website's `uploadVideoDirect` hits, just via RN `fetch` instead of the XHR
+ * that exists there only to get upload-progress events and dodge a Next.js Server Action's 1MB
+ * body limit, neither of which applies to a direct native network call. */
+export async function uploadVideo(fileUri: string, listingId: string, accessToken: string): Promise<CreatedVideoInput> {
+  const formData = new FormData();
+  const filename = fileUri.split("/").pop() ?? "video.mp4";
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const mimeType = (ext && VIDEO_MIME_BY_EXT[ext]) ?? "video/mp4";
+  formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
+  formData.append("listingId", listingId);
+
+  const res = await fetch(`${BFF_URL}/uploads/video`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`BFF video upload failed (${res.status}): ${body}`);
+  }
+  return res.json() as Promise<CreatedVideoInput>;
 }
 
 export function sendOtp(phone: string): Promise<{ success: true }> {
