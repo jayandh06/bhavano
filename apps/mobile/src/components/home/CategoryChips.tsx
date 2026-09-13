@@ -120,24 +120,40 @@ export function CategoryChips({
 
       {activeTab.propertyTypes.length > 0 && (
         <ScrollableRow colors={colors} contentContainerStyle={[styles.row, { paddingTop: 2 }]}>
+          {/* Same green-fill highlight as the tab above it, gold border instead of gold
+            * underline since this row keeps its oval chip shape rather than going flat/edge-to-edge
+            * the way the main tab strip does. */}
           <Pressable
             onPress={() => onSelectPropertyType(undefined)}
-            style={[styles.subChip, { borderColor: colors.border, backgroundColor: !activePropertyType ? colors.surfaceAlt : "transparent" }]}
+            style={[
+              styles.subChip,
+              {
+                borderColor: !activePropertyType ? colors.gold : colors.border,
+                backgroundColor: !activePropertyType ? colors.green : "transparent",
+              },
+            ]}
           >
-            <Text style={{ color: colors.textSoft, fontWeight: "600", fontSize: 11.5 }}>All types</Text>
+            <Text style={{ color: !activePropertyType ? colors.onGreen : colors.textSoft, fontWeight: "600", fontSize: 11.5 }}>
+              All types
+            </Text>
           </Pressable>
-          {activeTab.propertyTypes.map((pt) => (
-            <Pressable
-              key={pt.value}
-              onPress={() => onSelectPropertyType(pt.value)}
-              style={[
-                styles.subChip,
-                { borderColor: colors.border, backgroundColor: activePropertyType === pt.value ? colors.surfaceAlt : "transparent" },
-              ]}
-            >
-              <Text style={{ color: colors.textSoft, fontWeight: "600", fontSize: 11.5 }}>{pt.label}</Text>
-            </Pressable>
-          ))}
+          {activeTab.propertyTypes.map((pt) => {
+            const isActive = activePropertyType === pt.value;
+            return (
+              <Pressable
+                key={pt.value}
+                onPress={() => onSelectPropertyType(pt.value)}
+                style={[
+                  styles.subChip,
+                  { borderColor: isActive ? colors.gold : colors.border, backgroundColor: isActive ? colors.green : "transparent" },
+                ]}
+              >
+                <Text style={{ color: isActive ? colors.onGreen : colors.textSoft, fontWeight: "600", fontSize: 11.5 }}>
+                  {pt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollableRow>
       )}
     </View>
