@@ -122,6 +122,7 @@ export function logout(accessToken: string): Promise<{ success: true }> {
 }
 
 export interface AdminListingsQuery {
+  search?: string;
   moderationState?: ModerationState;
   adminReviewed?: boolean;
   category?: ListingCategory;
@@ -141,6 +142,7 @@ export interface AdminListingsQuery {
 
 export function fetchAdminListings(accessToken: string, query: AdminListingsQuery): Promise<AdminListingsPage> {
   const params = new URLSearchParams();
+  if (query.search) params.set("search", query.search);
   if (query.moderationState) params.set("moderationState", query.moderationState);
   if (query.adminReviewed !== undefined) params.set("adminReviewed", String(query.adminReviewed));
   if (query.category) params.set("category", query.category);

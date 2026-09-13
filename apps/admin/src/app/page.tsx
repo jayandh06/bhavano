@@ -70,6 +70,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const tabParam = str(sp.tab) ?? "needsReview";
   const tab: FilterTab = TABS.some((t) => t.value === tabParam) ? (tabParam as FilterTab) : "needsReview";
 
+  const search = str(sp.search);
   const userId = str(sp.userId);
   const userLabel = str(sp.userLabel);
   const createdFrom = str(sp.createdFrom);
@@ -88,6 +89,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const [result, cities, areas] = await Promise.all([
     fetchAdminListings(accessToken, {
       ...tabToQuery(tab),
+      search,
       category,
       transactionType,
       status,
@@ -147,6 +149,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           }}
         >
           <input type="hidden" name="tab" value={tab} />
+
+          <Field label="Search">
+            <input name="search" defaultValue={search ?? ""} placeholder="Title contains…" style={selectStyle} />
+          </Field>
 
           <Field label="User">
             <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
