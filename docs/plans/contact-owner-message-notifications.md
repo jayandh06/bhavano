@@ -61,8 +61,12 @@ against.
 
 ## What it says
 
-- Who's asking — the sender's name (or phone, if they have no name — same fallback
-  `listConversations` already uses).
+- Who's asking — the sender's name, or a role label ("Buyer"/"Seller") if they have no name set.
+  **Update**: this used to fall back to the sender's raw phone number when they had no name —
+  `MessagingService`'s own fix note explains why that was a real bug (a push notification titled
+  with a phone number is contact info leaking onto a lock screen, for a business whose whole model
+  is a *paid* contact reveal). Every `otherPartyName`/`senderName` call site now falls back to a
+  role label instead — never phone, never email.
 - Which ad — the listing's title, since a seller may have several live.
 - Enough of the message to be worth opening, not the whole thing — a preview.
 - A link straight to `/messages/<id>` (email) or a WhatsApp template variable carrying that URL.
