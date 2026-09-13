@@ -43,8 +43,9 @@ services:
       # this is exactly "true". Unset/anything else disables it (fails closed).
       MSG91_MARKETING_ENABLED: ${MSG91_MARKETING_ENABLED}
       # The approved WhatsApp template for OutreachService.sendClaimVerification specifically —
-      # "claim_listing_pg", 5 positional body variables + a url button, WITH a real namespace
-      # (confirmed against MSG91's own dashboard snippet on 2026-09-12 — docs/plans/
+      # "claim_listing" (renamed from "claim_listing_pg" on resubmission/re-approval as Utility
+      # rather than Marketing, 2026-09-13), 5 positional body variables + a url button, WITH a
+      # real namespace (confirmed against MSG91's own dashboard snippet — docs/plans/
       # pg-coworking-google-places-leadgen.md previously assumed this template sent namespace as
       # null like the welcome one; that assumption was wrong, corrected there too). Unset disables
       # just this one send (logs and skips), same degrade as every other MSG91_WHATSAPP_* var here.

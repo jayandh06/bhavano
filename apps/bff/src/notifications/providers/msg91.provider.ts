@@ -316,18 +316,23 @@ export class Msg91Provider {
 
   /** WhatsApp via MSG91 — "verify your listing" sent to a scraped PG/coworking business, asking
    * them to claim the listing bulk_upload_listings.py created for them (see
-   * ListingsService.claimListing). Approved template: "claim_listing_pg". Component shape below
-   * is copied verbatim from this template's own MSG91 dashboard "Code" snippet (Templates ->
-   * claim_listing_pg -> Code) — genuinely different from sendAdPostedConfirmation's shape above,
-   * confirming that comment's own warning not to guess: positional `body_1`..`body_5` keys with
-   * no `parameter_name` at all, and `namespace: null` (this account/template combination doesn't
-   * use one, unlike welcome/ad-posted). Order matches the approved copy's own placeholder order:
-   * business name, area, city, phone, then the full claim link (the plain-text one in the body —
-   * separate from button_1's value, which is only the URL *suffix* appended to a base URL baked
-   * into the template itself).
+   * ListingsService.claimListing). Approved template: "claim_listing" (renamed from
+   * "claim_listing_pg" when it was resubmitted and re-approved as Utility rather than Marketing
+   * — 2026-09-13; the template name/category live entirely on MSG91/Meta's side, nothing here
+   * depends on which category it's approved under). Component shape below is copied verbatim
+   * from this template's own MSG91 dashboard "Code" snippet (Templates -> claim_listing -> Code)
+   * — genuinely different from sendAdPostedConfirmation's shape above, confirming that comment's
+   * own warning not to guess: positional `body_1`..`body_5` keys with no `parameter_name` at all,
+   * and a real `namespace` (same one sendAdPostedConfirmation uses — see MSG91_WHATSAPP_CLAIM_NAMESPACE
+   * below; an earlier version of this comment wrongly said `null`, going by a guess made before
+   * this template's own Code snippet was available). Order matches the approved copy's own
+   * placeholder order: business name, area, city, phone, then the full claim link (the plain-text
+   * one in the body — separate from button_1's value, which is only the URL *suffix* appended to
+   * a base URL baked into the template itself).
    *
-   * MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME is expected to be "claim_listing_pg" and
-   * MSG91_WHATSAPP_CLAIM_NAMESPACE to be left unset (namespace is sent as `null` either way). */
+   * MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME is expected to be "claim_listing" and
+   * MSG91_WHATSAPP_CLAIM_NAMESPACE to be set to the account's real namespace (not left unset —
+   * the `?? null` below is only a safe fallback for local/dev environments that don't set it). */
   async sendListingVerificationRequest(
     phone: string,
     vars: { businessName: string; area: string; city: string; phone: string; claimLink: string },
@@ -347,9 +352,8 @@ export class Msg91Provider {
       );
       return { sent: false, messageId: null };
     }
-    // Real dashboard snippet has this literally `null`, not a namespace string — the env var is
-    // kept only in case a future recreation of this template (see ad-posted's own history of
-    // getting re-namespaced on recreation) needs one.
+    // The real dashboard snippet carries a real namespace (see this method's own doc comment) —
+    // `?? null` is only a fallback for an environment that hasn't set it, not the expected value.
     const namespace = this.config.get<string>('MSG91_WHATSAPP_CLAIM_NAMESPACE') ?? null;
 
     try {

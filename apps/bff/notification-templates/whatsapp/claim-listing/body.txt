@@ -1,0 +1,5 @@
+Your property {{1}} in {{2}}, {{3}} (📞 {{4}}) is listed on Bhavano.
+
+Please confirm ownership to activate tenant lead notifications and enable listing updates.
+
+👉 {{5}}

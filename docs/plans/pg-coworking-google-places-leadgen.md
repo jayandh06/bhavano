@@ -139,18 +139,37 @@ their listing" needs a way to hand over a specific listing without a pre-existin
   dashboard "Code" snippet (unavailable while writing this) — this file's own history already
   shows two prior guesses failing before landing on the working shape those templates use now —
   which is exactly why this one waited for the real dashboard snippet rather than shipping a
-  third guess. Approved template: **`claim_listing_pg`**, 5 body variables (business name, area,
-  city, phone, full claim link — plain text, separate from `button_1`'s value, which is only the
-  URL *suffix* appended to a base URL baked into the template) via positional `body_1`..`body_5`
-  keys with **no** `parameter_name` field — a genuinely different shape from
-  `sendAdPostedConfirmation`'s `body_name`/`parameter_name`-keyed one, confirming the shape truly
-  isn't guessable by analogy. **Correction (2026-09-12, against the real MSG91 dashboard "Code"
-  snippet, which this doc originally didn't have)**: `namespace` is NOT null — this template does
-  carry a real one (`b809c8aa_8ca6_40f4_81fd_6d3858c888dc`), same as `sendAdPostedConfirmation`'s.
-  The "sent as null" line above was a guess made before the snippet was available and turned out
-  wrong; `Msg91Provider.sendListingVerificationRequest` itself was already written correctly
-  (reads `MSG91_WHATSAPP_CLAIM_NAMESPACE` from config, `?? null` only as the unset-fallback) — only
-  this doc's claim and the env var's actual value needed fixing, not the code.
+  third guess. Approved template (as of 2026-09-12): `claim_listing_pg`, 5 body variables
+  (business name, area, city, phone, full claim link — plain text, separate from `button_1`'s
+  value, which is only the URL *suffix* appended to a base URL baked into the template) via
+  positional `body_1`..`body_5` keys with **no** `parameter_name` field — a genuinely different
+  shape from `sendAdPostedConfirmation`'s `body_name`/`parameter_name`-keyed one, confirming the
+  shape truly isn't guessable by analogy. **Correction (2026-09-12, against the real MSG91
+  dashboard "Code" snippet, which this doc originally didn't have)**: `namespace` is NOT null —
+  this template does carry a real one (`b809c8aa_8ca6_40f4_81fd_6d3858c888dc`), same as
+  `sendAdPostedConfirmation`'s. The "sent as null" line above was a guess made before the snippet
+  was available and turned out wrong; `Msg91Provider.sendListingVerificationRequest` itself was
+  already written correctly (reads `MSG91_WHATSAPP_CLAIM_NAMESPACE` from config, `?? null` only
+  as the unset-fallback) — only this doc's claim and the env var's actual value needed fixing,
+  not the code.
+
+  **Update (2026-09-13): the template was resubmitted and re-approved as Utility rather than
+  Marketing, under a new name, `claim_listing`** (Meta doesn't allow editing an approved
+  template's category or wording in place — a resubmission is a new template). Same 5-body-
+  variable + 1-url-button shape, same namespace (still `b809c8aa_8ca6_40f4_81fd_6d3858c888dc`),
+  but genuinely different wording — the old marketing-flavored pitch (bullet list of benefits,
+  "Reply STOP to opt out" footer) is gone, replaced with a short, transactional-reading body
+  ("Your property {{1}} in {{2}}, {{3}} (📞 {{4}}) is listed on Bhavano. Please confirm ownership
+  to activate tenant lead notifications and enable listing updates.") and the same
+  "Bhavano.com — Buy/Sell/Rent/Lease" footer style `welcome`/`listing-posted` (the app's other
+  Utility WhatsApp templates) already use — see
+  `apps/bff/notification-templates/whatsapp/claim-listing/` (renamed from `claim-listing-pg/`).
+  `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME` updated to `claim_listing` in prod's `.env` the same day.
+  **The `MSG91_MARKETING_ENABLED` gate in `OutreachService.sendClaimVerification` was
+  deliberately left in place** despite the category change — that gate exists because this is a
+  cold, business-initiated contact to someone who's never interacted with Bhavano (a scraped
+  listing), which is the actual thing being gated, not the template's Meta-assigned category.
+  Worth revisiting if that reasoning is wrong.
   - `OutreachService.sendClaimVerification` — gates on `MSG91_MARKETING_ENABLED=true`, a manual
     suppression/`consentState` check (mirroring `resolveEligible`'s logic, since this bypasses the
     `OutreachCampaign`/`CampaignSend` audience-resolution machinery entirely — a deliberate,
@@ -158,7 +177,8 @@ their listing" needs a way to hand over a specific listing without a pre-existin
     the contact to have a city/area on file (both feed the template). Builds the claim link from
     `PUBLIC_SITE_URL` (same fallback `NotificationsService` uses) + `/claim/<listingId>`. On
     success updates `OutreachContact.lastContactedAt`/`contactedCount`.
-  - Env vars — `MSG91_MARKETING_ENABLED`, `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME=claim_listing_pg`,
+  - Env vars — `MSG91_MARKETING_ENABLED`, `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME=claim_listing`
+    (renamed from `claim_listing_pg` on 2026-09-13 — see the Update note above),
     `MSG91_WHATSAPP_CLAIM_NAMESPACE=b809c8aa_8ca6_40f4_81fd_6d3858c888dc`.
     `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME`/`MSG91_WHATSAPP_CLAIM_NAMESPACE` were already scaffolded
     (empty) in `.env.production.example`; `MSG91_MARKETING_ENABLED` was not (added there now).

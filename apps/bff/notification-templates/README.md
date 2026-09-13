@@ -11,7 +11,7 @@ email/listing-posted/     the "your ad is live" email
 email/claim-listing/      the "verify your bulk-imported listing" email
 whatsapp/welcome/         the approved WhatsApp welcome template's wording
 whatsapp/listing-posted/  the approved WhatsApp "ad is live" template's wording
-whatsapp/claim-listing-pg/ the approved "claim_listing_pg" WhatsApp template's wording
+whatsapp/claim-listing/  the approved "claim_listing" WhatsApp template's wording
 ```
 
 ## `email/` — takes effect on the next send, no rebuild or restart
