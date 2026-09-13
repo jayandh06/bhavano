@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
 import { buildBrowsePath } from "@/lib/listingPath";
-import { segmentsForHomeCategory } from "@/lib/seoRoute";
+import { segmentsForHomeCategory, type ParsedSegments } from "@/lib/seoRoute";
 import { slugify } from "@bhavano/types/slugify";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { HorizontalScroller } from "./HorizontalScroller";
@@ -15,10 +15,15 @@ import { Icon } from "./Icon";
 export function CategoryTabs({
   active,
   cityName,
+  currentSegments,
 }: {
   active: HomeTabValue;
   /** Undefined means "All cities" — the national routes (`/`, `/buy`, `/furniture`). */
   cityName?: string;
+  /** Drives the mobile chip row's highlight below — the mega menu's hover-driven column-1
+   * selection has nothing to do with which page is actually loaded, but a touch visitor can't
+   * hover, so the phone-only chip row needs a real "which one is this page" answer instead. */
+  currentSegments?: ParsedSegments;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -56,6 +61,17 @@ export function CategoryTabs({
   }
 
   const openTabData = HOME_TABS.find((t) => t.value === openTab);
+
+  // Which column-1 value (if any) the *current page* actually represents — PG/Furniture/
+  // Interiors encode it as the URL's facet segment, Buy/Rent & Lease as the category segment
+  // itself (a column-1 item's `value` for those two tabs is a ListingCategory like "apartment").
+  const activeTabData = HOME_TABS.find((t) => t.value === active);
+  const activeSubValue =
+    active === "pg" || active === "furniture" || active === "interiors"
+      ? typeof currentSegments?.facetValue === "string"
+        ? currentSegments.facetValue
+        : undefined
+      : currentSegments?.category;
 
   return (
     <div ref={containerRef} className="relative" onMouseLeave={() => setOpenTab(null)}>
@@ -122,6 +138,46 @@ export function CategoryTabs({
         <div className="absolute top-full" style={{ left: menuLeft }}>
           <MegaMenu tab={openTabData} cityName={cityName} onNavigate={() => setOpenTab(null)} />
         </div>
+      )}
+
+      {/* Phone-only equivalent of the mega menu above, which opens on hover — unreachable by
+        * touch. Real `<Link>`s to the same SEO pages the mega menu points at, not a client
+        * filter, so this stays crawlable and every option keeps its own indexable URL. Same
+        * green-fill / gold-border oval-chip treatment as the native app's tab submenu, so the
+        * two only differ in what's `sm:hidden` vs always mounted. */}
+      {activeTabData && activeTabData.column1.length > 0 && (
+        <HorizontalScroller
+          ariaLabel={`${activeTabData.label} sub-categories`}
+          className="flex gap-1.5 pt-1.5"
+          contentClassName="sm:hidden"
+        >
+          <Link
+            href={buildBrowsePath({ cityName, ...segmentsForHomeCategory(active) })}
+            className={`shrink-0 border rounded-2xl px-3 py-1.5 text-[11.5px] font-semibold whitespace-nowrap no-underline ${
+              !activeSubValue ? "bg-green text-on-green border-[color:var(--gold)]" : "bg-transparent text-text-soft border-border"
+            }`}
+          >
+            All
+          </Link>
+          {activeTabData.column1.map((item) => {
+            // Every current column1 item sets `href` (see MegaMenuColumn1Item's own doc) — the
+            // type keeps it optional for a hypothetical fork-only item, which this row simply
+            // skips rather than rendering something unclickable.
+            if (!item.href) return null;
+            const isActive = item.value === activeSubValue;
+            return (
+              <Link
+                key={item.value}
+                href={item.href(cityName)}
+                className={`shrink-0 border rounded-2xl px-3 py-1.5 text-[11.5px] font-semibold whitespace-nowrap no-underline ${
+                  isActive ? "bg-green text-on-green border-[color:var(--gold)]" : "bg-transparent text-text-soft border-border"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </HorizontalScroller>
       )}
     </div>
   );

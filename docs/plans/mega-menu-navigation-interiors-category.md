@@ -125,3 +125,23 @@ single-link helper's shape.
   Bengaluru", "Painting Interiors in Bengaluru", "PG Double sharing in Bengaluru").
 - Not yet clicked through interactively in a real browser (hover/click column-2 rendering, new-tab
   behavior) — recommended before considering this fully done.
+
+## Update: mobile browsers couldn't reach this menu at all
+
+`CategoryTabs` opens `MegaMenu` via `onMouseEnter` — a touch device never fires that, so on a phone
+browser the dropdown (property type / sharing type / condition / service type) was simply
+unreachable; tapping a tab only ever ran `onTabClick`'s direct navigation. This was the same gap the
+native app had for PG/Furniture/Interiors before its own chip-row fix landed.
+
+Fixed by adding a second, `sm:hidden` row directly under the tab strip in `CategoryTabs.tsx`: real
+`<Link>`s to each of the active tab's `column1` items (every one already carries a ready `href`, by
+this point built via `buildBrowsePath` rather than the `/?category=...` scheme described above — see
+`city-first-seo-url-hierarchy.md` for when that changed), styled as green-fill/gold-border oval
+chips, matching the native app's `CategoryChips.tsx` treatment exactly. Highlighting which chip is
+active needs a real "which page is this" signal (unlike the desktop mega menu, whose column-1
+selection is just local hover state, not tied to the loaded page) — `CategoryTabs` now takes an
+optional `currentSegments: ParsedSegments` prop and reads `category`/`facetValue` off it. Threaded
+through from `Header` for the SEO browse pages (`BrowseListingsView` already computed
+`currentSegments` for `LocationPicker`); the homepage's own query-string-filtered view doesn't pass
+it, so its mobile chip row falls back to showing "All" — a harmless default, not a regression, since
+homepage tab clicks already navigate away to the real SEO paths regardless.
