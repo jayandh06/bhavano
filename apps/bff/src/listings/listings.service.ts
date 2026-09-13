@@ -156,12 +156,12 @@ const ORDER_BY: Record<
 };
 
 /** `sort` values that turn the recent-listings mix (fetchOffsetPage) off — a visitor who
- * explicitly picked "Price: Low to High" or "Most viewed" gets exactly that ordering, boosted
- * listings still first (unchanged, uncapped, same as before Part 2) but no round-robin/cap
- * merging on top of it. 'auto' (the default, and 'newest' for old links — see ListListingsDto's
- * own note) is the only case that gets the mix. */
+ * explicitly picked "Newest first", "Price: Low to High", "Price: High to Low", or "Most viewed"
+ * gets exactly that ordering, boosted listings still first (unchanged, uncapped, same as before
+ * Part 2) but no round-robin/cap merging on top of it. 'auto' (the default) is the only case that
+ * gets the mix. */
 function wantsExplicitSort(sort: ListListingsDto['sort']): boolean {
-  return sort === 'price_asc' || sort === 'price_desc' || sort === 'popular';
+  return sort === 'newest' || sort === 'price_asc' || sort === 'price_desc' || sort === 'popular';
 }
 
 /** Same tie-breaker convention as ORDER_BY above, for the admin listings screen's own
@@ -472,7 +472,7 @@ export class ListingsService {
     // the top slot (see docs/plans/monetization-boosted-listings-premium-tiers.md).
     const orderBy: Prisma.ListingOrderByWithRelationInput[] = [
       { boostRank: { sort: 'desc', nulls: 'last' } },
-      ...ORDER_BY[sort ?? 'newest'],
+      ...ORDER_BY[sort ?? 'auto'],
     ];
 
     // Offset mode (numbered `?page=N` pagination — see ListListingsDto.offset) fetches the exact
@@ -558,11 +558,12 @@ export class ListingsService {
     limit: number,
     homeCategory: HomeCategoryFilter | undefined,
     cityId: string | undefined,
-    /** true for an explicitly-chosen sort (Price/Most viewed) — see wantsExplicitSort. Falls
-     * straight through to the plain query for every page, not just page 3+: a visitor who asked
-     * for "Price: Low to High" wants exactly that, not a round-robin'd/boost-capped reshuffle of
-     * it. Boosted listings still sort first regardless (unchanged, uncapped — same as before
-     * Part 2 existed), since that part of the ordering isn't what "sort by" is about. */
+    /** true for an explicitly-chosen sort (Newest/Price/Most viewed) — see wantsExplicitSort.
+     * Falls straight through to the plain query for every page, not just page 3+: a visitor who
+     * asked for "Newest first" or "Price: Low to High" wants exactly that, not a round-robin'd/
+     * boost-capped reshuffle of it. Boosted listings still sort first regardless (unchanged,
+     * uncapped — same as before Part 2 existed), since that part of the ordering isn't what
+     * "sort by" is about. */
     explicitSort: boolean,
   ) {
     const include = { city: true, area: true, ...LISTING_MEDIA_INCLUDE };
