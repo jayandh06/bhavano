@@ -95,28 +95,37 @@ export default function ConversationScreen() {
     >
       <Stack.Screen options={{ headerShown: false }} />
       {/* Kept generic rather than the listing title — a long title in the header's narrow width
-          (competing with the back arrow) truncated to an ellipsis, which read as cut off. The
-          full title, free to wrap across as many lines as it needs, lives in the bar below
-          instead. */}
-      <ScreenHeader title="Conversation" onBack={() => router.back()} />
+          (competing with the back arrow and "View ad") truncated to an ellipsis, which read as
+          cut off. The full title, free to wrap across as many lines as it needs, lives in the
+          bar below instead.
+          "View ad" always points at this one listing regardless of entry point — the header's
+          own back arrow returns wherever the visitor came from (the listing for "Contact owner",
+          the messages list otherwise), which isn't necessarily the listing — so it lives in the
+          header's own trailing slot rather than the title bar below, which just needs to say
+          which ad this is, not offer a second way to reach it. */}
+      <ScreenHeader
+        title="Conversation"
+        onBack={() => router.back()}
+        right={
+          conversation && (
+            <Pressable
+              onPress={() => router.push(`/listing/${conversation.listing.id}`)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
+            >
+              <Text style={{ fontSize: 13, color: colors.green, fontWeight: "700" }}>View ad</Text>
+              <Icon name="chevronRight" size={14} color={colors.green} />
+            </Pressable>
+          )
+        }
+      />
       {/* Never the other participant's name/phone here — same reasoning as the messages list
           (see MessagingService.listConversations): a free-to-read screen can't be what hands out
           who someone is when the whole business is a *paid* contact reveal. The listing is what
-          the thread is about either way.
-          "View ad" always points at this one listing regardless of entry point — the header's
-          own back arrow returns wherever the visitor came from (the listing for "Contact owner",
-          the messages list otherwise), which isn't necessarily the listing. */}
+          the thread is about either way. */}
       {conversation && (
-        <Pressable
-          onPress={() => router.push(`/listing/${conversation.listing.id}`)}
-          style={[styles.listingBar, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
-        >
+        <View style={[styles.listingBar, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
           <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>{conversation.listing.title}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 2, marginTop: 4 }}>
-            <Text style={{ fontSize: 13, color: colors.green, fontWeight: "700" }}>View ad</Text>
-            <Icon name="chevronRight" size={14} color={colors.green} />
-          </View>
-        </Pressable>
+        </View>
       )}
       <FlatList
         ref={listRef}
