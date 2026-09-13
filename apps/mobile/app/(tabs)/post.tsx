@@ -31,9 +31,11 @@ export default function PostScreen() {
   // Keyed on the selected city: the tab navigator keeps this screen mounted across tab
   // switches, so without a key change, React would reuse the wizard instance and its stale
   // `useState(defaultCityId)` init instead of picking up a city switch made on the Home tab.
+  //
+  // PostAdWizard renders its own ScreenHeader (not repeated here) — its back arrow needs to
+  // step backward through the wizard's own steps, which only the wizard's internal state knows.
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScreenHeader title="Post an Ad" />
       <PostAdWizard key={city?.id ?? "none"} cities={cities} defaultCityId={city?.id} accessToken={accessToken ?? undefined} />
     </View>
   );

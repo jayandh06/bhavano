@@ -2,14 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import type { ConversationDetailDto, MessageDto } from "@bhavano/types";
-import { useAppTheme } from "../../src/theme/ThemeContext";
-import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
-import { useMessagesQuery } from "../../src/lib/queries";
-import { fetchConversation, markConversationRead, sendMessage } from "../../src/lib/bffClient";
-import { getSocket } from "../../src/lib/socket";
-import { Icon } from "../../src/components/Icon";
-import { ScreenHeader } from "../../src/components/home/ScreenHeader";
+import { useAppTheme } from "../../../src/theme/ThemeContext";
+import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
+import { useMessagesQuery } from "../../../src/lib/queries";
+import { fetchConversation, markConversationRead, sendMessage } from "../../../src/lib/bffClient";
+import { getSocket } from "../../../src/lib/socket";
+import { Icon } from "../../../src/components/Icon";
+import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
 
+// Nested under (tabs)/messages/_layout.tsx's own Stack rather than a top-level app/messages/[id]
+// route, so pushing here keeps the outer Tabs bar mounted and visible — see _layout.tsx's own
+// comment for why.
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useAppTheme();
@@ -47,7 +50,7 @@ export default function ConversationScreen() {
     if (accessToken) markConversationRead(accessToken, id).catch(() => undefined);
   }, [id, accessToken]);
 
-  // Which listing this thread is about. Best-effort: a failure costs the header bar below, not
+  // Which listing this thread is about. Best-effort: a failure costs the listing bar below, not
   // the conversation itself, which is the part the user came for.
   useEffect(() => {
     if (!accessToken) return;
@@ -91,29 +94,30 @@ export default function ConversationScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <Stack.Screen options={{ headerShown: false }} />
+      {/* Kept generic rather than the listing title — a long title in the header's narrow width
+          (competing with the back arrow) truncated to an ellipsis, which read as cut off. The
+          full title, free to wrap across as many lines as it needs, lives in the bar below
+          instead. */}
+      <ScreenHeader title="Conversation" onBack={() => router.back()} />
       {/* Never the other participant's name/phone here — same reasoning as the messages list
           (see MessagingService.listConversations): a free-to-read screen can't be what hands out
           who someone is when the whole business is a *paid* contact reveal. The listing is what
-          the thread is about either way, and it's already the header on the list screen too.
-          "View ad" lives in the header's own trailing slot rather than a separate bar below it —
-          the stack's own back arrow would otherwise return wherever the visitor came from (the
-          listing for "Contact owner", the messages list otherwise), so this is the one place
-          that's always present and always goes to the same listing, no matter the entry point. */}
-      <ScreenHeader
-        title={conversation?.listing.title ?? "Conversation"}
-        onBack={() => router.back()}
-        right={
-          conversation && (
-            <Pressable
-              onPress={() => router.push(`/listing/${conversation.listing.id}`)}
-              style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
-            >
-              <Text style={{ fontSize: 13, color: colors.green, fontWeight: "700" }}>View ad</Text>
-              <Icon name="chevronRight" size={14} color={colors.green} />
-            </Pressable>
-          )
-        }
-      />
+          the thread is about either way.
+          "View ad" always points at this one listing regardless of entry point — the header's
+          own back arrow returns wherever the visitor came from (the listing for "Contact owner",
+          the messages list otherwise), which isn't necessarily the listing. */}
+      {conversation && (
+        <Pressable
+          onPress={() => router.push(`/listing/${conversation.listing.id}`)}
+          style={[styles.listingBar, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>{conversation.listing.title}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 2, marginTop: 4 }}>
+            <Text style={{ fontSize: 13, color: colors.green, fontWeight: "700" }}>View ad</Text>
+            <Icon name="chevronRight" size={14} color={colors.green} />
+          </View>
+        </Pressable>
+      )}
       <FlatList
         ref={listRef}
         contentContainerStyle={{ padding: 16, gap: 10 }}
@@ -154,6 +158,7 @@ export default function ConversationScreen() {
 
 const styles = StyleSheet.create({
   bubble: { borderRadius: 12, padding: 12, maxWidth: "75%" },
+  listingBar: { paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1 },
   inputRow: { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 1 },
   input: { flex: 1, borderWidth: 1, borderRadius: 9, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14 },
   sendButton: { borderRadius: 8, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },

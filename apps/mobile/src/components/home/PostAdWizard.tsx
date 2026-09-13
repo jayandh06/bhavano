@@ -22,6 +22,7 @@ import { Icon, isIconName } from "../Icon";
 import { createListing, fetchAreas, uploadPhoto, uploadVideo } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
+import { ScreenHeader } from "./ScreenHeader";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -469,8 +470,21 @@ export function PostAdWizard({
     }
   }
 
+  // The step this wizard would land on if the visitor tapped back right now, or null on the
+  // first step ("category"), which has nothing before it in the wizard. Centralizing this
+  // (rather than each step computing its own bottom "Back" button, as before) is what lets a
+  // single header back-arrow replace all three — see ScreenHeader below.
+  function previousStep(): Step | null {
+    if (step === "transactionType") return "category";
+    if (step === "details") return category && POSTABLE_TRANSACTION_TYPES[category].length === 1 ? "category" : "transactionType";
+    if (step === "review") return "details";
+    return null;
+  }
+  const prevStep = previousStep();
+
   return (
     <>
+    <ScreenHeader title="Post an Ad" onBack={prevStep ? () => setStep(prevStep) : undefined} />
     <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={styles.stepper}>
         {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
@@ -514,13 +528,6 @@ export function PostAdWizard({
               <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>{TRANSACTION_TYPE_LABELS[t]}</Text>
             </Pressable>
           ))}
-          <Pressable
-            onPress={() => setStep("category")}
-            style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}
-          >
-            <Icon name="chevronLeft" size={14} color={colors.muted} />
-            <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
-          </Pressable>
         </View>
       )}
 
@@ -851,12 +858,6 @@ export function PostAdWizard({
           {error && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{error}</Text>}
 
           <View style={styles.navRow}>
-            <Pressable onPress={() => setStep(POSTABLE_TRANSACTION_TYPES[category].length === 1 ? "category" : "transactionType")}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Icon name="chevronLeft" size={14} color={colors.muted} />
-                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
-              </View>
-            </Pressable>
             <Pressable
               onPress={() => setStep("review")}
               disabled={!detailsValid}
@@ -890,12 +891,6 @@ export function PostAdWizard({
           </Text>
 
           <View style={styles.navRow}>
-            <Pressable onPress={() => setStep("details")}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Icon name="chevronLeft" size={14} color={colors.muted} />
-                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
-              </View>
-            </Pressable>
             <Pressable onPress={onSubmit} disabled={pending} style={[styles.submitButton, { backgroundColor: colors.green, opacity: pending ? 0.6 : 1 }]}>
               {pending ? <ActivityIndicator color={colors.onGreen} /> : (
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Post ad</Text>
@@ -1029,7 +1024,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  navRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 16 },
+  // Was space-between, when this row still held a "Back" link on the left (now the header's
+  // job) alongside the step's primary action — flex-end keeps that action anchored right.
+  navRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginTop: 16 },
   reviewButton: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 },
   submitButton: { borderRadius: 8, paddingVertical: 12, paddingHorizontal: 28, alignItems: "center" },
   reviewBox: { borderWidth: 1, borderRadius: 10, padding: 16 },

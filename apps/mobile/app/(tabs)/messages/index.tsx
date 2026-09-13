@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useAppTheme } from "../../src/theme/ThemeContext";
-import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
-import { useConversationsQuery } from "../../src/lib/queries";
-import { GatedScreen } from "../../src/components/home/GatedScreen";
-import { ScreenHeader } from "../../src/components/home/ScreenHeader";
-import { Icon } from "../../src/components/Icon";
+import { useAppTheme } from "../../../src/theme/ThemeContext";
+import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
+import { useConversationsQuery } from "../../../src/lib/queries";
+import { GatedScreen } from "../../../src/components/home/GatedScreen";
+import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
+import { Icon } from "../../../src/components/Icon";
 
 /** dd/mm/yyyy hh:mm:ss, in the device's local time zone — mirrors the web app's identical
  * helper on `/messages`. An explicit absolute timestamp rather than a relative "3h ago", so two
@@ -17,9 +17,9 @@ function formatMessageTime(iso: string): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-// Moved here from the old top-level app/messages/index.tsx to become a bottom tab (replacing
-// Saved) — dropped the `<Stack.Screen headerShown>` override that screen needed as a pushed
-// route, since tabs draw their own in-body heading instead, matching Home/Account.
+// Nested under (tabs)/messages/_layout.tsx's own Stack (the tab's entry point, at the group's
+// "index" route) rather than living directly at (tabs)/messages.tsx, so pushing to [id] keeps
+// the outer Tabs bar mounted — see _layout.tsx's own comment.
 export default function MessagesScreen() {
   const { colors } = useAppTheme();
   const { requireLogin, isLoggedIn, accessToken } = useHomeSheets();
