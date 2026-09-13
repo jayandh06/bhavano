@@ -209,19 +209,19 @@ describe('MessagingService.sendMessage', () => {
     expect(result.message.id).toBe('m1');
   });
 
-  it('falls back to the sender\'s phone, then a generic label, when there is no name', async () => {
+  it('falls back to a role label, never the sender\'s phone, when there is no name', async () => {
     const withPhone = makeSendService(
       { id: 'c1', posterId: 'p', inquirerId: 'b' },
       { name: null, phone: '9990001111' },
     );
     await expect(withPhone.sendMessage('c1', 'b', 'hi')).resolves.toMatchObject({
       recipientId: 'p',
-      senderName: '9990001111',
+      senderName: 'Buyer',
     });
 
     const anon = makeSendService({ id: 'c1', posterId: 'p', inquirerId: 'b' }, null);
     await expect(anon.sendMessage('c1', 'b', 'hi')).resolves.toMatchObject({
-      senderName: 'New message',
+      senderName: 'Buyer',
     });
   });
 });

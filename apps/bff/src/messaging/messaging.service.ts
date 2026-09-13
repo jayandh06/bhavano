@@ -84,7 +84,12 @@ export class MessagingService {
           listingTitle: c.listing.title,
           type: c.type,
           otherPartyId: otherParty.id,
-          otherPartyName: otherParty.name ?? otherParty.phone ?? (c.type === 'moderation' ? 'Bhavano Admin' : 'User'),
+          // Never the raw phone number — a caller with no display name previously fell through
+          // to `otherParty.phone`, handing out contact info the paid reveal flow exists to gate
+          // (see contact-reveal.service.ts). A role label costs nothing here: `viewerIsPoster`
+          // already tells us which side of the inquiry the other party is on.
+          otherPartyName:
+            otherParty.name ?? (c.type === 'moderation' ? 'Bhavano Admin' : viewerIsPoster ? 'Buyer' : 'Seller'),
           otherPartyIsVerifiedBuyer,
           lastMessage: c.messages[0] ? toMessageDto(c.messages[0]) : null,
           unreadCount,
@@ -128,10 +133,10 @@ export class MessagingService {
     return {
       id: conversation.id,
       type: conversation.type,
+      // See listConversations' identical fix — never the raw phone number.
       otherPartyName:
         otherParty.name ??
-        otherParty.phone ??
-        (conversation.type === 'moderation' ? 'Bhavano Admin' : 'User'),
+        (conversation.type === 'moderation' ? 'Bhavano Admin' : viewerIsPoster ? 'Buyer' : 'Seller'),
       listing: {
         id: conversation.listing.id,
         title: conversation.listing.title,
@@ -250,7 +255,11 @@ export class MessagingService {
     ]);
     const recipientId =
       conversation.posterId === senderId ? conversation.inquirerId : conversation.posterId;
-    const senderName = sender?.name ?? sender?.phone ?? 'New message';
+    // Never the raw phone number — this titles a push notification, which can sit on a locked
+    // screen for anyone nearby to read. Same fix/reasoning as listConversations/getConversation.
+    const senderIsPoster = conversation.posterId === senderId;
+    const senderName =
+      sender?.name ?? (conversation.type === 'moderation' ? 'Bhavano Admin' : senderIsPoster ? 'Seller' : 'Buyer');
     return { message: toMessageDto(message), recipientId, senderName };
   }
 
