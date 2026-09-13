@@ -24,6 +24,10 @@ export function MegaMenu({
   // second column worth showing — everything else's label is already the one and only link
   // (see singleLinkColumn1Item), so column 2 would just repeat it.
   const hasColumn2 = links.length > 0;
+  // Every link below used to open target="_blank" — a new tab is itself a full page load, which
+  // read as "the site reloaded" even though the SPA behind it was working exactly as designed.
+  // Same-tab client-side navigation (Next.js's normal <Link> behavior) is what a menu click
+  // should feel like; nothing about these being SEO-indexable pages requires a new tab.
   const itemLinkClassName = (isActive: boolean) =>
     `block w-full text-left border-0 rounded-md px-3 py-2.5 text-[13.5px] font-bold cursor-pointer no-underline ${
       isActive ? "bg-surface-alt text-green" : "bg-transparent text-text"
@@ -46,8 +50,6 @@ export function MegaMenu({
             <Link
               key={item.value}
               href={itemHref}
-              target="_blank"
-              rel="noopener noreferrer"
               onMouseEnter={() => setActiveValue(item.value)}
               onClick={onNavigate}
               className={itemLinkClassName(activeValue === item.value)}
@@ -73,8 +75,6 @@ export function MegaMenu({
             <Link
               key={link.label}
               href={hrefForLink(link, cityName)}
-              target="_blank"
-              rel="noopener noreferrer"
               onClick={onNavigate}
               className="block px-3 py-2.5 text-[13.5px] text-text-soft no-underline rounded-md transition-colors hover:bg-surface-alt hover:text-green focus-visible:bg-surface-alt focus-visible:text-green focus-visible:outline-none"
             >

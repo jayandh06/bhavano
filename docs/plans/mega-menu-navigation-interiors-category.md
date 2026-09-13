@@ -145,3 +145,14 @@ through from `Header` for the SEO browse pages (`BrowseListingsView` already com
 `currentSegments` for `LocationPicker`); the homepage's own query-string-filtered view doesn't pass
 it, so its mobile chip row falls back to showing "All" — a harmless default, not a regression, since
 homepage tab clicks already navigate away to the real SEO paths regardless.
+
+## Update: column1/column2 links no longer open in a new tab
+
+Reported as "Buy → Plots reloads the page and the URL is wrong" — the URL (`/plot`, dropping the
+redundant `buy` group) was correct and intentional (see `listingPath.ts`'s `buildBrowsePath`, and
+`city-first-seo-url-hierarchy.md`); `/buy/plot` itself already 301s to it. The actual bug was the
+original `target="_blank"` on every `MegaMenu` link — a new tab is a full page load by definition,
+which reads exactly like "the site reloaded" even though the SPA was behaving correctly. Dropped
+`target`/`rel` from both column-1 and column-2 links; they now navigate in-page like any other
+`<Link>`, matching the mobile chip row (which never had `target="_blank"`) and the header tab
+buttons above it.
