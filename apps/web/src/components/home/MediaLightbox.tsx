@@ -119,6 +119,10 @@ export function MediaLightbox({
 
       {hasMultiple && (
         <>
+          {/* Neutral translucent circle + chevron icon, matching the Close button above rather
+            * than the old green/gold glyph — same flat, muted scroll-affordance the header's
+            * `HorizontalScroller` arrows and the native app's chevrons use, not a loud accent
+            * color pulled in just because this control happens to move sideways. */}
           <button
             type="button"
             aria-label="Previous"
@@ -126,9 +130,9 @@ export function MediaLightbox({
               e.stopPropagation();
               step(-1);
             }}
-            className="absolute left-2 sm:left-5 z-10 w-11 h-11 rounded-full border-0 bg-green text-gold text-2xl leading-none cursor-pointer"
+            className="absolute left-2 sm:left-5 z-10 w-11 h-11 rounded-full border-0 bg-[#ffffff1f] text-white text-2xl leading-none cursor-pointer flex items-center justify-center"
           >
-            ‹
+            <Icon name="chevronLeft" />
           </button>
           <button
             type="button"
@@ -137,9 +141,9 @@ export function MediaLightbox({
               e.stopPropagation();
               step(1);
             }}
-            className="absolute right-2 sm:right-5 z-10 w-11 h-11 rounded-full border-0 bg-green text-gold text-2xl leading-none cursor-pointer"
+            className="absolute right-2 sm:right-5 z-10 w-11 h-11 rounded-full border-0 bg-[#ffffff1f] text-white text-2xl leading-none cursor-pointer flex items-center justify-center"
           >
-            ›
+            <Icon name="chevronRight" />
           </button>
         </>
       )}

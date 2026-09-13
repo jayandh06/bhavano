@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Icon } from "./Icon";
 
 /**
  * A horizontally scrolling region that says it scrolls.
@@ -14,12 +15,19 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  * cannot act on is a worse hint. Both a scroll listener and a ResizeObserver, because a region
  * also becomes scrollable — or stops being — when the viewport changes or a font loads and
  * reflows it, neither of which fires a scroll event.
+ *
+ * Arrow styling mirrors the native app's own scrollable-row chevrons (`ScrollableRow` in
+ * `CategoryChips.tsx`) — a flat, muted icon on a solid background rather than a bold green
+ * circle, so the two apps' scroll affordance reads the same. `arrowBackground` exists for the
+ * same reason it does there: this row rarely sits directly on the page background, and a solid
+ * swatch needs to know what to blend into.
  */
 export function HorizontalScroller({
   children,
   className = "",
   contentClassName = "",
   ariaLabel = "content",
+  arrowBackground = "bg-surface",
 }: {
   children: ReactNode;
   /** On the scrolling element itself. */
@@ -28,6 +36,10 @@ export function HorizontalScroller({
    * the arrows sit inside the frame rather than over its edge. */
   contentClassName?: string;
   ariaLabel?: string;
+  /** Tailwind background class the arrow buttons sit on — default matches the two existing
+   * table callers (`bg-surface`); `CategoryTabs` overrides it to the tab strip's own
+   * `bg-surface-alt` band. */
+  arrowBackground?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [overflow, setOverflow] = useState({ left: false, right: false });
@@ -60,13 +72,9 @@ export function HorizontalScroller({
       type="button"
       aria-label={`Scroll ${ariaLabel} ${side}`}
       onClick={() => scrollBy(side === "left" ? -220 : 220)}
-      className={`absolute ${side === "left" ? "left-0" : "right-0"} top-0 bottom-0 z-20 w-14 flex items-center ${
-        side === "left" ? "justify-start pl-0.5" : "justify-end pr-0.5"
-      } border-0 cursor-pointer bg-gradient-to-${side === "left" ? "r" : "l"} from-bg via-bg to-transparent`}
+      className={`absolute ${side === "left" ? "left-0" : "right-0"} top-0 bottom-0 z-20 w-8 flex items-center justify-center border-0 cursor-pointer text-text-soft text-lg opacity-90 ${arrowBackground}`}
     >
-      <span className="w-8 h-8 rounded-full bg-green border-0 shadow-[0_1px_4px_rgba(0,0,0,0.22)] flex items-center justify-center text-gold text-xl leading-none pb-0.5">
-        {side === "left" ? "‹" : "›"}
-      </span>
+      <Icon name={side === "left" ? "chevronLeft" : "chevronRight"} />
     </button>
   );
 

@@ -75,7 +75,7 @@ export function CategoryTabs({
 
   return (
     <div ref={containerRef} className="relative" onMouseLeave={() => setOpenTab(null)}>
-      <HorizontalScroller ariaLabel="categories" className="flex gap-1.5">
+      <HorizontalScroller ariaLabel="categories" className="flex gap-1.5" arrowBackground="bg-surface-alt">
         {HOME_TABS.map((tab) => {
           const isActive = tab.value === active;
           const highlighted = isActive || openTab === tab.value;
@@ -150,6 +150,7 @@ export function CategoryTabs({
           ariaLabel={`${activeTabData.label} sub-categories`}
           className="flex gap-1.5 pt-1.5"
           contentClassName="sm:hidden"
+          arrowBackground="bg-surface-alt"
         >
           <Link
             href={buildBrowsePath({ cityName, ...segmentsForHomeCategory(active) })}
