@@ -1,18 +1,37 @@
+import { useCallback } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useConversationsQuery } from "../../src/lib/queries";
+import { GatedScreen } from "../../src/components/home/GatedScreen";
 
-export default function MessagesListScreen() {
+// Moved here from the old top-level app/messages/index.tsx to become a bottom tab (replacing
+// Saved) — dropped the `<Stack.Screen headerShown>` override that screen needed as a pushed
+// route, since tabs draw their own in-body heading instead, matching Home/Account.
+export default function MessagesScreen() {
   const { colors } = useAppTheme();
-  const { accessToken } = useHomeSheets();
+  const { requireLogin, isLoggedIn, accessToken } = useHomeSheets();
   const router = useRouter();
   const { data: conversations, isLoading } = useConversationsQuery(accessToken);
 
+  // Defensive fallback only — the tab bar itself (see (tabs)/_layout.tsx's `listeners`) already
+  // intercepts a logged-out tap before it ever navigates here, prompting login in place instead.
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoggedIn) requireLogin();
+    }, [isLoggedIn, requireLogin]),
+  );
+
+  if (!isLoggedIn || !accessToken) {
+    return <GatedScreen title="Messages" />;
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Stack.Screen options={{ title: "Messages", headerShown: true }} />
+      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", padding: 16, paddingBottom: 4 }}>
+        Messages
+      </Text>
 
       {isLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

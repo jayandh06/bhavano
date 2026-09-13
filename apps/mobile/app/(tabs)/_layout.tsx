@@ -1,16 +1,25 @@
 import { Tabs } from "expo-router";
 import { useAppTheme } from "../../src/theme/ThemeContext";
+import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { Icon, type IconName } from "../../src/components/Icon";
 
 const TAB_ICONS: Record<string, IconName> = {
   index: "home",
-  saved: "heart",
+  messages: "message",
   post: "plus",
   account: "user",
 };
 
+// Tabs whose screen requires being logged in. Tapping one while logged out used to navigate to
+// that (mostly blank) screen first and only then pop the login sheet over it, which read as
+// "went to a different, broken-looking page" rather than "asked to log in." Intercepting the tab
+// press itself instead prompts login immediately and stays on whichever tab was already active —
+// the navigation only actually happens once logged in.
+const AUTH_REQUIRED_TABS = new Set(["messages", "post", "account"]);
+
 export default function TabsLayout() {
   const { colors } = useAppTheme();
+  const { isLoggedIn, requireLogin } = useHomeSheets();
 
   return (
     <Tabs
@@ -26,9 +35,17 @@ export default function TabsLayout() {
         tabBarIcon: ({ color }) => <Icon name={TAB_ICONS[route.name]} size={20} color={color} />,
         tabBarLabelStyle: { fontSize: 10, fontWeight: "700" },
       })}
+      screenListeners={({ route }) => ({
+        tabPress: (e) => {
+          if (AUTH_REQUIRED_TABS.has(route.name) && !isLoggedIn) {
+            e.preventDefault();
+            requireLogin();
+          }
+        },
+      })}
     >
       <Tabs.Screen name="index" options={{ title: "Home" }} />
-      <Tabs.Screen name="saved" options={{ title: "Saved" }} />
+      <Tabs.Screen name="messages" options={{ title: "Messages" }} />
       <Tabs.Screen name="post" options={{ title: "Post" }} />
       <Tabs.Screen name="account" options={{ title: "Account" }} />
     </Tabs>

@@ -12,7 +12,7 @@ import {
   updateProfile,
   verifyEmail,
 } from "../../src/lib/bffClient";
-import { useContactRevealBalanceQuery, useUnreadCountQuery } from "../../src/lib/queries";
+import { useContactRevealBalanceQuery } from "../../src/lib/queries";
 import { Icon } from "../../src/components/Icon";
 
 type PhoneStep = "idle" | "otpSent";
@@ -65,7 +65,7 @@ export default function AccountScreen() {
       accessToken={accessToken}
       profile={profile}
       refreshProfile={refreshProfile}
-      onOpenMessages={() => router.push("/messages")}
+      onOpenSaved={() => router.push("/saved")}
       onOpenPurchases={() => router.push("/purchases")}
       onLogout={onLogout}
       loggingOut={loggingOut}
@@ -77,7 +77,7 @@ function ProfileFields({
   accessToken,
   profile,
   refreshProfile,
-  onOpenMessages,
+  onOpenSaved,
   onOpenPurchases,
   onLogout,
   loggingOut,
@@ -85,13 +85,12 @@ function ProfileFields({
   accessToken: string;
   profile: UserProfileDto;
   refreshProfile: () => Promise<void>;
-  onOpenMessages: () => void;
+  onOpenSaved: () => void;
   onOpenPurchases: () => void;
   onLogout: () => void;
   loggingOut: boolean;
 }) {
   const { colors, theme, toggleTheme } = useAppTheme();
-  const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
   const { data: balance } = useContactRevealBalanceQuery(accessToken);
 
   const [name, setName] = useState(profile.name ?? "");
@@ -200,29 +199,13 @@ function ProfileFields({
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
       <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: 20 }}>Your account</Text>
 
+      {/* Messages has its own bottom tab now — no need to duplicate it here too. */}
       <Pressable
-        onPress={onOpenMessages}
+        onPress={onOpenSaved}
         style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8 }]}
       >
-        <Icon name="message" size={16} color={colors.text} />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Messages</Text>
-        {unreadCount > 0 && (
-          <View
-            style={{
-              minWidth: 18,
-              height: 18,
-              borderRadius: 9,
-              paddingHorizontal: 5,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: colors.green,
-            }}
-          >
-            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.onGreen }}>
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </Text>
-          </View>
-        )}
+        <Icon name="heart" size={16} color={colors.text} />
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Saved listings</Text>
       </Pressable>
 
       {/* The other toggle lives in the Home tab's brand row, which is not where anyone looks for
