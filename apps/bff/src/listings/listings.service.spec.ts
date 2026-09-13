@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { ListingsService } from './listings.service';
+import { ListingsService, recentMixGroupKey, roundRobinByGroup } from './listings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -129,6 +129,164 @@ describe('ListingsService.list — word match + fuzzy title search', () => {
     expect(queryRaw).not.toHaveBeenCalled();
     const where = count.mock.calls[0][0].where;
     expect(where.AND).toBeUndefined();
+  });
+});
+
+describe('recentMixGroupKey', () => {
+  it('groups All/Buy/Rent & Lease by property category, plus city when browsing all cities', () => {
+    const listing = { category: 'apartment' as const, attributes: {}, cityId: 'city1' };
+    expect(recentMixGroupKey(undefined, undefined, listing)).toBe('apartment::city1');
+    expect(recentMixGroupKey('buy', undefined, listing)).toBe('apartment::city1');
+    expect(recentMixGroupKey('rentLease', undefined, listing)).toBe('apartment::city1');
+  });
+
+  it('drops city from the key once a specific city is already the filter', () => {
+    const listing = { category: 'apartment' as const, attributes: {}, cityId: 'city1' };
+    expect(recentMixGroupKey(undefined, 'city1', listing)).toBe('apartment');
+    expect(recentMixGroupKey('buy', 'city1', listing)).toBe('apartment');
+  });
+
+  it('groups PG by sharing-type facet, Furniture by condition, Interiors by service type', () => {
+    expect(
+      recentMixGroupKey('pg', undefined, { category: 'pg', attributes: { sharingType: 'double' }, cityId: 'c1' }),
+    ).toBe('double::c1');
+    expect(
+      recentMixGroupKey('furniture', undefined, {
+        category: 'furniture',
+        attributes: { condition: 'used' },
+        cityId: 'c1',
+      }),
+    ).toBe('used::c1');
+    expect(
+      recentMixGroupKey('interiors', undefined, {
+        category: 'interiors',
+        attributes: { serviceType: 'painting' },
+        cityId: 'c1',
+      }),
+    ).toBe('painting::c1');
+  });
+
+  it('falls back to "unspecified" for a facet-mixed tab when the listing has no facet value', () => {
+    expect(recentMixGroupKey('pg', undefined, { category: 'pg', attributes: {}, cityId: 'c1' })).toBe(
+      'unspecified::c1',
+    );
+  });
+});
+
+describe('roundRobinByGroup', () => {
+  it('interleaves groups instead of letting one oversized group bury the rest', () => {
+    // 5 pg rows (newest-first, p1..p5) and 1 house row (h1) — a bulk-import-shaped skew.
+    const rows = ['p1', 'p2', 'p3', 'p4', 'p5', 'h1'].map((id) => ({
+      id,
+      group: id.startsWith('p') ? 'pg' : 'house',
+    }));
+
+    const result = roundRobinByGroup(rows, (r) => r.group);
+
+    // pg's newest, then house's only row (round 1), then the rest of pg's rows in order.
+    expect(result.map((r) => r.id)).toEqual(['p1', 'h1', 'p2', 'p3', 'p4', 'p5']);
+  });
+
+  it('is a no-op when every row already belongs to the same group', () => {
+    const rows = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    expect(roundRobinByGroup(rows, () => 'only-group').map((r) => r.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('preserves every row exactly once regardless of group sizes', () => {
+    const rows = Array.from({ length: 20 }, (_, i) => ({ id: `r${i}`, group: `g${i % 3}` }));
+    const result = roundRobinByGroup(rows, (r) => r.group);
+    expect(result).toHaveLength(20);
+    expect(new Set(result.map((r) => r.id)).size).toBe(20);
+  });
+});
+
+describe('ListingsService.list — recent-listings mix (first 2 pages only)', () => {
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+  const now = Date.now();
+
+  function row(id: string, overrides: Record<string, unknown> = {}) {
+    return {
+      id,
+      category: 'apartment',
+      transactionType: 'rent',
+      slug: id,
+      tag: 'FOR RENT',
+      price: 10000,
+      priceQualifier: '/month',
+      title: id,
+      area: { name: 'Some Area' },
+      city: { name: 'Some City' },
+      cityId: 'city1',
+      ownerId: 'owner1',
+      attributes: {},
+      specs: [],
+      listingPhotos: [],
+      listingVideos: [],
+      viewCount: 0,
+      likeCount: 0,
+      boostedUntil: null,
+      createdAt: new Date(now - HOUR),
+      boostRank: null,
+      owner: { phone: null, email: null },
+      ...overrides,
+    };
+  }
+
+  function makeMixService(findManyImpl: (args: Record<string, unknown>) => unknown[]) {
+    const findMany = jest.fn().mockImplementation(async (args: Record<string, unknown>) => findManyImpl(args));
+    const count = jest.fn().mockResolvedValue(0);
+    const prisma = { listing: { findMany, count } } as unknown as PrismaService;
+    const contactRevealService = {
+      getRevealStatesForListings: jest.fn().mockResolvedValue(new Map()),
+    } as unknown as ContactRevealService;
+    const service = new ListingsService(
+      prisma,
+      {} as ModerationService,
+      { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
+      {} as NotificationsService,
+      {} as SavedSearchesService,
+      {} as LocationsService,
+      {} as R2StorageService,
+      {} as CdnPurgeService,
+      {} as ListingSlotsService,
+      {} as GoogleAdsConversionProvider,
+      contactRevealService,
+    );
+    return { service, findMany };
+  }
+
+  it('puts every boosted match first, then round-robin-mixes the recent (unboosted) pool', async () => {
+    const boosted = [row('boosted1', { boostRank: 0.9 })];
+    // A skewed recent pool: 3 pg, 1 house — same shape as the real bulk-import incident.
+    const recent = [
+      row('pg1', { category: 'pg', attributes: { sharingType: 'single' } }),
+      row('pg2', { category: 'pg', attributes: { sharingType: 'single' } }),
+      row('pg3', { category: 'pg', attributes: { sharingType: 'single' } }),
+      row('house1', { category: 'house' }),
+    ];
+
+    const { service, findMany } = makeMixService((args) => {
+      const where = args.where as Record<string, unknown>;
+      if ((where.boostRank as { not: null })?.not === null) return boosted;
+      if ((where.createdAt as { gte?: Date })?.gte) return recent;
+      return []; // older-rows top-up
+    });
+
+    const result = await service.list({ offset: 0, limit: 4 } as never);
+
+    expect(result.items.map((i) => i.id)).toEqual(['boosted1', 'pg1', 'house1', 'pg2']);
+    // 3 findMany calls for the mixed path: boosted, recent pool, older top-up.
+    expect(findMany).toHaveBeenCalledTimes(3);
+  });
+
+  it('uses the plain single-query path, unchanged, once past the first 2 pages', async () => {
+    const { service, findMany } = makeMixService(() => []);
+
+    await service.list({ offset: 24, limit: 12 } as never);
+
+    expect(findMany).toHaveBeenCalledTimes(1);
+    expect(findMany.mock.calls[0][0]).toMatchObject({ skip: 24, take: 12 });
   });
 });
 

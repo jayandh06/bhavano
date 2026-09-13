@@ -225,6 +225,74 @@ function diffFields(
   return changes;
 }
 
+/** Only the first 2 pages of the public browse/homepage feed get the recent-listings mix below —
+ * see docs/plans/homepage-category-mix-and-boost-page-cap.md. Page 3+ stays plain `createdAt
+ * desc`, unchanged: recomputing the mix on every request would be wasted work nobody paging that
+ * deep benefits from — that's browsing with intent, not skimming what's new. */
+const RECENT_MIX_PAGES = 2;
+/** How far back "recent" reaches for the mix — long enough that a bulk-import run (which inserts
+ * dozens of same-category/same-city rows within seconds of each other) doesn't get to dominate
+ * the "newest" slice of a flat createdAt-desc sort for days on end. */
+const RECENT_MIX_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+/** Safety cap on how many recent rows get pulled into memory to interleave — the recent window is
+ * normally a few hundred rows at most even on an active day; this just guards against a
+ * pathological bulk-import size turning this into an unbounded fetch. */
+const RECENT_MIX_POOL_CAP = 1000;
+
+/** The dimension each home tab mixes recent listings by — property category for the multi-
+ * category tabs (All/Buy/Rent & Lease all pass `homeCategory` as undefined/'buy'/'rentLease'),
+ * or a category-specific facet for the single-category tabs (PG's sharing type, Furniture's
+ * condition, Interiors' service type — the one real ListingCategory in each of those tabs has
+ * nothing to mix by, so the facet is what actually varies).
+ *
+ * City folds into the key too, but only when browsing all cities: once `cityIdFilter` is set,
+ * every candidate row already shares that city, so adding it to the key would split rows into
+ * groups of one instead of fixing anything. See docs/plans/homepage-category-mix-and-boost-page-
+ * cap.md for the full reasoning, including why city (not area — too fine-grained, mostly empty
+ * buckets) is the geography dimension. */
+export function recentMixGroupKey(
+  homeCategory: HomeCategoryFilter | undefined,
+  cityIdFilter: string | undefined,
+  listing: { category: ListingCategory; attributes: unknown; cityId: string },
+): string {
+  let dimension: string;
+  if (!homeCategory || homeCategory === 'buy' || homeCategory === 'rentLease') {
+    dimension = listing.category;
+  } else {
+    const facetKey = homeCategory === 'pg' ? 'sharingType' : homeCategory === 'furniture' ? 'condition' : 'serviceType';
+    const facetValue = (listing.attributes as Record<string, unknown>)[facetKey];
+    // A facet is always a plain string (these are all `type: "select"` fields — see
+    // categoryFields.ts) — anything else (missing, or a stray non-string value) groups under one
+    // shared "unspecified" bucket rather than being trusted to stringify sensibly.
+    dimension = typeof facetValue === 'string' && facetValue ? facetValue : 'unspecified';
+  }
+  return cityIdFilter ? dimension : `${dimension}::${listing.cityId}`;
+}
+
+/** Interleaves `rows` (assumed already sorted newest-first) round-robin across whatever groups
+ * `keyFor` sorts them into: the newest row from every group first, then the second-newest from
+ * every group, and so on — so one oversized group (a bulk-import batch) supplies one slot per
+ * round same as a group of one, instead of burying every other group under it. Group order in
+ * each round follows first-appearance order in `rows`, so the group holding the single newest row
+ * overall goes first, same intuition as sorting by "newest row in this group" descending. */
+export function roundRobinByGroup<T>(rows: T[], keyFor: (row: T) => string): T[] {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = keyFor(row);
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(row);
+    else groups.set(key, [row]);
+  }
+  const buckets = [...groups.values()];
+  const result: T[] = [];
+  for (let index = 0; result.length < rows.length; index++) {
+    for (const bucket of buckets) {
+      if (index < bucket.length) result.push(bucket[index]);
+    }
+  }
+  return result;
+}
+
 @Injectable()
 export class ListingsService {
   private readonly logger = new Logger(ListingsService.name);
@@ -382,15 +450,14 @@ export class ListingsService {
     // look-ahead row the way cursor-based append does. Two explicit branches (rather than
     // spreading a ternary into one `findMany` call) because Prisma's generated overloads can't
     // resolve a call built from a union of arg shapes.
+    //
+    // Cursor mode (mobile infinite scroll) is deliberately left out of the recent-listings mix
+    // below — round-robin reordering the first pages doesn't map cleanly onto an append-only
+    // cursor the way it does onto numbered offset pages, and every offset-mode consumer (the
+    // homepage, BrowseListingsView) already gets the fix. Worth revisiting for mobile separately.
     const [rows, total] = await Promise.all([
       offset !== undefined
-        ? this.prisma.listing.findMany({
-            where,
-            include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
-            orderBy,
-            skip: offset,
-            take: limit,
-          })
+        ? this.fetchOffsetPage(where, orderBy, offset, limit, homeCategory, cityId)
         : this.prisma.listing.findMany({
             where,
             include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
@@ -433,6 +500,69 @@ export class ListingsService {
       nextCursor: hasMore ? page[page.length - 1].id : null,
       total,
     };
+  }
+
+  /** `list()`'s offset-mode row fetch — plain for page 3+, mixed for the first
+   * `RECENT_MIX_PAGES` pages (see docs/plans/homepage-category-mix-and-boost-page-cap.md).
+   *
+   * The mixed path fetches three disjoint slices and concatenates them in display order, then
+   * slices out the requested window — deterministic given unchanged underlying data, so two
+   * requests for page 1 and page 2 of the same query produce consecutive, non-repeating results,
+   * same stability guarantee a plain `skip`/`take` already has (and the same caveat: a listing
+   * created between the two requests can still shift what "page 2" contains, exactly as it could
+   * before this existed):
+   *
+   * 1. Every boosted (`boostRank` not null) match, in the caller's existing `orderBy` — unchanged
+   *    from today's behavior, still uncapped (see Part 2 of the plan doc for the not-yet-built
+   *    per-page cap).
+   * 2. The "recent" pool (created within `RECENT_MIX_WINDOW_MS`, not boosted), round-robin'd by
+   *    `recentMixGroupKey` so no single group can bury the rest.
+   * 3. If 1+2 don't fill the window, the next-oldest non-boosted rows, plainly sorted — same
+   *    order page 3+ already uses, just topping up the tail of page 2 when the recent pool runs
+   *    dry (a slow week, or a very narrow filter).
+   */
+  private async fetchOffsetPage(
+    where: Prisma.ListingWhereInput,
+    orderBy: Prisma.ListingOrderByWithRelationInput[],
+    offset: number,
+    limit: number,
+    homeCategory: HomeCategoryFilter | undefined,
+    cityId: string | undefined,
+  ) {
+    const include = { city: true, area: true, ...LISTING_MEDIA_INCLUDE };
+
+    if (offset >= RECENT_MIX_PAGES * limit) {
+      return this.prisma.listing.findMany({ where, include, orderBy, skip: offset, take: limit });
+    }
+
+    const windowSize = RECENT_MIX_PAGES * limit;
+    const recentSince = new Date(Date.now() - RECENT_MIX_WINDOW_MS);
+    const plainRecentSort: Prisma.ListingOrderByWithRelationInput[] = [{ createdAt: 'desc' }, { id: 'asc' }];
+
+    const [boostedRows, recentPool] = await Promise.all([
+      this.prisma.listing.findMany({ where: { ...where, boostRank: { not: null } }, include, orderBy }),
+      this.prisma.listing.findMany({
+        where: { ...where, boostRank: null, createdAt: { gte: recentSince } },
+        include,
+        orderBy: plainRecentSort,
+        take: RECENT_MIX_POOL_CAP,
+      }),
+    ]);
+
+    const mixedRecent = roundRobinByGroup(recentPool, (row) => recentMixGroupKey(homeCategory, cityId, row));
+
+    const stillNeeded = windowSize - boostedRows.length - mixedRecent.length;
+    const olderRows =
+      stillNeeded > 0
+        ? await this.prisma.listing.findMany({
+            where: { ...where, boostRank: null, createdAt: { lt: recentSince } },
+            include,
+            orderBy: plainRecentSort,
+            take: stillNeeded,
+          })
+        : [];
+
+    return [...boostedRows, ...mixedRecent, ...olderRows].slice(offset, offset + limit);
   }
 
   /** Admin moderation queue — every listing regardless of status/moderationState/expiry
