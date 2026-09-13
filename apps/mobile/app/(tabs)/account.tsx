@@ -1,11 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import type { UserProfileDto } from "@bhavano/types";
+import type { City, UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { LegalFooter } from "../../src/components/home/LegalFooter";
 import {
+  fetchCities,
   linkPhone,
   requestEmailCode,
   sendOtp,
@@ -94,6 +95,13 @@ function ProfileFields({
   const { data: balance } = useContactRevealBalanceQuery(accessToken);
 
   const [name, setName] = useState(profile.name ?? "");
+  // City — the profile's own "home city" (used e.g. for early-access alerts), distinct from
+  // whichever city the Home tab is currently browsing. Batched into the same "Save changes" as
+  // name rather than saving on selection, matching the website's ProfileForm exactly.
+  const [cityId, setCityId] = useState(profile.cityId ?? undefined);
+  const [cityQuery, setCityQuery] = useState("");
+  const [citySuggestions, setCitySuggestions] = useState<City[]>([]);
+  const cityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [email, setEmail] = useState(profile.email ?? "");
   const [phoneInput, setPhoneInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
@@ -178,6 +186,25 @@ function ProfileFields({
     }
   }
 
+  function onCityQueryChange(value: string) {
+    setCityQuery(value);
+    setCityId(undefined);
+    if (cityDebounceRef.current) clearTimeout(cityDebounceRef.current);
+    if (!value.trim()) {
+      setCitySuggestions([]);
+      return;
+    }
+    cityDebounceRef.current = setTimeout(async () => {
+      setCitySuggestions(await fetchCities(value));
+    }, 300);
+  }
+
+  function onPickCity(city: City) {
+    setCityId(city.id);
+    setCityQuery(city.name);
+    setCitySuggestions([]);
+  }
+
   async function onSave() {
     setSaving(true);
     setMessage(null);
@@ -185,7 +212,7 @@ function ProfileFields({
       // No email here: an address only reaches the profile through the verified flow below,
       // mirroring how a phone only arrives through OTP. See
       // docs/plans/account-linking-phone-and-email.md.
-      await updateProfile(accessToken, { name: name.trim() || undefined });
+      await updateProfile(accessToken, { name: name.trim() || undefined, cityId });
       await refreshProfile();
       setMessage({ type: "success", text: "Profile updated." });
     } catch (e) {
@@ -231,6 +258,30 @@ function ProfileFields({
         placeholderTextColor={colors.muted}
         style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
       />
+
+      <Text style={[styles.label, { color: colors.muted }]}>City</Text>
+      <TextInput
+        value={cityQuery || (profile.cityName ? `${profile.cityName}${profile.state ? `, ${profile.state}` : ""}` : "")}
+        onChangeText={onCityQueryChange}
+        onFocus={() => {
+          // Clear the resolved "City, State" display text so editing starts a fresh search —
+          // matches the website's own reasoning: backspacing into that combined string searches
+          // for a fragment like "Bengaluru, Karnatak" that matches nothing.
+          if (profile.cityName && !cityQuery) setCityQuery("");
+        }}
+        placeholder="Search for your city"
+        placeholderTextColor={colors.muted}
+        style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+      />
+      {citySuggestions.length > 0 && (
+        <View style={[styles.suggestionsBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+          {citySuggestions.map((c) => (
+            <Pressable key={c.id} onPress={() => onPickCity(c)} style={styles.suggestionRow}>
+              <Text style={{ color: colors.text, fontSize: 14 }}>{c.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
 
       <Text style={[styles.label, { color: colors.muted }]}>
         Email{!profile.email ? " *" : ""}
@@ -454,6 +505,8 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: "700", marginBottom: 6, marginTop: 16, textTransform: "uppercase", letterSpacing: 0.3 },
   hint: { fontSize: 12.5, marginBottom: 8 },
   input: { borderWidth: 1, borderRadius: 9, paddingVertical: 12, paddingHorizontal: 14, fontSize: 14, marginBottom: 4 },
+  suggestionsBox: { borderWidth: 1, borderRadius: 9, marginBottom: 4, overflow: "hidden" },
+  suggestionRow: { paddingVertical: 10, paddingHorizontal: 14 },
   readOnly: { borderWidth: 1, borderRadius: 9, paddingVertical: 12, paddingHorizontal: 14 },
   countryChip: { borderWidth: 1, borderRadius: 9, paddingVertical: 12, paddingHorizontal: 14, justifyContent: "center" },
   secondaryButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 11, paddingHorizontal: 16, alignItems: "center", alignSelf: "flex-start" },
