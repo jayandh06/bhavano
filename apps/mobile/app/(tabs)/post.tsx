@@ -3,6 +3,7 @@ import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useCitiesQuery } from "../../src/lib/queries";
 import { PostAdWizard } from "../../src/components/home/PostAdWizard";
+import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 
 export default function PostScreen() {
   const { colors } = useAppTheme();
@@ -18,8 +19,11 @@ export default function PostScreen() {
   // what they're signing up for.
   if (isLoading || !cities) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
-        <ActivityIndicator color={colors.green} />
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <ScreenHeader title="Post an Ad" />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color={colors.green} />
+        </View>
       </View>
     );
   }
@@ -27,5 +31,10 @@ export default function PostScreen() {
   // Keyed on the selected city: the tab navigator keeps this screen mounted across tab
   // switches, so without a key change, React would reuse the wizard instance and its stale
   // `useState(defaultCityId)` init instead of picking up a city switch made on the Home tab.
-  return <PostAdWizard key={city?.id ?? "none"} cities={cities} defaultCityId={city?.id} accessToken={accessToken ?? undefined} />;
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <ScreenHeader title="Post an Ad" />
+      <PostAdWizard key={city?.id ?? "none"} cities={cities} defaultCityId={city?.id} accessToken={accessToken ?? undefined} />
+    </View>
+  );
 }

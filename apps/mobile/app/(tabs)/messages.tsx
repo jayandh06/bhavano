@@ -5,6 +5,7 @@ import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useConversationsQuery } from "../../src/lib/queries";
 import { GatedScreen } from "../../src/components/home/GatedScreen";
+import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { Icon } from "../../src/components/Icon";
 
 /** dd/mm/yyyy hh:mm:ss, in the device's local time zone — mirrors the web app's identical
@@ -40,14 +41,17 @@ export default function MessagesScreen() {
   );
 
   if (!isLoggedIn || !accessToken) {
-    return <GatedScreen title="Messages" />;
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <ScreenHeader title="Messages" />
+        <GatedScreen title="Messages" />
+      </View>
+    );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", padding: 16, paddingBottom: 4 }}>
-        Messages
-      </Text>
+      <ScreenHeader title="Messages" />
 
       {isLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

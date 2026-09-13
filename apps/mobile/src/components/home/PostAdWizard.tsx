@@ -471,7 +471,7 @@ export function PostAdWizard({
 
   return (
     <>
-    <ScrollView ref={scrollRef} contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
+    <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={styles.stepper}>
         {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
           <Text key={s} style={{ fontSize: 11, fontWeight: "700", color: step === s ? colors.green : colors.muted }}>

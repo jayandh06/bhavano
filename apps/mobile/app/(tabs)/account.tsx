@@ -5,6 +5,7 @@ import type { City, UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { LegalFooter } from "../../src/components/home/LegalFooter";
+import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import {
   fetchCities,
   linkPhone,
@@ -47,16 +48,22 @@ export default function AccountScreen() {
     // The login sheet is what's actually on screen here, but the entity disclosure has to be
     // reachable *without* an account — a verification reviewer won't sign up to find it.
     return (
-      <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
-        <LegalFooter />
-      </ScrollView>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <ScreenHeader title="Account" />
+        <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
+          <LegalFooter />
+        </ScrollView>
+      </View>
     );
   }
 
   if (!profile || !accessToken) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.bg }]}>
-        <ActivityIndicator color={colors.green} />
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <ScreenHeader title="Account" />
+        <View style={[styles.container, { backgroundColor: colors.bg }]}>
+          <ActivityIndicator color={colors.green} />
+        </View>
       </View>
     );
   }
@@ -223,9 +230,9 @@ function ProfileFields({
   }
 
   return (
-    <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
-      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700", marginBottom: 20 }}>Your account</Text>
-
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <ScreenHeader title="Account" />
+      <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
       {/* Messages has its own bottom tab now — no need to duplicate it here too. */}
       <Pressable
         onPress={onOpenSaved}
@@ -492,7 +499,8 @@ function ProfileFields({
       </Pressable>
 
       <LegalFooter />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
