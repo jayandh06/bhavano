@@ -26,8 +26,8 @@ export default function MessagesScreen() {
   const router = useRouter();
   const { data: conversations, isLoading, refetch } = useConversationsQuery(accessToken);
 
-  // Defensive fallback only — the tab bar itself (see (tabs)/_layout.tsx's `listeners`) already
-  // intercepts a logged-out tap before it ever navigates here, prompting login in place instead.
+  // Defensive fallback only — BottomTabBar (app/_layout.tsx) already intercepts a logged-out
+  // tap before it ever navigates here, prompting login in place instead.
   //
   // Also refetches on every focus: this screen (like every tab) stays mounted once visited, so
   // without this a conversation fetched once early in the app session — before, say, a listing's
