@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import type { City } from "@bhavano/types";
@@ -55,6 +56,13 @@ export function HomeDrawer({
   const { colors } = useAppTheme();
   const router = useRouter();
   const { height: windowHeight } = useWindowDimensions();
+  // `Modal` renders as its own top-level native overlay, entirely outside the app's own
+  // `SafeAreaView` (app/_layout.tsx) — the collapsed bar it opens from sits below that inset
+  // without knowing it, but the modal's own content starts at the raw screen edge unless this is
+  // added back in explicitly. Without it, the drawer starts `insets.top` pixels too high — behind
+  // the status bar and overlapping the bottom of the bar instead of sitting flush below it.
+  const insets = useSafeAreaInsets();
+  const topOffset = insets.top + COLLAPSED_BAR_HEIGHT;
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
   useEffect(() => {
@@ -85,18 +93,18 @@ export function HomeDrawer({
       {/* Starts below the collapsed bar (not at the very top of the screen) so the bar — and its
         * hamburger, now showing a ✕ — stays visible and tappable above the dimmed page, matching
         * the website's own scrim. */}
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close menu" />
+      <Pressable style={[styles.scrim, { top: topOffset }]} onPress={onClose} accessibilityLabel="Close menu" />
       <Animated.View
         style={[
           styles.panel,
-          { backgroundColor: colors.surface, borderColor: colors.border, transform: [{ translateX }] },
+          { top: topOffset, backgroundColor: colors.surface, borderColor: colors.border, transform: [{ translateX }] },
         ]}
       >
         {/* `maxHeight` (capping at content, not stretching to it) has to live on the ScrollView
           * itself, not just the panel wrapping it — a bare View's `maxHeight` doesn't reliably
           * clip/scroll an unbounded child the way giving the scrollable element its own explicit
           * height cap does. */}
-        <ScrollView style={{ maxHeight: windowHeight - COLLAPSED_BAR_HEIGHT }} contentContainerStyle={styles.content}>
+        <ScrollView style={{ maxHeight: windowHeight - topOffset }} contentContainerStyle={styles.content}>
           <Pressable
             onPress={() => {
               onClose();
@@ -198,7 +206,9 @@ export function HomeDrawer({
 }
 
 const styles = StyleSheet.create({
-  scrim: { position: "absolute", top: COLLAPSED_BAR_HEIGHT, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.35)" },
+  // `top` on both is set inline (needs `topOffset`, computed from insets — see the component
+  // body) rather than here as a plain constant.
+  scrim: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.35)" },
   // No `bottom` — an absolutely-positioned view with only `top` set sizes to its content, capped
   // by the `maxHeight` set inline (viewport height minus the bar above it), matching the website's
   // drawer: it follows its content and only scrolls if that would overflow, rather than always
@@ -208,7 +218,6 @@ const styles = StyleSheet.create({
   panel: {
     position: "absolute",
     left: 0,
-    top: COLLAPSED_BAR_HEIGHT,
     width: DRAWER_WIDTH,
     maxWidth: "84%",
     borderRightWidth: 1,
