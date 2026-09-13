@@ -75,7 +75,16 @@ export function CategoryTabs({
 
   return (
     <div ref={containerRef} className="relative" onMouseLeave={() => setOpenTab(null)}>
-      <HorizontalScroller ariaLabel="categories" className="flex gap-1.5" arrowBackground="bg-surface-alt">
+      {/* Bleeds past the page's own side padding on mobile (`-mx-4`, cancelled again at `sm:` so
+        * desktop is unchanged) so the arrows sit flush against the true screen edge instead of
+        * floating inboard of it with a visible margin — `px-4` on the scroll track puts that same
+        * spacing back for the tab content itself, so nothing visually shifts except the arrows. */}
+      <HorizontalScroller
+        ariaLabel="categories"
+        className="flex gap-1.5 px-4 sm:px-0"
+        contentClassName="-mx-4 sm:mx-0"
+        arrowBackground="bg-surface-alt"
+      >
         {HOME_TABS.map((tab) => {
           const isActive = tab.value === active;
           const highlighted = isActive || openTab === tab.value;
@@ -144,15 +153,19 @@ export function CategoryTabs({
         * touch. Real `<Link>`s to the same SEO pages the mega menu points at, not a client
         * filter, so this stays crawlable and every option keeps its own indexable URL. Same
         * green-fill / gold-border oval-chip treatment as the native app's tab submenu, so the
-        * two only differ in what's `sm:hidden` vs always mounted. Its arrow is explicitly `bg-bg`
-        * (the page body color), not `bg-transparent` — this row still physically sits inside the
-        * tab strip's `bg-surface-alt` band above (see Header.tsx), so "transparent" let that
-        * band's color show through instead of reading as "no background." */}
+        * two only differ in what's `sm:hidden` vs always mounted.
+        *
+        * `bg-bg` on the wrapper itself (not just the arrows) — this row still physically sits
+        * inside the tab strip's `bg-surface-alt` band above (see Header.tsx), and a background
+        * only on the two small arrow buttons left the rest of the row (behind the chip pills)
+        * visibly that band's color rather than the page's own. Painting the whole wrapper covers
+        * the entire row, arrows included, in one consistent color. Same `-mx-4`/`px-4` edge-bleed
+        * as the tab row above for the same reason — flush arrows, unmoved chip content. */}
       {activeTabData && activeTabData.column1.length > 0 && (
         <HorizontalScroller
           ariaLabel={`${activeTabData.label} sub-categories`}
-          className="flex gap-1.5 pt-1.5"
-          contentClassName="sm:hidden"
+          className="flex gap-1.5 pt-1.5 px-4 sm:px-0"
+          contentClassName="sm:hidden -mx-4 sm:mx-0 bg-bg"
           arrowBackground="bg-bg"
         >
           <Link
