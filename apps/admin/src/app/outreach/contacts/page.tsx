@@ -6,14 +6,37 @@ import { OutreachContactsList } from "@/components/OutreachContactsList";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
 
-const selectStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 8,
+const textInputStyle: React.CSSProperties = {
   border: "1px solid var(--border)",
+  borderRadius: 9,
+  padding: "8px 10px",
+  fontSize: 13.5,
   background: "var(--surface)",
   color: "var(--text)",
-  fontSize: 13,
+  minWidth: 150,
 };
+
+const selectStyle: React.CSSProperties = { ...textInputStyle };
+
+const applyButtonStyle: React.CSSProperties = {
+  background: "var(--green)",
+  color: "var(--on-green)",
+  border: "none",
+  borderRadius: 8,
+  padding: "10px 16px",
+  fontSize: 13.5,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <label style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>{label}</label>
+      {children}
+    </div>
+  );
+}
 
 export default async function OutreachContactsPage({
   searchParams,
@@ -102,86 +125,102 @@ export default async function OutreachContactsPage({
           </div>
         )}
 
-        <form method="get" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-          <input
-            name="search"
-            defaultValue={search ?? ""}
-            placeholder="Search name, phone or email"
-            style={{
-              flex: 1,
-              minWidth: 220,
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "var(--surface)",
-              color: "var(--text)",
-              fontSize: 13,
-            }}
-          />
-          <SelectField name="businessCategory" defaultValue={businessCategory ?? ""} style={selectStyle}>
-            <option value="">All categories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField name="cityId" defaultValue={cityId ?? ""} style={selectStyle}>
-            <option value="">All cities</option>
-            {cities.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField
-            name="areaId"
-            defaultValue={areaId ?? ""}
-            disabled={!cityId}
-            style={selectStyle}
-            title={cityId ? undefined : "Pick a city first"}
-          >
-            <option value="">{cityId ? "All areas" : "All areas (pick a city first)"}</option>
-            {areas.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField name="consentState" defaultValue={consentState ?? ""} style={selectStyle}>
-            <option value="">All consent states</option>
-            <option value="none">None</option>
-            <option value="implied">Implied</option>
-            <option value="explicit">Explicit</option>
-            <option value="opted_out">Opted out</option>
-          </SelectField>
-          <SelectField name="hasListing" defaultValue={hasListing ?? ""} style={selectStyle}>
-            <option value="">Listing: any</option>
-            <option value="true">Listing created</option>
-            <option value="false">No listing yet</option>
-          </SelectField>
-          <SelectField name="notificationStatus" defaultValue={notificationStatus ?? ""} style={selectStyle}>
-            <option value="">Notification: any</option>
-            <option value="not_sent">Not sent</option>
-            <option value="sent">Sent</option>
-            <option value="confirmed">Confirmed (claimed)</option>
-          </SelectField>
+        <form
+          method="get"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            alignItems: "flex-end",
+            marginBottom: 20,
+            padding: 16,
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            background: "var(--surface)",
+          }}
+        >
+          <Field label="Search">
+            <input
+              name="search"
+              defaultValue={search ?? ""}
+              placeholder="Name, phone or email"
+              style={{ ...textInputStyle, minWidth: 220 }}
+            />
+          </Field>
+
+          <Field label="Category">
+            <SelectField name="businessCategory" defaultValue={businessCategory ?? ""} style={selectStyle}>
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+
+          <Field label="City">
+            <SelectField name="cityId" defaultValue={cityId ?? ""} style={selectStyle}>
+              <option value="">All cities</option>
+              {cities.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+
+          <Field label="Area">
+            <SelectField
+              name="areaId"
+              defaultValue={areaId ?? ""}
+              disabled={!cityId}
+              style={selectStyle}
+              title={cityId ? undefined : "Pick a city first"}
+            >
+              <option value="">{cityId ? "All areas" : "All areas (pick a city first)"}</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+
+          <Field label="Consent">
+            <SelectField name="consentState" defaultValue={consentState ?? ""} style={selectStyle}>
+              <option value="">All consent states</option>
+              <option value="none">None</option>
+              <option value="implied">Implied</option>
+              <option value="explicit">Explicit</option>
+              <option value="opted_out">Opted out</option>
+            </SelectField>
+          </Field>
+
+          <Field label="Listing">
+            <SelectField name="hasListing" defaultValue={hasListing ?? ""} style={selectStyle}>
+              <option value="">Listing: any</option>
+              <option value="true">Listing created</option>
+              <option value="false">No listing yet</option>
+            </SelectField>
+          </Field>
+
+          <Field label="Notification">
+            <SelectField name="notificationStatus" defaultValue={notificationStatus ?? ""} style={selectStyle}>
+              <option value="">Notification: any</option>
+              <option value="not_sent">Not sent</option>
+              <option value="sent">Sent</option>
+              <option value="confirmed">Confirmed (claimed)</option>
+            </SelectField>
+          </Field>
+
           {sort && <input type="hidden" name="sort" value={sort} />}
-          <button
-            type="submit"
-            style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              border: "none",
-              background: "var(--green)",
-              color: "var(--on-green, #fff)",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
-            Search
+          <button type="submit" style={applyButtonStyle}>
+            Apply filters
           </button>
+          <Link href="/outreach/contacts" style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+            Reset
+          </Link>
         </form>
 
         <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 12px" }}>
