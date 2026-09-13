@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
-import { BffError, createConversation, recordView, revealContact, toggleFavourite } from "../../src/lib/bffClient";
+import { BffError, createConversation, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
 import { Icon } from "../../src/components/Icon";
 import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
 import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
@@ -196,13 +196,22 @@ export default function ListingDetailScreen() {
           browse cards, which render none of these sections. */}
 
       {listing.lat !== undefined && listing.lng !== undefined && (
-        <Pressable
-          onPress={() => Linking.openURL(directionsUrl(listing.lat!, listing.lng!))}
-          style={[styles.directionsButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt, marginTop: 16 }]}
-        >
-          <Icon name="compass" size={16} color={colors.green} />
-          <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.green }}>Get directions</Text>
-        </Pressable>
+        <View style={{ marginTop: 16 }}>
+          <Pressable onPress={() => Linking.openURL(directionsUrl(listing.lat!, listing.lng!))}>
+            <Image
+              source={{ uri: staticMapUrl(listing.lat, listing.lng) }}
+              style={[styles.mapPreview, { backgroundColor: colors.surfaceAlt }]}
+              accessibilityLabel="Map preview — tap for directions"
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => Linking.openURL(directionsUrl(listing.lat!, listing.lng!))}
+            style={[styles.directionsButton, { borderColor: colors.border, backgroundColor: colors.surfaceAlt, marginTop: 8 }]}
+          >
+            <Icon name="compass" size={16} color={colors.green} />
+            <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.green }}>Get directions</Text>
+          </Pressable>
+        </View>
       )}
 
       <View style={{ marginTop: 16 }}>
@@ -279,6 +288,7 @@ export default function ListingDetailScreen() {
 const styles = StyleSheet.create({
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16 },
   qualifierChip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6 },
+  mapPreview: { width: "100%", height: 160, borderRadius: 12 },
   directionsButton: {
     flexDirection: "row",
     alignItems: "center",

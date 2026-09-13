@@ -119,6 +119,13 @@ export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<A
   return bffFetch<Area[]>(`/locations/areas?${params.toString()}`);
 }
 
+/** The BFF proxies the Static Maps API rather than handing this app a URL to call Google
+ * directly — see LocationsService.getStaticMapImage's own doc comment for why a key usable here
+ * can't be safely shipped in the app bundle the way the website's own browser-exposed key can. */
+export function staticMapUrl(lat: number, lng: number): string {
+  return `${BFF_URL}/locations/static-map?lat=${lat}&lng=${lng}`;
+}
+
 export function fetchListingById(id: string, accessToken?: string | null): Promise<ListingDetailDto> {
   return accessToken
     ? authedBffFetch(accessToken, `/listings/${id}`)
