@@ -22,10 +22,15 @@ function ScrollableRow({
   children,
   contentContainerStyle,
   colors,
+  /** The row's own background — defaults to the page background, but the main category row now
+   * sits on a distinct `surfaceAlt` band, so its arrow buttons need to blend into that instead or
+   * they'd show as a mismatched patch over it. */
+  arrowBackground,
 }: {
   children: React.ReactNode;
   contentContainerStyle?: object;
   colors: { bg: string; textSoft: string };
+  arrowBackground?: string;
 }) {
   const ref = useRef<ScrollView>(null);
   const [viewport, setViewport] = useState(0);
@@ -42,7 +47,7 @@ function ScrollableRow({
       accessibilityRole="button"
       accessibilityLabel={`Scroll categories ${side}`}
       onPress={() => ref.current?.scrollTo({ x: side === "left" ? offset - 160 : offset + 160, animated: true })}
-      style={[styles.arrow, side === "left" ? { left: 0 } : { right: 0 }, { backgroundColor: colors.bg }]}
+      style={[styles.arrow, side === "left" ? { left: 0 } : { right: 0 }, { backgroundColor: arrowBackground ?? colors.bg }]}
     >
       <Icon name={side === "left" ? "chevronLeft" : "chevronRight"} size={18} color={colors.textSoft} />
     </Pressable>
@@ -84,29 +89,34 @@ export function CategoryChips({
 
   return (
     <View>
-      <ScrollableRow colors={colors} contentContainerStyle={styles.row}>
-        {HOME_TABS.map((tab) => {
-          const isActive = tab.value === active;
-          return (
-            <Pressable
-              key={tab.value}
-              onPress={() => onSelect(tab.value)}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: isActive ? colors.surfaceAlt : "transparent",
-                  borderColor: isActive ? colors.gold : colors.border,
-                },
-              ]}
-            >
-              <Icon name={tab.icon} size={15} color={isActive ? colors.text : colors.textSoft} />
-              <Text style={{ color: isActive ? colors.text : colors.textSoft, fontWeight: "700", fontSize: 12.5 }}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollableRow>
+      {/* A distinct band (matching the web app's `CategoryTabs` strip) rather than blending into
+       * whatever sits above/below it — the active tab's own green + gold-underline treatment
+       * reads clearly against this, the way it wouldn't sitting directly on the page background. */}
+      <View style={[styles.tabStrip, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+        <ScrollableRow colors={colors} contentContainerStyle={styles.row} arrowBackground={colors.surfaceAlt}>
+          {HOME_TABS.map((tab) => {
+            const isActive = tab.value === active;
+            return (
+              <Pressable
+                key={tab.value}
+                onPress={() => onSelect(tab.value)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: isActive ? colors.green : "transparent",
+                    borderBottomColor: isActive ? colors.gold : "transparent",
+                  },
+                ]}
+              >
+                <Icon name={tab.icon} size={15} color={isActive ? colors.onGreen : colors.textSoft} />
+                <Text style={{ color: isActive ? colors.onGreen : colors.textSoft, fontWeight: "700", fontSize: 12.5 }}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollableRow>
+      </View>
 
       {activeTab.propertyTypes.length > 0 && (
         <ScrollableRow colors={colors} contentContainerStyle={[styles.row, { paddingTop: 2 }]}>
@@ -135,15 +145,18 @@ export function CategoryChips({
 }
 
 const styles = StyleSheet.create({
-  row: { gap: 8, paddingHorizontal: 16, paddingVertical: 2 },
+  // No vertical padding here or on `row`/`chip` — the active tab's fill needs to reach the
+  // strip's own top/bottom edges to read as "this tab IS the header," not a pill floating inside
+  // it with margin on every side.
+  tabStrip: { borderTopWidth: 1, borderBottomWidth: 1 },
+  row: { gap: 2, paddingHorizontal: 8 },
   arrow: { position: "absolute", top: 0, bottom: 0, width: 30, alignItems: "center", justifyContent: "center", opacity: 0.94 },
   chip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingVertical: 9,
+    borderBottomWidth: 3,
+    paddingVertical: 12,
     paddingHorizontal: 14,
   },
   subChip: {

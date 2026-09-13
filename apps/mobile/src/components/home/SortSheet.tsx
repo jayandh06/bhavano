@@ -4,9 +4,17 @@ import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 
-export type SortValue = "newest" | "price_asc" | "price_desc" | "popular";
+// "auto" (default) matches the web app's Auto sort — the recent-listings mix + boost-cap (see
+// docs/plans/homepage-category-mix-and-boost-page-cap.md). Note this app's own infinite-scroll
+// fetch is cursor-based (see bffClient.ts's ListingsQuery.cursor), which ListingsService.list()
+// only ever plain-sorts regardless of `sort` — the mix currently only runs for offset-paginated
+// callers (the website). So "Auto" behaves identically to "Newest first" here today; it's kept as
+// its own option for parity with web and to pick up the mix automatically once mobile's fetch
+// moves to offset pagination, without another UI change then.
+export type SortValue = "auto" | "newest" | "price_asc" | "price_desc" | "popular";
 
 export const SORT_OPTIONS: { value: SortValue; label: string }[] = [
+  { value: "auto", label: "Auto" },
   { value: "newest", label: "Newest first" },
   { value: "price_asc", label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },

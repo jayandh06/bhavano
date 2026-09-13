@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView, BottomSheetView } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
@@ -28,6 +28,11 @@ import {
 import { useGoogleSignIn } from "../lib/googleSignIn";
 import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
 import { Icon } from "../components/Icon";
+import { GoogleIcon } from "../components/GoogleIcon";
+
+// Same fallback/env-var pattern as LegalFooter.tsx's own SITE_URL — used here for the login
+// sheet's Terms/Privacy links.
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
 
 const TOKEN_KEY = "bhavano.accessToken";
 /** The city the user last picked, by slug-free name. AsyncStorage rather than SecureStore: this
@@ -497,15 +502,32 @@ export function HomeSheetsProvider({
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Log in to continue</Text>
               {/* Google first, matching the web and admin login dialogs — most people already
                 * have a Google account signed into the device, so it is usually one tap where
-                * phone OTP always costs an SMS wait. Still a plain "G" rather than the real
-                * four-colour mark: that needs react-native-svg, which this app does not have
-                * (see the icon-outline work earlier — same gap, not fixed here). */}
+                * phone OTP always costs an SMS wait. */}
               <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
-                <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>G  Continue with Google</Text>
+                <GoogleIcon size={18} />
+                <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Continue with Google</Text>
               </Pressable>
               <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone OTP</Text>
               </Pressable>
+              {/* Same wording/links as the web login dialog's own disclaimer. */}
+              <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
+                By continuing you agree to Bhavano&apos;s{" "}
+                <Text
+                  style={{ color: colors.textSoft, fontWeight: "700" }}
+                  onPress={() => Linking.openURL(`${SITE_URL}/terms`)}
+                >
+                  Terms of Service
+                </Text>{" "}
+                and{" "}
+                <Text
+                  style={{ color: colors.textSoft, fontWeight: "700" }}
+                  onPress={() => Linking.openURL(`${SITE_URL}/privacy`)}
+                >
+                  Privacy Policy
+                </Text>
+                .
+              </Text>
               {error && <Text style={styles.errorText}>{error}</Text>}
             </>
           )}
@@ -619,7 +641,16 @@ const styles = StyleSheet.create({
   },
   cityRow: { paddingVertical: 10, paddingHorizontal: 6 },
   primaryButton: { borderRadius: 8, paddingVertical: 13, alignItems: "center", marginBottom: 10 },
-  outlineButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 13, alignItems: "center" },
+  outlineButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingVertical: 13,
+    marginBottom: 12,
+  },
   countryChip: { borderWidth: 1, borderRadius: 9, paddingVertical: 12, paddingHorizontal: 14, justifyContent: "center" },
   errorText: { color: "#c0554b", fontSize: 13, marginBottom: 10 },
   toast: {

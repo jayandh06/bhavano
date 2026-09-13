@@ -66,7 +66,7 @@ export interface ListingsQuery {
   /** Append-style infinite-scroll cursor — pass back the previous page's `nextCursor`. */
   cursor?: string;
   limit?: number;
-  sort?: "newest" | "price_asc" | "price_desc" | "popular";
+  sort?: "auto" | "newest" | "price_asc" | "price_desc" | "popular";
 }
 
 export function fetchListings(query: ListingsQuery, accessToken?: string | null): Promise<ListingsPage> {
