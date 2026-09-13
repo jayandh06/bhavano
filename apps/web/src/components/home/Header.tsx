@@ -11,6 +11,7 @@ import { HeaderAuthButtons } from "./HeaderAuthButtons";
 import type { HomeTabValue } from "@/lib/homeCategories";
 import { CategoryTabs } from "./CategoryTabs";
 import { MobileHeaderCollapse } from "./MobileHeaderCollapse";
+import { MobileInlineSearch } from "./MobileInlineSearch";
 import { HeaderDrawer } from "./HeaderDrawer";
 import { Icon } from "./Icon";
 
@@ -50,8 +51,19 @@ export function Header({
   /** Passed straight through to `SearchBar`'s "Popular searches" section — see its own prop doc. */
   popularSearches?: PopularSearchDto[];
 }) {
+  // Built once, used in three slots (desktop's always-on bar, the mobile inline toggle, and the
+  // collapsed bar's "extended header" panel) — the same element mounts as an independent instance
+  // wherever it actually renders, so search behaves identically everywhere without three copies
+  // of this prop list.
+  const searchBarElement = (
+    <Suspense>
+      <SearchBar initialQuery={searchQuery} cityName={cityName} areaName={areaName} allCities={allCities} popularSearches={popularSearches} />
+    </Suspense>
+  );
+
   return (
     <MobileHeaderCollapse
+      searchBar={searchBarElement}
       collapsedBar={
         <>
           <Link href="/" aria-label="Bhavano — home" className="flex items-center shrink-0">
@@ -139,24 +151,16 @@ export function Header({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 sm:gap-3 pb-2.5 sm:pb-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 pb-2.5 sm:pb-3 relative">
             <Suspense>
               <LocationPicker currentCityName={cityName} popularCities={popularCities} currentSegments={currentSegments} />
             </Suspense>
-            {/* Desktop and tablet only. On a phone the browse-and-search job belongs to the
-              * listing pages themselves, and a search box here was competing for width with the
-              * two controls that matter more on arrival: which city, and post an ad. */}
-            <div className="hidden sm:block flex-1 min-w-0">
-              <Suspense>
-                <SearchBar
-                  initialQuery={searchQuery}
-                  cityName={cityName}
-                  areaName={areaName}
-                  allCities={allCities}
-                  popularSearches={popularSearches}
-                />
-              </Suspense>
-            </div>
+            {/* Desktop and tablet: the full bar, always visible. On a phone it starts as a plain
+              * icon (no room beside the city picker and Post-ad button) that expands to cover
+              * this row on tap — see MobileInlineSearch, which needs this row's `relative` above
+              * to position itself over it. */}
+            <div className="hidden sm:block flex-1 min-w-0">{searchBarElement}</div>
+            <MobileInlineSearch>{searchBarElement}</MobileInlineSearch>
             {/* One element at every size now, since it sits on this row in both layouts — only
               * the label shortens. */}
             {/* Filled rather than outlined. It is the action the ad campaigns pay for and the

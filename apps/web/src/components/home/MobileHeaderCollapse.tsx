@@ -8,11 +8,13 @@ import { Icon } from "./Icon";
  *
  * Desktop renders `children` — the full server-rendered header — untouched; this component adds
  * nothing there. On a phone, once the page is scrolled past the top the tall pinned header is
- * swapped for a ~52px bar: `[☰] logo ········· Post ad`. The `☰` opens a drawer holding the
+ * swapped for a ~52px bar: `[☰] [🔍] logo ········· Post ad`. The `☰` opens a drawer holding the
  * city picker, category links, the utility links, the account menu, and the theme toggle —
- * every one of them server-rendered in `drawer`, so this leaf only toggles visibility. That is
- * the whole reason it exists: Header.tsx stays a Server Component and the SEO-relevant markup
- * never moves into a client-only fetch.
+ * every one of them server-rendered in `drawer`, so this leaf only toggles visibility. The `🔍`
+ * drops an "extended header" strip below the bar holding the same `SearchBar` passed in as
+ * `searchBar` — the full header's search box is otherwise off-screen once collapsed, since it
+ * only lives in `children`. That is the whole reason it exists: Header.tsx stays a Server
+ * Component and the SEO-relevant markup never moves into a client-only fetch.
  *
  * Collapse is driven by an IntersectionObserver sentinel, not a scroll handler.
  *
@@ -24,16 +26,22 @@ export function MobileHeaderCollapse({
   children,
   collapsedBar,
   drawer,
+  searchBar,
 }: {
   children: ReactNode;
-  /** Sits to the right of the hamburger in the collapsed bar — logo + spacer + Post ad. */
+  /** Sits to the right of the hamburger (and search icon) in the collapsed bar — logo + spacer +
+   * Post ad. */
   collapsedBar: ReactNode;
   /** Contents of the hamburger drawer. */
   drawer: ReactNode;
+  /** The same `SearchBar` shown in the full header's second row — reused here (not duplicated
+   * logic) for the "extended header" search panel that drops below the collapsed bar. */
+  searchBar: ReactNode;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -41,8 +49,12 @@ export function MobileHeaderCollapse({
     const io = new IntersectionObserver(([entry]) => {
       const nextCollapsed = !entry.isIntersecting;
       setCollapsed(nextCollapsed);
-      // The drawer only lives inside the collapsed bar, so scrolling back up must dismiss it.
-      if (!nextCollapsed) setMenuOpen(false);
+      // The drawer/search panel only live inside the collapsed bar, so scrolling back up must
+      // dismiss them.
+      if (!nextCollapsed) {
+        setMenuOpen(false);
+        setSearchOpen(false);
+      }
     });
     io.observe(el);
     return () => io.disconnect();
@@ -81,6 +93,17 @@ export function MobileHeaderCollapse({
     };
   }, [menuOpen]);
 
+  // No scrim and no scroll lock for the search panel — unlike the drawer it's a thin strip, not
+  // a modal takeover, so the page stays scrollable/interactable behind it; only Escape closes it.
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSearchOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [searchOpen]);
+
   return (
     <>
       <div ref={sentinelRef} aria-hidden className="h-px w-full" />
@@ -96,6 +119,9 @@ export function MobileHeaderCollapse({
       {/* Reserves the fixed bar's height in flow (only when it's actually shown: mobile +
         * collapsed) so page content isn't hidden behind it. */}
       {collapsed && <div aria-hidden className="sm:hidden h-[52px]" />}
+      {/* Same reservation for the extended search panel below the bar — an approximation of its
+        * rendered height (SearchBar's own ~50px plus this panel's padding), not a measured value. */}
+      {collapsed && searchOpen && <div aria-hidden className="sm:hidden h-[70px]" />}
 
       <div
         className={`sm:hidden fixed top-0 inset-x-0 z-40 bg-[linear-gradient(180deg,var(--surface),var(--bg))] border-b border-border shadow-[0_2px_8px_rgba(11,61,46,0.09)] ${
@@ -107,13 +133,32 @@ export function MobileHeaderCollapse({
             type="button"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={() => {
+              setMenuOpen((o) => !o);
+              setSearchOpen(false);
+            }}
             className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-border bg-surface-alt text-text text-[19px] cursor-pointer"
           >
             <Icon name={menuOpen ? "close" : "menu"} />
           </button>
+          <button
+            type="button"
+            aria-label={searchOpen ? "Close search" : "Search"}
+            aria-expanded={searchOpen}
+            onClick={() => {
+              setSearchOpen((o) => !o);
+              setMenuOpen(false);
+            }}
+            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-border bg-surface-alt text-text text-[17px] cursor-pointer"
+          >
+            <Icon name={searchOpen ? "close" : "search"} />
+          </button>
           <div className="flex-1 min-w-0 flex items-center gap-2">{collapsedBar}</div>
         </div>
+
+        {searchOpen && (
+          <div className="border-t border-border px-4 py-2.5">{searchBar}</div>
+        )}
 
         {menuOpen && (
           <>
