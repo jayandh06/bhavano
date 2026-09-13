@@ -312,7 +312,7 @@ describe('OutreachService.sendClaimVerification — ListingNotificationLog write
       sent: overrides.whatsappSent ?? true,
       messageId: 'whatsappMessageId' in overrides ? overrides.whatsappMessageId : 'msg-123',
     });
-    return { service, prisma };
+    return { service, prisma, msg91 };
   }
 
   it('logs one row per channel, both successful', async () => {
@@ -340,6 +340,22 @@ describe('OutreachService.sendClaimVerification — ListingNotificationLog write
         deliveryStatus: null,
         deliveryStatusAt: null,
       }),
+    );
+  });
+
+  // Regression test: MSG91's claim_listing template has its dynamic button's base URL
+  // registered as the bare domain (confirmed live against a real delivered message), not
+  // ".../claim/" — a bare `${listingId}?via=whatsapp` suffix landed on the domain root instead
+  // of the claim page ("page not found"), while the body's own separately-built plain-text link
+  // worked fine. The suffix has to carry the "claim/" path itself to compensate.
+  it('sends the WhatsApp button suffix with a claim/ prefix, compensating for the bare-domain button base', async () => {
+    const { service, msg91 } = setup();
+    await service.sendClaimVerification('c1');
+
+    expect(msg91.sendListingVerificationRequest).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Object),
+      'claim/listing1?via=whatsapp',
     );
   });
 

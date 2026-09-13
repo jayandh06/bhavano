@@ -514,7 +514,16 @@ export class OutreachService {
           phone: contact.phoneE164,
           claimLink: `${siteUrl}/claim/${listingId}?via=whatsapp`,
         },
-        `${listingId}?via=whatsapp`,
+        // The "Confirm Ownership" button's URL is this suffix appended to whatever base MSG91
+        // has registered for claim_listing's dynamic button — confirmed live (2026-09-13, real
+        // button copied from a delivered message) that base is just the bare domain
+        // (`https://www.bhavano.com/`), NOT `.../claim/` the way buttonUrlBase.txt/this code
+        // originally assumed — so a bare `${listingId}?via=whatsapp` suffix landed on the domain
+        // root instead of the claim page (button showed "page not found" while the body's own
+        // plain-text link, built independently above, worked fine). Prefixing `claim/` here
+        // compensates in code rather than depending on MSG91's dashboard to have the "right"
+        // base registered — works regardless of what's actually configured there.
+        `claim/${listingId}?via=whatsapp`,
       );
       if (result.sent) channels.push('whatsapp');
       // Unlike email, this row's providerMessageId lets WhatsappWebhookController's existing,
