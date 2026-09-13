@@ -5,6 +5,7 @@ import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useConversationsQuery } from "../../src/lib/queries";
 import { GatedScreen } from "../../src/components/home/GatedScreen";
+import { Icon } from "../../src/components/Icon";
 
 // Moved here from the old top-level app/messages/index.tsx to become a bottom tab (replacing
 // Saved) — dropped the `<Stack.Screen headerShown>` override that screen needed as a pushed
@@ -48,27 +49,40 @@ export default function MessagesScreen() {
               No conversations yet.
             </Text>
           }
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push(`/messages/${item.id}`)}
-              style={[styles.row, { borderColor: colors.border }]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>{item.otherPartyName}</Text>
-                <Text style={{ fontSize: 12, color: colors.muted }}>{item.listingTitle}</Text>
-                {item.lastMessage && (
-                  <Text style={{ fontSize: 13, color: colors.textSoft, marginTop: 4 }} numberOfLines={1}>
-                    {item.lastMessage.body}
-                  </Text>
-                )}
-              </View>
-              {item.unreadCount > 0 && (
-                <View style={[styles.badge, { backgroundColor: colors.green }]}>
-                  <Text style={{ color: colors.onGreen, fontSize: 11, fontWeight: "700" }}>{item.unreadCount}</Text>
+          renderItem={({ item }) => {
+            const hasUnread = item.unreadCount > 0;
+            return (
+              <Pressable
+                onPress={() => router.push(`/messages/${item.id}`)}
+                style={[styles.row, { borderColor: colors.border }]}
+              >
+                {/* Filled/green once there's anything unread, outline/muted once fully read —
+                    a glance at the icon says which, without needing the count badge too. */}
+                <View style={[styles.iconCircle, { backgroundColor: hasUnread ? colors.green : colors.surfaceAlt }]}>
+                  <Icon name="message" size={16} filled={hasUnread} color={hasUnread ? colors.onGreen : colors.muted} />
                 </View>
-              )}
-            </Pressable>
-          )}
+                <View style={{ flex: 1 }}>
+                  {/* The other participant's name/phone never renders here — this app makes its
+                      money on a *paid* contact reveal, so a free-to-read messages list can't be
+                      the place that hands out who someone is. The listing is what the thread is
+                      about either way. */}
+                  <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }} numberOfLines={1}>
+                    {item.listingTitle}
+                  </Text>
+                  {item.lastMessage && (
+                    <Text style={{ fontSize: 13, color: colors.textSoft, marginTop: 4 }} numberOfLines={1}>
+                      {item.lastMessage.body}
+                    </Text>
+                  )}
+                </View>
+                {hasUnread && (
+                  <View style={[styles.badge, { backgroundColor: colors.green }]}>
+                    <Text style={{ color: colors.onGreen, fontSize: 11, fontWeight: "700" }}>{item.unreadCount}</Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          }}
         />
       )}
     </View>
@@ -76,6 +90,7 @@ export default function MessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, padding: 14 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 10, padding: 14 },
+  iconCircle: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   badge: { borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 3 },
 });

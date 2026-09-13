@@ -86,8 +86,12 @@ export default function ConversationScreen() {
       style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      {/* Never the other participant's name/phone here — same reasoning as the messages list
+          (see MessagingService.listConversations): a free-to-read screen can't be what hands out
+          who someone is when the whole business is a *paid* contact reveal. The listing is what
+          the thread is about either way, and it's already the header on the list screen too. */}
       <Stack.Screen
-        options={{ headerShown: true, title: conversation?.otherPartyName ?? "Conversation" }}
+        options={{ headerShown: true, title: conversation?.listing.title ?? "Conversation" }}
       />
       {/* The way back to the ad this thread is about.
         *
