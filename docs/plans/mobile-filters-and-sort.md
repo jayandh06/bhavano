@@ -95,7 +95,7 @@ export interface ListingsQuery {
   furnished?: "unfurnished" | "semi" | "furnished";
   cursor?: string;
   limit?: number;
-  sort?: "newest" | "price_asc" | "price_desc" | "popular";
+  sort?: "auto" | "newest" | "price_asc" | "price_desc" | "popular";
 }
 ```
 
@@ -139,9 +139,16 @@ sheet, triggers one refetch).
 
 ### 4. New `src/components/home/SortSheet.tsx`
 
-Small `BottomSheetModal`, single-select list (Newest / Price: Low-High / Price: High-Low / Most
-viewed), same 4 values as web's `SortDropdown` — tap an option, it applies immediately and closes
-(no Apply step needed for a single choice).
+Small `BottomSheetModal`, single-select list (Auto / Newest / Price: Low-High / Price: High-Low /
+Most viewed), same values as web's `SortDropdown` — tap an option, it applies immediately and
+closes (no Apply step needed for a single choice).
+
+**Update**: Auto added later, as the default, matching web's Auto-sort feature
+(docs/plans/homepage-category-mix-and-boost-page-cap.md). It's a no-op here today — this app's
+infinite scroll is cursor-based (`ListingsQuery.cursor` below), and `ListingsService.list()`'s
+recent-listings mix only runs for offset-paginated callers, so "Auto" and "Newest" produce the
+same plain-sorted order until mobile's fetch moves to offset pagination. Kept as its own option
+now for UI parity with web, and so it picks up the real behavior later without another change here.
 
 ### 5. `app/(tabs)/index.tsx`
 
