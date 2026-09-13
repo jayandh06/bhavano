@@ -72,7 +72,9 @@ export function HorizontalScroller({
       type="button"
       aria-label={`Scroll ${ariaLabel} ${side}`}
       onClick={() => scrollBy(side === "left" ? -220 : 220)}
-      className={`absolute ${side === "left" ? "left-0" : "right-0"} top-0 bottom-0 z-20 w-8 flex items-center justify-center border-0 cursor-pointer text-text-soft text-lg opacity-90 ${arrowBackground}`}
+      className={`absolute ${side === "left" ? "left-0" : "right-0"} top-0 bottom-0 z-20 w-6 flex items-center ${
+        side === "left" ? "justify-start pl-0.5" : "justify-end pr-0.5"
+      } border-0 cursor-pointer text-text-soft text-lg opacity-90 ${arrowBackground}`}
     >
       <Icon name={side === "left" ? "chevronLeft" : "chevronRight"} />
     </button>
