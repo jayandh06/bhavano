@@ -319,6 +319,30 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     expect(findMany).toHaveBeenCalledTimes(1);
     expect(findMany.mock.calls[0][0]).toMatchObject({ skip: 24, take: 12 });
   });
+
+  // "Auto" (undefined/'auto'/'newest', for old links) is the only sort that gets the mix — a
+  // visitor who explicitly asked for a different order wants exactly that, not a reshuffled
+  // version of it, even on page 1.
+  it.each(['price_asc', 'price_desc', 'popular'] as const)(
+    'bypasses the mix entirely on page 1 when sort=%s is explicitly chosen',
+    async (sort) => {
+      const { service, findMany } = makeMixService(() => []);
+
+      await service.list({ offset: 0, limit: 12, sort } as never);
+
+      expect(findMany).toHaveBeenCalledTimes(1);
+      expect(findMany.mock.calls[0][0]).toMatchObject({ skip: 0, take: 12 });
+    },
+  );
+
+  it('still applies the mix for sort=auto and the legacy sort=newest, same as no sort at all', async () => {
+    for (const sort of [undefined, 'auto', 'newest'] as const) {
+      const { service, findMany } = makeMixService(() => []);
+      await service.list({ offset: 0, limit: 4, ...(sort ? { sort } : {}) } as never);
+      // 3 findMany calls (boosted, recent pool, older top-up) means the mix ran, not the plain path.
+      expect(findMany).toHaveBeenCalledTimes(3);
+    }
+  });
 });
 
 describe('ListingsService.listEngagement', () => {

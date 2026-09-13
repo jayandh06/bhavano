@@ -19,7 +19,12 @@ const LISTING_CATEGORIES: ListingCategory[] = [
 ];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 const FURNISHING_VALUES = ['unfurnished', 'semi', 'furnished'] as const;
-const SORT_VALUES = ['newest', 'price_asc', 'price_desc', 'popular'] as const;
+// 'newest' kept as an accepted (but no longer UI-produced) value for any already-bookmarked/
+// shared `?sort=newest` link — see SortDropdown.tsx's own note on why the UI now sends 'auto'
+// instead. Both mean the same thing to ListingsService.list(): plain newest-first ordering, with
+// the recent-listings mix (docs/plans/homepage-category-mix-and-boost-page-cap.md) layered on top
+// for the first pages — the mix only turns off once a *different*, explicit sort is chosen.
+const SORT_VALUES = ['auto', 'newest', 'price_asc', 'price_desc', 'popular'] as const;
 
 /** Reuses the same option lists the posting wizard validates against — one source of truth
  * for what values these filters (and CATEGORY_FIELD_CONFIG's selects) can ever take. */

@@ -148,11 +148,21 @@ const ORDER_BY: Record<
   NonNullable<ListListingsDto['sort']>,
   Prisma.ListingOrderByWithRelationInput[]
 > = {
+  auto: [{ createdAt: 'desc' }, { id: 'asc' }],
   newest: [{ createdAt: 'desc' }, { id: 'asc' }],
   price_asc: [{ price: 'asc' }, { id: 'asc' }],
   price_desc: [{ price: 'desc' }, { id: 'asc' }],
   popular: [{ viewCount: 'desc' }, { id: 'asc' }],
 };
+
+/** `sort` values that turn the recent-listings mix (fetchOffsetPage) off — a visitor who
+ * explicitly picked "Price: Low to High" or "Most viewed" gets exactly that ordering, boosted
+ * listings still first (unchanged, uncapped, same as before Part 2) but no round-robin/cap
+ * merging on top of it. 'auto' (the default, and 'newest' for old links — see ListListingsDto's
+ * own note) is the only case that gets the mix. */
+function wantsExplicitSort(sort: ListListingsDto['sort']): boolean {
+  return sort === 'price_asc' || sort === 'price_desc' || sort === 'popular';
+}
 
 /** Same tie-breaker convention as ORDER_BY above, for the admin listings screen's own
  * (smaller) set of sort options. */
@@ -477,7 +487,7 @@ export class ListingsService {
     // homepage, BrowseListingsView) already gets the fix. Worth revisiting for mobile separately.
     const [rows, total] = await Promise.all([
       offset !== undefined
-        ? this.fetchOffsetPage(where, orderBy, offset, limit, homeCategory, cityId)
+        ? this.fetchOffsetPage(where, orderBy, offset, limit, homeCategory, cityId, wantsExplicitSort(sort))
         : this.prisma.listing.findMany({
             where,
             include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
@@ -548,10 +558,16 @@ export class ListingsService {
     limit: number,
     homeCategory: HomeCategoryFilter | undefined,
     cityId: string | undefined,
+    /** true for an explicitly-chosen sort (Price/Most viewed) — see wantsExplicitSort. Falls
+     * straight through to the plain query for every page, not just page 3+: a visitor who asked
+     * for "Price: Low to High" wants exactly that, not a round-robin'd/boost-capped reshuffle of
+     * it. Boosted listings still sort first regardless (unchanged, uncapped — same as before
+     * Part 2 existed), since that part of the ordering isn't what "sort by" is about. */
+    explicitSort: boolean,
   ) {
     const include = { city: true, area: true, ...LISTING_MEDIA_INCLUDE };
 
-    if (offset >= RECENT_MIX_PAGES * limit) {
+    if (explicitSort || offset >= RECENT_MIX_PAGES * limit) {
       return this.prisma.listing.findMany({ where, include, orderBy, skip: offset, take: limit });
     }
 
