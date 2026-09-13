@@ -20,7 +20,9 @@ import { Icon } from "./Icon";
  * `CategoryChips.tsx`) — a flat, muted icon on a solid background rather than a bold green
  * circle, so the two apps' scroll affordance reads the same. `arrowBackground` exists for the
  * same reason it does there: this row rarely sits directly on the page background, and a solid
- * swatch needs to know what to blend into.
+ * swatch needs to know what to blend into. Deliberately no `opacity` on the button itself — that
+ * fades the *fill* too, not just the icon, which read as a see-through smear with scrolled
+ * content showing through it rather than a solid chip.
  */
 export function HorizontalScroller({
   children,
@@ -74,7 +76,7 @@ export function HorizontalScroller({
       onClick={() => scrollBy(side === "left" ? -220 : 220)}
       className={`absolute ${side === "left" ? "left-0" : "right-0"} top-0 bottom-0 z-20 w-6 flex items-center ${
         side === "left" ? "justify-start pl-0.5" : "justify-end pr-0.5"
-      } border-0 cursor-pointer text-text-soft text-lg opacity-90 ${arrowBackground}`}
+      } border-0 cursor-pointer text-text-soft text-lg ${arrowBackground}`}
     >
       <Icon name={side === "left" ? "chevronLeft" : "chevronRight"} />
     </button>

@@ -144,13 +144,16 @@ export function CategoryTabs({
         * touch. Real `<Link>`s to the same SEO pages the mega menu points at, not a client
         * filter, so this stays crawlable and every option keeps its own indexable URL. Same
         * green-fill / gold-border oval-chip treatment as the native app's tab submenu, so the
-        * two only differ in what's `sm:hidden` vs always mounted. */}
+        * two only differ in what's `sm:hidden` vs always mounted. Its arrow is explicitly `bg-bg`
+        * (the page body color), not `bg-transparent` — this row still physically sits inside the
+        * tab strip's `bg-surface-alt` band above (see Header.tsx), so "transparent" let that
+        * band's color show through instead of reading as "no background." */}
       {activeTabData && activeTabData.column1.length > 0 && (
         <HorizontalScroller
           ariaLabel={`${activeTabData.label} sub-categories`}
           className="flex gap-1.5 pt-1.5"
           contentClassName="sm:hidden"
-          arrowBackground="bg-transparent"
+          arrowBackground="bg-bg"
         >
           <Link
             href={buildBrowsePath({ cityName, ...segmentsForHomeCategory(active) })}
