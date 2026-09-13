@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Post, Query, StreamableFile } from '@nestjs/common';
 import type { Area, City, ReverseGeocodeResultDto } from '@bhavano/types';
 import { LocationsService } from './locations.service';
 import { ReverseGeocodeDto } from './dto/reverse-geocode.dto';
@@ -30,5 +30,19 @@ export class LocationsController {
   @Post('reverse-geocode')
   reverseGeocodeGoogle(@Body() dto: ReverseGeocodeDto): Promise<ReverseGeocodeResultDto> {
     return this.locationsService.reverseGeocodeGoogle(dto.lat, dto.lng);
+  }
+
+  /** Proxies the Google Static Maps API — see LocationsService.getStaticMapImage's own doc
+   * comment for why the mobile app can't just call Google directly with its own key the way the
+   * website's map preview does. */
+  @Get('static-map')
+  async staticMap(@Query('lat') lat: string, @Query('lng') lng: string): Promise<StreamableFile> {
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
+    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+      throw new BadRequestException('lat and lng query params are required');
+    }
+    const { buffer, contentType } = await this.locationsService.getStaticMapImage(latNum, lngNum);
+    return new StreamableFile(buffer, { type: contentType });
   }
 }

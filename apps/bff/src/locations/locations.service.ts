@@ -255,4 +255,36 @@ export class LocationsService {
       isNewCity,
     };
   }
+
+  /**
+   * Proxies the Google Static Maps API rather than handing the mobile app a URL to call directly
+   * (the way the website does with its own browser-exposed `NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY`) —
+   * the Static Maps API only supports HTTP-referrer/IP-address key restrictions, neither of which
+   * means anything for a distributed app binary with no fixed referrer or client IP, so a key
+   * usable there could not be safely restricted the way an "Android/iOS app" key restriction
+   * would. Keeping the key server-side and returning the image bytes directly avoids ever
+   * shipping it in the app bundle. Web keeps using its own key/URL unchanged — it already works
+   * and a browser page genuinely can enforce a referrer restriction. */
+  async getStaticMapImage(lat: number, lng: number): Promise<{ buffer: Buffer; contentType: string }> {
+    const apiKey = this.config.get<string>('GOOGLE_MAPS_SERVER_KEY');
+    if (!apiKey) {
+      throw new ServiceUnavailableException('Map preview is not configured on this server yet');
+    }
+
+    const params = new URLSearchParams({
+      center: `${lat},${lng}`,
+      zoom: '15',
+      size: '640x200',
+      scale: '2', // retina-sharp on a phone without doubling the requested tile size itself
+      markers: `color:0x0b3d2e|${lat},${lng}`,
+      key: apiKey,
+    });
+    const res = await fetch(`https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`);
+    if (!res.ok) {
+      this.logger.warn(`Google Static Maps API request failed: ${res.status}`);
+      throw new ServiceUnavailableException('Failed to load the map preview');
+    }
+
+    return { buffer: Buffer.from(await res.arrayBuffer()), contentType: res.headers.get('content-type') ?? 'image/png' };
+  }
 }
