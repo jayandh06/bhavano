@@ -34,7 +34,9 @@ import { GoogleIcon } from "../components/GoogleIcon";
 // sheet's Terms/Privacy links.
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
 
-const TOKEN_KEY = "bhavano.accessToken";
+// Exported so PostAdWizard can re-read the just-written token directly after a login it
+// triggered mid-submit — see its own onSubmit for why a fresh read beats the accessToken prop.
+export const TOKEN_KEY = "bhavano.accessToken";
 /** The city the user last picked, by slug-free name. AsyncStorage rather than SecureStore: this
  * is a preference, not a secret, and SecureStore has no web implementation. Mirrors web's
  * `bhavano_city` cookie — see apps/web/src/lib/defaultCity.ts. */

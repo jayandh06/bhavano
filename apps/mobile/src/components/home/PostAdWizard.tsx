@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, Text
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
+import * as SecureStore from "expo-secure-store";
 import type { Area, City, ListingCategory, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
@@ -15,6 +16,7 @@ import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName } from "../Icon";
 import { createListing, fetchAreas, uploadPhoto } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
@@ -113,9 +115,12 @@ export function PostAdWizard({
 }: {
   cities: City[];
   defaultCityId?: string;
-  accessToken: string;
+  /** Undefined for a logged-out visitor, who now gets the whole form — see `onSubmit`, matching
+   * the website's own PostAdWizard. */
+  accessToken?: string;
 }) {
   const { colors } = useAppTheme();
+  const { requireLogin } = useHomeSheets();
   const router = useRouter();
   const [listingId] = useState(() => Crypto.randomUUID());
 
@@ -329,15 +334,36 @@ export function PostAdWizard({
     photoUris.length > 0 &&
     requiredAttributesFilled;
 
+  /**
+   * Nothing in this form touches the server before this runs — photos are local URIs, not
+   * uploaded, until Submit — so there's no technical reason to ask for an account any earlier
+   * than here, matching the website's own PostAdWizard.
+   *
+   * `accessToken` may still be the `undefined` this component mounted with even once logged in:
+   * `requireLogin`'s `onSuccess` (below) fires synchronously right after the login sheet writes
+   * the token to SecureStore, before React has re-rendered this component with the new prop —
+   * so the resumed call re-reads SecureStore directly rather than trusting a closure that's
+   * guaranteed to still be stale at that exact moment.
+   */
   async function onSubmit() {
     if (!category || !transactionType) return;
+
+    let activeToken = accessToken;
+    if (!activeToken) {
+      activeToken = (await SecureStore.getItemAsync(TOKEN_KEY)) ?? undefined;
+    }
+    if (!activeToken) {
+      requireLogin({ onSuccess: () => void onSubmit() });
+      return;
+    }
+
     setPending(true);
     setError(null);
     try {
       const uploadedPhotos: { photoNo: number; hash: string; ext: string }[] = [];
       for (let i = 0; i < photoUris.length; i++) {
         const photoNo = i + 1;
-        const upload = await uploadPhoto(photoUris[i], listingId, photoNo, accessToken);
+        const upload = await uploadPhoto(photoUris[i], listingId, photoNo, activeToken);
         uploadedPhotos.push({ photoNo, hash: upload.hash, ext: upload.ext });
       }
 
@@ -361,7 +387,7 @@ export function PostAdWizard({
           lat: pin?.lat,
           lng: pin?.lng,
         },
-        accessToken,
+        activeToken,
       );
 
       router.replace(`/listing/${listing.id}`);

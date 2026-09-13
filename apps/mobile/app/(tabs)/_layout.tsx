@@ -15,7 +15,11 @@ const TAB_ICONS: Record<string, IconName> = {
 // "went to a different, broken-looking page" rather than "asked to log in." Intercepting the tab
 // press itself instead prompts login immediately and stays on whichever tab was already active —
 // the navigation only actually happens once logged in.
-const AUTH_REQUIRED_TABS = new Set(["messages", "post", "account"]);
+//
+// Post isn't here: it's usable fully logged out now, matching the website — PostAdWizard's own
+// onSubmit is what actually prompts login, only once there's something to post, not before the
+// visitor has even seen the form.
+const AUTH_REQUIRED_TABS = new Set(["messages", "account"]);
 
 export default function TabsLayout() {
   const { colors } = useAppTheme();
