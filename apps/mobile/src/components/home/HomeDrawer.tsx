@@ -21,12 +21,11 @@ const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
  *  - No internal "Bhavano + ✕" header row — web's drawer doesn't have one either (its own
  *    hamburger button already toggles to a ✕ to close), and neither does the collapsed bar this
  *    opens from.
- *  - Web's full account block (Profile/Favourites/Messages/My listings/Saved searches/Logout) is
- *    a single "Account" row here instead — native already centralizes all of that under its own
- *    Account tab (see index.tsx's own comment on why Login/Messages are the only account-ish
- *    things duplicated outside it), so re-listing every one of those here would just be a second,
- *    redundant path to the same tab. Messages keeps its own row since native (like web) treats it
- *    as the one thing that stays reachable outside the Account tab.
+ *  - Web's account block (Profile/Favourites/Messages/My listings/Saved searches/Logout) maps
+ *    onto whatever native actually has a screen for: Profile → the Account tab, Favourites →
+ *    `/saved`, Messages → its own tab, Purchase history → `/purchases`. My listings/Saved
+ *    searches have no native screen yet, so they're left out rather than linking somewhere that
+ *    doesn't exist.
  * Tools/Plans/Help have no native screens, so they open bhavano.com in an in-app browser, same as
  * `UtilityBar`.
  */
@@ -38,7 +37,9 @@ export function HomeDrawer({
   activeCategory,
   onSelectCategory,
   isLoggedIn,
+  userName,
   onLogin,
+  onLogout,
   theme,
   onToggleTheme,
 }: {
@@ -49,7 +50,11 @@ export function HomeDrawer({
   activeCategory: HomeTabValue;
   onSelectCategory: (value: HomeTabValue) => void;
   isLoggedIn: boolean;
+  /** Null while logged out or before the profile fetch resolves — the header row falls back to a
+   * plain "Account" label rather than showing nothing. */
+  userName?: string | null;
   onLogin: () => void;
+  onLogout: () => void;
   theme: "light" | "dark";
   onToggleTheme: () => void;
 }) {
@@ -178,13 +183,42 @@ export function HomeDrawer({
           {isLoggedIn && (
             <>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <Text style={[styles.sectionLabel, { color: colors.muted }]}>Account</Text>
+              <View style={styles.nameRow}>
+                <View style={[styles.avatar, { backgroundColor: colors.green }]}>
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 15 }}>
+                    {userName?.trim().charAt(0).toUpperCase() || <Icon name="user" size={15} color={colors.onGreen} />}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, flexShrink: 1 }} numberOfLines={1}>
+                  {userName ?? "Account"}
+                </Text>
+              </View>
+              <Pressable onPress={() => go("/account")} style={styles.navRow}>
+                <Icon name="user" size={17} color={colors.text} />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Profile</Text>
+              </Pressable>
+              <Pressable onPress={() => go("/saved")} style={styles.navRow}>
+                <Icon name="heart" size={17} color={colors.text} />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Favourites</Text>
+              </Pressable>
               <Pressable onPress={() => go("/messages")} style={styles.navRow}>
                 <Icon name="message" size={17} color={colors.text} />
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Messages</Text>
               </Pressable>
-              <Pressable onPress={() => go("/account")} style={styles.navRow}>
-                <Icon name="user" size={17} color={colors.text} />
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Account</Text>
+              <Pressable onPress={() => go("/purchases")} style={styles.navRow}>
+                <Icon name="pack" size={17} color={colors.text} />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Purchase history</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onLogout();
+                }}
+                style={styles.navRow}
+              >
+                <Icon name="logout" size={17} color="#c0554b" />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#c0554b" }}>Log out</Text>
               </Pressable>
             </>
           )}
@@ -251,6 +285,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionLabel: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 8, paddingVertical: 8, marginBottom: 4 },
+  avatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   navRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8 },
   divider: { height: 1, marginVertical: 12 },
   appearanceRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 4 },

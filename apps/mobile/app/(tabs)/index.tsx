@@ -5,7 +5,7 @@ import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import type { PropertyTypeFilter } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
-import { useAreasQuery, useInfiniteListingsQuery, useUnreadCountQuery } from "../../src/lib/queries";
+import { useAreasQuery, useInfiniteListingsQuery } from "../../src/lib/queries";
 import { CategoryChips } from "../../src/components/home/CategoryChips";
 import { CollapsedHeaderBar } from "../../src/components/home/CollapsedHeaderBar";
 import { HomeDrawer } from "../../src/components/home/HomeDrawer";
@@ -23,7 +23,7 @@ const WIDE_SCREEN_BREAKPOINT = 700;
 
 export default function HomeScreen() {
   const { colors, theme, toggleTheme } = useAppTheme();
-  const { city, openLocationPicker, requireLogin, accessToken, isLoggedIn } = useHomeSheets();
+  const { city, openLocationPicker, requireLogin, accessToken, isLoggedIn, profile, logout } = useHomeSheets();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 2 : 1;
@@ -51,7 +51,6 @@ export default function HomeScreen() {
   const COLLAPSE_THRESHOLD = 80;
 
   const { data: cityAreas = [] } = useAreasQuery(city?.id);
-  const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteListingsQuery(
     {
       homeCategory: category === "all" ? undefined : category,
@@ -147,25 +146,8 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <View style={styles.brandRow}>
-                {/* Logged-in only: the app's one always-visible route to Messages, with the
-                    unread count on it. Messages otherwise lives behind a button in the Account
-                    tab, where a count would never be seen. */}
-                {isLoggedIn && (
-                  <Pressable
-                    onPress={() => router.push("/messages")}
-                    accessibilityLabel={`Messages${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
-                    style={[styles.iconButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-                  >
-                    <Icon name="message" size={16} color={colors.text} />
-                    {unreadCount > 0 && (
-                      <View style={[styles.badge, styles.iconBadge, { backgroundColor: colors.green }]}>
-                        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.onGreen }}>
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </Text>
-                      </View>
-                    )}
-                  </Pressable>
-                )}
+                {/* Messages has its own bottom tab now (with its own reachable unread state) —
+                    no need to duplicate a route to it here too. */}
                 {/* Only an invitation to log in — once logged in there is nothing to offer here,
                     since the Account tab already owns profile and sign-out. Leaving it visible
                     made a logged-in user look logged out. */}
@@ -309,7 +291,9 @@ export default function HomeScreen() {
         activeCategory={category}
         onSelectCategory={onSelectCategoryFromDrawer}
         isLoggedIn={isLoggedIn}
+        userName={profile?.name}
         onLogin={() => requireLogin()}
+        onLogout={() => void logout()}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
@@ -407,7 +391,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   badge: { minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
-  iconBadge: { position: "absolute", top: -5, right: -6, borderWidth: 1.5, borderColor: "transparent" },
   sectionHeading: {
     flexDirection: "row",
     justifyContent: "space-between",
