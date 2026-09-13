@@ -129,6 +129,12 @@ rather than a vague paywall:
 1. **Rotating boost, not pay-to-permanently-pin** — boosted listings share the top slots on a
    fairness rotation rather than one seller with the deepest pockets squatting position #1
    forever. A quality/trust differentiator worth calling out in marketing copy.
+   **Update (2026-09-13)**: the boosted-first tier is now capped at 8 guaranteed "featured" slots
+   across the first 2 pages (`BOOST_FEATURED_CAP` in `listings.service.ts`) rather than unbounded
+   — see docs/plans/homepage-category-mix-and-boost-page-cap.md's Part 2. Once boost adoption
+   exceeds that, the cap (not this doc's original "boosted always sorts first, full stop") is what
+   actually governs visibility; listings boosted past the cap still show the Featured badge but
+   compete on their own merits rather than getting a guaranteed top slot.
 2. **Category-tiered boost pricing** — a ₹49 furniture boost and a ₹199 apartment boost, not one
    flat fee that's either exploitative for cheap categories or too cheap to matter for expensive
    ones.

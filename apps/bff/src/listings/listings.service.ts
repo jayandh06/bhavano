@@ -239,6 +239,26 @@ const RECENT_MIX_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
  * pathological bulk-import size turning this into an unbounded fetch. */
 const RECENT_MIX_POOL_CAP = 1000;
 
+/** Part 2 of the plan doc: bounds how many boosted listings can occupy the guaranteed-first
+ * "featured" slots, so the boost tier stays a real page-1/page-2 differentiator instead of
+ * (once boost adoption grows past this) spilling onto page 3+ and pushing organic content out of
+ * sight entirely — if everyone's boosted, nobody is. A no-op today (0 listings are boosted).
+ *
+ * Deliberately a flat total across the first `RECENT_MIX_PAGES` pages, front-loaded onto page 1
+ * first, rather than a strict "exactly N per page" split — simpler, and still satisfies "boosted
+ * ads show up in the first two pages" (the total is small enough to always fit within them). A
+ * stricter even split is straightforward to add later if page 1 alone ends up feeling crowded.
+ *
+ * Listings boosted *beyond* this cap are not hidden or demoted — they compete in the normal
+ * recent-mix/older pools on their own merits (see fetchOffsetPage) and still carry the "⭐
+ * Featured" badge (ListingCardDto.isBoosted, driven by boostedUntil independent of this cap) —
+ * they just don't get the guaranteed top slot. No residual ranking bump past the cap either: the
+ * simplest option, and it avoids a slow creep back toward "boost dominates everything" as more
+ * listings buy it. Both of these were open decisions in the plan doc, resolved this way when
+ * building it — reachable to revisit if they turn out wrong once there's real boost volume. */
+const BOOST_FEATURED_SLOTS_PER_PAGE = 4;
+const BOOST_FEATURED_CAP = BOOST_FEATURED_SLOTS_PER_PAGE * RECENT_MIX_PAGES;
+
 /** The dimension each home tab mixes recent listings by — property category for the multi-
  * category tabs (All/Buy/Rent & Lease all pass `homeCategory` as undefined/'buy'/'rentLease'),
  * or a category-specific facet for the single-category tabs (PG's sharing type, Furniture's
@@ -539,30 +559,41 @@ export class ListingsService {
     const recentSince = new Date(Date.now() - RECENT_MIX_WINDOW_MS);
     const plainRecentSort: Prisma.ListingOrderByWithRelationInput[] = [{ createdAt: 'desc' }, { id: 'asc' }];
 
-    const [boostedRows, recentPool] = await Promise.all([
+    // All matches, boosted or not, still get pulled into the recent/older pools below — capping
+    // `featuredRows` to BOOST_FEATURED_CAP doesn't exclude the overflow from the feed, it just
+    // stops guaranteeing them the top slot. `featuredIds` is how the two later queries avoid
+    // showing an already-featured row a second time in its own natural position.
+    const [allBoosted, recentPool] = await Promise.all([
       this.prisma.listing.findMany({ where: { ...where, boostRank: { not: null } }, include, orderBy }),
       this.prisma.listing.findMany({
-        where: { ...where, boostRank: null, createdAt: { gte: recentSince } },
+        where: { ...where, createdAt: { gte: recentSince } },
         include,
         orderBy: plainRecentSort,
         take: RECENT_MIX_POOL_CAP,
       }),
     ]);
+    const featuredRows = allBoosted.slice(0, BOOST_FEATURED_CAP);
+    const featuredIds = new Set(featuredRows.map((row) => row.id));
 
-    const mixedRecent = roundRobinByGroup(recentPool, (row) => recentMixGroupKey(homeCategory, cityId, row));
+    const mixedRecent = roundRobinByGroup(
+      recentPool.filter((row) => !featuredIds.has(row.id)),
+      (row) => recentMixGroupKey(homeCategory, cityId, row),
+    );
 
-    const stillNeeded = windowSize - boostedRows.length - mixedRecent.length;
+    const stillNeeded = windowSize - featuredRows.length - mixedRecent.length;
     const olderRows =
       stillNeeded > 0
-        ? await this.prisma.listing.findMany({
-            where: { ...where, boostRank: null, createdAt: { lt: recentSince } },
-            include,
-            orderBy: plainRecentSort,
-            take: stillNeeded,
-          })
+        ? (
+            await this.prisma.listing.findMany({
+              where: { ...where, createdAt: { lt: recentSince } },
+              include,
+              orderBy: plainRecentSort,
+              take: stillNeeded + featuredIds.size,
+            })
+          ).filter((row) => !featuredIds.has(row.id))
         : [];
 
-    return [...boostedRows, ...mixedRecent, ...olderRows].slice(offset, offset + limit);
+    return [...featuredRows, ...mixedRecent, ...olderRows].slice(offset, offset + limit);
   }
 
   /** Admin moderation queue — every listing regardless of status/moderationState/expiry

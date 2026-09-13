@@ -280,6 +280,37 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     expect(findMany).toHaveBeenCalledTimes(3);
   });
 
+  it('caps guaranteed-featured slots at BOOST_FEATURED_CAP, letting the overflow compete normally', async () => {
+    // 10 boosted listings — more than the 8-slot cap (4 slots x 2 pages) — ranked by boostRank,
+    // highest first, same as BoostRotationService's own random reshuffle would order them.
+    const boosted = Array.from({ length: 10 }, (_, i) =>
+      row(`boost${i}`, { boostRank: 1 - i * 0.01, boostedUntil: new Date(now + DAY) }),
+    );
+    // The 9th/10th boosted listings (past the cap) still show up in the recent pool, same as any
+    // other recent row would — the boostRank:null exclusion was removed from that query for
+    // exactly this reason.
+    const recent = [row('house1', { category: 'house' }), boosted[8], boosted[9]];
+
+    const { service, findMany } = makeMixService((args) => {
+      const where = args.where as Record<string, unknown>;
+      if ((where.boostRank as { not: null })?.not === null) return boosted;
+      if ((where.createdAt as { gte?: Date })?.gte) return recent;
+      return [];
+    });
+
+    const result = await service.list({ offset: 0, limit: 12 } as never);
+    const ids = result.items.map((i) => i.id);
+
+    // The top 8 by boostRank are guaranteed the featured slots, in order.
+    expect(ids.slice(0, 8)).toEqual(['boost0', 'boost1', 'boost2', 'boost3', 'boost4', 'boost5', 'boost6', 'boost7']);
+    // boost8/boost9 aren't dropped for missing the cap — they compete in the recent pool.
+    expect(ids).toEqual(expect.arrayContaining(['boost8', 'boost9', 'house1']));
+    expect(new Set(ids).size).toBe(ids.length); // no duplicate entries from double-counting
+    // Still carries the "Featured" badge despite missing the guaranteed slot — isBoosted comes
+    // from boostedUntil, independent of whether this row made the cap.
+    expect(result.items.find((i) => i.id === 'boost9')?.isBoosted).toBe(true);
+  });
+
   it('uses the plain single-query path, unchanged, once past the first 2 pages', async () => {
     const { service, findMany } = makeMixService(() => []);
 
