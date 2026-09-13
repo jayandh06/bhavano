@@ -14,6 +14,11 @@ export interface MegaMenuLink {
 export interface MegaMenuColumn1Item {
   value: string;
   label: string;
+  /** When present, the label itself is a real link to the "all" view for this item (e.g. every
+   * House regardless of BHK) — present whenever there's an unambiguous single target, whether or
+   * not `links` also offers a narrower breakdown. Absent only where clicking the label can't mean
+   * one specific page (Furniture's condition items: Buy vs Rent is a real fork, not a refinement). */
+  href?: (cityName?: string) => string;
   links: (cityName: string) => MegaMenuLink[];
 }
 
@@ -43,6 +48,7 @@ function bhkColumn1Item(group: TransactionGroup, actionLabel: string, category: 
   return {
     value: category,
     label,
+    href: (cityName) => buildBrowsePath({ cityName, transactionGroup: group, category }),
     links: (cityName) =>
       BEDROOM_COUNTS.map((n) => ({
         label: `${actionLabel} ${bedroomLabel(n)} BHK ${label} in ${cityName}`,
@@ -53,13 +59,16 @@ function bhkColumn1Item(group: TransactionGroup, actionLabel: string, category: 
   };
 }
 
-function singleLinkColumn1Item(
-  value: string,
-  label: string,
-  linkLabel: (cityName: string) => string,
-  link: Omit<MegaMenuLink, "label">,
-): MegaMenuColumn1Item {
-  return { value, label, links: (cityName) => [{ label: linkLabel(cityName), ...link }] };
+/** For a type with no further breakdown worth a second column (Plot, Commercial, Storage,
+ * Coworking, PG sharing types, Interiors service types) — the label itself is the one and only
+ * link, so `links` stays empty rather than duplicating it as a lone column-2 entry. */
+function singleLinkColumn1Item(value: string, label: string, link: Omit<MegaMenuLink, "label">): MegaMenuColumn1Item {
+  return {
+    value,
+    label,
+    href: (cityName) => buildBrowsePath({ cityName, transactionGroup: link.transactionGroup, category: link.category, facetValue: link.facetValue }),
+    links: () => [],
+  };
 }
 
 const PG_SHARING_OPTIONS = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key === "sharingType")!.options!;
@@ -84,14 +93,8 @@ export const HOME_TABS: HomeTab[] = [
       bhkColumn1Item("buy", "Buy", "house", "House"),
       bhkColumn1Item("buy", "Buy", "apartment", "Apartment"),
       bhkColumn1Item("buy", "Buy", "villa", "Villa"),
-      singleLinkColumn1Item("plot", "Plots", (city) => `Plots for Sale in ${city}`, {
-        transactionGroup: "buy",
-        category: "plot",
-      }),
-      singleLinkColumn1Item("commercial", "Commercial", (city) => `Commercial Spaces for Sale in ${city}`, {
-        transactionGroup: "buy",
-        category: "commercial",
-      }),
+      singleLinkColumn1Item("plot", "Plots", { transactionGroup: "buy", category: "plot" }),
+      singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "buy", category: "commercial" }),
     ],
   },
   {
@@ -102,18 +105,9 @@ export const HOME_TABS: HomeTab[] = [
       bhkColumn1Item("rent-lease", "Rent", "house", "House"),
       bhkColumn1Item("rent-lease", "Rent", "apartment", "Apartment"),
       bhkColumn1Item("rent-lease", "Rent", "villa", "Villa"),
-      singleLinkColumn1Item("storage", "Storage", (city) => `Storage Spaces for Rent in ${city}`, {
-        transactionGroup: "rent-lease",
-        category: "storage",
-      }),
-      singleLinkColumn1Item("coworking", "Coworking", (city) => `Coworking Desks for Rent in ${city}`, {
-        transactionGroup: "rent-lease",
-        category: "coworking",
-      }),
-      singleLinkColumn1Item("commercial", "Commercial", (city) => `Commercial Spaces for Rent in ${city}`, {
-        transactionGroup: "rent-lease",
-        category: "commercial",
-      }),
+      singleLinkColumn1Item("storage", "Storage", { transactionGroup: "rent-lease", category: "storage" }),
+      singleLinkColumn1Item("coworking", "Coworking", { transactionGroup: "rent-lease", category: "coworking" }),
+      singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "rent-lease", category: "commercial" }),
     ],
   },
   {
@@ -121,11 +115,7 @@ export const HOME_TABS: HomeTab[] = [
     label: "PG",
     icon: "bed",
     column1: PG_SHARING_OPTIONS.map((opt) =>
-      singleLinkColumn1Item(opt.value, opt.label, (city) => `PG ${opt.label} in ${city}`, {
-        transactionGroup: "rent-lease",
-        category: "pg",
-        facetValue: opt.value,
-      }),
+      singleLinkColumn1Item(opt.value, opt.label, { transactionGroup: "rent-lease", category: "pg", facetValue: opt.value }),
     ),
   },
   {
@@ -135,6 +125,10 @@ export const HOME_TABS: HomeTab[] = [
     column1: FURNITURE_CONDITION_OPTIONS.map((opt) => ({
       value: opt.value,
       label: opt.label,
+      // No transactionGroup — furniture is postable as both sell and rent, and the bare
+      // `/furniture/{condition}` path deliberately means "either" (see buildQueryForSegments),
+      // so clicking the condition itself shows both; Buy/Rent below narrows further.
+      href: (cityName?: string) => buildBrowsePath({ cityName, category: "furniture", facetValue: opt.value }),
       links: (city: string) => [
         {
           label: `Buy ${opt.label} Furniture in ${city}`,
@@ -156,11 +150,7 @@ export const HOME_TABS: HomeTab[] = [
     label: "Interiors",
     icon: "paint",
     column1: INTERIORS_SERVICE_OPTIONS.map((opt) =>
-      singleLinkColumn1Item(opt.value, opt.label, (city) => `${opt.label} Interiors in ${city}`, {
-        transactionGroup: "buy",
-        category: "interiors",
-        facetValue: opt.value,
-      }),
+      singleLinkColumn1Item(opt.value, opt.label, { transactionGroup: "buy", category: "interiors", facetValue: opt.value }),
     ),
   },
 ];
