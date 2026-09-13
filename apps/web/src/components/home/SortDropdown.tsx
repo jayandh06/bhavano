@@ -7,11 +7,13 @@ import { buttonClass, DropdownOption } from "./BrowseFilterBar";
 
 /** "Auto" (default) mixes recently-added listings across categories/facets instead of a flat
  * newest-first feed, and caps how many boosted listings can occupy guaranteed top slots — see
- * docs/plans/homepage-category-mix-and-boost-page-cap.md. Picking any other option here is an
- * explicit ask for a literal sort, so the mix turns off (boosted listings still sort first, just
- * uncapped, same as before that feature). */
+ * docs/plans/homepage-category-mix-and-boost-page-cap.md. Every other option here, "Newest
+ * first" included, is an explicit ask for a literal sort, so the mix turns off (boosted listings
+ * still sort first, just uncapped, same as before that feature) — "Newest first" then means
+ * exactly what it says: posting date, no mixing. */
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "auto", label: "Auto" },
+  { value: "newest", label: "Newest first" },
   { value: "price_asc", label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },
   { value: "popular", label: "Most viewed" },
@@ -28,10 +30,7 @@ export function SortDropdown({ activeSort }: { activeSort?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
 
-  // A bookmarked `?sort=newest` link (the old default's value, before it was renamed to "auto")
-  // must still resolve to the same "Auto" option — see SORT_VALUES' note in seoRoute.ts.
-  const normalizedSort = activeSort === "newest" ? "auto" : activeSort;
-  const sortLabel = SORT_OPTIONS.find((s) => s.value === normalizedSort)?.label ?? "Auto";
+  const sortLabel = SORT_OPTIONS.find((s) => s.value === activeSort)?.label ?? "Auto";
 
   function selectSort(value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -54,7 +53,7 @@ export function SortDropdown({ activeSort }: { activeSort?: string }) {
             <DropdownOption
               key={s.value}
               label={s.label}
-              active={(normalizedSort ?? "auto") === s.value}
+              active={(activeSort ?? "auto") === s.value}
               onClick={() => selectSort(s.value)}
             />
           ))}
