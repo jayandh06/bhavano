@@ -386,11 +386,22 @@ instance* (Caddy/web/admin included, not just video) — fine at launch, worth a
   `preload="none"` and no autoplay are mandatory (autoplay/`preload="metadata"` would mean paying
   bandwidth on every crawl/bounce for every detail-page view). Add `VideoObject` JSON-LD (mirroring
   the existing `apps/web/src/lib/faqJsonLd.ts` pattern) for video rich-result eligibility.
-- **Mobile (`apps/mobile`) is explicitly out of scope for this pass.** Every new/changed type field
-  is optional (`videos?`, `hasVideo?`, `videoEntitlement?`) so mobile's existing screens and
-  `bffClient.ts` stay untouched and green. One small addition worth including: if `hasVideo` on the
-  mobile listing-detail screen, show "📹 This listing has a video — view on the web" rather than
-  silently hiding paid-for content.
+- **Mobile (`apps/mobile`) was explicitly out of scope for this pass** — every new/changed type
+  field was optional (`videos?`, `hasVideo?`, `videoEntitlement?`) specifically so mobile's
+  existing screens and `bffClient.ts` could stay untouched and green until picked up separately.
+  **Update**: mobile's posting wizard now uploads video too
+  (`apps/mobile/src/components/home/PostAdWizard.tsx`), reusing this design as-is — no BFF or
+  schema changes needed, since it was already built to accept a second caller. New
+  `apps/mobile/src/lib/bffClient.ts:uploadVideo()` mirrors `uploadPhoto`'s exact shape (raw
+  `fetch`, RN's `{uri,name,type}` multipart field) against the same `POST /uploads/video`;
+  entitlement is resolved client-side via `resolveVideoEntitlement(profile)` from
+  `@bhavano/types/videoLimits` (same wizard-time-only rule as web's `/post/page.tsx`: only Agent
+  Pro can elevate, since the listing doesn't exist yet to be boosted). One deliberate gap: no live
+  video thumbnail/preview player in the wizard (a plain duration badge instead) — that needs
+  `expo-av`/`expo-video`, a new native dependency the app doesn't otherwise carry, and wasn't
+  judged worth a new EAS dev-client build just for a picker-time preview when the server confirms
+  the real upload regardless. The listing-detail screen's own carousel/player (below) is still the
+  separate, not-yet-built piece — "view on the web" is still the fallback there for now.
 
 ## Admin
 
