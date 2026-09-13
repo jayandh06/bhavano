@@ -42,6 +42,25 @@ function formatChangeValue(value: unknown): string {
   return String(value);
 }
 
+/** `attributes` diffs as one field/change pair — `diffFields` (listings.service.ts) treats the
+ * whole attributes object as a single value, so before/after here are the FULL before/after
+ * attribute maps, not just what changed. Editing one field (e.g. price) used to dump both
+ * complete objects as raw JSON in the history tab even though every other key was identical.
+ * Diffed key-by-key here instead, so only the attributes that actually changed show up, each as
+ * its own name/old/new line — same shape as every other field's history entry. */
+function diffAttributeObjects(before: unknown, after: unknown): { key: string; before: unknown; after: unknown }[] {
+  const beforeObj = before && typeof before === "object" ? (before as Record<string, unknown>) : {};
+  const afterObj = after && typeof after === "object" ? (after as Record<string, unknown>) : {};
+  const keys = new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]);
+  const diffs: { key: string; before: unknown; after: unknown }[] = [];
+  for (const key of keys) {
+    if (JSON.stringify(beforeObj[key]) !== JSON.stringify(afterObj[key])) {
+      diffs.push({ key, before: beforeObj[key], after: afterObj[key] });
+    }
+  }
+  return diffs;
+}
+
 function EditHistoryEntry({ entry }: { entry: ListingEditLogEntryDto }) {
   const actorLabel =
     entry.actorType === "system"
@@ -58,11 +77,29 @@ function EditHistoryEntry({ entry }: { entry: ListingEditLogEntryDto }) {
       <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{actorLabel}</div>
       {entry.changes && Object.keys(entry.changes).length > 0 && (
         <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", fontSize: 12 }}>
-          {Object.entries(entry.changes).map(([field, change]) => (
-            <li key={field} style={{ color: "var(--text-soft)" }}>
-              <strong>{field}</strong>: {formatChangeValue(change.before)} → {formatChangeValue(change.after)}
-            </li>
-          ))}
+          {Object.entries(entry.changes).map(([field, change]) => {
+            if (field === "attributes") {
+              const attrDiffs = diffAttributeObjects(change.before, change.after);
+              if (attrDiffs.length === 0) return null;
+              return (
+                <li key={field} style={{ color: "var(--text-soft)" }}>
+                  <strong>Attributes</strong>
+                  <ul style={{ margin: "4px 0 0", padding: "0 0 0 14px", listStyle: "none" }}>
+                    {attrDiffs.map((d) => (
+                      <li key={d.key}>
+                        {d.key}: {formatChangeValue(d.before)} → {formatChangeValue(d.after)}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            }
+            return (
+              <li key={field} style={{ color: "var(--text-soft)" }}>
+                <strong>{field}</strong>: {formatChangeValue(change.before)} → {formatChangeValue(change.after)}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
