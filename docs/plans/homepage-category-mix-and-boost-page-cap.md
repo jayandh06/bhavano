@@ -208,6 +208,42 @@ showing up in the recent pool rather than being dropped, and an overflow listing
 `isBoosted: true` despite missing the guaranteed slot. Full bff suite otherwise unaffected (one
 pre-existing, unrelated failure tracked earlier this session, unchanged by this).
 
+## Part 3 — "Auto" sort default, explicit sort bypasses the mix entirely — **BUILT**
+
+Both parts above only make sense under the *default* ordering — a visitor who explicitly asks for
+"Price: Low to High" wants exactly that, not a reshuffled version of it. Before this part, the
+"Sort by" control's default option was literally called "Newest first" and mapped to `sort=newest`
+(or no `sort` param at all), which happened to be the same value the mix logic keyed off of — but
+nothing distinguished "no explicit choice was made" from "the visitor explicitly chose the newest
+option," so there was no clean place to gate the mix on.
+
+- Renamed the default option's wire value from `newest` to **`auto`**, both in the DTO
+  (`SORT_VALUES` in `apps/bff/src/listings/dto/list-listings.dto.ts` and `apps/web/src/lib/
+  seoRoute.ts`) and the UI label (`SortDropdown.tsx`'s `SORT_OPTIONS[0]`, now `{value:"auto",
+  label:"Auto"}`) — "Auto" more accurately describes what it now does (recent-mix + boost-cap)
+  than "Newest first" ever did.
+- `newest` is kept as a still-accepted wire value everywhere (DTO validation, `SortDropdown`'s
+  label/active-highlight lookup normalizes it to `auto`) purely so an already-shared/bookmarked
+  `?sort=newest` link keeps resolving to the same behavior, per this repo's URL-stability
+  convention — it is never produced by the UI anymore.
+- New `wantsExplicitSort(sort)` in `listings.service.ts`: true for `price_asc`/`price_desc`/
+  `popular`, false for `auto`/`newest`/undefined. `fetchOffsetPage` now takes this as a param and
+  short-circuits straight to the plain single-query path (`findMany` with the requested `orderBy`,
+  `skip`/`take`) whenever it's true — on *every* page, including page 1, not just page 3+.
+- **Boosted-first ordering is unaffected by this gate** — it's considered part of "which listings
+  are prioritized," not "sort by," so a boosted listing still sorts ahead of the plain-sorted
+  results even under an explicit sort, uncapped (exactly the pre-Part-2 behavior), since
+  `wantsExplicitSort` only decides whether the *recent-mix* pass runs, not whether `ORDER_BY`
+  itself still has its boosted-first tier.
+
+### Verification
+
+2 new test blocks in `listings.service.spec.ts`: `sort=price_asc|price_desc|popular` at `offset:0`
+each resolve to exactly one plain `findMany` call (`skip:0, take:12`) — the mix's usual 3-call
+pattern (boosted/recent-pool/older-pool) never fires; `sort` absent, `'auto'`, and `'newest'` all
+still trigger the 3-call mix path, unchanged. Full bff suite otherwise unaffected (the one
+pre-existing, unrelated failure tracked earlier this session, unchanged by this).
+
 ## Verification
 
 - **Part 1**: pick a day with a real skewed bulk-import (like the current 87 pg / 6 house / 5 plot
