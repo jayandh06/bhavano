@@ -29,7 +29,14 @@ export default function HomeScreen() {
   const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 2 : 1;
 
   const [category, setCategory] = useState<HomeTabValue>("all");
-  const [propertyType, setPropertyType] = useState<PropertyTypeFilter | undefined>(undefined);
+  // One slot for whichever sub-filter the active tab actually has — a property type for
+  // Buy/Rent & Lease, or a sharing-type/condition/service-type facet value for
+  // PG/Furniture/Interiors (see categories.ts's `HomeTab.subFilter`). Tabs are mutually
+  // exclusive, so a single string slot is enough; which BFF param it feeds is derived below
+  // from `category` rather than needing a separate state per tab.
+  const [subFilterValue, setSubFilterValue] = useState<string | undefined>(undefined);
+  const propertyType =
+    category === "buy" || category === "rentLease" ? (subFilterValue as PropertyTypeFilter | undefined) : undefined;
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<SortValue>("auto");
@@ -55,6 +62,9 @@ export default function HomeScreen() {
     {
       homeCategory: category === "all" ? undefined : category,
       propertyType,
+      sharingType: category === "pg" ? subFilterValue : undefined,
+      condition: category === "furniture" ? subFilterValue : undefined,
+      serviceType: category === "interiors" ? subFilterValue : undefined,
       cityId: city?.id,
       q: query || undefined,
       areaIds: filters.areaIds,
@@ -78,11 +88,11 @@ export default function HomeScreen() {
   // CategoryTabs already enforces).
   function onSelectCategory(next: HomeTabValue) {
     setCategory(next);
-    setPropertyType(undefined);
+    setSubFilterValue(undefined);
     setFilters(EMPTY_FILTERS);
   }
-  function onSelectPropertyType(next: PropertyTypeFilter | undefined) {
-    setPropertyType(next);
+  function onSelectSubFilter(next: string | undefined) {
+    setSubFilterValue(next);
     setFilters(EMPTY_FILTERS);
   }
 
@@ -229,8 +239,8 @@ export default function HomeScreen() {
               <CategoryChips
                 active={category}
                 onSelect={onSelectCategory}
-                activePropertyType={propertyType}
-                onSelectPropertyType={onSelectPropertyType}
+                activeSubFilter={subFilterValue}
+                onSelectSubFilter={onSelectSubFilter}
               />
             </View>
 

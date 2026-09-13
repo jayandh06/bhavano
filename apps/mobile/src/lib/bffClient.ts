@@ -54,6 +54,12 @@ function authedBffFetch<T>(accessToken: string, path: string, init?: RequestInit
 export interface ListingsQuery {
   homeCategory?: HomeCategoryFilter;
   propertyType?: PropertyTypeFilter;
+  /** PG mega-menu facet — matches `attributes.sharingType` exactly (see list-listings.dto.ts). */
+  sharingType?: string;
+  /** Furniture mega-menu facet — matches `attributes.condition` exactly. */
+  condition?: string;
+  /** Interiors mega-menu facet — matches `attributes.serviceType` exactly. */
+  serviceType?: string;
   cityId?: string;
   /** Multi-select area filter — comma-joined area ids, same wire format as the web app's
    * AreaFilter (see docs/plans/mobile-filters-and-sort.md). */
@@ -74,6 +80,9 @@ export function fetchListings(query: ListingsQuery, accessToken?: string | null)
   const params = new URLSearchParams();
   if (query.homeCategory) params.set("homeCategory", query.homeCategory);
   if (query.propertyType) params.set("propertyType", query.propertyType);
+  if (query.sharingType) params.set("sharingType", query.sharingType);
+  if (query.condition) params.set("condition", query.condition);
+  if (query.serviceType) params.set("serviceType", query.serviceType);
   if (query.cityId) params.set("cityId", query.cityId);
   if (query.areaIds && query.areaIds.length > 0) params.set("areaIds", query.areaIds.join(","));
   if (query.q) params.set("q", query.q);

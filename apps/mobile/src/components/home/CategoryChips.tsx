@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { PropertyTypeFilter } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { HOME_TABS, type HomeTabValue } from "./categories";
@@ -76,13 +75,17 @@ function ScrollableRow({
 export function CategoryChips({
   active,
   onSelect,
-  activePropertyType,
-  onSelectPropertyType,
+  activeSubFilter,
+  onSelectSubFilter,
 }: {
   active: HomeTabValue;
   onSelect: (value: HomeTabValue) => void;
-  activePropertyType?: PropertyTypeFilter;
-  onSelectPropertyType: (value: PropertyTypeFilter | undefined) => void;
+  /** Value for the active tab's own sub-filter — a property type for Buy/Rent & Lease, or a
+   * sharing-type/condition/service-type facet value for PG/Furniture/Interiors (see
+   * `HomeTab.subFilter` in categories.ts). Always a string since the BFF param it feeds differs
+   * per tab. */
+  activeSubFilter?: string;
+  onSelectSubFilter: (value: string | undefined) => void;
 }) {
   const { colors } = useAppTheme();
   const activeTab = HOME_TABS.find((t) => t.value === active) ?? HOME_TABS[0];
@@ -118,38 +121,41 @@ export function CategoryChips({
         </ScrollableRow>
       </View>
 
-      {activeTab.propertyTypes.length > 0 && (
+      {/* Property type for Buy/Rent & Lease, sharing type/condition/service type for
+        * PG/Furniture/Interiors — every non-"All" tab has one of these (see categories.ts),
+        * so this no longer only covers the two real-estate tabs. */}
+      {activeTab.subFilter.options.length > 0 && (
         <ScrollableRow colors={colors} contentContainerStyle={[styles.row, { paddingTop: 2 }]}>
           {/* Same green-fill highlight as the tab above it, gold border instead of gold
             * underline since this row keeps its oval chip shape rather than going flat/edge-to-edge
             * the way the main tab strip does. */}
           <Pressable
-            onPress={() => onSelectPropertyType(undefined)}
+            onPress={() => onSelectSubFilter(undefined)}
             style={[
               styles.subChip,
               {
-                borderColor: !activePropertyType ? colors.gold : colors.border,
-                backgroundColor: !activePropertyType ? colors.green : "transparent",
+                borderColor: !activeSubFilter ? colors.gold : colors.border,
+                backgroundColor: !activeSubFilter ? colors.green : "transparent",
               },
             ]}
           >
-            <Text style={{ color: !activePropertyType ? colors.onGreen : colors.textSoft, fontWeight: "600", fontSize: 11.5 }}>
-              All types
+            <Text style={{ color: !activeSubFilter ? colors.onGreen : colors.textSoft, fontWeight: "600", fontSize: 11.5 }}>
+              All
             </Text>
           </Pressable>
-          {activeTab.propertyTypes.map((pt) => {
-            const isActive = activePropertyType === pt.value;
+          {activeTab.subFilter.options.map((opt) => {
+            const isActive = activeSubFilter === opt.value;
             return (
               <Pressable
-                key={pt.value}
-                onPress={() => onSelectPropertyType(pt.value)}
+                key={opt.value}
+                onPress={() => onSelectSubFilter(opt.value)}
                 style={[
                   styles.subChip,
                   { borderColor: isActive ? colors.gold : colors.border, backgroundColor: isActive ? colors.green : "transparent" },
                 ]}
               >
                 <Text style={{ color: isActive ? colors.onGreen : colors.textSoft, fontWeight: "600", fontSize: 11.5 }}>
-                  {pt.label}
+                  {opt.label}
                 </Text>
               </Pressable>
             );
