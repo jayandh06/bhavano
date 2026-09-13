@@ -8,6 +8,7 @@ import { useMessagesQuery } from "../../src/lib/queries";
 import { fetchConversation, markConversationRead, sendMessage } from "../../src/lib/bffClient";
 import { getSocket } from "../../src/lib/socket";
 import { Icon } from "../../src/components/Icon";
+import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -74,9 +75,12 @@ export default function ConversationScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
-        <Stack.Screen options={{ headerShown: true, title: "Conversation" }} />
-        <ActivityIndicator color={colors.green} />
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <ScreenHeader title="Conversation" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color={colors.green} />
+        </View>
       </View>
     );
   }
@@ -86,31 +90,30 @@ export default function ConversationScreen() {
       style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Never the other participant's name/phone here — same reasoning as the messages list
           (see MessagingService.listConversations): a free-to-read screen can't be what hands out
           who someone is when the whole business is a *paid* contact reveal. The listing is what
-          the thread is about either way, and it's already the header on the list screen too. */}
-      <Stack.Screen
-        options={{ headerShown: true, title: conversation?.listing.title ?? "Conversation" }}
+          the thread is about either way, and it's already the header on the list screen too.
+          "View ad" lives in the header's own trailing slot rather than a separate bar below it —
+          the stack's own back arrow would otherwise return wherever the visitor came from (the
+          listing for "Contact owner", the messages list otherwise), so this is the one place
+          that's always present and always goes to the same listing, no matter the entry point. */}
+      <ScreenHeader
+        title={conversation?.listing.title ?? "Conversation"}
+        onBack={() => router.back()}
+        right={
+          conversation && (
+            <Pressable
+              onPress={() => router.push(`/listing/${conversation.listing.id}`)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
+            >
+              <Text style={{ fontSize: 13, color: colors.green, fontWeight: "700" }}>View ad</Text>
+              <Icon name="chevronRight" size={14} color={colors.green} />
+            </Pressable>
+          )
+        }
       />
-      {/* The way back to the ad this thread is about.
-        *
-        * The stack's own back arrow returns wherever you came from, which for someone who tapped
-        * "Contact owner" is the listing — but for someone who came from the messages list is the
-        * list, and there was then nothing at all pointing at the listing. This is always present
-        * and always goes to the same place, so the thread stops being a dead end either way. */}
-      {conversation && (
-        <Pressable
-          onPress={() => router.push(`/listing/${conversation.listing.id}`)}
-          style={[styles.listingBar, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
-        >
-          <Text numberOfLines={1} style={{ flex: 1, fontSize: 13, fontWeight: "700", color: colors.text }}>
-            {conversation.listing.title}
-          </Text>
-          <Text style={{ fontSize: 12, color: colors.green, fontWeight: "700" }}>View ad</Text>
-          <Icon name="chevronRight" size={14} color={colors.green} />
-        </Pressable>
-      )}
       <FlatList
         ref={listRef}
         contentContainerStyle={{ padding: 16, gap: 10 }}
@@ -151,14 +154,6 @@ export default function ConversationScreen() {
 
 const styles = StyleSheet.create({
   bubble: { borderRadius: 12, padding: 12, maxWidth: "75%" },
-  listingBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-  },
   inputRow: { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 1 },
   input: { flex: 1, borderWidth: 1, borderRadius: 9, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14 },
   sendButton: { borderRadius: 8, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },

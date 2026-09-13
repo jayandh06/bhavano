@@ -10,6 +10,7 @@ import { BffError, createConversation, recordView, revealContact, staticMapUrl, 
 import { Icon } from "../../src/components/Icon";
 import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
 import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
+import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 
 /** Same URL shape as the website's ListingDetailView.tsx — no origin, so Google Maps prompts for
  * the visitor's own location instead. `lat`/`lng` are already a server-side jittered
@@ -122,25 +123,22 @@ export default function ListingDetailScreen() {
 
   if (isLoading || !listing) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator color={colors.green} />
+        <ScreenHeader title="Listing" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color={colors.green} />
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader title={listing.title} onBack={() => router.back()} />
 
-      <Pressable
-        onPress={() => router.back()}
-        style={{ marginBottom: 12, flexDirection: "row", alignItems: "center", gap: 4 }}
-      >
-        <Icon name="chevronLeft" size={15} color={colors.muted} />
-        <Text style={{ color: colors.muted, fontSize: 13 }}>Back</Text>
-      </Pressable>
-
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
       <ListingMediaGallery
         photosFull={listing.photosFull}
         videos={listing.videos}
@@ -281,7 +279,8 @@ export default function ListingDetailScreen() {
           )}
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 

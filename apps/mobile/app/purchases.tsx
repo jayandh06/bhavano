@@ -1,9 +1,10 @@
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import type { PaymentHistoryItemDto, PaymentPurpose, PaymentStatus } from "@bhavano/types";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { useHomeSheets } from "../src/context/HomeSheetsProvider";
 import { useInfinitePaymentHistoryQuery } from "../src/lib/queries";
+import { ScreenHeader } from "../src/components/home/ScreenHeader";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   listing_boost: "Listing boost",
@@ -42,13 +43,15 @@ function detailFor(item: PaymentHistoryItemDto): string {
 
 export default function PurchasesScreen() {
   const { colors } = useAppTheme();
+  const router = useRouter();
   const { accessToken } = useHomeSheets();
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfinitePaymentHistoryQuery(accessToken);
   const items = data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Stack.Screen options={{ title: "Purchase history", headerShown: true }} />
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader title="Purchase history" onBack={() => router.back()} />
 
       {isLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
