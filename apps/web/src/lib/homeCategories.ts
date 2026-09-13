@@ -122,28 +122,13 @@ export const HOME_TABS: HomeTab[] = [
     value: "furniture",
     label: "Furniture",
     icon: "sofa",
-    column1: FURNITURE_CONDITION_OPTIONS.map((opt) => ({
-      value: opt.value,
-      label: opt.label,
-      // No transactionGroup — furniture is postable as both sell and rent, and the bare
-      // `/furniture/{condition}` path deliberately means "either" (see buildQueryForSegments),
-      // so clicking the condition itself shows both; Buy/Rent below narrows further.
-      href: (cityName?: string) => buildBrowsePath({ cityName, category: "furniture", facetValue: opt.value }),
-      links: (city: string) => [
-        {
-          label: `Buy ${opt.label} Furniture in ${city}`,
-          transactionGroup: "buy" as const,
-          category: "furniture" as const,
-          facetValue: opt.value,
-        },
-        {
-          label: `Rent ${opt.label} Furniture in ${city}`,
-          transactionGroup: "rent-lease" as const,
-          category: "furniture" as const,
-          facetValue: opt.value,
-        },
-      ],
-    })),
+    // No transactionGroup — furniture is postable as both sell and rent, and the bare
+    // `/furniture/{condition}` path deliberately means "either" (see buildQueryForSegments), so
+    // the condition label alone already shows every listing of that condition; no Buy/Rent
+    // breakdown underneath it.
+    column1: FURNITURE_CONDITION_OPTIONS.map((opt) =>
+      singleLinkColumn1Item(opt.value, opt.label, { category: "furniture", facetValue: opt.value }),
+    ),
   },
   {
     value: "interiors",
