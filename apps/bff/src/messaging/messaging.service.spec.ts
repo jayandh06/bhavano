@@ -18,7 +18,7 @@ function conversation(posterId: string, inquirerId: string, premiumUntil: Date |
   return {
     id: 'c1',
     listingId: 'l1',
-    listing: { title: 'A listing' },
+    listing: { title: 'A listing', city: { name: 'Bengaluru' }, area: { name: 'Koramangala' } },
     posterId,
     inquirerId,
     poster: { id: posterId, name: 'Poster', phone: null },

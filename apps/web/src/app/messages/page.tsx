@@ -36,6 +36,21 @@ export default async function MessagesPage({
   );
 }
 
+/** Compact "how long ago" for a message timestamp — mirrors how every chat app shows the last
+ * message's time rather than a full date, since "3h ago" is what's actually useful in a list of
+ * threads. Falls back to a short date past a week, where "ago" stops being a useful unit. */
+function formatMessageTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
 async function ConversationList({ accessToken }: { accessToken: string }) {
   let conversations;
   try {
@@ -82,6 +97,13 @@ async function ConversationList({ accessToken }: { accessToken: string }) {
                     <Icon name="check" /> Verified Buyer
                   </span>
                 )}
+              </div>
+              {/* Where and when, on one line — the listing's locality (the same "which one" cue
+                * the title alone doesn't give when someone has more than one live ad) and the
+                * last message's time, the two things worth a glance before opening the thread. */}
+              <div className="text-[11.5px] text-muted mt-0.5 truncate">
+                {c.listingArea}, {c.listingCityName}
+                {c.lastMessage && ` · ${formatMessageTime(c.lastMessage.createdAt)}`}
               </div>
               {/* A conversation exists from the moment someone opens contact, before anything is
                   sent, so lastMessage is legitimately null. Rendering nothing there left the row

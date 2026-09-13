@@ -59,7 +59,7 @@ export class MessagingService {
     const conversations = await this.prisma.conversation.findMany({
       where: { type: 'inquiry', OR: [{ posterId: userId }, { inquirerId: userId }] },
       include: {
-        listing: { select: { title: true } },
+        listing: { select: { title: true, city: { select: { name: true } }, area: { select: { name: true } } } },
         poster: { select: { id: true, name: true, phone: true } },
         inquirer: { select: { id: true, name: true, phone: true, premiumUntil: true } },
         messages: { orderBy: { createdAt: 'desc' }, take: 1 },
@@ -82,6 +82,8 @@ export class MessagingService {
           id: c.id,
           listingId: c.listingId,
           listingTitle: c.listing.title,
+          listingArea: c.listing.area.name,
+          listingCityName: c.listing.city.name,
           type: c.type,
           otherPartyId: otherParty.id,
           // Never the raw phone number — a caller with no display name previously fell through

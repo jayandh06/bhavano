@@ -374,6 +374,8 @@ export interface ConversationSummaryDto {
   id: string;
   listingId: string;
   listingTitle: string;
+  listingArea: string;
+  listingCityName: string;
   type: ConversationType;
   otherPartyId: string;
   otherPartyName: string;

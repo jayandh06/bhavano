@@ -7,6 +7,20 @@ import { useConversationsQuery } from "../../src/lib/queries";
 import { GatedScreen } from "../../src/components/home/GatedScreen";
 import { Icon } from "../../src/components/Icon";
 
+/** Compact "how long ago" for a message timestamp — mirrors the web app's identical helper on
+ * `/messages`. Falls back to a short date past a week, where "ago" stops being a useful unit. */
+function formatMessageTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
 // Moved here from the old top-level app/messages/index.tsx to become a bottom tab (replacing
 // Saved) — dropped the `<Stack.Screen headerShown>` override that screen needed as a pushed
 // route, since tabs draw their own in-body heading instead, matching Home/Account.
@@ -68,6 +82,11 @@ export default function MessagesScreen() {
                       about either way. */}
                   <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }} numberOfLines={1}>
                     {item.listingTitle}
+                  </Text>
+                  {/* Where and when, on one line — mirrors the web app's identical row. */}
+                  <Text style={{ fontSize: 11.5, color: colors.muted, marginTop: 2 }} numberOfLines={1}>
+                    {item.listingArea}, {item.listingCityName}
+                    {item.lastMessage ? ` · ${formatMessageTime(item.lastMessage.createdAt)}` : ""}
                   </Text>
                   {item.lastMessage && (
                     <Text style={{ fontSize: 13, color: colors.textSoft, marginTop: 4 }} numberOfLines={1}>
