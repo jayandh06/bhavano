@@ -287,8 +287,14 @@ export default function HomeScreen() {
       {headerCollapsed && (
         <CollapsedHeaderBar
           searchOpen={collapsedSearchOpen}
-          onToggleSearch={() => setCollapsedSearchOpen((o) => !o)}
-          onOpenMenu={() => setMenuOpen(true)}
+          onToggleSearch={() => {
+            setCollapsedSearchOpen((o) => !o);
+            setMenuOpen(false);
+          }}
+          onOpenMenu={() => {
+            setMenuOpen(true);
+            setCollapsedSearchOpen(false);
+          }}
           onPostAd={() => router.push("/post")}
           query={query}
           onChangeQuery={setQuery}

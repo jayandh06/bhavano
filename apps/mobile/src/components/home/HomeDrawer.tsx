@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import type { City } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { HOME_TABS, type HomeTabValue } from "./categories";
+import { COLLAPSED_BAR_HEIGHT } from "./CollapsedHeaderBar";
 
 const DRAWER_WIDTH = 300;
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
@@ -53,8 +53,8 @@ export function HomeDrawer({
   onToggleTheme: () => void;
 }) {
   const { colors } = useAppTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { height: windowHeight } = useWindowDimensions();
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
   useEffect(() => {
@@ -82,16 +82,21 @@ export function HomeDrawer({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      {/* Starts below the collapsed bar (not at the very top of the screen) so the bar — and its
+        * hamburger, now showing a ✕ — stays visible and tappable above the dimmed page, matching
+        * the website's own scrim. */}
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close menu" />
       <Animated.View
         style={[
           styles.panel,
-          { backgroundColor: colors.surface, borderRightColor: colors.border, transform: [{ translateX }] },
+          { backgroundColor: colors.surface, borderColor: colors.border, transform: [{ translateX }] },
         ]}
       >
-        {/* Modal content renders outside app/_layout.tsx's SafeAreaView, so the top inset that
-          * ancestor normally handles has to be applied explicitly here instead. */}
-        <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}>
+        {/* `maxHeight` (capping at content, not stretching to it) has to live on the ScrollView
+          * itself, not just the panel wrapping it — a bare View's `maxHeight` doesn't reliably
+          * clip/scroll an unbounded child the way giving the scrollable element its own explicit
+          * height cap does. */}
+        <ScrollView style={{ maxHeight: windowHeight - COLLAPSED_BAR_HEIGHT }} contentContainerStyle={styles.content}>
           <Pressable
             onPress={() => {
               onClose();
@@ -193,9 +198,29 @@ export function HomeDrawer({
 }
 
 const styles = StyleSheet.create({
-  scrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.35)" },
-  panel: { position: "absolute", left: 0, top: 0, bottom: 0, width: DRAWER_WIDTH, borderRightWidth: 1 },
-  content: { paddingHorizontal: 16, paddingBottom: 24, gap: 4 },
+  scrim: { position: "absolute", top: COLLAPSED_BAR_HEIGHT, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.35)" },
+  // No `bottom` — an absolutely-positioned view with only `top` set sizes to its content, capped
+  // by the `maxHeight` set inline (viewport height minus the bar above it), matching the website's
+  // drawer: it follows its content and only scrolls if that would overflow, rather than always
+  // stretching to the bottom of the screen. No border-radius/border on the top or left edges —
+  // those are flush against the bar above and the screen edge, only the open bottom-right corner
+  // (where the drawer's own edge meets the dimmed page) reads as a border.
+  panel: {
+    position: "absolute",
+    left: 0,
+    top: COLLAPSED_BAR_HEIGHT,
+    width: DRAWER_WIDTH,
+    maxWidth: "84%",
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderBottomRightRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 6, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 4 },
   iconButton: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   locationButton: {
     flexDirection: "row",

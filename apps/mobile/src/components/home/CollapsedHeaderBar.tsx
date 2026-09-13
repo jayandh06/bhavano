@@ -2,6 +2,12 @@ import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-nativ
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 
+/** The bar's own height (its one row only — the search-reveal row is a separate, optional
+ * extension, and the two are mutually exclusive with the drawer this bar's hamburger opens, so
+ * the drawer only ever needs to sit below this base height). `HomeDrawer` positions itself right
+ * below this, matching the website's drawer sitting right below its own 52px collapsed bar. */
+export const COLLAPSED_BAR_HEIGHT = 57;
+
 /**
  * Mirrors the web app's mobile collapsed header bar (`MobileHeaderCollapse.tsx`): once the Home
  * feed is scrolled past its own rich inline header (logo/location/search live inside the
