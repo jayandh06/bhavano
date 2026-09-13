@@ -13,6 +13,12 @@ services:
       MSG91_DLT_TEMPLATE_ID: ${MSG91_DLT_TEMPLATE_ID}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      # The mobile apps' own OAuth clients — an id_token's `aud` is whichever client requested
+      # it, so the web client ID alone rejects every native sign-in (see
+      # GoogleProvider.acceptedAudiences's own comment). Both optional/blank until each
+      # platform's sign-in is actually wired up and tested.
+      GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID}
+      GOOGLE_ANDROID_CLIENT_ID: ${GOOGLE_ANDROID_CLIENT_ID}
       # No admin signup flow exists — a phone/email matching one of these gets promoted
       # to role=admin automatically on login.
       ADMIN_PHONES: ${ADMIN_PHONES}
