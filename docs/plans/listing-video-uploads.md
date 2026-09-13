@@ -410,6 +410,13 @@ instance* (Caddy/web/admin included, not just video) — fine at launch, worth a
   the scroll view — genuinely playable, just not inline. No full-screen lightbox either (web's
   `MediaLightbox`) — tapping a thumbnail selects it as the hero, which is already a full-width,
   uncropped view on a phone, unlike web's cropped hero needing a separate zoom step.
+  **Update 3**: reversed the "no lightbox" call — reported as a real gap ("clicking the image
+  should open a carousel"). Added `apps/mobile/src/components/home/MediaLightbox.tsx`: a
+  full-screen `Modal` with a horizontal, paging `ScrollView` swiping through every photo/video,
+  opened by tapping the hero or a thumbnail. Still no native video-playback dependency — a
+  video's page in the lightbox is the same poster + "Play video" (`expo-web-browser`) pattern as
+  the hero, just full-screen. `Modal` renders above everything, the persistent `BottomTabBar`
+  included, which is exactly right for a full-screen viewer.
 
 ## Admin
 

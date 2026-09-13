@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import * as WebBrowser from "expo-web-browser";
 import type { ListingVideoDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
+import { MediaLightbox } from "./MediaLightbox";
 
 export type MediaItem =
   | { kind: "photo"; url: string }
@@ -18,12 +18,12 @@ function formatDuration(totalSeconds: number): string {
 /**
  * Mirrors the website's `ListingMediaGallery.tsx`: a hero + thumbnail strip sharing one selected
  * index, photos first then videos (only ever `status: "done"` — the BFF already filters this for
- * a non-owner/non-admin viewer). One deliberate gap from web: no full-screen lightbox (web's
- * `MediaLightbox`) and no inline `<video>` player — this app has no video-playback native module
- * (`expo-av`/`expo-video`), and adding one is a new native dependency needing a fresh EAS
- * dev-client build, not something to pull in just for this. A picked video's hero slot shows its
- * poster + a "Play video" button that opens the real video file in the system/in-app browser
- * instead — genuinely playable, just not embedded in the scroll view.
+ * a non-owner/non-admin viewer). Tapping the hero or a thumbnail opens the full-screen swipeable
+ * `MediaLightbox`. One deliberate gap from web: no inline `<video>` player — this app has no
+ * video-playback native module (`expo-av`/`expo-video`), and adding one is a new native
+ * dependency needing a fresh EAS dev-client build, not something to pull in just for this. A
+ * video's hero (and lightbox) slot shows its poster + a "Play video" button that opens the real
+ * file in the system/in-app browser instead — genuinely playable, just not embedded.
  */
 export function ListingMediaGallery({
   photosFull,
@@ -50,6 +50,7 @@ export function ListingMediaGallery({
     ...videos.map((v): MediaItem => ({ kind: "video", url: v.url, posterUrl: v.posterUrl, durationSec: v.durationSec })),
   ];
   const [activeIndex, setActiveIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const active = items[activeIndex];
 
   return (
@@ -57,20 +58,19 @@ export function ListingMediaGallery({
       <View style={[styles.hero, { backgroundColor: active ? colors.surfaceAlt : imgColors[0] }]}>
         {!active && <Text style={styles.imageCaption}>{imgLabel}</Text>}
         {active?.kind === "photo" && (
-          <Image source={{ uri: active.url }} style={StyleSheet.absoluteFill} accessibilityLabel={title} />
+          <Pressable onPress={() => setLightboxOpen(true)} style={StyleSheet.absoluteFill}>
+            <Image source={{ uri: active.url }} style={StyleSheet.absoluteFill} accessibilityLabel={title} />
+          </Pressable>
         )}
         {active?.kind === "video" && (
-          <>
+          <Pressable onPress={() => setLightboxOpen(true)} style={StyleSheet.absoluteFill}>
             <Image source={{ uri: active.posterUrl }} style={StyleSheet.absoluteFill} />
             <View style={styles.videoScrim} />
-            <Pressable
-              onPress={() => WebBrowser.openBrowserAsync(active.url)}
-              style={[styles.playButton, { backgroundColor: colors.surface }]}
-            >
+            <View style={[styles.playButton, { backgroundColor: colors.surface }]}>
               <Icon name="video" size={22} color={colors.green} />
               <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13 }}>Play video</Text>
-            </Pressable>
-          </>
+            </View>
+          </Pressable>
         )}
         <View style={[styles.tag, { backgroundColor: colors.green }]}>
           <Text style={{ color: colors.onGreen, fontSize: 11, fontWeight: "700" }}>{tag}</Text>
@@ -87,7 +87,11 @@ export function ListingMediaGallery({
           {items.map((item, i) => (
             <Pressable
               key={item.kind === "photo" ? item.url : item.url + item.posterUrl}
-              onPress={() => setActiveIndex(i)}
+              onPress={() => {
+                // Selecting and opening in one tap — mirrors the website's own thumbnail strip.
+                setActiveIndex(i);
+                setLightboxOpen(true);
+              }}
               accessibilityLabel={`${title} ${item.kind} ${i + 1}`}
               style={[styles.thumb, i === activeIndex && { borderColor: colors.green, borderWidth: 2 }]}
             >
@@ -105,6 +109,15 @@ export function ListingMediaGallery({
             </Pressable>
           ))}
         </ScrollView>
+      )}
+
+      {lightboxOpen && (
+        <MediaLightbox
+          items={items}
+          initialIndex={activeIndex}
+          onClose={() => setLightboxOpen(false)}
+          onIndexChange={setActiveIndex}
+        />
       )}
     </View>
   );
