@@ -136,7 +136,10 @@ export default function ListingDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScreenHeader title={listing.title} onBack={() => router.back()} />
+      {/* Generic, not listing.title — the body already shows the full title (and lets it wrap,
+          rather than truncating to an ellipsis in the header's narrower width alongside the back
+          arrow), same reasoning as the message thread's header. */}
+      <ScreenHeader title="Listing" onBack={() => router.back()} />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
       <ListingMediaGallery
