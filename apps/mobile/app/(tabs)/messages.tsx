@@ -7,18 +7,13 @@ import { useConversationsQuery } from "../../src/lib/queries";
 import { GatedScreen } from "../../src/components/home/GatedScreen";
 import { Icon } from "../../src/components/Icon";
 
-/** Compact "how long ago" for a message timestamp — mirrors the web app's identical helper on
- * `/messages`. Falls back to a short date past a week, where "ago" stops being a useful unit. */
+/** dd/mm/yyyy hh:mm:ss, in the device's local time zone — mirrors the web app's identical
+ * helper on `/messages`. An explicit absolute timestamp rather than a relative "3h ago", so two
+ * messages days apart are still trivially comparable. */
 function formatMessageTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 // Moved here from the old top-level app/messages/index.tsx to become a bottom tab (replacing
@@ -28,14 +23,20 @@ export default function MessagesScreen() {
   const { colors } = useAppTheme();
   const { requireLogin, isLoggedIn, accessToken } = useHomeSheets();
   const router = useRouter();
-  const { data: conversations, isLoading } = useConversationsQuery(accessToken);
+  const { data: conversations, isLoading, refetch } = useConversationsQuery(accessToken);
 
   // Defensive fallback only — the tab bar itself (see (tabs)/_layout.tsx's `listeners`) already
   // intercepts a logged-out tap before it ever navigates here, prompting login in place instead.
+  //
+  // Also refetches on every focus: this screen (like every tab) stays mounted once visited, so
+  // without this a conversation fetched once early in the app session — before, say, a listing's
+  // area/city got backfilled, or simply before this row existed — would keep showing that first
+  // response indefinitely instead of picking up what the BFF returns now.
   useFocusEffect(
     useCallback(() => {
       if (!isLoggedIn) requireLogin();
-    }, [isLoggedIn, requireLogin]),
+      else void refetch();
+    }, [isLoggedIn, requireLogin, refetch]),
   );
 
   if (!isLoggedIn || !accessToken) {
