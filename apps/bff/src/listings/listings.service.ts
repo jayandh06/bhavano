@@ -439,6 +439,7 @@ export class ListingsService {
    * (unlike the public `list()`, which only ever shows approved, active, unexpired ones). */
   async listForAdmin(query: ListAdminListingsDto): Promise<AdminListingsPage> {
     const {
+      search,
       moderationState,
       adminReviewed,
       category,
@@ -456,6 +457,7 @@ export class ListingsService {
       limit,
     } = query;
     const where: Prisma.ListingWhereInput = {
+      ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
       ...(moderationState ? { moderationState } : {}),
       ...(adminReviewed !== undefined ? { adminReviewed } : {}),
       ...(category ? { category } : {}),

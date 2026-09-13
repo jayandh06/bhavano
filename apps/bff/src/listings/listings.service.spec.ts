@@ -936,6 +936,21 @@ describe('ListingsService.listForAdmin — status filter and sort', () => {
   it('still defaults to newest-created when no sort is given', async () => {
     expect((await callWith({})).orderBy).toEqual([{ createdAt: 'desc' }, { id: 'asc' }]);
   });
+
+  it('filters by title (partial, case-insensitive) when a search term is given', async () => {
+    const { where } = await callWith({ search: 'gents pg' });
+    expect(where).toMatchObject({ title: { contains: 'gents pg', mode: 'insensitive' } });
+  });
+
+  it('omits the title filter from the where clause when no search term is given', async () => {
+    const { where } = await callWith({});
+    expect(where).not.toHaveProperty('title');
+  });
+
+  it('filters by owner (ownerId) when a userId is given', async () => {
+    const { where } = await callWith({ userId: 'user1' });
+    expect(where).toMatchObject({ ownerId: 'user1' });
+  });
 });
 
 describe('ListingsService.update — writes a ListingEditLog diff', () => {

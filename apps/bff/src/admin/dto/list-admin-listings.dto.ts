@@ -30,6 +30,10 @@ export type AdminListingSort = (typeof ADMIN_LISTING_SORT_VALUES)[number];
 
 export class ListAdminListingsDto {
   @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
   @IsIn(MODERATION_STATES)
   moderationState?: ModerationState;
 
