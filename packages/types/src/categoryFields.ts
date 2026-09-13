@@ -1062,5 +1062,52 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       section: "spaceDetails",
       placeholder: "https://yourbusiness.com",
     },
+    {
+      key: "fromBroker",
+      label: "Posted by broker",
+      type: "select",
+      section: "pricing",
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+    },
+    {
+      key: "brokerageFeeApplicable",
+      label: "Has brokerage fee",
+      type: "select",
+      section: "pricing",
+      dependsOn: { key: "fromBroker", value: "yes" },
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
+      ],
+    },
+    {
+      // commercial supports sell/rent/lease (POSTABLE_TRANSACTION_TYPES), so — same as
+      // RESIDENTIAL_FIELDS — it needs both brokerage-amount variants: a flat ₹ fee for rent/lease
+      // and a % of sale price for sell. Without both, a rent/lease commercial listing with
+      // brokerageFeeApplicable=yes would have no matching amount field at all (see
+      // ListingsService.assertConditionalFee, which resolves the amount field by transactionType
+      // from this config and silently requires nothing when none matches).
+      key: "brokerageFee",
+      label: "Brokerage fee (₹)",
+      type: "number",
+      maxDigits: 5,
+      min: 0,
+      section: "pricing",
+      transactionTypes: ["rent", "lease"],
+      dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
+    },
+    {
+      key: "brokerageCommissionPercent",
+      label: "Brokerage commission (%)",
+      type: "number",
+      min: 0,
+      maxDigits: 2,
+      section: "pricing",
+      transactionTypes: ["sell"],
+      dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
+    },
   ],
 };

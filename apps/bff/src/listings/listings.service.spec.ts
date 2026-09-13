@@ -347,6 +347,46 @@ describe('ListingsService', () => {
       ).toThrow('Brokerage commission (%) is required');
     });
 
+    // Unlike plot, commercial supports sell/rent/lease, so it needs both brokerage-amount
+    // variants — a flat ₹ fee for rent/lease, a % of sale price for sell.
+    it('accepts a sell commercial listing with brokerage quoted as a commission percentage', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('commercial', 'sell', {
+          sqft: '1200',
+          purpose: 'office',
+          fromBroker: 'yes',
+          brokerageFeeApplicable: 'yes',
+          brokerageCommissionPercent: '2',
+        }),
+      ).not.toThrow();
+    });
+
+    it('accepts a rent commercial listing with a flat brokerage fee', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('commercial', 'rent', {
+          sqft: '1200',
+          purpose: 'office',
+          fromBroker: 'yes',
+          brokerageFeeApplicable: 'yes',
+          brokerageFee: '5000',
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects a sell commercial listing with brokerage applicable but no commission percentage set', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('commercial', 'sell', {
+          sqft: '1200',
+          purpose: 'office',
+          fromBroker: 'yes',
+          brokerageFeeApplicable: 'yes',
+        }),
+      ).toThrow('Brokerage commission (%) is required');
+    });
+
     it('rejects furnishing inventory when the residence is not furnished', () => {
       const { service } = makeService();
       expect(() =>
