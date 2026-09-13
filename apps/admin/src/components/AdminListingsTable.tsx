@@ -11,13 +11,15 @@ import { str, type SearchParams } from "@/lib/searchParams";
 /** The dashboard's listing moderation queue as an actual table — was previously a card list
  * with no view/like/message counts visible at all.
  *
- * A whole row opens the listing (a `<Link>` stretched with `position: absolute; inset: 0` over a
- * `position: relative` `<tr>`, not a client-side onClick) so it keeps real anchor semantics —
- * ctrl/cmd-click and middle-click for a new tab, "copy link" in the context menu — none of which
- * a synthetic onClick + router.push would give for free. The checkbox cell sits in its own
- * stacking context (`position: relative; zIndex: 1`) so it stays clickable above that overlay
- * instead of the invisible row-link swallowing the click. `.admin-table-row` (globals.css) adds
- * the hover highlight and pointer cursor.
+ * A whole row opens the listing via a plain `onClick` + `router.push`, not the `<Link>`-stretched-
+ * with-`position:absolute;inset:0`-over-a-`position:relative`-`<tr>` trick an earlier version
+ * used. That trick keeps real anchor semantics (ctrl/cmd-click, middle-click, "copy link") for
+ * free on desktop, but `position: relative` doesn't reliably establish a containing block for an
+ * absolutely-positioned child on a table row across mobile browsers — confirmed broken: tapping a
+ * row on a mobile browser didn't navigate at all. A plain click handler has none of table
+ * layout's positioning quirks and works everywhere, at the cost of the anchor-only conveniences.
+ * The checkbox cell still stops the click from bubbling to the row. `.admin-table-row`
+ * (globals.css) adds the hover highlight and pointer cursor.
  *
  * This is a client component (selection state for the bulk "Send notification" action, see
  * UsersTable's identical pattern for welcome emails) — sortable headers stay a full-page `<Link>`
@@ -129,16 +131,18 @@ export function AdminListingsTable({ items, sp }: { items: ListingDetailDto[]; s
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} className="admin-table-row" style={{ position: "relative", borderTop: "1px solid var(--border)" }}>
-                <td style={{ ...tdStyle, position: "relative", zIndex: 1 }} onClick={(e) => e.stopPropagation()}>
+              <tr
+                key={item.id}
+                className="admin-table-row"
+                onClick={() => router.push(`/listings/${item.id}`)}
+                style={{ borderTop: "1px solid var(--border)" }}
+              >
+                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
                   {eligibleIds.has(item.id) && (
                     <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
                   )}
                 </td>
-                <td style={{ ...tdStyle, fontWeight: 700, maxWidth: 260 }}>
-                  <Link href={`/listings/${item.id}`} aria-label={item.title} style={{ position: "absolute", inset: 0 }} />
-                  {item.title}
-                </td>
+                <td style={{ ...tdStyle, fontWeight: 700, maxWidth: 260 }}>{item.title}</td>
                 <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
                   <ListingStatusBadge status={item.status} isExpired={item.isExpired} />
                 </td>
