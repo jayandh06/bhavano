@@ -400,8 +400,16 @@ instance* (Caddy/web/admin included, not just video) — fine at launch, worth a
   video thumbnail/preview player in the wizard (a plain duration badge instead) — that needs
   `expo-av`/`expo-video`, a new native dependency the app doesn't otherwise carry, and wasn't
   judged worth a new EAS dev-client build just for a picker-time preview when the server confirms
-  the real upload regardless. The listing-detail screen's own carousel/player (below) is still the
-  separate, not-yet-built piece — "view on the web" is still the fallback there for now.
+  the real upload regardless.
+  **Update 2**: the listing-detail screen's carousel/player also landed
+  (`apps/mobile/src/components/home/ListingMediaGallery.tsx`) — hero + thumbnail strip sharing one
+  selected index, same photos-then-videos ordering as web's own gallery, reusing
+  `ListingDetailDto.photosFull`/`.videos` as-is. Same native-dependency constraint as the wizard:
+  no inline `&lt;video&gt;`-equivalent player, so a video's hero slot shows its poster + a "Play
+  video" button that opens the real file via `expo-web-browser` instead of embedding playback in
+  the scroll view — genuinely playable, just not inline. No full-screen lightbox either (web's
+  `MediaLightbox`) — tapping a thumbnail selects it as the hero, which is already a full-width,
+  uncropped view on a phone, unlike web's cropped hero needing a separate zoom step.
 
 ## Admin
 
