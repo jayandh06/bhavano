@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import type { City, UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
@@ -21,6 +22,8 @@ import { Icon } from "../../src/components/Icon";
 
 type PhoneStep = "idle" | "otpSent";
 
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+
 export default function AccountScreen() {
   const { colors } = useAppTheme();
   const { requireLogin, logout, isLoggedIn, accessToken, profile, refreshProfile } = useHomeSheets();
@@ -39,6 +42,11 @@ export default function AccountScreen() {
     }
   }
   const router = useRouter();
+  // Account is a tab root, not normally a pushed screen, but it's still reachable via a real
+  // push from elsewhere (e.g. a deep link) — show a back arrow only when there's actually
+  // somewhere to go back to, rather than always rendering one that does nothing on a fresh tab
+  // switch.
+  const onBack = router.canGoBack() ? () => router.back() : undefined;
 
   useFocusEffect(
     useCallback(() => {
@@ -51,7 +59,7 @@ export default function AccountScreen() {
     // reachable *without* an account — a verification reviewer won't sign up to find it.
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        <ScreenHeader title="Account" />
+        <ScreenHeader title="Account" onBack={onBack} />
         <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
           <LegalFooter />
         </ScrollView>
@@ -62,7 +70,7 @@ export default function AccountScreen() {
   if (!profile || !accessToken) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        <ScreenHeader title="Account" />
+        <ScreenHeader title="Account" onBack={onBack} />
         <View style={[styles.container, { backgroundColor: colors.bg }]}>
           <ActivityIndicator color={colors.green} />
         </View>
@@ -75,10 +83,10 @@ export default function AccountScreen() {
       accessToken={accessToken}
       profile={profile}
       refreshProfile={refreshProfile}
-      onOpenSaved={() => router.push("/saved")}
       onOpenPurchases={() => router.push("/purchases")}
       onLogout={onLogout}
       loggingOut={loggingOut}
+      onBack={onBack}
     />
   );
 }
@@ -87,20 +95,20 @@ function ProfileFields({
   accessToken,
   profile,
   refreshProfile,
-  onOpenSaved,
   onOpenPurchases,
   onLogout,
   loggingOut,
+  onBack,
 }: {
   accessToken: string;
   profile: UserProfileDto;
   refreshProfile: () => Promise<void>;
-  onOpenSaved: () => void;
   onOpenPurchases: () => void;
   onLogout: () => void;
   loggingOut: boolean;
+  onBack?: () => void;
 }) {
-  const { colors, theme, toggleTheme } = useAppTheme();
+  const { colors } = useAppTheme();
   const { logout } = useHomeSheets();
   const router = useRouter();
   const { data: balance } = useContactRevealBalanceQuery(accessToken);
@@ -291,30 +299,8 @@ function ProfileFields({
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScreenHeader title="Account" />
+      <ScreenHeader title="Account" onBack={onBack} />
       <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
-      {/* Messages has its own bottom tab now — no need to duplicate it here too. */}
-      <Pressable
-        onPress={onOpenSaved}
-        style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8 }]}
-      >
-        <Icon name="heart" size={16} color={colors.text} />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Saved listings</Text>
-      </Pressable>
-
-      {/* The other toggle lives in the Home tab's brand row, which is not where anyone looks for
-          a preference — and is unreachable from the other three tabs. Appearance belongs on the
-          settings screen; Home keeps its copy for the visitor who spots it there first. */}
-      <Pressable
-        onPress={toggleTheme}
-        style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8 }]}
-      >
-        <Icon name={theme === "dark" ? "sun" : "moon"} size={16} color={colors.text} />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
-          {theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        </Text>
-      </Pressable>
-
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile</Text>
 
       <Text style={[styles.label, { color: colors.muted }]}>Name</Text>
@@ -625,36 +611,51 @@ function ProfileFields({
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>{saving ? "Saving…" : "Save changes"}</Text>
       </Pressable>
 
-      {/* Below Save rather than up with Messages/theme — these aren't things you check while
-          editing the form, and putting them after Save keeps the primary action from competing
-          with them for attention on first load. */}
+      {/* Below Save rather than above with the editable fields — these aren't things you check
+          while editing the form, and putting them after Save keeps the primary action from
+          competing with them for attention on first load. Same order as the website's profile
+          sidebar: credits, then the two "go elsewhere" links. */}
+      <View style={[styles.balanceCard, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 28 }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <Icon name="phone" size={15} color={colors.text} />
+          <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Contact reveal credits</Text>
+        </View>
+        {balance && (balance.freeRevealsRemaining > 0 || balance.creditsRemaining > 0) ? (
+          <>
+            {balance.freeRevealsRemaining > 0 && (
+              <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
+                {balance.freeRevealsRemaining} free reveal{balance.freeRevealsRemaining === 1 ? "" : "s"} left
+              </Text>
+            )}
+            {balance.creditsRemaining > 0 && (
+              <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
+                {balance.creditsRemaining} purchased credit{balance.creditsRemaining === 1 ? "" : "s"}
+                {balance.nextCreditExpiryAt ? ` — earliest expires ${new Date(balance.nextCreditExpiryAt).toLocaleDateString()}` : ""}
+              </Text>
+            )}
+          </>
+        ) : (
+          <Text style={{ color: colors.muted, fontSize: 12.5 }}>
+            No reveals left. Buy a credit pack from any listing&rsquo;s &ldquo;View Contact&rdquo; button.
+          </Text>
+        )}
+        <Pressable onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/premium#contact-reveal-credits`)} style={{ marginTop: 8 }}>
+          <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>See pricing →</Text>
+        </Pressable>
+      </View>
+
+      {/* No native "My Listings" screen yet — opens the website's, same in-app-browser pattern
+          UtilityBar/HomeDrawer already use for Tools/Plans/Help. */}
       <Pressable
-        onPress={onOpenPurchases}
-        style={[styles.row, { borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 8, marginTop: 28 }]}
+        onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`)}
+        style={[styles.outlineButton, { borderColor: colors.green }]}
       >
-        <Icon name="pack" size={16} color={colors.text} />
-        <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Purchase history</Text>
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View and edit your listings</Text>
       </Pressable>
 
-      {balance && (balance.freeRevealsRemaining > 0 || balance.creditsRemaining > 0) && (
-        <View style={[styles.balanceCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-            <Icon name="phone" size={15} color={colors.text} />
-            <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Contact reveal credits</Text>
-          </View>
-          {balance.freeRevealsRemaining > 0 && (
-            <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
-              {balance.freeRevealsRemaining} free reveal{balance.freeRevealsRemaining === 1 ? "" : "s"} left
-            </Text>
-          )}
-          {balance.creditsRemaining > 0 && (
-            <Text style={{ color: colors.textSoft, fontSize: 12.5 }}>
-              {balance.creditsRemaining} purchased credit{balance.creditsRemaining === 1 ? "" : "s"}
-              {balance.nextCreditExpiryAt ? ` — earliest expires ${new Date(balance.nextCreditExpiryAt).toLocaleDateString()}` : ""}
-            </Text>
-          )}
-        </View>
-      )}
+      <Pressable onPress={onOpenPurchases} style={[styles.outlineButton, { borderColor: colors.green }]}>
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View your purchase history</Text>
+      </Pressable>
 
       {/* Below Save, above the legal footer: reachable but not adjacent to the primary action,
           so it can't be hit by mistake while editing the profile. */}
@@ -689,6 +690,7 @@ const styles = StyleSheet.create({
   countryChip: { borderWidth: 1, borderRadius: 9, paddingVertical: 12, paddingHorizontal: 14, justifyContent: "center" },
   secondaryButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 11, paddingHorizontal: 16, alignItems: "center", alignSelf: "flex-start" },
   primaryButton: { borderRadius: 8, paddingVertical: 13, alignItems: "center", marginTop: 24 },
+  outlineButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 13, alignItems: "center", marginTop: 12 },
   logoutButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 13, alignItems: "center", marginTop: 32 },
   errorText: { color: "#c0554b", fontSize: 13, marginBottom: 8 },
   deleteSection: { borderTopWidth: 1, paddingTop: 18, marginTop: 18 },

@@ -1,4 +1,5 @@
-import { Linking, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { ENTITY_TAGLINE, entityCopyright } from "@bhavano/types/legalEntity";
 import { useAppTheme } from "../../theme/ThemeContext";
 
@@ -21,11 +22,17 @@ export function LegalFooter() {
     <View style={{ marginTop: 36, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.border }}>
       <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, marginBottom: 12 }}>Legal</Text>
 
-      <View style={{ gap: 10, marginBottom: 18 }}>
-        {LEGAL_LINKS.map((link) => (
-          <Pressable key={link.path} onPress={() => Linking.openURL(`${SITE_URL}${link.path}`)}>
-            <Text style={{ fontSize: 13.5, color: colors.green, fontWeight: "600" }}>{link.label}</Text>
-          </Pressable>
+      {/* One line, not a stacked list — these are the same four in-app-browser destinations
+          (expo-web-browser, matching Tools/Plans/Help in UtilityBar/HomeDrawer) rather than
+          Linking.openURL, which handed the visitor off to the system browser entirely. */}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 12, rowGap: 6, marginBottom: 18 }}>
+        {LEGAL_LINKS.map((link, i) => (
+          <View key={link.path} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Pressable onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}${link.path}`)}>
+              <Text style={{ fontSize: 13, color: colors.green, fontWeight: "600" }}>{link.label}</Text>
+            </Pressable>
+            {i < LEGAL_LINKS.length - 1 && <Text style={{ color: colors.border }}>·</Text>}
+          </View>
         ))}
       </View>
 
