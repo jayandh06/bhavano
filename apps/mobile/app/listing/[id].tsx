@@ -40,6 +40,11 @@ export default function ListingDetailScreen() {
   const { colors } = useAppTheme();
   const { requireLogin, accessToken } = useHomeSheets();
   const router = useRouter();
+  // Usually a real back-navigation, but this screen is also reachable with no history behind it
+  // at all (e.g. router.replace()'d straight here, or a deep link) — router.back() throws "GO_BACK
+  // was not handled by any navigator" in that case rather than silently doing nothing, so this
+  // falls back to Home instead of leaving the header's arrow broken.
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const { data: listing, isLoading } = useListingQuery(id, accessToken);
   const [isFavourited, setIsFavourited] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
@@ -125,7 +130,7 @@ export default function ListingDetailScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <Stack.Screen options={{ headerShown: false }} />
-        <ScreenHeader title="Listing" onBack={() => router.back()} />
+        <ScreenHeader title="Listing" onBack={goBack} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={colors.green} />
         </View>
@@ -139,7 +144,7 @@ export default function ListingDetailScreen() {
       {/* Generic, not listing.title — the body already shows the full title (and lets it wrap,
           rather than truncating to an ellipsis in the header's narrower width alongside the back
           arrow), same reasoning as the message thread's header. */}
-      <ScreenHeader title="Listing" onBack={() => router.back()} />
+      <ScreenHeader title="Listing" onBack={goBack} />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
       <ListingMediaGallery

@@ -4,7 +4,8 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
-import type { Area, City, CreatedVideoInput, ListingCategory, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
+import * as WebBrowser from "expo-web-browser";
+import type { Area, City, CreatedVideoInput, ListingCategory, ListingDetailDto, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
@@ -18,13 +19,24 @@ import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/
 import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLimits";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
-import { Icon, isIconName } from "../Icon";
+import { Icon, isIconName, type IconName } from "../Icon";
 import { createListing, fetchAreas, uploadPhoto, uploadVideo } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ScreenHeader } from "./ScreenHeader";
 
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
+
+// Mirrors the website's identical success-screen pitch (PostAdWizard.tsx's own "Reach more
+// buyers, faster" card) — same four benefits, same icons.
+const BOOST_BENEFITS: [IconName, string][] = [
+  ["featured", "A gold Featured badge on your ad"],
+  ["check", "Ranks above regular listings in search"],
+  ["check", "Rotates fairly through the top slots"],
+  ["bell", "Alerts you the moment someone likes it"],
+];
 
 /** Short two- or three-option fields stay inline as a segmented control — seeing every choice at
  * once is worth the row it costs. Anything longer (facing has eight) wraps chips over three rows
@@ -117,7 +129,7 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   lease: "Lease out",
 };
 
-type Step = "category" | "transactionType" | "details" | "review";
+type Step = "category" | "transactionType" | "details" | "review" | "success";
 
 export function PostAdWizard({
   cities,
@@ -182,6 +194,7 @@ export function PostAdWizard({
   const [videoError, setVideoError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(null);
 
   function selectCategory(next: ListingCategory) {
     setCategory(next);
@@ -462,7 +475,13 @@ export function PostAdWizard({
         activeToken,
       );
 
-      router.replace(`/listing/${listing.id}`);
+      // Stays in the wizard on a "success" step (matching web's own PostAdWizard) rather than
+      // navigating straight to the listing — that's also what made the listing's own back arrow
+      // throw "GO_BACK was not handled": router.replace() drops this screen from history
+      // entirely, so there was nothing left to go back to. "View my ad" below pushes instead,
+      // so back from the listing now correctly returns here.
+      setCreatedListing(listing);
+      setStep("success");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create listing");
     } finally {
@@ -486,14 +505,16 @@ export function PostAdWizard({
     <>
     <ScreenHeader title="Post an Ad" onBack={prevStep ? () => setStep(prevStep) : undefined} />
     <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
-      <View style={styles.stepper}>
-        {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
-          <Text key={s} style={{ fontSize: 11, fontWeight: "700", color: step === s ? colors.green : colors.muted }}>
-            {i > 0 ? " → " : ""}
-            {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Review"}
-          </Text>
-        ))}
-      </View>
+      {step !== "success" && (
+        <View style={styles.stepper}>
+          {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
+            <Text key={s} style={{ fontSize: 11, fontWeight: "700", color: step === s ? colors.green : colors.muted }}>
+              {i > 0 ? " → " : ""}
+              {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Review"}
+            </Text>
+          ))}
+        </View>
+      )}
 
       {step === "category" && (
         <View style={{ gap: 22 }}>
@@ -899,6 +920,54 @@ export function PostAdWizard({
           </View>
         </View>
       )}
+
+      {step === "success" && createdListing && (
+        <View style={{ alignItems: "center", gap: 20, paddingTop: 8 }}>
+          <View style={{ alignItems: "center", gap: 8 }}>
+            <View style={[styles.celebrateCircle, { backgroundColor: `${colors.green}1a` }]}>
+              <Icon name="celebrate" size={26} color={colors.green} />
+            </View>
+            <Text style={{ fontFamily: "serif", fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center" }}>
+              Your ad is live!
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center" }}>
+              It&rsquo;s now visible to buyers searching your area.
+            </Text>
+          </View>
+
+          <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <Icon name="boost" size={17} color={colors.gold} />
+              <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
+                Reach more buyers, faster
+              </Text>
+            </View>
+            <View style={{ gap: 8 }}>
+              {BOOST_BENEFITS.map(([icon, text]) => (
+                <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Icon name={icon} size={14} color={colors.green} />
+                  <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>
+                </View>
+              ))}
+            </View>
+            {/* No native Razorpay/purchase flow — same as Plans elsewhere in the app, opens the
+                website where the owner can boost this same listing from My listings. */}
+            <Pressable
+              onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`)}
+              style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
+            >
+              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Boost this listing</Text>
+            </Pressable>
+          </View>
+
+          {/* A real push (not the replace() this used to do straight out of onSubmit) — see this
+              screen's own header comment for why that mattered: it's what makes the listing's
+              back arrow have somewhere to return to. */}
+          <Pressable onPress={() => router.push(`/listing/${createdListing.id}`)}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>View my ad →</Text>
+          </Pressable>
+        </View>
+      )}
     </ScrollView>
 
     {/* One sheet reused by every collapsed select, driven by `openField` — a modal per field would
@@ -955,6 +1024,8 @@ export function PostAdWizard({
 const styles = StyleSheet.create({
   container: { padding: 16, paddingBottom: 48 },
   stepper: { flexDirection: "row", flexWrap: "wrap", marginBottom: 20 },
+  celebrateCircle: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
+  boostCard: { width: "100%", borderWidth: 1, borderRadius: 16, padding: 18 },
   label: { fontSize: 13, fontWeight: "700", marginTop: 14, marginBottom: 6 },
   optionButton: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1.5, borderRadius: 10, padding: 14 },
   groupHeading: { fontSize: 12, fontWeight: "700", letterSpacing: 0.6 },
