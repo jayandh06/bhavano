@@ -1,7 +1,8 @@
 import { BadRequestException, Body, Controller, Get, Post, Query, StreamableFile } from '@nestjs/common';
-import type { Area, City, ReverseGeocodeResultDto } from '@bhavano/types';
+import type { Area, City, PlaceAutocompletePrediction, PlaceGeocodeResultDto, ReverseGeocodeResultDto } from '@bhavano/types';
 import { LocationsService } from './locations.service';
 import { ReverseGeocodeDto } from './dto/reverse-geocode.dto';
+import { PlaceDetailsDto } from './dto/place-details.dto';
 
 @Controller('locations')
 export class LocationsController {
@@ -30,6 +31,21 @@ export class LocationsController {
   @Post('reverse-geocode')
   reverseGeocodeGoogle(@Body() dto: ReverseGeocodeDto): Promise<ReverseGeocodeResultDto> {
     return this.locationsService.reverseGeocodeGoogle(dto.lat, dto.lng);
+  }
+
+  /** Backs the map picker's address search box — see LocationsService.placeAutocomplete's own
+   * doc comment for why this proxies Google rather than the mobile app calling it directly. */
+  @Get('place-autocomplete')
+  placeAutocomplete(@Query('query') query?: string): Promise<PlaceAutocompletePrediction[]> {
+    if (!query || query.trim().length < 2) return Promise.resolve([]);
+    return this.locationsService.placeAutocomplete(query);
+  }
+
+  @Post('place-details')
+  async placeDetails(@Body() dto: PlaceDetailsDto): Promise<PlaceGeocodeResultDto> {
+    const result = await this.locationsService.resolvePlaceId(dto.placeId);
+    if (!result) throw new BadRequestException("Couldn't resolve that place");
+    return result;
   }
 
   /** Proxies the Google Static Maps API — see LocationsService.getStaticMapImage's own doc

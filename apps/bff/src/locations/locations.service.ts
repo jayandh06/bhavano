@@ -1,6 +1,12 @@
 import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Area as AreaDto, City as CityDto, ReverseGeocodeResultDto } from '@bhavano/types';
+import type {
+  Area as AreaDto,
+  City as CityDto,
+  PlaceAutocompletePrediction,
+  PlaceGeocodeResultDto,
+  ReverseGeocodeResultDto,
+} from '@bhavano/types';
 import { slugify } from '@bhavano/types/slugify';
 import { PrismaService } from '../prisma/prisma.service';
 import type { Area, City } from '@prisma/client';
@@ -19,6 +25,18 @@ interface GoogleGeocodeResult {
 interface GoogleGeocodeResponse {
   status: string;
   results: GoogleGeocodeResult[];
+  error_message?: string;
+}
+
+interface GooglePlacesAutocompleteResponse {
+  status: string;
+  predictions: { place_id: string; description: string }[];
+  error_message?: string;
+}
+
+interface GooglePlaceDetailsResponse {
+  status: string;
+  result?: { geometry?: { location?: { lat: number; lng: number } } };
   error_message?: string;
 }
 
@@ -254,6 +272,66 @@ export class LocationsService {
       cityName: city?.name,
       isNewCity,
     };
+  }
+
+  /** Backs the map picker's address search box (native's own — web loads the Places JS SDK
+   * client-side with a referrer-restricted key, which a distributed app binary can't do, same
+   * reasoning as `getStaticMapImage`). `components=country:in`: Bhavano is India-only, and
+   * without it a search for a common street name returns predictions from anywhere in the world
+   * before the relevant Indian one. */
+  async placeAutocomplete(query: string): Promise<PlaceAutocompletePrediction[]> {
+    const apiKey = this.config.get<string>('GOOGLE_MAPS_SERVER_KEY');
+    if (!apiKey) {
+      throw new ServiceUnavailableException('Location lookup is not configured on this server yet');
+    }
+
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&components=country:in&language=en&key=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      this.logger.warn(`Google Places Autocomplete API request failed: ${res.status}`);
+      throw new ServiceUnavailableException('Failed to search for that location');
+    }
+
+    const data = (await res.json()) as GooglePlacesAutocompleteResponse;
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      this.logger.warn(
+        `Google Places Autocomplete API returned ${data.status} for "${query}"${data.error_message ? `: ${data.error_message}` : ''}`,
+      );
+      return [];
+    }
+
+    return data.predictions.map((p) => ({ placeId: p.place_id, description: p.description }));
+  }
+
+  /** Resolves a `placeId` from `placeAutocomplete` into coordinates (Place Details), then runs
+   * it straight through `reverseGeocodeGoogle` — the same City/Area resolution a dropped pin
+   * gets, so the caller can treat "picked a search result" and "dropped a pin" identically.
+   * `null` means Google couldn't resolve the place (expired/invalid id) — the caller's own
+   * concern to handle, same as an empty `reverseGeocodeGoogle` result. */
+  async resolvePlaceId(placeId: string): Promise<PlaceGeocodeResultDto | null> {
+    const apiKey = this.config.get<string>('GOOGLE_MAPS_SERVER_KEY');
+    if (!apiKey) {
+      throw new ServiceUnavailableException('Location lookup is not configured on this server yet');
+    }
+
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=geometry&key=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      this.logger.warn(`Google Place Details API request failed: ${res.status}`);
+      throw new ServiceUnavailableException('Failed to look up that place');
+    }
+
+    const data = (await res.json()) as GooglePlaceDetailsResponse;
+    const location = data.result?.geometry?.location;
+    if (data.status !== 'OK' || !location) {
+      this.logger.warn(
+        `Google Place Details API returned ${data.status} for ${placeId}${data.error_message ? `: ${data.error_message}` : ''}`,
+      );
+      return null;
+    }
+
+    const reverse = await this.reverseGeocodeGoogle(location.lat, location.lng);
+    return { ...reverse, lat: location.lat, lng: location.lng };
   }
 
   /**

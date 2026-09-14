@@ -127,9 +127,19 @@ real pin is a net-new capability, not a fix to something broken.
   `expo-dev-client` (already a dependency) via a config plugin. (`expo-maps` is a lighter-weight,
   more "Expo-native" alternative but comparatively new — worth a short spike to compare before
   committing, but default to `react-native-maps` unless that spike says otherwise.)
-- Places Autocomplete on mobile: a direct `fetch` to the Places Autocomplete REST endpoint (keeps
-  dependency footprint minimal, consistent with "just call the vendor's API"), or an existing
-  community RN component if it saves meaningful time — a build-vs-borrow call for implementation.
+- Places Autocomplete on mobile: **Update — proxied through the BFF, not a direct client fetch.**
+  This section originally proposed a direct `fetch` to the Places Autocomplete REST endpoint with
+  its own embedded key. That's the same problem `getStaticMapImage`'s own doc comment identifies
+  for the Static Maps API: Places Autocomplete/Details also can't be restricted to "this specific
+  distributed app binary" the way an Android/iOS app-restricted key restricts the *Maps SDK* — a
+  key shipped in the app bundle for these REST APIs would be exposed the same way a Static Maps
+  key would've been. Added `GET /locations/place-autocomplete` and `POST /locations/place-details`
+  instead, both using the existing server-side `GOOGLE_MAPS_SERVER_KEY` — `place-details` resolves
+  a picked prediction's coordinates via Place Details, then runs them straight through the
+  existing `reverseGeocodeGoogle` so a search result and a dropped pin produce the identical
+  City/Area-suggestion shape (`PlaceGeocodeResultDto`, `ReverseGeocodeResultDto` plus lat/lng).
+  `apps/mobile/src/components/home/LocationMapPicker.tsx` gained the search box; no separate
+  native Places SDK key needed, and no new native dependency.
 - Requires a **separate native Google Maps SDK API key** for Android (and iOS if targeted),
   configured in `apps/mobile/app.json`'s `android.config.googleMaps.apiKey` — distinct from the
   web JS key and the server-side geocoding key. `expo-location` (already a dependency) can supply

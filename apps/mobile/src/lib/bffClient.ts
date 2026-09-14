@@ -12,6 +12,8 @@ import type {
   ListingsPage,
   MessageDto,
   PaymentHistoryPage,
+  PlaceAutocompletePrediction,
+  PlaceGeocodeResultDto,
   PropertyTypeFilter,
   RevealContactResponseDto,
   ReverseGeocodeResultDto,
@@ -118,6 +120,18 @@ export function reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseG
   return bffFetch<ReverseGeocodeResultDto>("/locations/reverse-geocode", {
     method: "POST",
     body: JSON.stringify({ lat, lng }),
+  });
+}
+
+/** Backs LocationMapPicker's address search box. */
+export function placeAutocomplete(query: string): Promise<PlaceAutocompletePrediction[]> {
+  return bffFetch<PlaceAutocompletePrediction[]>(`/locations/place-autocomplete?query=${encodeURIComponent(query)}`);
+}
+
+export function resolvePlaceId(placeId: string): Promise<PlaceGeocodeResultDto> {
+  return bffFetch<PlaceGeocodeResultDto>("/locations/place-details", {
+    method: "POST",
+    body: JSON.stringify({ placeId }),
   });
 }
 

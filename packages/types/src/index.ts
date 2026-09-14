@@ -361,6 +361,23 @@ export interface ReverseGeocodeResultDto {
   isNewCity?: boolean;
 }
 
+/** One Google Places Autocomplete suggestion — `GET /locations/place-autocomplete`. `placeId`
+ * is opaque to the caller; it only ever gets passed back to `POST /locations/place-details` to
+ * resolve into coordinates. */
+export interface PlaceAutocompletePrediction {
+  placeId: string;
+  description: string;
+}
+
+/** `POST /locations/place-details`'s response — a `ReverseGeocodeResultDto` (same City/Area
+ * resolution `reverseGeocodeGoogle` already does for a dropped pin) plus the coordinates Place
+ * Details resolved, since the caller doesn't have those yet the way a pin-drop caller already
+ * does. */
+export interface PlaceGeocodeResultDto extends ReverseGeocodeResultDto {
+  lat: number;
+  lng: number;
+}
+
 export interface MessageDto {
   id: string;
   conversationId: string;
