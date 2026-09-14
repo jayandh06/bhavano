@@ -76,6 +76,8 @@ thing: Sign in with Apple now sits above Google on iOS, exactly per the "Work" l
   end-to-end: released on account deletion and on the losing side of a merge
   (`account-deletion.service.ts`, `account-merge.service.ts`), carried onto the winner the same
   way.
+- **Confirmed working on a real device** (2026-09-14) — the button renders, the native Apple sheet
+  completes, and a session comes back from `POST /auth/apple`.
 - **Still genuinely open, not yet done:** registering `bhavano.com` as an Apple "Email Source" for
   Private Relay deliverability (see the bullet above) — that's Apple Developer Portal
   configuration, not code, and nothing here does it automatically.
@@ -126,11 +128,16 @@ the same OTP/emailed-code-gated flow as web's `ProfileForm`, calling the same en
 
 ## Also required before submitting
 
-**Missing permission strings.** `expo-image-picker` declares `photosPermission` but not
-`cameraPermission`. If any flow reaches the camera, iOS shows a blank prompt and App Review
-rejects it. Android already requests `RECORD_AUDIO`, which suggests video capture is intended —
-if that ships on iOS it needs `NSMicrophoneUsageDescription` too. Declare only what is actually
-used; an unused permission string is its own rejection reason.
+**Missing permission strings — checked, not actually a gap.** `expo-image-picker` declares
+`photosPermission` but not `cameraPermission`; the app never calls `launchCameraAsync` or uses
+`expo-camera` anywhere, on either platform — video, like photos, only ever goes through
+`launchImageLibraryAsync` (picking an existing file, not recording one), so there's no live
+camera/microphone flow for `cameraPermission`/`NSMicrophoneUsageDescription` to cover. Android's
+`RECORD_AUDIO` is a picker/media-pipeline requirement for handling a video file that already has
+an audio track, not evidence of live recording. Nothing to add here.
+
+**`supportsTablet` — already resolved.** `app.config.js` has it `false`, so no iPad screenshots
+are needed and there's no broken-tablet-layout risk to worry about.
 
 **Privacy nutrition labels.** App Store Connect asks, per data type, what is collected and whether
 it is linked to identity. Bhavano collects: phone, email, name, approximate and precise location,
@@ -139,14 +146,17 @@ conversion tags collect identifiers for tracking, which means the App Tracking T
 question needs a truthful answer. Declaring "no tracking" while shipping Ads conversion tags is
 the kind of mismatch that gets an app pulled after release.
 
-**Demo account for App Review.** Reviewers must reach the whole app. Phone OTP is a problem: they
-cannot receive an Indian SMS. Provide a test account with credentials in the review notes, or a
-bypass code, or the review stalls on the login screen. `ADMIN_PHONES` and the existing
-`9999999999` test account are a starting point.
+**Demo account for App Review — largely solved by Sign in with Apple.** Phone OTP alone was a
+real problem: reviewers can't receive an Indian SMS, `9999999999` is a local-dev-only seed (never
+exists in prod), and there's no OTP bypass/fixed-code path in `OtpService` (`devLogin` exists but
+is hard-gated off outside `NODE_ENV !== 'production'`). Sign in with Apple now sidesteps all of
+that — a reviewer signs in with their own Apple ID, straight to a real working account, no
+Indian phone number or bypass code involved. Still worth a line in the review notes pointing this
+out explicitly (reviewers don't know to try it otherwise), but this is no longer the login-screen
+stall it used to be.
 
-**Screenshots** for 6.7" and 6.5" iPhone, and iPad if `supportsTablet` stays `true`. It is
-currently true — either produce iPad screenshots and verify the layouts, or set it to `false`.
-Shipping a broken iPad layout is an easy rejection.
+**Screenshots** for 6.7" and 6.5" iPhone only — `supportsTablet: false` (see above) means no iPad
+set is needed.
 
 **Support URL and marketing URL**, plus the developer name reading **Finfolia Technologies LLP**
 to match `app.config.js`'s comment and `docs/plans/finfolia-entity-disclosure.md`.
