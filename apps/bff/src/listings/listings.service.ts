@@ -1151,7 +1151,7 @@ export class ListingsService {
 
     await this.logEdit(listing.id, isBulkImportOwner ? 'system' : 'owner', ownerId, 'created', null);
 
-    return this.toDetailDto(listing, undefined, true);
+    return this.toDetailDto(listing, undefined, true, true);
   }
 
   /** Trims a wizard-submitted videos array down to what the owner is currently entitled to
@@ -1498,7 +1498,7 @@ export class ListingsService {
     });
 
     return listings.map((listing) =>
-      this.toDetailDto(listing, undefined, true),
+      this.toDetailDto(listing, undefined, true, true),
     );
   }
 
@@ -1511,7 +1511,7 @@ export class ListingsService {
     if (listing.ownerId !== userId)
       throw new ForbiddenException("You don't own this listing");
 
-    return this.toDetailDto(listing, undefined, true);
+    return this.toDetailDto(listing, undefined, true, true);
   }
 
   async update(
@@ -1665,7 +1665,7 @@ export class ListingsService {
       }),
     ]);
 
-    return this.toDetailDto(listing, undefined, true);
+    return this.toDetailDto(listing, undefined, true, true);
   }
 
   /** Transfers a bulk-imported listing (Listing.claimContactId set — see
@@ -1718,7 +1718,7 @@ export class ListingsService {
       }),
     ]);
 
-    return this.toDetailDto(listing, undefined, true);
+    return this.toDetailDto(listing, undefined, true, true);
   }
 
   /** Top (category, transactionType, city) combinations by real inventory — feeds the
