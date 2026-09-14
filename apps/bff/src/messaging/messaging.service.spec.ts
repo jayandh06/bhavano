@@ -77,6 +77,7 @@ describe('MessagingService.getUnreadTotal', () => {
       where: {
         senderId: { not: 'u1' },
         readAt: null,
+        deletedAt: null,
         conversation: { OR: [{ posterId: 'u1' }, { inquirerId: 'u1' }] },
       },
     });

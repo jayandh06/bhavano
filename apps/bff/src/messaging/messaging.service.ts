@@ -79,7 +79,17 @@ export class MessagingService {
    * they'd merely opened in the admin panel, alongside their real inquiry for the same listing. */
   async listConversations(userId: string): Promise<ConversationSummaryDto[]> {
     const conversations = await this.prisma.conversation.findMany({
-      where: { type: 'inquiry', OR: [{ posterId: userId }, { inquirerId: userId }], messages: { some: {} } },
+      // `some: { deletedAt: null }`, not just `some: {}` — a conversation whose only messages
+      // have all been deleted has no active content left either, so it drops out of the inbox
+      // the same as one that never had a message at all. The Conversation/Message rows
+      // themselves are untouched (soft-delete, kept for admin moderation) — this only changes
+      // what's listed here. sendFirstMessage's upsert still finds and reuses the same row if
+      // either side messages again, so nothing is lost or duplicated.
+      where: {
+        type: 'inquiry',
+        OR: [{ posterId: userId }, { inquirerId: userId }],
+        messages: { some: { deletedAt: null } },
+      },
       include: {
         listing: { select: { title: true, city: { select: { name: true } }, area: { select: { name: true } } } },
         poster: { select: { id: true, name: true, phone: true } },
@@ -94,7 +104,7 @@ export class MessagingService {
         const viewerIsPoster = c.posterId === userId;
         const otherParty = viewerIsPoster ? c.inquirer : c.poster;
         const unreadCount = await this.prisma.message.count({
-          where: { conversationId: c.id, senderId: { not: userId }, readAt: null },
+          where: { conversationId: c.id, senderId: { not: userId }, readAt: null, deletedAt: null },
         });
         // Only the poster (seller) sees this — the badge is about the *inquirer* being a
         // premium buyer, so it never makes sense on the seller's own side of the thread.
@@ -175,12 +185,15 @@ export class MessagingService {
 
   /** Total unread messages across every conversation this user is in, in either role — the number
    * behind the count badge on the Messages entry point. One query: the per-conversation
-   * `unreadCount` that `listConversations` computes is the same count sliced by thread. */
+   * `unreadCount` that `listConversations` computes is the same count sliced by thread. Excludes
+   * deleted messages — otherwise an unread message deleted before it was ever read would leave a
+   * phantom badge count pointing at a conversation that may no longer even be in the inbox. */
   async getUnreadTotal(userId: string): Promise<number> {
     return this.prisma.message.count({
       where: {
         senderId: { not: userId },
         readAt: null,
+        deletedAt: null,
         conversation: { OR: [{ posterId: userId }, { inquirerId: userId }] },
       },
     });
