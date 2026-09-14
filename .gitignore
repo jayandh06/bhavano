@@ -60,3 +60,9 @@ __pycache__/
 # to do — it belongs on the host, not in git.
 data/geoip/
 
+# App Store Connect API private keys (Apple only lets you download these once, at generation
+# time) — a leaked one lets anyone with it manage the App Store Connect account. Keep these
+# entirely outside the repo (e.g. ~/.config/bhavano-secrets/) — this is a defensive backstop in
+# case one ever lands here by accident, not the actual storage location.
+*.p8
+

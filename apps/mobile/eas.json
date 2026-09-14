@@ -19,6 +19,13 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascApiKeyPath": "/Users/jayandhan.r/.config/bhavano-secrets/AuthKey_6KPL9BLM97.p8",
+        "ascApiKeyId": "6KPL9BLM97",
+        "ascApiKeyIssuerId": "9df5bb28-4ddb-4a83-a90f-b85224c93dad",
+        "ascAppId": "6811878602"
+      }
+    }
   }
 }
