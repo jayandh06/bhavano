@@ -304,13 +304,13 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
 
             {loginStep === "choose" && (
               <>
-                {/* Google first — most visitors already have a Google account signed into
-                  * their browser, so it is usually one click with nothing to type, where phone
-                  * OTP always costs a wait for the SMS. White with a border and the official
-                  * colour mark, not the app's own green: Google's own button guidelines call for
-                  * a neutral surface so the coloured logo itself is what reads as "Google," the
-                  * same convention practically every Google sign-in button follows regardless of
-                  * the host app's own palette.
+                <button onClick={() => setLoginStep("phone")} className={`${outlineButtonClass} mb-2.5`}>
+                  Continue with Phone OTP
+                </button>
+                {/* White with a border and the official colour mark, not the app's own green:
+                  * Google's own button guidelines call for a neutral surface so the coloured
+                  * logo itself is what reads as "Google," the same convention practically every
+                  * Google sign-in button follows regardless of the host app's own palette.
                   *
                   * Hidden entirely when phoneOnly — offering it would just be a guaranteed dead
                   * end, see requireLogin's own doc comment. */}
@@ -318,14 +318,11 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                   <button
                     onClick={handleGoogle}
                     disabled={pending}
-                    className="w-full flex items-center justify-center gap-2.5 bg-surface text-text border-[1.5px] border-border rounded-lg p-[13px] text-sm font-bold cursor-pointer mb-2.5"
+                    className="w-full flex items-center justify-center gap-2.5 bg-surface text-text border-[1.5px] border-border rounded-lg p-[13px] text-sm font-bold cursor-pointer"
                   >
                     <GoogleIcon /> Continue with Google
                   </button>
                 )}
-                <button onClick={() => setLoginStep("phone")} className={outlineButtonClass}>
-                  Continue with Phone OTP
-                </button>
                 <p className="text-xs text-muted mt-3.5 leading-[1.5]">
                   By continuing you agree to Bhavano&apos;s{" "}
                   <Link href="/terms" className="text-text-soft font-bold">

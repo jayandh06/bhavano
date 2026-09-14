@@ -535,11 +535,16 @@ export function HomeSheetsProvider({
           {loginStep === "choose" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Log in to continue</Text>
-              {/* iOS-only, and shown above Google — Apple requires Sign in with Apple to have
-                * equal or greater prominence than any other third-party login offered (Guideline
-                * 4.8). Apple's own button component, not a custom one: their HIG requires using
-                * either this or a button that strictly matches its design, and this guarantees
-                * that. See docs/plans/ios-app-store-release.md. */}
+              <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
+                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone OTP</Text>
+              </Pressable>
+              {/* iOS-only, and still shown above Google even though Phone OTP now leads —
+                * Apple requires Sign in with Apple to have equal or greater prominence than any
+                * other *third-party* login offered (Guideline 4.8); Phone OTP is this app's own
+                * credential system, not a third-party identity provider, so it isn't what that
+                * rule is about. Apple's own button component, not a custom one: their HIG
+                * requires using either this or a button that strictly matches its design, and
+                * this guarantees that. See docs/plans/ios-app-store-release.md. */}
               {Platform.OS === "ios" && (
                 <AppleAuthentication.AppleAuthenticationButton
                   buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
@@ -549,15 +554,9 @@ export function HomeSheetsProvider({
                   onPress={handleApple}
                 />
               )}
-              {/* Google first on Android/web, matching those login dialogs — most people already
-                * have a Google account signed into the device, so it is usually one tap where
-                * phone OTP always costs an SMS wait. */}
               <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
                 <GoogleIcon size={18} />
                 <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Continue with Google</Text>
-              </Pressable>
-              <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone OTP</Text>
               </Pressable>
               {/* Same wording/links as the web login dialog's own disclaimer. */}
               <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
