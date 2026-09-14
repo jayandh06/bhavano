@@ -10,12 +10,15 @@ export function MessageBody({ body }: { body: string }) {
     <>
       {segments.map((segment, index) =>
         segment.type === "url" ? (
+          // text-inherit, not the global `a` default (globals.css: unlayered `a { color:
+          // var(--green) }` beats any layered Tailwind class) — a link in the sender's own
+          // green bubble would otherwise render in the same green as its background.
           <a
             key={index}
             href={normalizeUrlForOpening(segment.value)}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline"
+            className="underline text-inherit"
           >
             {segment.value}
           </a>
