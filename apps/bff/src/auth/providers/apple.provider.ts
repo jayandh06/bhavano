@@ -49,7 +49,10 @@ export class AppleProvider {
    * Google's separate web/iOS/Android client ids) — Sign in with Apple has no separate "mobile
    * client id" concept for a native, non-web integration. */
   private expectedAudience(): string {
-    return this.config.get<string>('APPLE_BUNDLE_ID') ?? 'com.finfolia.bhavano';
+    // `||`, not `??`: docker-compose.prod.yml substitutes an unset ${APPLE_BUNDLE_ID} with an
+    // empty string rather than omitting the key, which `??` doesn't treat as "unset" — this
+    // silently made the real bundle id fallback below unreachable in prod.
+    return this.config.get<string>('APPLE_BUNDLE_ID') || 'com.finfolia.bhavano';
   }
 
   private getKey: jwt.GetPublicKeyOrSecret = (header, callback) => {
