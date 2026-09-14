@@ -6,7 +6,7 @@ import * as Crypto from "expo-crypto";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
-import { BffError, createConversation, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
+import { BffError, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
 import { Icon } from "../../src/components/Icon";
 import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
 import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
@@ -48,7 +48,6 @@ export default function ListingDetailScreen() {
   const { data: listing, isLoading } = useListingQuery(id, accessToken);
   const [isFavourited, setIsFavourited] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
-  const [messageError, setMessageError] = useState<string | null>(null);
   const [contactRevealed, setContactRevealed] = useState(false);
   const [ownerPhone, setOwnerPhone] = useState<string | null>(null);
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
@@ -83,18 +82,14 @@ export default function ListingDetailScreen() {
     setLikeCount(result.likeCount);
   }
 
-  async function onMessage() {
+  // No BFF call here — see docs/plans/message-delete-and-lazy-conversation-creation.md, the
+  // conversation is created atomically with the first message on the new-message screen itself.
+  function onMessage() {
     if (!accessToken) {
-      requireLogin({ onSuccess: () => void onMessage() });
+      requireLogin({ onSuccess: () => onMessage() });
       return;
     }
-    setMessageError(null);
-    try {
-      const conversation = await createConversation(accessToken, id);
-      router.push(`/messages/${conversation.id}`);
-    } catch (e) {
-      setMessageError(e instanceof Error ? e.message : "Failed to start conversation");
-    }
+    router.push(`/messages/new/${id}`);
   }
 
   /** No in-app purchase flow exists on mobile yet (no native Razorpay integration anywhere in
@@ -265,7 +260,6 @@ export default function ListingDetailScreen() {
               </>
             )}
           </View>
-          {messageError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{messageError}</Text>}
           {revealError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{revealError}</Text>}
           {insufficientCredits && (
             <Text style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>

@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import type { ListingCardDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
-import { BffError, createConversation, revealContact, toggleFavourite } from "../../lib/bffClient";
+import { BffError, revealContact, toggleFavourite } from "../../lib/bffClient";
 import { Icon } from "../Icon";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
@@ -31,21 +31,17 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     setLikeCount(result.likeCount);
   }
 
-  // Opens the conversation with the seller — the same thing the detail screen's button does.
-  // `onSuccess` resumes this same call once login completes, so the user lands straight in the
-  // conversation instead of having to tap Message a second time.
-  async function onMessage() {
+  // Opens the new-message screen for this listing — the same thing the detail screen's button
+  // does. No BFF call here: the conversation is created atomically with the first message (see
+  // docs/plans/message-delete-and-lazy-conversation-creation.md), not by this tap. `onSuccess`
+  // resumes this same call once login completes, so the user lands straight there instead of
+  // having to tap Message a second time.
+  function onMessage() {
     if (!accessToken) {
-      requireLogin({ onSuccess: () => void onMessage() });
+      requireLogin({ onSuccess: () => onMessage() });
       return;
     }
-    setContactError(null);
-    try {
-      const conversation = await createConversation(accessToken, item.id);
-      router.push(`/messages/${conversation.id}`);
-    } catch (e) {
-      setContactError(e instanceof Error ? e.message : "Failed to start conversation");
-    }
+    router.push(`/messages/new/${item.id}`);
   }
 
   // No in-app purchase flow on mobile (see docs/plans/contact-reveal-credits.md) — the
