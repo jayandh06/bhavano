@@ -382,9 +382,22 @@ export interface MessageDto {
   id: string;
   conversationId: string;
   senderId: string;
-  body: string;
+  /** Null once `deletedAt` is set — the original text never ships to clients past that point. */
+  body: string | null;
   createdAt: string;
   readAt: string | null;
+  deletedAt: string | null;
+}
+
+export interface MessageDeletedEvent {
+  messageId: string;
+  conversationId: string;
+  deletedAt: string;
+}
+
+export interface SendFirstMessageResponseDto {
+  conversationId: string;
+  message: MessageDto;
 }
 
 export interface ConversationSummaryDto {
