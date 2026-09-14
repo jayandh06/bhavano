@@ -47,6 +47,12 @@ module.exports = {
         // declaring the schemes here, iOS silently reports every one of them as "not
         // installed" even when they are, and UPI drops out of the payment options entirely.
         LSApplicationQueriesSchemes: ["tez", "phonepe", "paytmmp"],
+        // App Tracking Transparency (see src/lib/trackingConsent.ts) — required because the
+        // backend reports signup/post-ad conversions to Google Ads using hashed email/phone,
+        // which is "tracking" under Apple's definition even without an IDFA. Shown to the user
+        // verbatim as the system prompt's explanation.
+        NSUserTrackingUsageDescription:
+          "Bhavano uses this to measure how well our ads are working, so we can keep posting free for everyone.",
       },
     },
     android: {
@@ -71,6 +77,7 @@ module.exports = {
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
+      "expo-tracking-transparency",
       // Adds the POST_NOTIFICATIONS permission (Android 13+) and sets the small-icon/tint used
       // for the "new message" push. The monochrome icon is the one Android actually renders in
       // the status bar — a full-colour one shows as a white square.

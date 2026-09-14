@@ -24,6 +24,7 @@ import type {
   UpdateProfileInput,
   UserProfileDto,
 } from "@bhavano/types";
+import { isTrackingAuthorized } from "./trackingConsent";
 
 const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
 
@@ -41,9 +42,13 @@ export class BffError extends Error {
 }
 
 async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  // Only ever sent when explicitly denied — see trackingConsent.ts's own doc comment on why
+  // "not asked yet" must never look like a denial to the server-side conversion gate.
+  const trackingHeaders =
+    isTrackingAuthorized() === false ? { "X-Tracking-Authorized": "false" } : undefined;
   const res = await fetch(`${BFF_URL}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: { "Content-Type": "application/json", ...trackingHeaders, ...init?.headers },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");

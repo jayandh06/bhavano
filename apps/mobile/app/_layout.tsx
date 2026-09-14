@@ -10,6 +10,7 @@ import { AppThemeProvider, useAppTheme } from "../src/theme/ThemeContext";
 import { HomeSheetsProvider, useHomeSheets } from "../src/context/HomeSheetsProvider";
 import { useCitiesQuery, useUnreadCountSync } from "../src/lib/queries";
 import { configureNotificationHandler, onMessageNotificationTap } from "../src/lib/push";
+import { requestTrackingConsent } from "../src/lib/trackingConsent";
 import { BottomTabBar } from "../src/components/home/BottomTabBar";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,15 @@ function PushBridge() {
 function AppNavigation() {
   const { data: popularCities } = useCitiesQuery();
   const { colors } = useAppTheme();
+
+  // A beat after the home screen paints, not at cold-launch — asking before the user has seen
+  // anything of the app has worse opt-in rates and no context for what's being asked. iOS only
+  // ever shows this once per app per its own reset (requestTrackingConsent is a no-op resolve on
+  // every later mount), so this doesn't re-prompt on navigation.
+  useEffect(() => {
+    const timer = setTimeout(() => void requestTrackingConsent(), 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <HomeSheetsProvider popularCities={popularCities ?? []}>
