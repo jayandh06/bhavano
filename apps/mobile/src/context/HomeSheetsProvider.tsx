@@ -502,16 +502,27 @@ export function HomeSheetsProvider({
           {loginStep === "choose" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Log in to continue</Text>
-              {/* Google first, matching the web and admin login dialogs — most people already
-                * have a Google account signed into the device, so it is usually one tap where
-                * phone OTP always costs an SMS wait. */}
-              <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
-                <GoogleIcon size={18} />
-                <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Continue with Google</Text>
-              </Pressable>
+              {/* iOS-only: offering a third-party login (Google) obligates Sign in with Apple too
+                * (Guideline 4.8) — phone OTP alone doesn't trigger that requirement, so this is
+                * the whole login sheet on iOS until Sign in with Apple is built. See
+                * docs/plans/ios-app-store-release.md. Google stays first on Android/web, matching
+                * those login dialogs — most people already have a Google account signed into the
+                * device, so it is usually one tap where phone OTP always costs an SMS wait. */}
+              {Platform.OS !== "ios" && (
+                <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
+                  <GoogleIcon size={18} />
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Continue with Google</Text>
+                </Pressable>
+              )}
               <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone OTP</Text>
               </Pressable>
+              {Platform.OS === "ios" && (
+                <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
+                  Signed up with Google on the web or Android? Log in there and add a phone number
+                  under Account, then you can log in here with it too.
+                </Text>
+              )}
               {/* Same wording/links as the web login dialog's own disclaimer. */}
               <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
                 By continuing you agree to Bhavano&apos;s{" "}
