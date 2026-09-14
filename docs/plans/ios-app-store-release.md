@@ -156,3 +156,10 @@ exists in App Store Connect, so submission does not prompt each time.
   purchase and take a commission.** Worth deciding deliberately before review rather than
   discovering it in a rejection: the usual approach is to keep purchases web-only and not link to
   them from the app.
+  **Update: decided.** A native Android Razorpay boost flow was built
+  (`apps/mobile/src/components/home/BoostModal.tsx`) before this note was cross-checked against
+  it — caught before submission, not after. `PostAdWizard.tsx`'s "Boost this listing" now branches
+  on `Platform.OS`: iOS opens the website (this section's original recommendation, unchanged for
+  that platform); Android opens the native checkout. Real StoreKit in-app purchase for iOS boosts
+  remains unbuilt — this is a workaround, not a resolution, if boosts are meant to work natively
+  on iOS eventually.

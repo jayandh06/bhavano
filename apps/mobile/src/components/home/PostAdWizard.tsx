@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
 import type { Area, City, CreatedVideoInput, ListingCategory, ListingDetailDto, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
@@ -24,6 +25,8 @@ import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ScreenHeader } from "./ScreenHeader";
 import { BoostModal } from "./BoostModal";
+
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -963,7 +966,16 @@ export function PostAdWizard({
               </View>
             ) : (
               <Pressable
-                onPress={() => setBoostOpen(true)}
+                // iOS: a Razorpay-paid boost is exactly the "digital promotion of a listing"
+                // Apple's Guideline 3.1.1 (In-App Purchase) targets — a third-party payment
+                // processor unlocking in-app functionality is a guaranteed rejection, so this
+                // opens the website there instead, same as before BoostModal existed. Android
+                // has its own equivalent Play Billing requirement, but enforcement/timeline
+                // differs — native checkout stays for now; see
+                // docs/plans/monetization-boosted-listings-premium-tiers.md's own update note.
+                onPress={() =>
+                  Platform.OS === "ios" ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`) : setBoostOpen(true)
+                }
                 style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
               >
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Boost this listing</Text>
@@ -978,7 +990,10 @@ export function PostAdWizard({
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>View my ad →</Text>
           </Pressable>
 
-          {postAccessToken && (
+          {/* Android-only — see the button's own comment above. Not just unreachable there
+              (boostOpen never flips true on iOS): not mounting it at all keeps this screen
+              unambiguously iOS-inert rather than relying on a visible={false} Modal alone. */}
+          {Platform.OS === "android" && postAccessToken && (
             <BoostModal
               visible={boostOpen}
               listingId={createdListing.id}

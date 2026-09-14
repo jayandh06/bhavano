@@ -157,13 +157,22 @@ rather than a vague paywall:
   level and doesn't depend on building that integration out.
 - **Mobile app parity** for the boost-purchase/subscription UI — web-first; `apps/mobile` gets
   read-only awareness (e.g., showing a "Featured" badge) but not a purchase flow in this pass.
-  **Update**: the boost half of this landed — `apps/mobile/src/components/home/BoostModal.tsx`,
-  reachable from the post-ad success screen. Same `POST /payments/orders` call web's
-  `BoostProvider` makes (the backend was already payment-client-agnostic — activation comes from
-  the Razorpay *webhook*, not the checkout call succeeding, so it never needed to know or care
-  which SDK opened checkout); `react-native-razorpay` (a new native dependency, needs an EAS
-  dev-client rebuild before it runs) opens the native checkout sheet in place of the web JS SDK.
-  Subscription purchases (Plans) still have no native flow.
+  **Update**: the boost half landed, **Android only** —
+  `apps/mobile/src/components/home/BoostModal.tsx`, reachable from the post-ad success screen.
+  Same `POST /payments/orders` call web's `BoostProvider` makes (the backend was already
+  payment-client-agnostic — activation comes from the Razorpay *webhook*, not the checkout call
+  succeeding, so it never needed to know or care which SDK opened checkout);
+  `react-native-razorpay` (a new native dependency, needs an EAS dev-client rebuild before it
+  runs) opens the native checkout sheet in place of the web JS SDK.
+  **iOS deliberately does not get this** — `docs/plans/ios-app-store-release.md`'s own "In-app
+  purchases" note already flagged exactly this: a third-party processor selling "digital
+  promotion of a listing" inside the app is a Guideline 3.1.1 rejection. `PostAdWizard.tsx`
+  branches on `Platform.OS` — iOS opens the website's `/my-listings` instead (the original
+  browser fallback, kept for that one platform), Android opens `BoostModal`. Real Apple IAP
+  (StoreKit) for boosts hasn't been built; until it is, this is the split. Android has its own
+  equivalent Play Billing policy for digital goods — not addressed here either, kept as-is for
+  now since enforcement/timeline differs from Apple's.
+  Subscription purchases (Plans) still have no native flow on either platform.
 - **ID-verification workflow** (Unique feature #5) — sketched as a future Phase 4, not detailed/
   built here.
 
