@@ -417,6 +417,14 @@ instance* (Caddy/web/admin included, not just video) — fine at launch, worth a
   video's page in the lightbox is the same poster + "Play video" (`expo-web-browser`) pattern as
   the hero, just full-screen. `Modal` renders above everything, the persistent `BottomTabBar`
   included, which is exactly right for a full-screen viewer.
+  **Update 4**: posting a listing with a photo/video started throwing "Unsupported FormDataPart
+  implementation" — Expo SDK 57 installs `expo/fetch` as the global `fetch`, and its `FormData`
+  handling only accepts `string | Blob` parts, rejecting the classic RN `{uri, name, type}`
+  file-upload shape `uploadPhoto`/`uploadVideo` both use. Fixed with `EXPO_PUBLIC_USE_RN_FETCH=1`
+  (`.env`/`.env.example`) — keeps React Native's own `fetch` as the global, which does support
+  that shape, rather than rewriting both functions against `expo-file-system`'s newer `File`
+  class (SDK 54+, implements `Blob`). No code change; this env var is required until that rewrite
+  happens, if it ever does — see https://docs.expo.dev/versions/latest/sdk/expo/#expofetch-api.
 
 ## Admin
 
