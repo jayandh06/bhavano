@@ -83,8 +83,16 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
         ) : (
           <Text style={styles.imageCaption}>{item.imgLabel}</Text>
         )}
-        <View style={[styles.tag, { backgroundColor: colors.green }]}>
-          <Text style={{ color: colors.onGreen, fontSize: 10, fontWeight: "700" }}>{item.tag}</Text>
+        <View style={styles.tagRow}>
+          <View style={[styles.tag, { backgroundColor: colors.green }]}>
+            <Text style={{ color: colors.onGreen, fontSize: 10, fontWeight: "700" }}>{item.tag}</Text>
+          </View>
+          {item.isBoosted && (
+            <View style={[styles.tag, styles.featuredTag, { backgroundColor: colors.gold }]}>
+              <Icon name="featured" size={11} color="#3a2e0f" filled />
+              <Text style={{ color: "#3a2e0f", fontSize: 10, fontWeight: "700" }}>Featured</Text>
+            </View>
+          )}
         </View>
         <Pressable onPress={onToggleFavourite} style={styles.heartButton}>
           <Icon name="heart" size={14} filled={isFavourited} color={isFavourited ? "#c0554b" : "#000"} />
@@ -186,7 +194,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 5,
   },
-  tag: { position: "absolute", top: 10, left: 10, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5 },
+  tagRow: { position: "absolute", top: 10, left: 10, flexDirection: "row", gap: 6 },
+  tag: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5 },
+  featuredTag: { flexDirection: "row", alignItems: "center", gap: 3 },
   heartButton: {
     position: "absolute",
     top: 8,
