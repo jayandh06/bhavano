@@ -11,6 +11,7 @@ import {
   fetchListingById,
   fetchListings,
   fetchMessages,
+  fetchMyListings,
   fetchPaymentHistory,
   fetchUnreadCount,
   type ListingsQuery,
@@ -60,6 +61,14 @@ export function useFavouritesQuery(accessToken: string | null) {
   return useQuery({
     queryKey: ["favourites", accessToken],
     queryFn: () => fetchFavourites(accessToken!),
+    enabled: !!accessToken,
+  });
+}
+
+export function useMyListingsQuery(accessToken: string | null) {
+  return useQuery({
+    queryKey: ["myListings", accessToken],
+    queryFn: () => fetchMyListings(accessToken!),
     enabled: !!accessToken,
   });
 }

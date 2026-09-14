@@ -342,6 +342,12 @@ export function updateProfile(accessToken: string, input: UpdateProfileInput): P
   return authedBffFetch(accessToken, "/users/me", { method: "PATCH", body: JSON.stringify(input) });
 }
 
+/** Mirrors the website's identical call (bff.ts's fetchMyListings) — every listing the caller
+ * owns, any status, for the read-only My Listings screen. */
+export function fetchMyListings(accessToken: string): Promise<ListingDetailDto[]> {
+  return authedBffFetch(accessToken, "/users/me/listings");
+}
+
 /** Sends a 6-digit code to `email`. An address only enters the profile verified — updateProfile
  * no longer accepts one — because an unverified address is not evidence of identity, and Google
  * sign-in adopts an account based on it. See docs/plans/account-linking-phone-and-email.md. */

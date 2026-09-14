@@ -1,11 +1,9 @@
 import { Pressable, Text, View } from "react-native";
-import * as WebBrowser from "expo-web-browser";
+import { useRouter, type Href } from "expo-router";
 import { ENTITY_TAGLINE, entityCopyright } from "@bhavano/types/legalEntity";
 import { useAppTheme } from "../../theme/ThemeContext";
 
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
-
-const LEGAL_LINKS = [
+const LEGAL_LINKS: { label: string; path: Href }[] = [
   { label: "About us", path: "/about" },
   { label: "Terms of Service", path: "/terms" },
   { label: "Privacy Policy", path: "/privacy" },
@@ -17,18 +15,18 @@ const LEGAL_LINKS = [
  * visible to a reviewer using the app — see docs/plans/finfolia-entity-disclosure.md. */
 export function LegalFooter() {
   const { colors } = useAppTheme();
+  const router = useRouter();
 
   return (
     <View style={{ marginTop: 36, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.border }}>
       <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, marginBottom: 12 }}>Legal</Text>
 
-      {/* One line, not a stacked list — these are the same four in-app-browser destinations
-          (expo-web-browser, matching Tools/Plans/Help in UtilityBar/HomeDrawer) rather than
-          Linking.openURL, which handed the visitor off to the system browser entirely. */}
+      {/* One line, not a stacked list — these push to the app's own native pages
+          (StaticPageLayout) rather than opening a browser at all now. */}
       <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 12, rowGap: 6, marginBottom: 18 }}>
         {LEGAL_LINKS.map((link, i) => (
-          <View key={link.path} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Pressable onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}${link.path}`)}>
+          <View key={link.path.toString()} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Pressable onPress={() => router.push(link.path)}>
               <Text style={{ fontSize: 13, color: colors.green, fontWeight: "600" }}>{link.label}</Text>
             </Pressable>
             {i < LEGAL_LINKS.length - 1 && <Text style={{ color: colors.border }}>·</Text>}

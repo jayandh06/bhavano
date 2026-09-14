@@ -12,9 +12,11 @@ const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
  * something a visitor who just tapped an ad does not need"), so a phone-width native screen has
  * no more room for it than phone-width web does.
  *
- * Tools/Plans/Help have no native screens (only the website has those pages), so they open
- * bhavano.com in an in-app browser instead of pushing to a route that doesn't exist. For Owners
- * does have a real destination — it's just the Post flow — so that one navigates natively.
+ * Tools and Plans have no native screens — Tools is six separate interactive calculators, and
+ * Plans shows live subscription pricing with a real Razorpay purchase flow that doesn't exist
+ * natively — so both still open bhavano.com in an in-app browser. Help is static FAQ content and
+ * now has a real native page (StaticPageLayout); For Owners always did, since it's just the Post
+ * flow.
  */
 export function UtilityBar() {
   const { colors } = useAppTheme();
@@ -35,7 +37,7 @@ export function UtilityBar() {
       <Pressable onPress={() => openWebsite("/premium")}>
         <Text style={[styles.link, { color: colors.onGreen }]}>Plans</Text>
       </Pressable>
-      <Pressable onPress={() => openWebsite("/help")}>
+      <Pressable onPress={() => router.push("/help")}>
         <Text style={[styles.link, { color: colors.onGreen }]}>Help</Text>
       </Pressable>
     </View>

@@ -644,13 +644,10 @@ function ProfileFields({
         </Pressable>
       </View>
 
-      {/* No native "My Listings" screen yet — opens the website's, same in-app-browser pattern
-          UtilityBar/HomeDrawer already use for Tools/Plans/Help. */}
-      <Pressable
-        onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`)}
-        style={[styles.outlineButton, { borderColor: colors.green }]}
-      >
-        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View and edit your listings</Text>
+      {/* Native /my-listings is read-only (view only) — editing still needs the website until
+          PostAdWizard is wired for edit mode, its own separate piece of work. */}
+      <Pressable onPress={() => router.push("/my-listings")} style={[styles.outlineButton, { borderColor: colors.green }]}>
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View your listings</Text>
       </Pressable>
 
       <Pressable onPress={onOpenPurchases} style={[styles.outlineButton, { borderColor: colors.green }]}>
