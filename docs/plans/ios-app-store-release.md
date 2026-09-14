@@ -146,6 +146,26 @@ conversion tags collect identifiers for tracking, which means the App Tracking T
 question needs a truthful answer. Declaring "no tracking" while shipping Ads conversion tags is
 the kind of mismatch that gets an app pulled after release.
 
+**Update: App Tracking Transparency built.** The actual tracking trigger isn't GTM on mobile at
+all — it's `GoogleAdsConversionProvider.uploadClickConversion` (`apps/bff/src/ads/`), which the
+backend fires on signup and on posting a listing using hashed email/phone alone, no gclid
+required. That's "tracking" under Apple's definition regardless of IDFA, and it fired
+unconditionally for every mobile user with no consent gate at all until now.
+
+- `expo-tracking-transparency` + `NSUserTrackingUsageDescription` (`app.config.js`); the prompt
+  fires once, ~1.2s after the home screen paints (`app/_layout.tsx`'s `requestTrackingConsent`),
+  not at cold launch.
+- `apps/mobile/src/lib/bffClient.ts`'s shared fetch wrapper attaches `X-Tracking-Authorized: false`
+  on every request once the user explicitly denies — absent/granted sends nothing, so web (which
+  has no such header) and pre-ATT behavior are both unaffected.
+- The backend actually acts on it: `apps/bff/src/ads/tracking-authorized.ts`'s
+  `parseTrackingAuthorized` is read by `AuthController` (folded into `VisitContext`, gating
+  `AuthService.reportSignupConversion`) and by `ListingsController`/`ListingsService.create`,
+  both skipping the upload outright on an explicit denial.
+- **Still needs a fresh production build before submission** — build #13, already uploaded to App
+  Store Connect at time of writing, predates this work and has no ATT prompt in it, which would
+  itself be a declared-tracking-without-a-prompt mismatch if reviewed as-is.
+
 **Demo account for App Review — largely solved by Sign in with Apple.** Phone OTP alone was a
 real problem: reviewers can't receive an Indian SMS, `9999999999` is a local-dev-only seed (never
 exists in prod), and there's no OTP bypass/fixed-code path in `OtpService` (`devLogin` exists but
