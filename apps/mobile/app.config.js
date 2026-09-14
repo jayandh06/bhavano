@@ -39,6 +39,11 @@ module.exports = {
       bundleIdentifier: "com.finfolia.bhavano",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        // react-native-razorpay's UPI intent flow (pay via a UPI app instead of entering card
+        // details) checks whether these apps are installed before offering them — without
+        // declaring the schemes here, iOS silently reports every one of them as "not
+        // installed" even when they are, and UPI drops out of the payment options entirely.
+        LSApplicationQueriesSchemes: ["tez", "phonepe", "paytmmp"],
       },
     },
     android: {

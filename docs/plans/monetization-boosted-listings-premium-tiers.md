@@ -157,6 +157,13 @@ rather than a vague paywall:
   level and doesn't depend on building that integration out.
 - **Mobile app parity** for the boost-purchase/subscription UI — web-first; `apps/mobile` gets
   read-only awareness (e.g., showing a "Featured" badge) but not a purchase flow in this pass.
+  **Update**: the boost half of this landed — `apps/mobile/src/components/home/BoostModal.tsx`,
+  reachable from the post-ad success screen. Same `POST /payments/orders` call web's
+  `BoostProvider` makes (the backend was already payment-client-agnostic — activation comes from
+  the Razorpay *webhook*, not the checkout call succeeding, so it never needed to know or care
+  which SDK opened checkout); `react-native-razorpay` (a new native dependency, needs an EAS
+  dev-client rebuild before it runs) opens the native checkout sheet in place of the web JS SDK.
+  Subscription purchases (Plans) still have no native flow.
 - **ID-verification workflow** (Unique feature #5) — sketched as a future Phase 4, not detailed/
   built here.
 

@@ -4,7 +4,6 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
-import * as WebBrowser from "expo-web-browser";
 import type { Area, City, CreatedVideoInput, ListingCategory, ListingDetailDto, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
@@ -24,8 +23,7 @@ import { createListing, fetchAreas, uploadPhoto, uploadVideo } from "../../lib/b
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ScreenHeader } from "./ScreenHeader";
-
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+import { BoostModal } from "./BoostModal";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -195,6 +193,13 @@ export function PostAdWizard({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(null);
+  // Captured from onSubmit's own resolved token (accessToken prop, or the SecureStore fallback
+  // right after a just-completed login) rather than reusing the prop directly — the two can be
+  // momentarily out of sync immediately after requireLogin's onSuccess re-runs onSubmit, and
+  // BoostModal needs a token that's definitely valid the instant the success step appears.
+  const [postAccessToken, setPostAccessToken] = useState<string | undefined>(accessToken);
+  const [boostOpen, setBoostOpen] = useState(false);
+  const [boostActivating, setBoostActivating] = useState(false);
 
   function selectCategory(next: ListingCategory) {
     setCategory(next);
@@ -427,6 +432,7 @@ export function PostAdWizard({
       requireLogin({ onSuccess: () => void onSubmit() });
       return;
     }
+    setPostAccessToken(activeToken);
 
     setPending(true);
     setError(null);
@@ -950,14 +956,19 @@ export function PostAdWizard({
                 </View>
               ))}
             </View>
-            {/* No native Razorpay/purchase flow — same as Plans elsewhere in the app, opens the
-                website where the owner can boost this same listing from My listings. */}
-            <Pressable
-              onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`)}
-              style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
-            >
-              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Boost this listing</Text>
-            </Pressable>
+            {boostActivating ? (
+              <View style={[styles.submitButton, { backgroundColor: colors.surfaceAlt, marginTop: 16, flexDirection: "row", justifyContent: "center", gap: 8 }]}>
+                <Icon name="boost" size={16} color={colors.green} />
+                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Boost pending…</Text>
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => setBoostOpen(true)}
+                style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
+              >
+                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Boost this listing</Text>
+              </Pressable>
+            )}
           </View>
 
           {/* A real push (not the replace() this used to do straight out of onSubmit) — see this
@@ -966,6 +977,17 @@ export function PostAdWizard({
           <Pressable onPress={() => router.push(`/listing/${createdListing.id}`)}>
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>View my ad →</Text>
           </Pressable>
+
+          {postAccessToken && (
+            <BoostModal
+              visible={boostOpen}
+              listingId={createdListing.id}
+              category={createdListing.category}
+              accessToken={postAccessToken}
+              onClose={() => setBoostOpen(false)}
+              onActivating={() => setBoostActivating(true)}
+            />
+          )}
         </View>
       )}
     </ScrollView>

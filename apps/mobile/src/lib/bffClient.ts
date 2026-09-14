@@ -4,6 +4,7 @@ import type {
   ContactRevealBalanceDto,
   ConversationDetailDto,
   ConversationSummaryDto,
+  CreateBoostOrderResponseDto,
   CreatedVideoInput,
   CreateListingInput,
   HomeCategoryFilter,
@@ -360,6 +361,19 @@ export function updateProfile(accessToken: string, input: UpdateProfileInput): P
  * owns, any status, for the read-only My Listings screen. */
 export function fetchMyListings(accessToken: string): Promise<ListingDetailDto[]> {
   return authedBffFetch(accessToken, "/users/me/listings");
+}
+
+/** Mirrors the website's identical call (bff.ts's createBoostOrder) — activation happens via the
+ * Razorpay webhook, not this response alone, same as web (see BoostModal's own doc comment). */
+export function createBoostOrder(
+  accessToken: string,
+  listingId: string,
+  boostDays: 7 | 15,
+): Promise<CreateBoostOrderResponseDto> {
+  return authedBffFetch(accessToken, "/payments/orders", {
+    method: "POST",
+    body: JSON.stringify({ listingId, boostDays }),
+  });
 }
 
 /** Sends a 6-digit code to `email`. An address only enters the profile verified — updateProfile
