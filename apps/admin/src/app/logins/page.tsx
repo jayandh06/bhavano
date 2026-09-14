@@ -11,6 +11,7 @@ import { formatDateTime } from "@/lib/formatDateTime";
 const METHOD_OPTIONS: { value: LoginMethod; label: string }[] = [
   { value: "otp", label: "OTP" },
   { value: "google", label: "Google" },
+  { value: "apple", label: "Apple" },
 ];
 
 const SORT_OPTIONS: { value: AdminLoginSort; label: string }[] = [
