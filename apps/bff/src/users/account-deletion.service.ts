@@ -45,6 +45,7 @@ export class AccountDeletionService {
           phone: null,
           email: null,
           googleId: null,
+          appleId: null,
           phoneVerifiedAt: null,
           emailVerifiedAt: null,
           name: null,

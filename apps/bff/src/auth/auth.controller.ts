@@ -15,6 +15,7 @@ import { AuthService } from './auth.service';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { AppleLoginDto } from './dto/apple-login.dto';
 import { DevLoginDto } from './dto/dev-login.dto';
 
 @Controller('auth')
@@ -49,6 +50,21 @@ export class AuthController {
   @HttpCode(200)
   loginWithGoogle(@Body() dto: GoogleLoginDto): Promise<AuthSession> {
     return this.authService.loginWithGoogle(dto.idToken, {
+      source: dto.acquisitionSource,
+      medium: dto.acquisitionMedium,
+      campaign: dto.acquisitionCampaign,
+      gclid: dto.acquisitionGclid,
+      campaignId: dto.acquisitionCampaignId,
+      adGroupId: dto.acquisitionAdGroupId,
+      adId: dto.acquisitionAdId,
+      sessionId: dto.sessionId,
+    });
+  }
+
+  @Post('apple')
+  @HttpCode(200)
+  loginWithApple(@Body() dto: AppleLoginDto): Promise<AuthSession> {
+    return this.authService.loginWithApple(dto.identityToken, dto.fullName, {
       source: dto.acquisitionSource,
       medium: dto.acquisitionMedium,
       campaign: dto.acquisitionCampaign,

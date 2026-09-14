@@ -19,6 +19,9 @@ services:
       # platform's sign-in is actually wired up and tested.
       GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID}
       GOOGLE_ANDROID_CLIENT_ID: ${GOOGLE_ANDROID_CLIENT_ID}
+      # Sign in with Apple — see AppleProvider.expectedAudience. Defaults to the app's own bundle
+      # id (com.finfolia.bhavano) if unset, so this only needs setting if that ever changes.
+      APPLE_BUNDLE_ID: ${APPLE_BUNDLE_ID}
       # No admin signup flow exists — a phone/email matching one of these gets promoted
       # to role=admin automatically on login.
       ADMIN_PHONES: ${ADMIN_PHONES}

@@ -158,15 +158,16 @@ export class AccountMergeService {
       }
 
       // Release the identifiers FIRST, preserving them for the audit trail. This has to precede
-      // the winner update below: phone/email/googleId are @unique, so handing the loser's email
-      // to the survivor while the loser still holds it fails on the constraint and rolls back
-      // the whole merge.
+      // the winner update below: phone/email/googleId/appleId are @unique, so handing the
+      // loser's email to the survivor while the loser still holds it fails on the constraint and
+      // rolls back the whole merge.
       await tx.user.update({
         where: { id: loserId },
         data: {
           phone: null,
           email: null,
           googleId: null,
+          appleId: null,
           mergedPhone: loser.phone,
           mergedEmail: loser.email,
           mergedIntoUserId: winnerId,
@@ -191,6 +192,7 @@ export class AccountMergeService {
           email: winner.email ?? loser.email,
           emailVerifiedAt: winner.emailVerifiedAt ?? loser.emailVerifiedAt,
           googleId: winner.googleId ?? loser.googleId,
+          appleId: winner.appleId ?? loser.appleId,
           name: winner.name ?? loser.name,
           cityId: winner.cityId ?? loser.cityId,
         },

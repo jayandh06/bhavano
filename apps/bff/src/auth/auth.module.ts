@@ -3,6 +3,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { GoogleProvider } from './providers/google.provider';
+import { AppleProvider } from './providers/apple.provider';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
@@ -17,6 +18,6 @@ import { AdsModule } from '../ads/ads.module';
   ],
   controllers: [AuthController],
   exports: [AuthService],
-  providers: [AuthService, OtpService, GoogleProvider],
+  providers: [AuthService, OtpService, GoogleProvider, AppleProvider],
 })
 export class AuthModule {}

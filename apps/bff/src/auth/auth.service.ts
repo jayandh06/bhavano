@@ -13,6 +13,7 @@ import { OtpService } from './otp.service';
 import { Msg91Provider } from '../notifications/providers/msg91.provider';
 import { AccountMergeService } from '../users/account-merge.service';
 import { GoogleProvider } from './providers/google.provider';
+import { AppleProvider } from './providers/apple.provider';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import {
@@ -86,6 +87,7 @@ export class AuthService {
     private readonly msg91: Msg91Provider,
     private readonly accountMerge: AccountMergeService,
     private readonly googleProvider: GoogleProvider,
+    private readonly appleProvider: AppleProvider,
     private readonly notificationsService: NotificationsService,
     private readonly analyticsService: AnalyticsService,
     private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
@@ -229,6 +231,74 @@ export class AuthService {
     return this.issueSession(promoted, isNewUser);
   }
 
+  /** Mirrors loginWithGoogle, with two real differences Apple forces on every caller (see
+   * ios-app-store-release.md's own notes on both):
+   *
+   * - `email` may be absent even for a returning user (the token only carries it when the email
+   *   scope was granted, which the client always requests, but this stays defensive rather than
+   *   assuming) — so, unlike Google, an existing appleId match never has its email overwritten
+   *   with nothing.
+   * - `fullName` is never in the token itself and is only ever handed to the client once, on the
+   *   very first authorization ever for this user+app. Every later login calls this with
+   *   `fullName: undefined` — so an existing user's name is only ever set here if it isn't
+   *   already, never blanked or overwritten by a later, name-less login.
+   */
+  async loginWithApple(
+    identityToken: string,
+    fullName?: string,
+    visit?: VisitContext,
+  ): Promise<AuthSession> {
+    const profile = await this.appleProvider.verifyIdentityToken(identityToken);
+
+    let user = await this.prisma.user.findUnique({
+      where: { appleId: profile.appleId },
+    });
+
+    if (user) {
+      const data: { email?: string; emailVerifiedAt?: Date; name?: string } = {};
+      if (profile.email) {
+        data.email = profile.email;
+        data.emailVerifiedAt = new Date();
+      }
+      if (fullName && !user.name) data.name = fullName;
+      if (Object.keys(data).length > 0) {
+        user = await this.prisma.user.update({ where: { id: user.id }, data });
+      }
+    } else {
+      // Same adoption rule as loginWithGoogle: only onto an account whose email is actually
+      // proven, never onto one where it's just a typed, unverified claim.
+      const byEmail = profile.email
+        ? await this.prisma.user.findUnique({ where: { email: profile.email } })
+        : null;
+
+      user = byEmail?.emailVerifiedAt
+        ? await this.prisma.user.update({
+            where: { id: byEmail.id },
+            data: {
+              appleId: profile.appleId,
+              name: byEmail.name ?? fullName,
+            },
+          })
+        : await this.prisma.user.create({
+            data: {
+              appleId: profile.appleId,
+              email: profile.email,
+              name: fullName,
+              emailVerifiedAt: profile.email ? new Date() : undefined,
+              ...acquisitionCreateFields(visit),
+            },
+          });
+    }
+
+    const isNewUser = !user.welcomedAt;
+    const promoted = await this.promoteToAdminIfAllowlisted(user);
+    await this.welcomeIfFirstLogin(promoted);
+    if (isNewUser) await this.reportSignupConversion(promoted, visit);
+    await this.recordLogin(promoted.id, 'apple');
+    this.linkVisitToUser(visit?.sessionId, promoted.id);
+    return this.issueSession(promoted, isNewUser);
+  }
+
   /** Test-only login used by the web app's Playwright smoke suite to bypass real OTP/Google
    * login (which can't be automated locally — MSG91 throws without real credentials, and
    * Google's OAuth flow has no dev bypass). The controller gates this behind NODE_ENV and
@@ -325,7 +395,7 @@ export class AuthService {
 
   private recordLogin(
     userId: string,
-    method: 'otp' | 'google',
+    method: 'otp' | 'google' | 'apple',
   ): Promise<unknown> {
     // Alongside the DB row (used by the admin logins page), also emit a structured log line so
     // login shows up in the same Loki stream as everything else — bounding a user's session
