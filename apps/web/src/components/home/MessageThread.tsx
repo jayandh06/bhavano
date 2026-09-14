@@ -5,6 +5,7 @@ import type { MessageDto } from "@bhavano/types";
 import { getSocket } from "@/lib/socket";
 import { markReadAction, sendMessageAction } from "@/app/actions/messaging";
 import { useAuthGate } from "./AuthGateProvider";
+import { MessageBody } from "./MessageBody";
 
 export function MessageThread({
   conversationId,
@@ -20,6 +21,7 @@ export function MessageThread({
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { requireLogin } = useAuthGate();
 
   useEffect(() => {
@@ -53,6 +55,15 @@ export function MessageThread({
     markReadAction(conversationId);
   }, [conversationId]);
 
+  // Auto-grows the composer as the draft gains lines, and collapses it back to one row
+  // once onSend() clears the draft — a plain <textarea rows={1}> doesn't resize on its own.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+  }, [draft]);
+
   async function onSend() {
     const body = draft.trim();
     if (!body) return;
@@ -82,11 +93,11 @@ export function MessageThread({
           return (
             <div
               key={m.id}
-              className={`rounded-xl px-3.5 py-2 max-w-[70%] text-sm ${
+              className={`rounded-xl px-3.5 py-2 max-w-[70%] text-sm whitespace-pre-line break-words ${
                 isMine ? "self-end bg-green text-on-green" : "self-start bg-surface-alt text-text"
               }`}
             >
-              {m.body}
+              <MessageBody body={m.body} />
             </div>
           );
         })}
@@ -95,12 +106,19 @@ export function MessageThread({
       {/* pb for the phone's home-indicator strip: without it the Send button sits under the
           swipe bar on a gesture-navigation device. Zero on anything that has no such inset. */}
       <div className="flex gap-2.5 border-t border-border pt-3 shrink-0 pb-[env(safe-area-inset-bottom)]">
-        <input
+        <textarea
+          ref={textareaRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onSend()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
           placeholder="Type a message…"
-          className="flex-1 border border-border rounded-[9px] px-3.5 py-3 text-base sm:text-sm outline-none bg-surface text-text"
+          rows={1}
+          className="flex-1 border border-border rounded-[9px] px-3.5 py-3 text-base sm:text-sm outline-none bg-surface text-text resize-none overflow-y-auto max-h-32"
         />
         <button
           onClick={onSend}

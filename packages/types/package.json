@@ -88,6 +88,10 @@
     "./support": {
       "types": "./dist/support.d.ts",
       "default": "./dist/support.js"
+    },
+    "./messageFormat": {
+      "types": "./dist/messageFormat.d.ts",
+      "default": "./dist/messageFormat.js"
     }
   },
   "scripts": {

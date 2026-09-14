@@ -8,6 +8,7 @@ import { useMessagesQuery } from "../../../src/lib/queries";
 import { fetchConversation, markConversationRead, sendMessage } from "../../../src/lib/bffClient";
 import { getSocket } from "../../../src/lib/socket";
 import { Icon } from "../../../src/components/Icon";
+import { MessageBody } from "../../../src/components/home/MessageBody";
 import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
 
 // Nested under (tabs)/messages/_layout.tsx's own Stack rather than a top-level app/messages/[id]
@@ -144,7 +145,7 @@ export default function ConversationScreen() {
                 },
               ]}
             >
-              <Text style={{ color: isMine ? colors.onGreen : colors.text, fontSize: 14 }}>{item.body}</Text>
+              <MessageBody body={item.body} style={{ color: isMine ? colors.onGreen : colors.text, fontSize: 14 }} />
             </View>
           );
         }}
@@ -155,6 +156,7 @@ export default function ConversationScreen() {
           onChangeText={setDraft}
           placeholder="Type a message…"
           placeholderTextColor={colors.muted}
+          multiline
           style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
         />
         <Pressable onPress={onSend} style={[styles.sendButton, { backgroundColor: colors.green }]}>
@@ -169,6 +171,6 @@ const styles = StyleSheet.create({
   bubble: { borderRadius: 12, padding: 12, maxWidth: "75%" },
   listingBar: { paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1 },
   inputRow: { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 1 },
-  input: { flex: 1, borderWidth: 1, borderRadius: 9, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14 },
+  input: { flex: 1, borderWidth: 1, borderRadius: 9, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14, maxHeight: 100 },
   sendButton: { borderRadius: 8, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },
 });
