@@ -17,7 +17,7 @@ export type ModerationState = "approved" | "flagged";
 /** inquiry = buyer/seller chat about a listing; moderation = admin↔owner thread about a
  * flagged listing. Kept distinct so an admin's thread can't collide with a real buyer's. */
 export type ConversationType = "inquiry" | "moderation";
-export type LoginMethod = "otp" | "google";
+export type LoginMethod = "otp" | "google" | "apple";
 export type RateLimitKind = "publish" | "view";
 export type ListingSlotUpsell = import("./listingSlots").ListingSlotUpsell;
 export type { ListingSlotCapErrorBody } from "./listingSlots";

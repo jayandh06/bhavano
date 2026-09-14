@@ -37,7 +37,7 @@ export type ModerationState = "approved" | "flagged";
  * flagged listing. Kept distinct so an admin's thread can't collide with a real buyer's. */
 export type ConversationType = "inquiry" | "moderation";
 
-export type LoginMethod = "otp" | "google";
+export type LoginMethod = "otp" | "google" | "apple";
 
 export type RateLimitKind = "publish" | "view";
 
