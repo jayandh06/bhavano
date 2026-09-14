@@ -98,11 +98,19 @@ async function ConversationList({ accessToken }: { accessToken: string }) {
                 {c.listingArea}, {c.listingCityName}
                 {c.lastMessage && ` · ${formatMessageTime(c.lastMessage.createdAt)}`}
               </div>
-              {/* A conversation exists from the moment someone opens contact, before anything is
-                  sent, so lastMessage is legitimately null. Rendering nothing there left the row
-                  looking truncated and gave no hint why the thread opened empty. */}
+              {/* Every listed conversation has at least one message now (see
+                  MessagingService.listConversations' `messages: { some: {} } }` filter) — a
+                  Conversation row can no longer exist without one — but lastMessage stays
+                  nullable in the DTO, so this defensive fallback is kept rather than assumed
+                  away. */}
               {c.lastMessage ? (
-                <div className="text-[13px] text-text-soft mt-1 truncate">{c.lastMessage.body}</div>
+                <div className="text-[13px] text-text-soft mt-1 truncate">
+                  {c.lastMessage.deletedAt ? (
+                    <span className="italic">This message was deleted</span>
+                  ) : (
+                    c.lastMessage.body
+                  )}
+                </div>
               ) : (
                 <div className="text-[13px] text-muted italic mt-1">No messages yet</div>
               )}

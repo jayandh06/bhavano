@@ -1,23 +1,43 @@
 "use server";
 
+import type { MessageDto } from "@bhavano/types";
 import { auth } from "@/auth";
-import { BffAuthError, createConversation, fetchUnreadCount, markConversationRead, sendMessage } from "@/lib/bff";
+import { BffAuthError, deleteMessage, fetchUnreadCount, markConversationRead, sendFirstMessage, sendMessage } from "@/lib/bff";
 
-export type StartConversationResult =
+export type SendFirstMessageResult =
   | { requiresLogin: true }
-  | { requiresLogin: false; conversationId: string }
+  | { requiresLogin: false; conversationId: string; message: MessageDto }
   | { requiresLogin: false; error: string };
 
-export async function startConversationAction(listingId: string): Promise<StartConversationResult> {
+/** Starts a conversation and sends its first message atomically — see
+ * docs/plans/message-delete-and-lazy-conversation-creation.md. There is no separate
+ * "start conversation" step any more: a Conversation row only ever comes into existence
+ * alongside its first Message. */
+export async function sendFirstMessageAction(listingId: string, body: string): Promise<SendFirstMessageResult> {
   const session = await auth();
   if (!session?.accessToken) return { requiresLogin: true };
 
   try {
-    const conversation = await createConversation(session.accessToken, listingId);
-    return { requiresLogin: false, conversationId: conversation.id };
+    const result = await sendFirstMessage(session.accessToken, listingId, body);
+    return { requiresLogin: false, ...result };
   } catch (error) {
     if (error instanceof BffAuthError) return { requiresLogin: true };
-    return { requiresLogin: false, error: error instanceof Error ? error.message : "Failed to start conversation" };
+    return { requiresLogin: false, error: error instanceof Error ? error.message : "Failed to send message" };
+  }
+}
+
+export type DeleteMessageResult = { requiresLogin: true } | { requiresLogin: false };
+
+export async function deleteMessageAction(messageId: string): Promise<DeleteMessageResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { requiresLogin: true };
+
+  try {
+    await deleteMessage(session.accessToken, messageId);
+    return { requiresLogin: false };
+  } catch (error) {
+    if (error instanceof BffAuthError) return { requiresLogin: true };
+    throw error;
   }
 }
 

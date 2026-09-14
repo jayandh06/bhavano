@@ -30,6 +30,7 @@ import type {
   RevealContactResponseDto,
   ReverseGeocodeResultDto,
   SavedSearchDto,
+  SendFirstMessageResponseDto,
   SubscriptionTier,
   TransactionType,
   UpdateListingInput,
@@ -569,8 +570,18 @@ export function updateProfile(accessToken: string, input: UpdateProfileInput): P
   return authedBffFetch(accessToken, "/users/me", { method: "PATCH", body: JSON.stringify(input) });
 }
 
-export function createConversation(accessToken: string, listingId: string): Promise<{ id: string }> {
-  return authedBffFetch(accessToken, "/conversations", { method: "POST", body: JSON.stringify({ listingId }) });
+/** Starts a conversation and sends its first message atomically — see
+ * docs/plans/message-delete-and-lazy-conversation-creation.md. Replies on an existing
+ * conversation still use sendMessage below. */
+export function sendFirstMessage(
+  accessToken: string,
+  listingId: string,
+  body: string,
+): Promise<SendFirstMessageResponseDto> {
+  return authedBffFetch(accessToken, "/conversations/messages", {
+    method: "POST",
+    body: JSON.stringify({ listingId, body }),
+  });
 }
 
 /** Spends a free reveal or a credit (whichever applies) and permanently unlocks this listing's
@@ -597,6 +608,10 @@ export function sendMessage(accessToken: string, conversationId: string, body: s
     method: "POST",
     body: JSON.stringify({ body }),
   });
+}
+
+export function deleteMessage(accessToken: string, messageId: string): Promise<MessageDto> {
+  return authedBffFetch(accessToken, `/messages/${messageId}`, { method: "DELETE" });
 }
 
 export function markConversationRead(accessToken: string, conversationId: string): Promise<void> {

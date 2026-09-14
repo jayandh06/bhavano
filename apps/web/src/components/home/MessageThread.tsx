@@ -1,19 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { MessageDto } from "@bhavano/types";
+import { useRouter } from "next/navigation";
+import type { MessageDeletedEvent, MessageDto } from "@bhavano/types";
 import { getSocket } from "@/lib/socket";
-import { markReadAction, sendMessageAction } from "@/app/actions/messaging";
+import { deleteMessageAction, markReadAction, sendFirstMessageAction, sendMessageAction } from "@/app/actions/messaging";
 import { useAuthGate } from "./AuthGateProvider";
 import { MessageBody } from "./MessageBody";
+import { Icon } from "./Icon";
 
 export function MessageThread({
   conversationId,
+  listingId,
   accessToken,
   currentUserId,
   initialMessages,
 }: {
-  conversationId: string;
+  /** Null before the first message is sent — no Conversation row exists yet (see
+   * docs/plans/message-delete-and-lazy-conversation-creation.md). Nothing is fetched or joined
+   * over the socket in that state; onSend() creates the conversation and its first message
+   * atomically, then hands off to the real thread at its canonical URL. */
+  conversationId: string | null;
+  listingId: string;
   accessToken: string;
   currentUserId: string;
   initialMessages: MessageDto[];
@@ -23,8 +31,10 @@ export function MessageThread({
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { requireLogin } = useAuthGate();
+  const router = useRouter();
 
   useEffect(() => {
+    if (!conversationId) return;
     const socket = getSocket(accessToken);
     socket.emit("join_conversation", { conversationId });
 
@@ -35,9 +45,17 @@ export function MessageThread({
       // message the user is already looking at.
       if (msg.senderId !== currentUserId) markReadAction(conversationId);
     }
+    function onMessageDeleted(payload: MessageDeletedEvent) {
+      if (payload.conversationId !== conversationId) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === payload.messageId ? { ...m, body: null, deletedAt: payload.deletedAt } : m)),
+      );
+    }
     socket.on("new_message", onNewMessage);
+    socket.on("message_deleted", onMessageDeleted);
     return () => {
       socket.off("new_message", onNewMessage);
+      socket.off("message_deleted", onMessageDeleted);
     };
   }, [conversationId, accessToken, currentUserId]);
 
@@ -52,7 +70,7 @@ export function MessageThread({
   }, [messages]);
 
   useEffect(() => {
-    markReadAction(conversationId);
+    if (conversationId) markReadAction(conversationId);
   }, [conversationId]);
 
   // Auto-grows the composer as the draft gains lines, and collapses it back to one row
@@ -68,10 +86,35 @@ export function MessageThread({
     const body = draft.trim();
     if (!body) return;
     setDraft("");
+
+    if (!conversationId) {
+      // No Conversation row exists yet — this call creates it and the message atomically, then
+      // the canonical URL takes over (its own mount fetches history and joins the socket).
+      const result = await sendFirstMessageAction(listingId, body);
+      if (result.requiresLogin) {
+        requireLogin({ onSuccess: () => void onSend() });
+        return;
+      }
+      if ("error" in result) {
+        setDraft(body);
+        return;
+      }
+      router.replace(`/messages/${result.conversationId}`);
+      return;
+    }
+
     // The message arrives back over the socket (sender's own connection is also in the
     // room), so no separate optimistic-append is needed.
     const result = await sendMessageAction(conversationId, body);
     if (result.requiresLogin) requireLogin();
+  }
+
+  async function onDelete(messageId: string) {
+    if (!window.confirm("Delete this message?")) return;
+    const result = await deleteMessageAction(messageId);
+    if (result.requiresLogin) requireLogin();
+    // The tombstone update arrives back over the socket for a real conversation; nothing else
+    // to do here.
   }
 
   return (
@@ -80,9 +123,9 @@ export function MessageThread({
     // sits in a normally scrolling page alongside the footer.
     <div className="flex flex-col flex-1 min-h-0 sm:flex-none sm:h-[70vh]">
       <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-2.5">
-        {/* A conversation can exist with no messages — it is created when a buyer opens contact
-            with a seller, before anything is actually sent. Without this the thread renders as a
-            blank panel and looks broken rather than empty. */}
+        {/* No Conversation row exists until the first message is sent (see this component's
+            conversationId doc), so an empty list here is simply "nothing sent yet", not a
+            loading or broken state. */}
         {messages.length === 0 && (
           <p className="text-sm text-muted m-0 py-6 text-center">
             No messages yet — say hello to start the conversation.
@@ -90,14 +133,28 @@ export function MessageThread({
         )}
         {messages.map((m) => {
           const isMine = m.senderId === currentUserId;
+          const isDeleted = m.deletedAt != null;
           return (
             <div
               key={m.id}
-              className={`rounded-xl px-3.5 py-2 max-w-[70%] text-sm whitespace-pre-line break-words ${
+              className={`group relative rounded-xl px-3.5 py-2 max-w-[70%] text-sm whitespace-pre-line break-words ${
                 isMine ? "self-end bg-green text-on-green" : "self-start bg-surface-alt text-text"
               }`}
             >
-              <MessageBody body={m.body} />
+              {isDeleted ? (
+                <span className="italic opacity-80">This message was deleted</span>
+              ) : (
+                <MessageBody body={m.body!} />
+              )}
+              {isMine && !isDeleted && (
+                <button
+                  onClick={() => onDelete(m.id)}
+                  aria-label="Delete message"
+                  className="absolute -left-7 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-transparent border-0 text-muted hover:text-text cursor-pointer p-1"
+                >
+                  <Icon name="close" className="text-xs" />
+                </button>
+              )}
             </div>
           );
         })}

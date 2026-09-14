@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthGate } from "./AuthGateProvider";
 import { useBuyCredits } from "./BuyCreditsProvider";
 import { toggleFavouriteAction, revealContactAction } from "@/app/actions/listings";
-import { startConversationAction } from "@/app/actions/messaging";
+import { hasSessionAction } from "@/app/actions/auth";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
 
@@ -42,7 +42,6 @@ export function ListingDetailActions({
   const router = useRouter();
   const [isFavourited, setIsFavourited] = useState(initialIsFavourited);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
-  const [messageError, setMessageError] = useState<string | null>(null);
 
   const [contactRevealed, setContactRevealed] = useState(initialContactRevealed);
   const [ownerPhone, setOwnerPhone] = useState(initialOwnerPhone);
@@ -62,18 +61,13 @@ export function ListingDetailActions({
   }
 
   async function onMessage() {
-    setMessageError(null);
-    const result = await startConversationAction(listingId);
-    if (result.requiresLogin) {
+    const signedIn = await hasSessionAction();
+    if (!signedIn) {
       requireLogin({ onSuccess: () => void onMessage() });
       return;
     }
-    if ("error" in result) {
-      setMessageError(result.error);
-      return;
-    }
     pushDataLayerEvent("contact_owner", { listingId });
-    router.push(`/messages/${result.conversationId}`);
+    router.push(`/messages/new/${listingId}`);
   }
 
   async function onViewContact() {
@@ -153,7 +147,6 @@ export function ListingDetailActions({
         )}
       </div>
 
-      {messageError && <p className="text-[#b3413a] text-[13px] mt-2">{messageError}</p>}
       {revealError && <p className="text-[#b3413a] text-[13px] mt-2">{revealError}</p>}
 
       {!isOwner && contactRevealed && (ownerPhone || ownerEmail) && (

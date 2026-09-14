@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAuthGate } from "./AuthGateProvider";
 import { useBuyCredits } from "./BuyCreditsProvider";
 import { toggleFavouriteAction, revealContactAction } from "@/app/actions/listings";
-import { startConversationAction } from "@/app/actions/messaging";
+import { hasSessionAction } from "@/app/actions/auth";
 import { buildListingPath } from "@/lib/listingPath";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
@@ -38,26 +38,19 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     setLikeCount(result.likeCount);
   }
 
-  // Whether login is needed is the server's answer, not a guess from client state: the action
-  // returns `requiresLogin` when the session cookie is missing or the BFF rejects the token, so
-  // an expired session opens the modal and a live one goes straight to the conversation. Asking
-  // the client instead is what made this button open the login dialog even when signed in.
-  // `onSuccess` resumes the same call once login completes, so the user isn't left having to tap
-  // the button a second time.
+  // Whether login is needed is the server's answer, not a guess from client state: an expired
+  // session cookie still looks "logged in" to the client, so this asks the server via
+  // hasSessionAction rather than trusting anything held here. `onSuccess` resumes the same call
+  // once login completes, so the user isn't left having to tap the button a second time.
   async function onMessage(e: React.MouseEvent) {
     e.preventDefault();
-    setContactError(null);
-    const result = await startConversationAction(item.id);
-    if (result.requiresLogin) {
+    const signedIn = await hasSessionAction();
+    if (!signedIn) {
       requireLogin({ onSuccess: () => void onMessage(e) });
       return;
     }
-    if ("error" in result) {
-      setContactError(result.error);
-      return;
-    }
     pushDataLayerEvent("contact_owner", { listingId: item.id });
-    router.push(`/messages/${result.conversationId}`);
+    router.push(`/messages/new/${item.id}`);
   }
 
   async function onViewContact(e?: React.MouseEvent) {

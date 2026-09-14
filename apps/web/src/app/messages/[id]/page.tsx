@@ -87,6 +87,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
         </nav>
         <MessageThread
           conversationId={id}
+          listingId={conversation.listing.id}
           accessToken={session.accessToken}
           currentUserId={session.user.id}
           initialMessages={messages}
