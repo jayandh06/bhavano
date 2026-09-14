@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Headers,
   HttpCode,
   NotFoundException,
   Post,
@@ -17,6 +18,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { AppleLoginDto } from './dto/apple-login.dto';
 import { DevLoginDto } from './dto/dev-login.dto';
+import { parseTrackingAuthorized } from '../ads/tracking-authorized';
 
 @Controller('auth')
 export class AuthController {
@@ -33,7 +35,10 @@ export class AuthController {
   @Post('otp/verify')
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  verifyOtp(@Body() dto: VerifyOtpDto): Promise<AuthSession> {
+  verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Headers('x-tracking-authorized') trackingAuthorizedHeader?: string,
+  ): Promise<AuthSession> {
     return this.authService.verifyOtp(dto.phone, dto.code, {
       source: dto.acquisitionSource,
       medium: dto.acquisitionMedium,
@@ -43,12 +48,16 @@ export class AuthController {
       adGroupId: dto.acquisitionAdGroupId,
       adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
+      trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
   }
 
   @Post('google')
   @HttpCode(200)
-  loginWithGoogle(@Body() dto: GoogleLoginDto): Promise<AuthSession> {
+  loginWithGoogle(
+    @Body() dto: GoogleLoginDto,
+    @Headers('x-tracking-authorized') trackingAuthorizedHeader?: string,
+  ): Promise<AuthSession> {
     return this.authService.loginWithGoogle(dto.idToken, {
       source: dto.acquisitionSource,
       medium: dto.acquisitionMedium,
@@ -58,12 +67,16 @@ export class AuthController {
       adGroupId: dto.acquisitionAdGroupId,
       adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
+      trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
   }
 
   @Post('apple')
   @HttpCode(200)
-  loginWithApple(@Body() dto: AppleLoginDto): Promise<AuthSession> {
+  loginWithApple(
+    @Body() dto: AppleLoginDto,
+    @Headers('x-tracking-authorized') trackingAuthorizedHeader?: string,
+  ): Promise<AuthSession> {
     return this.authService.loginWithApple(dto.identityToken, dto.fullName, {
       source: dto.acquisitionSource,
       medium: dto.acquisitionMedium,
@@ -73,6 +86,7 @@ export class AuthController {
       adGroupId: dto.acquisitionAdGroupId,
       adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
+      trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
   }
 

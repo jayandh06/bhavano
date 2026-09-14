@@ -39,6 +39,12 @@ export interface VisitContext {
   /** The visitor's per-session id (web's `bhavano_sid` cookie) — used to link the anonymous
    * Visit row logged for this session to the now-known user, not persisted onto User itself. */
   sessionId?: string;
+  /** iOS only, from the app's ATT prompt (see AuthController's `x-tracking-authorized` header —
+   * web has no such concept and never sends this, so it stays undefined there, which
+   * reportSignupConversion treats the same as `true`). `false` is the only value that changes
+   * behavior: an explicit ATT denial, which must block the conversion upload below regardless of
+   * how much contact info is on file, or the prompt is compliance theatre. */
+  trackingAuthorized?: boolean;
 }
 
 /** Only include acquisition columns in a Prisma `create` payload when a source was actually
@@ -360,7 +366,12 @@ export class AuthService {
    * GoogleAdsConversionProvider.uploadClickConversion's doc comment) — so this is only a no-op
    * when the user has neither a gclid nor any contact info, or was already reported. */
   private async reportSignupConversion(user: User, visit?: VisitContext): Promise<void> {
-    if (user.adsConversionUploadedAt || (!visit?.gclid && !user.email && !user.phone)) return;
+    if (
+      user.adsConversionUploadedAt ||
+      visit?.trackingAuthorized === false ||
+      (!visit?.gclid && !user.email && !user.phone)
+    )
+      return;
     await this.prisma.user.update({
       where: { id: user.id },
       data: { adsConversionUploadedAt: new Date() },

@@ -967,6 +967,7 @@ export class ListingsService {
   async create(
     input: CreateListingInput,
     ownerId: string,
+    trackingAuthorized?: boolean,
   ): Promise<ListingDetailDto> {
     if (!input.photos.length)
       throw new BadRequestException('At least one photo is required');
@@ -1108,7 +1109,14 @@ export class ListingsService {
     // belt-and-braces.
     const isBulkImportOwner = owner?.phone === BULK_IMPORT_OWNER_PHONE;
 
-    if (!isBulkImportOwner && (owner?.acquisitionGclid || owner?.email || owner?.phone)) {
+    // trackingAuthorized === false is an explicit iOS App Tracking Transparency denial (see
+    // AuthController's parseTrackingAuthorized) — must block this upload regardless of how much
+    // contact info is on file, same reasoning as AuthService.reportSignupConversion.
+    if (
+      trackingAuthorized !== false &&
+      !isBulkImportOwner &&
+      (owner?.acquisitionGclid || owner?.email || owner?.phone)
+    ) {
       void this.googleAdsConversionProvider
         .uploadClickConversion({
           gclid: owner.acquisitionGclid ?? undefined,

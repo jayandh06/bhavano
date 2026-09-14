@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
@@ -28,6 +29,7 @@ import { R2StorageService } from '../storage/r2-storage.service';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { ListingsService } from './listings.service';
 import { ListingPhotosService } from './listing-photos.service';
+import { parseTrackingAuthorized } from '../ads/tracking-authorized';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
@@ -85,8 +87,12 @@ export class ListingsController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(@Body() dto: CreateListingDto, @CurrentUser() user: RequestUser): Promise<ListingDetailDto> {
-    return this.listingsService.create(dto, user.id);
+  create(
+    @Body() dto: CreateListingDto,
+    @CurrentUser() user: RequestUser,
+    @Headers('x-tracking-authorized') trackingAuthorizedHeader?: string,
+  ): Promise<ListingDetailDto> {
+    return this.listingsService.create(dto, user.id, parseTrackingAuthorized(trackingAuthorizedHeader));
   }
 
   @Patch(':id')
