@@ -151,7 +151,7 @@ export class ContactRevealService {
   /** Spends a free reveal or a credit (whichever applies) and permanently unlocks this listing's
    * contact for this user — idempotent (a second call is just a read) and transactional (re-
    * derives eligibility inside the transaction so two concurrent requests for the same listing
-   * can't both succeed off a stale read). Mirrors messaging.service.ts's createOrGetConversation
+   * can't both succeed off a stale read). Mirrors messaging.service.ts's sendFirstMessage
    * idempotent-get-or-create shape. */
   async revealContact(userId: string, listingId: string): Promise<RevealContactResponseDto> {
     const listing = await this.prisma.listing.findUnique({

@@ -75,10 +75,11 @@ export class PushService {
       });
       if (tokens.length === 0) return;
 
+      // Always a freshly-sent message here (see sendMessage/sendFirstMessage), never a deleted
+      // one, so body is never actually null despite MessageDto's general shape.
+      const rawBody = message.body!;
       const body =
-        message.body.length > BODY_PREVIEW_CHARS
-          ? `${message.body.slice(0, BODY_PREVIEW_CHARS - 1)}…`
-          : message.body;
+        rawBody.length > BODY_PREVIEW_CHARS ? `${rawBody.slice(0, BODY_PREVIEW_CHARS - 1)}…` : rawBody;
 
       const stale = new Set<string>();
       for (let i = 0; i < tokens.length; i += CHUNK_SIZE) {

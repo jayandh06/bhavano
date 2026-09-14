@@ -35,6 +35,7 @@ const message = {
   body: 'hello',
   createdAt: '',
   readAt: null,
+  deletedAt: null,
 };
 
 describe('PushService', () => {

@@ -3,6 +3,7 @@ import type {
   ConversationDetailDto,
   ConversationSummaryDto,
   MessageDto,
+  SendFirstMessageResponseDto,
   UnreadCountDto,
 } from '@bhavano/types';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -11,7 +12,7 @@ import type { RequestUser } from '../auth/guards/auth.guard';
 import { PushService } from '../push/push.service';
 import { MessagingService } from './messaging.service';
 import { MessagingGateway } from './messaging.gateway';
-import { CreateConversationDto } from './dto/create-conversation.dto';
+import { SendFirstMessageDto } from './dto/send-first-message.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 
 @Controller('conversations')
@@ -23,9 +24,31 @@ export class MessagingController {
     private readonly push: PushService,
   ) {}
 
-  @Post()
-  create(@Body() dto: CreateConversationDto, @CurrentUser() user: RequestUser): Promise<{ id: string }> {
-    return this.messagingService.createOrGetConversation(dto.listingId, user.id);
+  /** Starts a conversation and sends its first message atomically — see
+   * MessagingService.sendFirstMessage's own doc for why this replaced a separate "create
+   * conversation" step. Static "messages" segment, so it can't collide with `:id/messages` below
+   * (different segment count) or `:id` (different path shape entirely). */
+  @Post('messages')
+  async sendFirstMessage(
+    @Body() dto: SendFirstMessageDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<SendFirstMessageResponseDto> {
+    const { conversationId, message, recipientId, senderName } = await this.messagingService.sendFirstMessage(
+      dto.listingId,
+      user.id,
+      dto.body,
+    );
+    this.gateway.broadcastMessage(conversationId, message);
+
+    void this.messagingService
+      .getUnreadTotal(recipientId)
+      .then((unreadCount) =>
+        this.gateway.notifyUnread(recipientId, { conversationId, unreadCount }),
+      )
+      .catch(() => undefined);
+    void this.push.notifyNewMessage(recipientId, message, senderName).catch(() => undefined);
+
+    return { conversationId, message };
   }
 
   @Get()

@@ -18,7 +18,8 @@ pro, seller slot packs — by a percentage, with per-code expiry/redemption caps
 Reuses existing, already-proven patterns rather than inventing new architecture: the `Payment` →
 Razorpay-order → webhook → purpose-specific-entitlement-grant flow
 (`apps/bff/src/payments/payments.service.ts`), `RateLimitSetting`'s singleton-row admin-settings
-pattern, and `POST /conversations`'s auth-gated idempotent-get-or-create shape.
+pattern, and `MessagingService`'s auth-gated idempotent-get-or-create shape (now
+`sendFirstMessage`, see docs/plans/message-delete-and-lazy-conversation-creation.md).
 
 ## What was built
 

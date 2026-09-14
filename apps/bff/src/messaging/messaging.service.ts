@@ -8,14 +8,16 @@ import type {
 import { PrismaService } from '../prisma/prisma.service';
 import type { Conversation, Message, Prisma } from '@prisma/client';
 
-function toMessageDto(message: Message): MessageDto {
+function toMessageDto(message: Message, opts: { revealDeletedBody?: boolean } = {}): MessageDto {
+  const isDeleted = message.deletedAt != null;
   return {
     id: message.id,
     conversationId: message.conversationId,
     senderId: message.senderId,
-    body: message.body,
+    body: isDeleted && !opts.revealDeletedBody ? null : message.body,
     createdAt: message.createdAt.toISOString(),
     readAt: message.readAt?.toISOString() ?? null,
+    deletedAt: message.deletedAt?.toISOString() ?? null,
   };
 }
 
@@ -23,17 +25,37 @@ function toMessageDto(message: Message): MessageDto {
 export class MessagingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createOrGetConversation(listingId: string, inquirerId: string): Promise<Conversation> {
-    const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
-    if (!listing) throw new NotFoundException('Listing not found');
-    if (listing.ownerId === inquirerId) {
-      throw new BadRequestException("You can't message yourself about your own listing");
-    }
+  /** Starting a conversation and sending its first message are one atomic step — there is no
+   * "empty conversation" state a buyer can leave behind just by tapping Contact owner. Buyer-only
+   * by construction (the ownerId === senderId guard below): a seller only ever replies on an
+   * already-existing conversation via sendMessage. */
+  async sendFirstMessage(
+    listingId: string,
+    senderId: string,
+    body: string,
+  ): Promise<{ conversationId: string; message: MessageDto; recipientId: string; senderName: string }> {
+    return this.prisma.$transaction(async (tx) => {
+      const listing = await tx.listing.findUnique({ where: { id: listingId } });
+      if (!listing) throw new NotFoundException('Listing not found');
+      if (listing.ownerId === senderId) {
+        throw new BadRequestException("You can't message yourself about your own listing");
+      }
 
-    return this.prisma.conversation.upsert({
-      where: { listingId_inquirerId_type: { listingId, inquirerId, type: 'inquiry' } },
-      update: {},
-      create: { listingId, inquirerId, posterId: listing.ownerId, type: 'inquiry' },
+      const conversation = await tx.conversation.upsert({
+        where: { listingId_inquirerId_type: { listingId, inquirerId: senderId, type: 'inquiry' } },
+        update: {},
+        create: { listingId, inquirerId: senderId, posterId: listing.ownerId, type: 'inquiry' },
+      });
+      const [message, sender] = await Promise.all([
+        tx.message.create({ data: { conversationId: conversation.id, senderId, body } }),
+        tx.user.findUnique({ where: { id: senderId }, select: { name: true } }),
+      ]);
+      return {
+        conversationId: conversation.id,
+        message: toMessageDto(message),
+        recipientId: listing.ownerId,
+        senderName: sender?.name ?? 'Buyer',
+      };
     });
   }
 
@@ -57,7 +79,7 @@ export class MessagingService {
    * they'd merely opened in the admin panel, alongside their real inquiry for the same listing. */
   async listConversations(userId: string): Promise<ConversationSummaryDto[]> {
     const conversations = await this.prisma.conversation.findMany({
-      where: { type: 'inquiry', OR: [{ posterId: userId }, { inquirerId: userId }] },
+      where: { type: 'inquiry', OR: [{ posterId: userId }, { inquirerId: userId }], messages: { some: {} } },
       include: {
         listing: { select: { title: true, city: { select: { name: true } }, area: { select: { name: true } } } },
         poster: { select: { id: true, name: true, phone: true } },
@@ -170,7 +192,7 @@ export class MessagingService {
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
     });
-    return messages.map(toMessageDto);
+    return messages.map((m) => toMessageDto(m));
   }
 
   /** One listing's admin "Messages" table — buyer-inquiry conversations only (`type: 'inquiry'`),
@@ -239,7 +261,26 @@ export class MessagingService {
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
     });
-    return messages.map(toMessageDto);
+    return messages.map((m) => toMessageDto(m, { revealDeletedBody: true }));
+  }
+
+  /** Only the sender can delete their own message. Soft-delete, not removal — `deletedAt` masks
+   * the body in toMessageDto's default mapping (see its own doc), but the row (and the admin
+   * read path above) keeps the original text for moderation. */
+  async deleteMessage(
+    messageId: string,
+    userId: string,
+  ): Promise<{ message: MessageDto; conversationId: string }> {
+    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    if (!message || message.deletedAt) throw new NotFoundException('Message not found');
+    if (message.senderId !== userId) {
+      throw new ForbiddenException('You can only delete your own messages');
+    }
+    const updated = await this.prisma.message.update({
+      where: { id: messageId },
+      data: { deletedAt: new Date() },
+    });
+    return { message: toMessageDto(updated), conversationId: updated.conversationId };
   }
 
   /** Also returns the other participant's id and the sender's display name — the caller pushes a

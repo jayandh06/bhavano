@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
-import type { MessageDto, UnreadUpdateEvent } from '@bhavano/types';
+import type { MessageDeletedEvent, MessageDto, UnreadUpdateEvent } from '@bhavano/types';
 
 function roomName(conversationId: string): string {
   return `conversation:${conversationId}`;
@@ -55,6 +55,10 @@ export class MessagingGateway implements OnGatewayConnection {
 
   broadcastMessage(conversationId: string, message: MessageDto): void {
     this.server.to(roomName(conversationId)).emit('new_message', message);
+  }
+
+  broadcastMessageDeleted(conversationId: string, payload: MessageDeletedEvent): void {
+    this.server.to(roomName(conversationId)).emit('message_deleted', payload);
   }
 
   /** Tells `userId`'s open clients their unread total just changed — `unreadCount` is the fresh
