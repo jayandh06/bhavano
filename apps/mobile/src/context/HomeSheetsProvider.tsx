@@ -13,12 +13,14 @@ import { BottomSheetModal, BottomSheetScrollView, BottomSheetView } from "@gorho
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
+import * as AppleAuthentication from "expo-apple-authentication";
 import type { City, UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../theme/ThemeContext";
 import {
   BffError,
   fetchCities,
   fetchProfile,
+  loginWithApple,
   loginWithGoogle,
   logout as bffLogout,
   reverseGeocodeGoogle,
@@ -386,6 +388,37 @@ export function HomeSheetsProvider({
     }
   }
 
+  async function handleApple() {
+    setPending(true);
+    setError(null);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) return;
+      // Only ever present on the very first authorization for this user+app, ever — see
+      // AuthService.loginWithApple's own doc comment on why this has to be sent up now or it's
+      // gone for good. `undefined`, not "", when both name parts are missing (a later login),
+      // so the BFF's own `fullName &&` check treats it the same as never having sent one.
+      const fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
+        .filter(Boolean)
+        .join(" ");
+      const session = await loginWithApple(credential.identityToken, fullName || undefined);
+      await onLoginSuccess(session.accessToken);
+    } catch (e) {
+      // ERR_REQUEST_CANCELED — the user dismissed the Apple sheet, same as Google's own
+      // no-idToken-returned case above: not an error worth surfacing. Expo's own docs check
+      // `e.code`, not `e.message` — this isn't a plain Error.
+      if (e && typeof e === "object" && "code" in e && e.code === "ERR_REQUEST_CANCELED") return;
+      setError(e instanceof Error ? e.message : "Apple sign-in failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
   const userId = useMemo(() => (accessToken ? decodeUserId(accessToken) : null), [accessToken]);
 
   const value = useMemo(
@@ -502,27 +535,30 @@ export function HomeSheetsProvider({
           {loginStep === "choose" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Log in to continue</Text>
-              {/* iOS-only: offering a third-party login (Google) obligates Sign in with Apple too
-                * (Guideline 4.8) — phone OTP alone doesn't trigger that requirement, so this is
-                * the whole login sheet on iOS until Sign in with Apple is built. See
-                * docs/plans/ios-app-store-release.md. Google stays first on Android/web, matching
-                * those login dialogs — most people already have a Google account signed into the
-                * device, so it is usually one tap where phone OTP always costs an SMS wait. */}
-              {Platform.OS !== "ios" && (
-                <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
-                  <GoogleIcon size={18} />
-                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Continue with Google</Text>
-                </Pressable>
+              {/* iOS-only, and shown above Google — Apple requires Sign in with Apple to have
+                * equal or greater prominence than any other third-party login offered (Guideline
+                * 4.8). Apple's own button component, not a custom one: their HIG requires using
+                * either this or a button that strictly matches its design, and this guarantees
+                * that. See docs/plans/ios-app-store-release.md. */}
+              {Platform.OS === "ios" && (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                  cornerRadius={9}
+                  style={styles.appleButton}
+                  onPress={handleApple}
+                />
               )}
+              {/* Google first on Android/web, matching those login dialogs — most people already
+                * have a Google account signed into the device, so it is usually one tap where
+                * phone OTP always costs an SMS wait. */}
+              <Pressable onPress={handleGoogle} disabled={pending} style={[styles.outlineButton, { borderColor: colors.border }]}>
+                <GoogleIcon size={18} />
+                <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>Continue with Google</Text>
+              </Pressable>
               <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone OTP</Text>
               </Pressable>
-              {Platform.OS === "ios" && (
-                <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
-                  Signed up with Google on the web or Android? Log in there and add a phone number
-                  under Account, then you can log in here with it too.
-                </Text>
-              )}
               {/* Same wording/links as the web login dialog's own disclaimer. */}
               <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
                 By continuing you agree to Bhavano&apos;s{" "}
@@ -654,6 +690,9 @@ const styles = StyleSheet.create({
   },
   cityRow: { paddingVertical: 10, paddingHorizontal: 6 },
   primaryButton: { borderRadius: 8, paddingVertical: 13, alignItems: "center", marginBottom: 10 },
+  // Apple's own button sizes itself via style's height/width, not padding — matches
+  // outlineButton's effective height (13 vertical padding × 2 + line height) and spacing below.
+  appleButton: { width: "100%", height: 46, marginBottom: 12 },
   outlineButton: {
     flexDirection: "row",
     justifyContent: "center",

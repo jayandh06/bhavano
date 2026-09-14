@@ -46,10 +46,39 @@ cycle.
   `…@privaterelay.appleid.com`. That is a real, deliverable address, so it is fine to store — but
   it will not match their Google account, which means the account-linking work in
   `account-linking-phone-and-email.md` cannot merge the two automatically. Expect Apple signups to
-  produce a third account shape.
+  produce a third account shape. **It also has to actually be deliverable**: Apple only forwards
+  mail to a Private Relay address from sending domains registered as an "Email Source" against the
+  Sign in with Apple Services ID in the developer portal — `SMTP_FROM`'s domain (`bhavano.com`)
+  needs to be added there before shipping, or every transactional email
+  (`NotificationsService.dispatchEmailPreferWhatsapp` — welcome, ad-posted, etc.) to a
+  Private-Relay user silently never arrives, with no bounce to notice it by.
 - **Name and email are returned only on the FIRST authorisation, ever.** Re-installing or
   re-authorising returns the subject id alone. If the first response is not persisted, that user
   has no name and no email forever. This is the single most common Sign in with Apple bug.
+
+**Update: built, not sidestepped.** An earlier pass briefly hid Google entirely on iOS instead
+(phone-OTP-only, sidestepping 4.8 rather than satisfying it) — reverted in favour of the real
+thing: Sign in with Apple now sits above Google on iOS, exactly per the "Work" list above.
+
+- `expo-apple-authentication` installed, `usesAppleSignIn: true` set. The login sheet renders
+  Apple's own `AppleAuthenticationButton` (not a custom one — their HIG requires either that or a
+  button matching its design exactly) above the existing Google button on iOS only
+  (`Platform.OS === "ios"`); Android/web are unchanged.
+- `POST /auth/apple` (`AuthService.loginWithApple`) verifies the identity token against Apple's
+  JWKS (`AppleProvider`, via `jwks-rsa` + the already-present `jsonwebtoken` — no equivalent to
+  `google-auth-library` exists for Apple) and mirrors `loginWithGoogle`'s upsert/adopt/create
+  logic, with the two Apple-specific differences called out above actually handled: `fullName` is
+  captured client-side from `signInAsync()`'s one-time response and forwarded to the BFF (never
+  re-derived from the token, which never carries a name at all), and an existing user's
+  email/name are only ever updated when Apple actually supplies them that call, never blanked by
+  a later, name-less login.
+- `User.appleId` added (migration `20260914095752_add_apple_login`), mirroring `googleId`
+  end-to-end: released on account deletion and on the losing side of a merge
+  (`account-deletion.service.ts`, `account-merge.service.ts`), carried onto the winner the same
+  way.
+- **Still genuinely open, not yet done:** registering `bhavano.com` as an Apple "Email Source" for
+  Private Relay deliverability (see the bullet above) — that's Apple Developer Portal
+  configuration, not code, and nothing here does it automatically.
 
 ## Blocker 2 — In-app account deletion (Guideline 5.1.1(v))
 

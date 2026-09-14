@@ -357,6 +357,19 @@ export function loginWithGoogle(
   });
 }
 
+/** `fullName` is only ever non-undefined on the very first Sign in with Apple authorization for
+ * this user+app — see HomeSheetsProvider.tsx's handleApple and AuthService.loginWithApple's own
+ * doc comment on why that one-shot value has to be captured and sent up right then or it's gone. */
+export function loginWithApple(
+  identityToken: string,
+  fullName?: string,
+): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
+  return bffFetch("/auth/apple", {
+    method: "POST",
+    body: JSON.stringify({ identityToken, fullName }),
+  });
+}
+
 /** Purely a signal for the BFF to log — JWTs are stateless and short-lived, so there is no
  * server-side session to end (see the endpoint's own note in apps/bff auth.controller.ts). The
  * logout that matters happens on the device, by deleting the stored token. Callers should treat a

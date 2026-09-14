@@ -37,6 +37,9 @@ module.exports = {
       // layout is an easy rejection — turn this back on deliberately, with screenshots.
       supportsTablet: false,
       bundleIdentifier: "com.finfolia.bhavano",
+      // Sign in with Apple (Guideline 4.8) — see HomeSheetsProvider.tsx's login sheet and
+      // docs/plans/ios-app-store-release.md.
+      usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         // react-native-razorpay's UPI intent flow (pay via a UPI app instead of entering card
