@@ -19,6 +19,7 @@ import type {
   RevealContactResponseDto,
   ReverseGeocodeResultDto,
   LinkIdentifierResult,
+  UpdateListingInput,
   UpdateProfileInput,
   UserProfileDto,
 } from "@bhavano/types";
@@ -361,6 +362,91 @@ export function updateProfile(accessToken: string, input: UpdateProfileInput): P
  * owns, any status, for the read-only My Listings screen. */
 export function fetchMyListings(accessToken: string): Promise<ListingDetailDto[]> {
   return authedBffFetch(accessToken, "/users/me/listings");
+}
+
+/** Mirrors the website's identical call — a single owned listing, for the edit screen's initial
+ * fetch (getMine on the BFF, same 403-if-not-owner check as the list route above). */
+export function fetchMyListing(accessToken: string, id: string): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/users/me/listings/${id}`);
+}
+
+/** Fields an owner can change after posting — see UpdateListingInput's own doc comment. Category/
+ * transactionType/city/area are deliberately not here: same as web, changing what a listing
+ * fundamentally *is* isn't part of "edit," see EditListingForm.tsx's identical omission. */
+export function updateListing(accessToken: string, id: string, input: UpdateListingInput): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/listings/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function renewListing(accessToken: string, id: string): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/listings/${id}/renew`, { method: "PATCH" });
+}
+
+// Owner-facing photo/video controls for the edit screen — single-request add (unlike the
+// pre-creation wizard's upload-then-attach split, see addVideo's own BFF-side doc comment) since
+// the listing already exists by the time these run. Not routed through authedBffFetch for the two
+// upload calls: that helper forces a JSON Content-Type, which would strip the multipart boundary
+// fetch otherwise auto-generates for a FormData body — same reasoning as uploadPhoto/uploadVideo
+// above, just against `/listings/:id/...` instead of the pre-creation `/uploads` endpoints.
+export async function addListingPhoto(fileUri: string, listingId: string, accessToken: string): Promise<ListingDetailDto> {
+  const formData = new FormData();
+  const filename = fileUri.split("/").pop() ?? "photo.jpg";
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const mimeType = (ext && MIME_BY_EXT[ext]) ?? "image/jpeg";
+  formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
+
+  const res = await fetch(`${BFF_URL}/listings/${listingId}/photos`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`BFF add photo failed (${res.status}): ${body}`);
+  }
+  return res.json() as Promise<ListingDetailDto>;
+}
+
+export function deleteListingPhoto(accessToken: string, listingId: string, photoNo: number): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/photos/${photoNo}`, { method: "DELETE" });
+}
+
+export function rotateListingPhoto(
+  accessToken: string,
+  listingId: string,
+  photoNo: number,
+  turns: number,
+): Promise<{ rotation: number }> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/photos/${photoNo}/rotate`, {
+    method: "POST",
+    body: JSON.stringify({ turns }),
+  });
+}
+
+export function setListingCoverPhoto(accessToken: string, listingId: string, photoNo: number): Promise<{ displayOrder: number }> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/photos/${photoNo}/set-cover`, { method: "POST" });
+}
+
+export async function addListingVideo(fileUri: string, listingId: string, accessToken: string): Promise<ListingDetailDto> {
+  const formData = new FormData();
+  const filename = fileUri.split("/").pop() ?? "video.mp4";
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const mimeType = (ext && VIDEO_MIME_BY_EXT[ext]) ?? "video/mp4";
+  formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
+
+  const res = await fetch(`${BFF_URL}/listings/${listingId}/videos`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`BFF add video failed (${res.status}): ${body}`);
+  }
+  return res.json() as Promise<ListingDetailDto>;
+}
+
+export function deleteListingVideo(accessToken: string, listingId: string, videoId: string): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/videos/${videoId}`, { method: "DELETE" });
 }
 
 /** Mirrors the website's identical call (bff.ts's createBoostOrder) — activation happens via the

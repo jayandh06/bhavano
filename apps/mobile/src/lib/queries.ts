@@ -11,6 +11,7 @@ import {
   fetchListingById,
   fetchListings,
   fetchMessages,
+  fetchMyListing,
   fetchMyListings,
   fetchPaymentHistory,
   fetchUnreadCount,
@@ -69,6 +70,14 @@ export function useMyListingsQuery(accessToken: string | null) {
   return useQuery({
     queryKey: ["myListings", accessToken],
     queryFn: () => fetchMyListings(accessToken!),
+    enabled: !!accessToken,
+  });
+}
+
+export function useMyListingQuery(id: string, accessToken: string | null) {
+  return useQuery({
+    queryKey: ["myListing", id, accessToken],
+    queryFn: () => fetchMyListing(accessToken!, id),
     enabled: !!accessToken,
   });
 }

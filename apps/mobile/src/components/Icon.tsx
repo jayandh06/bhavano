@@ -53,6 +53,7 @@ import {
   Refrigerator,
   Rocket,
   Ruler,
+  SquarePen,
   Scale,
   Search,
   ShowerHead,
@@ -119,6 +120,7 @@ export const ICONS = {
   logout: LogOut,
   list: List,
   help: HelpCircle,
+  edit: SquarePen,
 
   // Home-tab and tools vocabulary.
   home: Home,
