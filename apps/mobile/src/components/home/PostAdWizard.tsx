@@ -25,6 +25,7 @@ import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ScreenHeader } from "./ScreenHeader";
 import { BoostModal } from "./BoostModal";
+import { InstantAlertsModal } from "./InstantAlertsModal";
 
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
 
@@ -37,6 +38,13 @@ const BOOST_BENEFITS: [IconName, string][] = [
   ["check", "Ranks above regular listings in search"],
   ["check", "Rotates fairly through the top slots"],
   ["bell", "Alerts you the moment someone likes it"],
+];
+
+// Mirrors the website's identical Instant Alerts pitch card.
+const INSTANT_ALERTS_BENEFITS: [IconName, string][] = [
+  ["check", "Real-time email or WhatsApp on every new enquiry"],
+  ["check", "Valid until this ad expires"],
+  ["check", "Already have the app? You get this for free — this is for reaching you by email/WhatsApp too"],
 ];
 
 /** Short two- or three-option fields stay inline as a segmented control — seeing every choice at
@@ -203,6 +211,8 @@ export function PostAdWizard({
   const [postAccessToken, setPostAccessToken] = useState<string | undefined>(accessToken);
   const [boostOpen, setBoostOpen] = useState(false);
   const [boostActivating, setBoostActivating] = useState(false);
+  const [instantAlertsOpen, setInstantAlertsOpen] = useState(false);
+  const [instantAlertsActivating, setInstantAlertsActivating] = useState(false);
 
   function selectCategory(next: ListingCategory) {
     setCategory(next);
@@ -983,6 +993,41 @@ export function PostAdWizard({
             )}
           </View>
 
+          {/* Instant Alerts pitch — same card treatment as Boost, right below it. Independent
+              purchase: buying both just runs two checkouts back to back, no bundle SKU. */}
+          <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <Icon name="bell" size={17} color={colors.gold} />
+              <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
+                Get notified the instant someone messages you
+              </Text>
+            </View>
+            <View style={{ gap: 8 }}>
+              {INSTANT_ALERTS_BENEFITS.map(([icon, text]) => (
+                <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Icon name={icon} size={14} color={colors.green} />
+                  <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>
+                </View>
+              ))}
+            </View>
+            {instantAlertsActivating ? (
+              <View style={[styles.submitButton, { backgroundColor: colors.surfaceAlt, marginTop: 16, flexDirection: "row", justifyContent: "center", gap: 8 }]}>
+                <Icon name="bell" size={16} color={colors.green} />
+                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Instant Alerts pending…</Text>
+              </View>
+            ) : (
+              <Pressable
+                // Same iOS/Android split as the Boost button just above — see its own comment.
+                onPress={() =>
+                  Platform.OS === "ios" ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`) : setInstantAlertsOpen(true)
+                }
+                style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
+              >
+                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Get Instant Alerts</Text>
+              </Pressable>
+            )}
+          </View>
+
           {/* A real push (not the replace() this used to do straight out of onSubmit) — see this
               screen's own header comment for why that mattered: it's what makes the listing's
               back arrow have somewhere to return to. */}
@@ -1001,6 +1046,15 @@ export function PostAdWizard({
               accessToken={postAccessToken}
               onClose={() => setBoostOpen(false)}
               onActivating={() => setBoostActivating(true)}
+            />
+          )}
+          {Platform.OS === "android" && postAccessToken && (
+            <InstantAlertsModal
+              visible={instantAlertsOpen}
+              listingId={createdListing.id}
+              accessToken={postAccessToken}
+              onClose={() => setInstantAlertsOpen(false)}
+              onActivating={() => setInstantAlertsActivating(true)}
             />
           )}
         </View>

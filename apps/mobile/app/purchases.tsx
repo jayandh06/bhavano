@@ -12,6 +12,7 @@ const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   agent_pro: "Agent/Broker Pro",
   seller_slot_pack: "Seller slot pack",
   contact_reveal_credits: "Contact reveal credits",
+  instant_alerts: "Instant Alerts",
 };
 
 // Hex, not a theme color key — the theme has no "danger"/red entry (see ListingCard.tsx's own

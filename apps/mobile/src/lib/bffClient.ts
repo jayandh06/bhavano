@@ -1,5 +1,6 @@
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
+import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type {
   Area,
   City,
@@ -8,6 +9,7 @@ import type {
   ConversationSummaryDto,
   CreateBoostOrderResponseDto,
   CreatedVideoInput,
+  CreateInstantAlertsOrderResponseDto,
   CreateListingInput,
   CreateSubscriptionOrderResponseDto,
   HomeCategoryFilter,
@@ -121,7 +123,11 @@ export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
 /** Public — current boost/subscription pricing, admin-editable (see
  * docs/plans/admin-manage-plans-pricing.md). Read live before showing the boost picker rather
  * than the bundled `DEFAULT_*` constants, so an admin's edit takes effect immediately. */
-export function fetchPlanPricing(): Promise<{ boost: BoostPriceSettings; subscription: SubscriptionPlanSettings }> {
+export function fetchPlanPricing(): Promise<{
+  boost: BoostPriceSettings;
+  subscription: SubscriptionPlanSettings;
+  instantAlerts: InstantAlertsPriceSettings;
+}> {
   return bffFetch("/plans/pricing");
 }
 
@@ -506,6 +512,17 @@ export function createBoostOrder(
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
     body: JSON.stringify({ listingId, boostDays }),
+  });
+}
+
+/** Same pattern as createBoostOrder, minus the duration — Instant Alerts is a flat fee. */
+export function createInstantAlertsOrder(
+  accessToken: string,
+  listingId: string,
+): Promise<CreateInstantAlertsOrderResponseDto> {
+  return authedBffFetch(accessToken, "/payments/instant-alerts", {
+    method: "POST",
+    body: JSON.stringify({ listingId }),
   });
 }
 
