@@ -10,6 +10,7 @@ import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { BoostButton } from "@/components/home/BoostButton";
+import { InstantAlertsButton } from "@/components/home/InstantAlertsButton";
 import { RenewButton } from "@/components/home/RenewButton";
 import { VideoManager } from "@/components/home/VideoManager";
 import { daysUntil } from "@/lib/listingExpiry";
@@ -156,6 +157,9 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
         {canRenew && <RenewButton listingId={item.id} />}
         {item.status === "active" && !item.isExpired && !item.isBoosted && (
           <BoostButton listingId={item.id} category={item.category} />
+        )}
+        {item.status === "active" && !item.isExpired && !item.hasInstantAlerts && (
+          <InstantAlertsButton listingId={item.id} />
         )}
         <Link
           href={buildListingPath(item)}

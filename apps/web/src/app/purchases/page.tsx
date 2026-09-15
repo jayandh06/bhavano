@@ -15,6 +15,7 @@ const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   agent_pro: "Agent/Broker Pro",
   seller_slot_pack: "Seller slot pack",
   contact_reveal_credits: "Contact reveal credits",
+  instant_alerts: "Instant Alerts",
 };
 
 const STATUS_STYLE: Record<PaymentStatus, string> = {

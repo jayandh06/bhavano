@@ -3,12 +3,20 @@
 import type {
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
+  CreateInstantAlertsOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
   SubscriptionTier,
 } from "@bhavano/types";
 import type { BoostDurationDays, BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import { auth } from "@/auth";
-import { createBoostOrder, createContactRevealCreditsOrder, createSubscriptionOrder, fetchPlanPricing } from "@/lib/bff";
+import {
+  createBoostOrder,
+  createContactRevealCreditsOrder,
+  createInstantAlertsOrder,
+  createSubscriptionOrder,
+  fetchPlanPricing,
+} from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 
 /** Called from BoostProvider (a client component) when the boost picker actually opens — not
@@ -18,6 +26,13 @@ import { isAccessTokenValid } from "@/lib/session";
 export async function fetchBoostPricingAction(): Promise<BoostPriceSettings> {
   const { boost } = await fetchPlanPricing();
   return boost;
+}
+
+/** Same reasoning as fetchBoostPricingAction — called from InstantAlertsProvider when its
+ * confirmation modal actually opens. */
+export async function fetchInstantAlertsPricingAction(): Promise<InstantAlertsPriceSettings> {
+  const { instantAlerts } = await fetchPlanPricing();
+  return instantAlerts;
 }
 
 export type CreateBoostOrderResult = { success: true; order: CreateBoostOrderResponseDto } | { success: false; error: string };
@@ -50,6 +65,25 @@ export async function createSubscriptionOrderAction(
 
   try {
     const order = await createSubscriptionOrder(session.accessToken, tier, months, agentProUnits);
+    return { success: true, order };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to start checkout" };
+  }
+}
+
+export type CreateInstantAlertsOrderResult =
+  | { success: true; order: CreateInstantAlertsOrderResponseDto }
+  | { success: false; error: string };
+
+export async function createInstantAlertsOrderAction(
+  listingId: string,
+  discountCode?: string,
+): Promise<CreateInstantAlertsOrderResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const order = await createInstantAlertsOrder(session.accessToken, listingId, discountCode);
     return { success: true, order };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to start checkout" };

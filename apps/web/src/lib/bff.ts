@@ -3,6 +3,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
+import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type {
   AgentStorefrontDto,
   Area,
@@ -14,6 +15,7 @@ import type {
   ConversationSummaryDto,
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
+  CreateInstantAlertsOrderResponseDto,
   CreateListingInput,
   CreateSavedSearchInput,
   CreateSubscriptionOrderResponseDto,
@@ -231,7 +233,11 @@ export function fetchContactRevealSettings(): Promise<ContactRevealSettingsDto> 
  * picker, the Bhavano Plus subscribe button, the plan comparison table) rather than the bundled
  * `DEFAULT_*` constants, so an admin's edit takes effect immediately without a redeploy —
  * checkout (PaymentsService) already re-reads the same rows server-side, this is purely display. */
-export function fetchPlanPricing(): Promise<{ boost: BoostPriceSettings; subscription: SubscriptionPlanSettings }> {
+export function fetchPlanPricing(): Promise<{
+  boost: BoostPriceSettings;
+  subscription: SubscriptionPlanSettings;
+  instantAlerts: InstantAlertsPriceSettings;
+}> {
   return bffFetch("/plans/pricing", { cache: "no-store" });
 }
 
@@ -522,6 +528,18 @@ export function createBoostOrder(
   boostDays: BoostDurationDays,
 ): Promise<CreateBoostOrderResponseDto> {
   return authedBffFetch(accessToken, "/payments/orders", { method: "POST", body: JSON.stringify({ listingId, boostDays }) });
+}
+
+/** Same pattern as createBoostOrder, minus the duration — Instant Alerts is a flat fee. */
+export function createInstantAlertsOrder(
+  accessToken: string,
+  listingId: string,
+  discountCode?: string,
+): Promise<CreateInstantAlertsOrderResponseDto> {
+  return authedBffFetch(accessToken, "/payments/instant-alerts", {
+    method: "POST",
+    body: JSON.stringify(discountCode ? { listingId, discountCode } : { listingId }),
+  });
 }
 
 /** Same pattern as createBoostOrder — buyerPremium ("Bhavano Plus") and agentPro

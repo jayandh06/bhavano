@@ -37,6 +37,7 @@ import {
 } from "@/lib/formStyles";
 import { uploadVideoDirect } from "@/lib/videoUpload";
 import { BoostButton } from "./BoostButton";
+import { InstantAlertsButton } from "./InstantAlertsButton";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
 import { VideoManager } from "./VideoManager";
@@ -987,6 +988,36 @@ export function PostAdWizard({
             <BoostButton
               listingId={createdListing.id}
               category={createdListing.category}
+              className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-green text-on-green border-0 rounded-lg px-4 py-3 text-sm font-bold cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
+            />
+          </div>
+
+          {/* Instant Alerts pitch — same card treatment as Boost, right below it. Independent
+            * purchase: a seller can buy either, both, or neither; buying both just runs two
+            * checkouts back to back, no bundle SKU. */}
+          <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Icon name="bell" className="text-[color:var(--gold)] text-lg" />
+              <span className="font-lora font-bold text-[15px] text-text">
+                Get notified the instant someone messages you
+              </span>
+            </div>
+            <ul className="flex flex-col gap-2 m-0 p-0 list-none">
+              {(
+                [
+                  ["check", "Real-time email or WhatsApp on every new enquiry"],
+                  ["check", "Valid until this ad expires"],
+                  ["check", "Already using the Bhavano app? You get this for free — this is for reaching you by email/WhatsApp too"],
+                ] as const
+              ).map(([icon, text]) => (
+                <li key={text} className="flex items-start gap-2 text-[13px] text-text-soft">
+                  <Icon name={icon} className="text-green mt-[3px] shrink-0" />
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
+            <InstantAlertsButton
+              listingId={createdListing.id}
               className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-green text-on-green border-0 rounded-lg px-4 py-3 text-sm font-bold cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
             />
           </div>
