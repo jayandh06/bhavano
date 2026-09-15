@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { UnreadUpdateEvent } from "@bhavano/types";
+import { formatUnreadCount } from "@bhavano/types/unreadCount";
 import { getSocket } from "@/lib/socket";
 import { getUnreadCountAction } from "@/app/actions/messaging";
 import { Icon } from "./Icon";
@@ -80,7 +81,7 @@ export function MessagesNavItem({
   onNavigate?: () => void;
 }) {
   const count = useContext(UnreadCountContext);
-  const label = count > 99 ? "99+" : String(count);
+  const label = formatUnreadCount(count);
   // Same green pill the per-conversation badges use on the Messages list.
   const badgeBase = "bg-green text-on-green rounded-full font-bold leading-none";
 

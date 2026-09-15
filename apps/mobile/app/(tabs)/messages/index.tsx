@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { formatUnreadCount } from "@bhavano/types/unreadCount";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
 import { useConversationsQuery } from "../../../src/lib/queries";
@@ -101,7 +102,9 @@ export default function MessagesScreen() {
                 </View>
                 {hasUnread && (
                   <View style={[styles.badge, { backgroundColor: colors.green }]}>
-                    <Text style={{ color: colors.onGreen, fontSize: 11, fontWeight: "700" }}>{item.unreadCount}</Text>
+                    <Text style={{ color: colors.onGreen, fontSize: 11, fontWeight: "700" }}>
+                      {formatUnreadCount(item.unreadCount)}
+                    </Text>
                   </View>
                 )}
               </Pressable>

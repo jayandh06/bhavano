@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatUnreadCount } from "@bhavano/types/unreadCount";
 import { auth } from "@/auth";
 import { BffAuthError, fetchConversations } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
@@ -117,7 +118,7 @@ async function ConversationList({ accessToken }: { accessToken: string }) {
             </div>
             {hasUnread && (
               <span className="shrink-0 bg-green text-on-green rounded-full text-[11px] font-bold px-2 py-[3px]">
-                {c.unreadCount}
+                {formatUnreadCount(c.unreadCount)}
               </span>
             )}
           </Link>

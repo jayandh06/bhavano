@@ -92,6 +92,10 @@
     "./messageFormat": {
       "types": "./dist/messageFormat.d.ts",
       "default": "./dist/messageFormat.js"
+    },
+    "./unreadCount": {
+      "types": "./dist/unreadCount.d.ts",
+      "default": "./dist/unreadCount.js"
     }
   },
   "scripts": {
