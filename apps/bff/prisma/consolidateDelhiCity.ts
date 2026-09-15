@@ -138,6 +138,17 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
 
+  // 3b. Catch-all: contacts that already had a usable areaId (so step 3's `areaId: null` filter
+  // never touched them) can still have cityId pointing at the bad "Delhi" row independently of
+  // their area — cityId isn't derived from areaId, it's just another plain field on the same
+  // row. No collision risk updating it in bulk (unlike Area, OutreachContact has no unique
+  // constraint involving cityId).
+  const remainingContacts = await prisma.outreachContact.updateMany({
+    where: { cityId: BAD_DELHI_CITY_ID },
+    data: { cityId: NEW_DELHI_CITY_ID },
+  });
+  console.log(`\nReassigned ${remainingContacts.count} more contacts' cityId (already had a usable area).`);
+
   // 4. Delete the now-empty bad "Delhi" city.
   await assertCityEmpty(BAD_DELHI_CITY_ID);
   await prisma.city.delete({ where: { id: BAD_DELHI_CITY_ID } });
