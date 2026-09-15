@@ -7,6 +7,7 @@ import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { BoostPricingSettingsService } from '../plans/boost-pricing-settings.service';
 import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
+import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pricing-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
 
 function makeService(overrides: Record<string, unknown> = {}, notificationsOverrides: Record<string, unknown> = {}) {
@@ -50,6 +51,7 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
     {} as ContactRevealService,
     {} as BoostPricingSettingsService,
     {} as SubscriptionPlanSettingsService,
+    {} as InstantAlertsPricingSettingsService,
     {} as AccountDeletionService,
   );
   return { service, prisma, notificationsService };

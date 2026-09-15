@@ -33,6 +33,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { BoostPricingSettingsService } from '../plans/boost-pricing-settings.service';
+import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pricing-settings.service';
 import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
@@ -45,6 +46,7 @@ import { CreateDiscountCodeDto } from './dto/create-discount-code.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-settings.dto';
 import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
+import { UpdateInstantAlertsPricingDto } from './dto/update-instant-alerts-pricing.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
 
@@ -142,6 +144,7 @@ export class AdminService {
     private readonly contactRevealService: ContactRevealService,
     private readonly boostPricingSettingsService: BoostPricingSettingsService,
     private readonly subscriptionPlanSettingsService: SubscriptionPlanSettingsService,
+    private readonly instantAlertsPricingSettingsService: InstantAlertsPricingSettingsService,
     private readonly accountDeletion: AccountDeletionService,
   ) {}
 
@@ -756,6 +759,14 @@ export class AdminService {
 
   updateSubscriptionPlanSettings(dto: UpdateSubscriptionPlanDto) {
     return this.subscriptionPlanSettingsService.updateSettings(dto);
+  }
+
+  getInstantAlertsPricingSettings() {
+    return this.instantAlertsPricingSettingsService.getSettings();
+  }
+
+  updateInstantAlertsPricingSettings(dto: UpdateInstantAlertsPricingDto) {
+    return this.instantAlertsPricingSettingsService.updateSettings(dto);
   }
 
   /** Admin-managed discount codes — see docs/plans/contact-reveal-credits.md. `redemptionCount`

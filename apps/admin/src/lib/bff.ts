@@ -1,6 +1,7 @@
 import "server-only";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
+import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
@@ -468,6 +469,17 @@ export function updateSubscriptionPlanSettings(
   input: SubscriptionPlanSettings,
 ): Promise<SubscriptionPlanSettings> {
   return authedBffFetch(accessToken, "/admin/subscription-plans", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function fetchInstantAlertsPricingSettings(accessToken: string): Promise<InstantAlertsPriceSettings> {
+  return authedBffFetch(accessToken, "/admin/instant-alerts-pricing", { cache: "no-store" });
+}
+
+export function updateInstantAlertsPricingSettings(
+  accessToken: string,
+  input: InstantAlertsPriceSettings,
+): Promise<InstantAlertsPriceSettings> {
+  return authedBffFetch(accessToken, "/admin/instant-alerts-pricing", { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export interface ListDiscountCodesQuery {

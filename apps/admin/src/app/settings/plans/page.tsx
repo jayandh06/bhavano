@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchBoostPricingSettings, fetchSubscriptionPlanSettings } from "@/lib/bff";
+import { fetchBoostPricingSettings, fetchInstantAlertsPricingSettings, fetchSubscriptionPlanSettings } from "@/lib/bff";
 import { BoostPricingSettingsForm } from "@/components/BoostPricingSettingsForm";
 import { SubscriptionPlanSettingsForm } from "@/components/SubscriptionPlanSettingsForm";
+import { InstantAlertsPricingSettingsForm } from "@/components/InstantAlertsPricingSettingsForm";
 
 export default async function PlansSettingsPage() {
   const { accessToken } = await requireAdmin();
-  const [boostPricing, subscriptionPlans] = await Promise.all([
+  const [boostPricing, subscriptionPlans, instantAlertsPricing] = await Promise.all([
     fetchBoostPricingSettings(accessToken),
     fetchSubscriptionPlanSettings(accessToken),
+    fetchInstantAlertsPricingSettings(accessToken),
   ]);
 
   return (
@@ -19,16 +21,21 @@ export default async function PlansSettingsPage() {
         </Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>Plans</h1>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 24px" }}>
-          Boost prices and subscription tiers (Bhavano Plus, Agent/Broker Pro, Seller slot pack)
-          including listing-slot counts. Changes take effect immediately — the boost picker, the
-          Bhavano Plus subscribe button, and the plan comparison page all read these live, and
-          checkout charges exactly what's saved here.
+          Boost prices, Instant Alerts pricing, and subscription tiers (Bhavano Plus, Agent/Broker
+          Pro, Seller slot pack) including listing-slot counts. Changes take effect immediately —
+          the boost picker, the Instant Alerts modal, the Bhavano Plus subscribe button, and the
+          plan comparison page all read these live, and checkout charges exactly what's saved here.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 32, maxWidth: 720 }}>
           <section>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Boost prices</h2>
             <BoostPricingSettingsForm initial={boostPricing} />
+          </section>
+
+          <section>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Instant Alerts price</h2>
+            <InstantAlertsPricingSettingsForm initial={instantAlertsPricing} />
           </section>
 
           <section>
