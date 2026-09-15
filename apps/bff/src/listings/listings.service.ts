@@ -1868,52 +1868,34 @@ export class ListingsService {
     }));
   }
 
-  /** Records a unique-viewer hit — a no-op if this viewerKey already viewed this listing. */
+  /** Records every visit — who (logged-in user id or anonymous device key) and when. No
+   * dedup: viewCount counts total visits, not unique viewers (see ListingView's own doc
+   * comment for why this shape was chosen over deduping at write time). */
   async recordView(
     listingId: string,
     viewerKey: string,
   ): Promise<{ viewCount: number }> {
-    try {
-      await this.prisma.listingView.create({ data: { listingId, viewerKey } });
-      const listing = await this.prisma.listing.update({
-        where: { id: listingId },
-        data: { viewCount: { increment: 1 } },
-        select: { viewCount: true },
-      });
-      return { viewCount: listing.viewCount };
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        const listing = await this.prisma.listing.findUniqueOrThrow({
-          where: { id: listingId },
-          select: { viewCount: true },
-        });
-        return { viewCount: listing.viewCount };
-      }
-      throw error;
-    }
+    await this.prisma.listingView.create({ data: { listingId, viewerKey } });
+    const listing = await this.prisma.listing.update({
+      where: { id: listingId },
+      data: { viewCount: { increment: 1 } },
+      select: { viewCount: true },
+    });
+    return { viewCount: listing.viewCount };
   }
 
   /** Re-keys a visitor's pre-signup anonymous views (`anon:<viewerKey>`) onto their new account
    * (`user:<userId>`) once they sign up on the same device — the ListingView analogue of
-   * AnalyticsService.linkVisitToUser. Upsert-then-delete rather than a plain rename: the same
-   * listing may already have a `user:<userId>` row (viewed once anonymously, then again after an
-   * earlier login), which a rename would collide with under the `[listingId, viewerKey]` unique
-   * constraint. Fire-and-forget from AuthService, same as linkVisitToUser — never blocks login. */
+   * AnalyticsService.linkVisitToUser. A plain bulk rename is safe now that ListingView no longer
+   * enforces one row per (listingId, viewerKey) — a listing already viewed as `user:<userId>`
+   * from an earlier login just ends up with two rows for it, which is correct (two real visits),
+   * not a collision. Fire-and-forget from AuthService, same as linkVisitToUser — never blocks
+   * login. */
   async linkListingViewsToUser(viewerKey: string, userId: string): Promise<void> {
-    const anonKey = `anon:${viewerKey}`;
-    const userKey = `user:${userId}`;
-    const rows = await this.prisma.listingView.findMany({ where: { viewerKey: anonKey } });
-    for (const row of rows) {
-      await this.prisma.listingView.upsert({
-        where: { listingId_viewerKey: { listingId: row.listingId, viewerKey: userKey } },
-        update: {},
-        create: { listingId: row.listingId, viewerKey: userKey },
-      });
-    }
-    await this.prisma.listingView.deleteMany({ where: { viewerKey: anonKey } });
+    await this.prisma.listingView.updateMany({
+      where: { viewerKey: `anon:${viewerKey}` },
+      data: { viewerKey: `user:${userId}` },
+    });
   }
 
   async toggleFavourite(

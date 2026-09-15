@@ -399,8 +399,12 @@ model Listing {
   @@index([areaId])
 }
 
-/** One row per unique viewer (logged-in user id or anonymous device key) — used to
- * dedupe Listing.viewCount so repeat visits from the same viewer don't inflate it. */
+/** One row per view — logged-in user id or anonymous device key, plus when. No longer deduped
+ * per (listingId, viewerKey): Listing.viewCount now counts every visit, not unique viewers, so
+ * every recordView call writes a new row here rather than being a no-op on a repeat visit. This
+ * is deliberately the more information-preserving shape — a future move back to a unique-viewer
+ * count is just `count(distinct viewerKey)` over these same rows; deduping at write time (the old
+ * shape) can never be undone to recover raw visit counts later. */
 model ListingView {
   id        String   @id @default(cuid())
   listingId String
@@ -408,7 +412,7 @@ model ListingView {
   viewerKey String
   createdAt DateTime @default(now())
 
-  @@unique([listingId, viewerKey])
+  @@index([listingId, viewerKey])
   @@index([viewerKey])
 }
 

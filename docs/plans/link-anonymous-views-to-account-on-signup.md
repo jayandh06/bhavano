@@ -39,34 +39,35 @@ platforms already have.
   against the same endpoint, so the backend piece is shared regardless; leaving one platform out
   would just recreate the same gap there.
 
-## The one real design decision: avoiding a unique-constraint collision
+## Linking, simplified by a later schema change
 
-`ListingView` is unique on `(listingId, viewerKey)`. A visitor can plausibly have **both** an
-`anon:<uuid>` row and a `user:<id>` row for the *same* listing already (viewed once logged out,
-then again after logging in on the same or another device) — a naive `updateMany` that rewrites
-`viewerKey` from `anon:X` to `user:Y` would violate that constraint on any listing where a
-`user:Y` row already exists.
+**Update (2026-09-15)**: `ListingView` no longer enforces one row per `(listingId, viewerKey)` —
+see `docs/plans/listing-view-count-raw-visits.md`. Every visit gets its own row now, so the
+unique-constraint collision this section originally solved for can't happen any more: linking is
+just a plain bulk rename.
 
-Fix: don't update in place — **upsert then delete**, per anonymous row:
 ```ts
 async linkListingViewsToUser(viewerKey: string, userId: string): Promise<void> {
-  const anonKey = `anon:${viewerKey}`;
-  const userKey = `user:${userId}`;
-  const rows = await this.prisma.listingView.findMany({ where: { viewerKey: anonKey } });
-  for (const row of rows) {
-    await this.prisma.listingView.upsert({
-      where: { listingId_viewerKey: { listingId: row.listingId, viewerKey: userKey } },
-      update: {},
-      create: { listingId: row.listingId, viewerKey: userKey },
-    });
-  }
-  await this.prisma.listingView.deleteMany({ where: { viewerKey: anonKey } });
+  await this.prisma.listingView.updateMany({
+    where: { viewerKey: `anon:${viewerKey}` },
+    data: { viewerKey: `user:${userId}` },
+  });
 }
 ```
-This is idempotent (safe if called twice, e.g. a retried login) and never throws on the collision
-case — a listing already viewed as `user:Y` simply keeps that row; the redundant `anon:X` row for
-it is dropped along with the rest. Lives in `ListingsService` alongside `recordView`, mirroring
-where `linkVisitToUser` lives next to `recordVisit` in `AnalyticsService`.
+Lives in `ListingsService` alongside `recordView`, mirroring where `linkVisitToUser` lives next to
+`recordVisit` in `AnalyticsService` — now the same shape as `linkVisitToUser` itself, not just the
+same purpose.
+
+<details>
+<summary>Original design (superseded) — upsert-then-delete, for when ListingView was unique per (listingId, viewerKey)</summary>
+
+`ListingView` was unique on `(listingId, viewerKey)`. A visitor could plausibly have **both** an
+`anon:<uuid>` row and a `user:<id>` row for the *same* listing already (viewed once logged out,
+then again after logging in on the same or another device) — a naive `updateMany` that rewrote
+`viewerKey` from `anon:X` to `user:Y` would have violated that constraint on any listing where a
+`user:Y` row already existed. The fix was upsert-then-delete per anonymous row instead of a plain
+rename — no longer necessary now that duplicates are allowed.
+</details>
 
 **Accepted trade-off, same one `Visit` already has**: a shared/public device means the next
 person to sign in on it inherits whatever the previous anonymous visitor browsed. `linkVisitToUser`
@@ -116,13 +117,13 @@ persistence mechanism stays exactly as-is; only the login path is new.
 
 - `pnpm -w typecheck` after the DTO/type additions.
 - As an anonymous web visitor: view 2-3 listings, note `bhavano.viewerKey` in
-  `localStorage`/dev tools, sign up. Query `ListingView` for `user:<newUserId>` and confirm rows for
-  those listings now exist, and the old `anon:<uuid>` rows are gone.
-- Repeat once viewing a listing anonymously, logging out, then viewing the *same* listing again
-  while logged in as a different existing user, then having the anonymous key's owner sign up on
-  the same device — confirm no unique-constraint error and no duplicate row (the upsert path).
+  `localStorage`/dev tools, sign up. Query `ListingView` for `viewerKey: 'user:<newUserId>'` and
+  confirm rows for those listings now exist with `anon:<uuid>` gone from those rows (renamed, not
+  duplicated — see `docs/plans/listing-view-count-raw-visits.md` for why a rename can no longer
+  collide).
 - Confirm the admin engagement table (`ListingsService.listEngagement`) now shows the linked views
-  under the new account without any change to that read path.
+  under the new account without any change to that read path — noting it will show one row per
+  *visit*, not per distinct viewer, per the same raw-visits change.
 - Repeat the same signup flow on mobile (OTP, Google, and Apple where applicable) and confirm
   `AsyncStorage`'s `bhavano.viewerKey` rows get relinked the same way.
 - Confirm a login with no stored `viewerKey` at all (very old client, storage cleared) still logs
