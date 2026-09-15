@@ -48,17 +48,45 @@ async function assertCityEmpty(id: string): Promise<void> {
   }
 }
 
+/**
+ * "New Delhi" already has areas of its own from real map-picker usage — including several
+ * generic building-block names ("Block A", "Block D", "Block H", "Block KD") that collide
+ * exactly with same-named areas under the bad "Delhi" city. A blind bulk rename hits the
+ * (name, cityId) unique constraint on the first such collision (confirmed: that's exactly what
+ * happened on the first run of this script). Handle each area individually instead: no
+ * collision -> simple reparent, keeping the same area id; collision -> repoint every table that
+ * references the old area (Listing, OutreachContact, SavedSearch, PlacesFetchLog) onto the
+ * already-existing New Delhi area with that name, then delete the now-unreferenced duplicate.
+ */
+async function mergeOrReparentArea(oldArea: { id: string; name: string }): Promise<void> {
+  const existing = await prisma.area.findFirst({
+    where: { cityId: NEW_DELHI_CITY_ID, name: { equals: oldArea.name, mode: 'insensitive' } },
+  });
+
+  if (!existing) {
+    await prisma.area.update({ where: { id: oldArea.id }, data: { cityId: NEW_DELHI_CITY_ID } });
+    console.log(`  [reparented] "${oldArea.name}"`);
+    return;
+  }
+
+  await prisma.listing.updateMany({ where: { areaId: oldArea.id }, data: { areaId: existing.id } });
+  await prisma.outreachContact.updateMany({ where: { areaId: oldArea.id }, data: { areaId: existing.id } });
+  await prisma.savedSearch.updateMany({ where: { areaId: oldArea.id }, data: { areaId: existing.id } });
+  await prisma.placesFetchLog.updateMany({ where: { areaId: oldArea.id }, data: { areaId: existing.id } });
+  await prisma.area.delete({ where: { id: oldArea.id } });
+  console.log(`  [merged]     "${oldArea.name}" -> existing New Delhi area ${existing.id}`);
+}
+
 async function main() {
   await assertCityName(BAD_DELHI_CITY_ID, 'Delhi');
   await assertCityName(NEW_DELHI_CITY_ID, 'New Delhi');
 
-  // 1. Reparent every Area under the bad "Delhi" city to New Delhi — the 3 listings' areaId FKs
-  // don't need to change, since the Area rows keep their own id/identity, just a different owner.
-  const reparented = await prisma.area.updateMany({
-    where: { cityId: BAD_DELHI_CITY_ID },
-    data: { cityId: NEW_DELHI_CITY_ID },
-  });
-  console.log(`Reparented ${reparented.count} areas from "Delhi" to "New Delhi".`);
+  // 1. Reparent (or merge, on a name collision) every Area under the bad "Delhi" city.
+  const delhiAreas = await prisma.area.findMany({ where: { cityId: BAD_DELHI_CITY_ID } });
+  console.log(`Reparenting/merging ${delhiAreas.length} areas from "Delhi" to "New Delhi"...`);
+  for (const area of delhiAreas) {
+    await mergeOrReparentArea(area);
+  }
 
   // 2. Move the listings themselves.
   const movedListings = await prisma.listing.updateMany({
@@ -116,14 +144,27 @@ async function main() {
   console.log(`\nDeleted the now-empty "Delhi" city (${BAD_DELHI_CITY_ID}).`);
 
   // 5. Clean up the accidental "Metro" city created while investigating this — look it up by
-  // name rather than a hardcoded id, since it was never a deliberate row to begin with and there's
-  // no risk of colliding with anything real.
+  // name rather than a hardcoded id, since it was never a deliberate row to begin with. Still
+  // checked for real references before deleting anything, same "fail loud, don't assume" rule
+  // as everywhere else here, even though this is expected to be pure test noise.
   const metroCity = await prisma.city.findFirst({ where: { name: 'Metro' } });
   if (metroCity) {
+    const metroAreas = await prisma.area.findMany({ where: { cityId: metroCity.id } });
+    for (const area of metroAreas) {
+      const [listings, contacts, savedSearches, placesFetchLogs] = await Promise.all([
+        prisma.listing.count({ where: { areaId: area.id } }),
+        prisma.outreachContact.count({ where: { areaId: area.id } }),
+        prisma.savedSearch.count({ where: { areaId: area.id } }),
+        prisma.placesFetchLog.count({ where: { areaId: area.id } }),
+      ]);
+      if (listings + contacts + savedSearches + placesFetchLogs > 0) {
+        throw new Error(`Area "${area.name}" under "Metro" is still referenced — refusing to delete.`);
+      }
+    }
     await prisma.area.deleteMany({ where: { cityId: metroCity.id } });
     await assertCityEmpty(metroCity.id);
     await prisma.city.delete({ where: { id: metroCity.id } });
-    console.log(`Deleted the accidental "Metro" city (${metroCity.id}) and its areas.`);
+    console.log(`Deleted the accidental "Metro" city (${metroCity.id}) and its ${metroAreas.length} area(s).`);
   } else {
     console.log('No "Metro" city found — nothing to clean up there.');
   }
