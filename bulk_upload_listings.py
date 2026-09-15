@@ -48,7 +48,9 @@ MAX_PHOTOS = 6
 # export_outreach_contacts_for_listings.py's guess_gender()); every other attr_ column stays a
 # plain string, same as before. Extend this set if another multi-select attribute joins the
 # pg/coworking CSV pipeline later.
-MULTI_SELECT_ATTRIBUTE_KEYS = {"gender"}
+# sharingType joined gender here once a PG could offer more than one sharing type at a time
+# (e.g. "single;double") — same `;`-join convention, no other change to this pipeline needed.
+MULTI_SELECT_ATTRIBUTE_KEYS = {"gender", "sharingType"}
 
 
 def attribute_key(column_name):

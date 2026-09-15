@@ -172,13 +172,18 @@ function deriveFields(category: ListingCategory, transactionType: TransactionTyp
       };
     }
     case 'pg': {
-      const sharingType = SHARING[i];
+      // Both sharingType and gender are multi-select — createManyAndReturn bypasses
+      // ListingsService.create()/assertValidAttributes entirely, so unlike every other seed
+      // field these two have to already be in the shape the app expects rather than relying on
+      // validation to catch a bare string. The third record gets two sharing types to actually
+      // exercise the multi-value case.
+      const sharingType = i === 2 ? [SHARING[0], SHARING[2]] : [SHARING[i]];
       const gender = GENDERS[i];
       const meals = ['yes', 'no', 'yes'][i];
       return {
         title: `PG for ${gender.label} in ${areaName}`,
-        specs: [`${sharingType} occupancy`, meals === 'yes' ? 'Meals included' : 'No meals'],
-        attributes: { sharingType, gender: gender.value, meals },
+        specs: [`${sharingType.join('/')} occupancy`, meals === 'yes' ? 'Meals included' : 'No meals'],
+        attributes: { sharingType, gender: [gender.value], meals },
       };
     }
     case 'storage': {

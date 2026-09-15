@@ -484,9 +484,13 @@ exports.CATEGORY_FIELD_CONFIG = {
     villa: RESIDENTIAL_FIELDS,
     pg: [
         {
+            // Multi-select, not select — a PG can genuinely offer more than one sharing type at once
+            // (e.g. single + double + triple in the same property). See
+            // backfillSharingTypeMultiSelect.ts for the one-off data fix this required, same pattern
+            // as `gender` below.
             key: "sharingType",
             label: "Sharing type",
-            type: "select",
+            type: "multi-select",
             section: "roomDetails",
             options: [
                 { value: "single", label: "Single" },

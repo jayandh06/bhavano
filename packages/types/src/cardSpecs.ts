@@ -76,12 +76,22 @@ function toNumber(value: unknown): number | undefined {
   return undefined;
 }
 
-/** A select's human label, from the same config the form rendered it with — so the chip and the
- * detail page cannot disagree about what "double" is called. */
+/** A select's (or multi-select's) human label(s), from the same config the form rendered it
+ * with — so the chip and the detail page cannot disagree about what "double" is called. A
+ * multi-select value (e.g. pg's sharingType, gender) joins every selected option's label with
+ * ", " — "Single, Double sharing" — rather than only ever handling a scalar. */
 function optionLabel(category: ListingCategory, key: string, value: unknown): string | undefined {
-  if (typeof value !== "string" || value === "") return undefined;
   const field = CATEGORY_FIELD_CONFIG[category]?.find((f) => f.key === key);
-  return field?.options?.find((o) => o.value === value)?.label;
+  if (!field) return undefined;
+  const values = Array.isArray(value)
+    ? value
+    : typeof value === "string" && value !== ""
+      ? [value]
+      : [];
+  const labels = values
+    .map((v) => field.options?.find((o) => o.value === v)?.label)
+    .filter((l): l is string => Boolean(l));
+  return labels.length > 0 ? labels.join(", ") : undefined;
 }
 
 /**

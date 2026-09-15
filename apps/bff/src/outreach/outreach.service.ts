@@ -633,7 +633,7 @@ export class OutreachService {
 
     const attributes: Record<string, unknown> =
       contact.businessCategory === 'pg'
-        ? { sharingType: 'single', ...(guessGender(contact.name).length ? { gender: guessGender(contact.name) } : {}) }
+        ? { sharingType: ['single'], ...(guessGender(contact.name).length ? { gender: guessGender(contact.name) } : {}) }
         : { seatType: 'hot-desk' };
 
     return this.listingsService.create(

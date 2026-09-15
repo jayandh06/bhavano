@@ -291,10 +291,16 @@ export function recentMixGroupKey(
   } else {
     const facetKey = homeCategory === 'pg' ? 'sharingType' : homeCategory === 'furniture' ? 'condition' : 'serviceType';
     const facetValue = (listing.attributes as Record<string, unknown>)[facetKey];
-    // A facet is always a plain string (these are all `type: "select"` fields — see
-    // categoryFields.ts) — anything else (missing, or a stray non-string value) groups under one
-    // shared "unspecified" bucket rather than being trusted to stringify sensibly.
-    dimension = typeof facetValue === 'string' && facetValue ? facetValue : 'unspecified';
+    // Furniture's condition and Interiors' serviceType are still plain `type: "select"` fields
+    // (a bare string) — but pg's sharingType is multi-select (a string[]), since a PG can offer
+    // more than one. Sort before joining so a listing's group key doesn't depend on the order
+    // its sharing types happen to be stored in — "double+single" and "single+double" must be the
+    // same group. Missing, or a stray non-string/empty value, groups under one shared
+    // "unspecified" bucket rather than being trusted to stringify sensibly.
+    const facetLabel = Array.isArray(facetValue)
+      ? facetValue.filter((v): v is string => typeof v === 'string' && v.length > 0).sort().join('+')
+      : typeof facetValue === 'string' ? facetValue : '';
+    dimension = facetLabel || 'unspecified';
   }
   return cityIdFilter ? dimension : `${dimension}::${listing.cityId}`;
 }
@@ -399,9 +405,11 @@ export class ListingsService {
       attributeFilters.push({
         attributes: { path: ['furnished'], equals: furnished },
       });
+    // sharingType is multi-select (a PG can offer more than one) — array_contains, not equals,
+    // since the stored attribute is now a string[] rather than a scalar.
     if (sharingType)
       attributeFilters.push({
-        attributes: { path: ['sharingType'], equals: sharingType },
+        attributes: { path: ['sharingType'], array_contains: sharingType },
       });
     if (condition)
       attributeFilters.push({
@@ -2059,12 +2067,15 @@ export class ListingsService {
       if (!field.required) continue;
       const legacyValue =
         field.key === 'carpetAreaSqft' ? attributes.sqft : undefined;
-      if (
-        (value === undefined || value === null || value === '') &&
-        (legacyValue === undefined ||
-          legacyValue === null ||
-          legacyValue === '')
-      ) {
+      // An empty array is "missing" for a required multi-select field (e.g. sharingType) just
+      // like an empty string is for a required select — without this, `[]` would pass as
+      // satisfying "required" even though nothing was actually selected.
+      const isMissing = (v: unknown): boolean =>
+        v === undefined ||
+        v === null ||
+        v === '' ||
+        (Array.isArray(v) && v.length === 0);
+      if (isMissing(value) && isMissing(legacyValue)) {
         throw new BadRequestException(
           `${field.label} is required for this listing category`,
         );

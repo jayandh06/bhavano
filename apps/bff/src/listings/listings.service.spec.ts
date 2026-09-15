@@ -148,8 +148,25 @@ describe('recentMixGroupKey', () => {
 
   it('groups PG by sharing-type facet, Furniture by condition, Interiors by service type', () => {
     expect(
-      recentMixGroupKey('pg', undefined, { category: 'pg', attributes: { sharingType: 'double' }, cityId: 'c1' }),
+      recentMixGroupKey('pg', undefined, { category: 'pg', attributes: { sharingType: ['double'] }, cityId: 'c1' }),
     ).toBe('double::c1');
+    // sharingType is multi-select — a PG offering more than one groups under a stable,
+    // order-independent key so "single+double" listings always land together regardless of
+    // which order the array happens to be stored in.
+    expect(
+      recentMixGroupKey('pg', undefined, {
+        category: 'pg',
+        attributes: { sharingType: ['double', 'single'] },
+        cityId: 'c1',
+      }),
+    ).toBe('double+single::c1');
+    expect(
+      recentMixGroupKey('pg', undefined, {
+        category: 'pg',
+        attributes: { sharingType: ['single', 'double'] },
+        cityId: 'c1',
+      }),
+    ).toBe('double+single::c1');
     expect(
       recentMixGroupKey('furniture', undefined, {
         category: 'furniture',
@@ -260,9 +277,9 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     const boosted = [row('boosted1', { boostRank: 0.9 })];
     // A skewed recent pool: 3 pg, 1 house — same shape as the real bulk-import incident.
     const recent = [
-      row('pg1', { category: 'pg', attributes: { sharingType: 'single' } }),
-      row('pg2', { category: 'pg', attributes: { sharingType: 'single' } }),
-      row('pg3', { category: 'pg', attributes: { sharingType: 'single' } }),
+      row('pg1', { category: 'pg', attributes: { sharingType: ['single'] } }),
+      row('pg2', { category: 'pg', attributes: { sharingType: ['single'] } }),
+      row('pg3', { category: 'pg', attributes: { sharingType: ['single'] } }),
       row('house1', { category: 'house' }),
     ];
 
@@ -1179,7 +1196,7 @@ describe('ListingsService.update — writes a ListingEditLog diff', () => {
       title: 'Old title',
       specs: ['Single'],
       description: 'Old description',
-      attributes: { sharingType: 'single' },
+      attributes: { sharingType: ['single'] },
       status: 'active',
       moderationState: 'approved',
     });
