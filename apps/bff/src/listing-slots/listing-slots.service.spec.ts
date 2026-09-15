@@ -10,6 +10,10 @@ function makePrisma(user: Record<string, unknown>, activeCount = 0) {
   return {
     user: { findUniqueOrThrow: jest.fn().mockResolvedValue(user) },
     listing: { count: jest.fn().mockResolvedValue(activeCount) },
+    // No row saved yet in these tests — getSlotSettings() falls back to
+    // DEFAULT_SUBSCRIPTION_PLAN_SETTINGS (free: 5, sellerSlotPack: 10, pro: 20/unit), which is
+    // exactly what every allowance number below already assumes.
+    subscriptionPlanSetting: { findUnique: jest.fn().mockResolvedValue(null) },
   } as unknown as PrismaService;
 }
 
