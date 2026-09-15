@@ -19,6 +19,12 @@ import { boostPriceFor, type BoostDurationDays } from '@bhavano/types/boostPrici
 import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
 import { PrismaService } from '../prisma/prisma.service';
 import { CONTACT_REVEAL_SETTINGS_ID, DEFAULT_CONTACT_REVEAL_SETTINGS } from '../contact-reveal/contact-reveal.constants';
+import {
+  BOOST_PRICE_SETTINGS_ID,
+  DEFAULT_BOOST_PRICE_SETTINGS,
+  SUBSCRIPTION_PLAN_SETTINGS_ID,
+  DEFAULT_SUBSCRIPTION_PLAN_SETTINGS,
+} from '../plans/plans.constants';
 
 interface RazorpayWebhookPayload {
   event: string;
@@ -170,7 +176,13 @@ export class PaymentsService {
     }
 
     const discount = await this.resolveDiscountCode(discountCode, userId);
-    const amountInPaise = this.applyDiscount(boostPriceFor(listing.category, boostDays) * 100, discount?.discountPercent);
+    const boostPriceSettings =
+      (await this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } })) ??
+      DEFAULT_BOOST_PRICE_SETTINGS;
+    const amountInPaise = this.applyDiscount(
+      boostPriceFor(listing.category, boostDays, boostPriceSettings) * 100,
+      discount?.discountPercent,
+    );
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
@@ -216,7 +228,13 @@ export class PaymentsService {
 
     const units = tier === 'agentPro' ? Math.max(1, Math.min(agentProUnits, 20)) : 1;
     const discount = await this.resolveDiscountCode(discountCode, userId);
-    const amountInPaise = this.applyDiscount(subscriptionPriceFor(tier, months, units) * 100, discount?.discountPercent);
+    const subscriptionPlanSettings =
+      (await this.prisma.subscriptionPlanSetting.findUnique({ where: { id: SUBSCRIPTION_PLAN_SETTINGS_ID } })) ??
+      DEFAULT_SUBSCRIPTION_PLAN_SETTINGS;
+    const amountInPaise = this.applyDiscount(
+      subscriptionPriceFor(tier, months, units, subscriptionPlanSettings) * 100,
+      discount?.discountPercent,
+    );
     const purpose =
       tier === 'buyerPremium' ? 'buyer_premium' : tier === 'agentPro' ? 'agent_pro' : 'seller_slot_pack';
 

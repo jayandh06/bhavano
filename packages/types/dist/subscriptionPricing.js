@@ -1,30 +1,38 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SELLER_SLOT_PACK_MONTHLY_PRICE = exports.AGENT_PRO_MONTHLY_PRICE = exports.BUYER_PREMIUM_PRICE = void 0;
+exports.DEFAULT_SUBSCRIPTION_PLAN_SETTINGS = void 0;
 exports.subscriptionPriceFor = subscriptionPriceFor;
-exports.BUYER_PREMIUM_PRICE = {
-    1: 99,
-    6: 549,
-    12: 899,
+/** Bundled into this shared package (not just the BFF) since `subscriptionPriceFor`/
+ * `listingSlotAllowance` are also called client-side for display, before any live-settings fetch
+ * resolves. The BFF's own DB-row fallback reuses this exact same constant rather than
+ * redefining it. */
+exports.DEFAULT_SUBSCRIPTION_PLAN_SETTINGS = {
+    freeListingSlots: 5,
+    sellerSlotPackTotalSlots: 10,
+    sellerSlotPackMonthlyPrice: 149,
+    proListingSlotsPerUnit: 20,
+    agentProMonthlyPricePerUnit: 499,
+    buyerPremiumPrice1Month: 99,
+    buyerPremiumPrice6Months: 549,
+    buyerPremiumPrice12Months: 899,
 };
-/** Seller-side "Agent/Broker Pro" — 20 concurrent slots per unit + storefront. Monthly only. */
-exports.AGENT_PRO_MONTHLY_PRICE = 499;
-/** Individual seller add-on — 10 concurrent slots total (5 free + 5). Monthly only. */
-exports.SELLER_SLOT_PACK_MONTHLY_PRICE = 149;
-function subscriptionPriceFor(tier, months, agentProUnits = 1) {
+function subscriptionPriceFor(tier, months, agentProUnits = 1, settings = exports.DEFAULT_SUBSCRIPTION_PLAN_SETTINGS) {
     if (tier === "buyerPremium") {
-        if (months !== 1 && months !== 6 && months !== 12) {
-            throw new Error(`Unsupported buyerPremium duration: ${months}`);
-        }
-        return exports.BUYER_PREMIUM_PRICE[months];
+        if (months === 1)
+            return settings.buyerPremiumPrice1Month;
+        if (months === 6)
+            return settings.buyerPremiumPrice6Months;
+        if (months === 12)
+            return settings.buyerPremiumPrice12Months;
+        throw new Error(`Unsupported buyerPremium duration: ${months}`);
     }
     if (tier === "sellerSlotPack") {
         if (months !== 1)
             throw new Error(`Unsupported sellerSlotPack duration: ${months}`);
-        return exports.SELLER_SLOT_PACK_MONTHLY_PRICE * months;
+        return settings.sellerSlotPackMonthlyPrice * months;
     }
     if (months !== 1)
         throw new Error(`Unsupported agentPro duration: ${months}`);
     const units = Math.max(1, Math.min(agentProUnits, 20));
-    return exports.AGENT_PRO_MONTHLY_PRICE * units;
+    return settings.agentProMonthlyPricePerUnit * units;
 }

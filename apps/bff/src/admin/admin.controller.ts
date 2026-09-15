@@ -30,6 +30,8 @@ import type {
   SendWelcomeResponseDto,
   UserActivityDto,
 } from '@bhavano/types';
+import type { BoostPriceSettings } from '@bhavano/types/boostPricing';
+import type { SubscriptionPlanSettings } from '@bhavano/types/subscriptionPricing';
 import { AdminGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
@@ -50,6 +52,8 @@ import { SendPostedNotificationDto } from './dto/notify-posted.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-settings.dto';
+import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
+import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { ListDiscountCodesDto } from './dto/list-discount-codes.dto';
 import { CreateDiscountCodeDto } from './dto/create-discount-code.dto';
 import { SetDiscountCodeActiveDto } from './dto/set-discount-code-active.dto';
@@ -273,6 +277,26 @@ export class AdminController {
   @Patch('contact-reveal-settings')
   updateContactRevealSettings(@Body() dto: UpdateContactRevealSettingsDto): Promise<ContactRevealSettingsDto> {
     return this.adminService.updateContactRevealSettings(dto);
+  }
+
+  @Get('boost-pricing')
+  getBoostPricingSettings(): Promise<BoostPriceSettings> {
+    return this.adminService.getBoostPricingSettings();
+  }
+
+  @Patch('boost-pricing')
+  updateBoostPricingSettings(@Body() dto: UpdateBoostPricingDto): Promise<BoostPriceSettings> {
+    return this.adminService.updateBoostPricingSettings(dto);
+  }
+
+  @Get('subscription-plans')
+  getSubscriptionPlanSettings(): Promise<SubscriptionPlanSettings> {
+    return this.adminService.getSubscriptionPlanSettings();
+  }
+
+  @Patch('subscription-plans')
+  updateSubscriptionPlanSettings(@Body() dto: UpdateSubscriptionPlanDto): Promise<SubscriptionPlanSettings> {
+    return this.adminService.updateSubscriptionPlanSettings(dto);
   }
 
   @Get('discount-codes')

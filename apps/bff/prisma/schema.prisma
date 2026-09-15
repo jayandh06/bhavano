@@ -686,6 +686,38 @@ model RateLimitSetting {
   updatedAt            DateTime @updatedAt
 }
 
+/** Singleton row (fixed id "singleton", upserted) — admin-editable boost prices. Column groups
+ * mirror the three category value-tiers boostPricing.ts has always used (property / coworking-
+ * pg-storage / furniture-interiors) — which categories fall into which group is a code concept,
+ * not something admins reassign. See docs/plans/admin-manage-plans-pricing.md. */
+model BoostPriceSetting {
+  id                              String   @id
+  propertyBoostPrice7d            Int      @default(199)
+  propertyBoostPrice15d           Int      @default(349)
+  coworkingPgStorageBoostPrice7d  Int      @default(99)
+  coworkingPgStorageBoostPrice15d Int      @default(179)
+  furnitureInteriorsBoostPrice7d  Int      @default(49)
+  furnitureInteriorsBoostPrice15d Int      @default(89)
+  updatedAt                       DateTime @updatedAt
+}
+
+/** Singleton row (fixed id "singleton", upserted) — admin-editable subscription tier prices and
+ * concurrent-listing-slot counts. Bundled together since the slot counts are a property of these
+ * same tiers, not a separate concern. `buyerPremium*` is the "Bhavano Plus" buyer-side tier; see
+ * docs/plans/admin-manage-plans-pricing.md. */
+model SubscriptionPlanSetting {
+  id                          String   @id
+  freeListingSlots            Int      @default(5)
+  sellerSlotPackTotalSlots    Int      @default(10)
+  sellerSlotPackMonthlyPrice  Int      @default(149)
+  proListingSlotsPerUnit      Int      @default(20)
+  agentProMonthlyPricePerUnit Int      @default(499)
+  buyerPremiumPrice1Month     Int      @default(99)
+  buyerPremiumPrice6Months    Int      @default(549)
+  buyerPremiumPrice12Months   Int      @default(899)
+  updatedAt                   DateTime @updatedAt
+}
+
 /** Central payment ledger — the single source of truth for whether a purchase actually
  * succeeded. The Razorpay webhook (never a client-side "payment succeeded" callback) is what
  * flips a row to `paid`; `razorpayPaymentId` is unique so webhook redelivery is always a safe

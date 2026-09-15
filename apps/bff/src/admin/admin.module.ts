@@ -8,6 +8,7 @@ import { RateLimitModule } from '../rate-limit/rate-limit.module';
 import { OutreachModule } from '../outreach/outreach.module';
 import { ContactRevealModule } from '../contact-reveal/contact-reveal.module';
 import { UsersModule } from '../users/users.module';
+import { PlansModule } from '../plans/plans.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UsersModule } from '../users/users.module';
     OutreachModule,
     ContactRevealModule,
     UsersModule,
+    PlansModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

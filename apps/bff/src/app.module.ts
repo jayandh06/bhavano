@@ -23,6 +23,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { SellerJobsModule } from './seller-jobs/seller-jobs.module';
 import { OutreachModule } from './outreach/outreach.module';
 import { SupportModule } from './support/support.module';
+import { PlansModule } from './plans/plans.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { SupportModule } from './support/support.module';
     AnalyticsModule,
     SellerJobsModule,
     SupportModule,
+    PlansModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -32,6 +32,8 @@ import { MessagingService } from '../messaging/messaging.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
+import { BoostPricingSettingsService } from '../plans/boost-pricing-settings.service';
+import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
@@ -42,6 +44,8 @@ import { ListDiscountCodesDto } from './dto/list-discount-codes.dto';
 import { CreateDiscountCodeDto } from './dto/create-discount-code.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-settings.dto';
+import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
+import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
@@ -136,6 +140,8 @@ export class AdminService {
     private readonly notificationsService: NotificationsService,
     private readonly rateLimitService: RateLimitService,
     private readonly contactRevealService: ContactRevealService,
+    private readonly boostPricingSettingsService: BoostPricingSettingsService,
+    private readonly subscriptionPlanSettingsService: SubscriptionPlanSettingsService,
     private readonly accountDeletion: AccountDeletionService,
   ) {}
 
@@ -734,6 +740,22 @@ export class AdminService {
 
   updateContactRevealSettings(dto: UpdateContactRevealSettingsDto): Promise<ContactRevealSettingsDto> {
     return this.contactRevealService.updateSettings(dto);
+  }
+
+  getBoostPricingSettings() {
+    return this.boostPricingSettingsService.getSettings();
+  }
+
+  updateBoostPricingSettings(dto: UpdateBoostPricingDto) {
+    return this.boostPricingSettingsService.updateSettings(dto);
+  }
+
+  getSubscriptionPlanSettings() {
+    return this.subscriptionPlanSettingsService.getSettings();
+  }
+
+  updateSubscriptionPlanSettings(dto: UpdateSubscriptionPlanDto) {
+    return this.subscriptionPlanSettingsService.updateSettings(dto);
   }
 
   /** Admin-managed discount codes — see docs/plans/contact-reveal-credits.md. `redemptionCount`

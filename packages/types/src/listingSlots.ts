@@ -1,8 +1,8 @@
-/** Concurrent active listing caps — see docs/plans/listing-slots-seller-notifications.md */
+/** Concurrent active listing caps — see docs/plans/listing-slots-seller-notifications.md and,
+ * for how the counts became admin-editable, docs/plans/admin-manage-plans-pricing.md. */
 
-export const FREE_LISTING_SLOTS = 5;
-export const SELLER_SLOT_PACK_TOTAL = 10;
-export const PRO_LISTING_SLOTS_PER_UNIT = 20;
+import type { SubscriptionPlanSettings } from "./subscriptionPricing";
+import { DEFAULT_SUBSCRIPTION_PLAN_SETTINGS } from "./subscriptionPricing";
 
 export type ListingSlotUpsell = "sellerSlotPack" | "agentPro";
 
@@ -25,16 +25,19 @@ function isActive(until: Date | string | null | undefined): boolean {
 }
 
 /** Max concurrent active listings this user may have. */
-export function listingSlotAllowance(user: ListingSlotEntitlementInput): number {
-  let allowance = FREE_LISTING_SLOTS;
+export function listingSlotAllowance(
+  user: ListingSlotEntitlementInput,
+  settings: SubscriptionPlanSettings = DEFAULT_SUBSCRIPTION_PLAN_SETTINGS,
+): number {
+  let allowance = settings.freeListingSlots;
 
   if (isActive(user.sellerSlotPackUntil)) {
-    allowance = Math.max(allowance, SELLER_SLOT_PACK_TOTAL);
+    allowance = Math.max(allowance, settings.sellerSlotPackTotalSlots);
   }
 
   if (isActive(user.agentProUntil)) {
     const units = Math.max(1, user.agentProUnits ?? 1);
-    allowance = Math.max(allowance, units * PRO_LISTING_SLOTS_PER_UNIT);
+    allowance = Math.max(allowance, units * settings.proListingSlotsPerUnit);
   }
 
   return allowance;
