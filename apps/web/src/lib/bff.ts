@@ -423,11 +423,19 @@ export function snoozeProfileNudge(accessToken: string): Promise<{ success: true
 
 const ACQUISITION_COOKIE = "bhavano_acq";
 const SESSION_COOKIE = "bhavano_sid";
+/** Mirrors ViewTracker.tsx's `bhavano.viewerKey` localStorage value into a cookie of the same
+ * name, set client-side (see ViewTracker.tsx) rather than by middleware.ts. Reading it here is
+ * what lets a Google sign-in link pre-signup ListingView rows to the new account — the OAuth
+ * redirect round trip has no client-JS moment to hand this value to the `jwt()` callback the way
+ * a plain client → server-action call could, so unlike sessionId (already a cookie from the
+ * start) this one has to be promoted into a cookie deliberately, purely to survive that redirect. */
+const VIEWER_KEY_COOKIE = "bhavano_vk";
 
-/** Reads the two cookies middleware.ts sets on a visitor's first request — the permanent
- * first-touch acquisition source (UTM params, external referrer hostname, or "direct") and the
- * current session id — and forwards both on signup so AuthService can persist the acquisition
- * source onto the new User row and link the session's Visit log entry to it. A missing/malformed
+/** Reads the cookies middleware.ts (and, for the viewer key, ViewTracker.tsx) sets on a visitor's
+ * first request/first view — the permanent first-touch acquisition source (UTM params, external
+ * referrer hostname, or "direct"), the current session id, and the persistent anonymous device
+ * key — and forwards all three on signup so AuthService can persist the acquisition source onto
+ * the new User row and link the session's Visit/ListingView rows to it. A missing/malformed
  * cookie just means no attribution/linking is available — never blocks login. */
 async function getVisitContext(): Promise<{
   acquisitionSource?: string;
@@ -438,12 +446,14 @@ async function getVisitContext(): Promise<{
   acquisitionAdGroupId?: string;
   acquisitionAdId?: string;
   sessionId?: string;
+  viewerKey?: string;
 }> {
   const jar = await cookies();
   const sessionId = jar.get(SESSION_COOKIE)?.value;
+  const viewerKey = jar.get(VIEWER_KEY_COOKIE)?.value;
 
   const raw = jar.get(ACQUISITION_COOKIE)?.value;
-  if (!raw) return { sessionId };
+  if (!raw) return { sessionId, viewerKey };
   try {
     const parsed = JSON.parse(raw) as {
       source?: string;
@@ -463,9 +473,10 @@ async function getVisitContext(): Promise<{
       acquisitionAdGroupId: parsed.adGroupId,
       acquisitionAdId: parsed.adId,
       sessionId,
+      viewerKey,
     };
   } catch {
-    return { sessionId };
+    return { sessionId, viewerKey };
   }
 }
 

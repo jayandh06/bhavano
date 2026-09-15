@@ -16,6 +16,7 @@ import { GoogleProvider } from './providers/google.provider';
 import { AppleProvider } from './providers/apple.provider';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { ListingsService } from '../listings/listings.service';
 import {
   GoogleAdsConversionProvider,
   NEW_REGISTRATION_CONVERSION_ACTION_ID,
@@ -39,6 +40,11 @@ export interface VisitContext {
   /** The visitor's per-session id (web's `bhavano_sid` cookie) — used to link the anonymous
    * Visit row logged for this session to the now-known user, not persisted onto User itself. */
   sessionId?: string;
+  /** The visitor's client-persisted device key (`bhavano.viewerKey` — localStorage on web,
+   * AsyncStorage on mobile) — used to link their pre-signup anonymous ListingView rows to the
+   * now-known user, same purpose as sessionId above but for listing views rather than page
+   * visits. Not persisted onto User itself. */
+  viewerKey?: string;
   /** iOS only, from the app's ATT prompt (see AuthController's `x-tracking-authorized` header —
    * web has no such concept and never sends this, so it stays undefined there, which
    * reportSignupConversion treats the same as `true`). `false` is the only value that changes
@@ -96,6 +102,7 @@ export class AuthService {
     private readonly appleProvider: AppleProvider,
     private readonly notificationsService: NotificationsService,
     private readonly analyticsService: AnalyticsService,
+    private readonly listingsService: ListingsService,
     private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
     @InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
   ) {}
@@ -128,6 +135,7 @@ export class AuthService {
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
     await this.recordLogin(promoted.id, 'otp');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
+    this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -234,6 +242,7 @@ export class AuthService {
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
     await this.recordLogin(promoted.id, 'google');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
+    this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -302,6 +311,7 @@ export class AuthService {
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
     await this.recordLogin(promoted.id, 'apple');
     this.linkVisitToUser(visit?.sessionId, promoted.id);
+    this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -400,6 +410,22 @@ export class AuthService {
         this.logger.warn(
           { err, sessionId, userId },
           'Failed to link visit to user',
+        ),
+      );
+  }
+
+  /** Best-effort, fire-and-forget: re-keys the now-known user's pre-signup anonymous
+   * ListingView rows (see ListingsService.linkListingViewsToUser) onto their account. Not
+   * awaited — same reasoning as linkVisitToUser above — and a missing viewerKey (storage
+   * cleared, very old client) is just no history to recover, not an error. */
+  private linkListingViewsToUser(viewerKey: string | undefined, userId: string): void {
+    if (!viewerKey) return;
+    void this.listingsService
+      .linkListingViewsToUser(viewerKey, userId)
+      .catch((err: unknown) =>
+        this.logger.warn(
+          { err, viewerKey, userId },
+          'Failed to link listing views to user',
         ),
       );
   }

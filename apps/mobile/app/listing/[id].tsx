@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Crypto from "expo-crypto";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
 import { BffError, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
+import { getOrCreateViewerKey } from "../../src/lib/viewerKey";
 import { Icon } from "../../src/components/Icon";
 import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
 import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
@@ -18,16 +17,6 @@ import { ScreenHeader } from "../../src/components/home/ScreenHeader";
  * regardless of who's asking. */
 function directionsUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-}
-
-const VIEWER_KEY_STORAGE = "bhavano.viewerKey";
-
-async function getOrCreateViewerKey(): Promise<string> {
-  const existing = await AsyncStorage.getItem(VIEWER_KEY_STORAGE);
-  if (existing) return existing;
-  const key = Crypto.randomUUID();
-  await AsyncStorage.setItem(VIEWER_KEY_STORAGE, key);
-  return key;
 }
 
 function daysUntil(iso: string): number {

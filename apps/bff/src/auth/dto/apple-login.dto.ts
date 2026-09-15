@@ -53,4 +53,10 @@ export class AppleLoginDto {
   @IsString()
   @MaxLength(64)
   sessionId?: string;
+
+  /** See VerifyOtpDto.viewerKey — same purpose, for the Apple login path. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  viewerKey?: string;
 }

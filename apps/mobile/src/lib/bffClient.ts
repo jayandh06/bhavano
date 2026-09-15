@@ -355,19 +355,21 @@ export function sendOtp(phone: string): Promise<{ success: true }> {
 export function verifyOtp(
   phone: string,
   code: string,
+  viewerKey?: string,
 ): Promise<{ user: { id: string; phone?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/otp/verify", {
     method: "POST",
-    body: JSON.stringify({ phone, code }),
+    body: JSON.stringify({ phone, code, viewerKey }),
   });
 }
 
 export function loginWithGoogle(
   idToken: string,
+  viewerKey?: string,
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/google", {
     method: "POST",
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify({ idToken, viewerKey }),
   });
 }
 
@@ -377,10 +379,11 @@ export function loginWithGoogle(
 export function loginWithApple(
   identityToken: string,
   fullName?: string,
+  viewerKey?: string,
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/apple", {
     method: "POST",
-    body: JSON.stringify({ identityToken, fullName }),
+    body: JSON.stringify({ identityToken, fullName, viewerKey }),
   });
 }
 

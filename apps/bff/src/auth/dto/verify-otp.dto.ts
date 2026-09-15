@@ -57,4 +57,12 @@ export class VerifyOtpDto {
   @IsString()
   @MaxLength(64)
   sessionId?: string;
+
+  /** The visitor's client-persisted device key (`bhavano.viewerKey`) — lets AuthService link
+   * their pre-signup anonymous ListingView rows to the now-known user. Ignored by otp/link,
+   * which reuses this same DTO. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  viewerKey?: string;
 }

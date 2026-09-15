@@ -48,6 +48,7 @@ export class AuthController {
       adGroupId: dto.acquisitionAdGroupId,
       adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
+      viewerKey: dto.viewerKey,
       trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
   }
@@ -67,6 +68,7 @@ export class AuthController {
       adGroupId: dto.acquisitionAdGroupId,
       adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
+      viewerKey: dto.viewerKey,
       trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
   }
@@ -86,6 +88,7 @@ export class AuthController {
       adGroupId: dto.acquisitionAdGroupId,
       adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
+      viewerKey: dto.viewerKey,
       trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
   }

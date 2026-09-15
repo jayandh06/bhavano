@@ -28,6 +28,7 @@ import {
   verifyOtp,
 } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
+import { getOrCreateViewerKey } from "../lib/viewerKey";
 import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
 import { Icon } from "../components/Icon";
 import { GoogleIcon } from "../components/GoogleIcon";
@@ -364,7 +365,7 @@ export function HomeSheetsProvider({
     setPending(true);
     setError(null);
     try {
-      const session = await verifyOtp(phone, otp);
+      const session = await verifyOtp(phone, otp, await getOrCreateViewerKey());
       await onLoginSuccess(session.accessToken);
     } catch {
       setError("Incorrect OTP");
@@ -379,7 +380,7 @@ export function HomeSheetsProvider({
     try {
       const idToken = await googleSignIn();
       if (!idToken) return;
-      const session = await loginWithGoogle(idToken);
+      const session = await loginWithGoogle(idToken, await getOrCreateViewerKey());
       await onLoginSuccess(session.accessToken);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Google sign-in failed");
@@ -406,7 +407,11 @@ export function HomeSheetsProvider({
       const fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
         .filter(Boolean)
         .join(" ");
-      const session = await loginWithApple(credential.identityToken, fullName || undefined);
+      const session = await loginWithApple(
+        credential.identityToken,
+        fullName || undefined,
+        await getOrCreateViewerKey(),
+      );
       await onLoginSuccess(session.accessToken);
     } catch (e) {
       // ERR_REQUEST_CANCELED — the user dismissed the Apple sheet, same as Google's own

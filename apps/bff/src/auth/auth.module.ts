@@ -8,12 +8,14 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AdsModule } from '../ads/ads.module';
+import { ListingsModule } from '../listings/listings.module';
 
 @Module({
   imports: [
     NotificationsModule,
     AnalyticsModule,
     AdsModule,
+    ListingsModule,
     forwardRef(() => UsersModule),
   ],
   controllers: [AuthController],
