@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { HorizontalScroller } from "./HorizontalScroller";
 import type { ContactRevealSettingsDto, UserProfileDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
@@ -85,6 +86,30 @@ function headerClass(isCurrent: boolean): string {
   return `text-left p-3 font-bold text-[13px] ${isCurrent ? "bg-green/10 text-green" : "text-text"}`;
 }
 
+/** Jumps to that plan's card further down the same page, where the real duration/price picker
+ * lives — rather than a second copy of SubscribeButton squeezed into a table cell. Deciding and
+ * acting used to be on two different tabs; this is what closes that gap. */
+function ChooseLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-block text-[12px] font-bold text-green border-[1.5px] border-green rounded-lg px-3 py-1.5 whitespace-nowrap"
+    >
+      {label}
+    </Link>
+  );
+}
+
+/** Reads "Your plan" rather than a CTA for whichever tier the viewer is already on — offering to
+ * buy something they currently hold is the one thing this row must never do. */
+function CtaCell({ isCurrent, children }: { isCurrent: boolean; children: ReactNode }) {
+  return (
+    <td className={`p-3 align-top ${isCurrent ? "bg-green/10" : ""}`}>
+      {isCurrent ? <span className="text-[12px] font-bold text-green">Your plan</span> : children}
+    </td>
+  );
+}
+
 export function PlanComparisonTable({
   profile,
   contactRevealSettings,
@@ -119,13 +144,18 @@ export function PlanComparisonTable({
                     <span className="block text-[11px] font-normal text-green mt-0.5">Your plan</span>
                   )}
                 </th>
-                <th className={headerClass(sellerPlan === "pack")} id="seller-slots">
+                {/* No id="seller-slots"/id="agent-pro" here — those anchors belong to the plan
+                    cards below (the ones with an actual subscribe button), which is where
+                    /premium#agent-pro links from ListingSlotCapPrompt should land. Both used to
+                    carry the same ids and only ever rendered one at a time, behind tabs; on one
+                    page that would be a duplicate id. */}
+                <th className={headerClass(sellerPlan === "pack")}>
                   Seller pack
                   {sellerPlan === "pack" && (
                     <span className="block text-[11px] font-normal text-green mt-0.5">Your plan</span>
                   )}
                 </th>
-                <th className={headerClass(sellerPlan === "pro")} id="agent-pro">
+                <th className={headerClass(sellerPlan === "pro")}>
                   Agent Pro
                   {sellerPlan === "pro" && (
                     <span className="block text-[11px] font-normal text-green mt-0.5">Your plan</span>
@@ -149,16 +179,22 @@ export function PlanComparisonTable({
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t border-border bg-surface-alt">
+                <td className="p-3" />
+                <CtaCell isCurrent={sellerPlan === "free"}>
+                  <ChooseLink href="/post" label="Post a free ad" />
+                </CtaCell>
+                <CtaCell isCurrent={sellerPlan === "pack"}>
+                  <ChooseLink href="#seller-slots" label="Choose Seller pack" />
+                </CtaCell>
+                <CtaCell isCurrent={sellerPlan === "pro"}>
+                  <ChooseLink href="#agent-pro" label="Choose Agent Pro" />
+                </CtaCell>
+              </tr>
+            </tfoot>
           </table>
         </HorizontalScroller>
-        {sellerPlan === "free" && (
-          <p className="text-[13px] text-muted mt-3 m-0">
-            On the free plan now?{" "}
-            <Link href="/post" className="text-green font-bold">
-              Post a free ad →
-            </Link>
-          </p>
-        )}
       </div>
 
       <div>
@@ -185,6 +221,14 @@ export function PlanComparisonTable({
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t border-border bg-surface-alt">
+                <td className="p-3" />
+                <CtaCell isCurrent={!!isBuyerPlus}>
+                  <ChooseLink href="#bhavano-plus" label="Choose Bhavano Plus" />
+                </CtaCell>
+              </tr>
+            </tfoot>
           </table>
         </HorizontalScroller>
       </div>

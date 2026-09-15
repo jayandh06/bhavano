@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { SubscriptionTier } from "@bhavano/types";
 import { subscriptionPriceFor, type SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import { createSubscriptionOrderAction } from "@/app/actions/payments";
+import { hasSessionAction } from "@/app/actions/auth";
+import { useAuthGate } from "./AuthGateProvider";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
 
@@ -39,11 +41,23 @@ export function SubscribeButton({
   planPricing: SubscriptionPlanSettings;
 }) {
   const router = useRouter();
+  const { requireLogin } = useAuthGate();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingActivation, setPendingActivation] = useState(false);
 
   async function onSelectDuration(months: number) {
+    // This button renders for logged-out visitors too (the plans page is public), so check the
+    // session before opening checkout. The server's answer, not client state — an expired cookie
+    // still looks logged-in from here; same reasoning as ListingCard.onMessage. `onSuccess`
+    // resumes this exact duration straight into checkout, so nobody has to find their plan again
+    // after logging in.
+    const signedIn = await hasSessionAction();
+    if (!signedIn) {
+      requireLogin({ onSuccess: () => void onSelectDuration(months) });
+      return;
+    }
+
     setPending(true);
     setError(null);
 

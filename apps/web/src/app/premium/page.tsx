@@ -6,7 +6,6 @@ import { isAccessTokenValid } from "@/lib/session";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { PremiumPlansView } from "@/components/home/PremiumPlansView";
-import { PremiumPlansPublic } from "@/components/home/PremiumPlansPublic";
 import type { ContactRevealSettingsDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 
@@ -36,7 +35,7 @@ export default async function PremiumPage({
         </Link>
         <h1 className="font-lora text-2xl font-semibold m-0 mb-1">Plans &amp; upgrades</h1>
         <p className="text-[13px] text-muted mb-6">
-          Compare free, seller, and buyer plans side by side — or subscribe when you&apos;re ready.
+          Compare free, seller, and buyer plans side by side, then pick one — all on this page.
         </p>
 
         {loggedIn && accessToken ? (
@@ -46,7 +45,14 @@ export default async function PremiumPage({
             planPricing={planPricing.subscription}
           />
         ) : (
-          <PremiumPlansPublic contactRevealSettings={contactRevealSettings} planPricing={planPricing.subscription} />
+          // `profile: null` is the logged-out rendering — the same comparison tables and plan
+          // cards, minus the slot meter and any "active until" state. Subscribing from here
+          // still works: SubscribeButton gates on the session itself and resumes after login.
+          <PremiumPlansView
+            profile={null}
+            contactRevealSettings={contactRevealSettings}
+            planPricing={planPricing.subscription}
+          />
         )}
       </div>
       <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
@@ -70,7 +76,11 @@ async function PremiumPlansLoggedIn({
     );
   } catch (error) {
     if (error instanceof BffAuthError) {
-      return <PremiumPlansPublic contactRevealSettings={contactRevealSettings} planPricing={planPricing} />;
+      // Stale/expired token — fall back to the logged-out rendering rather than failing the
+      // page; the pricing itself is public either way.
+      return (
+        <PremiumPlansView profile={null} contactRevealSettings={contactRevealSettings} planPricing={planPricing} />
+      );
     }
     throw error;
   }
