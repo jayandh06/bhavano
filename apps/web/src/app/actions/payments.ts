@@ -6,10 +6,19 @@ import type {
   CreateSubscriptionOrderResponseDto,
   SubscriptionTier,
 } from "@bhavano/types";
-import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import type { BoostDurationDays, BoostPriceSettings } from "@bhavano/types/boostPricing";
 import { auth } from "@/auth";
-import { createBoostOrder, createContactRevealCreditsOrder, createSubscriptionOrder } from "@/lib/bff";
+import { createBoostOrder, createContactRevealCreditsOrder, createSubscriptionOrder, fetchPlanPricing } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
+
+/** Called from BoostProvider (a client component) when the boost picker actually opens — not
+ * from the root layout, which would otherwise put a BFF round-trip on the critical path of every
+ * single page view for a modal most visitors never open. See
+ * docs/plans/admin-manage-plans-pricing.md. */
+export async function fetchBoostPricingAction(): Promise<BoostPriceSettings> {
+  const { boost } = await fetchPlanPricing();
+  return boost;
+}
 
 export type CreateBoostOrderResult = { success: true; order: CreateBoostOrderResponseDto } | { success: false; error: string };
 

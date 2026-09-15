@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
 import {
@@ -9,7 +9,7 @@ import {
   type BoostDurationDays,
   type BoostPriceSettings,
 } from "@bhavano/types/boostPricing";
-import { createBoostOrderAction } from "@/app/actions/payments";
+import { createBoostOrderAction, fetchBoostPricingAction } from "@/app/actions/payments";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
 
@@ -47,22 +47,28 @@ export function useBoost(): BoostContextValue {
   return ctx;
 }
 
-export function BoostProvider({
-  children,
-  boostPriceSettings = DEFAULT_BOOST_PRICE_SETTINGS,
-}: {
-  children: ReactNode;
-  /** Live pricing — fetched server-side in the root layout and passed down, so the picker never
-   * shows a price checkout wouldn't actually charge. See
-   * docs/plans/admin-manage-plans-pricing.md. Defaults to the bundled constants only as a safety
-   * net (e.g. a test render with no provider setup), not a real fallback path in production. */
-  boostPriceSettings?: BoostPriceSettings;
-}) {
+export function BoostProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [opts, setOpts] = useState<BoostOptions | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Instant first paint from the bundled defaults, swapped for the live row once it resolves —
+  // fetched on open (not from the root layout, which would put a BFF round-trip on the critical
+  // path of every page view for a modal most visitors never open) — see
+  // docs/plans/admin-manage-plans-pricing.md.
+  const [boostPriceSettings, setBoostPriceSettings] = useState<BoostPriceSettings>(DEFAULT_BOOST_PRICE_SETTINGS);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchBoostPricingAction().then((settings) => {
+      if (!cancelled) setBoostPriceSettings(settings);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   function boost(options: BoostOptions) {
     setOpts(options);
