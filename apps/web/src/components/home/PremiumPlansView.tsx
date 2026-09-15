@@ -74,7 +74,13 @@ export function PremiumPlansView({
           </Link>
         </section>
 
-        <section id="bhavano-plus" className="border border-border rounded-2xl p-6 bg-surface scroll-mt-20">
+        {/* scroll-mt clears the sticky Header.tsx so #agent-pro etc. anchor-scrolls land with the
+          * section's own title visible, not tucked under the header. Two values, not one: on
+          * mobile the header collapses to a 52px bar on scroll (MobileHeaderCollapse.tsx), so the
+          * default 80px is already generous — but that collapse is explicitly desktop-exempt
+          * (`sm:hidden`), where the header stays fully expanded at its documented ~150px
+          * (MobileHeaderCollapse.tsx:113's own comment) the whole time. */}
+        <section id="bhavano-plus" className="border border-border rounded-2xl p-6 bg-surface scroll-mt-20 sm:scroll-mt-[160px]">
           <div className="font-lora text-xl font-bold text-text mb-1 flex items-center gap-2"><Icon name="featured" /> Bhavano Plus</div>
           <p className="text-[13px] text-muted mb-4 m-0">For buyers &amp; renters — get noticed, get answered faster.</p>
           <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
@@ -96,7 +102,7 @@ export function PremiumPlansView({
           )}
         </section>
 
-        <section id="seller-slots" className="border border-border rounded-2xl p-6 bg-surface scroll-mt-20">
+        <section id="seller-slots" className="border border-border rounded-2xl p-6 bg-surface scroll-mt-20 sm:scroll-mt-[160px]">
           <div className="font-lora text-xl font-bold text-text mb-1 flex items-center gap-2"><Icon name="pack" /> Seller slot pack</div>
           <p className="text-[13px] text-muted mb-4 m-0">For individual sellers — more active ads at once.</p>
           <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
@@ -113,7 +119,7 @@ export function PremiumPlansView({
           )}
         </section>
 
-        <section id="agent-pro" className="border border-border rounded-2xl p-6 bg-surface scroll-mt-20">
+        <section id="agent-pro" className="border border-border rounded-2xl p-6 bg-surface scroll-mt-20 sm:scroll-mt-[160px]">
           <div className="font-lora text-xl font-bold text-text mb-1 flex items-center gap-2"><Icon name="building" /> Agent/Broker Pro</div>
           <p className="text-[13px] text-muted mb-4 m-0">For agents &amp; brokers — scale inventory and brand.</p>
           <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
@@ -139,7 +145,7 @@ export function PremiumPlansView({
           )}
         </section>
 
-        <section id="contact-reveal-credits" className="border border-border rounded-2xl p-6 bg-surface scroll-mt-20">
+        <section id="contact-reveal-credits" className="border border-border rounded-2xl p-6 bg-surface scroll-mt-20 sm:scroll-mt-[160px]">
           <div className="font-lora text-xl font-bold text-text mb-1 flex items-center gap-2">
             <Icon name="phone" /> Contact reveal credits
           </div>
