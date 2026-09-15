@@ -68,6 +68,41 @@ export class NotificationsService {
     return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
   }
 
+  /** Confirms an Instant Alerts purchase actually went through — see
+   * PaymentsService.handleWebhook's `instant_alerts` branch. No WhatsApp template exists yet —
+   * see `notifyListingFlagged`'s comment; a phone-only owner gets nothing until one is built. */
+  async notifyInstantAlertsActivated(
+    user: NotifiableUser,
+    listingTitle: string,
+  ): Promise<'email' | 'whatsapp' | null> {
+    const subject = `Instant Alerts is on for "${listingTitle}"`;
+    const body =
+      `You're all set — we'll email you (or WhatsApp you, if that's what you gave us) the moment ` +
+      `someone messages you about "${listingTitle}". No more checking back and forth.`;
+
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+  }
+
+  /** Instant Alerts' actual per-message payoff — see MessagingService's `wasUnread` gate, which
+   * only calls this on the message that flips the owner's unread count from zero to nonzero (one
+   * alert per burst, not per message). `senderName` is already a role-label fallback
+   * ("Buyer"/"Seller"/"Bhavano Admin") when the sender has no name set — never a raw phone/email,
+   * matching the same leak-prevention rule already applied to push-notification titles. No
+   * WhatsApp template exists yet — see `notifyListingFlagged`'s comment. */
+  async notifyNewMessage(
+    user: NotifiableUser,
+    params: { senderName: string; listingTitle: string; conversationId: string },
+  ): Promise<'email' | 'whatsapp' | null> {
+    const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const link = `${site}/messages/${params.conversationId}`;
+    const subject = `New message about "${params.listingTitle}"`;
+    const body =
+      `${params.senderName} sent you a message about "${params.listingTitle}" on Bhavano.\n\n` +
+      `Reply here: ${link}`;
+
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+  }
+
   /** Bhavano Plus's early-access alerts — the proactive counterpart to a buyer having to keep
    * re-checking browse pages themselves. See SavedSearchesService.notifyMatchingBuyers.
    *

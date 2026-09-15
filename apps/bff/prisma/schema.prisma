@@ -98,6 +98,7 @@ enum PaymentPurpose {
   agent_pro
   seller_slot_pack
   contact_reveal_credits
+  instant_alerts
 }
 
 enum SubscriptionTier {
@@ -369,6 +370,10 @@ model Listing {
   // whoever paid first/most permanently squatting the top slot.
   boostedUntil     DateTime?
   boostRank        Float?
+  /// Denormalized from ListingInstantAlert (the audit trail), same reasoning as boostedUntil —
+  /// null means Instant Alerts isn't active. Read by MessagingService on every new message to
+  /// decide whether to email/WhatsApp the owner.
+  instantAlertsUntil DateTime?
   /// Atomically incremented ({ increment: 1 }) on every post-creation photo add, never
   /// decremented on delete. ListingPhoto.photoNo is baked into this listing's R2 storage keys
   /// (apps/bff/src/uploads/photo-keys.ts) and ListingPhoto rows are hard-deleted with no
@@ -384,6 +389,7 @@ model Listing {
   conversations    Conversation[]
   payments         Payment[]
   listingBoosts    ListingBoost[]
+  listingInstantAlerts ListingInstantAlert[]
   notificationLogs ListingNotificationLog[]
   listingRenewals  ListingRenewal[]
   contactReveals   ContactReveal[]
@@ -705,6 +711,15 @@ model BoostPriceSetting {
   updatedAt                       DateTime @updatedAt
 }
 
+/** Singleton row (fixed id "singleton", upserted) — admin-editable Instant Alerts price. Flat,
+ * no category tiers (unlike boost) since the value proposition doesn't scale with listing price
+ * the way boost visibility does. See docs/plans/instant-alerts-paid-message-notifications.md. */
+model InstantAlertsPriceSetting {
+  id                 String   @id
+  instantAlertsPrice Int      @default(25)
+  updatedAt          DateTime @updatedAt
+}
+
 /** Singleton row (fixed id "singleton", upserted) — admin-editable subscription tier prices and
  * concurrent-listing-slot counts. Bundled together since the slot counts are a property of these
  * same tiers, not a separate concern. `buyerPremium*` is the "Bhavano Plus" buyer-side tier; see
@@ -758,6 +773,7 @@ model Payment {
   createdAt         DateTime       @default(now())
   paidAt            DateTime?
   listingBoost      ListingBoost?
+  listingInstantAlert ListingInstantAlert?
   subscription      UserSubscription?
   contactRevealCreditBatch ContactRevealCreditBatch?
   discountCodeRedemption   DiscountCodeRedemption?
@@ -792,6 +808,23 @@ model ListingBoost {
   payment      Payment  @relation(fields: [paymentId], references: [id])
   boostedFrom  DateTime @default(now())
   boostedUntil DateTime
+
+  @@index([listingId])
+}
+
+/** One row per activated Instant Alerts purchase — the history/audit trail, same convention as
+ * ListingBoost above. `Listing.instantAlertsUntil` is the denormalized field actually read at
+ * message-send time. `activeUntil` is always set to the listing's own `expiresAt` at activation
+ * time (no seller-chosen duration, unlike boost's 7d/15d) — see
+ * docs/plans/instant-alerts-paid-message-notifications.md. */
+model ListingInstantAlert {
+  id            String   @id @default(cuid())
+  listingId     String
+  listing       Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  paymentId     String   @unique
+  payment       Payment  @relation(fields: [paymentId], references: [id])
+  activatedFrom DateTime @default(now())
+  activeUntil   DateTime
 
   @@index([listingId])
 }

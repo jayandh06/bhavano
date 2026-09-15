@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   AdminConversationsPage,
   ConversationDetailDto,
@@ -6,6 +6,7 @@ import type {
   MessageDto,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { Conversation, Message, Prisma } from '@prisma/client';
 
 function toMessageDto(message: Message, opts: { revealDeletedBody?: boolean } = {}): MessageDto {
@@ -23,7 +24,12 @@ function toMessageDto(message: Message, opts: { revealDeletedBody?: boolean } = 
 
 @Injectable()
 export class MessagingService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(MessagingService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /** Starting a conversation and sending its first message are one atomic step — there is no
    * "empty conversation" state a buyer can leave behind just by tapping Contact owner. Buyer-only
@@ -34,7 +40,7 @@ export class MessagingService {
     senderId: string,
     body: string,
   ): Promise<{ conversationId: string; message: MessageDto; recipientId: string; senderName: string }> {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const listing = await tx.listing.findUnique({ where: { id: listingId } });
       if (!listing) throw new NotFoundException('Listing not found');
       if (listing.ownerId === senderId) {
@@ -46,6 +52,11 @@ export class MessagingService {
         update: {},
         create: { listingId, inquirerId: senderId, posterId: listing.ownerId, type: 'inquiry' },
       });
+      // Before creating the message — "was this conversation already unread" is otherwise
+      // unanswerable once the row we're about to create is itself sitting in the table.
+      const wasUnread = await tx.message.count({
+        where: { conversationId: conversation.id, senderId: { not: senderId }, readAt: null, deletedAt: null },
+      });
       const [message, sender] = await Promise.all([
         tx.message.create({ data: { conversationId: conversation.id, senderId, body } }),
         tx.user.findUnique({ where: { id: senderId }, select: { name: true } }),
@@ -55,8 +66,27 @@ export class MessagingService {
         message: toMessageDto(message),
         recipientId: listing.ownerId,
         senderName: sender?.name ?? 'Buyer',
+        wasUnread,
       };
     });
+
+    // Always the listing owner receiving a genuine inquiry — sendFirstMessage is buyer-only by
+    // construction (the ownerId === senderId guard above), so both gates the messaging hook
+    // checks elsewhere are already satisfied here without re-deriving them.
+    this.notifyInstantAlertsIfEligible({
+      listingId,
+      recipientId: result.recipientId,
+      senderName: result.senderName,
+      conversationId: result.conversationId,
+      wasUnread: result.wasUnread,
+    });
+
+    return {
+      conversationId: result.conversationId,
+      message: result.message,
+      recipientId: result.recipientId,
+      senderName: result.senderName,
+    };
   }
 
   /** Admin↔owner thread about a flagged listing — kept as its own `type` so it can never
@@ -305,17 +335,34 @@ export class MessagingService {
     body: string,
   ): Promise<{ message: MessageDto; recipientId: string; senderName: string }> {
     const conversation = await this.assertParticipant(conversationId, senderId);
+    // Before creating the message — same reasoning as sendFirstMessage's identical check.
+    const recipientId =
+      conversation.posterId === senderId ? conversation.inquirerId : conversation.posterId;
+    const wasUnread = await this.prisma.message.count({
+      where: { conversationId, senderId: { not: senderId }, readAt: null, deletedAt: null },
+    });
     const [message, sender] = await Promise.all([
       this.prisma.message.create({ data: { conversationId, senderId, body } }),
       this.prisma.user.findUnique({ where: { id: senderId }, select: { name: true, phone: true } }),
     ]);
-    const recipientId =
-      conversation.posterId === senderId ? conversation.inquirerId : conversation.posterId;
     // Never the raw phone number — this titles a push notification, which can sit on a locked
     // screen for anyone nearby to read. Same fix/reasoning as listConversations/getConversation.
     const senderIsPoster = conversation.posterId === senderId;
     const senderName =
       sender?.name ?? (conversation.type === 'moderation' ? 'Bhavano Admin' : senderIsPoster ? 'Seller' : 'Buyer');
+
+    // Instant Alerts is bought by and for the advertiser (the poster) — never fires for the
+    // inquirer's own messages, and never for the admin↔owner moderation thread.
+    if (conversation.type === 'inquiry' && recipientId === conversation.posterId) {
+      this.notifyInstantAlertsIfEligible({
+        listingId: conversation.listingId,
+        recipientId,
+        senderName,
+        conversationId,
+        wasUnread,
+      });
+    }
+
     return { message: toMessageDto(message), recipientId, senderName };
   }
 
@@ -325,6 +372,48 @@ export class MessagingService {
       where: { conversationId, senderId: { not: userId }, readAt: null },
       data: { readAt: new Date() },
     });
+  }
+
+  /** The zero→nonzero edge trigger: only fires on the message that puts the recipient back into
+   * an unread state, not the second or fifth one piling on top of an already-unread thread — see
+   * docs/plans/instant-alerts-paid-message-notifications.md. Fire-and-forget, never awaited by
+   * the caller — a slow/failed send must never add latency to (or block) sending the message
+   * itself. */
+  private notifyInstantAlertsIfEligible(params: {
+    listingId: string;
+    recipientId: string;
+    senderName: string;
+    conversationId: string;
+    wasUnread: number;
+  }): void {
+    if (params.wasUnread !== 0) return;
+    void this.deliverInstantAlertMessageNotification(params).catch((err: unknown) =>
+      this.logger.error(`Failed to send Instant Alerts message notification for listing ${params.listingId}`, err),
+    );
+  }
+
+  private async deliverInstantAlertMessageNotification(params: {
+    listingId: string;
+    recipientId: string;
+    senderName: string;
+    conversationId: string;
+  }): Promise<void> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: params.listingId },
+      select: { title: true, instantAlertsUntil: true, owner: { select: { email: true, phone: true } } },
+    });
+    if (!listing || (listing.instantAlertsUntil?.getTime() ?? 0) <= Date.now()) return;
+
+    const channel = await this.notificationsService.notifyNewMessage(listing.owner, {
+      senderName: params.senderName,
+      listingTitle: listing.title,
+      conversationId: params.conversationId,
+    });
+    if (channel) {
+      await this.prisma.listingNotificationLog.create({
+        data: { listingId: params.listingId, kind: 'new_message', channel },
+      });
+    }
   }
 
   private async assertParticipant(conversationId: string, userId: string): Promise<Conversation> {

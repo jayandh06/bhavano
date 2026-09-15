@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import type {
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
+  CreateInstantAlertsOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
 } from '@bhavano/types';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -13,6 +14,7 @@ import { PaymentsService } from './payments.service';
 import { CreateBoostOrderDto } from './dto/create-boost-order.dto';
 import { CreateSubscriptionOrderDto } from './dto/create-subscription-order.dto';
 import { CreateContactRevealCreditsOrderDto } from './dto/create-contact-reveal-credits-order.dto';
+import { CreateInstantAlertsOrderDto } from './dto/create-instant-alerts-order.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -31,6 +33,15 @@ export class PaymentsController {
     @CurrentUser() user: RequestUser,
   ): Promise<CreateSubscriptionOrderResponseDto> {
     return this.paymentsService.createSubscriptionOrder(user.id, dto.tier, dto.months, dto.agentProUnits, dto.discountCode);
+  }
+
+  @Post('instant-alerts')
+  @UseGuards(AuthGuard)
+  createInstantAlertsOrder(
+    @Body() dto: CreateInstantAlertsOrderDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<CreateInstantAlertsOrderResponseDto> {
+    return this.paymentsService.createInstantAlertsOrder(user.id, dto.listingId, dto.discountCode);
   }
 
   @Post('contact-reveal-credits')

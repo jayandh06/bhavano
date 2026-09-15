@@ -1,6 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import { MessagingService } from './messaging.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+
+const notNotified = {} as NotificationsService;
 
 const HOUR_MS = 60 * 60 * 1000;
 const future = (hours = 1) => new Date(Date.now() + hours * HOUR_MS);
@@ -11,7 +14,7 @@ function makeService(conversations: unknown[]) {
     conversation: { findMany: jest.fn().mockResolvedValue(conversations) },
     message: { count: jest.fn().mockResolvedValue(0) },
   } as unknown as PrismaService;
-  return { service: new MessagingService(prisma), prisma };
+  return { service: new MessagingService(prisma, notNotified), prisma };
 }
 
 function conversation(posterId: string, inquirerId: string, premiumUntil: Date | null, type: 'inquiry' | 'moderation' = 'inquiry') {
@@ -70,7 +73,7 @@ describe('MessagingService.getUnreadTotal', () => {
   it('counts unread messages from others across every conversation the user is a participant in', async () => {
     const count = jest.fn().mockResolvedValue(4);
     const prisma = { message: { count } } as unknown as PrismaService;
-    const service = new MessagingService(prisma);
+    const service = new MessagingService(prisma, notNotified);
 
     await expect(service.getUnreadTotal('u1')).resolves.toBe(4);
     expect(count).toHaveBeenCalledWith({
@@ -91,7 +94,7 @@ describe('MessagingService.getMessagesAsAdmin', () => {
       conversation: { findUnique: jest.fn().mockResolvedValue(conversationRow) },
       message: { findMany },
     } as unknown as PrismaService;
-    return { service: new MessagingService(prisma), findMany };
+    return { service: new MessagingService(prisma, notNotified), findMany };
   }
 
   it('returns the thread for a genuine buyer-inquiry conversation on the given listing', async () => {
@@ -131,7 +134,7 @@ describe('MessagingService.listConversationsForListingAsAdmin', () => {
     const prisma = {
       conversation: { findMany, count },
     } as unknown as PrismaService;
-    const service = new MessagingService(prisma);
+    const service = new MessagingService(prisma, notNotified);
 
     await service.listConversationsForListingAsAdmin('l1', 0, 25);
     expect(findMany).toHaveBeenCalledWith(
@@ -154,7 +157,7 @@ describe('MessagingService.listConversationsForListingAsAdmin', () => {
         count: jest.fn().mockResolvedValue(1),
       },
     } as unknown as PrismaService;
-    const service = new MessagingService(prisma);
+    const service = new MessagingService(prisma, notNotified);
 
     const result = await service.listConversationsForListingAsAdmin('l1', 0, 25);
     expect(result.items[0].unreadByOwner).toBe(true);
@@ -174,7 +177,7 @@ describe('MessagingService.listConversationsForListingAsAdmin', () => {
         count: jest.fn().mockResolvedValue(1),
       },
     } as unknown as PrismaService;
-    const service = new MessagingService(prisma);
+    const service = new MessagingService(prisma, notNotified);
 
     const result = await service.listConversationsForListingAsAdmin('l1', 0, 25);
     expect(result.items[0].unreadByOwner).toBe(false);
@@ -193,10 +196,10 @@ describe('MessagingService.sendMessage', () => {
     };
     const prisma = {
       conversation: { findUnique: jest.fn().mockResolvedValue(conversationRow) },
-      message: { create: jest.fn().mockResolvedValue(created) },
+      message: { create: jest.fn().mockResolvedValue(created), count: jest.fn().mockResolvedValue(0) },
       user: { findUnique: jest.fn().mockResolvedValue(sender) },
     } as unknown as PrismaService;
-    return new MessagingService(prisma);
+    return new MessagingService(prisma, notNotified);
   }
 
   it('returns the other participant as recipient and the sender\'s name', async () => {

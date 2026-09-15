@@ -49,6 +49,10 @@
       "types": "./dist/boostPricing.d.ts",
       "default": "./dist/boostPricing.js"
     },
+    "./instantAlertsPricing": {
+      "types": "./dist/instantAlertsPricing.d.ts",
+      "default": "./dist/instantAlertsPricing.js"
+    },
     "./subscriptionPricing": {
       "types": "./dist/subscriptionPricing.d.ts",
       "default": "./dist/subscriptionPricing.js"

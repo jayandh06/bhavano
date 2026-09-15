@@ -2386,6 +2386,7 @@ export class ListingsService {
       likeCount: listing.likeCount,
       isFavourited: favouritedIds?.has(listing.id) ?? false,
       isBoosted: (listing.boostedUntil?.getTime() ?? 0) > Date.now(),
+      hasInstantAlerts: (listing.instantAlertsUntil?.getTime() ?? 0) > Date.now(),
       isOwner: viewerId !== undefined && viewerId === listing.ownerId,
       // Browse-card badge only — not gated on isOwnerOrAdmin like toDetailDto's `videos` array,
       // since "does this listing have a playable video at all" is fine as public info once done.

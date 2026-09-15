@@ -11,19 +11,23 @@ import Razorpay from 'razorpay';
 import type {
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
+  CreateInstantAlertsOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
   PaymentHistoryPage,
   SubscriptionTier,
 } from '@bhavano/types';
 import { boostPriceFor, type BoostDurationDays } from '@bhavano/types/boostPricing';
 import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
+import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CONTACT_REVEAL_SETTINGS_ID, DEFAULT_CONTACT_REVEAL_SETTINGS } from '../contact-reveal/contact-reveal.constants';
 import {
   BOOST_PRICE_SETTINGS_ID,
   DEFAULT_BOOST_PRICE_SETTINGS,
   SUBSCRIPTION_PLAN_SETTINGS_ID,
   DEFAULT_SUBSCRIPTION_PLAN_SETTINGS,
+  INSTANT_ALERTS_PRICE_SETTINGS_ID,
 } from '../plans/plans.constants';
 
 interface RazorpayWebhookPayload {
@@ -50,6 +54,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private getRazorpay(): Razorpay {
@@ -72,6 +77,47 @@ export class PaymentsService {
       where: { id: listingId },
       data: { boostedUntil, boostRank: Math.random() },
     });
+  }
+
+  /** Unlike activateListingBoost, activeUntil isn't computed from a purchased duration — it's
+   * the listing's own *current* expiresAt, re-read here (webhook time) rather than at order
+   * creation, in case the listing was renewed in between. */
+  private async activateInstantAlerts(listingId: string, paymentId: string): Promise<void> {
+    const listing = await this.prisma.listing.findUniqueOrThrow({
+      where: { id: listingId },
+      select: { expiresAt: true },
+    });
+    await this.prisma.listingInstantAlert.create({
+      data: { listingId, paymentId, activeUntil: listing.expiresAt },
+    });
+    await this.prisma.listing.update({
+      where: { id: listingId },
+      data: { instantAlertsUntil: listing.expiresAt },
+    });
+  }
+
+  /** Best-effort, fire-and-forget confirmation that the purchase actually went through — never
+   * blocks the webhook from returning 200 to Razorpay. Logged to ListingNotificationLog on a
+   * successful send, same pattern as every other notification in this codebase. */
+  private notifyInstantAlertsActivated(listingId: string): void {
+    void this.deliverInstantAlertsActivatedNotification(listingId).catch((err: unknown) =>
+      this.logger.error(`Failed to send Instant Alerts confirmation for listing ${listingId}`, err),
+    );
+  }
+
+  private async deliverInstantAlertsActivatedNotification(listingId: string): Promise<void> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { title: true, owner: { select: { email: true, phone: true } } },
+    });
+    if (!listing) return;
+
+    const channel = await this.notificationsService.notifyInstantAlertsActivated(listing.owner, listing.title);
+    if (channel) {
+      await this.prisma.listingNotificationLog.create({
+        data: { listingId, kind: 'instant_alerts_activated', channel },
+      });
+    }
   }
 
   private async ensureProBoostCreditForMonth(userId: string): Promise<void> {
@@ -213,6 +259,55 @@ export class PaymentsService {
     };
   }
 
+  /** No seller-chosen duration and no free-credit short-circuit (unlike createBoostOrder) —
+   * Instant Alerts is a flat fee that always runs until the listing's own expiresAt, resolved
+   * fresh at webhook time in activateInstantAlerts, not here. */
+  async createInstantAlertsOrder(
+    userId: string,
+    listingId: string,
+    discountCode?: string,
+  ): Promise<CreateInstantAlertsOrderResponseDto> {
+    const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
+    if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+    if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+
+    const discount = await this.resolveDiscountCode(discountCode, userId);
+    const instantAlertsPriceSettings =
+      (await this.prisma.instantAlertsPriceSetting.findUnique({ where: { id: INSTANT_ALERTS_PRICE_SETTINGS_ID } })) ??
+      DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS;
+    const amountInPaise = this.applyDiscount(
+      instantAlertsPriceSettings.instantAlertsPrice * 100,
+      discount?.discountPercent,
+    );
+
+    const order = await this.getRazorpay().orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `instant_alerts_${listingId}_${Date.now()}`,
+      notes: { purpose: 'instant_alerts', listingId },
+    });
+
+    const payment = await this.prisma.payment.create({
+      data: {
+        userId,
+        razorpayOrderId: order.id,
+        amount: amountInPaise,
+        currency: 'INR',
+        purpose: 'instant_alerts',
+        listingId,
+        discountCodeId: discount?.id,
+      },
+    });
+
+    return {
+      paymentId: payment.id,
+      razorpayOrderId: order.id,
+      razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
+      amount: amountInPaise,
+      currency: 'INR',
+    };
+  }
+
   async createSubscriptionOrder(
     userId: string,
     tier: SubscriptionTier,
@@ -339,6 +434,12 @@ export class PaymentsService {
     if (payment.purpose === 'listing_boost' && payment.listingId && payment.boostDays) {
       await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
       this.logger.log(`Boost activated for listing ${payment.listingId}`);
+    }
+
+    if (payment.purpose === 'instant_alerts' && payment.listingId) {
+      await this.activateInstantAlerts(payment.listingId, payment.id);
+      this.logger.log(`Instant Alerts activated for listing ${payment.listingId}`);
+      this.notifyInstantAlertsActivated(payment.listingId);
     }
 
     if (payment.purpose === 'buyer_premium' && payment.subscriptionMonths) {

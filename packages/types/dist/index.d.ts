@@ -21,7 +21,7 @@ export type LoginMethod = "otp" | "google" | "apple";
 export type RateLimitKind = "publish" | "view";
 export type ListingSlotUpsell = import("./listingSlots").ListingSlotUpsell;
 export type { ListingSlotCapErrorBody } from "./listingSlots";
-export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro" | "seller_slot_pack" | "contact_reveal_credits";
+export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro" | "seller_slot_pack" | "contact_reveal_credits" | "instant_alerts";
 export type PaymentStatus = "created" | "paid" | "failed" | "refunded";
 /** buyerPremium = Bhavano Plus; agentPro = broker slots + storefront; sellerSlotPack = +5 slots (10 total). */
 export type SubscriptionTier = "buyerPremium" | "agentPro" | "sellerSlotPack";
@@ -77,6 +77,10 @@ export interface ListingCardDto {
     /** True while `Listing.boostedUntil` is in the future — drives the "⭐ Featured" badge and
      * the boosted-first sort. See docs/plans/monetization-boosted-listings-premium-tiers.md. */
     isBoosted: boolean;
+    /** True while `Listing.instantAlertsUntil` is in the future — drives the owner-only "Instant
+     * Alerts active" state on my-listings/the post-ad success screen (never shown to a non-owner).
+     * See docs/plans/instant-alerts-paid-message-notifications.md. */
+    hasInstantAlerts: boolean;
     /** Whether at least one processed (status "done") video exists — drives a "▶ Video" browse-card
      * badge. Deliberately not the full `videos[]` array here (see ListingDetailDto.videos) since
      * browse pages render 20+ cards and none of them play video. See docs/plans/listing-video-uploads.md. */
@@ -798,6 +802,22 @@ export interface CreateContactRevealCreditsOrderInput {
 /** Same shape as CreateBoostOrderResponseDto/CreateSubscriptionOrderResponseDto — its own named
  * type for the same reason CreateSubscriptionOrderResponseDto is. */
 export interface CreateContactRevealCreditsOrderResponseDto {
+    paymentId: string;
+    razorpayOrderId: string;
+    razorpayKeyId: string;
+    amount: number;
+    currency: string;
+}
+/** No seller-chosen duration (unlike boostDays) — Instant Alerts always runs until the listing's
+ * own expiresAt, resolved server-side at activation time. discountCode is optional, same as
+ * every other order-creation input here. */
+export interface CreateInstantAlertsOrderInput {
+    listingId: string;
+    discountCode?: string;
+}
+/** Same shape as CreateBoostOrderResponseDto/CreateContactRevealCreditsOrderResponseDto — its
+ * own named type for the same reason CreateSubscriptionOrderResponseDto is. */
+export interface CreateInstantAlertsOrderResponseDto {
     paymentId: string;
     razorpayOrderId: string;
     razorpayKeyId: string;
