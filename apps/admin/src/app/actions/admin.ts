@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type {
+  AdminUpdateListingInput,
   ContactRevealSettingsDto,
   ListingStatus,
   MessageDto,
@@ -92,14 +93,7 @@ export async function setListingStatusAction(listingId: string, status: ListingS
 
 export async function updateListingAction(
   listingId: string,
-  input: {
-    price?: number;
-    priceQualifier?: string;
-    title?: string;
-    specs?: string[];
-    description?: string;
-    attributes?: Record<string, unknown>;
-  },
+  input: AdminUpdateListingInput,
 ): Promise<ActionResult> {
   const { accessToken } = await requireAdmin();
   try {

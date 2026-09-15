@@ -23,6 +23,10 @@ real history table that existed, and it's narrowly scoped to expiry-date renewal
   attributes, status) and logs only the ones that actually changed value, with real before/after
   values. `JSON.stringify` comparison, not `!==` — `attributes` is an object, so reference
   inequality would flag it as "changed" on every edit even when its content is identical.
+- **Admin edits** (`ListingsService.updateAsAdmin`) — same `diffFields()` call, plus
+  category, transactionType, cityId, areaId, lat, lng — fields only the admin route can change
+  (see docs/plans/admin-edit-location-and-category.md). Owner edits never diff these since the
+  owner-facing DTO doesn't carry them.
 - **Listing creation** (`ListingsService.create`) — logged as `actorType: 'system'` when the
   owner is the bulk-import placeholder account (`BULK_IMPORT_OWNER_PHONE`, see
   `listings.service.ts`'s own note on that), `'owner'` otherwise. No `changes` — nothing to diff

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchListingById } from "@/lib/bff";
+import { fetchCitiesAction } from "@/app/actions/locations";
 import { AdminEditListingForm } from "@/components/AdminEditListingForm";
 
 /** Same route shape as the owner's own /my-listings/[id]/edit on the web app — an admin editing
@@ -13,7 +14,10 @@ export default async function AdminEditListingPage({ params }: { params: Promise
   const { id } = await params;
   const { accessToken } = await requireAdmin();
 
-  const listing = await fetchListingById(accessToken, id).catch(() => null);
+  const [listing, cities] = await Promise.all([
+    fetchListingById(accessToken, id).catch(() => null),
+    fetchCitiesAction(),
+  ]);
   if (!listing) notFound();
 
   return (
@@ -23,7 +27,7 @@ export default async function AdminEditListingPage({ params }: { params: Promise
           ← Back to listing
         </Link>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 20px" }}>Edit listing</h1>
-        <AdminEditListingForm listing={listing} />
+        <AdminEditListingForm listing={listing} cities={cities} />
       </div>
     </div>
   );

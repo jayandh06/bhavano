@@ -41,7 +41,7 @@ import { ListListingConversationsDto } from './dto/list-listing-conversations.dt
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { SetListingStatusDto } from './dto/set-listing-status.dto';
-import { UpdateListingDto } from '../listings/dto/update-listing.dto';
+import { AdminUpdateListingDto } from '../listings/dto/update-listing.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { ListUsersDto } from './dto/list-users.dto';
@@ -141,14 +141,17 @@ export class AdminController {
     return this.adminService.setListingStatus(id, dto.status, user.id);
   }
 
-  /** Admin override of a listing's own content (price, title, description, specs, attributes) —
-   * same fields and validation the owner's own PATCH /listings/:id uses, just without the
-   * ownership check and logged to ListingEditLog as an admin action instead of an owner one. See
-   * ListingsService.updateAsAdmin. */
+  /** Admin override of a listing's own content — the same price/title/description/specs/
+   * attributes fields the owner's own PATCH /listings/:id accepts, plus admin-only
+   * category/transactionType/cityId/areaId/areaName/lat/lng (AdminUpdateListingDto), without the
+   * ownership check, logged to ListingEditLog as an admin action instead of an owner one. The
+   * admin-only fields are safe from the owner route because it still binds to the base
+   * UpdateListingDto, which Nest's whitelisting ValidationPipe strips them down to. See
+   * ListingsService.updateAsAdmin and docs/plans/admin-edit-location-and-category.md. */
   @Patch('listings/:id')
   updateListing(
     @Param('id') id: string,
-    @Body() dto: UpdateListingDto,
+    @Body() dto: AdminUpdateListingDto,
     @CurrentUser() user: RequestUser,
   ): Promise<ListingDetailDto> {
     return this.adminService.updateListing(id, dto, user.id);

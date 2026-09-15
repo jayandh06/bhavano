@@ -34,7 +34,7 @@ import type {
 import { categoryImagePlaceholder } from '@bhavano/types/tokens';
 import { slugify } from '@bhavano/types/slugify';
 import { deriveTag } from '@bhavano/types/listingTag';
-import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
+import { CATEGORY_FIELD_CONFIG, defaultAttributesFor } from '@bhavano/types/categoryFields';
 import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from '@bhavano/types/priceQualifiers';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
@@ -72,7 +72,7 @@ import {
 import { R2StorageService } from '../storage/r2-storage.service';
 import { CdnPurgeService } from '../storage/cdn-purge.service';
 import { ListListingsDto } from './dto/list-listings.dto';
-import { UpdateListingDto } from './dto/update-listing.dto';
+import { AdminUpdateListingDto, UpdateListingDto } from './dto/update-listing.dto';
 import {
   AdminListingSort,
   ListAdminListingsDto,
@@ -1535,15 +1535,16 @@ export class ListingsService {
     return this.applyUpdate(id, existing, dto, 'owner', userId);
   }
 
-  /** Admin override of a listing's own content — price, title, description, specs, attributes —
-   * on top of the owner-only `update()` above. Same validation and the same ListingEditLog diff,
-   * just without the ownership check and attributed to the admin instead of the owner. For
-   * support cases where the owner can't be reached to fix something themselves (a typo in the
-   * title, a price that's clearly wrong), mirroring why setStatusAsAdmin exists for status
-   * specifically. */
+  /** Admin override of a listing's own content — price, title, description, specs, attributes,
+   * plus admin-only category/transactionType/cityId/areaId/areaName/lat/lng — on top of the
+   * owner-only `update()` above. Same validation and the same ListingEditLog diff, just without
+   * the ownership check and attributed to the admin instead of the owner. For support cases where
+   * the owner can't be reached to fix something themselves (a typo in the title, a listing posted
+   * under the wrong city/category), mirroring why setStatusAsAdmin exists for status specifically.
+   * See docs/plans/admin-edit-location-and-category.md. */
   async updateAsAdmin(
     id: string,
-    dto: UpdateListingDto,
+    dto: AdminUpdateListingDto,
     adminId: string,
   ): Promise<ListingDetailDto> {
     const existing = await this.prisma.listing.findUnique({ where: { id } });
@@ -1555,25 +1556,70 @@ export class ListingsService {
   private async applyUpdate(
     id: string,
     existing: Listing,
-    dto: UpdateListingDto,
+    dto: AdminUpdateListingDto,
     actorType: 'owner' | 'admin',
     actorId: string,
   ): Promise<ListingDetailDto> {
-    if (dto.attributes !== undefined)
+    // Only ever set by the admin route (AdminUpdateListingDto) — the owner-facing route binds to
+    // plain UpdateListingDto, so these are always undefined for actorType === 'owner'.
+    const nextCategory = dto.category ?? existing.category;
+    const nextTransactionType = dto.transactionType ?? existing.transactionType;
+    const categoryOrTxnChanged =
+      nextCategory !== existing.category ||
+      nextTransactionType !== existing.transactionType;
+
+    // A category/transactionType swap invalidates the old attributes object (different required
+    // fields, different allowed keys) — reset to the new category's defaults exactly like the
+    // posting wizard does on a category change, unless the caller already sent a fresh attributes
+    // object for the new category in the same request.
+    const attributesToValidate =
+      dto.attributes ??
+      (categoryOrTxnChanged ? defaultAttributesFor(nextCategory) : undefined);
+    if (attributesToValidate !== undefined) {
       this.assertValidAttributes(
-        existing.category,
-        existing.transactionType,
-        dto.attributes,
-      );
-    if (dto.priceQualifier !== undefined) {
-      this.assertValidPriceQualifier(
-        existing.category,
-        existing.transactionType,
-        dto.priceQualifier,
+        nextCategory,
+        nextTransactionType,
+        attributesToValidate,
       );
     }
-    if (dto.price !== undefined) {
-      this.assertValidPrice(existing.category, dto.price);
+
+    // Price/price-qualifier legality (e.g. "Contact for price") depends on (category,
+    // transactionType) too, so re-check them against the *new* pairing whenever either changes,
+    // even if the caller didn't touch price/priceQualifier this request.
+    const priceQualifierToValidate =
+      dto.priceQualifier ??
+      (categoryOrTxnChanged ? existing.priceQualifier : undefined);
+    if (priceQualifierToValidate !== undefined) {
+      this.assertValidPriceQualifier(
+        nextCategory,
+        nextTransactionType,
+        priceQualifierToValidate,
+      );
+    }
+    const priceToValidate =
+      dto.price ?? (categoryOrTxnChanged ? existing.price : undefined);
+    if (priceToValidate !== undefined) {
+      this.assertValidPrice(nextCategory, priceToValidate);
+    }
+
+    // City/area resolution — admin-only, and only when at least one of the three is present.
+    // City and area always move together: an area belongs to exactly one city, so changing city
+    // without saying where the listing now sits in it would leave a stale, cross-city area.
+    let nextCityId = existing.cityId;
+    let nextAreaId = existing.areaId;
+    if (dto.cityId !== undefined || dto.areaId !== undefined || dto.areaName !== undefined) {
+      nextCityId = dto.cityId ?? existing.cityId;
+      if (dto.areaId !== undefined) {
+        const area = await this.prisma.area.findUnique({ where: { id: dto.areaId } });
+        if (!area || area.cityId !== nextCityId) {
+          throw new BadRequestException('That area does not belong to the selected city');
+        }
+        nextAreaId = dto.areaId;
+      } else if (dto.areaName !== undefined) {
+        nextAreaId = (await this.locationsService.ensureArea(nextCityId, dto.areaName)).id;
+      } else {
+        throw new BadRequestException('areaId or areaName is required when changing city');
+      }
     }
 
     const listing = await this.prisma.listing.update({
@@ -1590,10 +1636,18 @@ export class ListingsService {
         ...(dto.description !== undefined
           ? { description: dto.description.trim() || null }
           : {}),
-        ...(dto.attributes !== undefined
-          ? { attributes: dto.attributes as Prisma.InputJsonValue }
+        ...(attributesToValidate !== undefined
+          ? { attributes: attributesToValidate as Prisma.InputJsonValue }
           : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
+        ...(dto.category !== undefined ? { category: dto.category } : {}),
+        ...(dto.transactionType !== undefined
+          ? { transactionType: dto.transactionType }
+          : {}),
+        ...(nextCityId !== existing.cityId ? { cityId: nextCityId } : {}),
+        ...(nextAreaId !== existing.areaId ? { areaId: nextAreaId } : {}),
+        ...(dto.lat !== undefined ? { lat: dto.lat } : {}),
+        ...(dto.lng !== undefined ? { lng: dto.lng } : {}),
         // An owner editing a flagged listing IS the resubmission — flip adminReviewed back
         // to false so it resurfaces in the admin queue as needing another look. Approving/
         // flagging again is still required to actually change moderationState. An admin editing
@@ -1616,6 +1670,12 @@ export class ListingsService {
         description: existing.description,
         attributes: existing.attributes,
         status: existing.status,
+        category: existing.category,
+        transactionType: existing.transactionType,
+        cityId: existing.cityId,
+        areaId: existing.areaId,
+        lat: existing.lat,
+        lng: existing.lng,
       },
       {
         price: dto.price,
@@ -1623,8 +1683,14 @@ export class ListingsService {
         title: dto.title,
         specs: dto.specs,
         description: dto.description,
-        attributes: dto.attributes,
+        attributes: attributesToValidate,
         status: dto.status,
+        category: dto.category,
+        transactionType: dto.transactionType,
+        cityId: nextCityId !== existing.cityId ? nextCityId : undefined,
+        areaId: nextAreaId !== existing.areaId ? nextAreaId : undefined,
+        lat: dto.lat,
+        lng: dto.lng,
       },
     );
     if (Object.keys(changes).length > 0) {
@@ -2219,6 +2285,10 @@ export class ListingsService {
             renewedAt: r.renewedAt.toISOString(),
           }))
         : undefined,
+      cityId: listing.cityId,
+      areaId: listing.areaId,
+      exactLat: isOwnerOrAdmin ? listing.lat ?? undefined : undefined,
+      exactLng: isOwnerOrAdmin ? listing.lng ?? undefined : undefined,
       ...this.jitteredLocation(listing),
       ...revealState,
     };

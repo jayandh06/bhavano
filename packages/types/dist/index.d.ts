@@ -175,6 +175,17 @@ export interface ListingDetailDto extends ListingCardDto {
      * at posting time. */
     lat?: number;
     lng?: number;
+    /** The listing's real city/area ids (not just the display `cityName`/`area` name strings from
+     * `ListingCardDto`) — not sensitive, just never previously needed outside the admin edit form
+     * that lets an admin re-pick them. See docs/plans/admin-edit-location-and-category.md. */
+    cityId: string;
+    areaId: string;
+    /** Unjittered — only present for the owner or an admin, same gating as `videoEntitlement`/
+     * `renewalHistory`. The seller's exact dropped pin, for the admin edit form to pre-fill; the
+     * public `lat`/`lng` above stay jittered for everyone including the owner/admin. Undefined if
+     * no pin was ever dropped at posting time. */
+    exactLat?: number;
+    exactLng?: number;
     /** Whether the "your ad is live" acknowledgement (email or WhatsApp) was confirmed sent —
      * derived from a real ListingNotificationLog row, never a dispatch-attempted flag (same
      * precedent as User.welcomed). Only populated in the admin moderation queue
@@ -237,6 +248,20 @@ export interface UpdateListingInput {
     description?: string;
     attributes?: Record<string, unknown>;
     status?: ListingStatus;
+}
+/** Admin-only superset of `UpdateListingInput` — fields an admin can additionally change from the
+ * admin listing edit form that an owner cannot self-edit (category/transactionType/city/area/map
+ * pin). `areaId`/`areaName` are mutually exclusive, same as `CreateListingInput` — `areaName` goes
+ * through the same find-or-create `ensureArea` resolution creation does. See
+ * docs/plans/admin-edit-location-and-category.md. */
+export interface AdminUpdateListingInput extends UpdateListingInput {
+    category?: ListingCategory;
+    transactionType?: TransactionType;
+    cityId?: string;
+    areaId?: string;
+    areaName?: string;
+    lat?: number;
+    lng?: number;
 }
 /** One uploaded photo's metadata as returned by `POST /uploads` — `photoNo` matches the key
  * that upload was stored under (see apps/bff/src/uploads/photo-keys.ts). */

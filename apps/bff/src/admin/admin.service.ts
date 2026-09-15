@@ -5,6 +5,7 @@ import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
+  AdminUpdateListingInput,
   AdminUsersPage,
   ContactRevealSettingsDto,
   DiscountCodeDto,
@@ -14,7 +15,6 @@ import type {
   ListingEngagementPage,
   ListingOwnerDto,
   ListingStatus,
-  UpdateListingInput,
   LoginEventsPage,
   MessageDto,
   PageVisitsPage,
@@ -280,7 +280,7 @@ export class AdminService {
    * message in the moderation thread whenever an admin edits their listing's content, even
    * though (unlike a status change) there's no separate notification for this. What exactly
    * changed is visible in ListingEditLog for anyone who needs the precise diff. */
-  async updateListing(id: string, dto: UpdateListingInput, adminId: string): Promise<ListingDetailDto> {
+  async updateListing(id: string, dto: AdminUpdateListingInput, adminId: string): Promise<ListingDetailDto> {
     const listing = await this.listingsService.updateAsAdmin(id, dto, adminId);
     const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
     await this.messagingService.sendMessage(thread.id, adminId, "This listing's details were updated by an admin.");

@@ -258,7 +258,10 @@ Rough current per-1,000-unit prices (verify at implementation time — pricing d
 
 - Redesigning the City/Area curation system itself (how new cities get added, admin tooling for
   curating areas) — this only adds a match/auto-create hook on top of what exists.
-- Any changes to `apps/admin`.
+- Any changes to `apps/admin`. **Superseded**: docs/plans/admin-edit-location-and-category.md later
+  gave the admin edit form its own (deliberately simple — plain lat/lng inputs, not this plan's
+  interactive picker) way to correct a listing's city/area/pin/category/transactionType after the
+  fact. The public-facing jitter/display behavior this plan describes is untouched by that change.
 - Locking in `react-native-maps` vs. `expo-maps` with certainty — a recommended default is given,
   with a short spike suggested before committing.
 - Revealing the precise pin to a connected buyer/seller after contact (e.g. inside a chat

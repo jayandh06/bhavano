@@ -3,6 +3,7 @@ import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
+  AdminUpdateListingInput,
   AdminUsersPage,
   Area,
   AuthSession,
@@ -217,21 +218,15 @@ export function setListingStatus(accessToken: string, id: string, status: Listin
   });
 }
 
-/** Admin override of a listing's own content — same fields the owner's own edit form sends,
- * just via the admin-only PATCH /admin/listings/:id (see ListingsService.updateAsAdmin). Only
- * the fields actually being changed need to be included — same partial-update semantics as the
- * owner-facing update. */
+/** Admin override of a listing's own content — the fields the owner's own edit form sends, plus
+ * admin-only category/transactionType/cityId/areaId/areaName/lat/lng — via the admin-only
+ * PATCH /admin/listings/:id (see ListingsService.updateAsAdmin). Only the fields actually being
+ * changed need to be included — same partial-update semantics as the owner-facing update. See
+ * docs/plans/admin-edit-location-and-category.md. */
 export function updateListingAsAdmin(
   accessToken: string,
   id: string,
-  input: {
-    price?: number;
-    priceQualifier?: string;
-    title?: string;
-    specs?: string[];
-    description?: string;
-    attributes?: Record<string, unknown>;
-  },
+  input: AdminUpdateListingInput,
 ): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/admin/listings/${id}`, {
     method: "PATCH",

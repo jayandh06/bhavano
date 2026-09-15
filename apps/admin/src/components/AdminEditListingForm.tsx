@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ListingDetailDto, ListingCategory, TransactionType } from "@bhavano/types";
+import type { Area, City, ListingDetailDto, ListingCategory, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
+  defaultAttributesFor,
   fieldIsVisible,
   groupFieldsBySection,
   pruneHiddenAttributes,
@@ -17,9 +18,21 @@ import {
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { clampDigits } from "@bhavano/types/listingLimits";
+import { POST_CATEGORIES } from "@bhavano/types/postCategories";
+import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { updateListingAction } from "@/app/actions/admin";
+import { fetchAreasForCityAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { SelectField } from "./SelectField";
+
+const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
+  sell: "Sell",
+  buy: "Buy",
+  rent: "Rent out",
+  lease: "Lease out",
+};
+
+const OTHER_AREA_VALUE = "__other__";
 
 function attributesToStrings(attributes: Record<string, unknown>): Record<string, string | string[]> {
   const result: Record<string, string | string[]> = {};
@@ -384,10 +397,10 @@ function FieldRunBlock({
  * Tailwind-only component (apps/admin has no Tailwind, and there's no shared component package
  * between the two Next apps — porting the exact widget would mean adding Tailwind to admin just
  * for this one page). */
-export function AdminEditListingForm({ listing }: { listing: ListingDetailDto }) {
+export function AdminEditListingForm({ listing, cities }: { listing: ListingDetailDto; cities: City[] }) {
   const router = useRouter();
-  const category = listing.category as ListingCategory;
-  const transactionType = listing.transactionType as TransactionType;
+  const [category, setCategory] = useState(listing.category as ListingCategory);
+  const [transactionType, setTransactionType] = useState(listing.transactionType as TransactionType);
 
   const [title, setTitle] = useState(listing.title);
   const [price, setPrice] = useState(String(parseRawPrice(listing.price, listing.priceOnRequest)));
@@ -400,6 +413,87 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  // City/area/map location — admin-only fields, absent from the owner's own edit form. See
+  // docs/plans/admin-edit-location-and-category.md.
+  const [cityId, setCityId] = useState(listing.cityId);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [areaId, setAreaId] = useState(listing.areaId);
+  const [useOtherArea, setUseOtherArea] = useState(false);
+  const [areaName, setAreaName] = useState("");
+  const [latStr, setLatStr] = useState(listing.exactLat !== undefined ? String(listing.exactLat) : "");
+  const [lngStr, setLngStr] = useState(listing.exactLng !== undefined ? String(listing.exactLng) : "");
+
+  // Refetches whenever `cityId` changes (including the initial fetch for the listing's current
+  // city) — `all=true` returns every area in the city uncapped (searchAreas's own doc comment),
+  // exactly what a plain <select> needs.
+  useEffect(() => {
+    let cancelled = false;
+    fetchAreasForCityAction(cityId).then((result) => {
+      if (!cancelled) setAreas(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityId]);
+
+  function onCategoryChange(value: string) {
+    const newCategory = value as ListingCategory;
+    const postable = POSTABLE_TRANSACTION_TYPES[newCategory];
+    const newTransactionType = postable.includes(transactionType) ? transactionType : postable[0];
+    setCategory(newCategory);
+    setTransactionType(newTransactionType);
+    // A category swap invalidates the old attributes entirely (different fields, different
+    // required keys) — reset to the new category's defaults, same as the posting wizard does on
+    // a category change, then prune anything the new transaction type doesn't apply to.
+    setAttributes(pruneHiddenAttributes(newCategory, newTransactionType, defaultAttributesFor(newCategory)));
+    const newQualifierOptions = getPriceQualifierOptions(newCategory, newTransactionType);
+    if (!newQualifierOptions.some((opt) => opt.value === priceQualifier)) {
+      setPriceQualifier(newQualifierOptions[0]?.value ?? "");
+    }
+  }
+
+  function onTransactionTypeChange(value: string) {
+    const newTransactionType = value as TransactionType;
+    setTransactionType(newTransactionType);
+    // Same category, but a field can be transaction-type-gated (field.transactionTypes) — prune
+    // whatever no longer applies so the server's assertValidAttributes doesn't reject a stale key.
+    setAttributes((prev) => pruneHiddenAttributes(category, newTransactionType, prev));
+    const newQualifierOptions = getPriceQualifierOptions(category, newTransactionType);
+    if (!newQualifierOptions.some((opt) => opt.value === priceQualifier)) {
+      setPriceQualifier(newQualifierOptions[0]?.value ?? "");
+    }
+  }
+
+  function onCityChange(newCityId: string) {
+    setCityId(newCityId);
+    setAreaId("");
+    setUseOtherArea(false);
+    setAreaName("");
+  }
+
+  function onAreaSelectChange(value: string) {
+    if (value === OTHER_AREA_VALUE) {
+      setUseOtherArea(true);
+      setAreaId("");
+    } else {
+      setUseOtherArea(false);
+      setAreaId(value);
+    }
+  }
+
+  const latNum = latStr.trim() === "" ? undefined : Number(latStr);
+  const lngNum = lngStr.trim() === "" ? undefined : Number(lngStr);
+  const pinValid =
+    (latStr.trim() === "" && lngStr.trim() === "") ||
+    (latNum !== undefined &&
+      lngNum !== undefined &&
+      Number.isFinite(latNum) &&
+      Number.isFinite(lngNum) &&
+      latNum >= -90 &&
+      latNum <= 90 &&
+      lngNum >= -180 &&
+      lngNum <= 180);
 
   const fieldConfig = CATEGORY_FIELD_CONFIG[category];
   const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, transactionType, attributes));
@@ -423,7 +517,13 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
     const value = attributes[field.key];
     return Array.isArray(value) ? value.length > 0 : (value ?? "").length > 0;
   });
-  const valid = (priceValue > 0 || priceOnRequestAllowed) && title.trim().length > 0 && requiredAttributesFilled;
+  const valid =
+    (priceValue > 0 || priceOnRequestAllowed) &&
+    title.trim().length > 0 &&
+    requiredAttributesFilled &&
+    !!cityId &&
+    (useOtherArea ? areaName.trim().length > 0 : !!areaId) &&
+    pinValid;
 
   const priceQualifierOptions = getPriceQualifierOptions(category, transactionType);
   const priceQualifierChoices = priceQualifierOptions.some((opt) => opt.value === priceQualifier)
@@ -448,6 +548,11 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
       description: description.trim(),
       specs: specsValue.split(",").map((s) => s.trim()).filter(Boolean),
       attributes,
+      category,
+      transactionType,
+      cityId,
+      ...(useOtherArea ? { areaName: areaName.trim() } : { areaId }),
+      ...(latNum !== undefined && lngNum !== undefined ? { lat: latNum, lng: lngNum } : {}),
     });
     setSaving(false);
     if (result.success) {
@@ -460,11 +565,130 @@ export function AdminEditListingForm({ listing }: { listing: ListingDetailDto })
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ maxWidth: 420 }}>
-        <label style={labelStyle}>Category / transaction</label>
-        <div style={{ ...inputStyle, background: "var(--surface-alt)", color: "var(--text-soft)" }}>
-          {listing.category} · {listing.transactionType}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 180, maxWidth: 260 }}>
+          <label style={labelStyle}>Category</label>
+          <SelectField value={category} onChange={(e) => onCategoryChange(e.target.value)} style={inputStyle}>
+            {POST_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </SelectField>
         </div>
+        <div style={{ flex: 1, minWidth: 160, maxWidth: 220 }}>
+          <label style={labelStyle}>Transaction</label>
+          <SelectField value={transactionType} onChange={(e) => onTransactionTypeChange(e.target.value)} style={inputStyle}>
+            {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
+              <option key={t} value={t}>
+                {TRANSACTION_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 180, maxWidth: 260 }}>
+          <label style={labelStyle}>City</label>
+          <SelectField value={cityId} onChange={(e) => onCityChange(e.target.value)} style={inputStyle}>
+            {cities.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+        <div style={{ flex: 1, minWidth: 180, maxWidth: 260 }}>
+          <label style={labelStyle}>Area</label>
+          {useOtherArea ? (
+            <div style={{ display: "flex", gap: 6 }}>
+              <input
+                value={areaName}
+                onChange={(e) => setAreaName(e.target.value)}
+                placeholder="New area name"
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setUseOtherArea(false);
+                  setAreaName("");
+                }}
+                style={smallButtonStyle}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <SelectField value={areaId} onChange={(e) => onAreaSelectChange(e.target.value)} style={inputStyle}>
+              <option value="" disabled>
+                Select…
+              </option>
+              {(areaId && !areas.some((a) => a.id === areaId)
+                ? [{ id: areaId, name: listing.area } as Area, ...areas]
+                : areas
+              ).map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+              <option value={OTHER_AREA_VALUE}>Other (type a new area)…</option>
+            </SelectField>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+        <div style={{ maxWidth: 160 }}>
+          <label style={labelStyle}>Latitude</label>
+          <input
+            type="number"
+            step="any"
+            value={latStr}
+            onChange={(e) => setLatStr(e.target.value)}
+            placeholder="e.g. 12.9716"
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ maxWidth: 160 }}>
+          <label style={labelStyle}>Longitude</label>
+          <input
+            type="number"
+            step="any"
+            value={lngStr}
+            onChange={(e) => setLngStr(e.target.value)}
+            placeholder="e.g. 77.5946"
+            style={inputStyle}
+          />
+        </div>
+        {latNum !== undefined && lngNum !== undefined && pinValid && (
+          <a
+            href={`https://www.google.com/maps?q=${latNum},${lngNum}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: 13, color: "var(--green)", paddingBottom: 10 }}
+          >
+            View on Google Maps ↗
+          </a>
+        )}
+        {(latStr || lngStr) && (
+          <button
+            type="button"
+            onClick={() => {
+              setLatStr("");
+              setLngStr("");
+            }}
+            style={{ ...smallButtonStyle, height: 38 }}
+          >
+            Clear pin
+          </button>
+        )}
+        {!pinValid && (
+          <span style={{ fontSize: 12, color: "var(--danger)" }}>
+            Latitude must be -90..90 and longitude -180..180 (or leave both blank).
+          </span>
+        )}
       </div>
 
       <div>
@@ -582,6 +806,18 @@ const inputStyle: React.CSSProperties = {
   fontWeight: 400,
   width: "100%",
   boxSizing: "border-box",
+};
+
+const smallButtonStyle: React.CSSProperties = {
+  border: "1px solid var(--border)",
+  borderRadius: 9,
+  padding: "0 10px",
+  fontSize: 12.5,
+  background: "var(--surface-alt)",
+  color: "var(--text-soft)",
+  cursor: "pointer",
+  flexShrink: 0,
+  whiteSpace: "nowrap",
 };
 
 const dropdownButtonStyle: React.CSSProperties = {
