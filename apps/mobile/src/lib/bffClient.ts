@@ -9,6 +9,7 @@ import type {
   CreateBoostOrderResponseDto,
   CreatedVideoInput,
   CreateListingInput,
+  CreateSubscriptionOrderResponseDto,
   HomeCategoryFilter,
   ListingCardDto,
   ListingDetailDto,
@@ -22,6 +23,7 @@ import type {
   ReverseGeocodeResultDto,
   LinkIdentifierResult,
   SendFirstMessageResponseDto,
+  SubscriptionTier,
   UpdateListingInput,
   UpdateProfileInput,
   UserProfileDto,
@@ -504,6 +506,22 @@ export function createBoostOrder(
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
     body: JSON.stringify({ listingId, boostDays }),
+  });
+}
+
+/** Mirrors the website's identical call (bff.ts's createSubscriptionOrder). Same webhook-driven
+ * activation as boosts — see SubscribeModal's own doc comment. Android only in practice: iOS
+ * sends people to the website for this instead (App Store Guideline 3.1.1), see
+ * docs/plans/ios-app-store-release.md. */
+export function createSubscriptionOrder(
+  accessToken: string,
+  tier: SubscriptionTier,
+  months: number,
+  agentProUnits?: number,
+): Promise<CreateSubscriptionOrderResponseDto> {
+  return authedBffFetch(accessToken, "/payments/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({ tier, months, ...(agentProUnits !== undefined ? { agentProUnits } : {}) }),
   });
 }
 

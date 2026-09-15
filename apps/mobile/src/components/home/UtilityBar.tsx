@@ -34,7 +34,9 @@ export function UtilityBar() {
       <Pressable onPress={() => openWebsite("/tools")}>
         <Text style={[styles.link, { color: colors.onGreen }]}>Tools</Text>
       </Pressable>
-      <Pressable onPress={() => openWebsite("/premium")}>
+      {/* Native now (app/plans.tsx) — Tools above stays a browser link, see
+          docs/plans/ios-app-store-release.md for why Plans specifically earned a native screen. */}
+      <Pressable onPress={() => router.push("/plans")}>
         <Text style={[styles.link, { color: colors.onGreen }]}>Plans</Text>
       </Pressable>
       <Pressable onPress={() => router.push("/help")}>

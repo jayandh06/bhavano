@@ -165,7 +165,7 @@ export function HomeDrawer({
             <Icon name="calculator" size={17} color={colors.text} />
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Tools</Text>
           </Pressable>
-          <Pressable onPress={() => openWebsite("/premium")} style={styles.navRow}>
+          <Pressable onPress={() => go("/plans")} style={styles.navRow}>
             <Icon name="sparkles" size={17} color={colors.gold} />
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Plans</Text>
           </Pressable>

@@ -172,7 +172,17 @@ rather than a vague paywall:
   (StoreKit) for boosts hasn't been built; until it is, this is the split. Android has its own
   equivalent Play Billing policy for digital goods — not addressed here either, kept as-is for
   now since enforcement/timeline differs from Apple's.
-  Subscription purchases (Plans) still have no native flow on either platform.
+  **Update 2: subscriptions now match.** "Plans" in `HomeDrawer`/`UtilityBar` was a browser
+  hand-off to the website's `/premium`; it's now a native screen (`apps/mobile/app/plans.tsx`) —
+  a card per tier carrying its own price, feature list and CTA, so comparing and buying happen in
+  the same place (mirroring the website's own `/premium` rework, which dropped its
+  compare-vs-subscribe tab switcher for the same reason). Prices come from `fetchPlanPricing`
+  (admin-editable, see admin-manage-plans-pricing.md) over the bundled defaults.
+  The CTA carries the identical `Platform.OS` split as boosts above: Android opens
+  `SubscribeModal.tsx` (native Razorpay, same `POST /payments/subscriptions` web's
+  `SubscribeButton` calls, same webhook-driven activation), iOS opens `/premium#<tier>` on the
+  website. iOS never mounts the modal. If anything, Guideline 3.1.1 applies *more* plainly to a
+  subscription than to a one-off boost, so this split isn't optional there.
 - **ID-verification workflow** (Unique feature #5) — sketched as a future Phase 4, not detailed/
   built here.
 
