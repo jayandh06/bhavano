@@ -137,7 +137,9 @@ export function PlanComparisonTable({
           <table className="w-full min-w-[640px] border-collapse text-left">
             <thead>
               <tr className="border-b border-border">
-                <th className="p-3 text-[12px] font-bold text-muted w-[28%]">Feature</th>
+                <th className="p-3 text-[12px] font-bold text-muted w-[28%] sticky left-0 z-10 bg-surface border-r border-border">
+                  Feature
+                </th>
                 <th className={headerClass(sellerPlan === "free")}>
                   Free
                   {sellerPlan === "free" && (
@@ -166,7 +168,9 @@ export function PlanComparisonTable({
             <tbody>
               {sellerRowsData.map((row) => (
                 <tr key={row.label} className="border-b border-border last:border-0">
-                  <td className="p-3 text-[12px] text-muted align-top">{row.label}</td>
+                  <td className="p-3 text-[12px] text-muted align-top sticky left-0 z-10 bg-surface border-r border-border">
+                    {row.label}
+                  </td>
                   <td className="p-3 align-top">
                     <CellContent value={row.free} />
                   </td>
@@ -181,7 +185,7 @@ export function PlanComparisonTable({
             </tbody>
             <tfoot>
               <tr className="border-t border-border bg-surface-alt">
-                <td className="p-3" />
+                <td className="p-3 sticky left-0 z-10 bg-surface-alt border-r border-border" />
                 <CtaCell isCurrent={sellerPlan === "free"}>
                   <ChooseLink href="/post" label="Post a free ad" />
                 </CtaCell>
