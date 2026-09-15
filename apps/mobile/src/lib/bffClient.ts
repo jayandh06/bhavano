@@ -1,3 +1,5 @@
+import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type {
   Area,
   City,
@@ -112,6 +114,13 @@ export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
   if (q) params.set("q", q);
   if (all) params.set("all", "true");
   return bffFetch<City[]>(`/locations/cities?${params.toString()}`);
+}
+
+/** Public — current boost/subscription pricing, admin-editable (see
+ * docs/plans/admin-manage-plans-pricing.md). Read live before showing the boost picker rather
+ * than the bundled `DEFAULT_*` constants, so an admin's edit takes effect immediately. */
+export function fetchPlanPricing(): Promise<{ boost: BoostPriceSettings; subscription: SubscriptionPlanSettings }> {
+  return bffFetch("/plans/pricing");
 }
 
 /** Real Google-backed reverse geocoding — used by the posting flow's map pin-picker and by

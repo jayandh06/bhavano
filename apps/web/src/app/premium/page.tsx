@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { BffAuthError, fetchContactRevealSettings, fetchProfile } from "@/lib/bff";
+import { BffAuthError, fetchContactRevealSettings, fetchPlanPricing, fetchProfile } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { isAccessTokenValid } from "@/lib/session";
 import { Footer } from "@/components/home/Footer";
@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/home/PageHeader";
 import { PremiumPlansView } from "@/components/home/PremiumPlansView";
 import { PremiumPlansPublic } from "@/components/home/PremiumPlansPublic";
 import type { ContactRevealSettingsDto } from "@bhavano/types";
+import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 
 export default async function PremiumPage({
   searchParams,
@@ -16,11 +17,12 @@ export default async function PremiumPage({
 }) {
   const sp = await searchParams;
   const citySlug = typeof sp.city === "string" ? sp.city : undefined;
-  const [session, { city, cityAreas, allCities }, contactRevealSettings] = await Promise.all([
+  const [session, { city, cityAreas, allCities }, contactRevealSettings, planPricing] = await Promise.all([
     auth(),
     resolvePageCityContext(citySlug),
     // Not gated on login — this is public pricing info, same as every other plan on this page.
     fetchContactRevealSettings(),
+    fetchPlanPricing(),
   ]);
   const accessToken = session?.accessToken;
   const loggedIn = isAccessTokenValid(accessToken);
@@ -38,9 +40,13 @@ export default async function PremiumPage({
         </p>
 
         {loggedIn && accessToken ? (
-          <PremiumPlansLoggedIn accessToken={accessToken} contactRevealSettings={contactRevealSettings} />
+          <PremiumPlansLoggedIn
+            accessToken={accessToken}
+            contactRevealSettings={contactRevealSettings}
+            planPricing={planPricing.subscription}
+          />
         ) : (
-          <PremiumPlansPublic contactRevealSettings={contactRevealSettings} />
+          <PremiumPlansPublic contactRevealSettings={contactRevealSettings} planPricing={planPricing.subscription} />
         )}
       </div>
       <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
@@ -51,16 +57,20 @@ export default async function PremiumPage({
 async function PremiumPlansLoggedIn({
   accessToken,
   contactRevealSettings,
+  planPricing,
 }: {
   accessToken: string;
   contactRevealSettings: ContactRevealSettingsDto;
+  planPricing: SubscriptionPlanSettings;
 }) {
   try {
     const profile = await fetchProfile(accessToken);
-    return <PremiumPlansView profile={profile} contactRevealSettings={contactRevealSettings} />;
+    return (
+      <PremiumPlansView profile={profile} contactRevealSettings={contactRevealSettings} planPricing={planPricing} />
+    );
   } catch (error) {
     if (error instanceof BffAuthError) {
-      return <PremiumPlansPublic contactRevealSettings={contactRevealSettings} />;
+      return <PremiumPlansPublic contactRevealSettings={contactRevealSettings} planPricing={planPricing} />;
     }
     throw error;
   }

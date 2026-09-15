@@ -3,7 +3,12 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
-import { boostPriceFor, type BoostDurationDays } from "@bhavano/types/boostPricing";
+import {
+  boostPriceFor,
+  DEFAULT_BOOST_PRICE_SETTINGS,
+  type BoostDurationDays,
+  type BoostPriceSettings,
+} from "@bhavano/types/boostPricing";
 import { createBoostOrderAction } from "@/app/actions/payments";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
@@ -42,7 +47,17 @@ export function useBoost(): BoostContextValue {
   return ctx;
 }
 
-export function BoostProvider({ children }: { children: ReactNode }) {
+export function BoostProvider({
+  children,
+  boostPriceSettings = DEFAULT_BOOST_PRICE_SETTINGS,
+}: {
+  children: ReactNode;
+  /** Live pricing — fetched server-side in the root layout and passed down, so the picker never
+   * shows a price checkout wouldn't actually charge. See
+   * docs/plans/admin-manage-plans-pricing.md. Defaults to the bundled constants only as a safety
+   * net (e.g. a test render with no provider setup), not a real fallback path in production. */
+  boostPriceSettings?: BoostPriceSettings;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [opts, setOpts] = useState<BoostOptions | null>(null);
@@ -158,7 +173,7 @@ export function BoostProvider({ children }: { children: ReactNode }) {
                   className="flex justify-between items-center border-[1.5px] border-border rounded-[10px] px-4 py-3 text-sm font-bold text-text cursor-pointer bg-surface-alt disabled:opacity-50"
                 >
                   <span>{days} days</span>
-                  <span className="text-green">₹{boostPriceFor(opts.category, days)}</span>
+                  <span className="text-green">₹{boostPriceFor(opts.category, days, boostPriceSettings)}</span>
                 </button>
               ))}
             </div>

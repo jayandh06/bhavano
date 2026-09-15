@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
 import RazorpayCheckout from "react-native-razorpay";
 import type { ListingCategory } from "@bhavano/types";
-import { boostPriceFor, type BoostDurationDays } from "@bhavano/types/boostPricing";
+import {
+  boostPriceFor,
+  DEFAULT_BOOST_PRICE_SETTINGS,
+  type BoostDurationDays,
+  type BoostPriceSettings,
+} from "@bhavano/types/boostPricing";
 import { useAppTheme } from "../../theme/ThemeContext";
-import { createBoostOrder } from "../../lib/bffClient";
+import { createBoostOrder, fetchPlanPricing } from "../../lib/bffClient";
 
 const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 
@@ -40,6 +45,23 @@ export function BoostModal({
   const { colors } = useAppTheme();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Instant first paint from the bundled defaults, swapped for the live row once it resolves —
+  // see docs/plans/admin-manage-plans-pricing.md. No SSR available here (React Native), unlike
+  // the website's BoostProvider, which gets this as a server-fetched prop instead.
+  const [boostPriceSettings, setBoostPriceSettings] = useState<BoostPriceSettings>(DEFAULT_BOOST_PRICE_SETTINGS);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    fetchPlanPricing()
+      .then((pricing) => {
+        if (!cancelled) setBoostPriceSettings(pricing.boost);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
 
   async function onSelectDuration(days: BoostDurationDays) {
     setPending(true);
@@ -120,7 +142,7 @@ export function BoostModal({
               >
                 <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>{days} days</Text>
                 <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>
-                  ₹{boostPriceFor(category, days)}
+                  ₹{boostPriceFor(category, days, boostPriceSettings)}
                 </Text>
               </Pressable>
             ))}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SubscriptionTier } from "@bhavano/types";
-import { subscriptionPriceFor } from "@bhavano/types/subscriptionPricing";
+import { subscriptionPriceFor, type SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import { createSubscriptionOrderAction } from "@/app/actions/payments";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { pushDataLayerEvent } from "@/lib/gtm";
@@ -29,9 +29,14 @@ const TIER_LABELS: Record<SubscriptionTier, string> = {
 export function SubscribeButton({
   tier,
   agentProUnits = 1,
+  planPricing,
 }: {
   tier: SubscriptionTier;
   agentProUnits?: number;
+  /** Live pricing/slot-count settings — see docs/plans/admin-manage-plans-pricing.md. Passed down
+   * from whichever server component fetched it (premium/page.tsx), not fetched here, so the
+   * price shown never lags what the same request's checkout will actually charge. */
+  planPricing: SubscriptionPlanSettings;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -110,12 +115,12 @@ export function SubscribeButton({
             {tier === "buyerPremium"
               ? (BUYER_PREMIUM_DURATION_LABELS[months] ?? `${months} months`)
               : tier === "sellerSlotPack"
-                ? "10 active listings — 1 month"
+                ? `${planPricing.sellerSlotPackTotalSlots} active listings — 1 month`
                 : months === 1
-                  ? `1 month — ${agentProUnits * 20} listings`
+                  ? `1 month — ${agentProUnits * planPricing.proListingSlotsPerUnit} listings`
                   : `${months} months`}
           </span>
-          <span className="text-green">₹{subscriptionPriceFor(tier, months, agentProUnits)}</span>
+          <span className="text-green">₹{subscriptionPriceFor(tier, months, agentProUnits, planPricing)}</span>
         </button>
       ))}
       {error && <p className="text-[#b3413a] text-[13px] m-0">{error}</p>}

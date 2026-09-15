@@ -3,6 +3,7 @@ import { Lora, Manrope } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "next-themes";
 import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
+import { DEFAULT_BOOST_PRICE_SETTINGS } from "@bhavano/types/boostPricing";
 import { AuthGateProvider } from "@/components/home/AuthGateProvider";
 import { BuyCreditsProvider } from "@/components/home/BuyCreditsProvider";
 import { BoostProvider } from "@/components/home/BoostProvider";
@@ -10,6 +11,7 @@ import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBann
 import { ProfileCompletionDialog } from "@/components/home/ProfileCompletionDialog";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
 import { JsonLd } from "@/components/JsonLd";
+import { fetchPlanPricing } from "@/lib/bff";
 import "./globals.css";
 
 const lora = Lora({
@@ -59,7 +61,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Live boost pricing for the site-wide BoostProvider modal — see
+  // docs/plans/admin-manage-plans-pricing.md. Falls back to the bundled defaults rather than
+  // failing the whole app's render if the BFF is briefly unreachable; PaymentsService still
+  // re-reads the real row server-side at checkout regardless of what this fallback shows.
+  const boostPriceSettings = await fetchPlanPricing()
+    .then((pricing) => pricing.boost)
+    .catch(() => DEFAULT_BOOST_PRICE_SETTINGS);
+
   return (
     <html lang="en" className={`${lora.variable} ${manrope.variable}`} suppressHydrationWarning>
       <head>
@@ -108,7 +118,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <AuthGateProvider>
             <BuyCreditsProvider>
-              <BoostProvider>
+              <BoostProvider boostPriceSettings={boostPriceSettings}>
                 <SignupConversionTracker />
                 <ProfileCompletionBanner />
                 <ProfileCompletionDialog />

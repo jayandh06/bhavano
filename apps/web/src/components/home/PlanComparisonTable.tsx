@@ -1,12 +1,8 @@
 import Link from "next/link";
 import { HorizontalScroller } from "./HorizontalScroller";
 import type { ContactRevealSettingsDto, UserProfileDto } from "@bhavano/types";
+import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import { Icon } from "./Icon";
-import {
-  FREE_LISTING_SLOTS,
-  PRO_LISTING_SLOTS_PER_UNIT,
-  SELLER_SLOT_PACK_TOTAL,
-} from "@bhavano/types/listingSlots";
 
 type Cell = string | { type: "yes" } | { type: "no" } | { type: "dash" };
 
@@ -23,45 +19,59 @@ function CellContent({ value }: { value: Cell }) {
   return <span className="text-muted text-[13px]">—</span>;
 }
 
-const SELLER_ROWS: { label: string; free: Cell; pack: Cell; pro: Cell }[] = [
-  { label: "Price", free: "₹0", pack: "₹149 / month", pro: "₹499 / month" },
-  {
-    label: "Active listings at once",
-    free: String(FREE_LISTING_SLOTS),
-    pack: String(SELLER_SLOT_PACK_TOTAL),
-    pro: `${PRO_LISTING_SLOTS_PER_UNIT} (+20 per extra ₹499)`,
-  },
-  {
-    label: "Slots free when ads expire or you remove them",
-    free: { type: "yes" },
-    pack: { type: "yes" },
-    pro: { type: "yes" },
-  },
-  { label: "Public storefront page", free: "Basic", pack: "Basic", pro: "Branded + Pro badge" },
-  { label: "Elevated video (3 × 120s)", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
-  { label: "Monthly 7-day boost credit", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
-  {
-    label: "Pay-per-listing boost (Featured)",
-    free: "Optional",
-    pack: "Optional",
-    pro: "Optional (+ credit)",
-  },
-  {
-    label: "Best for",
-    free: "Casual sellers",
-    pack: "6–10 live ads",
-    pro: "Agents & brokers",
-  },
-];
+/** Built from live settings (not literal copy) so this table can never drift from what
+ * SubscribeButton actually charges — see docs/plans/admin-manage-plans-pricing.md. */
+function sellerRows(settings: SubscriptionPlanSettings): { label: string; free: Cell; pack: Cell; pro: Cell }[] {
+  return [
+    {
+      label: "Price",
+      free: "₹0",
+      pack: `₹${settings.sellerSlotPackMonthlyPrice} / month`,
+      pro: `₹${settings.agentProMonthlyPricePerUnit} / month`,
+    },
+    {
+      label: "Active listings at once",
+      free: String(settings.freeListingSlots),
+      pack: String(settings.sellerSlotPackTotalSlots),
+      pro: `${settings.proListingSlotsPerUnit} (+${settings.proListingSlotsPerUnit} per extra ₹${settings.agentProMonthlyPricePerUnit})`,
+    },
+    {
+      label: "Slots free when ads expire or you remove them",
+      free: { type: "yes" },
+      pack: { type: "yes" },
+      pro: { type: "yes" },
+    },
+    { label: "Public storefront page", free: "Basic", pack: "Basic", pro: "Branded + Pro badge" },
+    { label: "Elevated video (3 × 120s)", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
+    { label: "Monthly 7-day boost credit", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
+    {
+      label: "Pay-per-listing boost (Featured)",
+      free: "Optional",
+      pack: "Optional",
+      pro: "Optional (+ credit)",
+    },
+    {
+      label: "Best for",
+      free: "Casual sellers",
+      pack: "6–10 live ads",
+      pro: "Agents & brokers",
+    },
+  ];
+}
 
-const BUYER_ROWS: { label: string; plus: Cell }[] = [
-  { label: "Price", plus: "₹99 / mo · ₹549 / 6 mo · ₹899 / yr" },
-  { label: "Early-access saved-search alerts", plus: { type: "yes" } },
-  { label: "Verified Buyer badge on messages", plus: { type: "yes" } },
-  { label: "Priority in sellers' inboxes", plus: { type: "yes" } },
-  { label: "Extra listing slots for selling", plus: { type: "no" } },
-  { label: "Best for", plus: "Buyers & renters" },
-];
+function buyerRows(settings: SubscriptionPlanSettings): { label: string; plus: Cell }[] {
+  return [
+    {
+      label: "Price",
+      plus: `₹${settings.buyerPremiumPrice1Month} / mo · ₹${settings.buyerPremiumPrice6Months} / 6 mo · ₹${settings.buyerPremiumPrice12Months} / yr`,
+    },
+    { label: "Early-access saved-search alerts", plus: { type: "yes" } },
+    { label: "Verified Buyer badge on messages", plus: { type: "yes" } },
+    { label: "Priority in sellers' inboxes", plus: { type: "yes" } },
+    { label: "Extra listing slots for selling", plus: { type: "no" } },
+    { label: "Best for", plus: "Buyers & renters" },
+  ];
+}
 
 function currentSellerPlan(profile: UserProfileDto | null): "free" | "pack" | "pro" | null {
   if (!profile) return null;
@@ -78,13 +88,17 @@ function headerClass(isCurrent: boolean): string {
 export function PlanComparisonTable({
   profile,
   contactRevealSettings,
+  planPricing,
 }: {
   profile: UserProfileDto | null;
   contactRevealSettings: ContactRevealSettingsDto;
+  planPricing: SubscriptionPlanSettings;
 }) {
   const sellerPlan = currentSellerPlan(profile);
   const isBuyerPlus =
     profile?.premiumUntil && new Date(profile.premiumUntil).getTime() > Date.now();
+  const sellerRowsData = sellerRows(planPricing);
+  const buyerRowsData = buyerRows(planPricing);
 
   return (
     <div className="flex flex-col gap-8">
@@ -120,7 +134,7 @@ export function PlanComparisonTable({
               </tr>
             </thead>
             <tbody>
-              {SELLER_ROWS.map((row) => (
+              {sellerRowsData.map((row) => (
                 <tr key={row.label} className="border-b border-border last:border-0">
                   <td className="p-3 text-[12px] text-muted align-top">{row.label}</td>
                   <td className="p-3 align-top">
@@ -162,7 +176,7 @@ export function PlanComparisonTable({
               </tr>
             </thead>
             <tbody>
-              {BUYER_ROWS.map((row) => (
+              {buyerRowsData.map((row) => (
                 <tr key={row.label} className="border-b border-border last:border-0">
                   <td className="p-3 text-[12px] text-muted align-top">{row.label}</td>
                   <td className="p-3 align-top">

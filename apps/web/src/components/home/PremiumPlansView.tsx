@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { ContactRevealSettingsDto, UserProfileDto } from "@bhavano/types";
+import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import { PlanComparisonTable } from "@/components/home/PlanComparisonTable";
 import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { SubscribeButton } from "@/components/home/SubscribeButton";
-import { PRO_LISTING_SLOTS_PER_UNIT } from "@bhavano/types/listingSlots";
 import { Icon } from "./Icon";
 
 type Tab = "compare" | "subscribe";
@@ -14,9 +14,11 @@ type Tab = "compare" | "subscribe";
 export function PremiumPlansView({
   profile,
   contactRevealSettings,
+  planPricing,
 }: {
   profile: UserProfileDto;
   contactRevealSettings: ContactRevealSettingsDto;
+  planPricing: SubscriptionPlanSettings;
 }) {
   const [tab, setTab] = useState<Tab>("compare");
 
@@ -26,7 +28,7 @@ export function PremiumPlansView({
   const isPremium = !!premiumUntil && premiumUntil.getTime() > Date.now();
   const isAgentPro = !!agentProUntil && agentProUntil.getTime() > Date.now();
   const isSellerPack = !!sellerSlotPackUntil && sellerSlotPackUntil.getTime() > Date.now();
-  const proSlots = (profile.agentProUnits || 1) * PRO_LISTING_SLOTS_PER_UNIT;
+  const proSlots = (profile.agentProUnits || 1) * planPricing.proListingSlotsPerUnit;
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,7 +54,11 @@ export function PremiumPlansView({
       </div>
 
       {tab === "compare" ? (
-        <PlanComparisonTable profile={profile} contactRevealSettings={contactRevealSettings} />
+        <PlanComparisonTable
+          profile={profile}
+          contactRevealSettings={contactRevealSettings}
+          planPricing={planPricing}
+        />
       ) : (
         <div className="flex flex-col gap-6">
           <ListingSlotMeter profile={profile} />
@@ -62,7 +68,9 @@ export function PremiumPlansView({
               <div className="font-lora text-xl font-bold text-text">Free seller</div>
               <span className="text-[13px] font-bold text-green">₹0</span>
             </div>
-            <p className="text-[13px] text-muted mb-3 m-0">5 active listings — included for every account.</p>
+            <p className="text-[13px] text-muted mb-3 m-0">
+              {planPricing.freeListingSlots} active listings — included for every account.
+            </p>
             <Link
               href="/post"
               className="inline-block text-[13px] font-bold text-green border-[1.5px] border-border rounded-[10px] px-4 py-2.5 bg-surface-alt"
@@ -89,7 +97,7 @@ export function PremiumPlansView({
                 </Link>
               </div>
             ) : (
-              <SubscribeButton tier="buyerPremium" />
+              <SubscribeButton tier="buyerPremium" planPricing={planPricing} />
             )}
           </section>
 
@@ -98,14 +106,15 @@ export function PremiumPlansView({
             <p className="text-[13px] text-muted mb-4 m-0">For individual sellers — more active ads at once.</p>
             <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
               <li>
-                <strong>10 active listings</strong> at once (5 free + 5 extra)
+                <strong>{planPricing.sellerSlotPackTotalSlots} active listings</strong> at once (
+                {planPricing.freeListingSlots} free + {planPricing.sellerSlotPackTotalSlots - planPricing.freeListingSlots} extra)
               </li>
               <li>Slots free up when an ad expires or you remove it</li>
             </ul>
             {isSellerPack && sellerSlotPackUntil ? (
               <p className="text-[13px] font-bold text-green m-0">Active until {sellerSlotPackUntil.toLocaleDateString()}</p>
             ) : (
-              <SubscribeButton tier="sellerSlotPack" />
+              <SubscribeButton tier="sellerSlotPack" planPricing={planPricing} />
             )}
           </section>
 
@@ -114,7 +123,8 @@ export function PremiumPlansView({
             <p className="text-[13px] text-muted mb-4 m-0">For agents &amp; brokers — scale inventory and brand.</p>
             <ul className="text-[13px] text-text-soft m-0 mb-4 pl-5 list-disc flex flex-col gap-1">
               <li>
-                <strong>{PRO_LISTING_SLOTS_PER_UNIT} active listings</strong> per ₹499/month (each extra ₹499 adds +20)
+                <strong>{planPricing.proListingSlotsPerUnit} active listings</strong> per ₹{planPricing.agentProMonthlyPricePerUnit}/month
+                (each extra ₹{planPricing.agentProMonthlyPricePerUnit} adds +{planPricing.proListingSlotsPerUnit})
               </li>
               <li>Public storefront with Bhavano Pro badge</li>
               <li>Elevated video limits when posting</li>
@@ -130,7 +140,7 @@ export function PremiumPlansView({
                 </Link>
               </div>
             ) : (
-              <SubscribeButton tier="agentPro" />
+              <SubscribeButton tier="agentPro" planPricing={planPricing} />
             )}
           </section>
 

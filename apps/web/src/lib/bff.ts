@@ -1,6 +1,8 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
+import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type {
   AgentStorefrontDto,
   Area,
@@ -222,6 +224,15 @@ export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<A
 // ListingCardDto/ListingDetailDto instead (see those types' own doc comments).
 export function fetchContactRevealSettings(): Promise<ContactRevealSettingsDto> {
   return bffFetch<ContactRevealSettingsDto>("/listings/contact-reveal-settings", { cache: "no-store" });
+}
+
+/** Public — current boost/subscription pricing, admin-editable (see
+ * docs/plans/admin-manage-plans-pricing.md). Read live everywhere a price is shown (the boost
+ * picker, the Bhavano Plus subscribe button, the plan comparison table) rather than the bundled
+ * `DEFAULT_*` constants, so an admin's edit takes effect immediately without a redeploy —
+ * checkout (PaymentsService) already re-reads the same rows server-side, this is purely display. */
+export function fetchPlanPricing(): Promise<{ boost: BoostPriceSettings; subscription: SubscriptionPlanSettings }> {
+  return bffFetch("/plans/pricing", { cache: "no-store" });
 }
 
 /** app/[city]/[[...rest]]/page.tsx's page component calls this for the full listing — its
