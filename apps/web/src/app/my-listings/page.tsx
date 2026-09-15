@@ -153,7 +153,7 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
           </div>
         )}
       </div>
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex flex-wrap items-center gap-2.5 shrink-0">
         {canRenew && <RenewButton listingId={item.id} />}
         {item.status === "active" && !item.isExpired && !item.isBoosted && (
           <BoostButton listingId={item.id} category={item.category} />

@@ -126,36 +126,43 @@ export default function MyListingsScreen() {
                   </Text>
                 )}
 
-                <View style={styles.actionsRow}>
-                  {canRenew && (
+                <View style={styles.actionsWrapper}>
+                  {/* Promotional/conditional pills — however many of these accumulate (Renew,
+                      Boost, Instant Alerts, and whatever's added later), they wrap on their own
+                      line and never push the two core nav icons below out of bounds. */}
+                  <View style={styles.actionsRow}>
+                    {canRenew && (
+                      <Pressable
+                        onPress={() => onRenew(item.id)}
+                        disabled={renewing}
+                        style={[styles.outlineButton, { borderColor: colors.green, opacity: renewing ? 0.6 : 1 }]}
+                      >
+                        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>
+                          {renewing ? "Renewing…" : "Renew"}
+                        </Text>
+                      </Pressable>
+                    )}
+                    {item.status === "active" && !item.isExpired && !item.isBoosted && accessToken && (
+                      <BoostButton listingId={item.id} category={item.category} accessToken={accessToken} />
+                    )}
+                    {item.status === "active" && !item.isExpired && !item.hasInstantAlerts && accessToken && (
+                      <InstantAlertsButton listingId={item.id} accessToken={accessToken} />
+                    )}
+                  </View>
+                  <View style={styles.navRow}>
                     <Pressable
-                      onPress={() => onRenew(item.id)}
-                      disabled={renewing}
-                      style={[styles.outlineButton, { borderColor: colors.green, opacity: renewing ? 0.6 : 1 }]}
+                      onPress={() => router.push(`/listing/${item.id}`)}
+                      style={[styles.iconButton, { borderColor: colors.green }]}
                     >
-                      <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>
-                        {renewing ? "Renewing…" : "Renew"}
-                      </Text>
+                      <Icon name="eye" size={15} color={colors.green} />
                     </Pressable>
-                  )}
-                  {item.status === "active" && !item.isExpired && !item.isBoosted && accessToken && (
-                    <BoostButton listingId={item.id} category={item.category} accessToken={accessToken} />
-                  )}
-                  {item.status === "active" && !item.isExpired && !item.hasInstantAlerts && accessToken && (
-                    <InstantAlertsButton listingId={item.id} accessToken={accessToken} />
-                  )}
-                  <Pressable
-                    onPress={() => router.push(`/listing/${item.id}`)}
-                    style={[styles.iconButton, { borderColor: colors.green }]}
-                  >
-                    <Icon name="eye" size={15} color={colors.green} />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => router.push(`/my-listings/${item.id}/edit`)}
-                    style={[styles.iconButton, { backgroundColor: colors.green, borderColor: colors.green }]}
-                  >
-                    <Icon name="edit" size={15} color={colors.onGreen} />
-                  </Pressable>
+                    <Pressable
+                      onPress={() => router.push(`/my-listings/${item.id}/edit`)}
+                      style={[styles.iconButton, { backgroundColor: colors.green, borderColor: colors.green }]}
+                    >
+                      <Icon name="edit" size={15} color={colors.onGreen} />
+                    </Pressable>
+                  </View>
                 </View>
                 {renewError?.id === item.id && (
                   <Text style={{ color: "#c0554b", fontSize: 12, marginTop: 6 }}>{renewError.message}</Text>
@@ -182,7 +189,12 @@ const styles = StyleSheet.create({
   badge: { borderWidth: 1, borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
   metaRow: { flexDirection: "row", gap: 12, marginTop: 6, alignItems: "center" },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  actionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 12 },
+  // Two rows: the top one wraps to fit however many conditional promo pills apply, the bottom
+  // one is always exactly the two core nav icons — kept separate so a wide label (e.g. "Get
+  // Instant Alerts") wrapping the top row can never crowd Edit/View out of the card's bounds.
+  actionsWrapper: { marginTop: 12, gap: 8 },
+  actionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
+  navRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   outlineButton: { borderWidth: 1.5, borderRadius: 8, paddingVertical: 7, paddingHorizontal: 12 },
   iconButton: { borderWidth: 1.5, borderRadius: 8, width: 32, height: 32, alignItems: "center", justifyContent: "center" },
 });
