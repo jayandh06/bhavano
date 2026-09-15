@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type {
   AdminUpdateListingInput,
   ContactRevealSettingsDto,
@@ -23,9 +25,11 @@ import {
   setCoverPhoto,
   setListingStatus,
   setReviewed,
+  updateBoostPricingSettings,
   updateContactRevealSettings,
   updateListingAsAdmin,
   updateRateLimitSettings,
+  updateSubscriptionPlanSettings,
 } from "@/lib/bff";
 
 export type ActionResult = { success: true } | { success: false; error: string };
@@ -153,6 +157,28 @@ export async function updateContactRevealSettingsAction(input: ContactRevealSett
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update contact-reveal settings" };
+  }
+}
+
+export async function updateBoostPricingAction(input: BoostPriceSettings): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateBoostPricingSettings(accessToken, input);
+    revalidatePath("/settings/plans");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update boost pricing" };
+  }
+}
+
+export async function updateSubscriptionPlanAction(input: SubscriptionPlanSettings): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateSubscriptionPlanSettings(accessToken, input);
+    revalidatePath("/settings/plans");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update subscription plans" };
   }
 }
 

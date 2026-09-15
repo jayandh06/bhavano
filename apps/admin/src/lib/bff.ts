@@ -1,4 +1,6 @@
 import "server-only";
+import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
@@ -444,6 +446,28 @@ export function updateContactRevealSettings(
   input: ContactRevealSettingsDto,
 ): Promise<ContactRevealSettingsDto> {
   return authedBffFetch(accessToken, "/admin/contact-reveal-settings", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function fetchBoostPricingSettings(accessToken: string): Promise<BoostPriceSettings> {
+  return authedBffFetch(accessToken, "/admin/boost-pricing", { cache: "no-store" });
+}
+
+export function updateBoostPricingSettings(
+  accessToken: string,
+  input: BoostPriceSettings,
+): Promise<BoostPriceSettings> {
+  return authedBffFetch(accessToken, "/admin/boost-pricing", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function fetchSubscriptionPlanSettings(accessToken: string): Promise<SubscriptionPlanSettings> {
+  return authedBffFetch(accessToken, "/admin/subscription-plans", { cache: "no-store" });
+}
+
+export function updateSubscriptionPlanSettings(
+  accessToken: string,
+  input: SubscriptionPlanSettings,
+): Promise<SubscriptionPlanSettings> {
+  return authedBffFetch(accessToken, "/admin/subscription-plans", { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export interface ListDiscountCodesQuery {

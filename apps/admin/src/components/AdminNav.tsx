@@ -14,6 +14,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/logins", label: "Recent logins" },
   { href: "/users", label: "Users" },
   { href: "/page-visits", label: "Page visits" },
+  { href: "/settings/plans", label: "Plans" },
   { href: "/settings/rate-limits", label: "Rate limits" },
   { href: "/settings/contact-reveal", label: "Contact reveal" },
 ];
