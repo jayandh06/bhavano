@@ -983,8 +983,12 @@ export function PostAdWizard({
                 // has its own equivalent Play Billing requirement, but enforcement/timeline
                 // differs — native checkout stays for now; see
                 // docs/plans/monetization-boosted-listings-premium-tiers.md's own update note.
+                // `?openBoost=<id>` deep-links straight into the boost dialog once there
+                // (AutoOpenPurchaseModal.tsx on web).
                 onPress={() =>
-                  Platform.OS === "ios" ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`) : setBoostOpen(true)
+                  Platform.OS === "ios"
+                    ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings?openBoost=${createdListing.id}`)
+                    : setBoostOpen(true)
                 }
                 style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
               >
@@ -1019,7 +1023,9 @@ export function PostAdWizard({
               <Pressable
                 // Same iOS/Android split as the Boost button just above — see its own comment.
                 onPress={() =>
-                  Platform.OS === "ios" ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`) : setInstantAlertsOpen(true)
+                  Platform.OS === "ios"
+                    ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings?openInstantAlerts=${createdListing.id}`)
+                    : setInstantAlertsOpen(true)
                 }
                 style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
               >

@@ -12,8 +12,11 @@ const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
  * iOS/Android split PostAdWizard's own success-screen boost button does: a Razorpay-paid boost is
  * exactly the "digital promotion of a listing" Apple's Guideline 3.1.1 targets, so iOS opens the
  * website instead of the native checkout — see docs/plans/ios-app-store-release.md's "In-app
- * purchases" note. Not shared with PostAdWizard's own button (that one sits inside a differently
- * styled celebration card, not a plain pill) — if this branch ever needs to change, check both. */
+ * purchases" note. `?openBoost=<id>` deep-links straight into the boost dialog once there
+ * (AutoOpenPurchaseModal.tsx on web) instead of dropping the seller on the plain listings page to
+ * re-find the ad and tap the button again. Not shared with PostAdWizard's own button (that one
+ * sits inside a differently styled celebration card, not a plain pill) — if this branch ever
+ * needs to change, check both. */
 export function BoostButton({
   listingId,
   category,
@@ -39,7 +42,9 @@ export function BoostButton({
     <>
       <Pressable
         onPress={() =>
-          Platform.OS === "ios" ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`) : setBoostOpen(true)
+          Platform.OS === "ios"
+            ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings?openBoost=${listingId}`)
+            : setBoostOpen(true)
         }
         style={[styles.button, { borderColor: colors.green }]}
       >

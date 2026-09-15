@@ -11,7 +11,9 @@ const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
  * BoostButton.tsx sibling exactly, including the same iOS/Android split: a Razorpay-paid feature
  * unlock is the same "digital promotion of a listing" category Apple's Guideline 3.1.1 targets
  * as boost, so iOS opens the website instead of the native checkout — see
- * docs/plans/ios-app-store-release.md's "In-app purchases" note. */
+ * docs/plans/ios-app-store-release.md's "In-app purchases" note. `?openInstantAlerts=<id>`
+ * deep-links straight into the dialog once there (AutoOpenPurchaseModal.tsx on web), same as
+ * BoostButton's `?openBoost`. */
 export function InstantAlertsButton({
   listingId,
   accessToken,
@@ -35,7 +37,9 @@ export function InstantAlertsButton({
     <>
       <Pressable
         onPress={() =>
-          Platform.OS === "ios" ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings`) : setModalOpen(true)
+          Platform.OS === "ios"
+            ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings?openInstantAlerts=${listingId}`)
+            : setModalOpen(true)
         }
         style={[styles.button, { borderColor: colors.green }]}
       >

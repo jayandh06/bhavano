@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { BoostButton } from "@/components/home/BoostButton";
 import { InstantAlertsButton } from "@/components/home/InstantAlertsButton";
+import { AutoOpenPurchaseModal } from "@/components/home/AutoOpenPurchaseModal";
 import { RenewButton } from "@/components/home/RenewButton";
 import { VideoManager } from "@/components/home/VideoManager";
 import { daysUntil } from "@/lib/listingExpiry";
@@ -97,6 +98,7 @@ async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; 
 
   return (
     <div className="flex flex-col gap-3">
+      <AutoOpenPurchaseModal listings={listings.map((l) => ({ id: l.id, category: l.category }))} />
       <ListingSlotMeter profile={profile} />
       {activeListings.map((item) => (
         <MyListingRow key={item.id} item={item} accessToken={accessToken} />
