@@ -220,6 +220,15 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
           adId: resolved.adId,
           landingPath: request.nextUrl.pathname,
           ip: clientIp(request),
+          userAgent: request.headers.get("user-agent") ?? undefined,
+          // Set by apps/mobile's appWebUrl() helper on every bhavano.com link the app opens in
+          // its system browser (Boost/Instant Alerts checkout, Terms/Privacy, etc.) — the only
+          // way this middleware can tell "the app's browser" apart from a person's own mobile
+          // browser, since general in-app usage (browsing listings, messaging) never reaches this
+          // web app at all. First-touch only, same as everything else in this block: a session
+          // that started outside the app keeps reading as whatever device type its own User-Agent
+          // implies even if the app later reuses that session's cookies.
+          fromApp: request.nextUrl.searchParams.get("app") === "1",
         }),
       }).catch(() => {
         // Best-effort — a dropped visit log should never affect the page request itself.

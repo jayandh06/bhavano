@@ -1,4 +1,4 @@
-import { IsIP, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { IsBoolean, IsIP, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 export class RecordVisitDto {
   @IsString()
@@ -54,4 +54,18 @@ export class RecordVisitDto {
   @IsOptional()
   @IsIP()
   ip?: string;
+
+  /** Used only in-flight to derive `Visit.deviceType` (see deviceTypeFromUserAgent) — never
+   * persisted raw, same "derive once, discard the input" precedent as the IP-derived
+   * ipCity/ipRegion/ipCountry fields below it on the Visit model. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  userAgent?: string;
+
+  /** True when this request came from the mobile app's own system-browser opens (see
+   * apps/mobile/src/lib/appWebUrl.ts) — overrides whatever `userAgent` would otherwise imply. */
+  @IsOptional()
+  @IsBoolean()
+  fromApp?: boolean;
 }

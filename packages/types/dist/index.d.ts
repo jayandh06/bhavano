@@ -542,6 +542,8 @@ export interface LoginEventsPage {
 /** One `Visit` row (one browser session) flattened for the admin page-visits screen — the user
  * fields are joined in so a session that later signed in shows who it was. `ipCity`/`ipRegion`/
  * `ipCountry` are the best-effort GeoIP guess stored at write time, never a `City` FK. */
+/** Mirrors the BFF's DEVICE_TYPES (apps/bff/src/analytics/device-type.ts). */
+export type DeviceType = "desktop" | "mobile" | "tablet" | "mobile_app";
 export interface PageVisitDto {
     id: string;
     /** The session cookie id (`bhavano_sid`) — also how `PageView` rows are keyed, so this is what
@@ -564,6 +566,8 @@ export interface PageVisitDto {
     ipCity: string | null;
     ipRegion: string | null;
     ipCountry: string | null;
+    /** Null only for rows written before this field existed. */
+    deviceType: DeviceType | null;
     /** Count of `PageView` rows logged for this session — see PageView's schema comment for the
      * "best effort, not literally every navigation" caveat behind this number. */
     pageViewCount: number;
@@ -615,6 +619,7 @@ export interface VisitDto {
     ipCity: string | null;
     ipRegion: string | null;
     ipCountry: string | null;
+    deviceType: DeviceType | null;
     createdAt: string;
     pageViewCount: number;
 }

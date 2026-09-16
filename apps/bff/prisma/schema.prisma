@@ -668,6 +668,15 @@ model Visit {
   ipCity      String?
   ipRegion    String?
   ipCountry   String?
+  /** "desktop" / "mobile" / "tablet" / "mobile_app", derived once at write time from the
+   * request's User-Agent header (see `deviceTypeFromUserAgent` in analytics.service.ts) — only
+   * the coarse label is kept, not the raw header, same "derive once, discard the raw input"
+   * precedent as ipCity/ipRegion/ipCountry above. "mobile_app" isn't a UA distinction at all: the
+   * mobile app's system-browser opens (Boost/Instant Alerts checkout, Terms/Privacy, etc. — see
+   * apps/mobile/src/lib/appWebUrl.ts) tag themselves with an `app=1` query param that overrides
+   * whatever the UA would otherwise imply, since general in-app usage never reaches this table to
+   * begin with (it talks to the BFF directly, no page navigation involved). */
+  deviceType  String?
   createdAt   DateTime @default(now())
 
   @@index([userId])

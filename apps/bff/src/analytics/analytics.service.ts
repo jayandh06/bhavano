@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
 import { RecordPageViewDto } from './dto/record-pageview.dto';
 import { GeoIpService } from './geoip.service';
+import { deviceTypeFromUserAgent } from './device-type';
 
 @Injectable()
 export class AnalyticsService {
@@ -35,6 +36,7 @@ export class AnalyticsService {
         ipCity: geo?.city ?? null,
         ipRegion: geo?.region ?? null,
         ipCountry: geo?.country ?? null,
+        deviceType: deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false),
       },
     });
   }
