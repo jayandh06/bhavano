@@ -62,7 +62,7 @@ function resolveSource(request: NextRequest): ResolvedSource {
   }
 
   const refererHost = safeHostname(request.headers.get("referer"));
-  if (refererHost && !isOwnHost(refererHost, request.nextUrl.hostname)) {
+  if (refererHost && !isOwnHost(refererHost, request)) {
     return { source: refererHost, medium: "referral", ...googleAdsParams };
   }
   return { source: "direct", ...googleAdsParams };
@@ -71,18 +71,33 @@ function resolveSource(request: NextRequest): ResolvedSource {
 /** Whether a Referer host is really us, so internal navigation isn't logged as somebody else's
  * referral.
  *
- * Comparing against `request.nextUrl.hostname` alone wasn't enough: the site answers on both the
- * apex and the `www.` name, so moving between them made the app its own top referrer — 28
- * sessions in one day as `www.bhavano.com`/`referral`, and 347 in a week as `bhavano.com`, all of
- * them inflating referral and hiding whatever those visitors actually arrived from.
+ * This used to compare against `request.nextUrl.hostname` alone, and that never matched in
+ * production: behind Caddy, `nextUrl` carries the internal origin the container was reached on,
+ * not the public name. So *every* internal navigation was logged as a referral — which is why
+ * `www.bhavano.com` itself showed up as a referral source 28 times in a day (an apex/www mismatch
+ * could never produce that; only a comparison against something that is neither can), alongside
+ * 347 sessions in a week as `bhavano.com`. Both were inflating referral and hiding what those
+ * visitors actually arrived from.
  *
- * Both sides are compared with a leading `www.` stripped rather than against a hardcoded domain,
- * so this keeps working on localhost and any preview/staging host without a config entry. A
- * different subdomain (admin.bhavano.com, say) still counts as a referral, which is right — it's
- * a separate property, not another door into this one. */
-function isOwnHost(refererHost: string, requestHost: string): boolean {
-  const bare = (host: string) => host.toLowerCase().replace(/^www\./, "");
-  return bare(refererHost) === bare(requestHost);
+ * So the public host is taken from the headers that actually carry it, with `nextUrl` kept as a
+ * last resort for the dev server. `x-forwarded-host` before `host` because a proxy that rewrites
+ * Host records the original there. Hosts are compared with a leading `www.` stripped, so the apex
+ * and www names count as each other — and with no hardcoded domain, so this keeps working on
+ * localhost and any preview host. A different subdomain (admin.bhavano.com, say) is still a
+ * referral, which is right: separate property, not another door into this one.
+ *
+ * These headers are client-supplied and could be spoofed, which is harmless here: the only
+ * consequence is recording "direct" instead of a referral for that one session. Nothing about
+ * access, routing or rendering is decided from this. */
+function isOwnHost(refererHost: string, request: NextRequest): boolean {
+  const bare = (host: string) => host.toLowerCase().replace(/:\d+$/, "").replace(/^www\./, "");
+  const candidates = [
+    request.headers.get("x-forwarded-host"),
+    request.headers.get("host"),
+    request.nextUrl.hostname,
+  ];
+  const referer = bare(refererHost);
+  return candidates.some((candidate) => candidate && bare(candidate) === referer);
 }
 
 /** The visitor's IP as Caddy saw it.
