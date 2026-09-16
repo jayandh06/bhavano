@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ActivityEventDto, VisitDto } from "@bhavano/types";
+import type { ActivityEventDto, DeviceType, VisitDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchUserActivity } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 import { DeleteUserPanel } from "@/components/DeleteUserPanel";
+
+const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
+  desktop: "Desktop",
+  mobile: "Mobile",
+  tablet: "Tablet",
+  mobile_app: "Mobile App",
+};
 
 const EVENT_ICONS: Record<ActivityEventDto["type"], string> = {
   login: "🔑",
@@ -115,7 +122,10 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 13.5 }}>{formatSource(visit.source, visit.medium, visit.campaign)}</div>
+                  <div style={{ fontSize: 13.5 }}>
+                    {formatSource(visit.source, visit.medium, visit.campaign)}
+                    {visit.deviceType && ` · ${DEVICE_TYPE_LABELS[visit.deviceType]}`}
+                  </div>
                   {visit.landingPath && (
                     <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
                       Landed on {visit.landingPath}

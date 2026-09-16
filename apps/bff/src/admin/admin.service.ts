@@ -8,6 +8,7 @@ import type {
   AdminUpdateListingInput,
   AdminUsersPage,
   ContactRevealSettingsDto,
+  DeviceType,
   DiscountCodeDto,
   ListingBoostsPage,
   ListingDetailDto,
@@ -370,7 +371,7 @@ export class AdminService {
    * strings (the admin page turns its IST date pickers into `+05:30` bounds), so a plain
    * `new Date()` here lands on the right instant. */
   async listPageVisits(query: ListPageVisitsDto): Promise<PageVisitsPage> {
-    const { offset, from, to, userId, identity, sort, limit } = query;
+    const { offset, from, to, userId, identity, deviceType, sort, limit } = query;
 
     const where: Prisma.VisitWhereInput = {
       ...(from || to
@@ -383,6 +384,7 @@ export class AdminService {
           : userId
             ? { userId }
             : {}),
+      ...(deviceType ? { deviceType } : {}),
     };
 
     for (const [field, raw] of [
@@ -446,6 +448,7 @@ export class AdminService {
         ipCity: row.ipCity,
         ipRegion: row.ipRegion,
         ipCountry: row.ipCountry,
+        deviceType: row.deviceType as DeviceType | null,
         pageViewCount: pageViewCountBySessionId.get(row.sessionId) ?? 0,
       })),
       total,
@@ -489,6 +492,7 @@ export class AdminService {
         ipCity: visit.ipCity,
         ipRegion: visit.ipRegion,
         ipCountry: visit.ipCountry,
+        deviceType: visit.deviceType as DeviceType | null,
         pageViewCount,
       },
       pageViews: pageViews.map((p) => ({ path: p.path, createdAt: p.createdAt.toISOString() })),
@@ -803,6 +807,7 @@ export class AdminService {
         ipCity: v.ipCity,
         ipRegion: v.ipRegion,
         ipCountry: v.ipCountry,
+        deviceType: v.deviceType as DeviceType | null,
         createdAt: v.createdAt.toISOString(),
         pageViewCount: visitPageViewCountBySessionId.get(v.sessionId) ?? 0,
       })),

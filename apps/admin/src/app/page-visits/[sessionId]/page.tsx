@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { DeviceType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchSessionTrail } from "@/lib/bff";
 import { formatDateTime } from "@/lib/formatDateTime";
+
+const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
+  desktop: "Desktop",
+  mobile: "Mobile",
+  tablet: "Tablet",
+  mobile_app: "Mobile App",
+};
 
 /** Renders a visit/acquisition source the same way the user-activity page does — e.g.
  * "google · cpc · summer_sale" or "direct". */
@@ -58,6 +66,7 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
           </div>
           <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
             Started {formatDateTime(visit.createdAt)}
+            {visit.deviceType ? ` · ${DEVICE_TYPE_LABELS[visit.deviceType]}` : ""}
             {ipLocation ? ` · ${ipLocation} (from IP, approximate)` : ""}
             {visit.ip ? ` · ${visit.ip}` : ""}
           </div>

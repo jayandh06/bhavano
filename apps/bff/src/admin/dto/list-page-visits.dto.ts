@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { DEVICE_TYPES } from '../../analytics/device-type';
 
 const PAGE_VISIT_SORT_VALUES = [
   'createdAt_desc',
@@ -56,6 +57,10 @@ export class ListPageVisitsDto {
   @IsOptional()
   @IsIn(PAGE_VISIT_IDENTITY_VALUES)
   identity?: PageVisitIdentity;
+
+  @IsOptional()
+  @IsIn(DEVICE_TYPES)
+  deviceType?: (typeof DEVICE_TYPES)[number];
 
   @IsOptional()
   @IsString()

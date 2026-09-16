@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { DeviceType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminPageVisitIdentity, AdminPageVisitSort, fetchPageVisits } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
@@ -22,6 +23,21 @@ const IDENTITY_OPTIONS: { value: AdminPageVisitIdentity; label: string }[] = [
   { value: "logged_in", label: "Logged in only" },
 ];
 
+const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
+  desktop: "Desktop",
+  mobile: "Mobile",
+  tablet: "Tablet",
+  mobile_app: "Mobile App",
+};
+
+const DEVICE_TYPE_OPTIONS: { value: DeviceType | "any"; label: string }[] = [
+  { value: "any", label: "All devices" },
+  { value: "desktop", label: "Desktop" },
+  { value: "mobile", label: "Mobile" },
+  { value: "tablet", label: "Tablet" },
+  { value: "mobile_app", label: "Mobile App" },
+];
+
 /** The date pickers are read as IST calendar days: an inclusive range from the start of the
  * "from" day to the last millisecond of the "to" day, both at +05:30. Kept as raw YYYY-MM-DD in
  * the URL (so the inputs round-trip); only widened to instants when calling the BFF. */
@@ -38,6 +54,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const userId = str(sp.userId);
   const userLabel = str(sp.userLabel);
   const identity = str(sp.identity) as AdminPageVisitIdentity | undefined;
+  const deviceTypeRaw = str(sp.deviceType);
+  const deviceType = deviceTypeRaw && deviceTypeRaw !== "any" ? (deviceTypeRaw as DeviceType) : undefined;
   const from = str(sp.from);
   const to = str(sp.to);
   const source = str(sp.source);
@@ -55,6 +73,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     to: istDayEnd(to),
     userId,
     identity,
+    deviceType,
     source,
     medium,
     ip,
@@ -119,6 +138,16 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             </SelectField>
           </Field>
 
+          <Field label="Device">
+            <SelectField name="deviceType" defaultValue={deviceType ?? "any"} style={selectStyle}>
+              {DEVICE_TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+
           <Field label="Source">
             <input name="source" defaultValue={source} placeholder="e.g. google" style={textInputStyle} />
           </Field>
@@ -173,7 +202,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
-                  {["Time (IST)", "User", "Pages", "Source", "Medium", "UTM campaign", "Campaign", "Ad group", "Landing path", "IP", "City", "Region", "Country"].map((h) => (
+                  {["Time (IST)", "User", "Pages", "Device", "Source", "Medium", "UTM campaign", "Campaign", "Ad group", "Landing path", "IP", "City", "Region", "Country"].map((h) => (
                     <th key={h} style={thStyle}>
                       {h}
                     </th>
@@ -198,6 +227,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                         {v.pageViewCount}
                       </Link>
                     </td>
+                    <td style={tdStyle}>{v.deviceType ? DEVICE_TYPE_LABELS[v.deviceType] : dash}</td>
                     <td style={tdStyle}>{v.source ?? dash}</td>
                     <td style={tdStyle}>{v.medium ?? dash}</td>
                     <td style={tdStyle}>{v.campaign ?? dash}</td>

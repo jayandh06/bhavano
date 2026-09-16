@@ -15,6 +15,7 @@ import type {
   ContactRevealSettingsDto,
   ConversationSummaryDto,
   CreateDiscountCodeInput,
+  DeviceType,
   DiscountCodeDto,
   FlagListingInput,
   ListingBoostsPage,
@@ -365,6 +366,7 @@ export interface PageVisitsQuery {
   userId?: string;
   /** `anonymous`/`logged_in` are mutually exclusive with `userId` in the admin page's UI. */
   identity?: AdminPageVisitIdentity;
+  deviceType?: DeviceType;
   source?: string;
   medium?: string;
   ip?: string;
