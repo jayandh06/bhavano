@@ -488,8 +488,14 @@ export function PostAdWizard({
       setToken(activeToken);
     }
     if (!activeToken) {
+      // Client state (loggedIn/token) said this session was valid, but the server-side fetch
+      // just now came back empty — an effectively expired/invalid session, not meaningfully
+      // different from never having logged in. Same recovery as line 474 above: the login
+      // dialog, resuming this same submit, rather than a dead-end error with no obvious next
+      // action on a screen that has no login button of its own.
       setPending(false);
-      setError("You must be logged in to post an ad.");
+      pushDataLayerEvent("post_login_required", { step });
+      requireLogin({ onSuccess: () => void onSubmit() });
       return;
     }
 
