@@ -15,6 +15,9 @@
  * rows — 99.85% — had one page view or fewer, with seven sibling PetalBot IPs in
  * 114.119.128.0/18 contributing ~1,000 sessions each across ~950 distinct landing paths.
  *
+ * See docs/plans/analytics-bot-filtering-and-attribution.md for the measurements behind this,
+ * the rejected alternatives, and what it deliberately gives up (crawl visibility).
+ *
  * Substring matching on a lowercased UA, deliberately: this is a display/analytics filter, not a
  * security control. A crawler that lies about its UA gets counted as a human, which is the same
  * outcome as before — no worse. Nothing about access is decided here.

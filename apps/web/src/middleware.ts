@@ -144,6 +144,9 @@ function safeHostname(url: string | null): string | undefined {
  *    already-have-both-cookies early return further down. See PageView's schema comment for why
  *    it's a separate row per view rather than an update to the Visit row from #2.
  *
+ * See docs/plans/analytics-bot-filtering-and-attribution.md for why each guard below exists,
+ * what it measured, and the one gap it accepts (client-side navigations go uncounted).
+ *
  * All four are skipped entirely for requests that aren't a person looking at a page — prefetches,
  * prerenders, crawlers, and background link-walkers. Those four guards run first, before any
  * cookie is set or anything is logged; each carries its own note on what it caught in production.

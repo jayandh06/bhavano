@@ -15,6 +15,9 @@ const PAGE_VIEW_DEDUPE_MS = 2_000;
 /**
  * Why every `Visit` write in this file is raw SQL rather than Prisma's typed API.
  *
+ * Full account, including the production measurements and the rejected alternatives, in
+ * docs/plans/analytics-bot-filtering-and-attribution.md.
+ *
  * Three callers write to the same `Visit` row, and they carry *independent* facts with different
  * lifetimes:
  *
