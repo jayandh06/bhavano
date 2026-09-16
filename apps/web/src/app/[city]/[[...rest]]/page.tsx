@@ -357,7 +357,10 @@ export async function generateMetadata({
       title: listing.title,
       description,
       alternates: { canonical: canonicalPath },
-      openGraph: { title: listing.title, description, images: listing.ogImage ? [listing.ogImage] : [] },
+      // No `images` key at all (rather than an explicit `[]`) when the listing has no photo —
+      // an empty array would suppress the site-wide default (opengraph-image.tsx) instead of
+      // falling back to it.
+      openGraph: { title: listing.title, description, ...(listing.ogImage ? { images: [listing.ogImage] } : {}) },
       twitter: { title: listing.title, description },
     };
   }
