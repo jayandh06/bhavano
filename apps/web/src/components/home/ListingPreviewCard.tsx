@@ -46,7 +46,12 @@ export function ListingPreviewCard({
   const specs = deriveCardSpecs(category, attributes);
 
   return (
-    <div className="bg-surface border border-border/70 rounded-2xl overflow-hidden flex flex-col">
+    // max-w matches ListingGrid's own column floor (minmax(min(340px,100%),1fr)) — without a cap
+    // this stretched to the full width of whatever wide container the wizard's other steps use
+    // (the details step's inputs go up to 720px), which no card in the real grid is ever that
+    // wide. mx-auto centers it in the leftover space rather than sitting flush left, since
+    // nothing else on this screen anchors it to an edge.
+    <div className="w-full max-w-[340px] mx-auto bg-surface border border-border/70 rounded-2xl overflow-hidden flex flex-col">
       <div className="relative h-[200px]">
         {/* eslint-disable-next-line @next/next/no-img-element -- local blob: preview, not a next/image-eligible remote URL */}
         <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
