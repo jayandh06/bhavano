@@ -11,6 +11,24 @@ import { deviceTypeFromUserAgent } from './device-type';
  * a person genuinely returning to a page still gets counted, long enough to absorb a burst. */
 const PAGE_VIEW_DEDUPE_MS = 2_000;
 
+/** Prisma's "unique constraint failed" (P2002).
+ *
+ * Every write in this file races a concurrent write for the same brand-new `sessionId`, because
+ * web's middleware fires `/analytics/pageview` and `/analytics/visit` at the same moment on a
+ * session's first request. `upsert` does not protect against that: it is a select-then-insert,
+ * not an `INSERT ... ON CONFLICT`, so both callers see "no row", both insert, and the loser throws
+ * — measured in production at 71% of `/analytics/visit` calls returning 500 (and taking the
+ * session's whole attribution with them, since web deliberately swallows the failure). So the
+ * writes below insert and then *handle the collision* instead, which is the only thing that
+ * actually works here.
+ *
+ * Duck-typed on `code` rather than an `instanceof PrismaClientKnownRequestError`: the error class
+ * moves between Prisma's export paths across major versions, and a wrong import would turn this
+ * into a silent "never matches" — the exact failure mode it exists to prevent. */
+function isUniqueConstraintError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
+}
+
 @Injectable()
 export class AnalyticsService {
   constructor(
@@ -34,6 +52,11 @@ export class AnalyticsService {
    * same session — this cannot overwrite another session's first-touch, and the middleware always
    * sends *some* source (the literal "direct" when there's nothing better), which is what makes
    * `source: null` a reliable marker for "written by a recovery path, not by a real landing".
+   *
+   * And the create has to survive losing an insert race to the backfill for that same new
+   * session, which is the *other* half of the same bug and was costing 71% of all attribution on
+   * its own — see isUniqueConstraintError. Filling after the collision is what makes the outcome
+   * independent of which of the two calls gets there first.
    */
   async recordVisit(dto: RecordVisitDto): Promise<void> {
     // Admin-analytics label only — see docs/plans/visit-ip-city-logging.md. Never used to decide
@@ -59,22 +82,35 @@ export class AnalyticsService {
       isBot: dto.userAgent ? isBotUserAgent(dto.userAgent) : null,
     };
 
-    // Every field here is from this session's *landing* request, so it's the authoritative
-    // version of all of them — not just attribution. A row backfilled from a later navigation
-    // (or created bare by `linkVisitToUser`) gets the real landing path too.
+    if (await this.fillMissingAttribution(dto.sessionId, firstTouch)) return;
+
+    try {
+      await this.prisma.visit.create({ data: { sessionId: dto.sessionId, ...firstTouch } });
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) throw error;
+      // The backfill inserted this session's row in the moment between the fill attempt above and
+      // this insert. The row exists now, so fill it — the same work, just after the collision.
+      // A second miss means the row already carries a real source (a duplicate send of the same
+      // sessionId), which must not be overwritten: correct to do nothing.
+      await this.fillMissingAttribution(dto.sessionId, firstTouch);
+    }
+  }
+
+  /** Writes this session's first-touch onto its existing row, but only while that row has no
+   * `source` yet. Returns whether it matched.
+   *
+   * Every field written is from the session's *landing* request, so it's the authoritative
+   * version of all of them, not just attribution — a row backfilled from a later navigation (or
+   * created bare by `linkVisitToUser`) gets the real landing path, IP and device too. */
+  private async fillMissingAttribution(
+    sessionId: string,
+    firstTouch: Record<string, unknown>,
+  ): Promise<boolean> {
     const { count } = await this.prisma.visit.updateMany({
-      where: { sessionId: dto.sessionId, source: null },
+      where: { sessionId, source: null },
       data: firstTouch,
     });
-    if (count > 0) return;
-
-    // Either the row doesn't exist yet, or it already carries a real source — in which case this
-    // is a duplicate/retried send of the same sessionId and the empty `update` correctly no-ops.
-    await this.prisma.visit.upsert({
-      where: { sessionId: dto.sessionId },
-      update: {},
-      create: { sessionId: dto.sessionId, ...firstTouch },
-    });
+    return count > 0;
   }
 
   /** Called on every real (non-prefetch) page navigation by web's middleware.ts — one row per
@@ -110,13 +146,13 @@ export class AnalyticsService {
    * whose failure web deliberately swallows. The cookie is set on that same response either way,
    * so if that one call doesn't land — transient error, a deploy mid-request — nothing retries
    * and the whole session is permanently absent from the admin Page visits screen, page-view
-   * trail and all. This upsert closes that hole on the session's very next navigation.
+   * trail and all. This closes that hole on the session's very next navigation.
    *
    * It runs on a session's *first* page view too, not only later ones, even though
    * `/analytics/visit` is in flight for that same request — deliberately, because a session that
    * loses that call and then never navigates again would otherwise vanish entirely. That overlap
    * is what makes `recordVisit`'s conditional fill above necessary rather than optional: this
-   * upsert frequently creates the row first, and the real attribution arrives afterwards.
+   * frequently creates the row first, and the real attribution arrives afterwards.
    *
    * Attribution is deliberately left null rather than re-derived: by now the first-touch
    * source/medium for this session is genuinely unknown, and web's 30-day acquisition cookie is
@@ -127,26 +163,30 @@ export class AnalyticsService {
    */
   private async backfillMissingVisit(dto: RecordPageViewDto): Promise<void> {
     const geo = this.geoIp.lookupCity(dto.ip);
-    await this.prisma.visit.upsert({
-      where: { sessionId: dto.sessionId },
-      // Untouched when the row already exists — this must never overwrite a real first-touch
-      // row, nor re-anonymise one that login has since linked to a user.
-      update: {},
-      create: {
-        sessionId: dto.sessionId,
-        // The earliest path we can still prove this session visited, which is not necessarily
-        // where it actually landed — the lost row's landingPath is unrecoverable.
-        landingPath: dto.path,
-        // Per-request facts, unlike attribution: this visitor's IP/device on a later navigation
-        // is legitimately still theirs, so these stay accurate.
-        ip: dto.ip,
-        ipCity: geo?.city ?? null,
-        ipRegion: geo?.region ?? null,
-        ipCountry: geo?.country ?? null,
-        deviceType: dto.userAgent ? deviceTypeFromUserAgent(dto.userAgent, false) : null,
-        isBot: dto.userAgent ? isBotUserAgent(dto.userAgent) : null,
-      },
-    });
+    try {
+      await this.prisma.visit.create({
+        data: {
+          sessionId: dto.sessionId,
+          // The earliest path we can still prove this session visited, which is not necessarily
+          // where it actually landed — the lost row's landingPath is unrecoverable.
+          landingPath: dto.path,
+          // Per-request facts, unlike attribution: this visitor's IP/device on a later navigation
+          // is legitimately still theirs, so these stay accurate.
+          ip: dto.ip,
+          ipCity: geo?.city ?? null,
+          ipRegion: geo?.region ?? null,
+          ipCountry: geo?.country ?? null,
+          deviceType: dto.userAgent ? deviceTypeFromUserAgent(dto.userAgent, false) : null,
+          isBot: dto.userAgent ? isBotUserAgent(dto.userAgent) : null,
+        },
+      });
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) throw error;
+      // The row already exists — either it was always there (the normal case on every navigation
+      // after the first) or `recordVisit` inserted it a moment ago. Both are the desired end
+      // state: this must never overwrite a real first-touch row, nor re-anonymise one that login
+      // has since linked to a user. So there is deliberately nothing to do.
+    }
   }
 
   /** Best-effort link from an anonymous session to the user who just logged in during it — only
@@ -164,13 +204,14 @@ export class AnalyticsService {
     });
     if (count > 0) return;
 
-    // `upsert`, not `create` — the row may have appeared between the update above and now (the
-    // session's own /analytics/visit call racing this login), in which case leave it alone: it
-    // either already names this user or names another, and neither is ours to overwrite.
-    await this.prisma.visit.upsert({
-      where: { sessionId },
-      update: {},
-      create: { sessionId, userId },
-    });
+    try {
+      await this.prisma.visit.create({ data: { sessionId, userId } });
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) throw error;
+      // The row appeared between the update above and this insert (the session's own
+      // /analytics/visit call racing this login). Leave it alone: it either already names this
+      // user or names another, and neither is ours to overwrite. Not an `upsert ... update: {}`,
+      // which would throw here instead of no-oping — see isUniqueConstraintError.
+    }
   }
 }
