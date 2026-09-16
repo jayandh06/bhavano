@@ -122,6 +122,17 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   // happened to render a link to `/{city}` (a bare city browse route, which `citySlugForRoute`
   // below treats as a deliberate city choice) would eventually get prefetched and silently win.
   if (request.headers.get('next-router-prefetch')) return NextResponse.next();
+  // A second, independent prefetch source: Chrome's own "Preload pages" setting (the Privacy
+  // Preserving Prefetch Proxy) speculatively fetches links in the background through an
+  // anonymizing Google-operated proxy — visible server-side only as a `Sec-Purpose: prefetch` (or
+  // the legacy unprefixed `Purpose: prefetch`) request header, never `next-router-prefetch` (that
+  // header is Next-internal and has nothing to do with this). Caught in production as a single
+  // session logging 348 page views in ~6 minutes, entirely from a Google-owned "hosting" IP whose
+  // reverse DNS was literally `*.fetch.tunnel.googlezip.net` — the same city-cookie-corruption and
+  // phantom-Visit/PageView risk the check above exists for, just via a browser feature instead of
+  // Next's router.
+  const purpose = (request.headers.get('sec-purpose') ?? request.headers.get('purpose'))?.toLowerCase();
+  if (purpose?.includes('prefetch')) return NextResponse.next();
 
   const hasAcquisitionCookie = request.cookies.has(ACQUISITION_COOKIE);
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
