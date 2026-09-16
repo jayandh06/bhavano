@@ -23,8 +23,21 @@ function chunkIntoColumns<T>(items: T[], numColumns: number): T[][] {
   return columns;
 }
 
-function LocationBlock({ heading, items }: { heading: string; items: { key: string; label: string; href: string }[] }) {
-  if (items.length === 0) return null;
+function LocationBlock({
+  heading,
+  items,
+  viewAllHref,
+  viewAllLabel,
+}: {
+  heading: string;
+  items: { key: string; label: string; href: string }[];
+  /** Appended after the columns as its own link — the footer only ever shows a curated subset
+   * (see `Footer`'s own comment on `cityItems`), so this is how the full catalog stays reachable
+   * without the footer itself growing without bound. */
+  viewAllHref?: string;
+  viewAllLabel?: string;
+}) {
+  if (items.length === 0 && !viewAllHref) return null;
 
   const columns = (
     <div className="flex gap-3">
@@ -47,6 +60,12 @@ function LocationBlock({ heading, items }: { heading: string; items: { key: stri
     </div>
   );
 
+  const viewAll = viewAllHref && (
+    <Link href={viewAllHref} prefetch={false} className="text-green font-bold inline-block mt-2.5">
+      {viewAllLabel ?? "View all →"}
+    </Link>
+  );
+
   // Two renders of the same links, one hidden per breakpoint — not one element whose open state
   // somehow differs by viewport, which plain HTML/CSS cannot express: <details>'s open/closed
   // state is a single boolean set once, so there is no way to have it start open on a wide
@@ -63,13 +82,17 @@ function LocationBlock({ heading, items }: { heading: string; items: { key: stri
       <div className="hidden sm:block">
         <div className="font-bold text-[13px] text-text mb-2.5">{heading}</div>
         {columns}
+        {viewAll}
       </div>
       <details className="sm:hidden group">
         <summary className="font-bold text-[13px] text-text mb-2.5 cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center gap-1.5">
           {heading}
           <span className="text-[10px] text-muted transition-transform group-open:rotate-180">▾</span>
         </summary>
-        <div className="mt-2.5">{columns}</div>
+        <div className="mt-2.5">
+          {columns}
+          {viewAll}
+        </div>
       </details>
     </div>
   );
@@ -77,23 +100,32 @@ function LocationBlock({ heading, items }: { heading: string; items: { key: stri
 
 /** Site-wide footer. On a `/{city}/...` browse page, shows **both** that city's areas (primary —
  * the more topically-relevant drill-down for someone already browsing that city, and the main
- * link source area pages have) **and** a full city list (secondary) — every page links to every
- * city hub, not just the homepage, so no city page is an internal-linking island reachable only
- * from Home (see docs/plans/seo-all-cities-footer-links.md). Elsewhere (homepage, static/account
- * pages), only the full city list applies. Both close the gap left by `sitemap.ts` (which only
- * lists a city/area once it already has a listing) and by `MegaMenu`/`LocationPicker` (which never
- * produce crawlable links to a city/area on their own). */
+ * link source area pages have) **and** a curated "Browse Cities" list (secondary) — every page
+ * links to every *popular* city hub, not just the homepage, so no popular city page is an
+ * internal-linking island reachable only from Home (see
+ * docs/plans/seo-all-cities-footer-links.md). Elsewhere (homepage, static/account pages), only
+ * the cities list applies. Both close the gap left by `sitemap.ts` (which only lists a city/area
+ * once it already has a listing) and by `MegaMenu`/`LocationPicker` (which never produce
+ * crawlable links to a city/area on their own).
+ *
+ * Only `isPopular` cities render directly here, not every city — the catalog outgrew a footer
+ * long ago (the plan doc above sized this against ~37 cities; it's well past that now), and an
+ * unbounded per-page link list was itself feeding runaway crawler traffic (every page handing a
+ * crawler 60+ fresh links to every other page). The full catalog is still one hop away via
+ * "View all cities →" to /cities, which is what actually carries link equity to the long tail
+ * now — every page still links there, and that hub links onward to everything. */
 export async function Footer({
   currentCityName,
   cityAreas,
   allCities,
 }: {
   /** Present on the `/{city}/...` browse pages — adds the "Areas in {City}" block above the
-   * full city list, instead of the city list being the only location block. */
+   * cities list, instead of the cities list being the only location block. */
   currentCityName?: string;
   cityAreas?: Area[];
   /** Every city. Fetched here if the caller doesn't already have it in scope, so every bare
-   * `<Footer />` call site still gets a populated location block. */
+   * `<Footer />` call site still gets a populated location block. Filtered to `isPopular` below —
+   * see this function's own doc comment. */
   allCities?: City[];
 }) {
   const cities = allCities ?? (await fetchCities(undefined, true).catch(() => []));
@@ -104,7 +136,7 @@ export async function Footer({
   // Excludes the current city — linking a city page to itself under "Browse Cities" would be a
   // no-op link a user (or crawler) has no reason to follow from a page already there.
   const cityItems = cities
-    .filter((city) => city.name !== currentCityName)
+    .filter((city) => city.isPopular && city.name !== currentCityName)
     .map((city) => ({ key: city.id, label: city.name, href: buildBrowsePath({ cityName: city.name }) }));
 
   return (
@@ -122,7 +154,7 @@ export async function Footer({
           </p>
         </div>
         {currentCityName && <LocationBlock heading={`Areas in ${currentCityName}`} items={areaItems} />}
-        <LocationBlock heading="Browse Cities" items={cityItems} />
+        <LocationBlock heading="Browse Cities" items={cityItems} viewAllHref="/cities" viewAllLabel="View all cities →" />
         <div>
           <div className="font-bold text-[13px] text-text mb-2.5">Company</div>
           {/* prefetch={false} on the whole footer, same reasoning as the location lists above —

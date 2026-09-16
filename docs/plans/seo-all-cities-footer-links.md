@@ -45,3 +45,23 @@ real Google soft-limit on footer link count.
   is the pagination control's "page 1" link, unrelated).
 - Homepage footer unchanged — still shows only "Browse Cities".
 - `pnpm typecheck` (web) clean.
+
+## Update: curated cities + a `/cities` hub (superseding the "every city" decision above)
+
+The "~37 cities" the link-count check above was sized against has grown well past that since —
+the catalog is admin-curated with no upper bound, so a footer rendering every city was always
+going to keep growing. It also turned out to be a real operational cost, not just a page-weight
+one: investigating an inflated page-view count from an automated crawler (see the admin Page
+visits screen's device-type/bot-filtering work) traced back to exactly this footer — a crawler
+landing on any page found 60+ fresh, identical links to every other page, on every page, and
+walked them exhaustively.
+
+"Browse Cities" now renders only `City.isPopular` cities (the same curated flag `LocationPicker`'s
+city switcher already uses) plus a `View all cities →` link to a new `/cities` page, which lists
+every city grouped by state. This keeps the original SEO goal intact — every page still passes
+link equity toward the full catalog — just one hop removed: every page links to `/cities`, and
+`/cities` links to everything, rather than every page linking to everything directly. `/cities` is
+in `sitemap.ts`'s static entries alongside `/about`, `/tools`, etc.
+
+Files: `Footer.tsx` (`cityItems` filter, `LocationBlock` gained `viewAllHref`/`viewAllLabel`),
+new `app/cities/page.tsx`, `sitemap.ts`.
