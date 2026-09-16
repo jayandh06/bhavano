@@ -42,6 +42,16 @@ const PAGE_VISIT_IDENTITY_VALUES = ['any', 'anonymous', 'logged_in'] as const;
 
 export type PageVisitIdentity = (typeof PAGE_VISIT_IDENTITY_VALUES)[number];
 
+/** Crawler filter, against `Visit.isBot`.
+ *
+ * `unclassified` is a first-class option, not an oversight: every row written before that column
+ * existed has no stored User-Agent to judge after the fact, and ~99.85% of those are in fact
+ * crawler traffic. So "humans" here means *classified as not-a-bot*, which excludes all of that
+ * history rather than pretending it's human — and `unclassified` is how you look at it. */
+const PAGE_VISIT_TRAFFIC_VALUES = ['any', 'humans', 'bots', 'unclassified'] as const;
+
+export type PageVisitTraffic = (typeof PAGE_VISIT_TRAFFIC_VALUES)[number];
+
 /**
  * Each text filter (`source`, `medium`, `ip`, `landingPath`, `city`, `region`, `country`) is a
  * tiny query DSL, parsed by `parseTextFilter` in admin.service.ts — plain text is a
@@ -82,6 +92,12 @@ export class ListPageVisitsDto {
   @IsOptional()
   @IsIn(PAGE_VISIT_IDENTITY_VALUES)
   identity?: PageVisitIdentity;
+
+  /** See PAGE_VISIT_TRAFFIC_VALUES. Defaults to `humans` in the admin UI rather than here — the
+   * API stays unfiltered unless asked, so a caller counting all traffic still can. */
+  @IsOptional()
+  @IsIn(PAGE_VISIT_TRAFFIC_VALUES)
+  traffic?: PageVisitTraffic;
 
   @IsOptional()
   @IsIn(DEVICE_TYPES)

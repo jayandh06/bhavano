@@ -5,6 +5,7 @@ import {
   AdminPageVisitIdentity,
   AdminPageVisitSort,
   AdminPageVisitSortField,
+  AdminPageVisitTraffic,
   fetchPageVisits,
 } from "@/lib/bff";
 import {
@@ -31,6 +32,18 @@ const IDENTITY_OPTIONS: { value: AdminPageVisitIdentity; label: string }[] = [
   { value: "anonymous", label: "Anonymous only" },
   { value: "logged_in", label: "Logged in only" },
 ];
+
+const TRAFFIC_OPTIONS: { value: AdminPageVisitTraffic; label: string }[] = [
+  { value: "humans", label: "Humans only" },
+  { value: "bots", label: "Crawlers only" },
+  { value: "unclassified", label: "Unclassified (pre-filter history)" },
+  { value: "any", label: "Everything" },
+];
+
+/** Humans-only by default: the screen was otherwise ~99.85% crawler sessions (one row per
+ * request, because crawlers discard cookies — see isBotUserAgent). "Unclassified" is where all
+ * the pre-filter history lives, since those rows kept no User-Agent to judge after the fact. */
+const DEFAULT_TRAFFIC: AdminPageVisitTraffic = "humans";
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   desktop: "Desktop",
@@ -63,6 +76,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const userId = str(sp.userId);
   const userLabel = str(sp.userLabel);
   const identity = str(sp.identity) as AdminPageVisitIdentity | undefined;
+  const traffic = (str(sp.traffic) as AdminPageVisitTraffic | undefined) ?? DEFAULT_TRAFFIC;
   const deviceTypeRaw = str(sp.deviceType);
   const deviceType = deviceTypeRaw && deviceTypeRaw !== "any" ? (deviceTypeRaw as DeviceType) : undefined;
   const from = str(sp.from);
@@ -82,6 +96,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     to: istDayEnd(to),
     userId,
     identity,
+    traffic,
     deviceType,
     source,
     medium,
@@ -151,6 +166,16 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             <Field label="Identity">
               <SelectField name="identity" defaultValue={identity ?? "any"} style={selectStyle}>
                 {IDENTITY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectField>
+            </Field>
+
+            <Field label="Traffic">
+              <SelectField name="traffic" defaultValue={traffic} style={selectStyle}>
+                {TRAFFIC_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -302,6 +327,24 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                   <tr style={{ borderTop: "1px solid var(--border)" }}>
                     <td colSpan={14} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
                       No visits match these filters.
+                      {/* Expected right after the crawler filter shipped, and confusing without
+                          saying so: every session recorded before it has no stored User-Agent to
+                          judge, so none of them can be called human. Only sessions recorded from
+                          then on are classified. */}
+                      {traffic === "humans" && (
+                        <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.6 }}>
+                          Only sessions recorded since the crawler filter shipped are classified — older ones have no
+                          stored User-Agent to judge. Switch Traffic to{" "}
+                          <Link href={buildTrafficHref(sp, "unclassified")} style={{ color: "var(--green)", fontWeight: 700 }}>
+                            Unclassified
+                          </Link>{" "}
+                          for the history, or{" "}
+                          <Link href={buildTrafficHref(sp, "any")} style={{ color: "var(--green)", fontWeight: 700 }}>
+                            Everything
+                          </Link>
+                          .
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -323,6 +366,20 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
 }
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
+
+/** Same URL with a different Traffic value, keeping every other filter and dropping `page`
+ * (a different traffic class has a different row count, so an old page number can be out of
+ * range). Used by the empty state's "try Unclassified/Everything" links. */
+function buildTrafficHref(sp: SearchParams, traffic: AdminPageVisitTraffic): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (key === "traffic" || key === "page") continue;
+    const v = str(value);
+    if (v) params.set(key, v);
+  }
+  params.set("traffic", traffic);
+  return `/page-visits?${params.toString()}`;
+}
 
 /**
  * Every account that logged in during this session, not just `Visit.userId`.

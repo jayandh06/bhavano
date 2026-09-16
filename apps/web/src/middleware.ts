@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { NextFetchEvent } from "next/server";
+import { isBotUserAgent } from "@bhavano/types/botUserAgent";
 import { citySlugForRoute } from "@/lib/cityFromRoute";
 
 const ACQUISITION_COOKIE = "bhavano_acq";
@@ -133,6 +134,14 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   // Next's router.
   const purpose = (request.headers.get('sec-purpose') ?? request.headers.get('purpose'))?.toLowerCase();
   if (purpose?.includes('prefetch')) return NextResponse.next();
+  // A third source of phantom sessions, and by far the largest: crawlers. They discard cookies,
+  // so every request arrives with no bhavano_sid and the block below dutifully logs a brand-new
+  // Visit for it — one row per request, forever, which is why the admin Page visits screen showed
+  // a thousand single-page "sessions" from each of seven sibling PetalBot IPs. 99.85% of all
+  // visit rows were this. Dropped before any cookie is set or anything is logged, same as the
+  // two prefetch guards above; see isBotUserAgent's own doc for why not-counting is the only real
+  // fix here (grouping by IP would merge unrelated people behind carrier NAT).
+  if (isBotUserAgent(request.headers.get('user-agent'))) return NextResponse.next();
 
   const hasAcquisitionCookie = request.cookies.has(ACQUISITION_COOKIE);
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);

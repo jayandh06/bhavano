@@ -681,6 +681,16 @@ model Visit {
   ipCity      String?
   ipRegion    String?
   ipCountry   String?
+  /** Whether the User-Agent that opened this session looks like a crawler (isBotUserAgent).
+   *
+   * Nullable on purpose, and null means *not classified* rather than "human": every row written
+   * before this column existed has no stored User-Agent to judge after the fact, and 99.85% of
+   * those are in fact bot traffic (see isBotUserAgent's own doc). Defaulting them to false would
+   * relabel a bot log as a human one. apps/web's middleware now drops known crawlers before they
+   * ever reach `/analytics/visit`, so this should be false for nearly every new row — it earns
+   * its place by catching whatever that list misses, which is exactly what can't be found later
+   * otherwise. */
+  isBot       Boolean?
   /** "desktop" / "mobile" / "tablet" / "mobile_app", derived once at write time from the
    * request's User-Agent header (see `deviceTypeFromUserAgent` in analytics.service.ts) — only
    * the coarse label is kept, not the raw header, same "derive once, discard the raw input"

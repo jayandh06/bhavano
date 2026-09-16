@@ -65,9 +65,6 @@ const LOGIN_ORDER_BY: Record<LoginSort, Prisma.LoginEventOrderByWithRelationInpu
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
 };
 
-/** "Sort by user" groups a user's sessions together (by `userId`), then newest-first within;
- * "sort by city" likewise. Nulls last so anonymous / un-geolocated rows don't crowd the top. A
- * final `id` key keeps the order total, which the cursor pagination relies on. */
 /** Every entry keeps `createdAt desc` then `id asc` as tiebreakers, so a column full of nulls or
  * repeated values still paginates deterministically instead of shuffling rows between pages.
  * Nulls sort last in both directions on purpose — an empty cell is never the most interesting
@@ -405,9 +402,18 @@ export class AdminService {
    * strings (the admin page turns its IST date pickers into `+05:30` bounds), so a plain
    * `new Date()` here lands on the right instant. */
   async listPageVisits(query: ListPageVisitsDto): Promise<PageVisitsPage> {
-    const { offset, from, to, userId, identity, deviceType, sort, limit } = query;
+    const { offset, from, to, userId, identity, deviceType, traffic, sort, limit } = query;
 
     const where: Prisma.VisitWhereInput = {
+      // `humans` is `isBot: false`, not "not true" — a null (unclassified, i.e. every row from
+      // before the column existed, ~99.85% of which is crawler traffic) must not pass as human.
+      ...(traffic === 'humans'
+        ? { isBot: false }
+        : traffic === 'bots'
+          ? { isBot: true }
+          : traffic === 'unclassified'
+            ? { isBot: null }
+            : {}),
       ...(from || to
         ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
         : {}),
@@ -434,10 +440,24 @@ export class AdminService {
       if (clause) where[field] = clause;
     }
 
-    const dateOnlyWhere: { createdAt?: Prisma.DateTimeFilter } =
-      from || to ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {};
+    // The average below honours the date range and the crawler filter, and nothing else — see
+    // `PageVisitsPage.avgPageViewsPerSession`'s doc comment. Joining Visit to PageView is what
+    // makes the crawler part possible at all (PageView itself carries no isBot), and it has to:
+    // crawlers are one page view per session by construction, so including them pins the average
+    // at ~1.0 and makes the headline number on this screen meaningless.
+    const [avgRow] = await this.prisma.$queryRaw<{ views: number; sessions: number }[]>`
+      SELECT COUNT(pv.id)::int AS views, COUNT(DISTINCT v."sessionId")::int AS sessions
+      FROM "Visit" v
+      LEFT JOIN "PageView" pv ON pv."sessionId" = v."sessionId"
+      WHERE (${from}::timestamptz IS NULL OR v."createdAt" >= ${from}::timestamptz)
+        AND (${to}::timestamptz IS NULL OR v."createdAt" <= ${to}::timestamptz)
+        AND (${traffic ?? null}::text IS NULL
+             OR (${traffic}::text = 'any')
+             OR (${traffic}::text = 'humans' AND v."isBot" = false)
+             OR (${traffic}::text = 'bots' AND v."isBot" = true)
+             OR (${traffic}::text = 'unclassified' AND v."isBot" IS NULL))`;
 
-    const [rows, total, totalPageViewsInRange, totalVisitsInRange] = await Promise.all([
+    const [rows, total] = await Promise.all([
       this.prisma.visit.findMany({
         where,
         include: { user: { select: { name: true, phone: true, email: true } } },
@@ -446,10 +466,6 @@ export class AdminService {
         take: limit,
       }),
       this.prisma.visit.count({ where }),
-      // Scoped only to the date-range filter, not every filter on this screen — see
-      // `PageVisitsPage.avgPageViewsPerSession`'s doc comment for why.
-      this.prisma.pageView.count({ where: dateOnlyWhere }),
-      this.prisma.visit.count({ where: dateOnlyWhere }),
     ]);
 
     const sessionIds = rows.map((r) => r.sessionId);
@@ -518,7 +534,7 @@ export class AdminService {
         sessionLogins: loginsBySessionId.get(row.sessionId) ?? [],
       })),
       total,
-      avgPageViewsPerSession: totalVisitsInRange > 0 ? totalPageViewsInRange / totalVisitsInRange : null,
+      avgPageViewsPerSession: avgRow && avgRow.sessions > 0 ? avgRow.views / avgRow.sessions : null,
     };
   }
 

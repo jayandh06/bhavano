@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
 import { RecordPageViewDto } from './dto/record-pageview.dto';
 import { GeoIpService } from './geoip.service';
+import { isBotUserAgent } from '@bhavano/types/botUserAgent';
 import { deviceTypeFromUserAgent } from './device-type';
 
 @Injectable()
@@ -37,6 +38,10 @@ export class AnalyticsService {
         ipRegion: geo?.region ?? null,
         ipCountry: geo?.country ?? null,
         deviceType: deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false),
+        // Null when no UA was sent at all — "not classified", not "human"; see Visit.isBot's own
+        // schema comment. Web's middleware already drops known crawlers before this endpoint, so
+        // a `true` here means that list missed one.
+        isBot: dto.userAgent ? isBotUserAgent(dto.userAgent) : null,
       },
     });
   }
@@ -83,6 +88,7 @@ export class AnalyticsService {
         ipRegion: geo?.region ?? null,
         ipCountry: geo?.country ?? null,
         deviceType: dto.userAgent ? deviceTypeFromUserAgent(dto.userAgent, false) : null,
+        isBot: dto.userAgent ? isBotUserAgent(dto.userAgent) : null,
       },
     });
   }

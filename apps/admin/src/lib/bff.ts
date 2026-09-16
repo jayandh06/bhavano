@@ -53,9 +53,6 @@ import type {
 } from "@bhavano/types";
 
 /** Mirrors the BFF's ADMIN_LISTING_SORT_VALUES (apps/bff/src/admin/dto/list-admin-listings.dto.ts)
- * — sort-key unions aren't shared via @bhavano/types in this codebase, kept in sync by convention
- * (same pattern as the public site's ListingsQuery.sort). */
-/** Mirrors the BFF's ADMIN_LISTING_SORT_VALUES (apps/bff/src/admin/dto/list-admin-listings.dto.ts)
  * — one asc/desc pair per sortable column on the dashboard's listings table. */
 export type AdminListingSortField =
   | "createdAt"
@@ -100,6 +97,10 @@ export type AdminPageVisitSort = `${AdminPageVisitSortField}_asc` | `${AdminPage
 
 /** Mirrors the BFF's PAGE_VISIT_IDENTITY_VALUES (apps/bff/src/admin/dto/list-page-visits.dto.ts). */
 export type AdminPageVisitIdentity = "any" | "anonymous" | "logged_in";
+
+/** Mirrors the BFF's PAGE_VISIT_TRAFFIC_VALUES. "humans" means *classified* as not-a-bot —
+ * see that constant's own comment on why unclassified history can't be counted as human. */
+export type AdminPageVisitTraffic = "any" | "humans" | "bots" | "unclassified";
 
 /** Mirrors the BFF's USER_SORT_VALUES (apps/bff/src/admin/dto/list-users.dto.ts). */
 export type AdminUserSort = "createdAt_desc" | "createdAt_asc" | "name_asc";
@@ -389,6 +390,7 @@ export interface PageVisitsQuery {
   userId?: string;
   /** `anonymous`/`logged_in` are mutually exclusive with `userId` in the admin page's UI. */
   identity?: AdminPageVisitIdentity;
+  traffic?: AdminPageVisitTraffic;
   deviceType?: DeviceType;
   source?: string;
   medium?: string;

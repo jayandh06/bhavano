@@ -669,11 +669,13 @@ export interface PageVisitSessionLogin {
 export interface PageVisitsPage {
   items: PageVisitDto[];
   total: number;
-  /** Average `pageViewCount` per session within the current date-range filter (all sessions if
-   * none is set) — null when there are no matching sessions to average. Deliberately scoped only
-   * to the date range, not every text filter on this screen: PageView rows carry just
-   * `sessionId`/`path`/`createdAt`, so honoring every Visit-side filter here would need joining
-   * every matching sessionId against PageView rather than a flat aggregate. */
+  /** Average `pageViewCount` per session honouring the current date range and crawler filter,
+   * and nothing else — null when there are no matching sessions to average. The other text
+   * filters are deliberately excluded: PageView rows carry just `sessionId`/`path`/`createdAt`,
+   * so honouring each one would mean re-deriving the whole matching session set per filter. The
+   * crawler filter is the one exception because it has to be — a crawler is one page view per
+   * session by construction (they discard cookies, so every request is a new session), so
+   * including them pins this number at ~1.0 and makes it meaningless. */
   avgPageViewsPerSession: number | null;
 }
 
