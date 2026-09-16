@@ -84,6 +84,25 @@ export class NotificationsService {
     return this.dispatchEmailPreferWhatsapp(user, { subject, text: body, bcc: 'support@bhavano.com' });
   }
 
+  /** Boost + Instant Alerts bundle confirmation — see PaymentsService.handleWebhook's
+   * `listing_boost` branch (the `boostIncludesInstantAlerts` case). One combined email rather
+   * than firing `notifyListingBoostActivated` and `notifyInstantAlertsActivated` back to back,
+   * since the buyer made one purchase, not two. No WhatsApp template exists yet — same gap as
+   * the other purchase confirmations in this file. */
+  async notifyBoostAndInstantAlertsActivated(
+    user: NotifiableUser,
+    listingTitle: string,
+    boostDays: number,
+  ): Promise<'email' | 'whatsapp' | null> {
+    const subject = `Boost + Instant Alerts is on for "${listingTitle}"`;
+    const body =
+      `Your listing "${listingTitle}" is boosted for the next ${boostDays} day${boostDays === 1 ? '' : 's'} — ` +
+      `it'll get priority placement so more buyers see it first. We'll also email you (or WhatsApp you, if ` +
+      `that's what you gave us) the moment someone messages you about it, for as long as this ad is live.`;
+
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body, bcc: 'support@bhavano.com' });
+  }
+
   /** Confirms an Instant Alerts purchase actually went through — see
    * PaymentsService.handleWebhook's `instant_alerts` branch. No WhatsApp template exists yet —
    * see `notifyListingFlagged`'s comment; a phone-only owner gets nothing until one is built. */

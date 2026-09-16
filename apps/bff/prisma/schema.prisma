@@ -828,6 +828,11 @@ model Payment {
   listingId         String?
   listing           Listing?       @relation(fields: [listingId], references: [id])
   boostDays         Int?
+  /** Only meaningful for `listing_boost` payments — set when this was bought as the "Boost +
+   * Instant Alerts" bundle on the post-ad success screen, so the webhook's listing_boost branch
+   * also activates Instant Alerts and sends one combined confirmation once this is paid, instead
+   * of leaving it to a second, separate instant_alerts payment. */
+  boostIncludesInstantAlerts Boolean @default(false)
   /** Only meaningful for buyer_premium/agent_pro — same "purpose-specific nullable field"
    * convention as boostDays above. */
   subscriptionMonths Int?

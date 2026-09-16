@@ -1,7 +1,8 @@
-import { Body, Controller, HttpCode, Headers, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Headers, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import type {
+  BoostPricingPreviewDto,
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
   CreateInstantAlertsOrderResponseDto,
@@ -15,6 +16,7 @@ import { CreateBoostOrderDto } from './dto/create-boost-order.dto';
 import { CreateSubscriptionOrderDto } from './dto/create-subscription-order.dto';
 import { CreateContactRevealCreditsOrderDto } from './dto/create-contact-reveal-credits-order.dto';
 import { CreateInstantAlertsOrderDto } from './dto/create-instant-alerts-order.dto';
+import { PreviewBoostPricingDto } from './dto/preview-boost-pricing.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -23,7 +25,16 @@ export class PaymentsController {
   @Post('orders')
   @UseGuards(AuthGuard)
   createOrder(@Body() dto: CreateBoostOrderDto, @CurrentUser() user: RequestUser): Promise<CreateBoostOrderResponseDto> {
-    return this.paymentsService.createBoostOrder(user.id, dto.listingId, dto.boostDays, dto.discountCode);
+    return this.paymentsService.createBoostOrder(user.id, dto.listingId, dto.boostDays, dto.discountCode, dto.includeInstantAlerts);
+  }
+
+  @Get('boost-pricing-preview')
+  @UseGuards(AuthGuard)
+  previewBoostPricing(
+    @Query() dto: PreviewBoostPricingDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<BoostPricingPreviewDto> {
+    return this.paymentsService.previewBoostPricing(user.id, dto.category, dto.discountCode);
   }
 
   @Post('subscriptions')

@@ -9,10 +9,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
 import type {
+  BoostPricingOptionDto,
+  BoostPricingPreviewDto,
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
   CreateInstantAlertsOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
+  ListingCategory,
   PaymentHistoryPage,
   SubscriptionTier,
 } from '@bhavano/types';
@@ -143,6 +146,30 @@ export class PaymentsService {
     }
   }
 
+  /** Same fire-and-forget/log pattern as `notifyListingBoostActivated` above, for the Boost +
+   * Instant Alerts bundle — one combined confirmation instead of two separate emails for what
+   * the buyer experienced as a single purchase. */
+  private notifyBoostAndInstantAlertsActivated(listingId: string, boostDays: number): void {
+    void this.deliverBoostAndInstantAlertsActivatedNotification(listingId, boostDays).catch((err: unknown) =>
+      this.logger.error(`Failed to send Boost+Instant Alerts confirmation for listing ${listingId}`, err),
+    );
+  }
+
+  private async deliverBoostAndInstantAlertsActivatedNotification(listingId: string, boostDays: number): Promise<void> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { title: true, owner: { select: { email: true, phone: true } } },
+    });
+    if (!listing) return;
+
+    const channel = await this.notificationsService.notifyBoostAndInstantAlertsActivated(listing.owner, listing.title, boostDays);
+    if (channel) {
+      await this.prisma.listingNotificationLog.create({
+        data: { listingId, kind: 'boost_and_instant_alerts_activated', channel },
+      });
+    }
+  }
+
   /** Same fire-and-forget pattern as the listing-scoped confirmations above, for the four
    * user-scoped purchases (no listing involved) — logged to UserNotificationLog instead of
    * ListingNotificationLog. `send` is whichever NotificationsService method matches this
@@ -228,12 +255,16 @@ export class PaymentsService {
     listingId: string,
     boostDays: BoostDurationDays,
     discountCode?: string,
+    includeInstantAlerts = false,
   ): Promise<CreateBoostOrderResponseDto> {
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
     if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
 
-    if (boostDays === 7) {
+    // The free monthly Agent Pro credit only ever covers the boost itself — bundling in Instant
+    // Alerts means real money changes hands regardless, so the bundle skips this shortcut
+    // entirely rather than deciding how to split a ₹0 boost from a paid add-on.
+    if (boostDays === 7 && !includeInstantAlerts) {
       const owner = await this.prisma.user.findUnique({
         where: { id: userId },
         select: { agentProUntil: true },
@@ -277,16 +308,19 @@ export class PaymentsService {
     const boostPriceSettings =
       (await this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } })) ??
       DEFAULT_BOOST_PRICE_SETTINGS;
-    const amountInPaise = this.applyDiscount(
-      boostPriceFor(listing.category, boostDays, boostPriceSettings) * 100,
-      discount?.discountPercent,
-    );
+    const instantAlertsPriceSettings = includeInstantAlerts
+      ? ((await this.prisma.instantAlertsPriceSetting.findUnique({ where: { id: INSTANT_ALERTS_PRICE_SETTINGS_ID } })) ??
+        DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS)
+      : null;
+    const baseRupees =
+      boostPriceFor(listing.category, boostDays, boostPriceSettings) + (instantAlertsPriceSettings?.instantAlertsPrice ?? 0);
+    const amountInPaise = this.applyDiscount(baseRupees * 100, discount?.discountPercent);
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
       currency: 'INR',
       receipt: `boost_${listingId}_${Date.now()}`,
-      notes: { purpose: 'listing_boost', listingId, boostDays: String(boostDays) },
+      notes: { purpose: 'listing_boost', listingId, boostDays: String(boostDays), includeInstantAlerts: String(includeInstantAlerts) },
     });
 
     const payment = await this.prisma.payment.create({
@@ -298,6 +332,7 @@ export class PaymentsService {
         purpose: 'listing_boost',
         listingId,
         boostDays,
+        boostIncludesInstantAlerts: includeInstantAlerts,
         discountCodeId: discount?.id,
       },
     });
@@ -308,6 +343,60 @@ export class PaymentsService {
       razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
       amount: amountInPaise,
       currency: 'INR',
+    };
+  }
+
+  /** Every price the post-ad success screen's Boost/Instant Alerts picker needs, in one call —
+   * rupees, not paise (display only; `createBoostOrder` is the source of truth for what actually
+   * gets charged). `discountCode` is resolved the same way `createBoostOrder` does, except a
+   * bad/expired/exhausted code degrades to "no discount" here rather than throwing: this is a
+   * preview a page renders on load, not a checkout the seller explicitly submitted, so an
+   * auto-applied promo that's gone stale should just silently fall back to full price instead of
+   * failing the whole screen. */
+  async previewBoostPricing(userId: string, category: ListingCategory, discountCode?: string): Promise<BoostPricingPreviewDto> {
+    const [boostPriceSettingsRow, instantAlertsPriceSettingsRow, owner] = await Promise.all([
+      this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } }),
+      this.prisma.instantAlertsPriceSetting.findUnique({ where: { id: INSTANT_ALERTS_PRICE_SETTINGS_ID } }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { agentProUntil: true } }),
+    ]);
+    const boostPriceSettings = boostPriceSettingsRow ?? DEFAULT_BOOST_PRICE_SETTINGS;
+    const instantAlertsPriceSettings = instantAlertsPriceSettingsRow ?? DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS;
+
+    let discountPercent: number | undefined;
+    try {
+      const discount = await this.resolveDiscountCode(discountCode, userId);
+      discountPercent = discount?.discountPercent;
+    } catch {
+      discountPercent = undefined;
+    }
+
+    // Same free-credit check createBoostOrder makes, so this preview never shows a price the
+    // actual checkout wouldn't charge — only ever applies to the boost-alone 7-day option, per
+    // createBoostOrder's own reasoning for why the bundle skips this shortcut.
+    const isPro = (owner?.agentProUntil?.getTime() ?? 0) > Date.now();
+    let hasFreeBoostCredit = false;
+    if (isPro) {
+      const credit = await this.prisma.proBoostCredit.findUnique({
+        where: { userId_monthKey: { userId, monthKey: utcMonthKey() } },
+      });
+      hasFreeBoostCredit = !!credit && !credit.redeemedAt;
+    }
+
+    const boost7Rupees = boostPriceFor(category, 7, boostPriceSettings);
+    const boost15Rupees = boostPriceFor(category, 15, boostPriceSettings);
+    const alertsRupees = instantAlertsPriceSettings.instantAlertsPrice;
+
+    const option = (baseRupees: number, free: boolean): BoostPricingOptionDto => {
+      if (free) return { amount: 0, originalAmount: 0, discountApplied: false, free: true };
+      const amount = discountPercent ? Math.round((baseRupees * (100 - discountPercent)) / 100) : baseRupees;
+      return { amount, originalAmount: baseRupees, discountApplied: !!discountPercent, free: false };
+    };
+
+    return {
+      boost7: option(boost7Rupees, hasFreeBoostCredit),
+      boost15: option(boost15Rupees, false),
+      boost7WithInstantAlerts: option(boost7Rupees + alertsRupees, false),
+      boost15WithInstantAlerts: option(boost15Rupees + alertsRupees, false),
     };
   }
 
@@ -486,7 +575,13 @@ export class PaymentsService {
     if (payment.purpose === 'listing_boost' && payment.listingId && payment.boostDays) {
       await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
       this.logger.log(`Boost activated for listing ${payment.listingId}`);
-      this.notifyListingBoostActivated(payment.listingId, payment.boostDays);
+      if (payment.boostIncludesInstantAlerts) {
+        await this.activateInstantAlerts(payment.listingId, payment.id);
+        this.logger.log(`Instant Alerts activated for listing ${payment.listingId} (bundled with boost)`);
+        this.notifyBoostAndInstantAlertsActivated(payment.listingId, payment.boostDays);
+      } else {
+        this.notifyListingBoostActivated(payment.listingId, payment.boostDays);
+      }
     }
 
     if (payment.purpose === 'instant_alerts' && payment.listingId) {

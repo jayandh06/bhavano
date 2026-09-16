@@ -844,6 +844,28 @@ export interface CreateBoostOrderResponseDto {
   activated?: boolean;
 }
 
+/** One priceable option in `BoostPricingPreviewDto` — rupees, already discounted (never paise;
+ * this is for display only, not a Razorpay order amount). `free` covers the Agent Pro monthly
+ * boost credit, in which case `amount`/`originalAmount` are both 0 and `discountApplied` is
+ * always false (a discount code on top of an already-free boost has nothing to apply to). */
+export interface BoostPricingOptionDto {
+  amount: number;
+  originalAmount: number;
+  discountApplied: boolean;
+  free: boolean;
+}
+
+/** Live pricing for the post-ad success screen's Boost/Instant Alerts picker — one call, every
+ * option's final price (any auto-applied discount code and the free Agent Pro credit both
+ * already resolved), so the screen never shows a price before knowing what it actually is. See
+ * PaymentsService.previewBoostPricing. */
+export interface BoostPricingPreviewDto {
+  boost7: BoostPricingOptionDto;
+  boost15: BoostPricingOptionDto;
+  boost7WithInstantAlerts: BoostPricingOptionDto;
+  boost15WithInstantAlerts: BoostPricingOptionDto;
+}
+
 /** Admin's boost-management list — who bought it, for how long, on which listing. */
 export interface ListingBoostDto {
   id: string;
