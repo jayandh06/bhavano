@@ -435,7 +435,14 @@ export default async function CityBrowsePage({
     const requestedPath = `/${city}/${rest.join("/")}`;
     if (requestedPath !== canonicalPath) permanentRedirect(canonicalPath);
 
-    const allCitiesForDetail = await fetchCities(undefined, true);
+    // Areas as well as cities, for the footer's location blocks — same pair the browse branch
+    // below fetches. Listing pages are where search traffic actually lands, so leaving them
+    // without a footer left every area and city page under-linked from the deepest, most
+    // content-rich pages on the site.
+    const [allCitiesForDetail, cityAreasForDetail] = await Promise.all([
+      fetchCities(undefined, true),
+      fetchAreas(cityRow.id, undefined, true),
+    ]);
 
     return (
       <>
@@ -445,6 +452,8 @@ export default async function CityBrowsePage({
           listing={listing}
           popularCities={allCitiesForDetail.filter((c) => c.isPopular)}
           allCities={allCitiesForDetail}
+          cityAreas={cityAreasForDetail}
+          cityName={cityRow.name}
           userName={sessionHeaderName(session)}
           accessToken={sessionAccessToken(session)}
         />

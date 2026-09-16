@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { City, ListingDetailDto } from "@bhavano/types";
+import type { Area, City, ListingDetailDto } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
@@ -7,6 +7,7 @@ import {
 } from "@bhavano/types/categoryFields";
 import { resolveDefaultCity } from "@/lib/defaultCity";
 import { daysUntil } from "@/lib/listingExpiry";
+import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
 import { ListingMediaGallery } from "./ListingMediaGallery";
@@ -43,6 +44,8 @@ export async function ListingDetailView({
   listing,
   popularCities,
   allCities,
+  cityAreas,
+  cityName,
   userName,
   accessToken,
 }: {
@@ -50,6 +53,13 @@ export async function ListingDetailView({
   popularCities: City[];
   /** Needed to resolve the *viewer's* city — see the header below. */
   allCities: City[];
+  /** For the footer's "Areas in {City}" block. Optional so a caller that doesn't have them can
+   * still render the page — the block just doesn't appear. */
+  cityAreas?: Area[];
+  /** The *listing's* city, not the viewer's — the footer's location blocks are about the place
+   * being looked at. `listing.cityName` is the same value; taken as a prop so the caller's
+   * already-resolved City row stays the single source of that name. */
+  cityName?: string;
   userName?: string | null;
   /** Session BFF token, forwarded to the header's Messages count badge. Resolved by the caller
    * (this component does no auth of its own). */
@@ -263,6 +273,11 @@ export async function ListingDetailView({
           </aside>
         </div>
       </div>
+      {/* Was missing entirely on this route, which is the one search traffic actually lands on —
+        * so the deepest, most content-rich pages on the site passed no link equity to the city
+        * and area pages at all, and a visitor who finished reading a listing had nowhere to go.
+        * Same props the browse pages pass (see BrowseListingsView). */}
+      <Footer currentCityName={cityName ?? listing.cityName} cityAreas={cityAreas} allCities={allCities} />
     </div>
   );
 }
