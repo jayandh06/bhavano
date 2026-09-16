@@ -120,6 +120,58 @@ export class PaymentsService {
     }
   }
 
+  /** Same fire-and-forget/log pattern as `notifyInstantAlertsActivated` above, for the Boost
+   * purchase confirmation. */
+  private notifyListingBoostActivated(listingId: string, boostDays: number): void {
+    void this.deliverListingBoostActivatedNotification(listingId, boostDays).catch((err: unknown) =>
+      this.logger.error(`Failed to send Boost confirmation for listing ${listingId}`, err),
+    );
+  }
+
+  private async deliverListingBoostActivatedNotification(listingId: string, boostDays: number): Promise<void> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { title: true, owner: { select: { email: true, phone: true } } },
+    });
+    if (!listing) return;
+
+    const channel = await this.notificationsService.notifyListingBoostActivated(listing.owner, listing.title, boostDays);
+    if (channel) {
+      await this.prisma.listingNotificationLog.create({
+        data: { listingId, kind: 'boost_activated', channel },
+      });
+    }
+  }
+
+  /** Same fire-and-forget pattern as the listing-scoped confirmations above, for the four
+   * user-scoped purchases (no listing involved) — logged to UserNotificationLog instead of
+   * ListingNotificationLog. `send` is whichever NotificationsService method matches this
+   * purchase; this helper only handles the "fetch the user, dispatch, log on success" plumbing
+   * shared by all four. */
+  private notifyUserPurchaseActivated(
+    userId: string,
+    kind: string,
+    send: (user: { email: string | null; phone: string | null }) => Promise<'email' | 'whatsapp' | null>,
+  ): void {
+    void this.deliverUserPurchaseNotification(userId, kind, send).catch((err: unknown) =>
+      this.logger.error(`Failed to send ${kind} confirmation for user ${userId}`, err),
+    );
+  }
+
+  private async deliverUserPurchaseNotification(
+    userId: string,
+    kind: string,
+    send: (user: { email: string | null; phone: string | null }) => Promise<'email' | 'whatsapp' | null>,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, phone: true } });
+    if (!user) return;
+
+    const channel = await send(user);
+    if (channel) {
+      await this.prisma.userNotificationLog.create({ data: { userId, kind, channel } });
+    }
+  }
+
   private async ensureProBoostCreditForMonth(userId: string): Promise<void> {
     const monthKey = utcMonthKey();
     await this.prisma.proBoostCredit.upsert({
@@ -434,6 +486,7 @@ export class PaymentsService {
     if (payment.purpose === 'listing_boost' && payment.listingId && payment.boostDays) {
       await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
       this.logger.log(`Boost activated for listing ${payment.listingId}`);
+      this.notifyListingBoostActivated(payment.listingId, payment.boostDays);
     }
 
     if (payment.purpose === 'instant_alerts' && payment.listingId) {
@@ -452,6 +505,9 @@ export class PaymentsService {
         data: { premiumUntil: endsAt },
       });
       this.logger.log(`buyerPremium activated for user ${payment.userId} until ${endsAt.toISOString()}`);
+      this.notifyUserPurchaseActivated(payment.userId, 'buyer_premium_activated', (user) =>
+        this.notificationsService.notifyBuyerPremiumActivated(user, endsAt),
+      );
     }
 
     if (payment.purpose === 'seller_slot_pack' && payment.subscriptionMonths) {
@@ -464,6 +520,12 @@ export class PaymentsService {
         data: { sellerSlotPackUntil: endsAt },
       });
       this.logger.log(`sellerSlotPack activated for user ${payment.userId} until ${endsAt.toISOString()}`);
+      const sellerSlotPackSettings =
+        (await this.prisma.subscriptionPlanSetting.findUnique({ where: { id: SUBSCRIPTION_PLAN_SETTINGS_ID } })) ??
+        DEFAULT_SUBSCRIPTION_PLAN_SETTINGS;
+      this.notifyUserPurchaseActivated(payment.userId, 'seller_slot_pack_activated', (user) =>
+        this.notificationsService.notifySellerSlotPackActivated(user, endsAt, sellerSlotPackSettings.sellerSlotPackTotalSlots),
+      );
     }
 
     if (payment.purpose === 'agent_pro' && payment.subscriptionMonths) {
@@ -478,6 +540,12 @@ export class PaymentsService {
       });
       await this.ensureProBoostCreditForMonth(payment.userId);
       this.logger.log(`agentPro (${units} units) for user ${payment.userId} until ${endsAt.toISOString()}`);
+      const agentProSettings =
+        (await this.prisma.subscriptionPlanSetting.findUnique({ where: { id: SUBSCRIPTION_PLAN_SETTINGS_ID } })) ??
+        DEFAULT_SUBSCRIPTION_PLAN_SETTINGS;
+      this.notifyUserPurchaseActivated(payment.userId, 'agent_pro_activated', (user) =>
+        this.notificationsService.notifyAgentProActivated(user, endsAt, units * agentProSettings.proListingSlotsPerUnit),
+      );
     }
 
     if (payment.purpose === 'contact_reveal_credits' && payment.creditPackSize) {
@@ -495,6 +563,9 @@ export class PaymentsService {
         },
       });
       this.logger.log(`${payment.creditPackSize} contact-reveal credits granted to user ${payment.userId}, expiring ${expiresAt.toISOString()}`);
+      this.notifyUserPurchaseActivated(payment.userId, 'contact_reveal_credits_activated', (user) =>
+        this.notificationsService.notifyContactRevealCreditsActivated(user, payment.creditPackSize as number, expiresAt),
+      );
     }
 
     // Applies to every purpose above, not just one — a discount code is redeemable across all
