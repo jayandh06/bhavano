@@ -15,7 +15,7 @@ import type {
   TransactionType,
 } from "@bhavano/types";
 import { sendPostedNotificationAction } from "@/app/actions/admin";
-import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import type { AdminListingSortField } from "@/lib/bff";
 import { formatDate } from "@/lib/formatDateTime";
 import { buildSuffixSortHref, str, suffixSortDirectionFor, type SearchParams } from "@/lib/searchParams";
@@ -199,16 +199,21 @@ export function AdminListingsTable({
     {
       key: "city",
       label: "City",
-      // Auto-submits and blanks Area on change: it binds to whichever form contains it, which is
-      // this table's, and the area select is on that same form. Without the reset, picking a new
-      // city would resubmit the old city's areaId and filter to nothing.
+      // Searchable rather than a plain <select>, and auto-submitting: it binds to whichever form
+      // contains it, which is this table's, and the Area field is on that same form. Without the
+      // `areaId` reset, picking a new city would resubmit the old city's area and filter to
+      // nothing. Area *must* auto-submit here too — its option list is fetched server-side for
+      // the chosen city (see page.tsx), so the reload is what populates it.
       filter: (
-        <AutoSubmitSelect
+        <SearchableSelect
           name="cityId"
           defaultValue={cityId}
+          autoSubmit
           resetFieldsOnChange={["areaId"]}
-          style={headerSelectStyle}
-          options={[{ value: "", label: "Any" }, ...cities.map((c) => ({ value: c.id, label: c.name }))]}
+          width={116}
+          ariaLabel="Filter by city"
+          placeholder="Search cities…"
+          options={cities.map((c) => ({ value: c.id, label: c.name }))}
         />
       ),
       render: (item) => item.cityName,
@@ -218,15 +223,20 @@ export function AdminListingsTable({
     {
       key: "area",
       label: "Area",
+      // Still city-gated: `areas` is only fetched for the selected city, and the BFF's areaId
+      // filter is per-city, so there's no meaningful all-cities area list to search.
       filter: (
-        <select name="areaId" defaultValue={str(sp.areaId) ?? ""} disabled={!cityId} style={headerSelectStyle}>
-          <option value="">{cityId ? "Any" : "Pick a city"}</option>
-          {areas.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+        <SearchableSelect
+          name="areaId"
+          defaultValue={str(sp.areaId)}
+          autoSubmit
+          disabled={!cityId}
+          disabledLabel="Pick a city"
+          width={116}
+          ariaLabel="Filter by area"
+          placeholder="Search areas…"
+          options={areas.map((a) => ({ value: a.id, label: a.name }))}
+        />
       ),
       render: (item) => item.area,
       defaultVisible: false,
@@ -387,7 +397,7 @@ export function AdminListingsTable({
             <span key={c.key}>
               {i > 0 ? ", " : ""}
               <strong style={{ color: "var(--text-soft)" }}>
-                {c.label}: {str(sp[filterNameFor(c)])}
+                {c.label}: {describeFilterValue(c, sp, cities, areas)}
               </strong>
             </span>
           ))}{" "}
@@ -492,6 +502,17 @@ function filterNameFor(column: ListingColumn): string {
   if (column.key === "city") return "cityId";
   if (column.key === "area") return "areaId";
   return column.key;
+}
+
+/** The hidden-filter notice's value, as something readable. City and Area filter by id, so the
+ * raw param is a cuid — useless in a sentence meant to tell an admin what's narrowing the table.
+ * Falls back to the raw value when the id isn't in the list we have (a stale bookmarked area id
+ * from another city, say), since showing nothing at all would be worse. */
+function describeFilterValue(column: ListingColumn, sp: SearchParams, cities: City[], areas: Area[]): string {
+  const raw = str(sp[filterNameFor(column)]) ?? "";
+  if (column.key === "city") return cities.find((c) => c.id === raw)?.name ?? raw;
+  if (column.key === "area") return areas.find((a) => a.id === raw)?.name ?? raw;
+  return raw;
 }
 
 /** Keeps every current query param alive through a submit of *this* form — a plain GET form only
