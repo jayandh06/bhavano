@@ -108,9 +108,13 @@ function safeHostname(url: string | null): string | undefined {
  *    set a cookie during render. Read by `lib/defaultCity.ts`; see
  *    docs/plans/visitor-location-default-city.md.
  * 4. The page-view trail (`PageView`, keyed by the same `bhavano_sid`) — unlike 1-3, this fires
- *    on every real navigation, not just the session's first, so it isn't gated by the early
- *    return below. See PageView's schema comment for why it's a separate row per view rather
- *    than an update to the Visit row from #2.
+ *    on every real navigation, not just the session's first, so it isn't gated by the
+ *    already-have-both-cookies early return further down. See PageView's schema comment for why
+ *    it's a separate row per view rather than an update to the Visit row from #2.
+ *
+ * All four are skipped entirely for requests that aren't a person looking at a page — prefetches,
+ * prerenders, crawlers, and background link-walkers. Those four guards run first, before any
+ * cookie is set or anything is logged; each carries its own note on what it caught in production.
  */
 export function middleware(request: NextRequest, event: NextFetchEvent): NextResponse {
   // Next.js's client router prefetches every `<Link>` it can see (Footer alone renders one per
@@ -132,8 +136,13 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   // reverse DNS was literally `*.fetch.tunnel.googlezip.net` — the same city-cookie-corruption and
   // phantom-Visit/PageView risk the check above exists for, just via a browser feature instead of
   // Next's router.
+  // `prerender` as well as `prefetch`: Chrome's speculation rules can promote a prefetch to a
+  // full prerender, which sends `Sec-Purpose: prerender` — no "prefetch" substring, so the
+  // original check let it through, and unlike a prefetch it *does* look like a real navigation
+  // to the gate below (a prerender is a genuine document load, just into a hidden tab). Nobody
+  // has seen the page either way, so it isn't a visit.
   const purpose = (request.headers.get('sec-purpose') ?? request.headers.get('purpose'))?.toLowerCase();
-  if (purpose?.includes('prefetch')) return NextResponse.next();
+  if (purpose?.includes('prefetch') || purpose?.includes('prerender')) return NextResponse.next();
   // A third source of phantom sessions, and by far the largest: crawlers. They discard cookies,
   // so every request arrives with no bhavano_sid and the block below dutifully logs a brand-new
   // Visit for it — one row per request, forever, which is why the admin Page visits screen showed
@@ -142,6 +151,33 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   // two prefetch guards above; see isBotUserAgent's own doc for why not-counting is the only real
   // fix here (grouping by IP would merge unrelated people behind carrier NAT).
   if (isBotUserAgent(request.headers.get('user-agent'))) return NextResponse.next();
+  // A fourth source, and the one the three guards above are structurally unable to catch: they
+  // all identify background fetching by a header the *fetcher* volunteers, so anything that
+  // volunteers nothing walks straight through. Something does: measured on 2026-09-16, 2,327 of
+  // 2,716 logged page views (86%) arrived under 250ms after the previous one in the same session,
+  // each path was logged 3.51 times on average (worst: 42), and the paths were exactly "every
+  // link on the page" — the nav's /post, /messages and /favourites plus the visible listing
+  // cards, in one sub-second burst, repeated. One session was credited with 656 views across 161
+  // paths. It keeps cookies (so not a crawler, which is why it isn't caught above) and it isn't
+  // running our client router (or `next-router-prefetch` would have caught it), so it is reading
+  // hrefs out of the HTML and fetching them itself.
+  //
+  // So stop asking who sent the request and ask what kind of request it is. Three shapes are
+  // real and everything else is somebody's background fetch:
+  //   - `document`      a genuine top-level page load.
+  //   - `RSC` present   Next's own client-side navigation; a prefetch would have been dropped
+  //                     by the first guard above, so what's left here is a real in-app nav.
+  //   - header absent   a client too old (or too plain) to send Sec-Fetch-*; counted rather than
+  //                     dropped, since dropping it would silently lose real traffic. Scripted
+  //                     clients that land here are the isBotUserAgent check's problem, not this
+  //                     one's.
+  // Anything else — `empty` with no RSC (a bare fetch() of a page route), `iframe`, `embed` — is
+  // not a person looking at a page, and gets the same treatment as a prefetch: no cookie, no
+  // Visit, no PageView. Deliberately the same early return, because the city-cookie corruption
+  // the first guard was written for applies identically here.
+  const fetchDest = request.headers.get('sec-fetch-dest');
+  const isRealNavigation = fetchDest === null || fetchDest === 'document' || request.headers.get('rsc') !== null;
+  if (!isRealNavigation) return NextResponse.next();
 
   const hasAcquisitionCookie = request.cookies.has(ACQUISITION_COOKIE);
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);

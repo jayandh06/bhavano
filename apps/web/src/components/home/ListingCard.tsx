@@ -111,7 +111,15 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
           <Image src={item.photos[0]} alt={item.title} fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
         )}
         {/* TEMP(auth-gate): viewing listing details is open without login for now. */}
-        <Link href={href} target="_blank" rel="noopener noreferrer" className="absolute inset-0 flex items-center justify-center">
+        {/* prefetch={false} — the whole card is one link repeated twice (photo + body), and a
+          * results grid puts a dozen or more of these in the viewport at once. Next would
+          * prefetch every one, and a listing page is fully dynamic: every BFF fetch in this app
+          * is cache: "no-store", so each prefetch is a real server render plus real Postgres
+          * queries for a page nobody opened. Cheap to give up here specifically, since these
+          * open in a new tab (target="_blank"), which Next's router doesn't handle anyway — the
+          * prefetched payload can't be used to make the navigation instant. Same reasoning
+          * recorded in 9119370 for refusing Chrome's prefetch proxy outright. */}
+        <Link href={href} prefetch={false} target="_blank" rel="noopener noreferrer" className="absolute inset-0 flex items-center justify-center">
           {!item.photos[0] && (
             <span className="font-mono text-[11px] tracking-[0.04em] text-[#ffffffcc] bg-[#00000030] px-2.5 py-[5px] rounded-md">
               {item.imgLabel}
@@ -139,7 +147,8 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
 
       <div className="p-[18px] flex flex-col gap-2.5 flex-1">
         {/* TEMP(auth-gate): viewing listing details is open without login for now. */}
-        <Link href={href} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-2.5 text-inherit">
+        {/* prefetch={false}: see the note on the photo link above — same href, same reasoning. */}
+        <Link href={href} prefetch={false} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-2.5 text-inherit">
           <div className="flex justify-between items-start gap-2.5">
             <div className="font-lora text-xl font-bold text-green">{item.price}</div>
             {item.priceQualifier && (

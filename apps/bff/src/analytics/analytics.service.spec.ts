@@ -6,7 +6,10 @@ import type { GeoIpService } from './geoip.service';
  * a session whose one-shot /analytics/visit call never landed must still become visible
  * (it silently didn't, for ~7% of users), and neither recovery path may overwrite a real
  * first-touch row or re-anonymise one a login already claimed. */
-function makePrisma(existingVisit: { sessionId: string; userId: string | null; source?: string | null } | null) {
+function makePrisma(
+  existingVisit: { sessionId: string; userId: string | null; source?: string | null } | null,
+  recentDuplicate = false,
+) {
   const upsert = jest.fn().mockResolvedValue({});
   // Mirrors Prisma closely enough to tell the two conditional updates apart: `linkVisitToUser`
   // matches on `userId: null`, `recordVisit` on `source: null`, and each must miss when the
@@ -18,14 +21,17 @@ function makePrisma(existingVisit: { sessionId: string; userId: string | null; s
     return Promise.resolve({ count: 1 });
   });
   const pageViewCreate = jest.fn().mockResolvedValue({});
+  // Null unless a test opts in: "no recent view of this path in this session", the normal case.
+  const pageViewFindFirst = jest.fn().mockResolvedValue(recentDuplicate ? { id: 'pv-recent' } : null);
   return {
     prisma: {
       visit: { upsert, updateMany },
-      pageView: { create: pageViewCreate },
+      pageView: { create: pageViewCreate, findFirst: pageViewFindFirst },
     } as unknown as PrismaService,
     upsert,
     updateMany,
     pageViewCreate,
+    pageViewFindFirst,
   };
 }
 
@@ -152,6 +158,26 @@ describe('AnalyticsService', () => {
       // from the literal "direct" the middleware writes for a genuine direct visit.
       expect(args.create.source).toBeUndefined();
       expect(args.create.medium).toBeUndefined();
+    });
+
+    it('drops a repeat of the same path within the dedupe window', async () => {
+      const { prisma, pageViewCreate, pageViewFindFirst, upsert } = makePrisma(null, true);
+      await new AnalyticsService(prisma, geoIp).recordPageView({ sessionId: 's1', path: '/post' });
+
+      const args = pageViewFindFirst.mock.calls[0][0] as { where: Record<string, unknown> };
+      expect(args.where).toMatchObject({ sessionId: 's1', path: '/post' });
+      // The safety net for background fetchers the middleware's navigation gate doesn't
+      // recognise: one path fetched 42 times in a session is not 42 page views.
+      expect(pageViewCreate).not.toHaveBeenCalled();
+      // And no backfill either — the view this duplicates already did that.
+      expect(upsert).not.toHaveBeenCalled();
+    });
+
+    it('keeps a repeat of a different path in the same session', async () => {
+      const { prisma, pageViewCreate } = makePrisma(null, false);
+      await new AnalyticsService(prisma, geoIp).recordPageView({ sessionId: 's1', path: '/favourites' });
+
+      expect(pageViewCreate).toHaveBeenCalledWith({ data: { sessionId: 's1', path: '/favourites' } });
     });
 
     it('still records the page view when no ip/userAgent is sent', async () => {

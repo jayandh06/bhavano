@@ -6,6 +6,11 @@ import { GeoIpService } from './geoip.service';
 import { isBotUserAgent } from '@bhavano/types/botUserAgent';
 import { deviceTypeFromUserAgent } from './device-type';
 
+/** How close together two views of the same path in the same session have to be before the
+ * second is treated as a double-fire rather than a real re-visit. Two seconds: short enough that
+ * a person genuinely returning to a page still gets counted, long enough to absorb a burst. */
+const PAGE_VIEW_DEDUPE_MS = 2_000;
+
 @Injectable()
 export class AnalyticsService {
   constructor(
@@ -73,9 +78,28 @@ export class AnalyticsService {
   }
 
   /** Called on every real (non-prefetch) page navigation by web's middleware.ts — one row per
-   * page view, not deduped like `recordVisit` above, since repeat views of the same path within
-   * a session are genuine trail entries, not retries of the same write. */
+   * page view, since repeat views of the same path within a session are genuine trail entries,
+   * not retries of the same write.
+   *
+   * With one exception: the same path twice inside `PAGE_VIEW_DEDUPE_MS`. Nobody reads a page and
+   * comes back to it in under two seconds, so that's either a double-fire or a background fetcher
+   * web's middleware didn't recognise. A safety net, not the fix — the fix is the navigation gate
+   * in middleware.ts, and this exists because that gate identifies request *shapes* and the next
+   * unrecognised fetcher may present a new one. It would have removed the 3.51-views-per-path
+   * duplication measured on 2026-09-16 on its own. Indexed by `@@index([sessionId, createdAt])`,
+   * so it's one cheap lookup on a write path that is already fire-and-forget. */
   async recordPageView(dto: RecordPageViewDto): Promise<void> {
+    const duplicate = await this.prisma.pageView.findFirst({
+      where: {
+        sessionId: dto.sessionId,
+        path: dto.path,
+        createdAt: { gte: new Date(Date.now() - PAGE_VIEW_DEDUPE_MS) },
+      },
+      select: { id: true },
+    });
+    // Nothing else to do: the view this duplicates already ran the backfill below.
+    if (duplicate) return;
+
     await this.prisma.pageView.create({ data: { sessionId: dto.sessionId, path: dto.path } });
     await this.backfillMissingVisit(dto);
   }

@@ -30,8 +30,15 @@ function LocationBlock({ heading, items }: { heading: string; items: { key: stri
     <div className="flex gap-3">
       {chunkIntoColumns(items, LOCATION_COLUMNS).map((column, i) => (
         <div key={i} className="flex flex-col gap-2 text-[13px]">
+          {/* prefetch={false} — this is the single densest link surface in the app: every city
+            * plus up to MAX_FOOTER_AREAS areas, rendered twice (once per breakpoint, see the
+            * note below), on every page. It exists for crawlers and for deliberate discovery,
+            * not for navigation anyone is about to make, so prefetching it spends a full
+            * uncached server render and a Postgres round-trip per link on pages nobody asked
+            * for. Crawlers are unaffected: prefetch only governs the client router, never the
+            * server-rendered <a href> they actually follow. */}
           {column.map((item) => (
-            <Link key={item.key} href={item.href}>
+            <Link key={item.key} href={item.href} prefetch={false}>
               {item.label}
             </Link>
           ))}
@@ -118,21 +125,28 @@ export async function Footer({
         <LocationBlock heading="Browse Cities" items={cityItems} />
         <div>
           <div className="font-bold text-[13px] text-text mb-2.5">Company</div>
+          {/* prefetch={false} on the whole footer, same reasoning as the location lists above —
+            * a footer is on every page, so every one of these is a wasted uncached render on
+            * almost every page view. /post additionally must not be prefetched for correctness:
+            * it renders the city chip from a cookie at render time, so a copy prefetched from
+            * another city's page bakes in the wrong city (see Header.tsx's note). */}
           <div className="flex flex-col gap-2 text-[13px]">
-            <Link href={currentCityName ? `/post?city=${slugify(currentCityName)}` : "/post"}>Post a free ad</Link>
-            <Link href="/tools">Tools</Link>
-            <Link href="/help">Help centre</Link>
-            <Link href="/about">About us</Link>
+            <Link href={currentCityName ? `/post?city=${slugify(currentCityName)}` : "/post"} prefetch={false}>
+              Post a free ad
+            </Link>
+            <Link href="/tools" prefetch={false}>Tools</Link>
+            <Link href="/help" prefetch={false}>Help centre</Link>
+            <Link href="/about" prefetch={false}>About us</Link>
           </div>
         </div>
       </div>
       <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-4">
         <span className="text-xs text-muted">{entityCopyright(2026)}</span>
         <div className="flex gap-5 text-xs">
-          <Link href="/about">About Us</Link>
-          <Link href="/terms">Terms of Service</Link>
-          <Link href="/privacy">Privacy Policy</Link>
-          <Link href="/contact">Contact Us</Link>
+          <Link href="/about" prefetch={false}>About Us</Link>
+          <Link href="/terms" prefetch={false}>Terms of Service</Link>
+          <Link href="/privacy" prefetch={false}>Privacy Policy</Link>
+          <Link href="/contact" prefetch={false}>Contact Us</Link>
         </div>
       </div>
     </section>
