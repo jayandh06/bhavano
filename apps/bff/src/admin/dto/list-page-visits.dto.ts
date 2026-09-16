@@ -2,6 +2,11 @@ import { Type } from 'class-transformer';
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { DEVICE_TYPES } from '../../analytics/device-type';
 
+/** One asc/desc pair per sortable column, so the admin table's headers can each be a sort
+ * toggle. `pageViewCount` is deliberately absent: it isn't a column on Visit at all — it's
+ * counted from PageView in a second groupBy after the page of rows is already chosen (see
+ * AdminService.listPageVisits), so ordering by it would need a join/denormalised counter rather
+ * than an orderBy. */
 const PAGE_VISIT_SORT_VALUES = [
   'createdAt_desc',
   'createdAt_asc',
@@ -9,6 +14,26 @@ const PAGE_VISIT_SORT_VALUES = [
   'user_desc',
   'city_asc',
   'city_desc',
+  'deviceType_asc',
+  'deviceType_desc',
+  'source_asc',
+  'source_desc',
+  'medium_asc',
+  'medium_desc',
+  'campaign_asc',
+  'campaign_desc',
+  'campaignId_asc',
+  'campaignId_desc',
+  'adGroupId_asc',
+  'adGroupId_desc',
+  'landingPath_asc',
+  'landingPath_desc',
+  'ip_asc',
+  'ip_desc',
+  'region_asc',
+  'region_desc',
+  'country_asc',
+  'country_desc',
 ] as const;
 
 export type PageVisitSort = (typeof PAGE_VISIT_SORT_VALUES)[number];

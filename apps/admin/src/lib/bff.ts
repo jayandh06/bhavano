@@ -66,14 +66,25 @@ export type AdminListingSort =
 /** Mirrors the BFF's LOGIN_SORT_VALUES (apps/bff/src/admin/dto/list-logins.dto.ts). */
 export type AdminLoginSort = "createdAt_desc" | "createdAt_asc";
 
-/** Mirrors the BFF's PAGE_VISIT_SORT_VALUES (apps/bff/src/admin/dto/list-page-visits.dto.ts). */
-export type AdminPageVisitSort =
-  | "createdAt_desc"
-  | "createdAt_asc"
-  | "user_asc"
-  | "user_desc"
-  | "city_asc"
-  | "city_desc";
+/** Mirrors the BFF's PAGE_VISIT_SORT_VALUES (apps/bff/src/admin/dto/list-page-visits.dto.ts) —
+ * one asc/desc pair per sortable column, driving the page-visits table's header sort toggles.
+ * No `pageViewCount` pair: see that constant's own comment for why it can't be ordered on. */
+export type AdminPageVisitSortField =
+  | "createdAt"
+  | "user"
+  | "city"
+  | "deviceType"
+  | "source"
+  | "medium"
+  | "campaign"
+  | "campaignId"
+  | "adGroupId"
+  | "landingPath"
+  | "ip"
+  | "region"
+  | "country";
+
+export type AdminPageVisitSort = `${AdminPageVisitSortField}_asc` | `${AdminPageVisitSortField}_desc`;
 
 /** Mirrors the BFF's PAGE_VISIT_IDENTITY_VALUES (apps/bff/src/admin/dto/list-page-visits.dto.ts). */
 export type AdminPageVisitIdentity = "any" | "anonymous" | "logged_in";

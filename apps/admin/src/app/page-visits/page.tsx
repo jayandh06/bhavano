@@ -1,21 +1,30 @@
 import Link from "next/link";
 import type { DeviceType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { AdminPageVisitIdentity, AdminPageVisitSort, fetchPageVisits } from "@/lib/bff";
-import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import {
+  AdminPageVisitIdentity,
+  AdminPageVisitSort,
+  AdminPageVisitSortField,
+  fetchPageVisits,
+} from "@/lib/bff";
+import {
+  buildPageHref,
+  buildSuffixSortHref,
+  parsePage,
+  parsePageSize,
+  str,
+  suffixSortDirectionFor,
+  type SearchParams,
+} from "@/lib/searchParams";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
+import { SortableHeader } from "@/components/SortableHeader";
 
-const SORT_OPTIONS: { value: AdminPageVisitSort; label: string }[] = [
-  { value: "createdAt_desc", label: "Date — newest first" },
-  { value: "createdAt_asc", label: "Date — oldest first" },
-  { value: "user_asc", label: "User — grouped (A→Z)" },
-  { value: "user_desc", label: "User — grouped (Z→A)" },
-  { value: "city_asc", label: "City — A→Z" },
-  { value: "city_desc", label: "City — Z→A" },
-];
+/** What the BFF falls back to with no `?sort=` — named here so the Time column's header still
+ * shows its ▼ before anything has been clicked. */
+const DEFAULT_SORT: AdminPageVisitSort = "createdAt_desc";
 
 const IDENTITY_OPTIONS: { value: AdminPageVisitIdentity; label: string }[] = [
   { value: "any", label: "All visits" },
@@ -86,6 +95,9 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   });
   const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
+  const sortHref = (field: AdminPageVisitSortField) => buildSuffixSortHref("/page-visits", sp, field, DEFAULT_SORT);
+  const sortDir = (field: AdminPageVisitSortField) => suffixSortDirectionFor(sp, field, DEFAULT_SORT);
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
@@ -110,103 +122,150 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
           <Code>!spam%</Code>). All case-insensitive.
         </p>
 
-        <form
-          method="get"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 12,
-            alignItems: "flex-end",
-            marginBottom: 20,
-            padding: 16,
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            background: "var(--surface)",
-          }}
-        >
-          <Field label="User">
-            <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
-          </Field>
+        {/* One form around both the range/identity bar and the table, so the per-column filter
+            inputs living in the header cells submit together with these — a <form> can't be a
+            child of <table>, but inputs inside cells associate with an ancestor form just fine.
+            Sorting is the exception: those are plain links (SortableHeader), so clicking a column
+            doesn't require pressing Apply. */}
+        <form method="get">
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 12,
+              alignItems: "flex-end",
+              marginBottom: 12,
+              padding: 16,
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              background: "var(--surface)",
+            }}
+          >
+            {/* These four don't map onto a single column the way the header filters do — a user
+                lookup is an autocomplete, identity is a null-vs-not-null question about the user
+                column, and the dates bound the range the summary counts above describe. */}
+            <Field label="User">
+              <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
+            </Field>
 
-          <Field label="Identity">
-            <SelectField name="identity" defaultValue={identity ?? "any"} style={selectStyle}>
-              {IDENTITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
+            <Field label="Identity">
+              <SelectField name="identity" defaultValue={identity ?? "any"} style={selectStyle}>
+                {IDENTITY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectField>
+            </Field>
 
-          <Field label="Device">
-            <SelectField name="deviceType" defaultValue={deviceType ?? "any"} style={selectStyle}>
-              {DEVICE_TYPE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
+            <Field label="From (IST)">
+              <input type="date" name="from" defaultValue={from} style={dateInputStyle} />
+            </Field>
+            <Field label="To (IST)">
+              <input type="date" name="to" defaultValue={to} style={dateInputStyle} />
+            </Field>
 
-          <Field label="Source">
-            <input name="source" defaultValue={source} placeholder="e.g. google" style={textInputStyle} />
-          </Field>
-          <Field label="Medium">
-            <input name="medium" defaultValue={medium} placeholder="e.g. cpc" style={textInputStyle} />
-          </Field>
-          <Field label="Landing path">
-            <input name="landingPath" defaultValue={landingPath} placeholder="/bengaluru/..." style={textInputStyle} />
-          </Field>
-          <Field label="IP">
-            <input name="ip" defaultValue={ip} placeholder="103.21." style={textInputStyle} />
-          </Field>
-          <Field label="City">
-            <input name="city" defaultValue={city} placeholder="Bengaluru" style={textInputStyle} />
-          </Field>
-          <Field label="Region">
-            <input name="region" defaultValue={region} placeholder="Karnataka" style={textInputStyle} />
-          </Field>
-          <Field label="Country">
-            <input name="country" defaultValue={country} placeholder="India" style={textInputStyle} />
-          </Field>
+            <button type="submit" style={applyButtonStyle}>
+              Apply filters
+            </button>
+            <Link href="/page-visits" style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+              Reset
+            </Link>
+          </div>
 
-          <Field label="From (IST)">
-            <input type="date" name="from" defaultValue={from} style={dateInputStyle} />
-          </Field>
-          <Field label="To (IST)">
-            <input type="date" name="to" defaultValue={to} style={dateInputStyle} />
-          </Field>
+          {/* Carried so a header-filter submit doesn't silently drop the active sort (links set
+              it, this preserves it) or the chosen page size. Page deliberately isn't carried —
+              changing a filter should land back on page 1. */}
+          {sort && <input type="hidden" name="sort" value={sort} />}
+          {str(sp.limit) && <input type="hidden" name="limit" value={str(sp.limit)} />}
 
-          <Field label="Sort by">
-            <SelectField name="sort" defaultValue={sort ?? "createdAt_desc"} style={selectStyle}>
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
-
-          <button type="submit" style={applyButtonStyle}>
-            Apply filters
-          </button>
-          <Link href="/page-visits" style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
-            Reset
-          </Link>
-        </form>
-
-        {result.items.length === 0 ? (
-          <p style={{ color: "var(--muted)", fontSize: 14 }}>No visits match these filters.</p>
-        ) : (
           <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
-                  {["Time (IST)", "User", "Pages", "Device", "Source", "Medium", "UTM campaign", "Campaign", "Ad group", "Landing path", "IP", "City", "Region", "Country"].map((h) => (
-                    <th key={h} style={thStyle}>
-                      {h}
-                    </th>
-                  ))}
+                  <th style={thStyle}>
+                    <SortableHeader label="Time (IST)" href={sortHref("createdAt")} direction={sortDir("createdAt")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="User" href={sortHref("user")} direction={sortDir("user")} />
+                  </th>
+                  {/* Counted from PageView in a separate groupBy, not a column on Visit — see
+                      PAGE_VISIT_SORT_VALUES' own comment for why it can't be ordered on. */}
+                  <th style={thStyle}>Pages</th>
+                  <th style={thStyle}>
+                    <SortableHeader label="Device" href={sortHref("deviceType")} direction={sortDir("deviceType")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="Source" href={sortHref("source")} direction={sortDir("source")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="Medium" href={sortHref("medium")} direction={sortDir("medium")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="UTM campaign" href={sortHref("campaign")} direction={sortDir("campaign")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="Campaign" href={sortHref("campaignId")} direction={sortDir("campaignId")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="Ad group" href={sortHref("adGroupId")} direction={sortDir("adGroupId")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="Landing path" href={sortHref("landingPath")} direction={sortDir("landingPath")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="IP" href={sortHref("ip")} direction={sortDir("ip")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="City" href={sortHref("city")} direction={sortDir("city")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="Region" href={sortHref("region")} direction={sortDir("region")} />
+                  </th>
+                  <th style={thStyle}>
+                    <SortableHeader label="Country" href={sortHref("country")} direction={sortDir("country")} />
+                  </th>
+                </tr>
+                {/* Filter row — one input per filterable column, directly under its own heading
+                    rather than in a legend above the table. Enter submits (it's a real form), so
+                    Apply above is for the range/identity controls more than for these. */}
+                <tr style={{ background: "var(--surface-alt)" }}>
+                  <th style={filterThStyle} />
+                  <th style={filterThStyle} />
+                  <th style={filterThStyle} />
+                  <th style={filterThStyle}>
+                    <SelectField name="deviceType" defaultValue={deviceType ?? "any"} style={headerSelectStyle}>
+                      {DEVICE_TYPE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </SelectField>
+                  </th>
+                  <th style={filterThStyle}>
+                    <input name="source" defaultValue={source} placeholder="google" style={headerInputStyle} />
+                  </th>
+                  <th style={filterThStyle}>
+                    <input name="medium" defaultValue={medium} placeholder="cpc" style={headerInputStyle} />
+                  </th>
+                  <th style={filterThStyle} />
+                  <th style={filterThStyle} />
+                  <th style={filterThStyle} />
+                  <th style={filterThStyle}>
+                    <input name="landingPath" defaultValue={landingPath} placeholder="/bengaluru/…" style={headerInputStyle} />
+                  </th>
+                  <th style={filterThStyle}>
+                    <input name="ip" defaultValue={ip} placeholder="103.21." style={headerInputStyle} />
+                  </th>
+                  <th style={filterThStyle}>
+                    <input name="city" defaultValue={city} placeholder="Bengaluru" style={headerInputStyle} />
+                  </th>
+                  <th style={filterThStyle}>
+                    <input name="region" defaultValue={region} placeholder="Karnataka" style={headerInputStyle} />
+                  </th>
+                  <th style={filterThStyle}>
+                    <input name="country" defaultValue={country} placeholder="India" style={headerInputStyle} />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -242,10 +301,20 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                     <td style={tdStyle}>{v.ipCountry ?? dash}</td>
                   </tr>
                 ))}
+                {/* Inside the table, not instead of it — filtering down to zero used to replace
+                    the whole thing with a bare paragraph, taking the filter inputs away with it
+                    and leaving no way to widen the filter that just emptied the page. */}
+                {result.items.length === 0 && (
+                  <tr style={{ borderTop: "1px solid var(--border)" }}>
+                    <td colSpan={14} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
+                      No visits match these filters.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-        )}
+        </form>
 
         <Pagination
           currentPage={currentPage}
@@ -322,4 +391,28 @@ const applyButtonStyle: React.CSSProperties = {
 };
 
 const thStyle: React.CSSProperties = { padding: "10px 12px", fontSize: 11.5, fontWeight: 700, color: "var(--muted)", whiteSpace: "nowrap" };
+
+/** The filter row sits tight under the labels it belongs to — less vertical padding than the
+ * label row above it, and a bottom border so the two read as one header block rather than the
+ * filter inputs looking like a first data row. */
+const filterThStyle: React.CSSProperties = {
+  padding: "0 8px 8px",
+  borderBottom: "1px solid var(--border)",
+  verticalAlign: "top",
+};
+
+/** Narrower than the standalone filter-bar inputs (textInputStyle's 150px min would force the
+ * 14-column table far wider than it already is) — these only need to hold a short prefix. */
+const headerInputStyle: React.CSSProperties = {
+  border: "1px solid var(--border)",
+  borderRadius: 7,
+  padding: "5px 7px",
+  fontSize: 12,
+  background: "var(--surface)",
+  color: "var(--text)",
+  width: 110,
+  fontWeight: 400,
+};
+
+const headerSelectStyle: React.CSSProperties = { ...headerInputStyle, width: 120 };
 const tdStyle: React.CSSProperties = { padding: "9px 12px", verticalAlign: "top" };

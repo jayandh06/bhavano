@@ -66,13 +66,45 @@ const LOGIN_ORDER_BY: Record<LoginSort, Prisma.LoginEventOrderByWithRelationInpu
 /** "Sort by user" groups a user's sessions together (by `userId`), then newest-first within;
  * "sort by city" likewise. Nulls last so anonymous / un-geolocated rows don't crowd the top. A
  * final `id` key keeps the order total, which the cursor pagination relies on. */
+/** Every entry keeps `createdAt desc` then `id asc` as tiebreakers, so a column full of nulls or
+ * repeated values still paginates deterministically instead of shuffling rows between pages.
+ * Nulls sort last in both directions on purpose — an empty cell is never the most interesting
+ * row to lead with, whichever way the admin is sorting. */
+function visitOrderBy(
+  field: Prisma.VisitOrderByWithRelationInput,
+): Prisma.VisitOrderByWithRelationInput[] {
+  return [field, { createdAt: 'desc' }, { id: 'asc' }];
+}
+
+const nullsLast = (direction: 'asc' | 'desc') => ({ sort: direction, nulls: 'last' }) as const;
+
 const PAGE_VISIT_ORDER_BY: Record<PageVisitSort, Prisma.VisitOrderByWithRelationInput[]> = {
   createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
-  user_asc: [{ userId: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
-  user_desc: [{ userId: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
-  city_asc: [{ ipCity: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
-  city_desc: [{ ipCity: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'asc' }],
+  user_asc: visitOrderBy({ userId: nullsLast('asc') }),
+  user_desc: visitOrderBy({ userId: nullsLast('desc') }),
+  city_asc: visitOrderBy({ ipCity: nullsLast('asc') }),
+  city_desc: visitOrderBy({ ipCity: nullsLast('desc') }),
+  deviceType_asc: visitOrderBy({ deviceType: nullsLast('asc') }),
+  deviceType_desc: visitOrderBy({ deviceType: nullsLast('desc') }),
+  source_asc: visitOrderBy({ source: nullsLast('asc') }),
+  source_desc: visitOrderBy({ source: nullsLast('desc') }),
+  medium_asc: visitOrderBy({ medium: nullsLast('asc') }),
+  medium_desc: visitOrderBy({ medium: nullsLast('desc') }),
+  campaign_asc: visitOrderBy({ campaign: nullsLast('asc') }),
+  campaign_desc: visitOrderBy({ campaign: nullsLast('desc') }),
+  campaignId_asc: visitOrderBy({ campaignId: nullsLast('asc') }),
+  campaignId_desc: visitOrderBy({ campaignId: nullsLast('desc') }),
+  adGroupId_asc: visitOrderBy({ adGroupId: nullsLast('asc') }),
+  adGroupId_desc: visitOrderBy({ adGroupId: nullsLast('desc') }),
+  landingPath_asc: visitOrderBy({ landingPath: nullsLast('asc') }),
+  landingPath_desc: visitOrderBy({ landingPath: nullsLast('desc') }),
+  ip_asc: visitOrderBy({ ip: nullsLast('asc') }),
+  ip_desc: visitOrderBy({ ip: nullsLast('desc') }),
+  region_asc: visitOrderBy({ ipRegion: nullsLast('asc') }),
+  region_desc: visitOrderBy({ ipRegion: nullsLast('desc') }),
+  country_asc: visitOrderBy({ ipCountry: nullsLast('asc') }),
+  country_desc: visitOrderBy({ ipCountry: nullsLast('desc') }),
 };
 
 const USER_ORDER_BY: Record<UserSort, Prisma.UserOrderByWithRelationInput[]> = {

@@ -12,6 +12,7 @@ import {
 import { OptOutButton } from "./OptOutButton";
 import { formatDate } from "@/lib/formatDateTime";
 import { buildSortHref, sortDirectionFor, type SearchParams } from "@/lib/searchParams";
+import { SortableHeader as SharedSortableHeader } from "@/components/SortableHeader";
 
 const CONSENT_COLORS: Record<string, string> = {
   none: "var(--muted)",
@@ -281,23 +282,17 @@ export function OutreachContactsList({ contacts, sp }: { contacts: OutreachConta
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
 
-/** Name/Rating/City column headers — clicking toggles ascending/descending on that field
- * (buildSortHref/sortDirectionFor handle the actual URL logic), replacing what would otherwise
- * be a separate "Sort by" filter control. A full-page navigation like every other filter on this
- * page, not a client-side re-sort — the server is the source of truth for order (and pagination
- * needs it sorted server-side anyway). */
+/** This table's own binding of the shared SortableHeader — supplies the `-field` URL convention
+ * (buildSortHref/sortDirectionFor) that these already-bookmarked outreach URLs use, while the
+ * arrow/label rendering itself lives in components/SortableHeader.tsx alongside the page-visits
+ * table's `field_desc` binding. */
 function SortableHeader({ label, field, sp }: { label: string; field: string; sp: SearchParams }) {
-  const direction = sortDirectionFor(sp, field);
   return (
-    <Link
+    <SharedSortableHeader
+      label={label}
       href={buildSortHref("/outreach/contacts", sp, field)}
-      style={{ color: "inherit", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
-    >
-      {label}
-      <span style={{ color: direction ? "var(--text)" : "var(--muted)", fontSize: 10 }}>
-        {direction === "asc" ? "▲" : direction === "desc" ? "▼" : "↕"}
-      </span>
-    </Link>
+      direction={sortDirectionFor(sp, field)}
+    />
   );
 }
 

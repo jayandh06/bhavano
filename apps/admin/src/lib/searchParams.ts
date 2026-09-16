@@ -77,3 +77,44 @@ export function sortDirectionFor(sp: SearchParams, field: string): "asc" | "desc
   if (currentSort === `-${field}`) return "desc";
   return null;
 }
+
+/* ---------------------------------------------------------------------------------------------
+ * The same two helpers for the `<field>_asc` / `<field>_desc` sort convention, which is what the
+ * BFF's own validated sort enums use (PAGE_VISIT_SORT_VALUES, USER_SORT_VALUES, …) rather than
+ * the leading-`-` shorthand above. Kept as a separate pair instead of teaching the originals two
+ * formats: the outreach table's URLs are already public/bookmarked in the `-field` shape, and a
+ * page whose sort param is validated server-side against an enum can't accept the other form
+ * anyway.
+ * ------------------------------------------------------------------------------------------- */
+
+/** Ascending on first click, flipping to descending when the column is already the active one.
+ * `defaultSort` is the order the page falls back to with no `?sort=` at all, so that column's
+ * header still shows its arrow (and still toggles) before anything has been clicked. */
+export function buildSuffixSortHref(
+  basePath: string,
+  sp: SearchParams,
+  field: string,
+  defaultSort?: string,
+): string {
+  const currentSort = str(sp.sort) ?? defaultSort;
+  const nextSort = currentSort === `${field}_asc` ? `${field}_desc` : `${field}_asc`;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (key === "sort" || key === "page") continue;
+    const v = str(value);
+    if (v) params.set(key, v);
+  }
+  params.set("sort", nextSort);
+  return `${basePath}?${params.toString()}`;
+}
+
+export function suffixSortDirectionFor(
+  sp: SearchParams,
+  field: string,
+  defaultSort?: string,
+): "asc" | "desc" | null {
+  const currentSort = str(sp.sort) ?? defaultSort;
+  if (currentSort === `${field}_asc`) return "asc";
+  if (currentSort === `${field}_desc`) return "desc";
+  return null;
+}
