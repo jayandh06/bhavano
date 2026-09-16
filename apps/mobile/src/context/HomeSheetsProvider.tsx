@@ -32,10 +32,7 @@ import { getOrCreateViewerKey } from "../lib/viewerKey";
 import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
 import { Icon } from "../components/Icon";
 import { GoogleIcon } from "../components/GoogleIcon";
-
-// Same fallback/env-var pattern as LegalFooter.tsx's own SITE_URL — used here for the login
-// sheet's Terms/Privacy links.
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+import { appWebUrl } from "../lib/appWebUrl";
 
 // Exported so PostAdWizard can re-read the just-written token directly after a login it
 // triggered mid-submit — see its own onSubmit for why a fresh read beats the accessToken prop.
@@ -568,14 +565,14 @@ export function HomeSheetsProvider({
                 By continuing you agree to Bhavano&apos;s{" "}
                 <Text
                   style={{ color: colors.textSoft, fontWeight: "700" }}
-                  onPress={() => Linking.openURL(`${SITE_URL}/terms`)}
+                  onPress={() => Linking.openURL(appWebUrl("/terms"))}
                 >
                   Terms of Service
                 </Text>{" "}
                 and{" "}
                 <Text
                   style={{ color: colors.textSoft, fontWeight: "700" }}
-                  onPress={() => Linking.openURL(`${SITE_URL}/privacy`)}
+                  onPress={() => Linking.openURL(appWebUrl("/privacy"))}
                 >
                   Privacy Policy
                 </Text>

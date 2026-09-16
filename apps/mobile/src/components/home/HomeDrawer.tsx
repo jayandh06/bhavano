@@ -8,9 +8,9 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { HOME_TABS, type HomeTabValue } from "./categories";
 import { COLLAPSED_BAR_HEIGHT } from "./CollapsedHeaderBar";
+import { appWebUrl } from "../../lib/appWebUrl";
 
 const DRAWER_WIDTH = 300;
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
 
 /**
  * The hamburger drawer opened from `CollapsedHeaderBar` — mirrors the web app's mobile
@@ -91,7 +91,7 @@ export function HomeDrawer({
 
   function openWebsite(path: string) {
     onClose();
-    WebBrowser.openBrowserAsync(`${SITE_URL}${path}`);
+    WebBrowser.openBrowserAsync(appWebUrl(path));
   }
 
   return (

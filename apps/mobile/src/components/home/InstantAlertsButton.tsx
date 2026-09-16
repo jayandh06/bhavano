@@ -4,8 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { InstantAlertsModal } from "./InstantAlertsModal";
-
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+import { appWebUrl } from "../../lib/appWebUrl";
 
 /** "Get Instant Alerts" trigger — mirrors web's InstantAlertsButton.tsx and this file's own
  * BoostButton.tsx sibling exactly, including the same iOS/Android split: a Razorpay-paid feature
@@ -38,7 +37,7 @@ export function InstantAlertsButton({
       <Pressable
         onPress={() =>
           Platform.OS === "ios"
-            ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings?openInstantAlerts=${listingId}`)
+            ? WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openInstantAlerts=${listingId}`))
             : setModalOpen(true)
         }
         style={[styles.button, { borderColor: colors.green }]}

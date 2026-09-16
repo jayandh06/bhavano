@@ -5,8 +5,7 @@ import type { ListingCategory } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { BoostModal } from "./BoostModal";
-
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+import { appWebUrl } from "../../lib/appWebUrl";
 
 /** "Boost Ad" trigger — mirrors web's BoostButton.tsx (outline pill, same copy). Owns the same
  * iOS/Android split PostAdWizard's own success-screen boost button does: a Razorpay-paid boost is
@@ -43,7 +42,7 @@ export function BoostButton({
       <Pressable
         onPress={() =>
           Platform.OS === "ios"
-            ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings?openBoost=${listingId}`)
+            ? WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openBoost=${listingId}`))
             : setBoostOpen(true)
         }
         style={[styles.button, { borderColor: colors.green }]}

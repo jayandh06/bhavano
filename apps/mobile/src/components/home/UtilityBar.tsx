@@ -2,8 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
-
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+import { appWebUrl } from "../../lib/appWebUrl";
 
 /**
  * Mirrors the web app's green utility strip above the main header (For Owners / Tools / Plans /
@@ -23,7 +22,7 @@ export function UtilityBar() {
   const router = useRouter();
 
   function openWebsite(path: string) {
-    WebBrowser.openBrowserAsync(`${SITE_URL}${path}`);
+    WebBrowser.openBrowserAsync(appWebUrl(path));
   }
 
   return (

@@ -26,8 +26,7 @@ import { LocationMapPicker } from "./LocationMapPicker";
 import { ScreenHeader } from "./ScreenHeader";
 import { BoostModal } from "./BoostModal";
 import { InstantAlertsModal } from "./InstantAlertsModal";
-
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
+import { appWebUrl } from "../../lib/appWebUrl";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -987,7 +986,7 @@ export function PostAdWizard({
                 // (AutoOpenPurchaseModal.tsx on web).
                 onPress={() =>
                   Platform.OS === "ios"
-                    ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings?openBoost=${createdListing.id}`)
+                    ? WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openBoost=${createdListing.id}`))
                     : setBoostOpen(true)
                 }
                 style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
@@ -1024,7 +1023,7 @@ export function PostAdWizard({
                 // Same iOS/Android split as the Boost button just above — see its own comment.
                 onPress={() =>
                   Platform.OS === "ios"
-                    ? WebBrowser.openBrowserAsync(`${SITE_URL}/my-listings?openInstantAlerts=${createdListing.id}`)
+                    ? WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openInstantAlerts=${createdListing.id}`))
                     : setInstantAlertsOpen(true)
                 }
                 style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
