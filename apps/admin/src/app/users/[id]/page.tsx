@@ -127,8 +127,14 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: 11.5, color: "var(--muted)", flexShrink: 0 }}>
-                  {formatDateTime(visit.createdAt)}
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{formatDateTime(visit.createdAt)}</div>
+                  <Link
+                    href={`/page-visits/${visit.sessionId}`}
+                    style={{ fontSize: 11.5, color: "var(--green)", fontWeight: 700 }}
+                  >
+                    {visit.pageViewCount} page{visit.pageViewCount === 1 ? "" : "s"} →
+                  </Link>
                 </div>
               </div>
               );

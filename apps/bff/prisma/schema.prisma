@@ -674,6 +674,29 @@ model Visit {
   @@index([createdAt])
 }
 
+/** One row per real (non-prefetch) page navigation within a browsing session — the full trail
+ * behind `Visit.landingPath`, which only ever captures the first page. Written by web's
+ * middleware.ts on every matching request, independent of the acquisition/city cookie logic
+ * there (which short-circuits once a session is already established — this write does not).
+ * `sessionId` deliberately isn't a Prisma relation to `Visit`: both are written fire-and-forget
+ * from the same middleware tick with no ordering guarantee, so a strict FK could race against a
+ * `Visit` row that hasn't been created yet. Not pruned — same non-cleanup precedent as
+ * `RateLimitHit` below — and, being one row per page view rather than per session, grows faster
+ * than `Visit`; worth a retention job if volume ever becomes a concern.
+ *
+ * A caveat worth keeping in mind reading this data: a client-side navigation to a route Next.js
+ * had already prefetched (cached) never reaches the server, so this sees most but not literally
+ * every page change — same "best effort" precedent as `Visit.ipCity`'s coarse GeoIP guess. */
+model PageView {
+  id        String   @id @default(cuid())
+  sessionId String
+  path      String
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([createdAt])
+}
+
 /** One row per rate-limited action attempt, counted over a rolling window at check time —
  * not pruned (same non-cleanup precedent as OtpChallenge). Anonymous requests never reach
  * the guard that writes these, so `identity` is always "user:<id>". */

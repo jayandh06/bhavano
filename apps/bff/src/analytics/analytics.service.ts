@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
+import { RecordPageViewDto } from './dto/record-pageview.dto';
 import { GeoIpService } from './geoip.service';
 
 @Injectable()
@@ -36,6 +37,13 @@ export class AnalyticsService {
         ipCountry: geo?.country ?? null,
       },
     });
+  }
+
+  /** Called on every real (non-prefetch) page navigation by web's middleware.ts — one row per
+   * page view, not deduped like `recordVisit` above, since repeat views of the same path within
+   * a session are genuine trail entries, not retries of the same write. */
+  async recordPageView(dto: RecordPageViewDto): Promise<void> {
+    await this.prisma.pageView.create({ data: { sessionId: dto.sessionId, path: dto.path } });
   }
 
   /** Best-effort link from an anonymous session to the user who just logged in during it — only

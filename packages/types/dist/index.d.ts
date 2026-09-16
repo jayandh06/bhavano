@@ -544,6 +544,9 @@ export interface LoginEventsPage {
  * `ipCountry` are the best-effort GeoIP guess stored at write time, never a `City` FK. */
 export interface PageVisitDto {
     id: string;
+    /** The session cookie id (`bhavano_sid`) — also how `PageView` rows are keyed, so this is what
+     * the admin page-visits screen links through to fetch a session's full page-view trail. */
+    sessionId: string;
     createdAt: string;
     userId: string | null;
     userName: string | null;
@@ -561,10 +564,30 @@ export interface PageVisitDto {
     ipCity: string | null;
     ipRegion: string | null;
     ipCountry: string | null;
+    /** Count of `PageView` rows logged for this session — see PageView's schema comment for the
+     * "best effort, not literally every navigation" caveat behind this number. */
+    pageViewCount: number;
 }
 export interface PageVisitsPage {
     items: PageVisitDto[];
     total: number;
+    /** Average `pageViewCount` per session within the current date-range filter (all sessions if
+     * none is set) — null when there are no matching sessions to average. Deliberately scoped only
+     * to the date range, not every text filter on this screen: PageView rows carry just
+     * `sessionId`/`path`/`createdAt`, so honoring every Visit-side filter here would need joining
+     * every matching sessionId against PageView rather than a flat aggregate. */
+    avgPageViewsPerSession: number | null;
+}
+/** One page view within a session's trail — see the BFF's `PageView` model. */
+export interface PageViewDto {
+    path: string;
+    createdAt: string;
+}
+/** A session's full page-view trail plus the same summary `page-visits` shows for its one Visit
+ * row, for the admin drill-down screen. */
+export interface SessionTrailDto {
+    visit: PageVisitDto;
+    pageViews: PageViewDto[];
 }
 /** One entry in a user's merged activity timeline — sourced from several tables
  * (logins, listings, messages, favourites, views) and returned pre-sorted, newest first. */
@@ -580,6 +603,9 @@ export interface ActivityEventDto {
  * included here since these are always fetched already scoped to one user. */
 export interface VisitDto {
     id: string;
+    /** Links to the same page-view trail the admin page-visits screen exposes — see
+     * `PageVisitDto.sessionId`. */
+    sessionId: string;
     source: string | null;
     medium: string | null;
     campaign: string | null;
@@ -590,6 +616,7 @@ export interface VisitDto {
     ipRegion: string | null;
     ipCountry: string | null;
     createdAt: string;
+    pageViewCount: number;
 }
 export interface UserActivityDto {
     user: {

@@ -57,10 +57,11 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Technical data:</strong> your IP address and the page you first arrived on, recorded once per
-            browsing session, to investigate abuse and understand how visitors reach the Platform. We also derive an
-            approximate city, region, and country from that IP address using a local lookup database — this is a
-            coarse estimate (it can be wrong, particularly on mobile networks) used only for our own internal
-            reporting, and never to choose what you see on the Platform.
+            browsing session, to investigate abuse and understand how visitors reach the Platform — along with the
+            pages you navigate to afterwards during that same session, so we can understand how visitors use the
+            Platform. We also derive an approximate city, region, and country from that IP address using a local
+            lookup database — this is a coarse estimate (it can be wrong, particularly on mobile networks) used only
+            for our own internal reporting, and never to choose what you see on the Platform.
           </li>
           <li>
             <strong>Location data:</strong> precise location is only ever collected if you tap &quot;Auto-detect my

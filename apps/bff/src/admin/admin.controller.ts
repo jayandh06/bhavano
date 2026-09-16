@@ -28,6 +28,7 @@ import type {
   RateLimitSettingsDto,
   SendPostedNotificationResponseDto,
   SendWelcomeResponseDto,
+  SessionTrailDto,
   UserActivityDto,
 } from '@bhavano/types';
 import type { BoostPriceSettings } from '@bhavano/types/boostPricing';
@@ -239,6 +240,11 @@ export class AdminController {
   @Get('page-visits')
   listPageVisits(@Query() query: ListPageVisitsDto): Promise<PageVisitsPage> {
     return this.adminService.listPageVisits(query);
+  }
+
+  @Get('page-visits/:sessionId/trail')
+  getSessionTrail(@Param('sessionId') sessionId: string): Promise<SessionTrailDto> {
+    return this.adminService.getSessionTrail(sessionId);
   }
 
   @Get('users')

@@ -91,8 +91,8 @@ function safeHostname(url: string | null): string | undefined {
 }
 
 /**
- * Three independent things happen here. The first two are first-touch/first-visit-of-session
- * only (skipped entirely once their cookie already exists); the third tracks an ongoing choice:
+ * Four things happen here. The first three are first-touch/first-visit-of-session only (skipped
+ * entirely once their cookie already exists) or, for the fourth, log on every request instead:
  *
  * 1. `bhavano_acq` — a permanent (30-day) cookie capturing the user's very first-ever landing
  *    source, read at signup time (see lib/bff.ts) and persisted once onto the new User row.
@@ -106,6 +106,10 @@ function safeHostname(url: string | null): string | undefined {
  *    live here rather than in the pages that resolve the city, because a Server Component cannot
  *    set a cookie during render. Read by `lib/defaultCity.ts`; see
  *    docs/plans/visitor-location-default-city.md.
+ * 4. The page-view trail (`PageView`, keyed by the same `bhavano_sid`) — unlike 1-3, this fires
+ *    on every real navigation, not just the session's first, so it isn't gated by the early
+ *    return below. See PageView's schema comment for why it's a separate row per view rather
+ *    than an update to the Visit row from #2.
  */
 export function middleware(request: NextRequest, event: NextFetchEvent): NextResponse {
   // Next.js's client router prefetches every `<Link>` it can see (Footer alone renders one per
@@ -121,6 +125,25 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
 
   const hasAcquisitionCookie = request.cookies.has(ACQUISITION_COOKIE);
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
+  // Computed here (rather than only inside the `!hasSessionCookie` block below) so the page-view
+  // log below and the cookie this request may set agree on the same id even on a session's very
+  // first request.
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value ?? crypto.randomUUID();
+
+  // Page-view trail (PageView, distinct from the once-per-session Visit row below) — logged for
+  // every real navigation this middleware sees, unlike the acquisition/city bookkeeping further
+  // down, which short-circuits once a session is already established. See PageView's schema
+  // comment for what "every" means in practice and why this is fire-and-forget.
+  event.waitUntil(
+    fetch(`${BFF_URL}/analytics/pageview`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, path: request.nextUrl.pathname }),
+    }).catch(() => {
+      // Best-effort — a dropped page-view log should never affect the page request itself.
+    }),
+  );
+
   // undefined = this page says nothing about the city; null = it says "all cities".
   // `rememberCity=0` is the search bar's own marker (see SearchBar.tsx/cityFromRoute.ts) — a
   // search result page still names a real city in its path, but showing it once is not the
@@ -163,7 +186,6 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   }
 
   if (!hasSessionCookie) {
-    const sessionId = crypto.randomUUID();
     response.cookies.set(SESSION_COOKIE, sessionId, {
       httpOnly: true,
       sameSite: "lax",

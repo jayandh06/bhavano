@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { AdminPageVisitSort, fetchPageVisits } from "@/lib/bff";
+import { AdminPageVisitIdentity, AdminPageVisitSort, fetchPageVisits } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { UserPicker } from "@/components/UserPicker";
@@ -14,6 +14,12 @@ const SORT_OPTIONS: { value: AdminPageVisitSort; label: string }[] = [
   { value: "user_desc", label: "User — grouped (Z→A)" },
   { value: "city_asc", label: "City — A→Z" },
   { value: "city_desc", label: "City — Z→A" },
+];
+
+const IDENTITY_OPTIONS: { value: AdminPageVisitIdentity; label: string }[] = [
+  { value: "any", label: "All visits" },
+  { value: "anonymous", label: "Anonymous only" },
+  { value: "logged_in", label: "Logged in only" },
 ];
 
 /** The date pickers are read as IST calendar days: an inclusive range from the start of the
@@ -31,7 +37,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const limit = parsePageSize(str(sp.limit));
   const userId = str(sp.userId);
   const userLabel = str(sp.userLabel);
-  const anonymousOnly = str(sp.anonymousOnly) === "true";
+  const identity = str(sp.identity) as AdminPageVisitIdentity | undefined;
   const from = str(sp.from);
   const to = str(sp.to);
   const source = str(sp.source);
@@ -48,7 +54,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     from: istDayStart(from),
     to: istDayEnd(to),
     userId,
-    anonymousOnly,
+    identity,
     source,
     medium,
     ip,
@@ -71,6 +77,13 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 8px" }}>
           One row per browser session. {result.total.toLocaleString()} match the current filters. Times and the
           date range are IST.
+          {result.avgPageViewsPerSession !== null && (
+            <>
+              {" "}
+              Avg <strong>{result.avgPageViewsPerSession.toFixed(1)}</strong> pages/session
+              {from || to ? " in the selected date range" : " overall"}.
+            </>
+          )}
         </p>
         <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 20px", lineHeight: 1.6 }}>
           Text filters: <Code>text</Code> contains · <Code>text%</Code> starts with · <Code>%text</Code> ends with ·{" "}
@@ -96,11 +109,14 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
           </Field>
 
-          <Field label="Never logged in">
-            <label style={{ display: "flex", alignItems: "center", gap: 6, height: 36, fontSize: 13.5 }}>
-              <input type="checkbox" name="anonymousOnly" value="true" defaultChecked={anonymousOnly} />
-              Anonymous only
-            </label>
+          <Field label="Identity">
+            <SelectField name="identity" defaultValue={identity ?? "any"} style={selectStyle}>
+              {IDENTITY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </SelectField>
           </Field>
 
           <Field label="Source">
@@ -157,7 +173,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
-                  {["Time (IST)", "User", "Source", "Medium", "UTM campaign", "Campaign", "Ad group", "Landing path", "IP", "City", "Region", "Country"].map((h) => (
+                  {["Time (IST)", "User", "Pages", "Source", "Medium", "UTM campaign", "Campaign", "Ad group", "Landing path", "IP", "City", "Region", "Country"].map((h) => (
                     <th key={h} style={thStyle}>
                       {h}
                     </th>
@@ -176,6 +192,11 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                       ) : (
                         <span style={{ color: "var(--muted)" }}>anonymous</span>
                       )}
+                    </td>
+                    <td style={tdStyle}>
+                      <Link href={`/page-visits/${v.sessionId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
+                        {v.pageViewCount}
+                      </Link>
                     </td>
                     <td style={tdStyle}>{v.source ?? dash}</td>
                     <td style={tdStyle}>{v.medium ?? dash}</td>

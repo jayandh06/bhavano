@@ -23,6 +23,7 @@ import type {
   SendPostedNotificationResultDto,
   SendWelcomeResponseDto,
   SendWelcomeResultDto,
+  SessionTrailDto,
   UserActivityDto,
   WelcomeChannel,
 } from '@bhavano/types';
@@ -53,6 +54,7 @@ import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
 const ACTIVITY_TIMELINE_CAP = 100;
+const SESSION_TRAIL_CAP = 1000;
 
 /** Same tie-breaker convention as ListingsService's ORDER_BY tables. */
 const LOGIN_ORDER_BY: Record<LoginSort, Prisma.LoginEventOrderByWithRelationInput[]> = {
@@ -368,13 +370,19 @@ export class AdminService {
    * strings (the admin page turns its IST date pickers into `+05:30` bounds), so a plain
    * `new Date()` here lands on the right instant. */
   async listPageVisits(query: ListPageVisitsDto): Promise<PageVisitsPage> {
-    const { offset, from, to, userId, anonymousOnly, sort, limit } = query;
+    const { offset, from, to, userId, identity, sort, limit } = query;
 
     const where: Prisma.VisitWhereInput = {
       ...(from || to
         ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
         : {}),
-      ...(anonymousOnly ? { userId: null } : userId ? { userId } : {}),
+      ...(identity === 'anonymous'
+        ? { userId: null }
+        : identity === 'logged_in'
+          ? { userId: { not: null } }
+          : userId
+            ? { userId }
+            : {}),
     };
 
     for (const [field, raw] of [
@@ -390,7 +398,10 @@ export class AdminService {
       if (clause) where[field] = clause;
     }
 
-    const [rows, total] = await Promise.all([
+    const dateOnlyWhere: { createdAt?: Prisma.DateTimeFilter } =
+      from || to ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {};
+
+    const [rows, total, totalPageViewsInRange, totalVisitsInRange] = await Promise.all([
       this.prisma.visit.findMany({
         where,
         include: { user: { select: { name: true, phone: true, email: true } } },
@@ -399,11 +410,25 @@ export class AdminService {
         take: limit,
       }),
       this.prisma.visit.count({ where }),
+      // Scoped only to the date-range filter, not every filter on this screen — see
+      // `PageVisitsPage.avgPageViewsPerSession`'s doc comment for why.
+      this.prisma.pageView.count({ where: dateOnlyWhere }),
+      this.prisma.visit.count({ where: dateOnlyWhere }),
     ]);
+
+    const pageViewCounts = rows.length
+      ? await this.prisma.pageView.groupBy({
+          by: ['sessionId'],
+          where: { sessionId: { in: rows.map((r) => r.sessionId) } },
+          _count: { _all: true },
+        })
+      : [];
+    const pageViewCountBySessionId = new Map(pageViewCounts.map((c) => [c.sessionId, c._count._all]));
 
     return {
       items: rows.map((row) => ({
         id: row.id,
+        sessionId: row.sessionId,
         createdAt: row.createdAt.toISOString(),
         userId: row.userId,
         userName: row.user?.name ?? null,
@@ -421,8 +446,52 @@ export class AdminService {
         ipCity: row.ipCity,
         ipRegion: row.ipRegion,
         ipCountry: row.ipCountry,
+        pageViewCount: pageViewCountBySessionId.get(row.sessionId) ?? 0,
       })),
       total,
+      avgPageViewsPerSession: totalVisitsInRange > 0 ? totalPageViewsInRange / totalVisitsInRange : null,
+    };
+  }
+
+  /** A single session's full page-view trail plus its Visit summary, for the admin page-visits
+   * screen's drill-down. */
+  async getSessionTrail(sessionId: string): Promise<SessionTrailDto> {
+    const [visit, pageViews, pageViewCount] = await Promise.all([
+      this.prisma.visit.findUnique({
+        where: { sessionId },
+        include: { user: { select: { name: true, phone: true, email: true } } },
+      }),
+      // Capped rather than unbounded — a long-lived tab left open for days is the only realistic
+      // way a single session racks up more than this many rows.
+      this.prisma.pageView.findMany({ where: { sessionId }, orderBy: { createdAt: 'asc' }, take: SESSION_TRAIL_CAP }),
+      this.prisma.pageView.count({ where: { sessionId } }),
+    ]);
+    if (!visit) throw new NotFoundException('No visit found for this session');
+
+    return {
+      visit: {
+        id: visit.id,
+        sessionId: visit.sessionId,
+        createdAt: visit.createdAt.toISOString(),
+        userId: visit.userId,
+        userName: visit.user?.name ?? null,
+        userPhone: visit.user?.phone ?? null,
+        userEmail: visit.user?.email ?? null,
+        source: visit.source,
+        medium: visit.medium,
+        campaign: visit.campaign,
+        campaignId: visit.campaignId ?? undefined,
+        adGroupId: visit.adGroupId ?? undefined,
+        campaignName: visit.campaignId ? CAMPAIGN_NAMES[visit.campaignId] : undefined,
+        adGroupName: visit.adGroupId ? AD_GROUP_NAMES[visit.adGroupId] : undefined,
+        landingPath: visit.landingPath,
+        ip: visit.ip,
+        ipCity: visit.ipCity,
+        ipRegion: visit.ipRegion,
+        ipCountry: visit.ipCountry,
+        pageViewCount,
+      },
+      pageViews: pageViews.map((p) => ({ path: p.path, createdAt: p.createdAt.toISOString() })),
     };
   }
 
@@ -660,6 +729,15 @@ export class AdminService {
         }),
       ]);
 
+    const visitPageViewCounts = visits.length
+      ? await this.prisma.pageView.groupBy({
+          by: ['sessionId'],
+          where: { sessionId: { in: visits.map((v) => v.sessionId) } },
+          _count: { _all: true },
+        })
+      : [];
+    const visitPageViewCountBySessionId = new Map(visitPageViewCounts.map((c) => [c.sessionId, c._count._all]));
+
     const events: ActivityEventDto[] = [
       ...logins.map((l) => ({
         type: 'login' as const,
@@ -717,6 +795,7 @@ export class AdminService {
       events,
       visits: visits.map((v) => ({
         id: v.id,
+        sessionId: v.sessionId,
         source: v.source,
         medium: v.medium,
         campaign: v.campaign,
@@ -725,6 +804,7 @@ export class AdminService {
         ipRegion: v.ipRegion,
         ipCountry: v.ipCountry,
         createdAt: v.createdAt.toISOString(),
+        pageViewCount: visitPageViewCountBySessionId.get(v.sessionId) ?? 0,
       })),
     };
   }

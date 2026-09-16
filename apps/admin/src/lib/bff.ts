@@ -34,6 +34,7 @@ import type {
   SendPostedNotificationResponseDto,
   SendWelcomeInput,
   SendWelcomeResponseDto,
+  SessionTrailDto,
   TransactionType,
   UserActivityDto,
   UserRole,
@@ -72,6 +73,9 @@ export type AdminPageVisitSort =
   | "user_desc"
   | "city_asc"
   | "city_desc";
+
+/** Mirrors the BFF's PAGE_VISIT_IDENTITY_VALUES (apps/bff/src/admin/dto/list-page-visits.dto.ts). */
+export type AdminPageVisitIdentity = "any" | "anonymous" | "logged_in";
 
 /** Mirrors the BFF's USER_SORT_VALUES (apps/bff/src/admin/dto/list-users.dto.ts). */
 export type AdminUserSort = "createdAt_desc" | "createdAt_asc" | "name_asc";
@@ -359,8 +363,8 @@ export interface PageVisitsQuery {
   from?: string;
   to?: string;
   userId?: string;
-  /** Sessions never linked to a user — mutually exclusive with `userId` in the admin page's UI. */
-  anonymousOnly?: boolean;
+  /** `anonymous`/`logged_in` are mutually exclusive with `userId` in the admin page's UI. */
+  identity?: AdminPageVisitIdentity;
   source?: string;
   medium?: string;
   ip?: string;
@@ -378,6 +382,10 @@ export function fetchPageVisits(accessToken: string, query: PageVisitsQuery = {}
     if (value !== undefined && value !== "") params.set(key, String(value));
   }
   return authedBffFetch(accessToken, `/admin/page-visits?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchSessionTrail(accessToken: string, sessionId: string): Promise<SessionTrailDto> {
+  return authedBffFetch(accessToken, `/admin/page-visits/${encodeURIComponent(sessionId)}/trail`, { cache: "no-store" });
 }
 
 export function fetchUserActivity(accessToken: string, userId: string): Promise<UserActivityDto> {
