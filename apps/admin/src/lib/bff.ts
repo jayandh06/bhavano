@@ -100,7 +100,7 @@ export type AdminPageVisitIdentity = "any" | "anonymous" | "logged_in";
 
 /** Mirrors the BFF's PAGE_VISIT_TRAFFIC_VALUES. "humans" means *classified* as not-a-bot —
  * see that constant's own comment on why unclassified history can't be counted as human. */
-export type AdminPageVisitTraffic = "any" | "humans" | "bots" | "unclassified";
+export type AdminPageVisitTraffic = "any" | "humans" | "js_confirmed" | "bots" | "unclassified";
 
 /** Mirrors the BFF's USER_SORT_VALUES (apps/bff/src/admin/dto/list-users.dto.ts). */
 export type AdminUserSort = "createdAt_desc" | "createdAt_asc" | "name_asc";

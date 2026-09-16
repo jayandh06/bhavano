@@ -42,13 +42,22 @@ const PAGE_VISIT_IDENTITY_VALUES = ['any', 'anonymous', 'logged_in'] as const;
 
 export type PageVisitIdentity = (typeof PAGE_VISIT_IDENTITY_VALUES)[number];
 
-/** Crawler filter, against `Visit.isBot`.
+/** Crawler filter, against `Visit.isBot` — except `js_confirmed`, which is against
+ * `Visit.jsConfirmedAt`.
  *
  * `unclassified` is a first-class option, not an oversight: every row written before that column
  * existed has no stored User-Agent to judge after the fact, and ~99.85% of those are in fact
  * crawler traffic. So "humans" here means *classified as not-a-bot*, which excludes all of that
- * history rather than pretending it's human — and `unclassified` is how you look at it. */
-const PAGE_VISIT_TRAFFIC_VALUES = ['any', 'humans', 'bots', 'unclassified'] as const;
+ * history rather than pretending it's human — and `unclassified` is how you look at it.
+ *
+ * `js_confirmed` is strictly stronger than `humans` and is the one to reach for when the number
+ * has to be defensible. `humans` trusts the visitor's own User-Agent, so a scraper announcing
+ * itself as Safari is inside it (measured: datacentre hosts in 43.159.0.0/16 logging as
+ * `deviceType: mobile`, `isBot: false`). `js_confirmed` requires that a JavaScript engine
+ * actually ran, which a scripted client cannot fake by choosing a different header. It
+ * undercounts rather than overcounts: a real visitor whose beacon was blocked or lost is absent
+ * from it, and every session from before the column existed is too. */
+const PAGE_VISIT_TRAFFIC_VALUES = ['any', 'humans', 'js_confirmed', 'bots', 'unclassified'] as const;
 
 export type PageVisitTraffic = (typeof PAGE_VISIT_TRAFFIC_VALUES)[number];
 

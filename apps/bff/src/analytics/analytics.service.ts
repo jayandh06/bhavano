@@ -201,6 +201,26 @@ export class AnalyticsService {
     `;
   }
 
+  /** Records that a real browser engine executed JavaScript on this session — the fourth writer,
+   * owning exactly one column (`jsConfirmedAt`) and touching nothing else.
+   *
+   * `COALESCE` keeps the *first* confirmation rather than the latest: the interesting number is
+   * how long after the request the page came alive, and a later navigation's beacon would erase
+   * that. The client only calls this once per session anyway (it remembers in sessionStorage),
+   * so this mostly guards against a duplicate in flight.
+   *
+   * Inserts when the row is missing, for the same reason every other writer here does: a session
+   * whose visit call was lost should still be visible, and this is the one writer that knows for
+   * certain a human was present. */
+  async confirmJsExecution(sessionId: string): Promise<void> {
+    await this.prisma.$executeRaw`
+      INSERT INTO "Visit" ("id", "sessionId", "jsConfirmedAt")
+      VALUES (${newVisitId()}, ${sessionId}, NOW())
+      ON CONFLICT ("sessionId") DO UPDATE SET
+        "jsConfirmedAt" = COALESCE("Visit"."jsConfirmedAt", EXCLUDED."jsConfirmedAt")
+    `;
+  }
+
   /** Best-effort link from an anonymous session to the user who just logged in during it — only
    * ever fills a currently-null userId, so a session's attribution is never reassigned once set.
    * Called from AuthService after a successful login.

@@ -3,6 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AnalyticsService } from './analytics.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
 import { RecordPageViewDto } from './dto/record-pageview.dto';
+import { ConfirmJsDto } from './dto/confirm-js.dto';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -27,6 +28,20 @@ export class AnalyticsController {
   @HttpCode(200)
   async recordPageView(@Body() dto: RecordPageViewDto): Promise<{ success: true }> {
     await this.analyticsService.recordPageView(dto);
+    return { success: true };
+  }
+
+  /** Public, unauthenticated — called once per session by the browser itself, via web's
+   * /api/analytics/confirm route handler (which supplies the session id from the httpOnly
+   * cookie). Records that a real JS engine executed on this session; see Visit.jsConfirmedAt.
+   *
+   * Idempotent, and the client only ever calls it once per session (it remembers in
+   * sessionStorage), so the default 20/60s/IP throttle is ample — this doesn't need pageview's
+   * raised limit. */
+  @Post('confirm')
+  @HttpCode(200)
+  async confirmJs(@Body() dto: ConfirmJsDto): Promise<{ success: true }> {
+    await this.analyticsService.confirmJsExecution(dto.sessionId);
     return { success: true };
   }
 }

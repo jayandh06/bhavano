@@ -568,6 +568,12 @@ export interface PageVisitDto {
     ipCountry: string | null;
     /** Null only for rows written before this field existed. */
     deviceType: DeviceType | null;
+    /** When a real browser engine confirmed it executed JavaScript on this session — see
+     * `Visit.jsConfirmedAt`. Null covers "never confirmed" without distinguishing why (pre-dates
+     * the column, JS never ran, or the beacon didn't land), so treat it as "unconfirmed", never as
+     * "not a human". Unlike `deviceType` and the crawler flag, this isn't derived from a header the
+     * client chose for itself, which makes it the strongest human signal on this screen. */
+    jsConfirmedAt: string | null;
     /** Count of `PageView` rows logged for this session — see PageView's schema comment for the
      * "best effort, not literally every navigation" caveat behind this number. */
     pageViewCount: number;

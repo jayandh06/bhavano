@@ -409,11 +409,14 @@ export class AdminService {
       // before the column existed, ~99.85% of which is crawler traffic) must not pass as human.
       ...(traffic === 'humans'
         ? { isBot: false }
-        : traffic === 'bots'
-          ? { isBot: true }
-          : traffic === 'unclassified'
-            ? { isBot: null }
-            : {}),
+        : // Stronger than `humans`, and not a User-Agent claim: a JS engine actually ran.
+          traffic === 'js_confirmed'
+          ? { jsConfirmedAt: { not: null } }
+          : traffic === 'bots'
+            ? { isBot: true }
+            : traffic === 'unclassified'
+              ? { isBot: null }
+              : {}),
       ...(from || to
         ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
         : {}),
@@ -454,6 +457,7 @@ export class AdminService {
         AND (${traffic ?? null}::text IS NULL
              OR (${traffic}::text = 'any')
              OR (${traffic}::text = 'humans' AND v."isBot" = false)
+             OR (${traffic}::text = 'js_confirmed' AND v."jsConfirmedAt" IS NOT NULL)
              OR (${traffic}::text = 'bots' AND v."isBot" = true)
              OR (${traffic}::text = 'unclassified' AND v."isBot" IS NULL))`;
 
@@ -530,6 +534,7 @@ export class AdminService {
         ipRegion: row.ipRegion,
         ipCountry: row.ipCountry,
         deviceType: row.deviceType as DeviceType | null,
+        jsConfirmedAt: row.jsConfirmedAt?.toISOString() ?? null,
         pageViewCount: pageViewCountBySessionId.get(row.sessionId) ?? 0,
         sessionLogins: loginsBySessionId.get(row.sessionId) ?? [],
       })),
@@ -594,6 +599,7 @@ export class AdminService {
         ipRegion: visit.ipRegion,
         ipCountry: visit.ipCountry,
         deviceType: visit.deviceType as DeviceType | null,
+        jsConfirmedAt: visit.jsConfirmedAt?.toISOString() ?? null,
         pageViewCount,
         sessionLogins,
       },

@@ -691,6 +691,22 @@ model Visit {
    * its place by catching whatever that list misses, which is exactly what can't be found later
    * otherwise. */
   isBot       Boolean?
+  /** When a real browser engine confirmed it had executed JavaScript on this session, from the
+   * once-per-session beacon in apps/web (JsConfirmation -> /api/analytics/confirm). Null means
+   * never confirmed, which covers three different things and deliberately doesn't distinguish
+   * them: the session predates this column, or JS never ran (most scripted clients), or the
+   * beacon itself didn't land.
+   *
+   * This is the strongest human signal available here, and the only one not derived from a header
+   * the client chooses for itself — `isBot` above is a substring match on a self-declared
+   * User-Agent, so a scraper announcing itself as Safari passes it (measured: datacentre hosts in
+   * 43.159.0.0/16 logging as `deviceType: mobile`, `isBot: false`). Executing a JS engine is a
+   * capability, not a claim.
+   *
+   * A timestamp rather than a boolean because it costs the same and says more — the gap from
+   * `createdAt` shows how long after the request the page actually came alive. Never written
+   * false: absence *is* the negative case. */
+  jsConfirmedAt DateTime?
   /** "desktop" / "mobile" / "tablet" / "mobile_app", derived once at write time from the
    * request's User-Agent header (see `deviceTypeFromUserAgent` in analytics.service.ts) — only
    * the coarse label is kept, not the raw header, same "derive once, discard the raw input"

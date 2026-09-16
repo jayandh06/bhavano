@@ -97,7 +97,28 @@ function check(name: string, ok: boolean, detail?: unknown) {
     } else console.log('SKIP  second-account check (only one user row locally)');
   }
 
-  // 7. True concurrency, both calls at once, 20 brand-new sessions.
+  // 7. The JS beacon owns jsConfirmedAt and must disturb nothing else, in either order.
+  s = sid('js-after');
+  await svc.recordVisit(ads(s));
+  await svc.confirmJsExecution(s);
+  row = await prisma.visit.findUnique({ where: { sessionId: s } });
+  check('js confirmation keeps attribution intact',
+    row?.jsConfirmedAt instanceof Date && row?.source === 'google' && row?.gclid === 'GCL', row);
+
+  s = sid('js-first');
+  await svc.confirmJsExecution(s);
+  await svc.recordVisit(ads(s));
+  row = await prisma.visit.findUnique({ where: { sessionId: s } });
+  check('attribution arriving after the beacon keeps the confirmation',
+    row?.jsConfirmedAt instanceof Date && row?.source === 'google', row);
+
+  const firstConfirm = row?.jsConfirmedAt?.getTime();
+  await svc.confirmJsExecution(s);
+  row = await prisma.visit.findUnique({ where: { sessionId: s } });
+  check('a repeat beacon keeps the FIRST confirmation time',
+    row?.jsConfirmedAt?.getTime() === firstConfirm, { was: firstConfirm, now: row?.jsConfirmedAt?.getTime() });
+
+  // 8. True concurrency, both calls at once, 20 brand-new sessions.
   const raceIds = Array.from({ length: 20 }, (_, i) => sid(`race${i}`));
   await Promise.all(raceIds.map((id) => Promise.all([svc.recordPageView(view(id, '/')), svc.recordVisit(ads(id))])));
   const raced = await prisma.visit.findMany({ where: { sessionId: { in: raceIds } } });

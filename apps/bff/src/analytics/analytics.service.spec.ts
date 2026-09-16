@@ -127,6 +127,34 @@ describe('AnalyticsService', () => {
     });
   });
 
+  describe('confirmJsExecution', () => {
+    it('owns jsConfirmedAt and touches nothing else', async () => {
+      const { prisma, executeRaw } = makePrisma();
+      await new AnalyticsService(prisma, geoIp).confirmJsExecution('s1');
+
+      const sql = sqlOf(executeRaw);
+      expect(sql).toContain('INSERT INTO "Visit"');
+      // Keeps the FIRST confirmation: the interesting number is how long after the request the
+      // page came alive, which a later navigation's beacon would erase.
+      expect(sql).toContain('COALESCE("Visit"."jsConfirmedAt", EXCLUDED."jsConfirmedAt")');
+      for (const column of ['source', 'medium', 'gclid', 'landingPath', 'isBot', 'userId']) {
+        expect(sql).not.toContain(column);
+      }
+      expect(paramsOf(executeRaw)).toEqual([expect.any(String), 's1']);
+    });
+
+    it('takes no client-supplied facts beyond the session id', async () => {
+      const { prisma, executeRaw } = makePrisma();
+      await new AnalyticsService(prisma, geoIp).confirmJsExecution('s1');
+
+      // The signal is that the request happened at all — anything the client *tells* us here
+      // would be exactly as spoofable as the User-Agent that isBot already fails on. The
+      // timestamp comes from the database (NOW()), not from the caller.
+      expect(paramsOf(executeRaw)).toHaveLength(2);
+      expect(sqlOf(executeRaw)).toContain('NOW()');
+    });
+  });
+
   describe('recordPageView', () => {
     it('records the view and inserts the visit row only if absent', async () => {
       const { prisma, pageViewCreate, executeRaw } = makePrisma();

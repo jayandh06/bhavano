@@ -62,10 +62,27 @@ function resolveSource(request: NextRequest): ResolvedSource {
   }
 
   const refererHost = safeHostname(request.headers.get("referer"));
-  if (refererHost && refererHost !== request.nextUrl.hostname) {
+  if (refererHost && !isOwnHost(refererHost, request.nextUrl.hostname)) {
     return { source: refererHost, medium: "referral", ...googleAdsParams };
   }
   return { source: "direct", ...googleAdsParams };
+}
+
+/** Whether a Referer host is really us, so internal navigation isn't logged as somebody else's
+ * referral.
+ *
+ * Comparing against `request.nextUrl.hostname` alone wasn't enough: the site answers on both the
+ * apex and the `www.` name, so moving between them made the app its own top referrer — 28
+ * sessions in one day as `www.bhavano.com`/`referral`, and 347 in a week as `bhavano.com`, all of
+ * them inflating referral and hiding whatever those visitors actually arrived from.
+ *
+ * Both sides are compared with a leading `www.` stripped rather than against a hardcoded domain,
+ * so this keeps working on localhost and any preview/staging host without a config entry. A
+ * different subdomain (admin.bhavano.com, say) still counts as a referral, which is right — it's
+ * a separate property, not another door into this one. */
+function isOwnHost(refererHost: string, requestHost: string): boolean {
+  const bare = (host: string) => host.toLowerCase().replace(/^www\./, "");
+  return bare(refererHost) === bare(requestHost);
 }
 
 /** The visitor's IP as Caddy saw it.

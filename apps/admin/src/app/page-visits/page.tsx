@@ -35,6 +35,7 @@ const IDENTITY_OPTIONS: { value: AdminPageVisitIdentity; label: string }[] = [
 
 const TRAFFIC_OPTIONS: { value: AdminPageVisitTraffic; label: string }[] = [
   { value: "humans", label: "Humans only" },
+  { value: "js_confirmed", label: "JS-confirmed only (strictest)" },
   { value: "bots", label: "Crawlers only" },
   { value: "unclassified", label: "Unclassified (pre-filter history)" },
   { value: "any", label: "Everything" },
@@ -42,7 +43,13 @@ const TRAFFIC_OPTIONS: { value: AdminPageVisitTraffic; label: string }[] = [
 
 /** Humans-only by default: the screen was otherwise ~99.85% crawler sessions (one row per
  * request, because crawlers discard cookies — see isBotUserAgent). "Unclassified" is where all
- * the pre-filter history lives, since those rows kept no User-Agent to judge after the fact. */
+ * the pre-filter history lives, since those rows kept no User-Agent to judge after the fact.
+ *
+ * Still `humans` rather than the stricter `js_confirmed`, deliberately: `js_confirmed` only
+ * exists from 2026-09-16 onward, so defaulting to it would make every older session vanish from
+ * the screen. Reach for it when a number has to be defensible — it requires that a JS engine
+ * actually ran, which a scraper cannot fake by changing its User-Agent the way it can fake
+ * `humans`. Revisit this default once there's a full window of confirmed history. */
 const DEFAULT_TRAFFIC: AdminPageVisitTraffic = "humans";
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
