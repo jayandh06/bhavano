@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Area, City, ListingDetailDto, ListingCategory, TransactionType } from "@bhavano/types";
+import type { Area, City, ListingDetailDto, ListingCategory, ListingStatus, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
   defaultAttributesFor,
@@ -20,7 +20,7 @@ import { TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { clampDigits } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
-import { updateListingAction } from "@/app/actions/admin";
+import { setListingStatusAction, updateListingAction } from "@/app/actions/admin";
 import { fetchAreasForCityAction } from "@/app/actions/locations";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { SelectField } from "./SelectField";
@@ -33,6 +33,10 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 };
 
 const OTHER_AREA_VALUE = "__other__";
+
+// Same raw-value list ModerationPanel already uses for this — no display-label mapping there
+// either, so this stays consistent rather than inventing a second naming for the same 4 values.
+const LISTING_STATUSES: ListingStatus[] = ["active", "sold", "rented", "deactivated"];
 
 function attributesToStrings(attributes: Record<string, unknown>): Record<string, string | string[]> {
   const result: Record<string, string | string[]> = {};
@@ -401,6 +405,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
   const router = useRouter();
   const [category, setCategory] = useState(listing.category as ListingCategory);
   const [transactionType, setTransactionType] = useState(listing.transactionType as TransactionType);
+  const [status, setStatus] = useState(listing.status);
 
   const [title, setTitle] = useState(listing.title);
   const [price, setPrice] = useState(String(parseRawPrice(listing.price, listing.priceOnRequest)));
@@ -554,12 +559,19 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
       ...(useOtherArea ? { areaName: areaName.trim() } : { areaId }),
       ...(latNum !== undefined && lngNum !== undefined ? { lat: latNum, lng: lngNum } : {}),
     });
+    // Routed through the dedicated status endpoint rather than folded into the payload above —
+    // that one posts a specific "Status changed to X by an admin" message into the owner's
+    // moderation thread and logs a distinct status_changed edit action, instead of the generic
+    // "details were updated" the general update path would give a status change here. Only
+    // fires when it actually changed, same guard ModerationPanel itself uses.
+    const statusResult =
+      result.success && status !== listing.status ? await setListingStatusAction(listing.id, status) : { success: true as const };
     setSaving(false);
-    if (result.success) {
+    if (result.success && statusResult.success) {
       setSaved(true);
       router.refresh();
     } else {
-      setError(result.error);
+      setError(!result.success ? result.error : !statusResult.success ? statusResult.error : null);
     }
   }
 
@@ -582,6 +594,16 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
             {POSTABLE_TRANSACTION_TYPES[category].map((t) => (
               <option key={t} value={t}>
                 {TRANSACTION_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+        <div style={{ flex: 1, minWidth: 160, maxWidth: 220 }}>
+          <label style={labelStyle}>Status</label>
+          <SelectField value={status} onChange={(e) => setStatus(e.target.value as ListingStatus)} style={inputStyle}>
+            {LISTING_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
               </option>
             ))}
           </SelectField>
