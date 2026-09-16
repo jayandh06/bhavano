@@ -36,8 +36,8 @@ import {
   secondaryButtonClass,
 } from "@/lib/formStyles";
 import { uploadVideoDirect } from "@/lib/videoUpload";
-import { BoostButton } from "./BoostButton";
-import { InstantAlertsButton } from "./InstantAlertsButton";
+import { BoostBundlePicker } from "./BoostBundlePicker";
+import { ListingPreviewCard } from "./ListingPreviewCard";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
 import { VideoManager } from "./VideoManager";
@@ -278,6 +278,22 @@ export function PostAdWizard({
     setPhotos((prev) => {
       URL.revokeObjectURL(prev[index].previewUrl);
       return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  /** No separate "cover" field to set here — unlike EditListingPhotos's server-side
+   * `setOwnCoverPhotoAction` (for a listing that already exists), nothing is persisted yet, so
+   * "make this the cover" is just moving it to index 0 of the local array. `photoNo = i + 1` at
+   * submit time (see onSubmit below) comes straight from that array order, and the review
+   * step's `ListingPreviewCard` already reads `photos[0]` — so this one reorder is all either
+   * needs. */
+  function onSetCoverPhoto(index: number) {
+    setPhotos((prev) => {
+      if (index === 0) return prev;
+      const next = [...prev];
+      const [chosen] = next.splice(index, 1);
+      next.unshift(chosen);
+      return next;
     });
   }
 
@@ -822,6 +838,23 @@ export function PostAdWizard({
                       alt={`Photo ${i + 1}`}
                       className="h-[100px] w-[100px] object-cover rounded-lg"
                     />
+                    {/* Top-left, same placement/style EditListingPhotos uses for the same job
+                      * post-creation — index 0 is the cover by construction (see
+                      * onSetCoverPhoto), no separate field to check. */}
+                    {i === 0 ? (
+                      <span className="absolute top-1 left-1 bg-green text-on-green text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        Cover
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onSetCoverPhoto(i)}
+                        title="Make this the cover photo"
+                        className="absolute top-1 left-1 bg-black/55 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border-0 cursor-pointer"
+                      >
+                        ☆ Cover
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => onRemovePhoto(i)}
@@ -907,21 +940,21 @@ export function PostAdWizard({
 
       {step === "review" && category && transactionType && (
         <div className="flex flex-col gap-3">
-          <div className="border border-border rounded-[10px] p-4 text-sm text-text">
-            <p className="m-0 mb-1.5">
-              <strong>
-                {POST_CATEGORIES.find((c) => c.value === category)?.label}
-              </strong>{" "}
-              — {TRANSACTION_TYPE_LABELS[transactionType]}
-            </p>
-            <p className="m-0 mb-1.5">{title}</p>
-            <p className="m-0 mb-1.5 text-muted">
-              {areaQuery}, {cities.find((c) => c.id === cityId)?.name}
-            </p>
-            <p className="m-0 text-green font-bold">
-              ₹{price} {priceQualifier}
-            </p>
-          </div>
+          {/* What the actual browse-grid card will look like once this is posted — same
+            * photo/badge/price/title/location/specs a buyer sees, not a plain text summary, so a
+            * mistake (wrong photo order, a price that reads oddly, a spec that didn't come
+            * through) is obvious here rather than after the ad is already live. */}
+          <ListingPreviewCard
+            photoUrl={photos[0].previewUrl}
+            category={category}
+            transactionType={transactionType}
+            title={title}
+            price={price}
+            priceQualifier={priceQualifier}
+            areaName={areaQuery}
+            cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
+            attributes={attributes}
+          />
 
           {slotCap ? (
             <ListingSlotCapPrompt slotCap={slotCap} />
@@ -963,64 +996,12 @@ export function PostAdWizard({
             </div>
           </div>
 
-          {/* Boost pitch — a card, not a paragraph, so the benefits scan and the CTA reads as
-            * the primary action. Gold accent + tokens so it holds up in light and dark. */}
-          <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Icon name="boost" className="text-[color:var(--gold)] text-lg" />
-              <span className="font-lora font-bold text-[15px] text-text">Reach more buyers, faster</span>
-            </div>
-            <ul className="flex flex-col gap-2 m-0 p-0 list-none">
-              {(
-                [
-                  ["featured", "A gold Featured badge on your ad"],
-                  ["check", "Ranks above regular listings in search"],
-                  ["check", "Rotates fairly through the top slots"],
-                  ["bell", "Alerts you the moment someone likes it"],
-                ] as const
-              ).map(([icon, text]) => (
-                <li key={text} className="flex items-start gap-2 text-[13px] text-text-soft">
-                  <Icon name={icon} className="text-green mt-[3px] shrink-0" />
-                  <span>{text}</span>
-                </li>
-              ))}
-            </ul>
-            <BoostButton
-              listingId={createdListing.id}
-              category={createdListing.category}
-              className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-green text-on-green border-0 rounded-lg px-4 py-3 text-sm font-bold cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
-            />
-          </div>
-
-          {/* Instant Alerts pitch — same card treatment as Boost, right below it. Independent
-            * purchase: a seller can buy either, both, or neither; buying both just runs two
-            * checkouts back to back, no bundle SKU. */}
-          <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Icon name="bell" className="text-[color:var(--gold)] text-lg" />
-              <span className="font-lora font-bold text-[15px] text-text">
-                Get notified the instant someone messages you
-              </span>
-            </div>
-            <ul className="flex flex-col gap-2 m-0 p-0 list-none">
-              {(
-                [
-                  ["check", "Real-time email or WhatsApp on every new enquiry"],
-                  ["check", "Valid until this ad expires"],
-                  ["check", "Already using the Bhavano app? You get this for free — this is for reaching you by email/WhatsApp too"],
-                ] as const
-              ).map(([icon, text]) => (
-                <li key={text} className="flex items-start gap-2 text-[13px] text-text-soft">
-                  <Icon name={icon} className="text-green mt-[3px] shrink-0" />
-                  <span>{text}</span>
-                </li>
-              ))}
-            </ul>
-            <InstantAlertsButton
-              listingId={createdListing.id}
-              className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-green text-on-green border-0 rounded-lg px-4 py-3 text-sm font-bold cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
-            />
-          </div>
+          {/* Boost + Instant Alerts — one combined picker instead of two separate cards, each of
+            * which used to only reveal its price after being clicked. Prices for every
+            * combination (including the current promo code and the Agent Pro free-credit case)
+            * are fetched up front; adding Instant Alerts checks out as a single payment via
+            * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */}
+          <BoostBundlePicker listingId={createdListing.id} category={createdListing.category} />
 
           <div className="w-full flex justify-center">
             <VideoManager listing={createdListing} accessToken={token ?? ""} />

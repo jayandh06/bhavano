@@ -1,10 +1,12 @@
 "use server";
 
 import type {
+  BoostPricingPreviewDto,
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
   CreateInstantAlertsOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
+  ListingCategory,
   SubscriptionTier,
 } from "@bhavano/types";
 import type { BoostDurationDays, BoostPriceSettings } from "@bhavano/types/boostPricing";
@@ -16,6 +18,7 @@ import {
   createInstantAlertsOrder,
   createSubscriptionOrder,
   fetchPlanPricing,
+  previewBoostPricing,
 } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 
@@ -37,16 +40,55 @@ export async function fetchInstantAlertsPricingAction(): Promise<InstantAlertsPr
 
 export type CreateBoostOrderResult = { success: true; order: CreateBoostOrderResponseDto } | { success: false; error: string };
 
-export async function createBoostOrderAction(listingId: string, boostDays: BoostDurationDays): Promise<CreateBoostOrderResult> {
+export async function createBoostOrderAction(
+  listingId: string,
+  boostDays: BoostDurationDays,
+  discountCode?: string,
+  includeInstantAlerts?: boolean,
+): Promise<CreateBoostOrderResult> {
   const session = await auth();
   if (!session?.accessToken) return { success: false, error: "You must be logged in." };
 
   try {
-    const order = await createBoostOrder(session.accessToken, listingId, boostDays);
+    const order = await createBoostOrder(session.accessToken, listingId, boostDays, discountCode, includeInstantAlerts);
     return { success: true, order };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to start checkout" };
   }
+}
+
+// Temporary September promo — auto-applied on the post-ad success screen's Boost/Instant Alerts
+// picker rather than typed in, so the discounted price is just what the screen shows. Purely a
+// display/checkout convenience: the actual discount only ever takes effect if this code exists,
+// is active, and hasn't expired in the DiscountCode table (managed from the admin discount-codes
+// screen) — nothing here grants a discount on its own.
+const SEPTEMBER_PROMO_CODE = "BHAVANO-SEP";
+
+export type PreviewBoostPricingResult =
+  | { success: true; pricing: BoostPricingPreviewDto }
+  | { success: false; error: string };
+
+export async function previewBoostPricingAction(category: ListingCategory): Promise<PreviewBoostPricingResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const pricing = await previewBoostPricing(session.accessToken, category, SEPTEMBER_PROMO_CODE);
+    return { success: true, pricing };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to load pricing" };
+  }
+}
+
+/** The bundle picker's own "Pay" action always passes the same auto-applied promo the preview
+ * already showed the price for — kept as its own export so the picker never has to know the
+ * literal code string. */
+export async function createBoostBundleOrderAction(
+  listingId: string,
+  boostDays: BoostDurationDays,
+  includeInstantAlerts: boolean,
+): Promise<CreateBoostOrderResult> {
+  return createBoostOrderAction(listingId, boostDays, SEPTEMBER_PROMO_CODE, includeInstantAlerts);
 }
 
 export type CreateSubscriptionOrderResult =

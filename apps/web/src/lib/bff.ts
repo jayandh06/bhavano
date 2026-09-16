@@ -8,6 +8,7 @@ import type {
   AgentStorefrontDto,
   Area,
   AuthSession,
+  BoostPricingPreviewDto,
   City,
   ContactRevealBalanceDto,
   ContactRevealSettingsDto,
@@ -526,8 +527,25 @@ export function createBoostOrder(
   accessToken: string,
   listingId: string,
   boostDays: BoostDurationDays,
+  discountCode?: string,
+  includeInstantAlerts?: boolean,
 ): Promise<CreateBoostOrderResponseDto> {
-  return authedBffFetch(accessToken, "/payments/orders", { method: "POST", body: JSON.stringify({ listingId, boostDays }) });
+  return authedBffFetch(accessToken, "/payments/orders", {
+    method: "POST",
+    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts }),
+  });
+}
+
+/** Live pricing for the post-ad success screen's Boost/Instant Alerts picker — see
+ * PaymentsService.previewBoostPricing. */
+export function previewBoostPricing(
+  accessToken: string,
+  category: ListingCategory,
+  discountCode?: string,
+): Promise<BoostPricingPreviewDto> {
+  const params = new URLSearchParams({ category });
+  if (discountCode) params.set("discountCode", discountCode);
+  return authedBffFetch(accessToken, `/payments/boost-pricing-preview?${params.toString()}`, { cache: "no-store" });
 }
 
 /** Same pattern as createBoostOrder, minus the duration — Instant Alerts is a flat fee. */
