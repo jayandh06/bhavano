@@ -149,7 +149,16 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
     fetch(`${BFF_URL}/analytics/pageview`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, path: request.nextUrl.pathname }),
+      // ip/userAgent are only read if this session has no Visit row yet, in which case the BFF
+      // backfills one from them (AnalyticsService.backfillMissingVisit) — the once-per-session
+      // /analytics/visit call below is a single fire-and-forget attempt, and a session that
+      // loses it was otherwise invisible in admin analytics for good.
+      body: JSON.stringify({
+        sessionId,
+        path: request.nextUrl.pathname,
+        ip: clientIp(request),
+        userAgent: request.headers.get("user-agent") ?? undefined,
+      }),
     }).catch(() => {
       // Best-effort — a dropped page-view log should never affect the page request itself.
     }),
