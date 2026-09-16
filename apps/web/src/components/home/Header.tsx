@@ -67,7 +67,12 @@ export function Header({
       collapsedBar={
         <>
           <Link href="/" aria-label="Bhavano — home" className="flex items-center shrink-0">
-            <Image src="/logo.png" alt="" width={30} height={30} className="rounded-lg w-[30px] h-[30px]" />
+            {/* Unlike the desktop lockup below, there's no visible "Bhavano" text next to this
+              * icon-only mobile/collapsed logo — alt="" (correct there, since adjacent text
+              * already names it) would leave this link with no accessible name for an image-alt
+              * crawl to find, despite the link's own aria-label already covering real screen
+              * readers. */}
+            <Image src="/logo.png" alt="Bhavano" width={30} height={30} className="rounded-lg w-[30px] h-[30px]" />
           </Link>
           <span className="flex-1" />
           <Link
