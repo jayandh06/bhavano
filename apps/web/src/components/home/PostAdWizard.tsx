@@ -471,28 +471,24 @@ export function PostAdWizard({
   async function onSubmit() {
     if (!category || !transactionType) return;
 
-    if (!loggedIn && !token) {
-      pushDataLayerEvent("post_login_required", { step });
-      requireLogin({ onSuccess: () => void onSubmit() });
-      return;
-    }
-
     setPending(true);
     setError(null);
 
-    // Straight after a login the prop has not caught up yet, so ask the server directly. A
-    // no-op on the ordinary path, where the token was server-rendered into this component.
+    // `loggedIn`/`token` are both server-rendered (the latter seeded from an `accessToken`
+    // prop) — neither one updates just because a client-side login happened.
+    // AuthGateProvider.onLoginSuccess deliberately runs its `resume()` callback (this function,
+    // on a resumed call) *before* router.refresh(), so a check gated on those two alone would
+    // always see their pre-login values and loop straight back into requireLogin() without ever
+    // reaching this fallback — always ask the server directly instead, which by the time this
+    // runs (after the login's own server action already set the session) reliably has the
+    // answer. A no-op on the ordinary already-logged-in path, where the token was
+    // server-rendered into this component and this whole block just re-confirms it.
     let activeToken = token;
     if (!activeToken) {
       activeToken = await getAccessTokenAction();
       setToken(activeToken);
     }
     if (!activeToken) {
-      // Client state (loggedIn/token) said this session was valid, but the server-side fetch
-      // just now came back empty — an effectively expired/invalid session, not meaningfully
-      // different from never having logged in. Same recovery as line 474 above: the login
-      // dialog, resuming this same submit, rather than a dead-end error with no obvious next
-      // action on a screen that has no login button of its own.
       setPending(false);
       pushDataLayerEvent("post_login_required", { step });
       requireLogin({ onSuccess: () => void onSubmit() });
