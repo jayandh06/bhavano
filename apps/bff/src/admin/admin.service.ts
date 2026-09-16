@@ -17,7 +17,9 @@ import type {
   ListingOwnerDto,
   ListingStatus,
   LoginEventsPage,
+  LoginMethod,
   MessageDto,
+  PageVisitSessionLogin,
   PageVisitsPage,
   RateLimitSettingsDto,
   SendPostedNotificationResponseDto,
@@ -450,14 +452,45 @@ export class AdminService {
       this.prisma.visit.count({ where: dateOnlyWhere }),
     ]);
 
+    const sessionIds = rows.map((r) => r.sessionId);
+
     const pageViewCounts = rows.length
       ? await this.prisma.pageView.groupBy({
           by: ['sessionId'],
-          where: { sessionId: { in: rows.map((r) => r.sessionId) } },
+          where: { sessionId: { in: sessionIds } },
           _count: { _all: true },
         })
       : [];
     const pageViewCountBySessionId = new Map(pageViewCounts.map((c) => [c.sessionId, c._count._all]));
+
+    // Every account that logged in during each of these sessions — `Visit.userId` alone can only
+    // name whoever logged in first, which silently hid real signups (see PageVisitDto's
+    // `sessionLogins`). Scoped to the page of rows on screen, like the page-view counts above.
+    const logins = rows.length
+      ? await this.prisma.loginEvent.findMany({
+          where: { sessionId: { in: sessionIds } },
+          include: { user: { select: { id: true, name: true, phone: true, email: true } } },
+          orderBy: { createdAt: 'asc' },
+        })
+      : [];
+    const loginsBySessionId = new Map<string, PageVisitSessionLogin[]>();
+    for (const login of logins) {
+      if (!login.sessionId) continue;
+      const list = loginsBySessionId.get(login.sessionId) ?? [];
+      // One entry per account, not per login — someone logging in three times in a session is
+      // one account on this screen, not three.
+      if (!list.some((l) => l.userId === login.user.id)) {
+        list.push({
+          userId: login.user.id,
+          name: login.user.name,
+          phone: login.user.phone,
+          email: login.user.email,
+          method: login.method as LoginMethod,
+          createdAt: login.createdAt.toISOString(),
+        });
+      }
+      loginsBySessionId.set(login.sessionId, list);
+    }
 
     return {
       items: rows.map((row) => ({
@@ -482,6 +515,7 @@ export class AdminService {
         ipCountry: row.ipCountry,
         deviceType: row.deviceType as DeviceType | null,
         pageViewCount: pageViewCountBySessionId.get(row.sessionId) ?? 0,
+        sessionLogins: loginsBySessionId.get(row.sessionId) ?? [],
       })),
       total,
       avgPageViewsPerSession: totalVisitsInRange > 0 ? totalPageViewsInRange / totalVisitsInRange : null,
@@ -491,7 +525,7 @@ export class AdminService {
   /** A single session's full page-view trail plus its Visit summary, for the admin page-visits
    * screen's drill-down. */
   async getSessionTrail(sessionId: string): Promise<SessionTrailDto> {
-    const [visit, pageViews, pageViewCount] = await Promise.all([
+    const [visit, pageViews, pageViewCount, sessionLoginRows] = await Promise.all([
       this.prisma.visit.findUnique({
         where: { sessionId },
         include: { user: { select: { name: true, phone: true, email: true } } },
@@ -500,8 +534,27 @@ export class AdminService {
       // way a single session racks up more than this many rows.
       this.prisma.pageView.findMany({ where: { sessionId }, orderBy: { createdAt: 'asc' }, take: SESSION_TRAIL_CAP }),
       this.prisma.pageView.count({ where: { sessionId } }),
+      this.prisma.loginEvent.findMany({
+        where: { sessionId },
+        include: { user: { select: { id: true, name: true, phone: true, email: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
     if (!visit) throw new NotFoundException('No visit found for this session');
+
+    // Same de-duplication as listPageVisits — one entry per account, not per login.
+    const sessionLogins: PageVisitSessionLogin[] = [];
+    for (const login of sessionLoginRows) {
+      if (sessionLogins.some((l) => l.userId === login.user.id)) continue;
+      sessionLogins.push({
+        userId: login.user.id,
+        name: login.user.name,
+        phone: login.user.phone,
+        email: login.user.email,
+        method: login.method as LoginMethod,
+        createdAt: login.createdAt.toISOString(),
+      });
+    }
 
     return {
       visit: {
@@ -526,6 +579,7 @@ export class AdminService {
         ipCountry: visit.ipCountry,
         deviceType: visit.deviceType as DeviceType | null,
         pageViewCount,
+        sessionLogins,
       },
       pageViews: pageViews.map((p) => ({ path: p.path, createdAt: p.createdAt.toISOString() })),
     };

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { DeviceType } from "@bhavano/types";
+import type { DeviceType, PageVisitDto } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   AdminPageVisitIdentity,
@@ -273,13 +273,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                   <tr key={v.id} style={{ borderTop: "1px solid var(--border)" }}>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDateTime(v.createdAt)}</td>
                     <td style={tdStyle}>
-                      {v.userId ? (
-                        <Link href={`/users/${v.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
-                          {v.userName ?? v.userPhone ?? v.userEmail ?? v.userId}
-                        </Link>
-                      ) : (
-                        <span style={{ color: "var(--muted)" }}>anonymous</span>
-                      )}
+                      <SessionUsers visit={v} />
                     </td>
                     <td style={tdStyle}>
                       <Link href={`/page-visits/${v.sessionId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
@@ -329,6 +323,53 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
 }
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
+
+/**
+ * Every account that logged in during this session, not just `Visit.userId`.
+ *
+ * `Visit` holds one userId, so it can only ever name whoever logged in *first* — a session where
+ * two accounts sign in (a shared desktop, or one person signing up by phone and then by Google
+ * seconds later) used to show only the first, and the second was absent from this screen
+ * entirely. `sessionLogins` comes from `LoginEvent.sessionId` instead, so all of them show.
+ *
+ * Two or more here is also worth a second look: it's usually one person who now has two accounts
+ * (see docs/plans/account-linking-phone-and-email.md), which is why they're flagged rather than
+ * just listed.
+ */
+function SessionUsers({ visit }: { visit: PageVisitDto }) {
+  const logins = visit.sessionLogins;
+
+  // Pre-LoginEvent.sessionId rows have no logins recorded, so fall back to whatever the Visit
+  // itself names rather than claiming the session was anonymous.
+  if (logins.length === 0) {
+    if (!visit.userId) return <span style={{ color: "var(--muted)" }}>anonymous</span>;
+    return (
+      <Link href={`/users/${visit.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
+        {visit.userName ?? visit.userPhone ?? visit.userEmail ?? visit.userId}
+      </Link>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {logins.map((l) => (
+        <Link
+          key={l.userId}
+          href={`/users/${l.userId}`}
+          style={{ color: "var(--green)", fontWeight: 700, whiteSpace: "nowrap" }}
+        >
+          {l.name ?? l.phone ?? l.email ?? l.userId}
+          <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 11 }}> · {l.method}</span>
+        </Link>
+      ))}
+      {logins.length > 1 && (
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gold, #b8860b)", whiteSpace: "nowrap" }}>
+          {logins.length} accounts — possible duplicate
+        </span>
+      )}
+    </div>
+  );
+}
 
 function Code({ children }: { children: React.ReactNode }) {
   return (

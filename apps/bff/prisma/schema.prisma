@@ -625,10 +625,23 @@ model LoginEvent {
   userId    String
   user      User        @relation(fields: [userId], references: [id])
   method    LoginMethod
+  /** The browser session (`bhavano_sid`) this login happened in, when the caller knew one —
+   * null for mobile-app logins, which never touch apps/web's middleware and so have no session
+   * cookie, and for every row written before this field existed.
+   *
+   * Deliberately NOT a relation to Visit: a Visit holds exactly one `userId`, so a session where
+   * two different accounts log in (a shared desktop, or one person signing up by phone and then
+   * by Google seconds later) can only ever record the first — which is how a real signup came to
+   * be invisible on the admin Page visits screen despite 743 page views in that session. Keeping
+   * the fact here, one row per login, is what lets that screen show every account a session saw,
+   * and makes "two accounts, one session" a queryable duplicate signal for
+   * docs/plans/account-linking-phone-and-email.md's merge flow. */
+  sessionId String?
   createdAt DateTime    @default(now())
 
   @@index([userId, createdAt])
   @@index([createdAt])
+  @@index([sessionId])
 }
 
 /** One row per browser session (not per page load) — apps/web's middleware.ts fires this the

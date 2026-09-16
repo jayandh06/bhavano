@@ -133,7 +133,7 @@ export class AuthService {
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.welcomeIfFirstLogin(promoted);
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
-    await this.recordLogin(promoted.id, 'otp');
+    await this.recordLogin(promoted.id, 'otp', visit?.sessionId);
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
     return this.issueSession(promoted, isNewUser);
@@ -240,7 +240,7 @@ export class AuthService {
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.welcomeIfFirstLogin(promoted);
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
-    await this.recordLogin(promoted.id, 'google');
+    await this.recordLogin(promoted.id, 'google', visit?.sessionId);
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
     return this.issueSession(promoted, isNewUser);
@@ -309,7 +309,7 @@ export class AuthService {
     const promoted = await this.promoteToAdminIfAllowlisted(user);
     await this.welcomeIfFirstLogin(promoted);
     if (isNewUser) await this.reportSignupConversion(promoted, visit);
-    await this.recordLogin(promoted.id, 'apple');
+    await this.recordLogin(promoted.id, 'apple', visit?.sessionId);
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
     return this.issueSession(promoted, isNewUser);
@@ -430,15 +430,20 @@ export class AuthService {
       );
   }
 
+  /** `sessionId` is the browser session this login happened in (undefined for mobile, which has
+   * no session cookie). Recorded per login rather than only on the Visit row, because a Visit
+   * holds one userId and a session can see several logins — see LoginEvent.sessionId's own
+   * schema comment. */
   private recordLogin(
     userId: string,
     method: 'otp' | 'google' | 'apple',
+    sessionId?: string,
   ): Promise<unknown> {
     // Alongside the DB row (used by the admin logins page), also emit a structured log line so
     // login shows up in the same Loki stream as everything else — bounding a user's session
     // together with the `logout` event below (see docs/plans/bff-loki-grafana-logging.md).
-    this.logger.info({ event: 'login', userId, method }, 'User logged in');
-    return this.prisma.loginEvent.create({ data: { userId, method } });
+    this.logger.info({ event: 'login', userId, method, sessionId }, 'User logged in');
+    return this.prisma.loginEvent.create({ data: { userId, method, sessionId } });
   }
 
   /** No token invalidation happens here — JWTs are short-lived (1h) and stateless by design, so

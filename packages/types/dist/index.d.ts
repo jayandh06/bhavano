@@ -571,6 +571,24 @@ export interface PageVisitDto {
     /** Count of `PageView` rows logged for this session — see PageView's schema comment for the
      * "best effort, not literally every navigation" caveat behind this number. */
     pageViewCount: number;
+    /** Every account that logged in during this session, from `LoginEvent.sessionId` — not just
+     * the one on `userId` above, which can only ever hold whoever logged in *first*.
+     *
+     * A session genuinely can see several: a shared desktop, or one person signing up by phone and
+     * then by Google seconds later (which creates two accounts — see
+     * docs/plans/account-linking-phone-and-email.md). Before this, the second account was simply
+     * absent from this screen. More than one entry here is also the duplicate-account signal that
+     * merge flow needs. Empty for a session nobody logged in during, and for sessions that predate
+     * LoginEvent.sessionId. */
+    sessionLogins: PageVisitSessionLogin[];
+}
+export interface PageVisitSessionLogin {
+    userId: string;
+    name: string | null;
+    phone: string | null;
+    email: string | null;
+    method: LoginMethod;
+    createdAt: string;
 }
 export interface PageVisitsPage {
     items: PageVisitDto[];

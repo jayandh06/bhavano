@@ -61,6 +61,39 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
               "Anonymous session"
             )}
           </h1>
+
+          {/* Every account that logged in here, not just the one the Visit row names (which is
+              only ever the first — see PageVisitDto.sessionLogins). A second account in the same
+              session is usually one person who now has two, which is what makes it worth
+              calling out rather than just listing. */}
+          {visit.sessionLogins.length > 1 && (
+            <div
+              style={{
+                fontSize: 12.5,
+                marginBottom: 8,
+                padding: "8px 10px",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                background: "var(--surface-alt)",
+              }}
+            >
+              <strong style={{ color: "var(--gold, #b8860b)" }}>
+                {visit.sessionLogins.length} accounts logged in during this session
+              </strong>
+              <span style={{ color: "var(--muted)" }}> — possibly one person with duplicate accounts.</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
+                {visit.sessionLogins.map((l) => (
+                  <Link key={l.userId} href={`/users/${l.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
+                    {l.name ?? l.phone ?? l.email ?? l.userId}
+                    <span style={{ color: "var(--muted)", fontWeight: 400 }}>
+                      {" "}
+                      · {l.method} · {formatDateTime(l.createdAt)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{ fontSize: 13.5, color: "var(--text-soft)", marginBottom: 4 }}>
             {formatSource(visit.source, visit.medium, visit.campaign)}
           </div>
