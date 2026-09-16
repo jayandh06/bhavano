@@ -24,8 +24,7 @@ import { createListing, fetchAreas, uploadPhoto, uploadVideo } from "../../lib/b
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ScreenHeader } from "./ScreenHeader";
-import { BoostModal } from "./BoostModal";
-import { InstantAlertsModal } from "./InstantAlertsModal";
+import { BoostBundleCard } from "./BoostBundleCard";
 import { appWebUrl } from "../../lib/appWebUrl";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
@@ -206,12 +205,11 @@ export function PostAdWizard({
   // Captured from onSubmit's own resolved token (accessToken prop, or the SecureStore fallback
   // right after a just-completed login) rather than reusing the prop directly — the two can be
   // momentarily out of sync immediately after requireLogin's onSuccess re-runs onSubmit, and
-  // BoostModal needs a token that's definitely valid the instant the success step appears.
+  // BoostBundleCard needs a token that's definitely valid the instant the success step appears.
   const [postAccessToken, setPostAccessToken] = useState<string | undefined>(accessToken);
-  const [boostOpen, setBoostOpen] = useState(false);
-  const [boostActivating, setBoostActivating] = useState(false);
-  const [instantAlertsOpen, setInstantAlertsOpen] = useState(false);
-  const [instantAlertsActivating, setInstantAlertsActivating] = useState(false);
+  // Android only — see BoostBundleCard's own comment for why Android gets one combined card
+  // instead of iOS's redirect-to-website buttons below, which have nothing to activate in-app.
+  const [bundleActivating, setBundleActivating] = useState(false);
 
   function selectCategory(next: ListingCategory) {
     setCategory(next);
@@ -953,85 +951,75 @@ export function PostAdWizard({
             </Text>
           </View>
 
-          <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <Icon name="boost" size={17} color={colors.gold} />
-              <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-                Reach more buyers, faster
-              </Text>
-            </View>
-            <View style={{ gap: 8 }}>
-              {BOOST_BENEFITS.map(([icon, text]) => (
-                <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Icon name={icon} size={14} color={colors.green} />
-                  <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>
+          {Platform.OS === "ios" ? (
+            // iOS keeps the old two-button, redirect-to-website treatment — a native Razorpay
+            // checkout for a paid feature is exactly what Apple's Guideline 3.1.1 forbids here,
+            // same reasoning the buttons below already documented before the Android-only
+            // BoostBundleCard existed. `?openBoost=`/`?openInstantAlerts=` still deep-link
+            // straight into the website's own (separate, unbundled) purchase dialogs — see
+            // AutoOpenPurchaseModal.tsx on web, which this doesn't change.
+            <>
+              <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <Icon name="boost" size={17} color={colors.gold} />
+                  <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
+                    Reach more buyers, faster
+                  </Text>
                 </View>
-              ))}
-            </View>
-            {boostActivating ? (
-              <View style={[styles.submitButton, { backgroundColor: colors.surfaceAlt, marginTop: 16, flexDirection: "row", justifyContent: "center", gap: 8 }]}>
-                <Icon name="boost" size={16} color={colors.green} />
-                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Boost pending…</Text>
+                <View style={{ gap: 8 }}>
+                  {BOOST_BENEFITS.map(([icon, text]) => (
+                    <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Icon name={icon} size={14} color={colors.green} />
+                      <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Pressable
+                  onPress={() => WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openBoost=${createdListing.id}`))}
+                  style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
+                >
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Boost this listing</Text>
+                </Pressable>
               </View>
-            ) : (
-              <Pressable
-                // iOS: a Razorpay-paid boost is exactly the "digital promotion of a listing"
-                // Apple's Guideline 3.1.1 (In-App Purchase) targets — a third-party payment
-                // processor unlocking in-app functionality is a guaranteed rejection, so this
-                // opens the website there instead, same as before BoostModal existed. Android
-                // has its own equivalent Play Billing requirement, but enforcement/timeline
-                // differs — native checkout stays for now; see
-                // docs/plans/monetization-boosted-listings-premium-tiers.md's own update note.
-                // `?openBoost=<id>` deep-links straight into the boost dialog once there
-                // (AutoOpenPurchaseModal.tsx on web).
-                onPress={() =>
-                  Platform.OS === "ios"
-                    ? WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openBoost=${createdListing.id}`))
-                    : setBoostOpen(true)
-                }
-                style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
-              >
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Boost this listing</Text>
-              </Pressable>
-            )}
-          </View>
 
-          {/* Instant Alerts pitch — same card treatment as Boost, right below it. Independent
-              purchase: buying both just runs two checkouts back to back, no bundle SKU. */}
-          <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <Icon name="bell" size={17} color={colors.gold} />
-              <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-                Get notified the instant someone messages you
-              </Text>
-            </View>
-            <View style={{ gap: 8 }}>
-              {INSTANT_ALERTS_BENEFITS.map(([icon, text]) => (
-                <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Icon name={icon} size={14} color={colors.green} />
-                  <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>
+              <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <Icon name="bell" size={17} color={colors.gold} />
+                  <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
+                    Get notified the instant someone messages you
+                  </Text>
                 </View>
-              ))}
-            </View>
-            {instantAlertsActivating ? (
-              <View style={[styles.submitButton, { backgroundColor: colors.surfaceAlt, marginTop: 16, flexDirection: "row", justifyContent: "center", gap: 8 }]}>
-                <Icon name="bell" size={16} color={colors.green} />
-                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Instant Alerts pending…</Text>
+                <View style={{ gap: 8 }}>
+                  {INSTANT_ALERTS_BENEFITS.map(([icon, text]) => (
+                    <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Icon name={icon} size={14} color={colors.green} />
+                      <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Pressable
+                  onPress={() => WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openInstantAlerts=${createdListing.id}`))}
+                  style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
+                >
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Get Instant Alerts</Text>
+                </Pressable>
               </View>
-            ) : (
-              <Pressable
-                // Same iOS/Android split as the Boost button just above — see its own comment.
-                onPress={() =>
-                  Platform.OS === "ios"
-                    ? WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openInstantAlerts=${createdListing.id}`))
-                    : setInstantAlertsOpen(true)
-                }
-                style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
-              >
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Get Instant Alerts</Text>
-              </Pressable>
-            )}
-          </View>
+            </>
+          ) : bundleActivating ? (
+            <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }]}>
+              <Icon name="boost" size={16} color={colors.green} />
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Boost pending…</Text>
+            </View>
+          ) : (
+            postAccessToken && (
+              <BoostBundleCard
+                listingId={createdListing.id}
+                category={createdListing.category}
+                accessToken={postAccessToken}
+                onActivating={() => setBundleActivating(true)}
+              />
+            )
+          )}
 
           {/* A real push (not the replace() this used to do straight out of onSubmit) — see this
               screen's own header comment for why that mattered: it's what makes the listing's
@@ -1040,28 +1028,6 @@ export function PostAdWizard({
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>View my ad →</Text>
           </Pressable>
 
-          {/* Android-only — see the button's own comment above. Not just unreachable there
-              (boostOpen never flips true on iOS): not mounting it at all keeps this screen
-              unambiguously iOS-inert rather than relying on a visible={false} Modal alone. */}
-          {Platform.OS === "android" && postAccessToken && (
-            <BoostModal
-              visible={boostOpen}
-              listingId={createdListing.id}
-              category={createdListing.category}
-              accessToken={postAccessToken}
-              onClose={() => setBoostOpen(false)}
-              onActivating={() => setBoostActivating(true)}
-            />
-          )}
-          {Platform.OS === "android" && postAccessToken && (
-            <InstantAlertsModal
-              visible={instantAlertsOpen}
-              listingId={createdListing.id}
-              accessToken={postAccessToken}
-              onClose={() => setInstantAlertsOpen(false)}
-              onActivating={() => setInstantAlertsActivating(true)}
-            />
-          )}
         </View>
       )}
     </ScrollView>

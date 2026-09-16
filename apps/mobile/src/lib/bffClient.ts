@@ -3,6 +3,7 @@ import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricin
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type {
   Area,
+  BoostPricingPreviewDto,
   City,
   ContactRevealBalanceDto,
   ConversationDetailDto,
@@ -14,6 +15,7 @@ import type {
   CreateSubscriptionOrderResponseDto,
   HomeCategoryFilter,
   ListingCardDto,
+  ListingCategory,
   ListingDetailDto,
   ListingsPage,
   MessageDto,
@@ -508,11 +510,25 @@ export function createBoostOrder(
   accessToken: string,
   listingId: string,
   boostDays: 7 | 15,
+  discountCode?: string,
+  includeInstantAlerts?: boolean,
 ): Promise<CreateBoostOrderResponseDto> {
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
-    body: JSON.stringify({ listingId, boostDays }),
+    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts }),
   });
+}
+
+/** Live pricing for the post-ad success screen's Boost/Instant Alerts picker — see
+ * PaymentsService.previewBoostPricing. */
+export function previewBoostPricing(
+  accessToken: string,
+  category: ListingCategory,
+  discountCode?: string,
+): Promise<BoostPricingPreviewDto> {
+  const params = new URLSearchParams({ category });
+  if (discountCode) params.set("discountCode", discountCode);
+  return authedBffFetch(accessToken, `/payments/boost-pricing-preview?${params.toString()}`);
 }
 
 /** Same pattern as createBoostOrder, minus the duration — Instant Alerts is a flat fee. */
