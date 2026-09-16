@@ -3,8 +3,6 @@ import type { ListingCategory, ListingStatus, ModerationState, TransactionType }
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
-import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
-import { SelectField } from "@/components/SelectField";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { AdminListingsTable } from "@/components/AdminListingsTable";
@@ -15,33 +13,6 @@ const TABS: { value: FilterTab; label: string }[] = [
   { value: "needsReview", label: "Needs review" },
   { value: "flagged", label: "Flagged" },
   { value: "all", label: "All listings" },
-];
-
-const CATEGORY_OPTIONS: { value: ListingCategory; label: string }[] = [
-  { value: "house", label: "House" },
-  { value: "apartment", label: "Apartment" },
-  { value: "villa", label: "Villa" },
-  { value: "plot", label: "Plot" },
-  { value: "pg", label: "PG / Hostel" },
-  { value: "storage", label: "Storage space" },
-  { value: "coworking", label: "Coworking" },
-  { value: "commercial", label: "Commercial space" },
-  { value: "furniture", label: "Furniture" },
-  { value: "interiors", label: "Interiors" },
-];
-
-const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }[] = [
-  { value: "buy", label: "Buy" },
-  { value: "sell", label: "Sell" },
-  { value: "rent", label: "Rent" },
-  { value: "lease", label: "Lease" },
-];
-
-const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
-  { value: "active", label: "Active" },
-  { value: "sold", label: "Sold" },
-  { value: "rented", label: "Rented" },
-  { value: "deactivated", label: "Deactivated" },
 ];
 
 function tabToQuery(tab: FilterTab): { moderationState?: ModerationState; adminReviewed?: boolean } {
@@ -150,66 +121,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         >
           <input type="hidden" name="tab" value={tab} />
 
-          <Field label="Search">
-            <input name="search" defaultValue={search ?? ""} placeholder="Title contains…" style={selectStyle} />
-          </Field>
-
+          {/* Title/Status/Category/Transaction/City/Area now filter from the table's own column
+            * headers — only the filters with no single column of their own are left here. Their
+            * values ride along as hidden inputs below so submitting this bar can't drop them. */}
           <Field label="User">
             <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
-          </Field>
-
-          <Field label="City">
-            <AutoSubmitSelect
-              name="cityId"
-              defaultValue={cityId}
-              resetFieldsOnChange={["areaId"]}
-              style={selectStyle}
-              options={[{ value: "", label: "Any city" }, ...cities.map((c) => ({ value: c.id, label: c.name }))]}
-            />
-          </Field>
-
-          <Field label="Area">
-            <SelectField name="areaId" defaultValue={areaId ?? ""} disabled={!cityId} style={selectStyle}>
-              <option value="">{cityId ? "Any area" : "Select a city first"}</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
-
-          <Field label="Category">
-            <SelectField name="category" defaultValue={category ?? ""} style={selectStyle}>
-              <option value="">Any category</option>
-              {CATEGORY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
-
-          <Field label="Transaction type">
-            <SelectField name="transactionType" defaultValue={transactionType ?? ""} style={selectStyle}>
-              <option value="">Any type</option>
-              {TRANSACTION_TYPE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
-
-          <Field label="Status">
-            <SelectField name="status" defaultValue={status ?? ""} style={selectStyle}>
-              <option value="">Any status</option>
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </SelectField>
           </Field>
 
           <Field label="Created from">
@@ -225,10 +141,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <input type="date" name="updatedTo" defaultValue={updatedTo} style={dateInputStyle} />
           </Field>
 
-          {/* Not a filter field itself — carries whatever column sort is currently active
-            * through a filter-form submit, which would otherwise drop it (plain GET, only
-            * named inputs survive). */}
+          {/* Not filter fields themselves — a plain GET form only submits its own named inputs,
+            * so without these, using this bar would silently drop the active column sort, the
+            * chosen columns, and every filter that now lives in a column header. */}
           {sort && <input type="hidden" name="sort" value={sort} />}
+          {str(sp.cols) && <input type="hidden" name="cols" value={str(sp.cols)} />}
+          {search && <input type="hidden" name="search" value={search} />}
+          {status && <input type="hidden" name="status" value={status} />}
+          {category && <input type="hidden" name="category" value={category} />}
+          {transactionType && <input type="hidden" name="transactionType" value={transactionType} />}
+          {cityId && <input type="hidden" name="cityId" value={cityId} />}
+          {areaId && <input type="hidden" name="areaId" value={areaId} />}
 
           <button type="submit" style={applyButtonStyle}>
             Apply filters
@@ -238,11 +161,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Link>
         </form>
 
-        {result.items.length === 0 ? (
-          <p style={{ color: "var(--muted)", fontSize: 14 }}>Nothing here.</p>
-        ) : (
-          <AdminListingsTable items={result.items} sp={sp} />
-        )}
+        {/* Rendered even with no results — its header carries the column filters, so replacing
+            it with a "nothing here" paragraph would take away the controls needed to widen
+            whichever filter just emptied the table. The empty state is a row inside it. */}
+        <AdminListingsTable items={result.items} sp={sp} cities={cities} areas={areas} />
 
         <Pagination
           currentPage={currentPage}
@@ -264,16 +186,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
-
-const selectStyle: React.CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 9,
-  padding: "9px 10px",
-  fontSize: 13.5,
-  background: "var(--surface)",
-  color: "var(--text)",
-  minWidth: 150,
-};
 
 const dateInputStyle: React.CSSProperties = {
   border: "1px solid var(--border)",

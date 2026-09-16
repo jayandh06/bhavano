@@ -55,13 +55,25 @@ import type {
 /** Mirrors the BFF's ADMIN_LISTING_SORT_VALUES (apps/bff/src/admin/dto/list-admin-listings.dto.ts)
  * — sort-key unions aren't shared via @bhavano/types in this codebase, kept in sync by convention
  * (same pattern as the public site's ListingsQuery.sort). */
-export type AdminListingSort =
-  | "createdAt_desc"
-  | "createdAt_asc"
-  | "updatedAt_desc"
-  | "updatedAt_asc"
-  | "status_asc"
-  | "status_desc";
+/** Mirrors the BFF's ADMIN_LISTING_SORT_VALUES (apps/bff/src/admin/dto/list-admin-listings.dto.ts)
+ * — one asc/desc pair per sortable column on the dashboard's listings table. */
+export type AdminListingSortField =
+  | "createdAt"
+  | "updatedAt"
+  | "status"
+  | "title"
+  | "category"
+  | "transactionType"
+  | "moderationState"
+  | "source"
+  | "claimSource"
+  | "price"
+  | "viewCount"
+  | "likeCount"
+  | "messageCount"
+  | "expiresAt";
+
+export type AdminListingSort = `${AdminListingSortField}_asc` | `${AdminListingSortField}_desc`;
 
 /** Mirrors the BFF's LOGIN_SORT_VALUES (apps/bff/src/admin/dto/list-logins.dto.ts). */
 export type AdminLoginSort = "createdAt_desc" | "createdAt_asc";

@@ -17,6 +17,10 @@ const LISTING_CATEGORIES: ListingCategory[] = [
 const MODERATION_STATES: ModerationState[] = ['approved', 'flagged'];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 const LISTING_STATUSES: ListingStatus[] = ['active', 'sold', 'rented', 'deactivated'];
+/** One asc/desc pair per sortable column on the admin listings table, so each header can be a
+ * sort toggle. `messageCount` is included even though it isn't a column on Listing — it's a
+ * relation count, which Prisma can order by (`conversations: { _count }`), unlike the admin
+ * page-visits screen's pageViewCount which is counted in a separate query. */
 const ADMIN_LISTING_SORT_VALUES = [
   'createdAt_desc',
   'createdAt_asc',
@@ -24,6 +28,28 @@ const ADMIN_LISTING_SORT_VALUES = [
   'updatedAt_asc',
   'status_asc',
   'status_desc',
+  'title_asc',
+  'title_desc',
+  'category_asc',
+  'category_desc',
+  'transactionType_asc',
+  'transactionType_desc',
+  'moderationState_asc',
+  'moderationState_desc',
+  'source_asc',
+  'source_desc',
+  'claimSource_asc',
+  'claimSource_desc',
+  'price_asc',
+  'price_desc',
+  'viewCount_asc',
+  'viewCount_desc',
+  'likeCount_asc',
+  'likeCount_desc',
+  'messageCount_asc',
+  'messageCount_desc',
+  'expiresAt_asc',
+  'expiresAt_desc',
 ] as const;
 
 export type AdminListingSort = (typeof ADMIN_LISTING_SORT_VALUES)[number];

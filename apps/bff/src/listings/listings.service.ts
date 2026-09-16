@@ -166,6 +166,18 @@ function wantsExplicitSort(sort: ListListingsDto['sort']): boolean {
 
 /** Same tie-breaker convention as ORDER_BY above, for the admin listings screen's own
  * (smaller) set of sort options. */
+/** `id asc` last in every entry keeps the order total, which the offset pagination relies on —
+ * without it a column of repeated values (status, category, a price every listing shares) can
+ * shuffle rows between pages. Nulls last in both directions for the nullable ones: an empty cell
+ * is never the row worth leading with. */
+function adminOrderBy(
+  field: Prisma.ListingOrderByWithRelationInput,
+): Prisma.ListingOrderByWithRelationInput[] {
+  return [field, { id: 'asc' }];
+}
+
+const nullsLast = (direction: 'asc' | 'desc') => ({ sort: direction, nulls: 'last' }) as const;
+
 const ADMIN_ORDER_BY: Record<
   AdminListingSort,
   Prisma.ListingOrderByWithRelationInput[]
@@ -176,6 +188,29 @@ const ADMIN_ORDER_BY: Record<
   updatedAt_asc: [{ updatedAt: 'asc' }, { id: 'asc' }],
   status_asc: [{ status: 'asc' }, { id: 'asc' }],
   status_desc: [{ status: 'desc' }, { id: 'asc' }],
+  title_asc: adminOrderBy({ title: 'asc' }),
+  title_desc: adminOrderBy({ title: 'desc' }),
+  category_asc: adminOrderBy({ category: 'asc' }),
+  category_desc: adminOrderBy({ category: 'desc' }),
+  transactionType_asc: adminOrderBy({ transactionType: 'asc' }),
+  transactionType_desc: adminOrderBy({ transactionType: 'desc' }),
+  moderationState_asc: adminOrderBy({ moderationState: 'asc' }),
+  moderationState_desc: adminOrderBy({ moderationState: 'desc' }),
+  source_asc: adminOrderBy({ source: 'asc' }),
+  source_desc: adminOrderBy({ source: 'desc' }),
+  claimSource_asc: adminOrderBy({ claimSource: nullsLast('asc') }),
+  claimSource_desc: adminOrderBy({ claimSource: nullsLast('desc') }),
+  price_asc: adminOrderBy({ price: 'asc' }),
+  price_desc: adminOrderBy({ price: 'desc' }),
+  viewCount_asc: adminOrderBy({ viewCount: 'asc' }),
+  viewCount_desc: adminOrderBy({ viewCount: 'desc' }),
+  likeCount_asc: adminOrderBy({ likeCount: 'asc' }),
+  likeCount_desc: adminOrderBy({ likeCount: 'desc' }),
+  // A relation count, not a column — the same number the DTO's messageCount reports.
+  messageCount_asc: adminOrderBy({ conversations: { _count: 'asc' } }),
+  messageCount_desc: adminOrderBy({ conversations: { _count: 'desc' } }),
+  expiresAt_asc: adminOrderBy({ expiresAt: 'asc' }),
+  expiresAt_desc: adminOrderBy({ expiresAt: 'desc' }),
 };
 
 const priceFormatter = new Intl.NumberFormat('en-IN');
