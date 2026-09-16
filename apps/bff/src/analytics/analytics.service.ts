@@ -14,35 +14,61 @@ export class AnalyticsService {
   ) {}
 
   /** Called once per browser session by web's middleware.ts (fire-and-forget, not awaited by the
-   * page request) — upserted rather than created outright since a flaky network retry could send
-   * the same sessionId twice; the second attempt is then just a no-op. */
+   * page request). This is the *only* call that carries a session's attribution, so it has to
+   * win against `backfillMissingVisit` below no matter which of the two lands first.
+   *
+   * It can't be a plain `upsert ... update: {}`: web's middleware fires `/analytics/pageview`
+   * *before* `/analytics/visit` on a session's very first request (both as unordered
+   * `event.waitUntil` fetches), so the attribution-less backfill routinely creates the row first
+   * and an empty `update` then silently discarded every source/medium/campaign/gclid that request
+   * was carrying. Measured in production: attribution present on 100% of Visit rows before that
+   * backfill shipped, ~50% after.
+   *
+   * So: fill an attribution-less row where one exists, create it otherwise, and never touch a row
+   * that already has a `source`. `sessionId` is unique, so the row being filled is always this
+   * same session — this cannot overwrite another session's first-touch, and the middleware always
+   * sends *some* source (the literal "direct" when there's nothing better), which is what makes
+   * `source: null` a reliable marker for "written by a recovery path, not by a real landing".
+   */
   async recordVisit(dto: RecordVisitDto): Promise<void> {
     // Admin-analytics label only — see docs/plans/visit-ip-city-logging.md. Never used to decide
     // what this visitor sees; GeoIpService returns null (not an error) when it can't resolve one.
     const geo = this.geoIp.lookupCity(dto.ip);
+    const firstTouch = {
+      source: dto.source,
+      medium: dto.medium,
+      campaign: dto.campaign,
+      gclid: dto.gclid,
+      campaignId: dto.campaignId,
+      adGroupId: dto.adGroupId,
+      adId: dto.adId,
+      landingPath: dto.landingPath,
+      ip: dto.ip,
+      ipCity: geo?.city ?? null,
+      ipRegion: geo?.region ?? null,
+      ipCountry: geo?.country ?? null,
+      deviceType: deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false),
+      // Null when no UA was sent at all — "not classified", not "human"; see Visit.isBot's own
+      // schema comment. Web's middleware already drops known crawlers before this endpoint, so
+      // a `true` here means that list missed one.
+      isBot: dto.userAgent ? isBotUserAgent(dto.userAgent) : null,
+    };
+
+    // Every field here is from this session's *landing* request, so it's the authoritative
+    // version of all of them — not just attribution. A row backfilled from a later navigation
+    // (or created bare by `linkVisitToUser`) gets the real landing path too.
+    const { count } = await this.prisma.visit.updateMany({
+      where: { sessionId: dto.sessionId, source: null },
+      data: firstTouch,
+    });
+    if (count > 0) return;
+
+    // Either the row doesn't exist yet, or it already carries a real source — in which case this
+    // is a duplicate/retried send of the same sessionId and the empty `update` correctly no-ops.
     await this.prisma.visit.upsert({
       where: { sessionId: dto.sessionId },
       update: {},
-      create: {
-        sessionId: dto.sessionId,
-        source: dto.source,
-        medium: dto.medium,
-        campaign: dto.campaign,
-        gclid: dto.gclid,
-        campaignId: dto.campaignId,
-        adGroupId: dto.adGroupId,
-        adId: dto.adId,
-        landingPath: dto.landingPath,
-        ip: dto.ip,
-        ipCity: geo?.city ?? null,
-        ipRegion: geo?.region ?? null,
-        ipCountry: geo?.country ?? null,
-        deviceType: deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false),
-        // Null when no UA was sent at all — "not classified", not "human"; see Visit.isBot's own
-        // schema comment. Web's middleware already drops known crawlers before this endpoint, so
-        // a `true` here means that list missed one.
-        isBot: dto.userAgent ? isBotUserAgent(dto.userAgent) : null,
-      },
+      create: { sessionId: dto.sessionId, ...firstTouch },
     });
   }
 
@@ -61,6 +87,12 @@ export class AnalyticsService {
    * so if that one call doesn't land — transient error, a deploy mid-request — nothing retries
    * and the whole session is permanently absent from the admin Page visits screen, page-view
    * trail and all. This upsert closes that hole on the session's very next navigation.
+   *
+   * It runs on a session's *first* page view too, not only later ones, even though
+   * `/analytics/visit` is in flight for that same request — deliberately, because a session that
+   * loses that call and then never navigates again would otherwise vanish entirely. That overlap
+   * is what makes `recordVisit`'s conditional fill above necessary rather than optional: this
+   * upsert frequently creates the row first, and the real attribution arrives afterwards.
    *
    * Attribution is deliberately left null rather than re-derived: by now the first-touch
    * source/medium for this session is genuinely unknown, and web's 30-day acquisition cookie is
