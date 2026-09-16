@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 const PAGE_VISIT_SORT_VALUES = [
   'createdAt_desc',
@@ -45,6 +45,15 @@ export class ListPageVisitsDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  /** Restricts to sessions never linked to a user (see `Visit.userId`/`linkVisitToUser`) — the
+   * "who looked around without logging in" view. Takes precedence over `userId` when both are
+   * sent, though the admin page's own User picker and this toggle are mutually exclusive in the
+   * UI already. */
+  @IsOptional()
+  @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
+  @IsBoolean()
+  anonymousOnly?: boolean;
 
   @IsOptional()
   @IsString()

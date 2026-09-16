@@ -359,6 +359,8 @@ export interface PageVisitsQuery {
   from?: string;
   to?: string;
   userId?: string;
+  /** Sessions never linked to a user — mutually exclusive with `userId` in the admin page's UI. */
+  anonymousOnly?: boolean;
   source?: string;
   medium?: string;
   ip?: string;

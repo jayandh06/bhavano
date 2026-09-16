@@ -368,13 +368,13 @@ export class AdminService {
    * strings (the admin page turns its IST date pickers into `+05:30` bounds), so a plain
    * `new Date()` here lands on the right instant. */
   async listPageVisits(query: ListPageVisitsDto): Promise<PageVisitsPage> {
-    const { offset, from, to, userId, sort, limit } = query;
+    const { offset, from, to, userId, anonymousOnly, sort, limit } = query;
 
     const where: Prisma.VisitWhereInput = {
       ...(from || to
         ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
         : {}),
-      ...(userId ? { userId } : {}),
+      ...(anonymousOnly ? { userId: null } : userId ? { userId } : {}),
     };
 
     for (const [field, raw] of [

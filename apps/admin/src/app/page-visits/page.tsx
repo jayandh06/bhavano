@@ -31,6 +31,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const limit = parsePageSize(str(sp.limit));
   const userId = str(sp.userId);
   const userLabel = str(sp.userLabel);
+  const anonymousOnly = str(sp.anonymousOnly) === "true";
   const from = str(sp.from);
   const to = str(sp.to);
   const source = str(sp.source);
@@ -47,6 +48,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     from: istDayStart(from),
     to: istDayEnd(to),
     userId,
+    anonymousOnly,
     source,
     medium,
     ip,
@@ -92,6 +94,13 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
         >
           <Field label="User">
             <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
+          </Field>
+
+          <Field label="Never logged in">
+            <label style={{ display: "flex", alignItems: "center", gap: 6, height: 36, fontSize: 13.5 }}>
+              <input type="checkbox" name="anonymousOnly" value="true" defaultChecked={anonymousOnly} />
+              Anonymous only
+            </label>
           </Field>
 
           <Field label="Source">
