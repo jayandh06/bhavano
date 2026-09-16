@@ -126,6 +126,15 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   // changes to something random after browsing for a bit" reports: any page whose Footer/grid
   // happened to render a link to `/{city}` (a bare city browse route, which `citySlugForRoute`
   // below treats as a deliberate city choice) would eventually get prefetched and silently win.
+  //
+  // IMPORTANT: this check is inert on Next 16 and has been since the upgrade. Next strips its own
+  // routing headers before invoking middleware — verified 2026-09-16 by logging every
+  // `next-*`/`rsc`/`sec-*` header the middleware actually receives while sending
+  // `Next-Router-Prefetch: 1` and `RSC: 1` explicitly: both arrive as null, and the only one that
+  // survives is `sec-fetch-dest`. So this never fired, which is the real reason Next's own
+  // prefetching kept being logged as page views long after this guard shipped. What actually
+  // stops it now is the navigation gate below (a prefetch is `sec-fetch-dest: empty`). Kept
+  // anyway: it costs one header read, and it starts working again the day Next stops stripping it.
   if (request.headers.get('next-router-prefetch')) return NextResponse.next();
   // A second, independent prefetch source: Chrome's own "Preload pages" setting (the Privacy
   // Preserving Prefetch Proxy) speculatively fetches links in the background through an
@@ -151,33 +160,35 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   // two prefetch guards above; see isBotUserAgent's own doc for why not-counting is the only real
   // fix here (grouping by IP would merge unrelated people behind carrier NAT).
   if (isBotUserAgent(request.headers.get('user-agent'))) return NextResponse.next();
-  // A fourth source, and the one the three guards above are structurally unable to catch: they
-  // all identify background fetching by a header the *fetcher* volunteers, so anything that
-  // volunteers nothing walks straight through. Something does: measured on 2026-09-16, 2,327 of
-  // 2,716 logged page views (86%) arrived under 250ms after the previous one in the same session,
-  // each path was logged 3.51 times on average (worst: 42), and the paths were exactly "every
-  // link on the page" — the nav's /post, /messages and /favourites plus the visible listing
-  // cards, in one sub-second burst, repeated. One session was credited with 656 views across 161
-  // paths. It keeps cookies (so not a crawler, which is why it isn't caught above) and it isn't
-  // running our client router (or `next-router-prefetch` would have caught it), so it is reading
-  // hrefs out of the HTML and fetching them itself.
+  // The guard that actually stops background fetching, and the reason it has to exist: the three
+  // above all identify a background fetch by a header the *fetcher* volunteers, and the one that
+  // matters most — Next's own prefetch header — never arrives (see the note on it above). What
+  // that let through, measured on 2026-09-16: 2,327 of 2,716 logged page views (86%) arrived
+  // under 250ms after the previous one in the same session, each path was logged 3.51 times on
+  // average (worst: 42), and the paths were exactly "every link on the page" — the nav's /post,
+  // /messages and /favourites plus the visible listing cards, in one sub-second burst, repeated.
+  // One session was credited with 656 views across 161 paths.
   //
-  // So stop asking who sent the request and ask what kind of request it is. Three shapes are
-  // real and everything else is somebody's background fetch:
-  //   - `document`      a genuine top-level page load.
-  //   - `RSC` present   Next's own client-side navigation; a prefetch would have been dropped
-  //                     by the first guard above, so what's left here is a real in-app nav.
-  //   - header absent   a client too old (or too plain) to send Sec-Fetch-*; counted rather than
+  // So stop asking who sent the request and ask what kind of request it is. `Sec-Fetch-Dest` is a
+  // browser-set header (not a Next one), so unlike the above it does survive to here:
+  //   - `document`      a genuine top-level page load. Counted.
+  //   - header absent   a client too old or too plain to send `Sec-Fetch-*`; counted rather than
   //                     dropped, since dropping it would silently lose real traffic. Scripted
-  //                     clients that land here are the isBotUserAgent check's problem, not this
-  //                     one's.
-  // Anything else — `empty` with no RSC (a bare fetch() of a page route), `iframe`, `embed` — is
-  // not a person looking at a page, and gets the same treatment as a prefetch: no cookie, no
-  // Visit, no PageView. Deliberately the same early return, because the city-cookie corruption
-  // the first guard was written for applies identically here.
+  //                     clients that land here are isBotUserAgent's problem, not this one's.
+  //   - anything else   `empty` (every RSC request, prefetch or not), `iframe`, `embed`: not a
+  //                     person opening a page. Same treatment as a prefetch — no cookie, no
+  //                     Visit, no PageView. Deliberately the same early return, since the
+  //                     bhavano_city corruption the first guard was written for applies here too
+  //                     (and, that guard being inert, this is what finally fixes it).
+  //
+  // The known cost: a client-side `<Link>` navigation is an RSC request, so it reads as `empty`
+  // and is NOT counted — the trail is "pages opened as documents", not every route change. There
+  // is no way to separate a real client-side navigation from a prefetch here, because the two
+  // differ *only* by the header Next strips. Listing views are unaffected (ListingCard opens in a
+  // new tab, a real document load); header and category-tab navigation is what goes uncounted.
+  // Recovering it needs a client-side ping on real route changes, not a middleware check.
   const fetchDest = request.headers.get('sec-fetch-dest');
-  const isRealNavigation = fetchDest === null || fetchDest === 'document' || request.headers.get('rsc') !== null;
-  if (!isRealNavigation) return NextResponse.next();
+  if (fetchDest !== null && fetchDest !== 'document') return NextResponse.next();
 
   const hasAcquisitionCookie = request.cookies.has(ACQUISITION_COOKIE);
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
