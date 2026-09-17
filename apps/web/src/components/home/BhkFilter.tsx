@@ -130,7 +130,9 @@ export function BhkFilter({
         <Icon name="bed" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px]">
+        // max-w-[calc(100vw-2rem)] — same fix as the other filter dropdowns (BrowseFilterBar/
+        // AreaFilter/TypeFilters); without it this can run off the right edge of a phone screen.
+        <div className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px] max-w-[calc(100vw-2rem)]">
           <button
             onClick={() => navigate(new Set(BEDROOM_COUNTS))}
             disabled={allSelected}

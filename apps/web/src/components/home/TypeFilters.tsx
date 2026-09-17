@@ -170,5 +170,9 @@ function Option({ label, active, onClick }: { label: string; active: boolean; on
   );
 }
 
+// max-w-[calc(100vw-2rem)] — same fix as BrowseFilterBar's own dropdownClass, see its comment:
+// without a cap, `left-0` anchoring plus an unconstrained shrink-to-fit width let this run off
+// the right edge of a phone screen whenever the trigger wasn't flush against the viewport's own
+// left edge.
 const dropdownClass =
-  "absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[200px]";
+  "absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[200px] max-w-[calc(100vw-2rem)]";

@@ -17,8 +17,14 @@ export const buttonClass = (active: boolean) =>
     active ? "bg-green/10 border-green text-green" : "bg-surface border-border text-text-soft"
   }`;
 
+// `max-w-[calc(100vw-2rem)]` (same idiom MegaMenu.tsx uses for the same problem) is what actually
+// keeps this on-screen on a phone — without it, `min-w` is only a floor, and shrink-to-fit sizes
+// the box up to its *preferred* width regardless: the price dropdown's own hint sentence
+// ("Leave one empty for an open-ended range...") is long enough on one line that the box grew to
+// ~394px and ran off the right edge of a 390px viewport, since `left-0` anchors it to the
+// trigger's own left edge, not the viewport's.
 const dropdownClass =
-  "absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[200px]";
+  "absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[200px] max-w-[calc(100vw-2rem)]";
 
 /** Category-aware refinement layer for a browse results page — narrows via query params on top of
  * the clean canonical path (e.g. ?minPrice=..&furnished=..), never changing the path itself. Which
