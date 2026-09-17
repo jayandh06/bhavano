@@ -217,6 +217,46 @@ hybrid keeps the server-side log and adds one column.
 
 ---
 
+## Part 6 — What people search for (implemented 2026-09-17)
+
+**Nothing recorded it.** `PageView` stores only `(sessionId, path, createdAt)` and the middleware
+deliberately logs `request.nextUrl.pathname`, dropping the query string — so every filter was
+invisible: search text, price range, furnishing, sort, multi-area selection, and the **entire
+homepage**, whose city and category tabs are all query params. A session where someone picked a
+city, typed a search, chose Rent & Lease and set a budget logged exactly one row reading
+`path: "/"` and nothing about what they wanted. GTM had it no better — every dataLayer event there
+is conversion-shaped (`contact_owner`, `signup_complete`, `begin_checkout_*`); none fire on
+searching or filtering. The parameters survived only in the BFF's rotating request logs, as
+opaque cuids, unqueryable.
+
+`SearchEvent` now records one row per search with the resolved criteria and — the reason the table
+exists — **`resultCount`**. "Searched and found nothing" is the inventory-gap signal that says
+which area and category to recruit owners into, and it is the only field here that no other table
+could reconstruct.
+
+**Written from the browser, not the middleware**, for two reasons: the page has already resolved
+the criteria, so nothing has to be re-parsed out of a URL and kept in step with
+`parseSegments`/`buildQueryForSegments`; and a client-side write excludes crawlers for free — the
+same property that makes `Visit.jsConfirmedAt` trustworthy, and the thing that kept `PageView`
+99.85% junk. One row per distinct criteria set, deduped on a key, because React re-renders and
+Next re-mounts client trees without anybody having searched again.
+
+The session id comes from the httpOnly cookie via `/api/analytics/search`, never from the client —
+same reasoning as `/api/analytics/confirm` — and the handler spreads the body *before* setting it,
+so a caller cannot attribute a search to someone else's session. Verified in production: a POST
+carrying `sessionId: "spoofed-should-be-ignored"` was recorded against the cookie's real session,
+and zero rows landed under the spoofed one.
+
+Admin **Search demand** aggregates it, sorted by how often a search came back empty, with a link
+onward to outreach since each row is a recruitment target. A search across three areas counts once
+per area — the right reading of "I'd take any of these three" — and typed queries get their own
+list, since no aggregate over filters can show what people actually wrote. The aggregate is raw
+SQL (weeks-wide windows; counting in JS would move tens of thousands of rows to save one query),
+so it is verified against a real Postgres across seven cases.
+
+`q` is free text and therefore holds whatever anyone typed: capped at 200 characters by the DTO,
+shown only in the admin dashboard, and worth remembering before it is ever surfaced elsewhere.
+
 ## Part 5 — Self-referral (implemented)
 
 28 sessions in one day were recorded as `source: www.bhavano.com`, `medium: referral`, and 347 in a
