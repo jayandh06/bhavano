@@ -124,9 +124,9 @@ export class Msg91Provider {
    * missing or empty"), then a plain "name" key (Meta error #132000, "number of localizable_params
    * (0) does not match the expected number of params (1)").
    *
-   * MSG91_WHATSAPP_TEMPLATE_NAME = "welcome" (recreated from the earlier "bhavano_welcome_2" to
-   * change the wording to an account-verified confirmation) — no header component this time,
-   * unlike the template it replaced, which had a mandatory image header. Only add one back here
+   * MSG91_WHATSAPP_TEMPLATE_NAME = "welcome_1" (recreated again from "welcome", which itself
+   * replaced the earlier "bhavano_welcome_2" to change the wording to an account-verified
+   * confirmation) — no header component, same as "welcome" before it. Only add one back here
    * if a future recreation of this template adds one — sending a component the approved template
    * doesn't define is exactly as much a rejection risk as omitting one it does.
    *
