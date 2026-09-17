@@ -289,6 +289,15 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
   - The heading follows, so `/bengaluru/plot` reads "Buy Plots in Bengaluru" rather than dropping
     the verb the filter row shows. That changes those indexed titles, the same way the verb change
     above did.
+- **Dropdowns ran off the right edge on phones, twice.** The first fix capped each panel at
+  `calc(100vw-2rem)`, which caps width but not position: a panel anchored `left-0` to its own pill
+  is still that wide when the pill starts mid-row. Measured at 390px, the price panel ran x=27→385
+  — 5px from the screen edge, outside the filter card, 27px of slack on the other side. Two changes
+  fixed it for good: `lib/useClampToViewport.ts` shifts any open panel left by however much it
+  overhangs (a measured shift, not a flip to `right-0`, which would break a pill in the middle of a
+  row), and the price inputs got `size={5}`, since an input's intrinsic width defaults to ~20
+  characters and two of them forced the panel wider than a phone. Now 248px at x=27 on every width
+  from 320px to 414px, verified with Playwright measurements and screenshots.
 - **Still missing on the homepage**, and knowingly: price and furnishing. The homepage has never
   parsed `minPrice`/`maxPrice`, so adding those controls is a route change rather than a component
   one, and the browse pages are where price refinement belongs.
