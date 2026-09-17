@@ -217,10 +217,14 @@ export default async function HomePage({
         {/* Transaction and asset render here too, and unconditionally — the homepage's "All" tab
           * had no way to narrow by either, which is half of the reported problem. Both navigate
           * to the corresponding browse path, exactly as the tab row above already does, so this
-          * introduces no new URL shapes. */}
-        <div className="mb-5 flex gap-2.5 flex-wrap items-start">
+          * introduces no new URL shapes.
+          *
+          * Same surface-alt/border/rounded/padding treatment as BrowseListingsView's filter row
+          * (mb-3 there too) — this row used to be a bare, unstyled flex-wrap with no container at
+          * all, the one filter strip on the site with no visual identity of its own. */}
+        <div className="mb-3 flex gap-2.5 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
           {/* Same leading label as the browse pages' filter strip — see BrowseListingsView. */}
-          <span className="flex items-center gap-1.5 self-center text-[13px] font-semibold text-muted" aria-hidden>
+          <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
             <Icon name="filter" /> Filters
           </span>
           {/* Area first when a city is chosen, same reasoning as the browse pages. City itself
