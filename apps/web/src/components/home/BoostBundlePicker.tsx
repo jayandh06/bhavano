@@ -41,16 +41,40 @@ export function BoostBundlePicker({
   const [addInstantAlerts, setAddInstantAlerts] = useState(defaultAddInstantAlerts);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Why the price could not be loaded — distinct from `error` (a checkout failure), because the
+   * two need different offers of what to do next: retry the price, or retry the payment. */
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
+  // Retried once, and the failure is no longer swallowed. The case that mattered: arriving from an
+  // emailed link while logged out, logging in, and landing here — the session is set server-side a
+  // beat before the RSC refresh settles, so this preview could resolve as "You must be logged in",
+  // and the old code silently kept `pricing` null. That left the Pay button permanently disabled
+  // with nothing on screen explaining why. One delayed retry covers that window; `attempt` also
+  // gives the visible Retry below something to bump.
   useEffect(() => {
     let cancelled = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+
     previewBoostPricingAction(category).then((result) => {
-      if (!cancelled && result.success) setPricing(result.pricing);
+      if (cancelled) return;
+      if (result.success) {
+        setPricing(result.pricing);
+        setPriceError(null);
+        return;
+      }
+      if (attempt === 0) {
+        retry = setTimeout(() => setAttempt(1), 1200);
+        return;
+      }
+      setPriceError(result.error);
     });
+
     return () => {
       cancelled = true;
+      if (retry) clearTimeout(retry);
     };
-  }, [category]);
+  }, [category, attempt]);
 
   const optionKey =
     duration === 7
@@ -191,12 +215,42 @@ export function BoostBundlePicker({
 
       {error && <p className="text-[#b3413a] text-[13px] mt-3 mb-0">{error}</p>}
 
+      {priceError && (
+        <p className="text-[13px] text-muted mt-3 mb-0">
+          Couldn&apos;t load the price.{" "}
+          <button
+            onClick={() => {
+              setPriceError(null);
+              setAttempt((a) => a + 1);
+            }}
+            className="bg-transparent border-0 p-0 text-[13px] font-bold text-green underline cursor-pointer"
+          >
+            Retry
+          </button>
+        </p>
+      )}
+
+      {/* Only `pending` disables this. It used to also require `option`, which meant a price that
+        * failed to load (see the effect above) left the one button on the screen dead — even
+        * though paying needs no price: the amount comes from the order the BFF creates. */}
       <button
         onClick={onPay}
-        disabled={pending || !option}
+        disabled={pending}
         className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-green text-on-green border-0 rounded-lg px-4 py-3 text-sm font-bold cursor-pointer shadow-[0_1px_4px_rgba(0,0,0,0.18)] disabled:opacity-60"
       >
-        {pending ? "Opening checkout…" : option?.free ? "Activate for free" : <>Pay <PriceTag option={option} bold /></>}
+        {pending ? (
+          "Opening checkout…"
+        ) : option?.free ? (
+          "Activate for free"
+        ) : option ? (
+          <>
+            Pay <PriceTag option={option} bold />
+          </>
+        ) : (
+          // No price yet: say so rather than showing a bare "Pay" beside an empty space, which
+          // reads as broken.
+          "Continue to payment"
+        )}
       </button>
     </div>
   );

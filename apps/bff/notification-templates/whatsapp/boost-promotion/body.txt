@@ -1,9 +1,7 @@
 Hi {{name}},
 
-Your ad "{{title}}" is live on Bhavano, and until {{offerEnds}} boosting it is {{discountPercent}}% off.
+Your ad "{{title}}" is live on Bhavano. Until {{offerEnds}} boosting it is {{discountPercent}}% off: Rs {{boostPrice}} instead of Rs {{boostBasePrice}}.
 
-Boost for Rs {{boostPrice}} instead of Rs {{boostBasePrice}} — your ad is placed above unboosted listings in its category and city, with a Featured label wherever it appears.
+A boosted ad sits above unboosted listings in its category and city, with a Featured label. You can add Instant Alerts on the same screen for Rs {{bundlePrice}} together, and hear the moment someone messages you.
 
-You can also add Instant Alerts on the same screen for Rs {{bundlePrice}} together, and be notified the moment someone messages you about this ad.
-
-The discount is applied for you, no code to enter. One-time payment, no subscription — your ad stays live and free either way.
+Discount applied for you, no code to enter. Your ad stays live and free either way.

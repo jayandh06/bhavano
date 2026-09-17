@@ -178,6 +178,18 @@ new surface for the owner to learn.
   per-user cap cannot be answered for a batch in one query, so checkout stays the authority — a
   seller who already used the code sees full price there, exactly as they do on the post-ad screen.
 
+- **Copy is deliberately short** — four short paragraphs, the detail lives on the screen the
+  buttons open. The first draft explained both products at length; nobody reads a sales email
+  twice as long as the thing it is selling.
+- **The Pay button no longer depends on the price having loaded.** Arriving from the email while
+  logged out, logging in, and landing on the picker put the preview server action a beat ahead of
+  the session refresh: it resolved as "You must be logged in", the failure was swallowed, and
+  `disabled={pending || !option}` left the only button on the screen dead with nothing explaining
+  why. Paying never needed the price (the amount comes from the order the BFF creates), so only
+  `pending` disables it now; the preview retries once after a short delay and offers a visible
+  Retry after that, and the button reads "Continue to payment" rather than showing "Pay" beside an
+  empty space.
+
 ### The pricing split this uncovered
 
 The Boost modal reached from My Listings priced boosts itself with `boostPriceFor` and ordered with
