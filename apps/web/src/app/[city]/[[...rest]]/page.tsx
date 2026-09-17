@@ -19,6 +19,9 @@ import {
   parsePositiveInt,
   parseSegments,
   isReservedSegment,
+  SHARING_TYPE_VALUES,
+  CONDITION_VALUES,
+  SERVICE_TYPE_VALUES,
   SORT_VALUES,
   transactionGroupFor,
   type ParsedSegments,
@@ -84,9 +87,23 @@ function headingFor(
   parsed: ParsedSegments,
   cityName: string,
   areaName?: string,
-  filters?: { areaCount?: number; furnished?: string; minPrice?: number; maxPrice?: number },
+  filters?: {
+    areaCount?: number;
+    furnished?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    sharingType?: string;
+    condition?: string;
+    serviceType?: string;
+  },
 ): string {
   const query = buildQueryForSegments(parsed);
+  // Sharing and service type name the *subject* ("PG Double sharing", "Modular Kitchen Interiors"),
+  // which buildHeading only reaches when no category label has already claimed it. A path facet
+  // does that by leaving `parsed.category` out of the fallback below; a query-param choice has to
+  // suppress it the same way or it would read "PG Accommodation" with the filter invisible.
+  // Condition is different — "Used Furniture" wants the category label — so it is not listed here.
+  const namesSubject = filters?.sharingType !== undefined || filters?.serviceType !== undefined;
   return buildHeading({
     ...filters,
     // Buy/Rent, from the path — so it is in the title too, which is where people's own phrasing
@@ -105,12 +122,35 @@ function headingFor(
     // /rent-lease/pg lost its label and read "All Listings". Fall back to the category from the
     // URL — but only when no narrower branch of buildHeading would have fired, since those read
     // better: a facet gives "PG Single Sharing", a propertyType gives "2 BHK Apartments".
-    listingCategory: query.category ?? (parsed.facetValue === undefined && !query.propertyType ? parsed.category : undefined),
+    listingCategory:
+      query.category ??
+      (parsed.facetValue === undefined && !query.propertyType && !namesSubject ? parsed.category : undefined),
     transactionType: query.transactionType,
-    sharingType: query.sharingType,
-    condition: query.condition,
-    serviceType: query.serviceType,
+    // Query param over path facet, the same precedence `bedrooms` and `areaIds` already have.
+    sharingType: filters?.sharingType ?? query.sharingType,
+    condition: filters?.condition ?? query.condition,
+    serviceType: filters?.serviceType ?? query.serviceType,
   });
+}
+
+/**
+ * The three config-derived select filters from Phase 2 of docs/plans/contextual-search-filters.md.
+ *
+ * `BrowseFilterBar` has always written these as query params and `ListListingsDto` has always
+ * accepted them, but neither route branch read them back — so choosing "Double sharing" on
+ * /bengaluru/pg changed the URL, kept the pill lit, and returned the unfiltered 34 listings. Only
+ * the path-facet spelling (/bengaluru/pg/double) ever filtered.
+ */
+function parseAssetSelects(sp: Record<string, string | string[] | undefined>): {
+  sharingType?: string;
+  condition?: string;
+  serviceType?: string;
+} {
+  return {
+    sharingType: parseEnum(sp.sharingType, SHARING_TYPE_VALUES),
+    condition: parseEnum(sp.condition, CONDITION_VALUES),
+    serviceType: parseEnum(sp.serviceType, SERVICE_TYPE_VALUES),
+  };
 }
 
 /** The canonical browse path for this exact resolved depth, built fresh from the resolved city/
@@ -288,6 +328,7 @@ async function NationalBrowsePage({
   const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);
   const sort = parseEnum(sp.sort, SORT_VALUES);
   const bedroomsFromQuery = parseIntList(sp.bedrooms);
+  const selects = parseAssetSelects(sp);
 
   const session = await auth();
   const baseQuery = buildQueryForSegments(parsed);
@@ -302,8 +343,12 @@ async function NationalBrowsePage({
         maxPrice,
         furnished,
         sort,
+        sharingType: selects.sharingType ?? baseQuery.sharingType,
+        condition: selects.condition ?? baseQuery.condition,
+        serviceType: selects.serviceType ?? baseQuery.serviceType,
       }}
       heading={headingFor(parsed, "India")}
+      filteredHeading={headingFor(parsed, "India", undefined, { furnished, minPrice, maxPrice, ...selects })}
       page={page}
       basePath={basePath}
       filterCategory={parsed.category}
@@ -513,6 +558,8 @@ export default async function CityBrowsePage({
   // straight into the backend's `areaIds` filter.
   const { areaIds, noneSelected: noAreaSelected } = parseAreaSelection(sp.areas);
 
+  const selects = parseAssetSelects(sp);
+
   const baseQuery = buildQueryForSegments(parsed);
   const heading = headingFor(parsed, cityRow.name, areaRow?.name);
   const [allCities, cityAreas] = await Promise.all([fetchCities(undefined, true), fetchAreas(cityRow.id, undefined, true)]);
@@ -532,6 +579,9 @@ export default async function CityBrowsePage({
           maxPrice,
           furnished,
           sort,
+          sharingType: selects.sharingType ?? baseQuery.sharingType,
+          condition: selects.condition ?? baseQuery.condition,
+          serviceType: selects.serviceType ?? baseQuery.serviceType,
         }}
         cityName={cityRow.name}
         heading={heading}
@@ -554,6 +604,7 @@ export default async function CityBrowsePage({
           furnished,
           minPrice,
           maxPrice,
+          ...selects,
         })}
       />
     </>
