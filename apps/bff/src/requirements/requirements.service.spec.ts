@@ -21,14 +21,25 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
       bedrooms: data.bedrooms ?? null,
       landingPath: data.landingPath ?? null,
       savedSearchId: data.savedSearchId ?? null,
+      note: data.note ?? null,
+      moveInBy: data.moveInBy ?? null,
       status: 'open',
+      closedReason: null,
+      expiresAt: data.expiresAt ?? new Date(),
       createdAt: new Date(),
       city: null,
       area: null,
     }),
   );
+  const requirementFindFirst = jest.fn();
+  const requirementUpdate = jest.fn();
   const prisma = {
-    requirement: { create: requirementCreate, findMany: jest.fn().mockResolvedValue([]) },
+    requirement: {
+      create: requirementCreate,
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: requirementFindFirst,
+      update: requirementUpdate,
+    },
     user: { findUnique: jest.fn().mockResolvedValue({ id: 'u1', name: 'A', email: 'a@b.c', phone: null }) },
   } as unknown as PrismaService;
 
@@ -46,6 +57,8 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
   return {
     service: new RequirementsService(prisma, notificationsService, savedSearchesService),
     requirementCreate,
+    requirementFindFirst,
+    requirementUpdate,
     savedSearchCreate,
     notifyRequirementCaptured,
     savedSearchesService,
@@ -114,5 +127,103 @@ describe('RequirementsService.create', () => {
 
     await expect(service.create('u1', dto)).resolves.toMatchObject({ id: 'r1' });
     expect(requirementCreate).toHaveBeenCalled();
+  });
+});
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Phase 1's seeker-side controls. The rule worth pinning hardest is the renewal arithmetic:
+ * counting 30 days from *now* instead of from the later of now/expiry would silently shorten the
+ * life of anything renewed early, which is the opposite of what pressing "renew" means. */
+describe('RequirementsService — the seeker\'s own controls', () => {
+  const existing = (overrides: Record<string, unknown> = {}) => ({
+    id: 'r1',
+    seekerId: 'u1',
+    expiresAt: new Date(Date.now() + 10 * DAY_MS),
+    closedReason: null,
+    ...overrides,
+  });
+  const updated = { id: 'r1', searchLabel: 'x', expiresAt: new Date(), createdAt: new Date(), status: 'open', city: null, area: null };
+
+  it('refuses to touch a requirement belonging to someone else', async () => {
+    const { service, requirementFindFirst, requirementUpdate } = make();
+    // findFirst is scoped by seekerId, so another user's row simply isn't found — the where
+    // clause is the authorisation, not a filter applied afterwards.
+    requirementFindFirst.mockResolvedValue(null);
+
+    await expect(service.renewMine('someone-else', 'r1')).rejects.toThrow();
+    await expect(service.closeMine('someone-else', 'r1', 'withdrawn')).rejects.toThrow();
+    await expect(service.updateMine('someone-else', 'r1', { note: 'hi' })).rejects.toThrow();
+    expect(requirementUpdate).not.toHaveBeenCalled();
+    expect(requirementFindFirst.mock.calls[0][0].where).toMatchObject({ id: 'r1', seekerId: 'someone-else' });
+  });
+
+  it('renews from the existing expiry, so renewing early extends rather than shortens', async () => {
+    const { service, requirementFindFirst, requirementUpdate } = make();
+    const current = new Date(Date.now() + 10 * DAY_MS);
+    requirementFindFirst.mockResolvedValue(existing({ expiresAt: current }));
+    requirementUpdate.mockResolvedValue(updated);
+
+    await service.renewMine('u1', 'r1');
+
+    const next = requirementUpdate.mock.calls[0][0].data.expiresAt as Date;
+    expect(Math.round((next.getTime() - current.getTime()) / DAY_MS)).toBe(30);
+  });
+
+  it('renews from today when it had already lapsed', async () => {
+    const { service, requirementFindFirst, requirementUpdate } = make();
+    requirementFindFirst.mockResolvedValue(existing({ expiresAt: new Date(Date.now() - 5 * DAY_MS) }));
+    requirementUpdate.mockResolvedValue(updated);
+
+    await service.renewMine('u1', 'r1');
+
+    const next = requirementUpdate.mock.calls[0][0].data.expiresAt as Date;
+    expect(Math.round((next.getTime() - Date.now()) / DAY_MS)).toBe(30);
+  });
+
+  it('reopens an expired requirement on renewal, and lets owners hear about it again', async () => {
+    const { service, requirementFindFirst, requirementUpdate } = make();
+    requirementFindFirst.mockResolvedValue(existing({ closedReason: 'expired', status: 'closed' }));
+    requirementUpdate.mockResolvedValue(updated);
+
+    await service.renewMine('u1', 'r1');
+
+    expect(requirementUpdate.mock.calls[0][0].data).toMatchObject({ status: 'open', closedReason: null });
+    // Renewed demand is fresh demand — owners who have listed since have never heard about it.
+    expect(requirementUpdate.mock.calls[0][0].data.ownersNotifiedAt).toBeNull();
+  });
+
+  it('does not reopen one the seeker had deliberately withdrawn', async () => {
+    const { service, requirementFindFirst, requirementUpdate } = make();
+    requirementFindFirst.mockResolvedValue(existing({ closedReason: 'withdrawn', status: 'closed' }));
+    requirementUpdate.mockResolvedValue(updated);
+
+    await service.renewMine('u1', 'r1');
+
+    expect(requirementUpdate.mock.calls[0][0].data.status).toBeUndefined();
+  });
+
+  it('keeps fulfilled and withdrawn distinct', async () => {
+    const { service, requirementFindFirst, requirementUpdate } = make();
+    requirementFindFirst.mockResolvedValue(existing());
+    requirementUpdate.mockResolvedValue(updated);
+
+    await service.closeMine('u1', 'r1', 'fulfilled');
+    expect(requirementUpdate.mock.calls[0][0].data).toEqual({ status: 'closed', closedReason: 'fulfilled' });
+
+    await service.closeMine('u1', 'r1', 'withdrawn');
+    expect(requirementUpdate.mock.calls[1][0].data).toEqual({ status: 'closed', closedReason: 'withdrawn' });
+  });
+
+  it('lets the seeker edit only their note and timeline, never the criteria', async () => {
+    const { service, requirementFindFirst, requirementUpdate } = make();
+    requirementFindFirst.mockResolvedValue(existing());
+    requirementUpdate.mockResolvedValue(updated);
+
+    await service.updateMine('u1', 'r1', { note: 'ground floor please', moveInBy: '2026-12-01T00:00:00.000Z' });
+
+    // The criteria were captured from a real search and an admin may already have worked the
+    // queue against them, so they are not the seeker's to change afterwards.
+    expect(Object.keys(requirementUpdate.mock.calls[0][0].data).sort()).toEqual(['moveInBy', 'note']);
   });
 });

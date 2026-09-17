@@ -84,6 +84,20 @@ enum RequirementStatus {
   closed
 }
 
+/** Why a requirement stopped being live — set whenever `status` becomes `closed`, so "we found
+ * them something" is distinguishable from "they gave up" and from "nobody got to it in time".
+ * That distinction is the only measure of whether Phase 0/1 actually works. */
+enum RequirementClosedReason {
+  /** The seeker got what they were looking for. */
+  fulfilled
+  /** The seeker withdrew it themselves. */
+  withdrawn
+  /** It aged out without being renewed — see REQUIREMENT_DURATION_DAYS. */
+  expired
+  /** An admin closed it: a duplicate, a test, or unreachable. */
+  dismissed
+}
+
 enum LoginMethod {
   otp
   google
@@ -1458,12 +1472,28 @@ model Requirement {
    * them automatically, so it is entirely on the manual follow-up. */
   savedSearchId   String?
   savedSearch     SavedSearch?      @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
+  /** The seeker's own words, when they added any — Phase 1's form asks for it, and the Phase 0
+   * one-tap capture leaves it null rather than forcing a form at the moment that worked precisely
+   * because it wasn't one. */
+  note            String?
+  /** When they need it by. The demand-side signal a listing has no equivalent of, and the field
+   * that makes "who is urgent" answerable when the queue is longer than a day's work. */
+  moveInBy        DateTime?
+  /** Same 30-day life as a listing (REQUIREMENT_DURATION_DAYS), renewable by the seeker.
+   * Requirements have to age out: a stale one is worse than none, because an owner who wastes a
+   * call on someone who moved months ago stops trusting the whole queue. */
+  expiresAt       DateTime
   status          RequirementStatus @default(open)
+  closedReason    RequirementClosedReason?
   adminNote       String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+  /** Last time matching owners were told about this, so the notifier never messages the same
+   * owners about the same requirement twice — see RequirementMatchJob. */
+  ownersNotifiedAt DateTime?
 
   @@index([status, createdAt])
+  @@index([expiresAt])
   @@index([cityId, areaId])
   @@index([seekerId])
 }

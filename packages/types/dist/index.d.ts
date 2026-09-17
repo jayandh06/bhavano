@@ -22,6 +22,9 @@ export type RateLimitKind = "publish" | "view";
 /** Internal workflow state for a captured requirement — not a moderation state, since a
  * Requirement is not public content yet. */
 export type RequirementStatus = "open" | "working" | "closed";
+/** Why a requirement stopped being live. `fulfilled` vs `withdrawn` is the only measure of
+ * whether the feature actually works, so they are never collapsed into one "closed". */
+export type RequirementClosedReason = "fulfilled" | "withdrawn" | "expired" | "dismissed";
 export type ListingSlotUpsell = import("./listingSlots").ListingSlotUpsell;
 export type { ListingSlotCapErrorBody } from "./listingSlots";
 export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro" | "seller_slot_pack" | "contact_reveal_credits" | "instant_alerts";
@@ -972,7 +975,15 @@ export interface RequirementDto {
     maxPrice?: number;
     bedrooms?: number;
     landingPath?: string;
+    /** The seeker's own words, when they added any — absent for a one-tap capture. */
+    note?: string;
+    moveInBy?: string;
     status: RequirementStatus;
+    closedReason?: RequirementClosedReason;
+    expiresAt: string;
+    /** Derived from `expiresAt` on every read, like ListingDetailDto.isExpired — a row can be past
+     * its date for hours before any job gets to it, and every reader needs the same answer. */
+    isExpired: boolean;
     /** Whether an alert was created alongside — false when the seeker had used up their free
      * allowance, in which case nothing notifies them automatically and the follow-up is manual. */
     hasAlert: boolean;
@@ -999,8 +1010,30 @@ export interface SavedSearchSettingsDto {
     freeAlertsPerUser: number;
 }
 export type UpdateSavedSearchSettingsInput = SavedSearchSettingsDto;
+/** What an owner is shown about demand matching their own inventory — deliberately carries no
+ * seeker identity at all. The contact path is the plan's messaging-first flow, not this. */
+export interface OwnerRequirementMatchDto {
+    id: string;
+    searchLabel: string;
+    cityName?: string;
+    areaName?: string;
+    category?: ListingCategory;
+    transactionType?: TransactionType;
+    minPrice?: number;
+    maxPrice?: number;
+    bedrooms?: number;
+    note?: string;
+    moveInBy?: string;
+    createdAt: string;
+}
+export interface UpdateMyRequirementInput {
+    note?: string;
+    moveInBy?: string;
+}
 export interface CreateRequirementInput {
     searchLabel: string;
+    note?: string;
+    moveInBy?: string;
     category?: ListingCategory;
     transactionType?: TransactionType;
     cityId?: string;

@@ -244,6 +244,30 @@ export class NotificationsService {
     return this.dispatchEmailPreferWhatsapp({ ...admin, phone: null }, { subject, text: body });
   }
 
+  /** Tells an owner about demand matching inventory they actually have — see RequirementMatchJob.
+   *
+   * Digested (one message covering all of their matches) rather than one per requirement, which
+   * is the difference between a useful signal and the fastest way to burn the sender domain the
+   * whole notification stack depends on. Carries no seeker identity: the reply path is the site,
+   * not a phone number handed to whoever received an email. */
+  async notifyRequirementsToOwner(
+    owner: NotifiableUser,
+    lines: string[],
+  ): Promise<'email' | 'whatsapp' | null> {
+    const count = lines.length;
+    const subject =
+      count === 1 ? 'Someone is looking for a property like yours' : `${count} people are looking for properties like yours`;
+    const body =
+      `${count === 1 ? 'Someone' : `${count} people`} searched Bhavano for something matching what you've listed, ` +
+      `and didn't find it:\n\n${lines.map((line) => `• ${line}`).join('\n')}\n\n` +
+      `If you have something suitable, list it at https://www.bhavano.com/post — ` +
+      `or see the full details at https://www.bhavano.com/requirements/matching.\n\n` +
+      `You're getting this because you've listed in the same area and category. Nobody's contact ` +
+      `details are shared either way.`;
+
+    return this.dispatchEmailPreferWhatsapp(owner, { subject, text: body });
+  }
+
   async notifySavedSearchMatch(
     user: NotifiableUser,
     listingTitle: string,
