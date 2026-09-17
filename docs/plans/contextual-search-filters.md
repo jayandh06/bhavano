@@ -1,6 +1,7 @@
 # Contextual search filters: always show transaction and asset, derive the rest
 
-**Status: plan, not implemented.** Written 2026-09-17.
+**Status: Phase 1 implemented and deployed 2026-09-17.** Phases 2 and 3 are still plan only.
+Written 2026-09-17.
 
 ## Context
 
@@ -105,11 +106,19 @@ Sketch of the intended result (to be driven by that config, not hardcoded):
 | Storage | price, size |
 | Furniture | price, condition (new/used) |
 | Interiors | price, service type |
-| **All types** | price only — the one filter that means the same thing everywhere |
+| **All types** | none — see below |
 
-Price brackets must stay category-aware. `BrowseFilterBar` already sizes them per category
-(a ₹5,000 furniture bracket vs a ₹85L apartment bracket); "All types" needs a sensible fallback
-scale rather than inheriting whichever category happened to be last.
+**Correction made while implementing (2026-09-17): "All types" gets no price filter at all.** The
+row above originally said "price only — the one filter that means the same thing everywhere". It
+does not. `BrowseFilterBar` sizes its brackets from `PRICE_BOUNDS[category]`, and there is no
+honest single scale across a grid mixing a ₹4,000 sofa with a ₹90L flat: a union of the bounds
+gives brackets useless for both ends, and picking a representative category is wrong for every
+city whose inventory is something else.
+
+So `if (!category) return null` **stays**, and price/furnishing/BHK appear once an asset is
+chosen. The reported problem is solved by the two new filters existing, not by forcing the old bar
+to render without the information it needs — and it makes choosing an asset visibly worthwhile,
+which is the invitation this plan wanted without needing a hint line for it.
 
 ## Facet counts
 
@@ -124,13 +133,21 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
 
 ## Phases
 
-**Phase 1 — always show the two filters.**
-- A `TransactionFilter` (Buy / Rent & Lease / Any) and an `AssetTypeFilter`, both deriving state
-  from the URL and navigating on change, following `BrowseFilterBar`'s existing click-to-navigate
-  pattern.
-- Remove the `if (!category) return null` short-circuit so the row renders at every depth.
-- Wire both into the homepage and every browse page, including the group-root and city-root pages
-  that have no filters today.
+**Phase 1 — always show the two filters. Implemented 2026-09-17.**
+- `TransactionFilter` (Any / Buy / Rent & Lease) and `AssetTypeFilter` (All types + the categories
+  valid for the chosen transaction), in `components/home/TypeFilters.tsx`. State derived entirely
+  from the URL; both navigate on change, following `BrowseFilterBar`'s pattern.
+- `lib/filterUrl.ts` owns every transition, so the two filters cannot disagree about what a
+  combination means. 14 transitions verified, including area preservation, filters surviving a
+  type change while `page` resets, the national no-city routes, and the group-is-redundant
+  shortening for rent-only categories (`/bengaluru/pg`).
+- Wired into the homepage and every browse page. Verified live: `/`, `/bengaluru` and
+  `/bengaluru/buy` now carry both filters and no furnishing filter; `/bengaluru/buy/apartment`
+  carries the furnishing filter and names the asset. The `!category` short-circuit was **kept**,
+  not removed — see the correction above.
+- A gotcha worth recording: `CATEGORY_LABELS` must be imported from `seoRoute`, not `browseRoute`.
+  The latter re-exports it but also pulls in `lib/bff`, whose `next/headers` import a client
+  component cannot reach. The build caught it.
 
 **Phase 2 — derive the rest from the asset.**
 - Read `CATEGORY_FIELD_CONFIG` to decide which additional filters to render.
