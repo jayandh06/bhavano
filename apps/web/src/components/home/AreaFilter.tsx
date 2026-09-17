@@ -162,15 +162,31 @@ export function AreaFilter({
               className="w-full box-border mb-2 rounded-lg border border-border bg-surface px-2.5 py-2 text-[13px] text-text outline-none"
             />
           )}
-          <button
-            onClick={() => navigate(new Set(areas.map((a) => a.id)))}
-            disabled={allSelected}
-            className={`block w-full text-left bg-transparent border-0 border-b border-border mb-1.5 pb-2 text-green text-[13px] font-bold ${
-              allSelected ? "cursor-default opacity-50" : "cursor-pointer"
-            }`}
-          >
-            Select all areas
-          </button>
+          {/* Both directions, side by side. "Select all areas" existed on its own, which left
+              the empty state reachable only by unchecking every box one at a time — absurd in a
+              city with a hundred areas. Both act on every area in the city, not just the ones
+              the search box is currently showing, which is why they say "areas" rather than
+              "these". */}
+          <div className="mb-1.5 flex items-center justify-between gap-3 border-b border-border pb-2">
+            <button
+              onClick={() => navigate(new Set(areas.map((a) => a.id)))}
+              disabled={allSelected}
+              className={`bg-transparent border-0 p-0 text-green text-[13px] font-bold ${
+                allSelected ? "cursor-default opacity-50" : "cursor-pointer"
+              }`}
+            >
+              Select all areas
+            </button>
+            <button
+              onClick={() => navigate(new Set())}
+              disabled={noneSelected}
+              className={`bg-transparent border-0 p-0 text-[13px] font-bold ${
+                noneSelected ? "cursor-default text-muted opacity-50" : "cursor-pointer text-muted"
+              }`}
+            >
+              Clear all
+            </button>
+          </div>
           {filtering && visibleAreas.length === 0 && (
             <p className="m-0 px-1 py-2 text-[12.5px] text-muted">No area starts with “{areaQuery.trim()}”.</p>
           )}
