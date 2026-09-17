@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
@@ -44,14 +44,19 @@ export function BoostBundlePicker({
   /** Why the price could not be loaded — distinct from `error` (a checkout failure), because the
    * two need different offers of what to do next: retry the price, or retry the payment. */
   const [priceError, setPriceError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  // Ever-increasing, not a retry count — bumping it is what re-triggers the effect below, both
+  // from its own backoff and from the focus listener further down.
+  const [fetchKey, setFetchKey] = useState(0);
+  const failuresRef = useRef(0);
+  const MAX_PRICE_RETRIES = 5;
 
-  // Retried once, and the failure is no longer swallowed. The case that mattered: arriving from an
-  // emailed link while logged out, logging in, and landing here — the session is set server-side a
-  // beat before the RSC refresh settles, so this preview could resolve as "You must be logged in",
-  // and the old code silently kept `pricing` null. That left the Pay button permanently disabled
-  // with nothing on screen explaining why. One delayed retry covers that window; `attempt` also
-  // gives the visible Retry below something to bump.
+  // A single 1.2s retry used to cover "arriving from an emailed link while logged out, logging
+  // in, and landing here" — but the session-settling delay this is working around isn't a fixed
+  // beat: it varies with how the login happened (OTP entered inline vs. the Google OAuth popup,
+  // which can take the visitor away from this tab for as long as they take to pick an account),
+  // so one retry silently gave up on the slower cases and left the price stuck at "…" forever.
+  // Backing off across several retries covers the slow-but-still-quick cases; the focus listener
+  // below covers the popup case, where no timer here would ever fire while the tab is backgrounded.
   useEffect(() => {
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
@@ -61,10 +66,12 @@ export function BoostBundlePicker({
       if (result.success) {
         setPricing(result.pricing);
         setPriceError(null);
+        failuresRef.current = 0;
         return;
       }
-      if (attempt === 0) {
-        retry = setTimeout(() => setAttempt(1), 1200);
+      failuresRef.current += 1;
+      if (failuresRef.current <= MAX_PRICE_RETRIES) {
+        retry = setTimeout(() => setFetchKey((k) => k + 1), 1000 * failuresRef.current);
         return;
       }
       setPriceError(result.error);
@@ -74,7 +81,23 @@ export function BoostBundlePicker({
       cancelled = true;
       if (retry) clearTimeout(retry);
     };
-  }, [category, attempt]);
+  }, [category, fetchKey]);
+
+  // Logging in via the Google OAuth popup steals focus for the whole flow, so by the time the
+  // visitor is back on this tab the backoff above may have already exhausted its retries (or the
+  // tab was backgrounded long enough for its timers to be throttled well past their delay).
+  // Regaining focus without a price yet is as reliable a "something may have changed" signal as
+  // this component can get without wiring a session-change event into it.
+  useEffect(() => {
+    function onFocus() {
+      if (pricing) return;
+      failuresRef.current = 0;
+      setPriceError(null);
+      setFetchKey((k) => k + 1);
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [pricing]);
 
   const optionKey =
     duration === 7
@@ -220,8 +243,9 @@ export function BoostBundlePicker({
           Couldn&apos;t load the price.{" "}
           <button
             onClick={() => {
+              failuresRef.current = 0;
               setPriceError(null);
-              setAttempt((a) => a + 1);
+              setFetchKey((k) => k + 1);
             }}
             className="bg-transparent border-0 p-0 text-[13px] font-bold text-green underline cursor-pointer"
           >
