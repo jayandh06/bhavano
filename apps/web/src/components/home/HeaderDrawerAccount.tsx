@@ -60,7 +60,7 @@ export function HeaderDrawerAccount({ userName, cityName }: { userName?: string 
       {/* Next to My Listings because it is the same kind of thing — the other half of
         * what this account is keeping track of. */}
       <Link href={`/my-requirements${cityQuery}`} className={row}>
-        What you&apos;re looking for
+        <Icon name="search" className="text-muted" /> My requirements
       </Link>
       <Link href={`/saved-searches${cityQuery}`} className={row}>
         <Icon name="bell" className="text-muted" /> Saved searches
