@@ -338,7 +338,9 @@ export async function generateMetadata({
       facetValue: national.facetValue,
     });
     return {
-      title: `${heading} | Bhavano`,
+      // Bare, not `${heading} | Bhavano`: the root layout's title template already appends
+      // " — Bhavano", so the explicit suffix produced "Buy Properties in India | Bhavano — Bhavano".
+      title: heading,
       description: `Browse ${heading.toLowerCase()} across every city on Bhavano. Post your own ad free — no brokerage.`,
       alternates: { canonical: path },
     };
