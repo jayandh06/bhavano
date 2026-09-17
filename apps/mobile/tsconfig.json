@@ -2,5 +2,11 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true
-  }
+  },
+  // *.spec.ts files are checked separately, by ts-jest against tsconfig.jest.json at test-run
+  // time (see package.json's jest config) — that config declares the "jest"/"node" ambient types
+  // these files need; this one, the app's real build config, has no reason to know about them.
+  // Specifying "exclude" here replaces (not merges with) expo/tsconfig.base's own list, so its
+  // entries are repeated rather than dropped.
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "android", "ios", "**/*.spec.ts"]
 }

@@ -2,9 +2,10 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
-import type { ListingCategory, PropertyTypeFilter, TransactionType } from "@bhavano/types";
+import type { PropertyTypeFilter } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
+import { deriveHomeRequirementCriteria } from "../../src/lib/homeRequirementCriteria";
 import { useAreasQuery, useInfiniteListingsQuery } from "../../src/lib/queries";
 import { CategoryChips } from "../../src/components/home/CategoryChips";
 import { CollapsedHeaderBar } from "../../src/components/home/CollapsedHeaderBar";
@@ -87,24 +88,17 @@ export default function HomeScreen() {
   // A dead-end search is the highest-intent moment on the site — see
   // docs/plans/property-requirements-demand-side.md — so an empty result captures what was
   // searched for instead of just saying nothing was found (which this screen used to do: no
-  // ListEmptyComponent at all). `category`/`transactionType` mirror seoRoute.ts's own "one
-  // representative value for a group" rule (buy -> sell, rentLease -> rent) rather than the
-  // multi-category set the tab actually queries with — a Requirement holds one of each, same as
-  // SavedSearch. `areaId` is left out entirely: FilterSheet's areaIds is a multi-select set, and
-  // "any of these areas" is not a single requirement any more than it is on web (see
-  // BrowseListingsView's identical comment on its own areaId).
-  const requirementCategory: ListingCategory | undefined =
-    category === "pg" || category === "furniture" || category === "interiors" ? category : propertyType;
-  const requirementTransactionType: TransactionType | undefined =
-    category === "buy" ? "sell" : category === "rentLease" ? "rent" : undefined;
-  const requirementLabel = [
-    (category === "buy" || category === "rentLease"
-      ? HOME_TABS.find((t) => t.value === category)?.subFilter.options.find((o) => o.value === propertyType)?.label
-      : undefined) ?? categoryLabel,
-    city?.name,
-  ]
-    .filter(Boolean)
-    .join(" in ");
+  // ListEmptyComponent at all). See homeRequirementCriteria.ts for the actual mapping (and its
+  // own tests) — kept out of this component so it's testable without rendering the screen.
+  const { criteria: requirementCriteria, label: requirementLabel } = deriveHomeRequirementCriteria({
+    category,
+    propertyType,
+    cityId: city?.id,
+    cityName: city?.name,
+    minPrice: filters.minPrice,
+    maxPrice: filters.maxPrice,
+    bedrooms: filters.bedrooms,
+  });
 
   // Switching tabs/property-type clears stale filters — a leftover BHK/price selection from
   // House shouldn't silently apply once the user switches to PG (same rule the web app's
@@ -165,20 +159,7 @@ export default function HomeScreen() {
         // "nothing found" card for every category/filter change while the new query is still
         // loading, which reads as a real (and wrong) answer instead of a loading state.
         ListEmptyComponent={
-          isLoading ? null : (
-            <RequirementPrompt
-              criteria={{
-                category: requirementCategory,
-                transactionType: requirementTransactionType,
-                cityId: city?.id,
-                minPrice: filters.minPrice,
-                maxPrice: filters.maxPrice,
-                bedrooms: filters.bedrooms?.length ? Math.min(...filters.bedrooms) : undefined,
-                landingPath: "mobile-app:home",
-              }}
-              label={requirementLabel}
-            />
-          )
+          isLoading ? null : <RequirementPrompt criteria={requirementCriteria} label={requirementLabel} />
         }
         renderItem={({ item }) => (
           <View style={numColumns > 1 ? styles.gridItem : styles.singleItem}>

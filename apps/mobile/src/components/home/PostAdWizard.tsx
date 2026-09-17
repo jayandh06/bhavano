@@ -36,35 +36,9 @@ import { ScreenHeader } from "./ScreenHeader";
 import { BoostBundleCard, SEPTEMBER_PROMO_CODE } from "./BoostBundleCard";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { appWebUrl } from "../../lib/appWebUrl";
+import { instantAlertsOnlyPrice, priceSuffix } from "../../lib/boostPriceDisplay";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
-
-type PriceLike = { amount: number; originalAmount: number; discountApplied: boolean; free: boolean };
-
-function priceSuffix(opt?: PriceLike): string {
-  if (!opt) return "";
-  if (opt.free) return " — Free";
-  return opt.discountApplied && opt.originalAmount > opt.amount
-    ? ` — ₹${opt.originalAmount} → ₹${opt.amount}`
-    : ` — ₹${opt.amount}`;
-}
-
-/** There is no standalone "instant alerts only" pricing preview (`boost-pricing-preview` only
- * returns boost-inclusive combos) — derived from the same live call BoostBundleCard already
- * makes rather than adding a new endpoint just for this teaser price. Returns null rather than a
- * misleading number in the one case the subtraction doesn't hold: a free Agent Pro boost credit,
- * which bundling with Instant Alerts deliberately bypasses (see PaymentsService.createBoostOrder),
- * so `boost7WithInstantAlerts.amount - boost7.amount` would equal the whole bundle price, not the
- * alerts increment. */
-function instantAlertsOnlyPrice(pricing: BoostPricingPreviewDto | null): PriceLike | null {
-  if (!pricing || pricing.boost7.free || pricing.boost7WithInstantAlerts.free) return null;
-  return {
-    amount: pricing.boost7WithInstantAlerts.amount - pricing.boost7.amount,
-    originalAmount: pricing.boost7WithInstantAlerts.originalAmount - pricing.boost7.originalAmount,
-    discountApplied: pricing.boost7WithInstantAlerts.discountApplied,
-    free: false,
-  };
-}
 
 // Mirrors the website's identical success-screen pitch (PostAdWizard.tsx's own "Reach more
 // buyers, faster" card) — same four benefits, same icons.
