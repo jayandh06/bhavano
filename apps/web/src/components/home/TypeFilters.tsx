@@ -10,6 +10,7 @@ import { assetsForIntent, intentOffersAssets } from "@/lib/assetFilters";
 // which imports next/headers — a client component cannot reach that module graph.
 import { CATEGORY_LABELS, segmentsForHomeCategory } from "@/lib/seoRoute";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { useClampToViewport } from "@/lib/useClampToViewport";
 import { buttonClass } from "./BrowseFilterBar";
 import { Icon } from "./Icon";
 
@@ -56,6 +57,8 @@ export function TransactionFilter({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
+  const panelRef = useRef<HTMLDivElement>(null);
+  const shift = useClampToViewport(panelRef, open);
 
   const label = HOME_TABS.find((tab) => tab.value === activeIntent)?.label ?? "All";
 
@@ -81,7 +84,7 @@ export function TransactionFilter({
         <Icon name="key" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
       {open && (
-        <div className={dropdownClass}>
+        <div ref={panelRef} style={shift ? { transform: `translateX(-${shift}px)` } : undefined} className={dropdownClass}>
           {HOME_TABS.map((tab) => (
             <Option
               key={tab.value}
@@ -124,6 +127,8 @@ export function AssetTypeFilter({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
+  const panelRef = useRef<HTMLDivElement>(null);
+  const shift = useClampToViewport(panelRef, open);
 
   const options = assetsForIntent(activeIntent);
   if (options.length === 0) return null;
@@ -141,7 +146,11 @@ export function AssetTypeFilter({
         <Icon name="building" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
       {open && (
-        <div className={`${dropdownClass} max-h-[320px] overflow-y-auto`}>
+        <div
+          ref={panelRef}
+          style={shift ? { transform: `translateX(-${shift}px)` } : undefined}
+          className={`${dropdownClass} max-h-[320px] overflow-y-auto`}
+        >
           <Option label="All types" active={activeAsset === undefined} onClick={() => select(undefined)} />
           {options.map((category) => (
             <Option

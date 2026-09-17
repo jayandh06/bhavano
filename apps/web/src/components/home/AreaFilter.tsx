@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Area } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { useClampToViewport } from "@/lib/useClampToViewport";
 import { AREAS_NONE } from "@/lib/areaSelection";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { buildHomeUrl } from "@/lib/homeUrl";
@@ -40,6 +41,8 @@ export function AreaFilter({
   const [areaQuery, setAreaQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
+  const panelRef = useRef<HTMLDivElement>(null);
+  const shift = useClampToViewport(panelRef, open);
 
   if (areas.length <= 1) return null;
 
@@ -154,7 +157,10 @@ export function AreaFilter({
         * edge plus an unconstrained width let this run off the right edge of a phone screen
         * whenever the trigger itself wasn't flush against the viewport's left edge. */}
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[240px] max-w-[calc(100vw-2rem)] max-h-[360px] overflow-y-auto">
+        <div
+          ref={panelRef}
+          style={shift ? { transform: `translateX(-${shift}px)` } : undefined}
+          className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[240px] max-w-[calc(100vw-2rem)] max-h-[360px] overflow-y-auto">
           {/* Only worth a search box once the list is long enough to be worth searching —
               below that it is one more thing between the visitor and the checkboxes. */}
           {areas.length >= AREA_SEARCH_THRESHOLD && (

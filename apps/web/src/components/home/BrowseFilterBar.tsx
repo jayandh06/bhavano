@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { useClampToViewport } from "@/lib/useClampToViewport";
 import { assetFiltersFor, type FilterableKey } from "@/lib/assetFilters";
 import { customPriceLabel, parseAmount } from "@/lib/priceInput";
 
@@ -56,6 +57,11 @@ export function BrowseFilterBar({
   const [open, setOpen] = useState<OpenFilter>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(null));
+  // Anchored to its own pill, so how far right a panel reaches depends on where the row wrapped
+  // that pill — see useClampToViewport.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const shift = useClampToViewport(panelRef, open !== null);
+  const panelStyle = shift ? { transform: `translateX(-${shift}px)` } : undefined;
 
   if (!category) return null;
 
@@ -101,7 +107,7 @@ export function BrowseFilterBar({
           {priceLabel} <span className="text-[10px] text-muted">▾</span>
         </button>
         {open === "price" && (
-          <div className={`${dropdownClass} min-w-[248px]`}>
+          <div ref={open === "price" ? panelRef : undefined} style={panelStyle} className={`${dropdownClass} min-w-[248px]`}>
             {/* "Any", then the two boxes — no pre-baked brackets. They were derived from each
               * category's plausibility bounds, which made them sane but arbitrary: three buckets
               * per category, none of them the range anyone actually wanted, and each one a second
@@ -137,7 +143,7 @@ export function BrowseFilterBar({
               {label} <span className="text-[10px] text-muted">▾</span>
             </button>
             {open === filter.key && (
-              <div className={dropdownClass}>
+              <div ref={open === filter.key ? panelRef : undefined} style={panelStyle} className={dropdownClass}>
                 <DropdownOption
                   label="Any"
                   active={active === undefined}
@@ -209,7 +215,7 @@ function CustomPriceRange({
       ) : (
         // The accepted shorthand has to be visible, or nobody discovers it — the brackets above are
         // written in the same notation, so this is telling them the box speaks the chips' language.
-        <div className="px-2.5 pt-1.5 text-[11px] text-muted">Leave one empty for an open-ended range. 20k, 2L, 1.5Cr all work.</div>
+        <div className="px-2.5 pt-1.5 text-[11px] text-muted">One bound is enough. 20k, 2L, 1.5Cr work too.</div>
       )}
       <button
         onClick={apply}
