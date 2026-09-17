@@ -1,7 +1,7 @@
 import type { ListingCategory } from "@bhavano/types";
 import type { HomeTabValue } from "./homeCategories";
 import { CATEGORY_LABELS, categoryGroupsFor, segmentsForHomeCategory } from "./seoRoute";
-import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
+import { amenityFieldsFor, CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 
 /**
  * Which attribute filters a given asset type has, derived from `CATEGORY_FIELD_CONFIG` rather
@@ -68,6 +68,23 @@ export function assetFiltersFor(category: ListingCategory | undefined): AssetFil
       // since ListListingsDto reads the same array.
       options: (field.options ?? []).map((option) => ({ value: option.value, label: option.label })),
     }));
+}
+
+/**
+ * The amenities worth offering for one property type, straight from the config.
+ *
+ * Amenities are the clearest case of a filter that depends on the asset: a flat's are lift, gym,
+ * pool, clubhouse, play area; a PG's are an attached bathroom, AC, laundry, TV; a coworking desk's
+ * are a meeting room, printer, pantry; a plot, a piece of furniture or an interiors job have none,
+ * so no control renders. Deriving them means the filter row, the posting form and the BFF's
+ * accepted keys cannot disagree about which amenity belongs to which property type.
+ *
+ * Every one is a yes/no field, so the filter is "has all of these" rather than a value to match —
+ * see `ListListingsDto.amenities`.
+ */
+export function amenityOptionsFor(category: ListingCategory | undefined): AssetFilterOption[] {
+  if (!category) return [];
+  return amenityFieldsFor(category).map((field) => ({ value: field.key, label: field.label }));
 }
 
 export function hasAssetFilter(category: ListingCategory | undefined, key: FilterableKey): boolean {

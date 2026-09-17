@@ -1,7 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from '@bhavano/types';
-import { CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
+import { AMENITY_KEYS, CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 
 const HOME_CATEGORIES: HomeCategoryFilter[] = ['buy', 'rentLease', 'pg', 'furniture', 'interiors'];
 const PROPERTY_TYPES: PropertyTypeFilter[] = ['house', 'apartment', 'villa', 'storage', 'coworking', 'plot', 'commercial'];
@@ -116,6 +116,22 @@ export class ListListingsDto {
   @IsOptional()
   @IsIn(CONDITION_VALUES)
   condition?: string;
+
+  /**
+   * Amenity filter — a comma-separated list of amenity keys, every one of which the listing must
+   * have (`attributes.<key> === "yes"`). AND, not OR: ticking "Lift" and "Gym" means a building
+   * with both, which is what someone ticking two boxes is asking for.
+   *
+   * Which keys are legal at all comes from `AMENITY_KEYS`, derived from the same category config
+   * the posting form uses — amenities are per property type (a PG has an attached bathroom, a flat
+   * has a lift), so the list cannot drift from what the wizard can actually set. Which of them
+   * make sense for the category being browsed is the caller's business: an amenity the category
+   * never declares simply matches nothing.
+   */
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').filter(Boolean) : value))
+  @IsIn(AMENITY_KEYS, { each: true })
+  amenities?: string[];
 
   /** Matches `attributes.serviceType` exactly (Interiors mega-menu links). */
   @IsOptional()

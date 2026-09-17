@@ -400,6 +400,7 @@ export class ListingsService {
       maxPrice,
       bedrooms,
       furnished,
+      amenities,
       sharingType,
       condition,
       serviceType,
@@ -440,6 +441,14 @@ export class ListingsService {
       attributeFilters.push({
         attributes: { path: ['furnished'], equals: furnished },
       });
+    // One clause per amenity, ANDed — two ticked boxes mean a place with both. Each is its own
+    // top-level entry for the same reason the comment above gives: merging them under one
+    // `attributes` key would let the last one silently win.
+    if (amenities && amenities.length > 0) {
+      for (const key of amenities) {
+        attributeFilters.push({ attributes: { path: [key], equals: 'yes' } });
+      }
+    }
     // sharingType is multi-select (a PG can offer more than one) — array_contains, not equals,
     // since the stored attribute is now a string[] rather than a scalar.
     if (sharingType)

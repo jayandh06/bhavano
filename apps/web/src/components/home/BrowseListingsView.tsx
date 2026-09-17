@@ -231,7 +231,8 @@ export async function BrowseListingsView({
                 activeMinPrice={query.minPrice}
                 activeMaxPrice={query.maxPrice}
                 activeFurnished={query.furnished}
-                activeSharingType={query.sharingType}
+                activeAmenities={query.amenities}
+              activeSharingType={query.sharingType}
                 activeCondition={query.condition}
                 activeServiceType={query.serviceType}
               />

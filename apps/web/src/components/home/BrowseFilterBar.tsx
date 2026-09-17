@@ -5,11 +5,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { useClampToViewport } from "@/lib/useClampToViewport";
-import { assetFiltersFor, type FilterableKey } from "@/lib/assetFilters";
+import { amenityOptionsFor, assetFiltersFor, type FilterableKey } from "@/lib/assetFilters";
 import { customPriceLabel, parseAmount } from "@/lib/priceInput";
 
 /** `price` plus whichever config-derived select filters this asset has. */
-type OpenFilter = "price" | FilterableKey | null;
+type OpenFilter = "price" | "amenities" | FilterableKey | null;
 
 // See the matching comment in AreaFilter.tsx — the filter row is now a surface-alt strip, so
 // pill tones shift accordingly (active: green tint, inactive: surface rather than bg).
@@ -39,6 +39,7 @@ export function BrowseFilterBar({
   activeSharingType,
   activeCondition,
   activeServiceType,
+  activeAmenities,
 }: {
   category?: ListingCategory;
   activeMinPrice?: number;
@@ -50,6 +51,8 @@ export function BrowseFilterBar({
   activeCondition?: string;
   /** Interiors only. */
   activeServiceType?: string;
+  /** Amenity keys currently ticked (`?amenities=lift,gym`). */
+  activeAmenities?: string[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -83,6 +86,10 @@ export function BrowseFilterBar({
   // config says villa also has furnishing, commercial has furnishing, and PG/furniture/interiors
   // each have a select the BFF already accepts and no UI ever offered.
   const selectFilters = assetFiltersFor(category).filter((filter) => filter.options.length > 0);
+  // Per property type, straight from the config — a flat's lift and gym, a PG's attached bathroom
+  // and laundry, a plot's nothing at all. See lib/assetFilters.ts.
+  const amenityOptions = amenityOptionsFor(category);
+  const selectedAmenities = (activeAmenities ?? []).filter((a) => amenityOptions.some((o) => o.value === a));
   const activeValues: Partial<Record<FilterableKey, string | undefined>> = {
     furnished: activeFurnished,
     sharingType: activeSharingType,
@@ -129,6 +136,59 @@ export function BrowseFilterBar({
           </div>
         )}
       </div>
+
+      {amenityOptions.length > 0 && (
+        <div className="relative">
+          <button
+            className={buttonClass(open === "amenities" || selectedAmenities.length > 0)}
+            onClick={() => setOpen(open === "amenities" ? null : "amenities")}
+          >
+            {/* A count, not the names: "Lift, Gym, Swimming pool" does not fit a pill, and "2
+              * amenities" is what the visitor needs to know at a glance. */}
+            {selectedAmenities.length === 0
+              ? "Amenities"
+              : selectedAmenities.length === 1
+                ? (amenityOptions.find((o) => o.value === selectedAmenities[0])?.label ?? "1 amenity")
+                : `${selectedAmenities.length} amenities`}{" "}
+            <span className="text-[10px] text-muted">▾</span>
+          </button>
+          {open === "amenities" && (
+            <div ref={panelRef} className={`${dropdownClass} min-w-[220px] max-h-[320px] overflow-y-auto`}>
+              <DropdownOption
+                label="Any"
+                active={selectedAmenities.length === 0}
+                onClick={() => navigate({ amenities: undefined })}
+              />
+              {amenityOptions.map((option) => {
+                const checked = selectedAmenities.includes(option.value);
+                return (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 px-2.5 py-2 text-[13px] text-text cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        // Ticked boxes are ANDed server-side, so this list only grows and shrinks;
+                        // an empty list drops the param rather than sending an empty one.
+                        navigate({
+                          amenities:
+                            (checked
+                              ? selectedAmenities.filter((a) => a !== option.value)
+                              : [...selectedAmenities, option.value]
+                            ).join(",") || undefined,
+                        })
+                      }
+                    />
+                    {option.label}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {selectFilters.map((filter) => {
         const active = activeValues[filter.key];

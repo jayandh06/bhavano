@@ -298,6 +298,24 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
   row), and the price inputs got `size={5}`, since an input's intrinsic width defaults to ~20
   characters and two of them forced the panel wider than a phone. Now 248px at x=27 on every width
   from 320px to 414px, verified with Playwright measurements and screenshots.
+- **Amenities now filter, per property type.** They were absent because nothing could filter on
+  them: `ListListingsDto` had no amenity parameter, and `FILTERABLE_KEYS` deliberately mirrors what
+  the BFF accepts. Added as `?amenities=lift,gym` — **AND**, since ticking two boxes asks for a
+  place with both — with the legal keys derived from the category config (`AMENITY_KEYS`) so the
+  filter row, the posting form and the DTO cannot disagree.
+  - Which amenities appear follows the asset, because the config already says so: a flat offers
+    lift/gym/pool/clubhouse/play area/CCTV/power backup/water supply, a PG offers attached
+    bathroom/AC/laundry/TV/parking, a coworking desk offers meeting room/printer/pantry, and plot,
+    commercial, furniture, interiors and storage offer none — so no pill renders at all. 22 checks
+    pin the per-category sets, that every key is one the DTO accepts, and that all of them are
+    yes/no fields (which is what makes the filter "has all of these" rather than a value match).
+  - One pill with a checkbox list, labelled by count past the first ("2 amenities"), not twelve
+    separate pills.
+  - **Coverage is thin and that is the real limit**, not the plumbing: of 327 active listings,
+    water supply is stated on 50, CCTV 43, lift 32, power backup 28, play area 26, clubhouse and
+    gym 16, pool 15, and everything else on 2-3. Unstated is not "no", so a ticked box hides every
+    ad whose owner skipped the field. Facet counts (Phase 3) are what will make that visible
+    instead of surprising.
 - **Still missing on the homepage**, and knowingly: price and furnishing. The homepage has never
   parsed `minPrice`/`maxPrice`, so adding those controls is a route change rather than a component
   one, and the browse pages are where price refinement belongs.

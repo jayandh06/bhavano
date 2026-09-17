@@ -2,6 +2,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import type { ListingCategory, ListingDetailDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
+import { AMENITY_KEYS } from "@bhavano/types/categoryFields";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListingById, fetchListingMeta, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
@@ -154,6 +155,16 @@ function parseAssetSelects(sp: Record<string, string | string[] | undefined>): {
     condition: parseEnum(sp.condition, CONDITION_VALUES),
     serviceType: parseEnum(sp.serviceType, SERVICE_TYPE_VALUES),
   };
+}
+
+/** `?amenities=lift,gym` — validated against the config's own keys so a hand-edited URL cannot
+ * reach the BFF with a key its DTO would reject. Which of them apply to the category being browsed
+ * is the filter row's business; an amenity the category never declares simply matches nothing. */
+function parseAmenities(value: string | string[] | undefined): string[] | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return undefined;
+  const keys = raw.split(",").filter((key) => AMENITY_KEYS.includes(key));
+  return keys.length > 0 ? keys : undefined;
 }
 
 /** The canonical browse path for this exact resolved depth, built fresh from the resolved city/
@@ -332,6 +343,7 @@ async function NationalBrowsePage({
   const sort = parseEnum(sp.sort, SORT_VALUES);
   const bedroomsFromQuery = parseIntList(sp.bedrooms);
   const selects = parseAssetSelects(sp);
+  const amenities = parseAmenities(sp.amenities);
 
   const session = await auth();
   const baseQuery = buildQueryForSegments(parsed);
@@ -349,6 +361,7 @@ async function NationalBrowsePage({
         sharingType: selects.sharingType ?? baseQuery.sharingType,
         condition: selects.condition ?? baseQuery.condition,
         serviceType: selects.serviceType ?? baseQuery.serviceType,
+        amenities,
       }}
       heading={headingFor(parsed, "India")}
       filteredHeading={headingFor(parsed, "India", undefined, { furnished, minPrice, maxPrice, ...selects })}
@@ -561,6 +574,7 @@ export default async function CityBrowsePage({
   const { areaIds, noneSelected: noAreaSelected } = parseAreaSelection(sp.areas);
 
   const selects = parseAssetSelects(sp);
+  const amenities = parseAmenities(sp.amenities);
 
   const baseQuery = buildQueryForSegments(parsed);
   const heading = headingFor(parsed, cityRow.name, areaRow?.name);
@@ -584,6 +598,7 @@ export default async function CityBrowsePage({
           sharingType: selects.sharingType ?? baseQuery.sharingType,
           condition: selects.condition ?? baseQuery.condition,
           serviceType: selects.serviceType ?? baseQuery.serviceType,
+          amenities,
         }}
         cityName={cityRow.name}
         heading={heading}

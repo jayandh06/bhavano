@@ -83,3 +83,16 @@ export declare function defaultAttributesFor(category: ListingCategory): Record<
  * wizard's dynamic step-3 form and the `attributes` JSONB column it maps onto. Adding a
  * future category means adding an entry here, not a new form/code path. */
 export declare const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]>;
+/**
+ * Every amenity key any category declares, and the categories that declare each.
+ *
+ * Derived rather than listed: amenities are per property type — a flat's amenities are lift, gym,
+ * pool, clubhouse; a PG's are an attached bathroom, AC, laundry; a coworking desk's are a meeting
+ * room, printer, pantry; a plot has none — and the config is already the place that says so. The
+ * filter row, the BFF's accepted values and the posting form therefore cannot disagree about which
+ * amenity belongs to which asset.
+ */
+export declare const AMENITY_KEYS: string[];
+/** The amenity fields of one category, in the order the config declares them — empty for the
+ * categories that have none (plot, commercial, furniture, interiors, storage). */
+export declare function amenityFieldsFor(category: ListingCategory): FieldDef[];

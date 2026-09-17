@@ -132,6 +132,77 @@ describe('ListingsService.list — word match + fuzzy title search', () => {
   });
 });
 
+describe('ListingsService.list — amenity filter', () => {
+  function makeListService() {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const count = jest.fn<Promise<number>, [{ where: Prisma.ListingWhereInput }]>().mockResolvedValue(0);
+    const prisma = {
+      listing: { findMany, count },
+      $queryRaw: jest.fn().mockResolvedValue([]),
+    } as unknown as PrismaService;
+    const contactRevealService = {
+      getRevealStatesForListings: jest.fn().mockResolvedValue(new Map()),
+    } as unknown as ContactRevealService;
+    const service = new ListingsService(
+      prisma,
+      {} as ModerationService,
+      { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
+      {} as NotificationsService,
+      {} as SavedSearchesService,
+      {} as LocationsService,
+      {} as R2StorageService,
+      {} as CdnPurgeService,
+      {} as ListingSlotsService,
+      {} as GoogleAdsConversionProvider,
+      contactRevealService,
+    );
+    return { service, count };
+  }
+
+  /** The amenity clauses, wherever they ended up in the composed where. */
+  function amenityClauses(where: Prisma.ListingWhereInput): unknown[] {
+    const flat = JSON.stringify(where.AND ?? where);
+    return (JSON.parse(flat) as unknown[]) ?? [];
+  }
+
+  it('ANDs one clause per ticked amenity — two boxes mean a place with both', async () => {
+    const { service, count } = makeListService();
+
+    await service.list({ amenities: ['lift', 'gym'], offset: 0, limit: 20 });
+
+    const clauses = amenityClauses(count.mock.calls[0][0].where);
+    expect(clauses).toEqual(
+      expect.arrayContaining([
+        { attributes: { path: ['lift'], equals: 'yes' } },
+        { attributes: { path: ['gym'], equals: 'yes' } },
+      ]),
+    );
+  });
+
+  it('adds nothing at all when none are ticked', async () => {
+    const { service, count } = makeListService();
+
+    await service.list({ offset: 0, limit: 20 });
+
+    expect(JSON.stringify(count.mock.calls[0][0].where)).not.toContain('"path"');
+  });
+
+  it('keeps amenity clauses separate from furnished, which lives in the same JSONB column', async () => {
+    const { service, count } = makeListService();
+
+    await service.list({ furnished: 'semi', amenities: ['lift'], offset: 0, limit: 20 });
+
+    const clauses = amenityClauses(count.mock.calls[0][0].where);
+    // Merged under one `attributes` key, the second would silently overwrite the first.
+    expect(clauses).toEqual(
+      expect.arrayContaining([
+        { attributes: { path: ['furnished'], equals: 'semi' } },
+        { attributes: { path: ['lift'], equals: 'yes' } },
+      ]),
+    );
+  });
+});
+
 describe('recentMixGroupKey', () => {
   it('groups All/Buy/Rent & Lease by property category, plus city when browsing all cities', () => {
     const listing = { category: 'apartment' as const, attributes: {}, cityId: 'city1' };
