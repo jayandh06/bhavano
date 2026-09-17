@@ -5,7 +5,16 @@ import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
-import type { Area, City, CreatedVideoInput, ListingCategory, ListingDetailDto, ReverseGeocodeResultDto, TransactionType } from "@bhavano/types";
+import type {
+  Area,
+  BoostPricingPreviewDto,
+  City,
+  CreatedVideoInput,
+  ListingCategory,
+  ListingDetailDto,
+  ReverseGeocodeResultDto,
+  TransactionType,
+} from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
@@ -20,14 +29,42 @@ import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLi
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
-import { createListing, fetchAreas, uploadPhoto, uploadVideo } from "../../lib/bffClient";
+import { createListing, fetchAreas, previewBoostPricing, uploadPhoto, uploadVideo } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ScreenHeader } from "./ScreenHeader";
-import { BoostBundleCard } from "./BoostBundleCard";
+import { BoostBundleCard, SEPTEMBER_PROMO_CODE } from "./BoostBundleCard";
+import { ListingPreviewCard } from "./ListingPreviewCard";
 import { appWebUrl } from "../../lib/appWebUrl";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
+
+type PriceLike = { amount: number; originalAmount: number; discountApplied: boolean; free: boolean };
+
+function priceSuffix(opt?: PriceLike): string {
+  if (!opt) return "";
+  if (opt.free) return " — Free";
+  return opt.discountApplied && opt.originalAmount > opt.amount
+    ? ` — ₹${opt.originalAmount} → ₹${opt.amount}`
+    : ` — ₹${opt.amount}`;
+}
+
+/** There is no standalone "instant alerts only" pricing preview (`boost-pricing-preview` only
+ * returns boost-inclusive combos) — derived from the same live call BoostBundleCard already
+ * makes rather than adding a new endpoint just for this teaser price. Returns null rather than a
+ * misleading number in the one case the subtraction doesn't hold: a free Agent Pro boost credit,
+ * which bundling with Instant Alerts deliberately bypasses (see PaymentsService.createBoostOrder),
+ * so `boost7WithInstantAlerts.amount - boost7.amount` would equal the whole bundle price, not the
+ * alerts increment. */
+function instantAlertsOnlyPrice(pricing: BoostPricingPreviewDto | null): PriceLike | null {
+  if (!pricing || pricing.boost7.free || pricing.boost7WithInstantAlerts.free) return null;
+  return {
+    amount: pricing.boost7WithInstantAlerts.amount - pricing.boost7.amount,
+    originalAmount: pricing.boost7WithInstantAlerts.originalAmount - pricing.boost7.originalAmount,
+    discountApplied: pricing.boost7WithInstantAlerts.discountApplied,
+    free: false,
+  };
+}
 
 // Mirrors the website's identical success-screen pitch (PostAdWizard.tsx's own "Reach more
 // buyers, faster" card) — same four benefits, same icons.
@@ -210,6 +247,25 @@ export function PostAdWizard({
   // Android only — see BoostBundleCard's own comment for why Android gets one combined card
   // instead of iOS's redirect-to-website buttons below, which have nothing to activate in-app.
   const [bundleActivating, setBundleActivating] = useState(false);
+  // iOS only — fetched for display alongside the redirect-to-website buttons below so their
+  // price shows up front, matching the desktop success screen and Android's BoostBundleCard.
+  // Read-only preview call, no checkout: Apple's Guideline 3.1.1 (see the buttons' own comment)
+  // is about processing a paid transaction in-app, not about showing what something costs before
+  // sending the buyer to the website to actually pay.
+  const [iosPricing, setIosPricing] = useState<BoostPricingPreviewDto | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== "ios" || !createdListing || !postAccessToken) return;
+    let cancelled = false;
+    previewBoostPricing(postAccessToken, createdListing.category, SEPTEMBER_PROMO_CODE)
+      .then((result) => {
+        if (!cancelled) setIosPricing(result);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [createdListing, postAccessToken]);
 
   function selectCategory(next: ListingCategory) {
     setCategory(next);
@@ -908,18 +964,22 @@ export function PostAdWizard({
 
       {step === "review" && category && transactionType && (
         <View style={{ gap: 12 }}>
-          <View style={[styles.reviewBox, { borderColor: colors.border }]}>
-            <Text style={{ color: colors.text, fontWeight: "700", marginBottom: 6 }}>
-              {POST_CATEGORIES.find((c) => c.value === category)?.label} — {TRANSACTION_TYPE_LABELS[transactionType]}
-            </Text>
-            <Text style={{ color: colors.text, marginBottom: 6 }}>{title}</Text>
-            <Text style={{ color: colors.muted, marginBottom: 6 }}>
-              {areaQuery}, {cityOptions.find((c) => c.id === cityId)?.name}
-            </Text>
-            <Text style={{ color: colors.green, fontWeight: "700" }}>
-              ₹{price} {priceQualifier}
-            </Text>
-          </View>
+          {/* What the actual browse-grid ListingCard will look like once this is posted — same
+            * photo/badge/price/title/location/specs a buyer sees, not a plain text summary, so a
+            * mistake (wrong cover photo, an odd-reading price, a spec that didn't come through) is
+            * obvious here rather than after the ad is already live. Matches the web wizard's own
+            * ListingPreviewCard. */}
+          <ListingPreviewCard
+            photoUri={photoUris[0]}
+            category={category}
+            transactionType={transactionType}
+            title={title}
+            price={price}
+            priceQualifier={priceQualifier}
+            areaName={areaQuery}
+            cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
+            attributes={attributes}
+          />
 
           {error && <Text style={{ color: "#c0554b", fontSize: 13 }}>{error}</Text>}
 
@@ -978,7 +1038,9 @@ export function PostAdWizard({
                   onPress={() => WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openBoost=${createdListing.id}`))}
                   style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
                 >
-                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Boost this listing</Text>
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>
+                    Boost this listing{priceSuffix(iosPricing?.boost7)}
+                  </Text>
                 </Pressable>
               </View>
 
@@ -1001,7 +1063,9 @@ export function PostAdWizard({
                   onPress={() => WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openInstantAlerts=${createdListing.id}`))}
                   style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
                 >
-                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Get Instant Alerts</Text>
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>
+                    Get Instant Alerts{priceSuffix(instantAlertsOnlyPrice(iosPricing) ?? undefined)}
+                  </Text>
                 </Pressable>
               </View>
             </>

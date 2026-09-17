@@ -12,8 +12,10 @@ const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 // Temporary September promo — same constant as the website's own copy in
 // app/actions/payments.ts. Auto-applied so the price shown is just what checkout will actually
 // charge; the discount only takes effect if this code exists, is active, and hasn't expired in
-// the admin discount-codes screen — nothing here grants it on its own.
-const SEPTEMBER_PROMO_CODE = "BHAVANO-SEP";
+// the admin discount-codes screen — nothing here grants it on its own. Exported so the iOS
+// success-screen cards in PostAdWizard.tsx (which fetch pricing for display only, no in-app
+// checkout) apply the same code rather than carrying a third copy of this string.
+export const SEPTEMBER_PROMO_CODE = "BHAVANO-SEP";
 
 /**
  * Android-only inline replacement for the old separate BoostModal/InstantAlertsModal buttons on
