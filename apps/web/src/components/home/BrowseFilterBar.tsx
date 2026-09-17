@@ -79,8 +79,17 @@ export function BrowseFilterBar({
     serviceType: activeServiceType,
   };
 
+  // No bottom margin here — this sits as one flex item inside BrowseListingsView's shared
+  // `flex flex-wrap` filter row alongside AreaFilter/TransactionFilter/AssetTypeFilter/BhkFilter,
+  // not stacked below them. A margin on a flex item still counts toward that row's height even
+  // under `items-start`, so the `mb-5` this used to carry (from before it lived in that row)
+  // was adding 20px of dead space under the whole filter box on every page where this actually
+  // renders a pill — every single-category tab (PG/Furniture/Interiors) and Buy/Rent once a
+  // specific property type is chosen — while pages where it renders nothing (Buy/Rent's "All
+  // types" state) never showed the gap. The row's own container already carries the spacing to
+  // whatever comes after it (BrowseListingsView.tsx's outer `mb-3`).
   return (
-    <div ref={containerRef} className="flex gap-2.5 mb-5 relative">
+    <div ref={containerRef} className="flex gap-2.5 relative">
       <div className="relative">
         <button className={buttonClass(open === "price" || priceLabel !== "Price")} onClick={() => setOpen(open === "price" ? null : "price")}>
           {priceLabel} <span className="text-[10px] text-muted">▾</span>
