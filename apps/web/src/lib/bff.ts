@@ -34,6 +34,7 @@ import type {
   ProfileNudgeDto,
   PropertyTypeFilter,
   RevealContactResponseDto,
+  OwnerRequirementMatchDto,
   RequirementDto,
   ReverseGeocodeResultDto,
   SavedSearchDto,
@@ -41,6 +42,7 @@ import type {
   SubscriptionTier,
   TransactionType,
   UpdateListingInput,
+  UpdateMyRequirementInput,
   UpdateProfileInput,
   UserProfileDto,
 } from "@bhavano/types";
@@ -221,6 +223,34 @@ export function reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseG
  * and could not find. The BFF also creates the matching alert when they have one left. */
 export function createRequirement(accessToken: string, input: CreateRequirementInput): Promise<RequirementDto> {
   return authedBffFetch(accessToken, "/requirements", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateMyRequirement(
+  accessToken: string,
+  id: string,
+  input: UpdateMyRequirementInput,
+): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, `/requirements/mine/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function renewMyRequirement(accessToken: string, id: string): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, `/requirements/mine/${id}/renew`, { method: "POST" });
+}
+
+/** `fulfilled` and `withdrawn` are separate endpoints, not one "close" — which of the two
+ * happened is the only measure of whether the feature works. */
+export function closeMyRequirement(
+  accessToken: string,
+  id: string,
+  reason: "fulfilled" | "withdrawn",
+): Promise<RequirementDto> {
+  const path = reason === "fulfilled" ? "fulfilled" : "withdraw";
+  return authedBffFetch(accessToken, `/requirements/mine/${id}/${path}`, { method: "POST" });
+}
+
+/** Demand matching the viewer's own listings — what the owner match email links to. */
+export function fetchMatchingRequirements(accessToken: string): Promise<OwnerRequirementMatchDto[]> {
+  return authedBffFetch(accessToken, "/requirements/matching", { cache: "no-store" });
 }
 
 export function fetchMyRequirements(accessToken: string): Promise<RequirementDto[]> {

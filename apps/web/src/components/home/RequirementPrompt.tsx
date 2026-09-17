@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { CreateRequirementInput } from "@bhavano/types";
 import { createRequirementAction } from "@/app/actions/requirements";
 import { useAuthGate } from "./AuthGateProvider";
@@ -70,6 +71,14 @@ export function RequirementPrompt({
         {hasAlert
           ? "Noted — we'll message you as soon as something matching is posted."
           : "Noted — our team will look into what's available and get back to you."}
+        {/* Offered *after* the save, never before it. The one-tap capture works precisely because
+            it is not a form, so the extra detail is a follow-on for whoever wants to give it —
+            not a step in front of the thing that already succeeded. */}
+        <div className="mt-2 font-normal">
+          <Link href="/my-requirements" className="text-[12.5px] underline text-inherit">
+            Add a budget or timeline →
+          </Link>
+        </div>
       </div>
     );
   }

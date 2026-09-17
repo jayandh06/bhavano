@@ -121,6 +121,11 @@ function AccountMenu({ userName, cityQuery }: { userName: string; cityQuery: str
             <Link href={`/my-listings${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
               <Icon name="list" className="text-muted" /> My listings
             </Link>
+            {/* Next to My Listings because it is the same kind of thing — the other half of
+              * what this account is keeping track of. */}
+            <Link href={`/my-requirements${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
+              What you&apos;re looking for
+            </Link>
             <Link href={`/premium${cityQuery}`} onClick={() => setOpen(false)} className={menuItemClass}>
               <Icon name="featured" className="text-gold" /> Bhavano Plus
             </Link>
