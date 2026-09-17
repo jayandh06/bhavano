@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
 import { RecordPageViewDto } from './dto/record-pageview.dto';
+import { RecordSearchDto } from './dto/record-search.dto';
 import { GeoIpService } from './geoip.service';
 import { isBotUserAgent } from '@bhavano/types/botUserAgent';
 import { deviceTypeFromUserAgent } from './device-type';
@@ -202,6 +203,33 @@ export class AnalyticsService {
       )
       ON CONFLICT ("sessionId") DO NOTHING
     `;
+  }
+
+  /** Records one search a real visitor ran — see SearchEvent's own doc for why nothing captured
+   * this before and why `resultCount` is the field that matters.
+   *
+   * A plain insert: unlike Visit there is no one-row-per-session invariant to protect, since
+   * every search genuinely is a separate event. Deliberately tolerant of a missing Visit row —
+   * this is a log of intent, not of identity, and requiring the session to exist first would
+   * mean losing the search over bookkeeping. */
+  async recordSearch(dto: RecordSearchDto): Promise<void> {
+    await this.prisma.searchEvent.create({
+      data: {
+        sessionId: dto.sessionId,
+        path: dto.path,
+        q: dto.q,
+        cityId: dto.cityId,
+        areaIds: dto.areaIds ?? [],
+        category: dto.category,
+        transactionType: dto.transactionType,
+        minPrice: dto.minPrice,
+        maxPrice: dto.maxPrice,
+        bedrooms: dto.bedrooms ?? [],
+        furnished: dto.furnished,
+        sort: dto.sort,
+        resultCount: dto.resultCount,
+      },
+    });
   }
 
   /** Records that a real browser engine executed JavaScript on this session — the fourth writer,

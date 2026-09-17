@@ -4,6 +4,7 @@ import { AnalyticsService } from './analytics.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
 import { RecordPageViewDto } from './dto/record-pageview.dto';
 import { ConfirmJsDto } from './dto/confirm-js.dto';
+import { RecordSearchDto } from './dto/record-search.dto';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -28,6 +29,20 @@ export class AnalyticsController {
   @HttpCode(200)
   async recordPageView(@Body() dto: RecordPageViewDto): Promise<{ success: true }> {
     await this.analyticsService.recordPageView(dto);
+    return { success: true };
+  }
+
+  /** Public, unauthenticated — one row per search a real visitor ran, posted by the browser via
+   * web's /api/analytics/search (which supplies the session id from the httpOnly cookie).
+   *
+   * Throttled like pageview rather than at the app default: someone actively filtering a browse
+   * page generates a search per click, and truncating that would lose exactly the exploratory
+   * sessions this is meant to measure. */
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  @Post('search')
+  @HttpCode(200)
+  async recordSearch(@Body() dto: RecordSearchDto): Promise<{ success: true }> {
+    await this.analyticsService.recordSearch(dto);
     return { success: true };
   }
 

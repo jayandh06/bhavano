@@ -8,6 +8,7 @@ import { buildListingPath } from "@/lib/listingPath";
 import { Header } from "./Header";
 import { ListingGrid } from "./ListingGrid";
 import { PickAnAreaNotice } from "./PickAnAreaNotice";
+import { SearchTracker } from "./SearchTracker";
 import { RequirementPrompt } from "./RequirementPrompt";
 import { AreaFilter } from "./AreaFilter";
 import { BhkFilter } from "./BhkFilter";
@@ -186,6 +187,26 @@ export async function BrowseListingsView({
             </span>
             <SortDropdown activeSort={query.sort} />
           </div>
+        )}
+        {/* What was searched for and how many results it gave — the only record of either, since
+            PageView keeps just the path. Skipped when nothing is selected: that is not a search. */}
+        {!noAreaSelected && (
+          <SearchTracker
+            criteria={{
+              path: basePath,
+              q: query.q,
+              cityId: query.cityId,
+              areaIds: query.areaIds ?? (query.areaId ? [query.areaId] : undefined),
+              category: query.category,
+              transactionType: query.transactionType,
+              minPrice: query.minPrice,
+              maxPrice: query.maxPrice,
+              bedrooms: query.bedrooms,
+              furnished: query.furnished,
+              sort: query.sort,
+              resultCount: listingsPage.total,
+            }}
+          />
         )}
         {noAreaSelected ? (
           // Deliberately not the requirement capture: that one says "we have nothing here", and

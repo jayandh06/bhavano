@@ -27,6 +27,8 @@ import type {
   SendPostedNotificationResultDto,
   SendWelcomeResponseDto,
   SavedSearchSettingsDto,
+  SearchDemandPage,
+  SearchDemandRowDto,
   SendWelcomeResultDto,
   SessionTrailDto,
   UserActivityDto,
@@ -1149,5 +1151,81 @@ export class AdminService {
 
   updateSavedSearchSettings(dto: UpdateSavedSearchSettingsDto): Promise<SavedSearchSettingsDto> {
     return this.savedSearchesService.updateSettings(dto.freeAlertsPerUser);
+  }
+
+  /**
+   * What people search for, aggregated — and specifically what they search for and don't find.
+   *
+   * An aggregate rather than a list of individual searches, because the actionable question is
+   * "which area and category do people keep asking for that we have nothing in", not "what did
+   * session X do". `emptySearches` is the inventory gap, and it is the column to sort by: a
+   * city/area/category combination that people ask for repeatedly and that returns nothing is a
+   * recruitment target for the outreach module.
+   *
+   * Grouped in SQL rather than in JS because the interesting windows are weeks wide: pulling
+   * every row back to count them would move tens of thousands of rows to save writing one query.
+   * `unnest` on `areaIds` means a search across three areas counts once per area, which is the
+   * right reading — someone asking about three localities is expressing demand in all three.
+   */
+  async searchDemand(days: number, limit: number): Promise<SearchDemandPage> {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const rows = await this.prisma.$queryRaw<
+      {
+        cityName: string | null;
+        areaName: string | null;
+        category: string | null;
+        transactionType: string | null;
+        searches: number;
+        emptySearches: number;
+        avgResults: number;
+        lastSearchedAt: Date;
+      }[]
+    >`
+      SELECT c."name" AS "cityName",
+             a."name" AS "areaName",
+             se."category"::text AS "category",
+             se."transactionType"::text AS "transactionType",
+             COUNT(*)::int AS "searches",
+             COUNT(*) FILTER (WHERE se."resultCount" = 0)::int AS "emptySearches",
+             ROUND(AVG(se."resultCount")::numeric, 1)::float8 AS "avgResults",
+             MAX(se."createdAt") AS "lastSearchedAt"
+      FROM "SearchEvent" se
+      LEFT JOIN "City" c ON c."id" = se."cityId"
+      -- One row per (search, area) so a three-area search counts as demand in all three; a
+      -- search with no area narrowing contributes a single row with a null area.
+      LEFT JOIN LATERAL unnest(CASE WHEN cardinality(se."areaIds") = 0 THEN ARRAY[NULL]::text[] ELSE se."areaIds" END) AS area_id ON TRUE
+      LEFT JOIN "Area" a ON a."id" = area_id
+      WHERE se."createdAt" >= ${since}
+      GROUP BY 1, 2, 3, 4
+      ORDER BY "emptySearches" DESC, "searches" DESC
+      LIMIT ${limit}`;
+
+    const [totals] = await this.prisma.$queryRaw<{ totalSearches: number; totalEmptySearches: number }[]>`
+      SELECT COUNT(*)::int AS "totalSearches",
+             COUNT(*) FILTER (WHERE "resultCount" = 0)::int AS "totalEmptySearches"
+      FROM "SearchEvent" WHERE "createdAt" >= ${since}`;
+
+    const topQueries = await this.prisma.$queryRaw<{ q: string; searches: number; emptySearches: number }[]>`
+      SELECT "q", COUNT(*)::int AS "searches", COUNT(*) FILTER (WHERE "resultCount" = 0)::int AS "emptySearches"
+      FROM "SearchEvent"
+      WHERE "createdAt" >= ${since} AND "q" IS NOT NULL AND "q" <> ''
+      GROUP BY 1 ORDER BY 2 DESC LIMIT 20`;
+
+    return {
+      rows: rows.map((row) => ({
+        cityName: row.cityName,
+        areaName: row.areaName,
+        category: (row.category ?? undefined) as SearchDemandRowDto['category'],
+        transactionType: (row.transactionType ?? undefined) as SearchDemandRowDto['transactionType'],
+        searches: row.searches,
+        emptySearches: row.emptySearches,
+        avgResults: row.avgResults,
+        lastSearchedAt: row.lastSearchedAt.toISOString(),
+      })),
+      totalSearches: totals?.totalSearches ?? 0,
+      totalEmptySearches: totals?.totalEmptySearches ?? 0,
+      topQueries,
+    };
   }
 }

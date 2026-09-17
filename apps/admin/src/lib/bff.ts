@@ -34,6 +34,7 @@ import type {
   RateLimitSettingsDto,
   RequirementStatus,
   SavedSearchSettingsDto,
+  SearchDemandPage,
   SendPostedNotificationInput,
   SendPostedNotificationResponseDto,
   SendWelcomeInput,
@@ -476,6 +477,16 @@ export function fetchBoosts(accessToken: string, query: ListBoostsQuery = {}): P
 
 export function revokeBoost(accessToken: string, listingId: string): Promise<{ success: true }> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/revoke-boost`, { method: "POST" });
+}
+
+export function fetchSearchDemand(
+  accessToken: string,
+  query: { days?: number; limit?: number } = {},
+): Promise<SearchDemandPage> {
+  const params = new URLSearchParams();
+  if (query.days !== undefined) params.set("days", String(query.days));
+  if (query.limit !== undefined) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/search-demand?${params.toString()}`, { cache: "no-store" });
 }
 
 export function fetchSavedSearchSettings(accessToken: string): Promise<SavedSearchSettingsDto> {

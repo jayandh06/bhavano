@@ -1006,6 +1006,33 @@ export interface AdminRequirementsPage {
      * anybody is actually working the queue. */
     openTotal: number;
 }
+/** One row of the admin "what people search for" screen — an aggregate, not individual searches,
+ * because the actionable question is "which area and category do people keep asking for", not
+ * "what did session X do". */
+export interface SearchDemandRowDto {
+    cityName: string | null;
+    areaName: string | null;
+    category?: ListingCategory;
+    transactionType?: TransactionType;
+    searches: number;
+    /** How many of those searches returned nothing — the inventory gap. */
+    emptySearches: number;
+    /** Average results across those searches, so "thin" is distinguishable from "empty". */
+    avgResults: number;
+    lastSearchedAt: string;
+}
+export interface SearchDemandPage {
+    rows: SearchDemandRowDto[];
+    /** Totals across the whole window, unaffected by the row cap. */
+    totalSearches: number;
+    totalEmptySearches: number;
+    /** The most-typed search text, which no aggregate on criteria alone can show. */
+    topQueries: {
+        q: string;
+        searches: number;
+        emptySearches: number;
+    }[];
+}
 export interface SavedSearchSettingsDto {
     freeAlertsPerUser: number;
 }

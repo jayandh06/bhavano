@@ -28,6 +28,7 @@ import type {
   OutreachContactsPage,
   RateLimitSettingsDto,
   SavedSearchSettingsDto,
+  SearchDemandPage,
   SendPostedNotificationResponseDto,
   SendWelcomeResponseDto,
   SessionTrailDto,
@@ -292,6 +293,18 @@ export class AdminController {
   @Patch('requirements/:id')
   updateRequirement(@Param('id') id: string, @Body() dto: UpdateRequirementDto): Promise<void> {
     return this.adminService.updateRequirement(id, dto);
+  }
+
+  /** What people search for, and what they search for and don't find — see
+   * AdminService.searchDemand. */
+  @Get('search-demand')
+  searchDemand(
+    @Query('days') days?: string,
+    @Query('limit') limit?: string,
+  ): Promise<SearchDemandPage> {
+    const parsedDays = Math.min(Math.max(Number(days) || 30, 1), 365);
+    const parsedLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
+    return this.adminService.searchDemand(parsedDays, parsedLimit);
   }
 
   @Get('saved-search-settings')

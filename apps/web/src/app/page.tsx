@@ -12,6 +12,7 @@ import { Footer } from "@/components/home/Footer";
 import { resolvePopularSearches } from "@/lib/popularSearches";
 import { parseAreaSelection } from "@/lib/areaSelection";
 import { PickAnAreaNotice } from "@/components/home/PickAnAreaNotice";
+import { SearchTracker } from "@/components/home/SearchTracker";
 import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
 import {
@@ -191,6 +192,24 @@ export default async function HomePage({
           <div className="mb-5">
             <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
           </div>
+        )}
+        {/* The homepage expresses every filter as a query param, so without this its searches
+            were entirely invisible — a whole session logged one row reading `path: "/"`. */}
+        {!noAreaSelected && (
+          <SearchTracker
+            criteria={{
+              path: "/",
+              q: q || undefined,
+              cityId: resolvedCity?.id,
+              areaIds,
+              category: listingCategory,
+              transactionType,
+              // No price filter on the homepage — it lives on the browse pages' filter bar.
+              bedrooms: bedrooms !== undefined ? [bedrooms] : undefined,
+              furnished,
+              resultCount: listingsPage.total,
+            }}
+          />
         )}
         {noAreaSelected ? (
           <PickAnAreaNotice />

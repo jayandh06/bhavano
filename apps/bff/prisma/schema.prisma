@@ -196,6 +196,7 @@ model City {
   users     User[]
   savedSearches SavedSearch[]
   requirements Requirement[]
+  searchEvents SearchEvent[]
   outreachContacts OutreachContact[]
   placesFetchLogs PlacesFetchLog[]
 
@@ -271,6 +272,7 @@ model User {
   subscriptions         UserSubscription[]
   savedSearches         SavedSearch[]
   requirements          Requirement[]
+  searchEvents          SearchEvent[]
   /** Denormalized from the latest active UserSubscription (tier: buyerPremium) — cheap reads
    * everywhere else in the app (header/messaging badge, profile page); UserSubscription is
    * the audit trail. Null means never subscribed or lapsed. */
@@ -1511,4 +1513,59 @@ model SavedSearchSetting {
   id                String   @id
   freeAlertsPerUser Int      @default(2)
   updatedAt         DateTime @updatedAt
+}
+
+/**
+ * One search a real visitor ran, with what they asked for and how many results they got.
+ *
+ * Nothing recorded this before. `PageView` stores only (sessionId, path, createdAt) and the
+ * middleware deliberately drops the query string, so every filter lived in a query param and was
+ * therefore invisible: search text, price range, furnishing, sort, multi-area selection, and the
+ * entire homepage (whose city and category tabs are all query params). A homepage session where
+ * someone picked a city, typed a search, chose Rent & Lease and set a budget logged exactly one
+ * row — `path: "/"` — and nothing about what they wanted.
+ *
+ * `resultCount` is the point of the table. "Searched and found nothing" is the inventory-gap
+ * signal that tells you which area and category to recruit owners into, and it is the only field
+ * here that no other table could ever reconstruct.
+ *
+ * Written from the browser (see SearchTracker -> /api/analytics/search), not from the middleware:
+ * the criteria are already resolved server-side by then, so nothing has to be re-parsed out of a
+ * URL, and a client-side write means crawlers are excluded for free — the same property that
+ * makes Visit.jsConfirmedAt trustworthy.
+ */
+model SearchEvent {
+  id              String            @id @default(cuid())
+  /** The `bhavano_sid` cookie, read server-side by the route handler — the client never sees it
+   * (it is httpOnly) and so cannot claim somebody else's session. */
+  sessionId       String
+  userId          String?
+  user            User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /** Where the search was run, so homepage searches are distinguishable from browse-page ones. */
+  path            String
+  /** Free text the visitor typed. Personal data in the sense that anything can be typed into a
+   * search box, so it is length-capped at the DTO and never shown outside the admin dashboard. */
+  q               String?
+  cityId          String?
+  city            City?             @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  /** The multi-select area filter, as ids. Empty means no area narrowing ("all areas"); one or
+   * more means exactly those. Kept as an array rather than a single id because "any of these
+   * five" is a real thing someone searched for. */
+  areaIds         String[]
+  category        ListingCategory?
+  transactionType TransactionType?
+  minPrice        Int?
+  maxPrice        Int?
+  /** BHK buckets, matching ListingsQuery.bedrooms — a set, not one value. */
+  bedrooms        Int[]
+  furnished       String?
+  sort            String?
+  /** How many listings came back. Zero is the interesting case. */
+  resultCount     Int
+  createdAt       DateTime          @default(now())
+
+  @@index([createdAt])
+  @@index([cityId, category])
+  @@index([resultCount, createdAt])
+  @@index([sessionId])
 }
