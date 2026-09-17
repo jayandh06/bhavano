@@ -6,12 +6,14 @@ import type { City } from "@bhavano/types";
 import { autoDetectCityAction, listAllCitiesAction, searchCitiesAction } from "@/app/actions/locations";
 import { buildBrowsePath } from "@/lib/listingPath";
 import type { ParsedSegments } from "@/lib/seoRoute";
+import { buttonClass } from "./BrowseFilterBar";
 import { Icon } from "./Icon";
 
 export function LocationPicker({
   currentCityName,
   popularCities,
   currentSegments,
+  variant = "chip",
 }: {
   /** Undefined means every city — the chip reads "All cities" and the national routes are in
    * play. Distinct from a city that failed to resolve, which never reaches here. */
@@ -22,6 +24,12 @@ export function LocationPicker({
    * equivalent page instead of always bouncing to `/`. Locality/listing never carry across a
    * city switch, so only these three are preserved. */
   currentSegments?: ParsedSegments;
+  /** `chip` (default) is the header/footer treatment. `filter` matches the pills in a browse
+   * page's filter row — same tone and height as the transaction/asset/area filters, since on a
+   * national page (no city chosen) this *is* the row's location filter and a taller
+   * surface-alt chip would both blend into the strip and sit a few pixels proud of its
+   * neighbours. */
+  variant?: "chip" | "filter";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -137,11 +145,17 @@ export function LocationPicker({
       <button
         onClick={openModal}
         aria-label="Change city"
-        className="flex items-center gap-2 bg-surface-alt border border-border rounded-[10px] px-3.5 py-3 cursor-pointer shrink-0"
+        className={
+          variant === "filter"
+            ? buttonClass(open || currentCityName !== undefined)
+            : "flex items-center gap-2 bg-surface-alt border border-border rounded-[10px] px-3.5 py-3 cursor-pointer shrink-0"
+        }
       >
-        <Icon name="pin" className="text-base" />
-        <span className="text-sm font-bold text-text">{currentCityName ?? "All cities"}</span>
-        <span className="text-[11px] text-muted ml-0.5">▾</span>
+        <Icon name="pin" className={variant === "filter" ? undefined : "text-base"} />
+        <span className={variant === "filter" ? undefined : "text-sm font-bold text-text"}>
+          {currentCityName ?? "All cities"}
+        </span>
+        <span className={variant === "filter" ? "text-[10px] text-muted" : "text-[11px] text-muted ml-0.5"}>▾</span>
       </button>
 
       {open && (

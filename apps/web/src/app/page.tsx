@@ -7,6 +7,7 @@ import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
 import { AreaFilter } from "@/components/home/AreaFilter";
+import { LocationPicker } from "@/components/home/LocationPicker";
 import { AssetTypeFilter, TransactionFilter } from "@/components/home/TypeFilters";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { Pagination } from "@/components/home/Pagination";
@@ -195,6 +196,13 @@ export default async function HomePage({
           * to the corresponding browse path, exactly as the tab row above already does, so this
           * introduces no new URL shapes. */}
         <div className="mb-5 flex gap-2.5 flex-wrap items-start">
+          {/* Location first, same reasoning as the browse pages: the area picker inside a city,
+            * the city picker when every city is in play. */}
+          {resolvedCity ? (
+            <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
+          ) : (
+            <LocationPicker popularCities={popularCities} variant="filter" />
+          )}
           {/* activeTab.value already *is* the intent here — the homepage's tab row and this
             * filter speak the same vocabulary, so no translation is needed. */}
           <TransactionFilter
@@ -207,7 +215,6 @@ export default async function HomePage({
             activeIntent={activeTab.value}
             activeAsset={listingCategory ?? (propertyType as ListingCategory | undefined)}
           />
-          {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}
         </div>
         {/* The homepage expresses every filter as a query param, so without this its searches
             were entirely invisible — a whole session logged one row reading `path: "/"`. */}

@@ -12,6 +12,7 @@ import { PickAnAreaNotice } from "./PickAnAreaNotice";
 import { SearchTracker } from "./SearchTracker";
 import { RequirementPrompt } from "./RequirementPrompt";
 import { AreaFilter } from "./AreaFilter";
+import { LocationPicker } from "./LocationPicker";
 import { AssetTypeFilter, TransactionFilter } from "./TypeFilters";
 import { hasAssetFilter } from "@/lib/assetFilters";
 import { BhkFilter } from "./BhkFilter";
@@ -172,12 +173,23 @@ export async function BrowseListingsView({
           * bg-on-bg treatment it used to have gave it no visual identity of its own. */}
         <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
           <div className="flex gap-2.5 flex-wrap">
-            {/* Transaction and asset come first and render at every depth — including the
-              * city-root and group-root pages, which had no filters at all before. Everything
-              * after them is asset-dependent: BrowseFilterBar's price brackets are sized from
-              * PRICE_BOUNDS[category] and BhkFilter only means anything for a house or an
-              * apartment, so those appear once an asset is chosen rather than guessing a scale
-              * that would be wrong for a ₹4,000 sofa and a ₹90L flat at the same time. See
+            {/* Location first: it is the question everything else is asked *within*, and it is
+              * the one filter a visitor almost always sets before any other. Which control it is
+              * depends on how far in they are — the area picker inside a city, the city picker on
+              * a national page (`/`, `/buy`), where there is no city to pick areas of. Reusing
+              * LocationPicker there rather than writing a second city control keeps its search,
+              * auto-detect and segment-preserving switch. */}
+            {cityName ? (
+              <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
+            ) : (
+              <LocationPicker popularCities={popularCities} currentSegments={currentSegments} variant="filter" />
+            )}
+            {/* Then the transaction and asset, at every depth — including the city-root and
+              * group-root pages, which had no filters at all before. Everything after them is
+              * asset-dependent: BrowseFilterBar's price brackets are sized from
+              * PRICE_BOUNDS[category] and BhkFilter only means anything where the config says the
+              * asset has bedrooms, so those appear once an asset is chosen rather than guessing a
+              * scale that would be wrong for a ₹4,000 sofa and a ₹90L flat at once. See
               * docs/plans/contextual-search-filters.md. */}
             <TransactionFilter
               cityName={cityName}
@@ -191,7 +203,6 @@ export async function BrowseListingsView({
               activeIntent={activeIntent}
               activeAsset={currentSegments.category}
             />
-            {cityName && <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />}
             {/* Config-driven, not `house || apartment`: CATEGORY_FIELD_CONFIG says villa has
               * bedrooms too, so the BHK filter was simply missing there. See lib/assetFilters.ts. */}
             {cityName && filterCategory && hasAssetFilter(filterCategory, "bedrooms") && (
