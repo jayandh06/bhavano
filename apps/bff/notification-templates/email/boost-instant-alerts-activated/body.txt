@@ -1,0 +1,3 @@
+Your listing "{{title}}" is boosted for the next {{days}} — it'll get priority placement so more buyers see it first.
+
+We'll also email you (or WhatsApp you, if that's what you gave us) the moment someone messages you about it, for as long as this ad is live.

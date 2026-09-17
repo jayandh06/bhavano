@@ -13,6 +13,13 @@ interface NotifiableUser {
   phone: string | null;
 }
 
+/** "1 day" vs "7 days" — pluralised once, in code, rather than inside a template: `{{}}`
+ * substitution there is plain string replacement with no conditional logic, same reasoning as
+ * `notifyListingExpiryReminder`'s own `daysLeftText`. */
+function pluralDays(days: number): string {
+  return `${days} day${days === 1 ? '' : 's'}`;
+}
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -70,18 +77,18 @@ export class NotificationsService {
 
   /** Boost purchase confirmation — see PaymentsService.handleWebhook's `listing_boost` branch.
    * No WhatsApp template exists yet — see `notifyListingFlagged`'s comment; a phone-only owner
-   * gets nothing until one is built. */
+   * gets nothing until one is built. Branded HTML (see emailLayout.ts) rather than a plain-text
+   * paragraph — this used to be the one plain-text email in a purchase-confirmation flow next to
+   * an otherwise-branded welcome email, and looked like it, which is what prompted this change. */
   async notifyListingBoostActivated(
     user: NotifiableUser,
     listingTitle: string,
     boostDays: number,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `Boost is on for "${listingTitle}"`;
-    const body =
-      `Your listing "${listingTitle}" is boosted for the next ${boostDays} day${boostDays === 1 ? '' : 's'} — ` +
-      `it'll get priority placement so more buyers see it first.`;
+    const vars = { title: listingTitle, days: pluralDays(boostDays) };
+    const { subject, text, html } = this.renderPurchaseEmail('email/boost-activated', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Boost + Instant Alerts bundle confirmation — see PaymentsService.handleWebhook's
@@ -94,13 +101,10 @@ export class NotificationsService {
     listingTitle: string,
     boostDays: number,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `Boost + Instant Alerts is on for "${listingTitle}"`;
-    const body =
-      `Your listing "${listingTitle}" is boosted for the next ${boostDays} day${boostDays === 1 ? '' : 's'} — ` +
-      `it'll get priority placement so more buyers see it first. We'll also email you (or WhatsApp you, if ` +
-      `that's what you gave us) the moment someone messages you about it, for as long as this ad is live.`;
+    const vars = { title: listingTitle, days: pluralDays(boostDays) };
+    const { subject, text, html } = this.renderPurchaseEmail('email/boost-instant-alerts-activated', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Confirms an Instant Alerts purchase actually went through — see
@@ -110,27 +114,23 @@ export class NotificationsService {
     user: NotifiableUser,
     listingTitle: string,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `Instant Alerts is on for "${listingTitle}"`;
-    const body =
-      `You're all set — we'll email you (or WhatsApp you, if that's what you gave us) the moment ` +
-      `someone messages you about "${listingTitle}". No more checking back and forth.`;
+    const vars = { title: listingTitle };
+    const { subject, text, html } = this.renderPurchaseEmail('email/instant-alerts-activated', vars);
 
     // BCC support so someone at support@ has visibility into every paid activation going out —
     // same reasoning as notifyWelcome's bcc, now extended to every purchase confirmation in this
     // file rather than just the welcome email.
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Bhavano Plus (buyer_premium) purchase confirmation — see PaymentsService.handleWebhook's
    * `buyer_premium` branch. No WhatsApp template exists yet — see `notifyListingFlagged`'s
    * comment. */
   async notifyBuyerPremiumActivated(user: NotifiableUser, endsAt: Date): Promise<'email' | 'whatsapp' | null> {
-    const subject = 'Bhavano Plus is active';
-    const body =
-      `You're on Bhavano Plus until ${endsAt.toLocaleDateString('en-IN')} — early-access alerts on saved ` +
-      `searches, a Verified Buyer badge on your messages, and priority in sellers' inboxes are all live now.`;
+    const vars = { endsAt: endsAt.toLocaleDateString('en-IN') };
+    const { subject, text, html } = this.renderPurchaseEmail('email/buyer-premium-activated', vars, '/premium');
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Seller slot pack purchase confirmation — see PaymentsService.handleWebhook's
@@ -140,24 +140,20 @@ export class NotificationsService {
     endsAt: Date,
     totalSlots: number,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = 'Seller slot pack is active';
-    const body =
-      `Your seller slot pack is active until ${endsAt.toLocaleDateString('en-IN')} — you can now run up to ` +
-      `${totalSlots} active listings at once.`;
+    const vars = { endsAt: endsAt.toLocaleDateString('en-IN'), slots: String(totalSlots) };
+    const { subject, text, html } = this.renderPurchaseEmail('email/seller-slot-pack-activated', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Agent/Broker Pro purchase confirmation — see PaymentsService.handleWebhook's `agent_pro`
    * branch. `slots` is the total this purchase grants (units × the per-unit slot count), not the
    * unit count itself, to match what the seller actually sees on `/premium`. */
   async notifyAgentProActivated(user: NotifiableUser, endsAt: Date, slots: number): Promise<'email' | 'whatsapp' | null> {
-    const subject = 'Agent/Broker Pro is active';
-    const body =
-      `Agent/Broker Pro is active until ${endsAt.toLocaleDateString('en-IN')} — ${slots} active listing slots, ` +
-      `your branded storefront, elevated video limits, and a monthly boost credit are all live now.`;
+    const vars = { endsAt: endsAt.toLocaleDateString('en-IN'), slots: String(slots) };
+    const { subject, text, html } = this.renderPurchaseEmail('email/agent-pro-activated', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Contact-reveal credit pack purchase confirmation — see PaymentsService.handleWebhook's
@@ -167,12 +163,10 @@ export class NotificationsService {
     creditsGranted: number,
     expiresAt: Date,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `${creditsGranted} contact-reveal credits added`;
-    const body =
-      `${creditsGranted} contact-reveal credits have been added to your account, valid until ` +
-      `${expiresAt.toLocaleDateString('en-IN')} — use them to view any listing's phone number and email.`;
+    const vars = { credits: String(creditsGranted), expiresAt: expiresAt.toLocaleDateString('en-IN') };
+    const { subject, text, html } = this.renderPurchaseEmail('email/contact-reveal-credits-activated', vars, '/');
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Instant Alerts' actual per-message payoff — see MessagingService's `wasUnread` gate, which
@@ -343,6 +337,34 @@ export class NotificationsService {
     const text =
       paragraphs.join('\n\n') +
       (buttonLabel ? `\n\n${buttonLabel}: ${site}/post` : '');
+
+    return { subject: renderTemplate(tpl.subject, vars), text, html };
+  }
+
+  /** Shared by every purchase-confirmation notification below (Boost, Boost + Instant Alerts,
+   * standalone Instant Alerts, Bhavano Plus, seller slot pack, Agent/Broker Pro, contact-reveal
+   * credits) — same template/render pipeline `buildWelcomeEmailContent` and
+   * `notifyListingExpiryReminder` already use, so a purchase confirmation looks like the rest of
+   * the site's mail instead of the plain, unbranded paragraph these all used to send. `linkPath`
+   * defaults to `/my-listings`, right for anything about a specific listing (Boost, Instant
+   * Alerts); pass `/premium` or `/` for the account-level plans that aren't. */
+  private renderPurchaseEmail(
+    templateName: string,
+    vars: Record<string, string>,
+    linkPath = '/my-listings',
+  ): { subject: string; text: string; html: string } {
+    const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const link = `${site}${linkPath}`;
+    const tpl = loadTemplate(templateName);
+    const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel ? renderTemplate(tpl.buttonLabel, vars) : undefined;
+    const html = renderEmail({
+      heading: renderTemplate(tpl.heading, vars),
+      preheader: renderTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+    });
+    const text = `${paragraphs.join('\n\n')}\n\n` + (buttonLabel ? `${buttonLabel}: ${link}` : link);
 
     return { subject: renderTemplate(tpl.subject, vars), text, html };
   }

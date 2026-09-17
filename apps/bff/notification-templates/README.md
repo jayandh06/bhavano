@@ -6,9 +6,17 @@ entirely on which of the two folders below it's in — read that part before edi
 expecting the same immediacy as email.
 
 ```
-email/welcome/            the first-login welcome email
-email/listing-posted/     the "your ad is live" email
-email/claim-listing/      the "verify your bulk-imported listing" email
+email/welcome/                          the first-login welcome email
+email/listing-posted/                   the "your ad is live" email
+email/listing-expiry-reminder/          the "your ad expires soon" email
+email/claim-listing/                    the "verify your bulk-imported listing" email
+email/boost-activated/                  Boost purchase confirmation
+email/boost-instant-alerts-activated/   Boost + Instant Alerts bundle purchase confirmation
+email/instant-alerts-activated/         standalone Instant Alerts purchase confirmation
+email/buyer-premium-activated/          Bhavano Plus purchase confirmation
+email/seller-slot-pack-activated/       seller slot pack purchase confirmation
+email/agent-pro-activated/              Agent/Broker Pro purchase confirmation
+email/contact-reveal-credits-activated/ contact-reveal credit pack purchase confirmation
 whatsapp/welcome/         the approved WhatsApp welcome template's wording
 whatsapp/listing-posted/  the approved WhatsApp "ad is live" template's wording
 whatsapp/claim-listing/  the approved "claim_listing" WhatsApp template's wording

@@ -1,0 +1,1 @@
+Your listing "{{title}}" is boosted for the next {{days}} — it'll get priority placement so more buyers see it first.

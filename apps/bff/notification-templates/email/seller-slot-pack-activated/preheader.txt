@@ -1,0 +1,1 @@
+You can now run up to {{slots}} active listings at once.
