@@ -214,33 +214,34 @@ export default async function HomePage({
         <p className="sm:hidden truncate text-[13px] text-text-soft mb-5">
           Buy, rent, sell & lease — free, no brokerage, message sellers directly.
         </p>
-        {/* Transaction and asset render here too, and unconditionally — the homepage's "All" tab
-          * had no way to narrow by either, which is half of the reported problem. Both navigate
-          * to the corresponding browse path, exactly as the tab row above already does, so this
-          * introduces no new URL shapes.
-          *
-          * Same surface-alt/border/rounded/padding treatment as BrowseListingsView's filter row
-          * (mb-3 there too) — this row used to be a bare, unstyled flex-wrap with no container at
-          * all, the one filter strip on the site with no visual identity of its own. */}
-        <div className="mb-3 flex gap-2.5 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
-          {/* Same leading label as the browse pages' filter strip — see BrowseListingsView. */}
-          <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
-            <Icon name="filter" /> Filters
-          </span>
-          {/* Area first when a city is chosen, same reasoning as the browse pages. City itself
-            * stays a top-level choice in the header, not a filter — see BrowseListingsView. */}
-          {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}
-          {/* activeTab.value already *is* the intent here — the homepage's tab row and this
-            * filter speak the same vocabulary, so no translation is needed. */}
-          <TransactionFilter cityName={resolvedCity?.name} activeIntent={activeTab.value} activeAsset={homeAsset} />
-          <AssetTypeFilter cityName={resolvedCity?.name} activeIntent={activeTab.value} activeAsset={homeAsset} />
-          {/* 1 BHK … 5+ BHK, once the chosen asset actually has bedrooms per
-            * CATEGORY_FIELD_CONFIG. `query` mode because the homepage has no browse path — it
-            * writes `?bedrooms=`, which this page has always accepted. */}
-          {homeAsset && hasAssetFilter(homeAsset, "bedrooms") && (
-            <BhkFilter category={homeAsset} urlMode="query" />
-          )}
-        </div>
+        {/* The All tab mixes every category together, so none of these filters mean one
+          * consistent thing across a PG, a plot, and a sofa in the same grid — same reasoning as
+          * BrowseListingsView's own filter row, which hides itself the same way. Picking a real
+          * tab is one tap away. */}
+        {activeTab.value !== "all" && (
+          // Same surface-alt/border/rounded/padding treatment as BrowseListingsView's filter row
+          // (mb-3 there too) — this row used to be a bare, unstyled flex-wrap with no container
+          // at all, the one filter strip on the site with no visual identity of its own.
+          <div className="mb-3 flex gap-2.5 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
+            {/* Same leading label as the browse pages' filter strip — see BrowseListingsView. */}
+            <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
+              <Icon name="filter" /> Filters
+            </span>
+            {/* Area first when a city is chosen, same reasoning as the browse pages. City itself
+              * stays a top-level choice in the header, not a filter — see BrowseListingsView. */}
+            {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}
+            {/* activeTab.value already *is* the intent here — the homepage's tab row and this
+              * filter speak the same vocabulary, so no translation is needed. */}
+            <TransactionFilter cityName={resolvedCity?.name} activeIntent={activeTab.value} activeAsset={homeAsset} />
+            <AssetTypeFilter cityName={resolvedCity?.name} activeIntent={activeTab.value} activeAsset={homeAsset} />
+            {/* 1 BHK … 5+ BHK, once the chosen asset actually has bedrooms per
+              * CATEGORY_FIELD_CONFIG. `query` mode because the homepage has no browse path — it
+              * writes `?bedrooms=`, which this page has always accepted. */}
+            {homeAsset && hasAssetFilter(homeAsset, "bedrooms") && (
+              <BhkFilter category={homeAsset} urlMode="query" />
+            )}
+          </div>
+        )}
         {/* The homepage expresses every filter as a query param, so without this its searches
             were entirely invisible — a whole session logged one row reading `path: "/"`. */}
         {!noAreaSelected && (

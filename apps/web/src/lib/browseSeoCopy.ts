@@ -5,6 +5,7 @@ import {
   CATEGORY_LABELS,
   categoryGroupsFor,
   facetKindForCategory,
+  homeCategoryForSegments,
   type ParsedSegments,
   type TransactionGroup,
 } from "@/lib/seoRoute";
@@ -169,7 +170,7 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
 }
 
 function buildIntroParagraphs(input: BrowseSeoCopyInput): string[] {
-  const { heading, cityName, areaName, listingTotal } = input;
+  const { heading, cityName, areaName, listingTotal, segments } = input;
 
   // Nothing on a zero-result page: the RequirementPrompt card says "nothing matching X right
   // now" in the same words, offers to go and find it, and carries the Post-an-ad action that the
@@ -182,13 +183,22 @@ function buildIntroParagraphs(input: BrowseSeoCopyInput): string[] {
     `Browse ${listingTotal} listings for ${heading.toLowerCase()} on Bhavano. Ads are posted directly by owners and agents — no login required to search.`,
   ];
 
+  // The All tab shows every category mixed together and has no filter row at all (see
+  // BrowseListingsView's own reasoning) — "the area filter" doesn't exist there, so this can't
+  // point at it the way every other tab's copy does.
+  const isAllTab = homeCategoryForSegments(segments) === "all";
+
   if (areaName) {
     paragraphs.push(
-      `Use the filters below to narrow by price or furnishing, or follow the links to explore other neighbourhoods in ${cityName}.`,
+      isAllTab
+        ? `Follow the links to explore other neighbourhoods in ${cityName}.`
+        : `Use the filters below to narrow by price or furnishing, or follow the links to explore other neighbourhoods in ${cityName}.`,
     );
   } else {
     paragraphs.push(
-      `Select a locality in the area filter or use the links below to drill into neighbourhoods across ${cityName}.`,
+      isAllTab
+        ? `Use the links below to explore neighbourhoods across ${cityName}, or pick Buy, Rent & Lease, PG, Furniture, or Interiors above to filter by what you need.`
+        : `Select a locality in the area filter or use the links below to drill into neighbourhoods across ${cityName}.`,
     );
   }
 

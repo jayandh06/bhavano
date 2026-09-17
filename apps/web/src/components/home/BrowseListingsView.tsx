@@ -171,66 +171,73 @@ export async function BrowseListingsView({
             part="intro"
           />
         )}
-        {/* Its own surface-alt panel rather than sitting directly on the page bg — this row is a
-          * distinct control surface (narrowing the results below), not page content, and the flat
-          * bg-on-bg treatment it used to have gave it no visual identity of its own. */}
-        <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
-          {/* Says what the strip is. Without it the row reads as a line of unrelated buttons —
-            * and which control comes first changes with depth (area inside a city, transaction
-            * without one), so the label belongs to the row rather than to any one pill. */}
-          <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
-            <Icon name="filter" /> Filters
-          </span>
-          <div className="flex gap-2.5 flex-wrap">
-            {/* Area first, but only inside a city — it is the question everything else is asked
-              * *within*, and the one filter a visitor almost always sets before any other.
-              *
-              * City is deliberately *not* here. It is a top-level choice, not a filter: it picks
-              * which site you are on (and which page ranks), so it lives in the header at every
-              * depth via `LocationPicker`. On a national page (`/`, `/buy`) there are no areas to
-              * pick, so this row simply starts at the transaction filter rather than repeating the
-              * header's city control a second time in a second style. */}
-            {cityName && (
-              <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
-            )}
-            {/* Then the transaction and asset, at every depth — including the city-root and
-              * group-root pages, which had no filters at all before. Everything after them is
-              * asset-dependent: BrowseFilterBar's price brackets are sized from
-              * PRICE_BOUNDS[category] and BhkFilter only means anything where the config says the
-              * asset has bedrooms, so those appear once an asset is chosen rather than guessing a
-              * scale that would be wrong for a ₹4,000 sofa and a ₹90L flat at once. See
-              * docs/plans/contextual-search-filters.md. */}
-            <TransactionFilter
-              cityName={cityName}
-              areaName={pathAreaName}
-              activeIntent={activeIntent}
-              activeAsset={currentSegments.category}
-            />
-            <AssetTypeFilter
-              cityName={cityName}
-              areaName={pathAreaName}
-              activeIntent={activeIntent}
-              activeAsset={currentSegments.category}
-            />
-            {/* Config-driven, not `house || apartment`: CATEGORY_FIELD_CONFIG says villa has
-              * bedrooms too, so the BHK filter was simply missing there. See lib/assetFilters.ts. */}
-            {/* `cityName` is no longer required: without one BhkFilter builds the national path
-              * (/buy/apartment/2bhk), so /buy/apartment is no longer the one apartment page in the
-              * site with no BHK filter. */}
-            {filterCategory && hasAssetFilter(filterCategory, "bedrooms") && (
-              <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
-            )}
-            <BrowseFilterBar
-              category={filterCategory}
-              activeMinPrice={query.minPrice}
-              activeMaxPrice={query.maxPrice}
-              activeFurnished={query.furnished}
-              activeSharingType={query.sharingType}
-              activeCondition={query.condition}
-              activeServiceType={query.serviceType}
-            />
+        {/* The All tab shows every category mixed together — none of these filters (transaction,
+          * asset type, price, BHK, facets) mean one consistent thing across a PG, a plot, and a
+          * sofa all in the same grid, so none of them are offered here. Area is the one exception
+          * that would still make sense, but it stays out too for a simpler rule: All means no
+          * filter row at all, not "some of them." Picking a real tab is one tap away. */}
+        {activeIntent !== "all" && (
+          // Its own surface-alt panel rather than sitting directly on the page bg — this row is a
+          // distinct control surface (narrowing the results below), not page content, and the flat
+          // bg-on-bg treatment it used to have gave it no visual identity of its own.
+          <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
+            {/* Says what the strip is. Without it the row reads as a line of unrelated buttons —
+              * and which control comes first changes with depth (area inside a city, transaction
+              * without one), so the label belongs to the row rather than to any one pill. */}
+            <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
+              <Icon name="filter" /> Filters
+            </span>
+            <div className="flex gap-2.5 flex-wrap">
+              {/* Area first, but only inside a city — it is the question everything else is asked
+                * *within*, and the one filter a visitor almost always sets before any other.
+                *
+                * City is deliberately *not* here. It is a top-level choice, not a filter: it picks
+                * which site you are on (and which page ranks), so it lives in the header at every
+                * depth via `LocationPicker`. On a national page (`/`, `/buy`) there are no areas to
+                * pick, so this row simply starts at the transaction filter rather than repeating the
+                * header's city control a second time in a second style. */}
+              {cityName && (
+                <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
+              )}
+              {/* Then the transaction and asset, at every depth a real tab resolves to (group-root
+                * pages included, e.g. /buy or /bengaluru/buy with no asset chosen yet). Everything
+                * after them is asset-dependent: BrowseFilterBar's price brackets are sized from
+                * PRICE_BOUNDS[category] and BhkFilter only means anything where the config says the
+                * asset has bedrooms, so those appear once an asset is chosen rather than guessing a
+                * scale that would be wrong for a ₹4,000 sofa and a ₹90L flat at once. See
+                * docs/plans/contextual-search-filters.md. */}
+              <TransactionFilter
+                cityName={cityName}
+                areaName={pathAreaName}
+                activeIntent={activeIntent}
+                activeAsset={currentSegments.category}
+              />
+              <AssetTypeFilter
+                cityName={cityName}
+                areaName={pathAreaName}
+                activeIntent={activeIntent}
+                activeAsset={currentSegments.category}
+              />
+              {/* Config-driven, not `house || apartment`: CATEGORY_FIELD_CONFIG says villa has
+                * bedrooms too, so the BHK filter was simply missing there. See lib/assetFilters.ts. */}
+              {/* `cityName` is no longer required: without one BhkFilter builds the national path
+                * (/buy/apartment/2bhk), so /buy/apartment is no longer the one apartment page in the
+                * site with no BHK filter. */}
+              {filterCategory && hasAssetFilter(filterCategory, "bedrooms") && (
+                <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
+              )}
+              <BrowseFilterBar
+                category={filterCategory}
+                activeMinPrice={query.minPrice}
+                activeMaxPrice={query.maxPrice}
+                activeFurnished={query.furnished}
+                activeSharingType={query.sharingType}
+                activeCondition={query.condition}
+                activeServiceType={query.serviceType}
+              />
+            </div>
           </div>
-        </div>
+        )}
         {/* Count and sort share the line directly above the grid: the count reflects whatever
           * the filters above have narrowed it to, and sort is the one control that acts on the
           * results rather than defining them. */}
