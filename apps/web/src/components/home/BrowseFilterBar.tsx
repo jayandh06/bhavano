@@ -6,12 +6,7 @@ import type { ListingCategory } from "@bhavano/types";
 import { PRICE_BOUNDS } from "@bhavano/types/priceBounds";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { formatINR } from "@/lib/seoRoute";
-
-const FURNISHING_OPTIONS: { value: string; label: string }[] = [
-  { value: "unfurnished", label: "Unfurnished" },
-  { value: "semi", label: "Semi-furnished" },
-  { value: "furnished", label: "Furnished" },
-];
+import { assetFiltersFor, type FilterableKey } from "@/lib/assetFilters";
 
 interface PriceBracket {
   label: string;
@@ -33,7 +28,8 @@ function priceBracketsFor(category: ListingCategory, isSale: boolean): PriceBrac
   ];
 }
 
-type OpenFilter = "price" | "furnished" | null;
+/** `price` plus whichever config-derived select filters this asset has. */
+type OpenFilter = "price" | FilterableKey | null;
 
 // See the matching comment in AreaFilter.tsx — the filter row is now a surface-alt strip, so
 // pill tones shift accordingly (active: green tint, inactive: surface rather than bg).
@@ -54,12 +50,21 @@ export function BrowseFilterBar({
   activeMinPrice,
   activeMaxPrice,
   activeFurnished,
+  activeSharingType,
+  activeCondition,
+  activeServiceType,
 }: {
   category?: ListingCategory;
   isSale: boolean;
   activeMinPrice?: number;
   activeMaxPrice?: number;
   activeFurnished?: string;
+  /** PG only. */
+  activeSharingType?: string;
+  /** Furniture only. */
+  activeCondition?: string;
+  /** Interiors only. */
+  activeServiceType?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -93,8 +98,17 @@ export function BrowseFilterBar({
     activeMinPrice !== undefined || activeMaxPrice !== undefined
       ? brackets.find((b) => b.minPrice === activeMinPrice && b.maxPrice === activeMaxPrice)?.label ?? "Price"
       : "Price";
-  const furnishingLabel = FURNISHING_OPTIONS.find((f) => f.value === activeFurnished)?.label ?? "Furnishing";
-  const showFurnished = category === "house" || category === "apartment";
+  // Derived from CATEGORY_FIELD_CONFIG rather than hardcoded — see lib/assetFilters.ts. The
+  // previous `category === "house" || category === "apartment"` was wrong in three ways: the
+  // config says villa also has furnishing, commercial has furnishing, and PG/furniture/interiors
+  // each have a select the BFF already accepts and no UI ever offered.
+  const selectFilters = assetFiltersFor(category).filter((filter) => filter.options.length > 0);
+  const activeValues: Partial<Record<FilterableKey, string | undefined>> = {
+    furnished: activeFurnished,
+    sharingType: activeSharingType,
+    condition: activeCondition,
+    serviceType: activeServiceType,
+  };
 
   return (
     <div ref={containerRef} className="flex gap-2.5 mb-5 relative">
@@ -112,21 +126,37 @@ export function BrowseFilterBar({
         )}
       </div>
 
-      {showFurnished && (
-        <div className="relative">
-          <button className={buttonClass(open === "furnished" || activeFurnished !== undefined)} onClick={() => setOpen(open === "furnished" ? null : "furnished")}>
-            {furnishingLabel} <span className="text-[10px] text-muted">▾</span>
-          </button>
-          {open === "furnished" && (
-            <div className={dropdownClass}>
-              <DropdownOption label="Any" active={activeFurnished === undefined} onClick={() => navigate({ furnished: undefined })} />
-              {FURNISHING_OPTIONS.map((f) => (
-                <DropdownOption key={f.value} label={f.label} active={activeFurnished === f.value} onClick={() => navigate({ furnished: f.value })} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {selectFilters.map((filter) => {
+        const active = activeValues[filter.key];
+        const label = filter.options.find((o) => o.value === active)?.label ?? filter.label;
+        return (
+          <div key={filter.key} className="relative">
+            <button
+              className={buttonClass(open === filter.key || active !== undefined)}
+              onClick={() => setOpen(open === filter.key ? null : filter.key)}
+            >
+              {label} <span className="text-[10px] text-muted">▾</span>
+            </button>
+            {open === filter.key && (
+              <div className={dropdownClass}>
+                <DropdownOption
+                  label="Any"
+                  active={active === undefined}
+                  onClick={() => navigate({ [filter.key]: undefined })}
+                />
+                {filter.options.map((option) => (
+                  <DropdownOption
+                    key={option.value}
+                    label={option.label}
+                    active={active === option.value}
+                    onClick={() => navigate({ [filter.key]: option.value })}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

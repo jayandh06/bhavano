@@ -13,6 +13,7 @@ import { SearchTracker } from "./SearchTracker";
 import { RequirementPrompt } from "./RequirementPrompt";
 import { AreaFilter } from "./AreaFilter";
 import { AssetTypeFilter, TransactionFilter } from "./TypeFilters";
+import { hasAssetFilter } from "@/lib/assetFilters";
 import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
 import { SortDropdown } from "./SortDropdown";
@@ -187,7 +188,9 @@ export async function BrowseListingsView({
               activeAsset={currentSegments.category}
             />
             {cityName && <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />}
-            {cityName && (filterCategory === "house" || filterCategory === "apartment") && (
+            {/* Config-driven, not `house || apartment`: CATEGORY_FIELD_CONFIG says villa has
+              * bedrooms too, so the BHK filter was simply missing there. See lib/assetFilters.ts. */}
+            {cityName && filterCategory && hasAssetFilter(filterCategory, "bedrooms") && (
               <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
             )}
             <BrowseFilterBar
@@ -196,6 +199,9 @@ export async function BrowseListingsView({
               activeMinPrice={query.minPrice}
               activeMaxPrice={query.maxPrice}
               activeFurnished={query.furnished}
+              activeSharingType={query.sharingType}
+              activeCondition={query.condition}
+              activeServiceType={query.serviceType}
             />
           </div>
         </div>
