@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
-import type { PropertyTypeFilter } from "@bhavano/types";
+import type { ListingCategory, PropertyTypeFilter, TransactionType } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useAreasQuery, useInfiniteListingsQuery } from "../../src/lib/queries";
@@ -12,6 +12,7 @@ import { HomeDrawer } from "../../src/components/home/HomeDrawer";
 import { Icon } from "../../src/components/Icon";
 import { ListingCard } from "../../src/components/home/ListingCard";
 import { ProfileCompletionBanner } from "../../src/components/home/ProfileCompletionBanner";
+import { RequirementPrompt } from "../../src/components/home/RequirementPrompt";
 import { UtilityBar } from "../../src/components/home/UtilityBar";
 import { FilterSheet, EMPTY_FILTERS, activeFilterCount, type AppliedFilters } from "../../src/components/home/FilterSheet";
 import { SortSheet, SORT_OPTIONS, type SortValue } from "../../src/components/home/SortSheet";
@@ -58,7 +59,7 @@ export default function HomeScreen() {
   const COLLAPSE_THRESHOLD = 80;
 
   const { data: cityAreas = [] } = useAreasQuery(city?.id);
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteListingsQuery(
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteListingsQuery(
     {
       homeCategory: category === "all" ? undefined : category,
       propertyType,
@@ -82,6 +83,28 @@ export default function HomeScreen() {
   const categoryLabel = HOME_TABS.find((t) => t.value === category)?.label ?? "All";
   const sortLabel = SORT_OPTIONS.find((s) => s.value === sort)?.label ?? "Auto";
   const filterCount = activeFilterCount(filters);
+
+  // A dead-end search is the highest-intent moment on the site — see
+  // docs/plans/property-requirements-demand-side.md — so an empty result captures what was
+  // searched for instead of just saying nothing was found (which this screen used to do: no
+  // ListEmptyComponent at all). `category`/`transactionType` mirror seoRoute.ts's own "one
+  // representative value for a group" rule (buy -> sell, rentLease -> rent) rather than the
+  // multi-category set the tab actually queries with — a Requirement holds one of each, same as
+  // SavedSearch. `areaId` is left out entirely: FilterSheet's areaIds is a multi-select set, and
+  // "any of these areas" is not a single requirement any more than it is on web (see
+  // BrowseListingsView's identical comment on its own areaId).
+  const requirementCategory: ListingCategory | undefined =
+    category === "pg" || category === "furniture" || category === "interiors" ? category : propertyType;
+  const requirementTransactionType: TransactionType | undefined =
+    category === "buy" ? "sell" : category === "rentLease" ? "rent" : undefined;
+  const requirementLabel = [
+    (category === "buy" || category === "rentLease"
+      ? HOME_TABS.find((t) => t.value === category)?.subFilter.options.find((o) => o.value === propertyType)?.label
+      : undefined) ?? categoryLabel,
+    city?.name,
+  ]
+    .filter(Boolean)
+    .join(" in ");
 
   // Switching tabs/property-type clears stale filters — a leftover BHK/price selection from
   // House shouldn't silently apply once the user switches to PG (same rule the web app's
@@ -138,6 +161,25 @@ export default function HomeScreen() {
         onEndReached={() => hasNextPage && fetchNextPage()}
         onEndReachedThreshold={0.5}
         ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 20 }} color={colors.green} /> : null}
+        // Only once the first page has actually resolved — otherwise this would flash the
+        // "nothing found" card for every category/filter change while the new query is still
+        // loading, which reads as a real (and wrong) answer instead of a loading state.
+        ListEmptyComponent={
+          isLoading ? null : (
+            <RequirementPrompt
+              criteria={{
+                category: requirementCategory,
+                transactionType: requirementTransactionType,
+                cityId: city?.id,
+                minPrice: filters.minPrice,
+                maxPrice: filters.maxPrice,
+                bedrooms: filters.bedrooms?.length ? Math.min(...filters.bedrooms) : undefined,
+                landingPath: "mobile-app:home",
+              }}
+              label={requirementLabel}
+            />
+          )
+        }
         renderItem={({ item }) => (
           <View style={numColumns > 1 ? styles.gridItem : styles.singleItem}>
             <ListingCard item={item} />

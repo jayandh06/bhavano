@@ -12,6 +12,7 @@ import type {
   CreatedVideoInput,
   CreateInstantAlertsOrderResponseDto,
   CreateListingInput,
+  CreateRequirementInput,
   CreateSubscriptionOrderResponseDto,
   HomeCategoryFilter,
   ListingCardDto,
@@ -23,6 +24,7 @@ import type {
   PlaceAutocompletePrediction,
   PlaceGeocodeResultDto,
   PropertyTypeFilter,
+  RequirementDto,
   RevealContactResponseDto,
   ReverseGeocodeResultDto,
   LinkIdentifierResult,
@@ -502,6 +504,12 @@ export async function addListingVideo(fileUri: string, listingId: string, access
 
 export function deleteListingVideo(accessToken: string, listingId: string, videoId: string): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/listings/${listingId}/videos/${videoId}`, { method: "DELETE" });
+}
+
+/** Mirrors the website's identical call (bff.ts's createRequirement) — records what a seeker
+ * searched for and could not find. See docs/plans/property-requirements-demand-side.md. */
+export function createRequirement(accessToken: string, input: CreateRequirementInput): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, "/requirements", { method: "POST", body: JSON.stringify(input) });
 }
 
 /** Mirrors the website's identical call (bff.ts's createBoostOrder) — activation happens via the
