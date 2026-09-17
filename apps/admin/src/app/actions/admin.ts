@@ -7,6 +7,8 @@ import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPri
 import type {
   AdminUpdateListingInput,
   ContactRevealSettingsDto,
+  RequirementStatus,
+  SavedSearchSettingsDto,
   ListingStatus,
   MessageDto,
   RateLimitSettingsDto,
@@ -28,6 +30,8 @@ import {
   setReviewed,
   updateBoostPricingSettings,
   updateContactRevealSettings,
+  updateRequirement,
+  updateSavedSearchSettings,
   updateInstantAlertsPricingSettings,
   updateListingAsAdmin,
   updateRateLimitSettings,
@@ -148,6 +152,31 @@ export async function updateRateLimitsAction(input: RateLimitSettingsDto): Promi
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update rate limits" };
+  }
+}
+
+export async function updateSavedSearchSettingsAction(input: SavedSearchSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateSavedSearchSettings(accessToken, input);
+    revalidatePath("/settings/alerts");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update alert settings" };
+  }
+}
+
+export async function updateRequirementAction(
+  id: string,
+  input: { status?: RequirementStatus; adminNote?: string },
+): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateRequirement(accessToken, id, input);
+    revalidatePath("/requirements");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update requirement" };
   }
 }
 

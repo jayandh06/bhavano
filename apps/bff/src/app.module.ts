@@ -19,6 +19,7 @@ import { LoggingModule } from './logging/logging.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AgentsModule } from './agents/agents.module';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module';
+import { RequirementsModule } from './requirements/requirements.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SellerJobsModule } from './seller-jobs/seller-jobs.module';
 import { OutreachModule } from './outreach/outreach.module';
@@ -45,6 +46,7 @@ import { PlansModule } from './plans/plans.module';
     PaymentsModule,
     AgentsModule,
     SavedSearchesModule,
+    RequirementsModule,
     AnalyticsModule,
     SellerJobsModule,
     SupportModule,

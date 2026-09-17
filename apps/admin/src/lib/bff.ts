@@ -6,6 +6,7 @@ import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
+  AdminRequirementsPage,
   AdminUpdateListingInput,
   AdminUsersPage,
   Area,
@@ -31,6 +32,8 @@ import type {
   PageVisitsPage,
   ModerationState,
   RateLimitSettingsDto,
+  RequirementStatus,
+  SavedSearchSettingsDto,
   SendPostedNotificationInput,
   SendPostedNotificationResponseDto,
   SendWelcomeInput,
@@ -473,6 +476,42 @@ export function fetchBoosts(accessToken: string, query: ListBoostsQuery = {}): P
 
 export function revokeBoost(accessToken: string, listingId: string): Promise<{ success: true }> {
   return authedBffFetch(accessToken, `/admin/listings/${listingId}/revoke-boost`, { method: "POST" });
+}
+
+export function fetchSavedSearchSettings(accessToken: string): Promise<SavedSearchSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/saved-search-settings", { cache: "no-store" });
+}
+
+export function updateSavedSearchSettings(
+  accessToken: string,
+  input: SavedSearchSettingsDto,
+): Promise<SavedSearchSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/saved-search-settings", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function fetchRequirements(
+  accessToken: string,
+  query: { status?: RequirementStatus; offset?: number; limit?: number } = {},
+): Promise<AdminRequirementsPage> {
+  const params = new URLSearchParams();
+  if (query.status) params.set("status", query.status);
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
+  if (query.limit !== undefined) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/requirements?${params.toString()}`, { cache: "no-store" });
+}
+
+export function updateRequirement(
+  accessToken: string,
+  id: string,
+  input: { status?: RequirementStatus; adminNote?: string },
+): Promise<void> {
+  return authedBffFetch(accessToken, `/admin/requirements/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
 }
 
 export function fetchContactRevealSettings(accessToken: string): Promise<ContactRevealSettingsDto> {

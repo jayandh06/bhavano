@@ -74,6 +74,16 @@ enum ConversationType {
   moderation
 }
 
+/** Phase 0 of docs/plans/property-requirements-demand-side.md. `open` = captured, nobody has
+ * worked it yet; `working` = someone is matching it by hand or recruiting an owner for it;
+ * `closed` = dealt with, or the seeker went quiet. Deliberately an internal workflow state, not
+ * a moderation state: a Requirement is not public content yet. */
+enum RequirementStatus {
+  open
+  working
+  closed
+}
+
 enum LoginMethod {
   otp
   google
@@ -171,6 +181,7 @@ model City {
   areas     Area[]
   users     User[]
   savedSearches SavedSearch[]
+  requirements Requirement[]
   outreachContacts OutreachContact[]
   placesFetchLogs PlacesFetchLog[]
 
@@ -187,6 +198,7 @@ model Area {
   source   String    @default("curated")
   listings Listing[]
   savedSearches SavedSearch[]
+  requirements Requirement[]
   outreachContacts OutreachContact[]
   placesFetchLogs PlacesFetchLog[]
 
@@ -244,6 +256,7 @@ model User {
   payments              Payment[]
   subscriptions         UserSubscription[]
   savedSearches         SavedSearch[]
+  requirements          Requirement[]
   /** Denormalized from the latest active UserSubscription (tier: buyerPremium) — cheap reads
    * everywhere else in the app (header/messaging badge, profile page); UserSubscription is
    * the audit trail. Null means never subscribed or lapsed. */
@@ -442,6 +455,16 @@ model SavedSearch {
   id              String           @id @default(cuid())
   userId          String
   user            User             @relation(fields: [userId], references: [id])
+  /** How this alert was allowed: "plus" = an active Bhavano Plus subscription paid for it;
+   * "free" = it came out of the per-user free quota (SavedSearchSetting.freeAlertsPerUser),
+   * which is what lets the empty-result prompt promise a real alert to someone who has never
+   * paid. Mirrors ContactReveal.source, and for the same reason: the quota is counted by
+   * counting rows, so the row has to remember which bucket it came from.
+   *
+   * The matcher notifies a "free" row regardless of subscription state, and a "plus" row only
+   * while that subscription is live — so someone who lapses keeps the free allowance working and
+   * loses the rest, rather than silently keeping everything or losing everything. */
+  source          String           @default("plus")
   name            String
   category        ListingCategory?
   transactionType TransactionType?
@@ -454,8 +477,10 @@ model SavedSearch {
   bedrooms        Int?
   createdAt       DateTime         @default(now())
   lastNotifiedAt  DateTime?
+  requirements    Requirement[]
 
   @@index([userId])
+  @@index([userId, source])
 }
 
 model Conversation {
@@ -1394,4 +1419,66 @@ model SupportAttachment {
   createdAt DateTime      @default(now())
 
   @@index([ticketId])
+}
+
+/** What a seeker asked for and could not find — captured from the empty-result prompt (see
+ * ListingGrid) and worked by hand.
+ *
+ * Phase 0 of docs/plans/property-requirements-demand-side.md, and deliberately *not* public: at
+ * 320 listings across 39 cities with six repeat owners, there is no audience for a demand feed,
+ * so this exists to be read by an admin who then searches the catalogue, calls the seeker, or
+ * points the outreach module at owners in that exact area. The public feed, the moderation state
+ * and the paid contact path all come later, once these rows prove seekers actually post.
+ *
+ * Criteria columns mirror SavedSearch's exactly, on purpose — the same vocabulary the matcher
+ * already speaks, so a Requirement can graduate into an alert (and vice versa) without a
+ * translation layer. */
+model Requirement {
+  id              String            @id @default(cuid())
+  seekerId        String
+  seeker          User              @relation(fields: [seekerId], references: [id])
+  cityId          String?
+  city            City?             @relation(fields: [cityId], references: [id])
+  areaId          String?
+  area            Area?             @relation(fields: [areaId], references: [id])
+  category        ListingCategory?
+  transactionType TransactionType?
+  minPrice        Int?
+  maxPrice        Int?
+  bedrooms        Int?
+  /** The search as the seeker saw it described — e.g. "2 BHK apartments for rent in Koramangala,
+   * Bengaluru". Stored verbatim rather than re-derived, so an admin reading this months later
+   * sees what the seeker was actually shown, even if the heading logic changes. */
+  searchLabel     String
+  /** Where they were when the search came up empty — the strongest hint about intent, and what
+   * makes "which areas do we have no supply in" answerable. */
+  landingPath     String?
+  /** The alert created alongside this, when the seeker was within their free quota (or has Plus).
+   * Null means they hit the quota: their requirement was still captured, but nothing will notify
+   * them automatically, so it is entirely on the manual follow-up. */
+  savedSearchId   String?
+  savedSearch     SavedSearch?      @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
+  status          RequirementStatus @default(open)
+  adminNote       String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([status, createdAt])
+  @@index([cityId, areaId])
+  @@index([seekerId])
+}
+
+/** Singleton settings row for saved-search alerts — same shape and id convention as
+ * ContactRevealSetting, so the admin form works the same way.
+ *
+ * `freeAlertsPerUser` exists because alerts were Plus-only on both create and match, and there
+ * have never been any Plus subscribers — so a built feature had never been used once, and the
+ * empty-result prompt could not honestly promise "we will tell you when one appears". A small
+ * free quota makes that promise true for the people most likely to act on it, while keeping a
+ * reason to subscribe beyond it. Tunable from admin so it can be dialled down without a deploy,
+ * exactly like freeRevealsPerUser. */
+model SavedSearchSetting {
+  id                String   @id
+  freeAlertsPerUser Int      @default(2)
+  updatedAt         DateTime @updatedAt
 }

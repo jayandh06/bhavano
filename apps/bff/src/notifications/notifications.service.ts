@@ -199,6 +199,30 @@ export class NotificationsService {
    * re-checking browse pages themselves. See SavedSearchesService.notifyMatchingBuyers.
    *
    * No WhatsApp template exists yet — see `notifyListingFlagged`'s comment. */
+  /** Confirms a requirement captured from an empty search — see
+   * docs/plans/property-requirements-demand-side.md.
+   *
+   * The message is deliberately honest about which of two things is happening. With an alert
+   * (the seeker was inside their free quota, or has Plus) we can promise to tell them
+   * automatically. Without one, we can only promise that a person will look — and saying so is
+   * better than implying an alert that will never arrive. */
+  async notifyRequirementCaptured(
+    user: NotifiableUser,
+    searchLabel: string,
+    hasAlert: boolean,
+  ): Promise<'email' | 'whatsapp' | null> {
+    const subject = `We're looking for: ${searchLabel}`;
+    const body = hasAlert
+      ? `Thanks — we've noted that you're looking for ${searchLabel}. ` +
+        `We'll message you as soon as something matching is posted, and our team will also check ` +
+        `whether anything already listed is close enough to be worth a look.`
+      : `Thanks — we've noted that you're looking for ${searchLabel}. ` +
+        `Our team will check what's available and get back to you. ` +
+        `You can also turn on instant alerts from your account so new matches reach you the moment they're posted.`;
+
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+  }
+
   async notifySavedSearchMatch(
     user: NotifiableUser,
     listingTitle: string,

@@ -1,11 +1,28 @@
-import type { ListingCardDto } from "@bhavano/types";
+import type { CreateRequirementInput, ListingCardDto } from "@bhavano/types";
 import { ListingCard } from "./ListingCard";
+import { RequirementPrompt } from "./RequirementPrompt";
 
-export function ListingGrid({ items }: { items: ListingCardDto[] }) {
+export function ListingGrid({
+  items,
+  requirement,
+}: {
+  items: ListingCardDto[];
+  /** The current search, for the zero-results prompt. Omit it and the empty state stays the
+   * plain message — used where there is no single coherent search to capture. */
+  requirement?: { criteria: Omit<CreateRequirementInput, "searchLabel">; label: string };
+}) {
   // Now that the footer sticks to the bottom of the viewport regardless of content height, a
   // zero-result page would otherwise be a large blank void between the filters and the footer —
   // this fills that space with an actual message instead of empty space.
+  //
+  // And when we know what was searched for, the void becomes the highest-intent moment on the
+  // site rather than the point where someone leaves: they have just told us exactly what they
+  // want, so ask for it instead of only apologising. See
+  // docs/plans/property-requirements-demand-side.md.
   if (items.length === 0) {
+    if (requirement) {
+      return <RequirementPrompt criteria={requirement.criteria} label={requirement.label} />;
+    }
     return <p className="text-muted text-sm py-10 text-center">No listings match your filters — try adjusting or clearing them.</p>;
   }
 

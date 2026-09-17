@@ -183,7 +183,26 @@ export async function BrowseListingsView({
             })}
           />
         )}
-        <ListingGrid items={listingsPage.items} />
+        <ListingGrid
+          items={listingsPage.items}
+          requirement={{
+            label: heading,
+            criteria: {
+              category: query.category,
+              transactionType: query.transactionType,
+              cityId: query.cityId,
+              // The single path area when there is one; the multi-select filter is intentionally
+              // not collapsed into one areaId, since "any of these five" is not a requirement.
+              areaId: query.areaId,
+              minPrice: query.minPrice,
+              maxPrice: query.maxPrice,
+              // SavedSearch/Requirement hold one bedroom count, the filter holds a set — take the
+              // smallest, which is the least restrictive reading of "2 or 3 BHK".
+              bedrooms: query.bedrooms?.length ? Math.min(...query.bedrooms) : undefined,
+              landingPath: basePath,
+            },
+          }}
+        />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
       </main>
       <Footer currentCityName={cityName} cityAreas={cityAreas} allCities={allCities} />

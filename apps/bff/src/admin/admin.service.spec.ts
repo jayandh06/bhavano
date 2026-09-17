@@ -9,6 +9,7 @@ import { BoostPricingSettingsService } from '../plans/boost-pricing-settings.ser
 import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
 import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pricing-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
+import type { SavedSearchesService } from '../saved-searches/saved-searches.service';
 
 function makeService(overrides: Record<string, unknown> = {}, notificationsOverrides: Record<string, unknown> = {}) {
   const prisma = {
@@ -53,6 +54,7 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
     {} as SubscriptionPlanSettingsService,
     {} as InstantAlertsPricingSettingsService,
     {} as AccountDeletionService,
+    {} as SavedSearchesService,
   );
   return { service, prisma, notificationsService };
 }

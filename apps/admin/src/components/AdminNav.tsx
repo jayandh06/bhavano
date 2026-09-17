@@ -14,9 +14,11 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/logins", label: "Recent logins" },
   { href: "/users", label: "Users" },
   { href: "/page-visits", label: "Page visits" },
+  { href: "/requirements", label: "Requirements" },
   { href: "/settings/plans", label: "Plans" },
   { href: "/settings/rate-limits", label: "Rate limits" },
   { href: "/settings/contact-reveal", label: "Contact reveal" },
+  { href: "/settings/alerts", label: "Search alerts" },
 ];
 
 const SCROLL_STEP = 160;

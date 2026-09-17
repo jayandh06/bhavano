@@ -6,6 +6,7 @@ import type {
   AdminDiscountCodesPage,
   AdminListingsPage,
   AdminUpdateListingInput,
+  AdminRequirementsPage,
   AdminUsersPage,
   ContactRevealSettingsDto,
   DeviceType,
@@ -25,6 +26,7 @@ import type {
   SendPostedNotificationResponseDto,
   SendPostedNotificationResultDto,
   SendWelcomeResponseDto,
+  SavedSearchSettingsDto,
   SendWelcomeResultDto,
   SessionTrailDto,
   UserActivityDto,
@@ -40,9 +42,13 @@ import { BoostPricingSettingsService } from '../plans/boost-pricing-settings.ser
 import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pricing-settings.service';
 import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
+import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
+import { ListRequirementsDto } from './dto/list-requirements.dto';
+import { UpdateRequirementDto } from './dto/update-requirement.dto';
+import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
 import { ListUsersDto, UserSort } from './dto/list-users.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { ListDiscountCodesDto } from './dto/list-discount-codes.dto';
@@ -180,6 +186,7 @@ export class AdminService {
     private readonly subscriptionPlanSettingsService: SubscriptionPlanSettingsService,
     private readonly instantAlertsPricingSettingsService: InstantAlertsPricingSettingsService,
     private readonly accountDeletion: AccountDeletionService,
+    private readonly savedSearchesService: SavedSearchesService,
   ) {}
 
   listListings(query: ListAdminListingsDto): Promise<AdminListingsPage> {
@@ -1067,5 +1074,75 @@ export class AdminService {
    * ListingBoost/Payment audit rows are left untouched. */
   async revokeBoost(listingId: string): Promise<void> {
     await this.prisma.listing.update({ where: { id: listingId }, data: { boostedUntil: null, boostRank: null } });
+  }
+
+  /** The unmet-demand queue — Phase 0 of docs/plans/property-requirements-demand-side.md.
+   *
+   * This screen *is* the matching engine for now. At 1-3 captures a day a person reads each one,
+   * searches the catalogue by hand, calls the seeker, or points outreach at owners in that exact
+   * area — which is also how the inventory those areas lack gets recruited. `openTotal` is
+   * deliberately unfiltered: it answers "is anyone actually working this?", which a filtered
+   * count cannot. */
+  async listRequirements(query: ListRequirementsDto): Promise<AdminRequirementsPage> {
+    const { status, offset, limit } = query;
+    const where: Prisma.RequirementWhereInput = status ? { status } : {};
+
+    const [rows, total, openTotal] = await Promise.all([
+      this.prisma.requirement.findMany({
+        where,
+        include: {
+          city: true,
+          area: true,
+          seeker: { select: { name: true, phone: true, email: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip: offset ?? 0,
+        take: limit,
+      }),
+      this.prisma.requirement.count({ where }),
+      this.prisma.requirement.count({ where: { status: 'open' } }),
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        searchLabel: row.searchLabel,
+        category: row.category ?? undefined,
+        transactionType: row.transactionType ?? undefined,
+        cityId: row.cityId ?? undefined,
+        cityName: row.city?.name,
+        areaId: row.areaId ?? undefined,
+        areaName: row.area?.name,
+        minPrice: row.minPrice ?? undefined,
+        maxPrice: row.maxPrice ?? undefined,
+        bedrooms: row.bedrooms ?? undefined,
+        landingPath: row.landingPath ?? undefined,
+        status: row.status,
+        hasAlert: row.savedSearchId !== null,
+        createdAt: row.createdAt.toISOString(),
+        seekerId: row.seekerId,
+        seekerName: row.seeker.name,
+        seekerPhone: row.seeker.phone,
+        seekerEmail: row.seeker.email,
+        adminNote: row.adminNote ?? undefined,
+        updatedAt: row.updatedAt.toISOString(),
+      })),
+      total,
+      openTotal,
+    };
+  }
+
+  async updateRequirement(id: string, dto: UpdateRequirementDto): Promise<void> {
+    const existing = await this.prisma.requirement.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Requirement not found');
+    await this.prisma.requirement.update({ where: { id }, data: dto });
+  }
+
+  getSavedSearchSettings(): Promise<SavedSearchSettingsDto> {
+    return this.savedSearchesService.getSettings();
+  }
+
+  updateSavedSearchSettings(dto: UpdateSavedSearchSettingsDto): Promise<SavedSearchSettingsDto> {
+    return this.savedSearchesService.updateSettings(dto.freeAlertsPerUser);
   }
 }

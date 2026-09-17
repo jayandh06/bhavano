@@ -18,6 +18,7 @@ import type {
   CreateContactRevealCreditsOrderResponseDto,
   CreateInstantAlertsOrderResponseDto,
   CreateListingInput,
+  CreateRequirementInput,
   CreateSavedSearchInput,
   CreateSubscriptionOrderResponseDto,
   HomeCategoryFilter,
@@ -33,6 +34,7 @@ import type {
   ProfileNudgeDto,
   PropertyTypeFilter,
   RevealContactResponseDto,
+  RequirementDto,
   ReverseGeocodeResultDto,
   SavedSearchDto,
   SendFirstMessageResponseDto,
@@ -213,6 +215,16 @@ export function reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseG
     body: JSON.stringify({ lat, lng }),
     cache: "no-store",
   });
+}
+
+/** Phase 0 of docs/plans/property-requirements-demand-side.md — records what a seeker wanted
+ * and could not find. The BFF also creates the matching alert when they have one left. */
+export function createRequirement(accessToken: string, input: CreateRequirementInput): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, "/requirements", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function fetchMyRequirements(accessToken: string): Promise<RequirementDto[]> {
+  return authedBffFetch(accessToken, "/requirements/mine", { cache: "no-store" });
 }
 
 export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<Area[]> {

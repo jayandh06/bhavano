@@ -41,6 +41,10 @@ export type LoginMethod = "otp" | "google" | "apple";
 
 export type RateLimitKind = "publish" | "view";
 
+/** Internal workflow state for a captured requirement — not a moderation state, since a
+ * Requirement is not public content yet. */
+export type RequirementStatus = "open" | "working" | "closed";
+
 export type ListingSlotUpsell = import("./listingSlots").ListingSlotUpsell;
 export type { ListingSlotCapErrorBody } from "./listingSlots";
 
@@ -1069,6 +1073,68 @@ export interface SavedSearchDto {
   maxPrice?: number;
   bedrooms?: number;
   createdAt: string;
+}
+
+/** A seeker's unmet demand, captured from an empty search — Phase 0 of
+ * docs/plans/property-requirements-demand-side.md. Internal for now: read by the seeker on
+ * /my-requirements and by an admin who works it by hand. */
+export interface RequirementDto {
+  id: string;
+  /** How the search was described to the seeker, e.g. "2 BHK apartments for rent in Koramangala,
+   * Bengaluru" — stored verbatim so it still reads correctly months later. */
+  searchLabel: string;
+  category?: ListingCategory;
+  transactionType?: TransactionType;
+  cityId?: string;
+  cityName?: string;
+  areaId?: string;
+  areaName?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  bedrooms?: number;
+  landingPath?: string;
+  status: RequirementStatus;
+  /** Whether an alert was created alongside — false when the seeker had used up their free
+   * allowance, in which case nothing notifies them automatically and the follow-up is manual. */
+  hasAlert: boolean;
+  createdAt: string;
+}
+
+/** Admin view of a captured requirement — adds the seeker and the follow-up state that the
+ * seeker's own view has no business seeing. */
+export interface AdminRequirementDto extends RequirementDto {
+  seekerId: string;
+  seekerName: string | null;
+  seekerPhone: string | null;
+  seekerEmail: string | null;
+  adminNote?: string;
+  updatedAt: string;
+}
+
+export interface AdminRequirementsPage {
+  items: AdminRequirementDto[];
+  total: number;
+  /** Count of `open` rows regardless of the current filter — the number that says whether
+   * anybody is actually working the queue. */
+  openTotal: number;
+}
+
+export interface SavedSearchSettingsDto {
+  freeAlertsPerUser: number;
+}
+
+export type UpdateSavedSearchSettingsInput = SavedSearchSettingsDto;
+
+export interface CreateRequirementInput {
+  searchLabel: string;
+  category?: ListingCategory;
+  transactionType?: TransactionType;
+  cityId?: string;
+  areaId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  bedrooms?: number;
+  landingPath?: string;
 }
 
 export interface CreateSavedSearchInput {

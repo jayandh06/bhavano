@@ -3,6 +3,7 @@ import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
+  AdminRequirementsPage,
   AdminUsersPage,
   CampaignPreviewDto,
   ClaimSource,
@@ -26,6 +27,7 @@ import type {
   OutreachContactDto,
   OutreachContactsPage,
   RateLimitSettingsDto,
+  SavedSearchSettingsDto,
   SendPostedNotificationResponseDto,
   SendWelcomeResponseDto,
   SessionTrailDto,
@@ -54,6 +56,9 @@ import { SendPostedNotificationDto } from './dto/notify-posted.dto';
 import { ListBoostsDto } from './dto/list-boosts.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-settings.dto';
+import { ListRequirementsDto } from './dto/list-requirements.dto';
+import { UpdateRequirementDto } from './dto/update-requirement.dto';
+import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
 import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
 import { UpdateInstantAlertsPricingDto } from './dto/update-instant-alerts-pricing.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
@@ -275,6 +280,28 @@ export class AdminController {
   @Patch('rate-limits')
   updateRateLimitSettings(@Body() dto: UpdateRateLimitsDto): Promise<RateLimitSettingsDto> {
     return this.adminService.updateRateLimitSettings(dto);
+  }
+
+  /** Phase 0 of docs/plans/property-requirements-demand-side.md — the unmet-demand queue and
+   * its one tunable. */
+  @Get('requirements')
+  listRequirements(@Query() query: ListRequirementsDto): Promise<AdminRequirementsPage> {
+    return this.adminService.listRequirements(query);
+  }
+
+  @Patch('requirements/:id')
+  updateRequirement(@Param('id') id: string, @Body() dto: UpdateRequirementDto): Promise<void> {
+    return this.adminService.updateRequirement(id, dto);
+  }
+
+  @Get('saved-search-settings')
+  getSavedSearchSettings(): Promise<SavedSearchSettingsDto> {
+    return this.adminService.getSavedSearchSettings();
+  }
+
+  @Patch('saved-search-settings')
+  updateSavedSearchSettings(@Body() dto: UpdateSavedSearchSettingsDto): Promise<SavedSearchSettingsDto> {
+    return this.adminService.updateSavedSearchSettings(dto);
   }
 
   @Get('contact-reveal-settings')
