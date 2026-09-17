@@ -1,7 +1,8 @@
 # Property requirements: letting seekers post demand
 
-**Status: Phase 0 implemented and deployed 2026-09-17** (commit `d38d9ea`). Phases 1+ are still
-plan only. Written 2026-09-16.
+**Status: Phases 0 and 1 implemented and deployed 2026-09-17** (`d38d9ea`, `4fd2307`, and the
+Phase 1 UI commit). Phase 2+ — the public feed, the paid contact path, SEO aggregates and mobile —
+is still plan only. Written 2026-09-16.
 
 ## Context
 
@@ -189,8 +190,9 @@ server-side, and an anonymous `POST /requirements` is refused with 401.
 - **`/my-requirements`.** `GET /requirements/mine` exists in the BFF; the page does not. The
   confirmation message's link is the Phase 0 return path (see the information-architecture
   section).
-- Everything in Phase 1 and beyond, including the public feed, the paid contact path, SEO
-  aggregates and mobile.
+- **The standalone `/post-requirement` form** — see the Phase 1 section for why it was deferred
+  rather than built.
+- The public feed, the paid contact path, SEO aggregates and mobile — Phase 2 and beyond.
 
 ## Phase 0 as originally planned (superseded by the above)
 
@@ -247,7 +249,50 @@ vanished — but the product is the notification. The engagement table above is 
 revisit page as the centrepiece would be designing for the behaviour that measurably does not
 happen.
 
-## Phase 1 — the real thing (once Phase 0 shows people post)
+## Phase 1 — implemented 2026-09-17
+
+What landed, and one item deliberately not built:
+
+1. **Expiry.** A 30-day life like a listing's, renewable, with `RequirementMatchJob` retiring what
+   lapses as `closedReason: expired`. Requirements have to age out — an owner who wastes a call on
+   someone who moved three months ago stops trusting the queue, which costs more than the lead was
+   worth. The migration adds the `NOT NULL` column nullable-then-backfill-then-tighten, because
+   adding it outright fails the moment a row exists.
+2. **Seeker controls** at `/my-requirements`: renew (from the later of now or current expiry, so
+   renewing early extends rather than shortens), "I found something" and "no longer looking" as
+   separate actions, and the note/timeline the one-tap capture never asked for. Renewing reopens an
+   expired requirement but not a deliberately withdrawn one, and clears `ownersNotifiedAt` because
+   renewed demand is fresh demand. The criteria are not editable: they came from a real search and
+   an admin may already have worked the queue against them.
+3. **Owner matching** — `RequirementMatchJob` at 10:00 IST, an hour after the admin digest so a
+   person can close out anything junk first. Every rule in it is an anti-spam rule, because the
+   failure mode is the sender reputation that welcome emails, claim verifications and expiry
+   reminders all share: matched on **inventory, not geography** (same city and category, plus the
+   same area when named), digested to one message per owner, capped at 20 owners per requirement,
+   once per requirement, never to the seeker, and carrying no seeker identity. A requirement nobody
+   matched stays un-stamped so a listing posted next week can still pick it up, bounded by a 14-day
+   age cutoff.
+4. **`/requirements/matching`** — where that email lands. Scoped to the viewer's own inventory and
+   reached from a notification about it, which is what makes it useful at a volume where nobody
+   would browse a marketplace of requirements. The call to action is to post the thing, since we
+   are the connection until the messaging-first contact path exists.
+5. Account-menu links next to My Listings, and an "Add a budget or timeline" offer in the capture's
+   success state — *after* the save, never before it.
+
+**Not built: the standalone `/post-requirement` form** (item 3 of the original list, and the
+"out of the box" entry point in Context). Deferred on the evidence above rather than forgotten: a
+form someone has to go and find is exactly the shape that produced 0 saved searches, and every
+capture so far comes from the moment a search failed. Worth building when there is a reason to
+believe people will seek it out — a marketing campaign pointing at it, say — not before.
+
+Verified end to end against a real Postgres, 13 checks: the 30-day life, the owner with matching
+inventory told exactly once with no seeker identity in the message, an owner **not** told about a
+category they have no inventory in, lapsed requirements retired, renewal reopening an expired row
+but not a withdrawn one, and the seeker adding detail and closing as fulfilled. That category check
+failed on the first run and the *test* was wrong, not the code — it guessed a category the seed
+owner turned out to hold 8 of 10 of in that area, so it now derives one they genuinely lack.
+
+## Phase 1 as originally planned (superseded by the above)
 
 1. **Model + migration**, plus `RequirementStatus` enum.
 2. **`POST /requirements`** — login required (the OTP flow already proves a phone), rate-limited,
