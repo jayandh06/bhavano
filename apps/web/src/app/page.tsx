@@ -185,7 +185,22 @@ export default async function HomePage({
             <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
           </div>
         )}
-        <ListingGrid items={listingsPage.items} />
+        <ListingGrid
+          items={listingsPage.items}
+          requirement={{
+            label: heading,
+            criteria: {
+              // The homepage's tabs are intent groupings (homeCategory/propertyType) rather than
+              // a single category, so only the concrete ones are carried — an admin reading the
+              // row still has `searchLabel` and the landing path for the rest.
+              category: listingCategory,
+              transactionType,
+              cityId: resolvedCity?.id,
+              bedrooms,
+              landingPath: "/",
+            },
+          }}
+        />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
       </main>
       <Footer currentCityName={resolvedCity?.name} cityAreas={cityAreas} allCities={allCities} />

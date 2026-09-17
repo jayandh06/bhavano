@@ -7,6 +7,7 @@ import { sessionAccessToken } from "@/lib/session";
 import { buildListingPath } from "@/lib/listingPath";
 import { Header } from "./Header";
 import { ListingGrid } from "./ListingGrid";
+import { RequirementPrompt } from "./RequirementPrompt";
 import { AreaFilter } from "./AreaFilter";
 import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
@@ -204,6 +205,27 @@ export async function BrowseListingsView({
           }}
         />
         <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
+        {/* Someone who looked at results and left unsatisfied is unmet demand too, and until now
+          * nothing captured them — only the zero-result case did. Quiet and below the grid on
+          * purpose: it must not compete with the listings someone came to read. */}
+        {listingsPage.items.length > 0 && (
+          <div className="mt-6 text-center">
+            <RequirementPrompt
+              variant="inline"
+              label={heading}
+              criteria={{
+                category: query.category,
+                transactionType: query.transactionType,
+                cityId: query.cityId,
+                areaId: query.areaId,
+                minPrice: query.minPrice,
+                maxPrice: query.maxPrice,
+                bedrooms: query.bedrooms?.length ? Math.min(...query.bedrooms) : undefined,
+                landingPath: basePath,
+              }}
+            />
+          </div>
+        )}
       </main>
       <Footer currentCityName={cityName} cityAreas={cityAreas} allCities={allCities} />
     </div>

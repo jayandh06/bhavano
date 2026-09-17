@@ -223,6 +223,27 @@ export class NotificationsService {
     return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
   }
 
+  /** Daily digest of unmet demand to whoever runs the site — see RequirementDigestJob.
+   *
+   * Exists because Phase 0's value depends entirely on a person reading the requirements queue,
+   * and the seeker has by then been told in writing that "our team will get back to you". A
+   * screen nobody opens turns that into a broken promise, so this pushes rather than waits to be
+   * pulled. Email only (not the WhatsApp-preferring path the rest of this file uses): it's an
+   * internal list of several items, which is an email, not a template message. */
+  async notifyRequirementDigest(
+    admin: NotifiableUser,
+    lines: string[],
+    openTotal: number,
+  ): Promise<'email' | 'whatsapp' | null> {
+    const subject = `${lines.length} new requirement${lines.length === 1 ? '' : 's'} — ${openTotal} open`;
+    const body =
+      `People searched for these and found nothing:\n\n${lines.map((line) => `• ${line}`).join('\n')}\n\n` +
+      `${openTotal} requirement${openTotal === 1 ? ' is' : 's are'} open in total. ` +
+      `Work them at https://admin.bhavano.com/requirements — each one is both a lead and a gap in inventory.`;
+
+    return this.dispatchEmailPreferWhatsapp({ ...admin, phone: null }, { subject, text: body });
+  }
+
   async notifySavedSearchMatch(
     user: NotifiableUser,
     listingTitle: string,
