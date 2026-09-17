@@ -199,6 +199,33 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
   fields on their categories but `ListingsQuery` has no parameter for them. A control that cannot
   narrow anything is worse than no control, so adding them is a backend change first.
 
+**Filter row order, and the dynamic heading. Implemented 2026-09-17.**
+- **Row order is now location → transaction → asset → BHK → the asset's own filters → sort.** The
+  area filter leads *inside a city*; on a national page (`/`, `/buy`) the row starts at the
+  transaction filter.
+- **City is not a filter.** It was briefly rendered as the row's leading pill on national pages via
+  a `variant="filter"` `LocationPicker`. That was wrong: the city picks which page you are on (and
+  which page ranks), so it is a top-level choice and stays in the header at every depth. The
+  `filter` variant has been removed rather than left unused — the header's own picker already
+  carries the search, auto-detect and segment-preserving switch.
+- **The heading is now built from the query filters too**, with one grammar in `buildHeading`:
+  `{Verb} {Furnishing} {BHK} {Asset} in {Place} {Price}` — "Rent Unfurnished Apartments in 4 areas
+  of Bengaluru between ₹20k and ₹2L". `{Place}` is a single area name when the path names one
+  (`"BTM Layout, Bengaluru"`), a count when several are selected (`"4 areas of Bengaluru"`), the
+  city otherwise, and `"India"` on the national routes.
+- **The `<title>` deliberately gets less than the H1**: path facets only, no price/furnishing/area
+  count. These pages are indexed, and a title driven by the path stays stable instead of producing
+  a permutation per filter combination on URLs that canonicalise straight back to it. The H1 is
+  what the visitor is looking at and carries no ranking weight on a canonicalised variant.
+- **This does change every indexed browse title**, by prefixing the verb: "Apartments in
+  Bengaluru" → "Rent Apartments in Bengaluru". That was the point — "rent apartment in
+  koramangala" is how people actually phrase the query — but it is a site-wide title change, not a
+  cosmetic one, and worth watching in Search Console. The group-with-no-category label also
+  changed: `/bengaluru/buy` read "All Listings in Bengaluru", which was simply untrue of a page
+  showing only things for sale, and now reads "Buy Properties in Bengaluru". No URL changed.
+- 11 grammar checks cover the verb, furnishing, BHK-facet, area-count and all three price clauses
+  (`between`/`under`/`above`), plus the no-group fallback.
+
 **Phase 3 — counts.**
 - `/listings/facets`, chips carrying counts, zero counts de-emphasised and wired to the requirement
   capture.

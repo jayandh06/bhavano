@@ -77,17 +77,26 @@ function nationalSegments(first: string, rest: string[]): ParsedSegments | null 
   return parsed;
 }
 
-function headingFor(parsed: ParsedSegments, cityName: string, areaName?: string): string {
+/** `filters` is omitted for the `<title>` and supplied for the H1 — see buildHeading's own note on
+ * why the indexed title stays driven by the path while the visible heading describes the actual
+ * view. */
+function headingFor(
+  parsed: ParsedSegments,
+  cityName: string,
+  areaName?: string,
+  filters?: { areaCount?: number; furnished?: string; minPrice?: number; maxPrice?: number },
+): string {
   const query = buildQueryForSegments(parsed);
   return buildHeading({
+    ...filters,
+    // Buy/Rent, from the path — so it is in the title too, which is where people's own phrasing
+    // ("rent apartment in koramangala") actually matches.
+    transactionGroup: parsed.transactionGroup,
     // A group with no category is not "All Listings" — /buy and /bengaluru/buy are specifically
-    // things for sale, and said so nowhere before this.
-    fallbackLabel:
-      parsed.transactionGroup === "buy"
-        ? "Properties for Sale"
-        : parsed.transactionGroup === "rent-lease"
-          ? "Properties for Rent"
-          : "All Listings",
+    // things for sale, and said so nowhere before this. With the leading verb now carrying that,
+    // the label drops the "for Sale"/"for Rent" it used to need: "Buy Properties in India", not
+    // "Buy Properties for Sale in India".
+    fallbackLabel: parsed.transactionGroup ? "Properties" : "All Listings",
     cityName,
     areaName,
     propertyType: query.propertyType,
@@ -536,6 +545,14 @@ export default async function CityBrowsePage({
         cityAreas={cityAreas}
         allCities={allCities}
         noAreaSelected={noAreaSelected}
+        filteredHeading={headingFor(parsed, cityRow.name, areaRow?.name, {
+          // Only counted when several are chosen and no single area names the path — one area is
+          // named, and "all areas" is just the city.
+          areaCount: areaIds && areaIds.length > 1 ? areaIds.length : undefined,
+          furnished,
+          minPrice,
+          maxPrice,
+        })}
       />
     </>
   );

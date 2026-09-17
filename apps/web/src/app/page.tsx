@@ -6,8 +6,8 @@ import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
+import { segmentsForHomeCategory } from "@/lib/seoRoute";
 import { AreaFilter } from "@/components/home/AreaFilter";
-import { LocationPicker } from "@/components/home/LocationPicker";
 import { AssetTypeFilter, TransactionFilter } from "@/components/home/TypeFilters";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { Pagination } from "@/components/home/Pagination";
@@ -124,8 +124,17 @@ export default async function HomePage({
   const popularSearches = await resolvePopularSearches(cityName ?? "India", resolvedCity?.id);
 
   const heading = buildHeading({
-    // The "All" tab's own label is just "All", which reads as a fragment — "All in India".
-    fallbackLabel: activeTab.value === "all" ? "All Listings" : activeTab.label,
+    // Buy/Rent leads, matching how people phrase it. Taken from the active tab via the same
+    // mapping the filters use, so the heading and the filter pills always agree.
+    transactionGroup: segmentsForHomeCategory(activeTab.value).transactionGroup,
+    // The "All" tab's own label is just "All", which reads as a fragment — "All in India". With a
+    // verb present the tab label would double up ("Buy Buy"), so the generic noun stands in.
+    fallbackLabel:
+      activeTab.value === "all"
+        ? "All Listings"
+        : segmentsForHomeCategory(activeTab.value).transactionGroup && !listingCategory && !propertyType
+          ? "Properties"
+          : activeTab.label,
     // "India" when no city is selected, so the H1 reads "Rent & Lease in India" rather than
     // dropping the location and leaving a bare category.
     cityName: cityName ?? "India",
@@ -136,6 +145,9 @@ export default async function HomePage({
     sharingType,
     condition,
     serviceType,
+    // The homepage's own filters, so its H1 describes the view too. It has no price filter.
+    furnished,
+    areaCount: areaIds && areaIds.length > 1 ? areaIds.length : undefined,
   });
 
   function buildPageHref(nextPage: number): string {
@@ -196,13 +208,9 @@ export default async function HomePage({
           * to the corresponding browse path, exactly as the tab row above already does, so this
           * introduces no new URL shapes. */}
         <div className="mb-5 flex gap-2.5 flex-wrap items-start">
-          {/* Location first, same reasoning as the browse pages: the area picker inside a city,
-            * the city picker when every city is in play. */}
-          {resolvedCity ? (
-            <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
-          ) : (
-            <LocationPicker popularCities={popularCities} variant="filter" />
-          )}
+          {/* Area first when a city is chosen, same reasoning as the browse pages. City itself
+            * stays a top-level choice in the header, not a filter — see BrowseListingsView. */}
+          {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}
           {/* activeTab.value already *is* the intent here — the homepage's tab row and this
             * filter speak the same vocabulary, so no translation is needed. */}
           <TransactionFilter

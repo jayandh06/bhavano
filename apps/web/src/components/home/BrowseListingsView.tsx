@@ -12,7 +12,6 @@ import { PickAnAreaNotice } from "./PickAnAreaNotice";
 import { SearchTracker } from "./SearchTracker";
 import { RequirementPrompt } from "./RequirementPrompt";
 import { AreaFilter } from "./AreaFilter";
-import { LocationPicker } from "./LocationPicker";
 import { AssetTypeFilter, TransactionFilter } from "./TypeFilters";
 import { hasAssetFilter } from "@/lib/assetFilters";
 import { BhkFilter } from "./BhkFilter";
@@ -88,6 +87,7 @@ export async function BrowseListingsView({
   cityAreas,
   allCities,
   noAreaSelected = false,
+  filteredHeading,
 }: {
   query: Omit<ListingsQuery, "limit" | "cursor" | "offset">;
   /** Undefined for national browsing (`/buy`, `/furniture`). Without a city there is no area
@@ -117,6 +117,11 @@ export async function BrowseListingsView({
    * the fetch is skipped entirely and the grid is replaced by a prompt — see
    * lib/areaSelection.ts. */
   noAreaSelected?: boolean;
+  /** The heading including the query-param filters — what the visitor is actually looking at
+   * ("Rent Unfurnished Apartments in 4 areas of Bengaluru between ₹20k and ₹2L"). `heading` stays
+   * the path-only form and remains what the `<title>` and the SEO copy use, so the indexed title
+   * does not acquire a permutation per filter combination. */
+  filteredHeading?: string;
 }) {
   const session = await auth();
   // The same reverse mapping the tab row uses, so the filter and the highlighted tab can never
@@ -156,7 +161,7 @@ export async function BrowseListingsView({
         {/* The heading has the line to itself. Sharing it with the count squeezed a long one —
           * "2 BHK Apartments in HSR Layout, Bengaluru" — into a narrow column on a phone and
           * wrapped it to three lines beside a number. */}
-        <h1 className="font-lora text-[26px] font-semibold m-0 mb-3 text-text">{heading}</h1>
+        <h1 className="font-lora text-[26px] font-semibold m-0 mb-3 text-text">{filteredHeading ?? heading}</h1>
         {page === 1 && cityName && (
           <BrowseSeoIntro
             heading={heading}
@@ -173,16 +178,16 @@ export async function BrowseListingsView({
           * bg-on-bg treatment it used to have gave it no visual identity of its own. */}
         <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
           <div className="flex gap-2.5 flex-wrap">
-            {/* Location first: it is the question everything else is asked *within*, and it is
-              * the one filter a visitor almost always sets before any other. Which control it is
-              * depends on how far in they are — the area picker inside a city, the city picker on
-              * a national page (`/`, `/buy`), where there is no city to pick areas of. Reusing
-              * LocationPicker there rather than writing a second city control keeps its search,
-              * auto-detect and segment-preserving switch. */}
-            {cityName ? (
+            {/* Area first, but only inside a city — it is the question everything else is asked
+              * *within*, and the one filter a visitor almost always sets before any other.
+              *
+              * City is deliberately *not* here. It is a top-level choice, not a filter: it picks
+              * which site you are on (and which page ranks), so it lives in the header at every
+              * depth via `LocationPicker`. On a national page (`/`, `/buy`) there are no areas to
+              * pick, so this row simply starts at the transaction filter rather than repeating the
+              * header's city control a second time in a second style. */}
+            {cityName && (
               <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
-            ) : (
-              <LocationPicker popularCities={popularCities} currentSegments={currentSegments} variant="filter" />
             )}
             {/* Then the transaction and asset, at every depth — including the city-root and
               * group-root pages, which had no filters at all before. Everything after them is

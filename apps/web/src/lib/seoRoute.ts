@@ -401,10 +401,48 @@ export function segmentsForHomeCategory(tab: HomeTabValue): {
  * (query-string driven) and the SEO catch-all route (path-segment driven), both of which reduce
  * to the same underlying dimensions. `fallbackLabel` is used when nothing more specific is
  * resolved (e.g. the homepage's current tab name, or "All Listings" for the SEO city root). */
-export function buildHeading(params: {
+/** Buy/Rent as a leading verb, which is how people phrase the search ("rent apartment in
+ * Koramangala") and what the heading was missing entirely. Kept as the *group*, since `sell` and
+ * `lease` are the same intent to a browsing visitor. */
+const GROUP_VERBS: Record<TransactionGroup, string> = { buy: "Buy", "rent-lease": "Rent" };
+
+/** Furnishing labels come from the same config the posting form and the filter use, so the three
+ * cannot drift apart. */
+function furnishingLabel(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return CATEGORY_FIELD_CONFIG.apartment.find((f) => f.key === "furnished")?.options?.find((o) => o.value === value)
+    ?.label;
+}
+
+/** "between ₹20k and ₹2L" / "under ₹2L" / "above ₹20k" — omitted entirely when neither bound is
+ * set, so an unfiltered heading reads no differently than before. */
+function priceClause(minPrice?: number, maxPrice?: number): string | undefined {
+  if (minPrice !== undefined && maxPrice !== undefined) return `between ${formatINR(minPrice)} and ${formatINR(maxPrice)}`;
+  if (maxPrice !== undefined) return `under ${formatINR(maxPrice)}`;
+  if (minPrice !== undefined) return `above ${formatINR(minPrice)}`;
+  return undefined;
+}
+
+/**
+ * Where the results are, in words.
+ *
+ * A single area names it ("BTM Layout, Bengaluru"); several are counted rather than listed ("4
+ * areas of Bengaluru"), because naming them runs long, varies per visitor, and would put a
+ * different string in the heading for every combination of checkboxes. No city at all is "India",
+ * matching what the national routes already pass.
+ */
+export function buildPlaceLabel(params: { cityName: string; areaName?: string; areaCount?: number }): string {
+  const { cityName, areaName, areaCount } = params;
+  if (areaName) return `${areaName}, ${cityName}`;
+  if (areaCount !== undefined && areaCount > 1) return `${areaCount} areas of ${cityName}`;
+  return cityName;
+}
+
+/** The subject of the heading — "Apartments", "2 BHK Houses", "PG Single Sharing" — without the
+ * place. Split out of `buildHeading` so the place can be substituted (a count instead of a name)
+ * and so the verb, furnishing and price can wrap around it. */
+function buildHeadingSubject(params: {
   fallbackLabel: string;
-  cityName: string;
-  areaName?: string;
   propertyType?: PropertyTypeFilter;
   bedrooms?: number;
   listingCategory?: ListingCategory;
@@ -412,33 +450,79 @@ export function buildHeading(params: {
   sharingType?: string;
   condition?: string;
   serviceType?: string;
+  /** Suppresses the "for Sale"/"for Rent" suffix, which would otherwise read "Rent Apartments for
+   * Rent" once a leading verb is present. */
+  hasVerb?: boolean;
 }): string {
-  const { fallbackLabel, cityName, areaName, propertyType, bedrooms, listingCategory, transactionType, sharingType, condition, serviceType } =
+  const { fallbackLabel, propertyType, bedrooms, listingCategory, transactionType, sharingType, condition, serviceType, hasVerb } =
     params;
-  const place = areaName ? `${areaName}, ${cityName}` : cityName;
 
   if (listingCategory) {
     const conditionLabel = condition
       ? CATEGORY_FIELD_CONFIG.furniture.find((f) => f.key === "condition")?.options?.find((o) => o.value === condition)?.label
       : undefined;
     const base = `${conditionLabel ? `${conditionLabel} ` : ""}${CATEGORY_LABELS[listingCategory]}`;
-    const suffix = transactionType ? TRANSACTION_LABELS[transactionType] : "";
-    return `${base} ${suffix} in ${place}`.replace(/\s+/g, " ").trim();
+    const suffix = !hasVerb && transactionType ? TRANSACTION_LABELS[transactionType] : "";
+    return `${base} ${suffix}`.replace(/\s+/g, " ").trim();
   }
-  if (bedrooms !== undefined && propertyType) {
-    return `${bedroomLabel(bedrooms)} BHK ${CATEGORY_LABELS[propertyType]} in ${place}`;
-  }
+  if (bedrooms !== undefined && propertyType) return `${bedroomLabel(bedrooms)} BHK ${CATEGORY_LABELS[propertyType]}`;
   if (sharingType) {
     const label = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key === "sharingType")?.options?.find((o) => o.value === sharingType)?.label ?? sharingType;
-    return `PG ${label} in ${place}`;
+    return `PG ${label}`;
   }
   if (serviceType) {
     const label =
       CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")?.options?.find((o) => o.value === serviceType)?.label ?? serviceType;
-    return `${label} Interiors in ${place}`;
+    return `${label} Interiors`;
   }
-  if (propertyType) {
-    return `${CATEGORY_LABELS[propertyType]} in ${place}`;
-  }
-  return `${fallbackLabel} in ${place}`;
+  if (propertyType) return CATEGORY_LABELS[propertyType];
+  return fallbackLabel;
+}
+
+/**
+ * The heading, in the order people say it:
+ *
+ *   `{Verb} {Furnishing} {BHK} {Asset} in {Place} {Price}`
+ *
+ * e.g. "Rent Unfurnished Apartments in 4 areas of Bengaluru between ₹20k and ₹2L".
+ *
+ * Every slot beyond the subject is optional, so callers passing only path facets get the same
+ * shape as before plus the verb. That split is deliberate and is what the two call sites use:
+ *
+ * - **`<title>` / metadata: path facets only.** These pages are indexed, and a title driven by
+ *   the path stays stable instead of producing a permutation per filter combination on URLs that
+ *   canonicalise straight back to it.
+ * - **The H1: path facets *and* the query filters.** That is what the visitor is actually looking
+ *   at, and on a canonicalised variant it carries no ranking weight.
+ */
+export function buildHeading(params: {
+  fallbackLabel: string;
+  cityName: string;
+  areaName?: string;
+  /** How many areas are selected, when it is more than one and no single area names the path. */
+  areaCount?: number;
+  propertyType?: PropertyTypeFilter;
+  bedrooms?: number;
+  listingCategory?: ListingCategory;
+  transactionType?: TransactionType;
+  /** Adds the leading Buy/Rent. */
+  transactionGroup?: TransactionGroup;
+  sharingType?: string;
+  condition?: string;
+  serviceType?: string;
+  /** `?furnished=` — H1 only. */
+  furnished?: string;
+  /** `?minPrice=`/`?maxPrice=` — H1 only. */
+  minPrice?: number;
+  maxPrice?: number;
+}): string {
+  const verb = params.transactionGroup ? GROUP_VERBS[params.transactionGroup] : undefined;
+  const subject = buildHeadingSubject({ ...params, hasVerb: verb !== undefined });
+  const place = buildPlaceLabel(params);
+
+  return [verb, furnishingLabel(params.furnished), subject, `in ${place}`, priceClause(params.minPrice, params.maxPrice)]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
