@@ -1041,6 +1041,10 @@ export class ListingsService {
       input.transactionType,
       input.attributes ?? {},
     );
+    const attributes = this.normalizeAttributes(
+      input.category,
+      input.attributes ?? {},
+    );
     this.assertValidPriceQualifier(
       input.category,
       input.transactionType,
@@ -1073,7 +1077,7 @@ export class ListingsService {
         // Empty string normalised to null: "left blank" and "cleared" are the same thing here,
         // and a null keeps the "has a description" check a single test everywhere downstream.
         description: input.description?.trim() || null,
-        attributes: (input.attributes ?? {}) as Prisma.InputJsonValue,
+        attributes: attributes as Prisma.InputJsonValue,
         tag: deriveTag(input),
         ownerId,
         expiresAt,
@@ -1615,16 +1619,22 @@ export class ListingsService {
     // fields, different allowed keys) — reset to the new category's defaults exactly like the
     // posting wizard does on a category change, unless the caller already sent a fresh attributes
     // object for the new category in the same request.
-    const attributesToValidate =
+    const rawAttributes =
       dto.attributes ??
       (categoryOrTxnChanged ? defaultAttributesFor(nextCategory) : undefined);
-    if (attributesToValidate !== undefined) {
+    if (rawAttributes !== undefined) {
       this.assertValidAttributes(
         nextCategory,
         nextTransactionType,
-        attributesToValidate,
+        rawAttributes,
       );
     }
+    // Same normalisation the create path does — an edit must not put a string back into a column
+    // the filter reads as a number. See normalizeAttributes.
+    const attributesToValidate =
+      rawAttributes === undefined
+        ? undefined
+        : this.normalizeAttributes(nextCategory, rawAttributes);
 
     // Price/price-qualifier legality (e.g. "Contact for price") depends on (category,
     // transactionType) too, so re-check them against the *new* pairing whenever either changes,
@@ -2041,6 +2051,40 @@ export class ListingsService {
       select: { listingId: true },
     });
     return new Set(rows.map((r) => r.listingId));
+  }
+
+  /**
+   * Coerces number-typed attributes to actual JSON numbers.
+   *
+   * Every client sends them as strings — the posting wizard's inputs are text, and
+   * `CATEGORY_FIELD_CONFIG`'s own `defaultValue` for bedrooms is the string `"0"`. Stored that
+   * way, `attributes.bedrooms` was `"2"`, and the bedroom filter compares against the number 2:
+   * so **every BHK filter and every `/{n}bhk` facet page returned nothing at all**, whatever was
+   * ticked. One production row even held `"02"`, which no string comparison would have matched
+   * either.
+   *
+   * Normalising on the way in rather than casting on the way out is what keeps one
+   * representation in the column: the filter, the facet path builder
+   * (`canonicalFacetPath`) and `cardSpecs` all read the same value, and a cast in the query would
+   * have had to be repeated in each of them — and cannot be expressed in a Prisma JSON filter at
+   * all.
+   *
+   * Runs after `assertValidAttributes`, which has already rejected anything non-numeric, so a
+   * value that survives to here converts or is left exactly as it was.
+   */
+  private normalizeAttributes(
+    category: ListingCategory,
+    attributes: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const normalized: Record<string, unknown> = { ...attributes };
+    for (const field of CATEGORY_FIELD_CONFIG[category]) {
+      if (field.type !== 'number') continue;
+      const value = normalized[field.key];
+      if (typeof value !== 'string' || value.trim() === '') continue;
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) normalized[field.key] = parsed;
+    }
+    return normalized;
   }
 
   private assertValidAttributes(

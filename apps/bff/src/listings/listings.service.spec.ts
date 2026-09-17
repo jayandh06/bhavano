@@ -470,6 +470,44 @@ describe('ListingsService', () => {
       preferredTenantTypes: ['family', 'company'],
     };
 
+    /** The bug this pins: attributes came in as strings from every client, nothing normalised
+     * them, and the bedroom filter compares against a number — so every BHK filter and every
+     * /{n}bhk facet page matched nothing at all. */
+    it('stores number-typed attributes as numbers, leaving everything else untouched', () => {
+      const { service } = makeService();
+
+      const normalized = (service as any).normalizeAttributes('apartment', {
+        ...validAttributes,
+        bedrooms: '02',
+      }) as Record<string, unknown>;
+
+      expect(normalized.bedrooms).toBe(2);
+      expect(normalized.carpetAreaSqft).toBe(950);
+      expect(normalized.closedParkingCount).toBe(0);
+      // Selects, multi-selects and yes/no stay exactly as they were — only `type: "number"`
+      // fields are touched.
+      expect(normalized.gatedCommunity).toBe('yes');
+      expect(normalized.preferredTenantTypes).toEqual(['family', 'company']);
+    });
+
+    it('leaves a blank or unparseable number alone rather than inventing a value', () => {
+      const { service } = makeService();
+
+      const normalized = (service as any).normalizeAttributes('apartment', {
+        bedrooms: '',
+        bathrooms: '   ',
+        carpetAreaSqft: 'about 900',
+        balconyCount: 3,
+      }) as Record<string, unknown>;
+
+      // "" is how "left blank" is stored, and must not become 0.
+      expect(normalized.bedrooms).toBe('');
+      expect(normalized.bathrooms).toBe('   ');
+      expect(normalized.carpetAreaSqft).toBe('about 900');
+      // Already a number: idempotent, which is what makes re-saving a listing safe.
+      expect(normalized.balconyCount).toBe(3);
+    });
+
     it('accepts valid rent attributes and multi-select tenant types', () => {
       const { service } = makeService();
       expect(() =>
@@ -491,9 +529,10 @@ describe('ListingsService', () => {
           maintenanceFeeApplicable: 'no',
           monthlyMaintenanceFee: '2500',
         }),
-      ).toThrow(
-        'Monthly maintenance fee amount requires applicability to be Yes',
-      );
+        // The generic dependency check fires first and names the field by its own config label —
+        // this test was written against an older, field-specific message that the config's
+        // `dependsOn` support replaced, and had been failing since.
+      ).toThrow('Maintenance fee (₹) is not applicable');
     });
 
     it('accepts legacy sqft as the area required by older listings', () => {
