@@ -3,6 +3,7 @@ import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
+  AdminPaymentsPage,
   AdminRequirementsPage,
   AdminUsersPage,
   CampaignPreviewDto,
@@ -14,7 +15,6 @@ import type {
   FetchedPairDto,
   PlacesFetchLogPage,
   ImportOutreachContactsResult,
-  ListingBoostsPage,
   ListingDetailDto,
   ListingEditLogPage,
   ListingEngagementPage,
@@ -54,7 +54,7 @@ import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { ListUsersDto } from './dto/list-users.dto';
 import { SendWelcomeDto } from './dto/send-welcome.dto';
 import { SendPostedNotificationDto } from './dto/notify-posted.dto';
-import { ListBoostsDto } from './dto/list-boosts.dto';
+import { ListPaymentsDto } from './dto/list-payments.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-settings.dto';
 import { ListRequirementsDto } from './dto/list-requirements.dto';
@@ -372,15 +372,15 @@ export class AdminController {
     return this.adminService.setDiscountCodeActive(id, dto.active);
   }
 
-  @Get('boosts')
-  listBoosts(@Query() query: ListBoostsDto): Promise<ListingBoostsPage> {
-    return this.adminService.listBoosts(query);
-  }
-
   @Post('listings/:id/revoke-boost')
   async revokeBoost(@Param('id') id: string): Promise<{ success: true }> {
     await this.adminService.revokeBoost(id);
     return { success: true };
+  }
+
+  @Get('payments')
+  listPayments(@Query() query: ListPaymentsDto): Promise<AdminPaymentsPage> {
+    return this.adminService.listPayments(query);
   }
 
   // --- Outreach contacts --------------------------------------------------

@@ -5,13 +5,13 @@ import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
+  AdminPaymentsPage,
   AdminUpdateListingInput,
   AdminRequirementsPage,
   AdminUsersPage,
   ContactRevealSettingsDto,
   DeviceType,
   DiscountCodeDto,
-  ListingBoostsPage,
   ListingDetailDto,
   ListingEditLogPage,
   ListingEngagementPage,
@@ -52,7 +52,7 @@ import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
 import { ListUsersDto, UserSort } from './dto/list-users.dto';
-import { ListBoostsDto } from './dto/list-boosts.dto';
+import { AdminPaymentSort, ListPaymentsDto } from './dto/list-payments.dto';
 import { ListDiscountCodesDto } from './dto/list-discount-codes.dto';
 import { CreateDiscountCodeDto } from './dto/create-discount-code.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
@@ -118,6 +118,31 @@ const USER_ORDER_BY: Record<UserSort, Prisma.UserOrderByWithRelationInput[]> = {
   createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
   name_asc: [{ name: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
+};
+
+function paymentOrderBy(
+  field: Prisma.PaymentOrderByWithRelationInput,
+): Prisma.PaymentOrderByWithRelationInput[] {
+  return [field, { id: 'asc' }];
+}
+
+const ADMIN_PAYMENT_ORDER_BY: Record<AdminPaymentSort, Prisma.PaymentOrderByWithRelationInput[]> = {
+  createdAt_desc: paymentOrderBy({ createdAt: 'desc' }),
+  createdAt_asc: paymentOrderBy({ createdAt: 'asc' }),
+  paidAt_desc: paymentOrderBy({ paidAt: nullsLast('desc') }),
+  paidAt_asc: paymentOrderBy({ paidAt: nullsLast('asc') }),
+  amount_desc: paymentOrderBy({ amount: 'desc' }),
+  amount_asc: paymentOrderBy({ amount: 'asc' }),
+  status_desc: paymentOrderBy({ status: 'desc' }),
+  status_asc: paymentOrderBy({ status: 'asc' }),
+  purpose_desc: paymentOrderBy({ purpose: 'desc' }),
+  purpose_asc: paymentOrderBy({ purpose: 'asc' }),
+  user_desc: paymentOrderBy({ user: { name: nullsLast('desc') } }),
+  user_asc: paymentOrderBy({ user: { name: nullsLast('asc') } }),
+  // Listing.title is a required column (unlike User.name) — nulls-handling isn't a valid option
+  // on it at all, even though the *relation* itself is optional (a non-listing purchase has none).
+  listing_desc: paymentOrderBy({ listing: { title: 'desc' } }),
+  listing_asc: paymentOrderBy({ listing: { title: 'asc' } }),
 };
 
 /**
@@ -1041,41 +1066,91 @@ export class AdminService {
     };
   }
 
-  /** Every purchased boost, newest first — lets support see what a listing's owner actually
-   * paid for, alongside `revokeBoost` below for the manual-grant/refund-support case. */
-  async listBoosts(query: ListBoostsDto): Promise<ListingBoostsPage> {
-    const { offset, limit } = query;
+  /** Manual override for support cases (e.g. a payment that should still get the boost, or a
+   * refund) — just clears the denormalized fields the browse query actually reads; the
+   * ListingBoost/Payment audit rows are left untouched. Surfaced from the Subscriptions screen's
+   * per-row action now — the boosts-only listing this used to pair with was folded into that
+   * unified feed (`listPayments` below already covers every purchased boost). */
+  async revokeBoost(listingId: string): Promise<void> {
+    await this.prisma.listing.update({ where: { id: listingId }, data: { boostedUntil: null, boostRank: null } });
+  }
+
+  /** Every purchase in one feed, whatever its purpose — the boosts-only screen above only ever
+   * covers `listing_boost`; this is where support looks up a Bhavano Plus/Agent Pro/seller slot
+   * pack/contact-reveal-credits/instant-alerts purchase instead of hunting through five separate
+   * screens. `expiresAt` isn't a Payment column — it's read off whichever of the four
+   * purpose-specific audit-trail rows this payment actually created (see AdminPaymentDto's own
+   * doc comment), so it's resolved here per-row rather than in the query itself. */
+  async listPayments(query: ListPaymentsDto): Promise<AdminPaymentsPage> {
+    const { offset, from, to, userId, purpose, status, listingTitle, sort, limit } = query;
+
+    const where: Prisma.PaymentWhereInput = {
+      ...(from || to
+        ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
+        : {}),
+      ...(userId ? { userId } : {}),
+      ...(purpose ? { purpose } : {}),
+      ...(status ? { status } : {}),
+    };
+    const listingTitleClause = parseTextFilter(listingTitle);
+    // parseTextFilter is typed for Visit's nullable string columns (StringNullableFilter);
+    // Listing.title is required, so its own filter type (StringFilter) has no `| null` on
+    // `equals` — parseTextFilter never actually produces one (see its own doc comment), so this
+    // is a safe narrowing, not a real type mismatch.
+    if (listingTitleClause) where.listing = { title: listingTitleClause as Prisma.StringFilter };
 
     const [rows, total] = await Promise.all([
-      this.prisma.listingBoost.findMany({
-        include: { listing: { include: { owner: { select: { name: true } } } }, payment: true },
-        orderBy: [{ boostedFrom: 'desc' }, { id: 'asc' }],
+      this.prisma.payment.findMany({
+        where,
+        include: {
+          user: { select: { name: true, phone: true, email: true } },
+          listing: { select: { title: true } },
+          discountCode: { select: { code: true } },
+          listingBoost: { select: { boostedUntil: true } },
+          listingInstantAlert: { select: { activeUntil: true } },
+          subscription: { select: { endsAt: true } },
+          contactRevealCreditBatch: { select: { expiresAt: true } },
+        },
+        orderBy: ADMIN_PAYMENT_ORDER_BY[sort ?? 'createdAt_desc'],
         skip: offset ?? 0,
         take: limit,
       }),
-      this.prisma.listingBoost.count(),
+      this.prisma.payment.count({ where }),
     ]);
 
     return {
-      items: rows.map((row) => ({
-        id: row.id,
-        listingId: row.listingId,
-        listingTitle: row.listing.title,
-        ownerName: row.listing.owner.name,
-        boostedFrom: row.boostedFrom.toISOString(),
-        boostedUntil: row.boostedUntil.toISOString(),
-        amount: row.payment.amount,
-        currency: row.payment.currency,
-      })),
+      items: rows.map((p) => {
+        const expiresAt =
+          p.listingBoost?.boostedUntil ??
+          p.listingInstantAlert?.activeUntil ??
+          p.subscription?.endsAt ??
+          p.contactRevealCreditBatch?.expiresAt ??
+          null;
+
+        return {
+          id: p.id,
+          purpose: p.purpose,
+          amount: p.amount,
+          currency: p.currency,
+          status: p.status,
+          createdAt: p.createdAt.toISOString(),
+          paidAt: p.paidAt?.toISOString() ?? null,
+          expiresAt: expiresAt?.toISOString() ?? null,
+          userId: p.userId,
+          userName: p.user.name,
+          userPhone: p.user.phone,
+          userEmail: p.user.email,
+          ...(p.listingId ? { listingId: p.listingId, listingTitle: p.listing?.title } : {}),
+          ...(p.boostDays ? { boostDays: p.boostDays } : {}),
+          ...(p.boostIncludesInstantAlerts ? { boostIncludesInstantAlerts: true } : {}),
+          ...(p.subscriptionMonths ? { subscriptionMonths: p.subscriptionMonths } : {}),
+          ...(p.agentProUnits ? { agentProUnits: p.agentProUnits } : {}),
+          ...(p.creditPackSize ? { creditPackSize: p.creditPackSize } : {}),
+          ...(p.discountCode ? { discountCode: p.discountCode.code } : {}),
+        };
+      }),
       total,
     };
-  }
-
-  /** Manual override for support cases (e.g. a payment that should still get the boost, or a
-   * refund) — just clears the denormalized fields the browse query actually reads; the
-   * ListingBoost/Payment audit rows are left untouched. */
-  async revokeBoost(listingId: string): Promise<void> {
-    await this.prisma.listing.update({ where: { id: listingId }, data: { boostedUntil: null, boostRank: null } });
   }
 
   /** The unmet-demand queue — Phase 0 of docs/plans/property-requirements-demand-side.md.

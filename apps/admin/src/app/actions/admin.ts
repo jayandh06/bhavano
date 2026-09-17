@@ -263,7 +263,7 @@ export async function revokeBoostAction(listingId: string): Promise<ActionResult
   const { accessToken } = await requireAdmin();
   try {
     await revokeBoost(accessToken, listingId);
-    revalidatePath("/boosts");
+    revalidatePath("/subscriptions");
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to revoke boost" };

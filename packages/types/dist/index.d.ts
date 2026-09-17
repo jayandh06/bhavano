@@ -774,21 +774,6 @@ export interface BoostPricingPreviewDto {
     boost7WithInstantAlerts: BoostPricingOptionDto;
     boost15WithInstantAlerts: BoostPricingOptionDto;
 }
-/** Admin's boost-management list — who bought it, for how long, on which listing. */
-export interface ListingBoostDto {
-    id: string;
-    listingId: string;
-    listingTitle: string;
-    ownerName: string | null;
-    boostedFrom: string;
-    boostedUntil: string;
-    amount: number;
-    currency: string;
-}
-export interface ListingBoostsPage {
-    items: ListingBoostDto[];
-    total: number;
-}
 /** One field's before/after value in a ListingEditLogEntryDto's `changes` — values are
  * `unknown` because different actions touch completely different field types (a number for
  * price, a string for status, an object for attributes). */
@@ -877,6 +862,44 @@ export interface PaymentHistoryItemDto {
 export interface PaymentHistoryPage {
     items: PaymentHistoryItemDto[];
     nextCursor: string | null;
+}
+/** Admin's unified purchases view — every `Payment` regardless of purpose, replacing what used to
+ * be a boosts-only list. Same purpose-specific-optional-fields convention as
+ * `PaymentHistoryItemDto`, plus what only an admin needs: who bought it (`userId`/`userName`/
+ * `userPhone`/`userEmail`) and when whatever it activated expires. `expiresAt` is resolved
+ * server-side from whichever of `ListingBoost.boostedUntil`/`ListingInstantAlert.activeUntil`/
+ * `UserSubscription.endsAt`/`ContactRevealCreditBatch.expiresAt` this payment's purpose actually
+ * created — never a column on Payment itself, so (see AdminService.listPayments) it can't be
+ * sorted on without a raw-SQL join across four tables, the same reason PageVisitDto.pageViewCount
+ * isn't sortable either. */
+export interface AdminPaymentDto {
+    id: string;
+    purpose: PaymentPurpose;
+    amount: number;
+    currency: string;
+    status: PaymentStatus;
+    createdAt: string;
+    paidAt: string | null;
+    expiresAt: string | null;
+    userId: string;
+    userName: string | null;
+    userPhone: string | null;
+    userEmail: string | null;
+    listingId?: string;
+    listingTitle?: string;
+    boostDays?: number;
+    boostIncludesInstantAlerts?: boolean;
+    subscriptionMonths?: number;
+    agentProUnits?: number;
+    creditPackSize?: number;
+    /** The code actually applied at order-creation, if any — not every discount code redemption
+     * necessarily reached `paid` (see DiscountCodeRedemption's own doc comment), but this reflects
+     * what the buyer entered regardless of outcome. */
+    discountCode?: string;
+}
+export interface AdminPaymentsPage {
+    items: AdminPaymentDto[];
+    total: number;
 }
 /** Pack size/price are never client-supplied — always read from ContactRevealSetting
  * server-side. `discountCode` is optional, validated server-side against DiscountCode. */

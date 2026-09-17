@@ -746,7 +746,7 @@ export class ListingsService {
   /** A listing's "History" tab — every ListingEditLog row, newest first. `actorName` is resolved
    * here (not stored denormalized on the log row) so a later name change is reflected
    * retroactively rather than freezing whatever the actor was called at the time — same tradeoff
-   * ListingBoostDto.ownerName already makes. Null for 'system' rows (no actorId at all). */
+   * AdminPaymentDto.userName already makes. Null for 'system' rows (no actorId at all). */
   async listEditHistory(listingId: string, offset: number, limit: number): Promise<ListingEditLogPage> {
     const [rows, total] = await Promise.all([
       this.prisma.listingEditLog.findMany({

@@ -6,6 +6,7 @@ import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
   AdminListingsPage,
+  AdminPaymentsPage,
   AdminRequirementsPage,
   AdminUpdateListingInput,
   AdminUsersPage,
@@ -19,7 +20,6 @@ import type {
   DeviceType,
   DiscountCodeDto,
   FlagListingInput,
-  ListingBoostsPage,
   ListingCategory,
   ListingDetailDto,
   ListingEditLogPage,
@@ -30,6 +30,8 @@ import type {
   LoginMethod,
   MessageDto,
   PageVisitsPage,
+  PaymentPurpose,
+  PaymentStatus,
   ModerationState,
   RateLimitSettingsDto,
   RequirementStatus,
@@ -101,6 +103,13 @@ export type AdminPageVisitSort = `${AdminPageVisitSortField}_asc` | `${AdminPage
 
 /** Mirrors the BFF's PAGE_VISIT_IDENTITY_VALUES (apps/bff/src/admin/dto/list-page-visits.dto.ts). */
 export type AdminPageVisitIdentity = "any" | "anonymous" | "logged_in";
+
+/** Mirrors the BFF's ADMIN_PAYMENT_SORT_VALUES (apps/bff/src/admin/dto/list-payments.dto.ts) —
+ * one asc/desc pair per sortable column. No `expiresAt` pair: see AdminPaymentDto's own doc
+ * comment for why it can't be ordered on. */
+export type AdminPaymentSortField = "createdAt" | "paidAt" | "amount" | "status" | "purpose" | "user" | "listing";
+
+export type AdminPaymentSort = `${AdminPaymentSortField}_asc` | `${AdminPaymentSortField}_desc`;
 
 /** Mirrors the BFF's PAGE_VISIT_TRAFFIC_VALUES. "humans" means *classified* as not-a-bot —
  * see that constant's own comment on why unclassified history can't be counted as human. */
@@ -419,6 +428,27 @@ export function fetchSessionTrail(accessToken: string, sessionId: string): Promi
   return authedBffFetch(accessToken, `/admin/page-visits/${encodeURIComponent(sessionId)}/trail`, { cache: "no-store" });
 }
 
+export interface PaymentsQuery {
+  offset?: number;
+  /** Full ISO instants — the page turns its IST date pickers into `+05:30` day bounds. */
+  from?: string;
+  to?: string;
+  userId?: string;
+  purpose?: PaymentPurpose;
+  status?: PaymentStatus;
+  listingTitle?: string;
+  sort?: AdminPaymentSort;
+  limit?: number;
+}
+
+export function fetchPayments(accessToken: string, query: PaymentsQuery = {}): Promise<AdminPaymentsPage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/payments?${params.toString()}`, { cache: "no-store" });
+}
+
 export function fetchUserActivity(accessToken: string, userId: string): Promise<UserActivityDto> {
   return authedBffFetch(accessToken, `/admin/users/${userId}/activity`, { cache: "no-store" });
 }
@@ -461,18 +491,6 @@ export function fetchRateLimitSettings(accessToken: string): Promise<RateLimitSe
 
 export function updateRateLimitSettings(accessToken: string, input: RateLimitSettingsDto): Promise<RateLimitSettingsDto> {
   return authedBffFetch(accessToken, "/admin/rate-limits", { method: "PATCH", body: JSON.stringify(input) });
-}
-
-export interface ListBoostsQuery {
-  offset?: number;
-  limit?: number;
-}
-
-export function fetchBoosts(accessToken: string, query: ListBoostsQuery = {}): Promise<ListingBoostsPage> {
-  const params = new URLSearchParams();
-  if (query.offset !== undefined) params.set("offset", String(query.offset));
-  if (query.limit) params.set("limit", String(query.limit));
-  return authedBffFetch(accessToken, `/admin/boosts?${params.toString()}`, { cache: "no-store" });
 }
 
 export function revokeBoost(accessToken: string, listingId: string): Promise<{ success: true }> {
