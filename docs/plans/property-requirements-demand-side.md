@@ -184,15 +184,19 @@ server-side, and an anonymous `POST /requirements` is refused with 401.
 
 ## Not yet done
 
-- **The "Save this search" control on results pages.** Phase 0 only added capture at the *empty*
-  state, so someone who sees results they don't like still has no way to be told when something
-  better appears — the other half of reviving the saved-search feature.
-- **`/my-requirements`.** `GET /requirements/mine` exists in the BFF; the page does not. The
-  confirmation message's link is the Phase 0 return path (see the information-architecture
-  section).
 - **The standalone `/post-requirement` form** — see the Phase 1 section for why it was deferred
-  rather than built.
-- The public feed, the paid contact path, SEO aggregates and mobile — Phase 2 and beyond.
+  rather than built. This is the only *planned* item not built.
+- The public feed, the paid contact path and the SEO aggregates — Phase 2 and beyond.
+
+**Closed since first writing this section** (kept here because the list was wrong for a day, and a
+stale "not yet done" is worse than none):
+
+- Capture on pages that *do* have results — the prompt's `inline` variant sits below the grid, so
+  someone who looked at results and left unsatisfied is captured too. That is the "save this
+  search" gap, closed by the capture rather than by a second control.
+- `/my-requirements` — built in Phase 1, with renew, close and the note/timeline.
+- Mobile — `dace6e0` (a concurrent session) added the same empty-result capture to the app's
+  home tab.
 
 ## Phase 0 as originally planned (superseded by the above)
 
