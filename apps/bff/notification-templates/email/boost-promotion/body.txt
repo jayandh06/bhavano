@@ -1,0 +1,11 @@
+Hi {{name}},
+
+Your ad "{{title}}" in {{location}} is live on Bhavano. If you would like it in front of more people, there are two ways to give it a lift.
+
+Boost — ₹{{boostPrice}} for {{boostDays}} days. Your ad is placed above unboosted listings in its category and city, and carries a Featured label wherever it appears, so it is the one buyers see first rather than one they scroll past.
+
+Instant Alerts — ₹{{alertsPrice}} per ad. You are notified the moment someone messages you about it, instead of finding out the next time you open the app. Enquiries go cold quickly, and the first reply usually wins the conversation.
+
+Both are one-time payments with no subscription. The button below opens Boost for this ad; to add Instant Alerts instead, use {{alertsLink}}.
+
+If you would rather not, your ad stays live and free for its full term — nothing changes.

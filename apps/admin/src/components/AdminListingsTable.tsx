@@ -14,7 +14,7 @@ import type {
   SendPostedNotificationResponseDto,
   TransactionType,
 } from "@bhavano/types";
-import { sendPostedNotificationAction } from "@/app/actions/admin";
+import { sendBoostPromotionAction, sendPostedNotificationAction } from "@/app/actions/admin";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import type { AdminListingSortField } from "@/lib/bff";
 import { formatDate } from "@/lib/formatDateTime";
@@ -115,12 +115,14 @@ export function AdminListingsTable({
   const [pending, setPending] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
 
-  // Only listings that haven't already gotten the "your ad is live" acknowledgement are
-  // selectable — the whole point of this action is filling that gap, not a deliberate resend
-  // (see AdminService.sendPostedNotification's own doc comment on that distinction).
-  const eligible = items.filter((item) => item.postedNotificationSent === false);
-  const eligibleIds = new Set(eligible.map((item) => item.id));
-  const allSelected = eligible.length > 0 && eligible.every((item) => selected.has(item.id));
+  // Every row is selectable. Selection used to be limited to listings still missing the "your ad
+  // is live" acknowledgement, which was right while that was the only bulk action — it is no
+  // longer, and a Boost promotion is worth sending to exactly the ads that *did* get theirs. Each
+  // action's own rules stay on the server, where they belong: the posted resend still refuses an
+  // already-sent listing and the promotion still refuses one promoted recently, and both report
+  // per-listing in the summary below.
+  const allSelected = items.length > 0 && items.every((item) => selected.has(item.id));
+  const pendingPostedCount = items.filter((item) => item.postedNotificationSent === false).length;
 
   const cityId = str(sp.cityId);
 
@@ -327,7 +329,7 @@ export function AdminListingsTable({
   );
 
   function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(eligibleIds));
+    setSelected(allSelected ? new Set() : new Set(items.map((item) => item.id)));
   }
 
   function toggleOne(id: string) {
@@ -339,14 +341,15 @@ export function AdminListingsTable({
     });
   }
 
-  async function onSend() {
+  /** Both bulk actions report the same shape, so they share one handler — only which server
+   * action runs differs. */
+  async function onSend(send: (listingIds: string[]) => Promise<SendPostedNotificationResponseDto | { success: false; error: string }>) {
     const listingIds = Array.from(selected);
     if (listingIds.length === 0) return;
     setPending(true);
     setSummary(null);
 
-    const result: SendPostedNotificationResponseDto | { success: false; error: string } =
-      await sendPostedNotificationAction(listingIds);
+    const result = await send(listingIds);
     setPending(false);
 
     if ("success" in result && result.success === false) {
@@ -380,9 +383,25 @@ export function AdminListingsTable({
           }}
         >
           <span style={{ fontSize: 13, fontWeight: 700 }}>{selected.size} selected</span>
-          <button onClick={onSend} disabled={pending} style={actionButtonStyle}>
-            {pending ? "Sending…" : "Send notification"}
+          <button onClick={() => void onSend(sendPostedNotificationAction)} disabled={pending} style={actionButtonStyle}>
+            {pending ? "Sending…" : "Send posted notification"}
           </button>
+          {/* Boost/Instant Alerts promotion to the owners of the selected live ads. Secondary
+            * styling because it is the marketing one of the two: reaching for it should be a
+            * decision, not the thing your cursor lands on. */}
+          <button
+            onClick={() => void onSend(sendBoostPromotionAction)}
+            disabled={pending}
+            style={secondaryActionButtonStyle}
+            title="Emails (or WhatsApps) the owner a Boost / Instant Alerts offer linking straight to checkout for that ad"
+          >
+            {pending ? "Sending…" : "Send boost promo"}
+          </button>
+          {pendingPostedCount > 0 && (
+            <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
+              {pendingPostedCount} on this page never got the posted notification
+            </span>
+          )}
         </div>
       )}
 
@@ -417,7 +436,7 @@ export function AdminListingsTable({
             <thead>
               <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
                 <th style={thStyle}>
-                  {eligible.length > 0 && <input type="checkbox" checked={allSelected} onChange={toggleAll} />}
+                  {items.length > 0 && <input type="checkbox" checked={allSelected} onChange={toggleAll} />}
                 </th>
                 {visible.map((c) => (
                   <th key={c.key} style={thStyle}>
@@ -457,9 +476,7 @@ export function AdminListingsTable({
                   style={{ borderTop: "1px solid var(--border)" }}
                 >
                   <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                    {eligibleIds.has(item.id) && (
-                      <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
-                    )}
+                    <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
                   </td>
                   {visible.map((c) => (
                     <td
@@ -777,6 +794,17 @@ const filterSubmitStyle: React.CSSProperties = {
   borderRadius: 6,
   padding: "4px 8px",
   fontSize: 11,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const secondaryActionButtonStyle: React.CSSProperties = {
+  background: "none",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  padding: "7px 12px",
+  fontSize: 12.5,
   fontWeight: 700,
   cursor: "pointer",
 };

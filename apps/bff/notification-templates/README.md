@@ -17,9 +17,11 @@ email/buyer-premium-activated/          Bhavano Plus purchase confirmation
 email/seller-slot-pack-activated/       seller slot pack purchase confirmation
 email/agent-pro-activated/              Agent/Broker Pro purchase confirmation
 email/contact-reveal-credits-activated/ contact-reveal credit pack purchase confirmation
+email/boost-promotion/                  the admin-sent "boost this ad" offer
 whatsapp/welcome/         the approved WhatsApp welcome template's wording
 whatsapp/listing-posted/  the approved WhatsApp "ad is live" template's wording
 whatsapp/claim-listing/  the approved "claim_listing" WhatsApp template's wording
+whatsapp/boost-promotion/ the "boost_promotion" template's wording — NOT yet submitted to Meta
 ```
 
 ## `email/` — takes effect on the next send, no rebuild or restart

@@ -35,6 +35,7 @@ import type {
   WelcomeChannel,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { boostPriceFor, type BoostDurationDays } from '@bhavano/types/boostPricing';
 import { ListingsService } from '../listings/listings.service';
 import { MessagingService } from '../messaging/messaging.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -199,6 +200,18 @@ function parseTextFilter(raw: string | undefined): Prisma.StringNullableFilter |
 // seedBulkImportOwner.ts — the placeholder account bulk-imported listings are posted under
 // until claimed. Never a real recipient for "your ad is live".
 const BULK_IMPORT_OWNER_PHONE = '9000000002';
+
+/** `ListingNotificationLog.kind` for the Boost/Instant Alerts promotion, alongside 'posted' and
+ * the expiry reminder's own kind. */
+const BOOST_PROMO_NOTIFICATION_KIND = 'boost_promo';
+
+/** How long the same listing is left alone after a promotion. A second nudge weeks later is fair;
+ * two in a week is spam, and an owner who reads it that way stops reading everything else. */
+const PROMO_COOLDOWN_DAYS = 14;
+
+/** The duration quoted in the message — the cheaper of the two, as the entry price. The dialog
+ * the link opens offers both. */
+const PROMO_BOOST_DAYS: BoostDurationDays = 7;
 
 @Injectable()
 export class AdminService {
@@ -807,6 +820,124 @@ export class AdminService {
 
       await this.prisma.listingNotificationLog.create({
         data: { listingId, kind: 'posted', channel: sent.channel, providerMessageId: sent.messageId ?? null },
+      });
+      results.push({ listingId, success: true });
+    }
+
+    return {
+      sent: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
+      results,
+    };
+  }
+
+  /**
+   * Admin-triggered promotion of Boost and Instant Alerts to the owners of selected live ads —
+   * the "Send boost promo" action on the listings dashboard.
+   *
+   * Unlike `sendPostedNotification` above, this is marketing, so the guard rails are different:
+   * that one is a one-shot resend of something owed to the owner, this one is a pitch, and a
+   * pitch that arrives twice is worse than one that never arrives.
+   *
+   *  - **A cooldown, not a once-ever gate.** `PROMO_COOLDOWN_DAYS` since the last promo for the
+   *    same listing. A second nudge weeks later is fair; two in a week is spam.
+   *  - **Only live ads.** Nothing to boost on an inactive, sold or expired listing, and asking
+   *    someone to pay to promote one would be indefensible.
+   *  - **Nothing to sell, nothing sent.** An ad already boosted *and* already on Instant Alerts
+   *    is skipped — everything the message offers, the owner has bought.
+   *  - **No placeholder owners**, same as the posted resend: a bulk-import row has no real
+   *    recipient behind it.
+   *
+   * Prices come from the live admin-editable settings, not the copy, so the figure in the email
+   * is the figure at checkout. The 7-day boost is quoted as the entry price; the dialog the link
+   * opens offers both durations.
+   *
+   * Sequential rather than `Promise.all`: one external send (SMTP / WhatsApp) per listing.
+   */
+  async sendBoostPromotion(listingIds: string[]): Promise<SendPostedNotificationResponseDto> {
+    const cooldownStart = new Date(Date.now() - PROMO_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+    const [listings, boostPrices, alertsPrices] = await Promise.all([
+      this.prisma.listing.findMany({
+        where: { id: { in: listingIds } },
+        include: {
+          owner: { select: { name: true, email: true, phone: true } },
+          city: true,
+          area: true,
+          notificationLogs: {
+            where: { kind: BOOST_PROMO_NOTIFICATION_KIND, sentAt: { gte: cooldownStart } },
+            take: 1,
+          },
+        },
+      }),
+      this.boostPricingSettingsService.getSettings(),
+      this.instantAlertsPricingSettingsService.getSettings(),
+    ]);
+    const byId = new Map(listings.map((l) => [l.id, l]));
+    const now = Date.now();
+
+    const results: SendPostedNotificationResultDto[] = [];
+    for (const listingId of listingIds) {
+      const listing = byId.get(listingId);
+      if (!listing) {
+        results.push({ listingId, success: false, error: 'Listing not found' });
+        continue;
+      }
+      if (listing.status !== 'active' || listing.expiresAt.getTime() <= now) {
+        results.push({ listingId, success: false, error: 'Not a live listing — nothing to promote' });
+        continue;
+      }
+      if (listing.owner.phone === BULK_IMPORT_OWNER_PHONE) {
+        results.push({ listingId, success: false, error: 'Bulk-import placeholder owner — no real recipient' });
+        continue;
+      }
+      if (
+        (listing.boostedUntil?.getTime() ?? 0) > now &&
+        (listing.instantAlertsUntil?.getTime() ?? 0) > now
+      ) {
+        results.push({ listingId, success: false, error: 'Already boosted and on Instant Alerts' });
+        continue;
+      }
+      if (listing.notificationLogs.length > 0) {
+        results.push({
+          listingId,
+          success: false,
+          error: `Promoted in the last ${PROMO_COOLDOWN_DAYS} days`,
+        });
+        continue;
+      }
+
+      const channel = await this.notificationsService.notifyBoostPromotion(
+        listing.owner,
+        {
+          id: listing.id,
+          title: listing.title,
+          cityName: listing.city.name,
+          area: listing.area.name,
+        },
+        {
+          boostPrice: boostPriceFor(listing.category, PROMO_BOOST_DAYS, boostPrices),
+          boostDays: PROMO_BOOST_DAYS,
+          alertsPrice: alertsPrices.instantAlertsPrice,
+        },
+      );
+
+      if (!channel) {
+        results.push({
+          listingId,
+          success: false,
+          // Two different causes, and the difference decides what an admin does next: chase an
+          // email address, or get the WhatsApp template approved.
+          error: listing.owner.email
+            ? 'Send failed'
+            : listing.owner.phone
+              ? 'Owner has no email, and no approved WhatsApp promo template (WHATSAPP_BOOST_PROMO_TEMPLATE)'
+              : 'Owner has no email or phone on file',
+        });
+        continue;
+      }
+
+      await this.prisma.listingNotificationLog.create({
+        data: { listingId, kind: BOOST_PROMO_NOTIFICATION_KIND, channel },
       });
       results.push({ listingId, success: true });
     }

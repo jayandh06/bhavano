@@ -147,6 +147,42 @@ rather than a vague paywall:
    actual trust mechanism, not just marketing copy. (Flagged as a Phase 4/future item — needs an
    ID-upload + admin-review flow, a bigger lift than the payment-gated tiers above.)
 
+## Admin-sent Boost / Instant Alerts promotion (built 2026-09-17)
+
+Boost and Instant Alerts both existed, and both waited for the seller to go looking for them.
+Nothing ever told an owner their live ad could be lifted. This closes that gap without adding a
+new surface for the owner to learn.
+
+- **Where it is.** The listings dashboard's bulk bar: select ads, press **Send boost promo**. The
+  bar already held the posted-notification resend, so this is a second button on a control admins
+  use, not a new screen. Row selection widened to every listing — it was limited to ads still
+  missing the posted acknowledgement, which was right while that was the only action.
+- **What the owner gets.** `email/boost-promotion/` if they have an email address, the
+  `boost_promotion` WhatsApp template otherwise. It names the ad, quotes Boost's 7-day entry price
+  and the Instant Alerts price, says what each one actually does for them, and states plainly that
+  the ad stays live and free either way.
+- **Where the button goes.** `/my-listings?openBoost=<id>` — the deep link `AutoOpenPurchaseModal`
+  already handles, so the owner lands on the Boost payment step *for that ad* rather than on a page
+  where they have to find it again. The body carries the `?openInstantAlerts=<id>` equivalent, since
+  the email layout has room for one button.
+- **Prices come from the live settings**, not the wording. `BoostPriceSettings` and
+  `InstantAlertsPriceSettings` are admin-editable, and a promotion quoting a figure the checkout
+  then contradicts is worse than one that quotes none. That is also why the WhatsApp template takes
+  the prices as variables rather than baking them in — a baked figure could not be corrected
+  without a fresh Meta approval.
+- **Restraint is the design.** This is marketing to people who have already trusted us with a
+  listing, so: a 14-day per-listing cooldown (not a once-ever gate — a second nudge weeks later is
+  fair, twice in a week is spam); live ads only, since selling a boost for a sold or expired ad is
+  indefensible; and nothing at all to an ad that already has both boost and alerts. Each skip is
+  reported per listing in the admin summary, so "nothing sent" is never silent.
+- **The WhatsApp half is written but not yet sendable.** A business-initiated message must be an
+  approved template; `whatsapp_create_boost_promotion_template.py` submits it as **MARKETING** (it
+  sells something — declaring it UTILITY would be both false and a quality-rating risk). Sending
+  switches on with `WHATSAPP_BOOST_PROMO_TEMPLATE=boost_promotion`, the same env gate
+  `notifyWelcome` uses. Until then a phone-only owner is reported as skipped, naming that variable,
+  rather than counted as sent.
+- 18 admin-service checks, most of them on what it refuses to send.
+
 ## Explicitly out of scope for this plan
 
 - **Display/banner advertising** (Google AdSense or direct advertiser sales) — an independent

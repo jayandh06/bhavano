@@ -485,6 +485,18 @@ export function sendPostedNotification(
   return authedBffFetch(accessToken, "/admin/listings/notify-posted", { method: "POST", body: JSON.stringify(input) });
 }
 
+/** Promotes Boost and Instant Alerts to the owners of the selected live ads — see
+ * AdminService.sendBoostPromotion for the cooldown and skip rules. */
+export function sendBoostPromotion(
+  accessToken: string,
+  input: SendPostedNotificationInput,
+): Promise<SendPostedNotificationResponseDto> {
+  return authedBffFetch(accessToken, "/admin/listings/notify-boost-promotion", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export function fetchRateLimitSettings(accessToken: string): Promise<RateLimitSettingsDto> {
   return authedBffFetch(accessToken, "/admin/rate-limits", { cache: "no-store" });
 }

@@ -10,6 +10,8 @@ import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-sett
 import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pricing-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
 import type { SavedSearchesService } from '../saved-searches/saved-searches.service';
+import { DEFAULT_BOOST_PRICE_SETTINGS } from '@bhavano/types/boostPricing';
+import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
 
 function makeService(overrides: Record<string, unknown> = {}, notificationsOverrides: Record<string, unknown> = {}) {
   const prisma = {
@@ -40,8 +42,18 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
 
   const notificationsService = {
     notifyListingPosted: jest.fn().mockResolvedValue({ channel: 'email' }),
+    notifyBoostPromotion: jest.fn().mockResolvedValue('email'),
     ...notificationsOverrides,
   } as unknown as NotificationsService;
+
+  // The promotion quotes live prices, so these two are real stubs rather than `{}` — see
+  // AdminService.sendBoostPromotion on why the figure comes from settings and not the copy.
+  const boostPricingSettingsService = {
+    getSettings: jest.fn().mockResolvedValue(DEFAULT_BOOST_PRICE_SETTINGS),
+  } as unknown as BoostPricingSettingsService;
+  const instantAlertsPricingSettingsService = {
+    getSettings: jest.fn().mockResolvedValue(DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS),
+  } as unknown as InstantAlertsPricingSettingsService;
 
   const service = new AdminService(
     prisma,
@@ -50,9 +62,9 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
     notificationsService,
     {} as RateLimitService,
     {} as ContactRevealService,
-    {} as BoostPricingSettingsService,
+    boostPricingSettingsService,
     {} as SubscriptionPlanSettingsService,
-    {} as InstantAlertsPricingSettingsService,
+    instantAlertsPricingSettingsService,
     {} as AccountDeletionService,
     {} as SavedSearchesService,
   );
@@ -70,6 +82,11 @@ function listingRow(overrides: Record<string, unknown> = {}) {
     area: { name: 'Koramangala' },
     owner: { name: 'Owner', email: 'owner@example.com', phone: '+919876543210' },
     notificationLogs: [],
+    // Live by default — the promotion refuses anything that isn't.
+    status: 'active',
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    boostedUntil: null,
+    instantAlertsUntil: null,
     ...overrides,
   };
 }
@@ -221,5 +238,153 @@ describe('AdminService.sendPostedNotification', () => {
     expect(result.failed).toBe(1);
     expect(result.results.find((r) => r.listingId === 'fresh')?.success).toBe(true);
     expect(result.results.find((r) => r.listingId === 'already')?.error).toBe('Already sent');
+  });
+});
+
+/** The promotion is marketing, so what is worth pinning is mostly what it *refuses* to send. A
+ * pitch that arrives twice, or lands on an ad that is already boosted, or on an expired one, costs
+ * more trust than the sale is worth. */
+describe('AdminService.sendBoostPromotion', () => {
+  it('sends, quotes the live prices, and logs a boost_promo row', async () => {
+    const { service, prisma, notificationsService } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow()]) },
+    });
+
+    const result = await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).toHaveBeenCalledWith(
+      { name: 'Owner', email: 'owner@example.com', phone: '+919876543210' },
+      { id: 'listing1', title: 'A listing', cityName: 'Bengaluru', area: 'Koramangala' },
+      // apartment is a property-tier category, so the 7-day entry price, from settings.
+      { boostPrice: 199, boostDays: 7, alertsPrice: 25 },
+    );
+    expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
+      data: { listingId: 'listing1', kind: 'boost_promo', channel: 'email' },
+    });
+    expect(result).toEqual({ sent: 1, failed: 0, results: [{ listingId: 'listing1', success: true }] });
+  });
+
+  it('prices by category tier, so a furniture ad is not quoted an apartment price', async () => {
+    const { service, notificationsService } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow({ category: 'furniture' })]) },
+    });
+
+    await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ boostPrice: 49 }),
+    );
+  });
+
+  it('refuses to promote an ad promoted inside the cooldown', async () => {
+    const { service, notificationsService, prisma } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow({ notificationLogs: [{ id: 'log1' }] })]) },
+    });
+
+    const result = await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).not.toHaveBeenCalled();
+    expect(result.results[0].error).toBe('Promoted in the last 14 days');
+    // And the cooldown is a *window*, not "ever": the query only looks back that far.
+    const where = (prisma.listing.findMany as jest.Mock).mock.calls[0][0].include.notificationLogs.where;
+    expect(where.kind).toBe('boost_promo');
+    expect(where.sentAt.gte).toBeInstanceOf(Date);
+    expect(Date.now() - (where.sentAt.gte as Date).getTime()).toBeCloseTo(14 * 24 * 60 * 60 * 1000, -4);
+  });
+
+  it.each([
+    ['sold', { status: 'sold' }],
+    ['expired', { expiresAt: new Date(Date.now() - 1000) }],
+  ])('refuses to sell a boost for an ad that is %s', async (_label, overrides) => {
+    const { service, notificationsService } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow(overrides)]) },
+    });
+
+    const result = await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).not.toHaveBeenCalled();
+    expect(result.results[0].error).toBe('Not a live listing — nothing to promote');
+  });
+
+  it('skips an ad that already has both boost and Instant Alerts — nothing left to offer', async () => {
+    const future = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    const { service, notificationsService } = makeService({
+      listing: {
+        findMany: jest.fn().mockResolvedValue([listingRow({ boostedUntil: future, instantAlertsUntil: future })]),
+      },
+    });
+
+    const result = await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).not.toHaveBeenCalled();
+    expect(result.results[0].error).toBe('Already boosted and on Instant Alerts');
+  });
+
+  it('still promotes Instant Alerts to an ad that is boosted but has no alerts', async () => {
+    const { service, notificationsService } = makeService({
+      listing: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([listingRow({ boostedUntil: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) })]),
+      },
+    });
+
+    const result = await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).toHaveBeenCalled();
+    expect(result.sent).toBe(1);
+  });
+
+  it('skips the bulk-import placeholder owner', async () => {
+    const { service, notificationsService } = makeService({
+      listing: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([listingRow({ owner: { name: null, email: null, phone: '9000000002' } })]),
+      },
+    });
+
+    const result = await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).not.toHaveBeenCalled();
+    expect(result.results[0].error).toBe('Bulk-import placeholder owner — no real recipient');
+  });
+
+  it('names the missing WhatsApp template when a phone-only owner cannot be reached', async () => {
+    const { service, prisma } = makeService(
+      {
+        listing: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([listingRow({ owner: { name: 'Ravi', email: null, phone: '+919876543210' } })]),
+        },
+      },
+      { notifyBoostPromotion: jest.fn().mockResolvedValue(null) },
+    );
+
+    const result = await service.sendBoostPromotion(['listing1']);
+
+    expect(prisma.listingNotificationLog.create).not.toHaveBeenCalled();
+    expect(result.results[0].error).toContain('WHATSAPP_BOOST_PROMO_TEMPLATE');
+  });
+
+  it('processes a mixed batch independently', async () => {
+    const { service } = makeService({
+      listing: {
+        findMany: jest.fn().mockResolvedValue([
+          listingRow({ id: 'recent', notificationLogs: [{ id: 'log1' }] }),
+          listingRow({ id: 'fresh' }),
+        ]),
+      },
+    });
+
+    const result = await service.sendBoostPromotion(['recent', 'fresh', 'missing']);
+
+    expect(result.sent).toBe(1);
+    expect(result.failed).toBe(2);
+    expect(result.results.find((r) => r.listingId === 'fresh')?.success).toBe(true);
+    expect(result.results.find((r) => r.listingId === 'missing')?.error).toBe('Listing not found');
   });
 });

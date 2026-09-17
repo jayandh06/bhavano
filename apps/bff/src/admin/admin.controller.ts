@@ -110,6 +110,14 @@ export class AdminController {
     return this.adminService.sendPostedNotification(dto.listingIds);
   }
 
+  /** Promotes Boost and Instant Alerts to the owners of the selected live ads — see
+   * AdminService.sendBoostPromotion for the cooldown and the skip rules. Same literal-segment
+   * placement as notify-posted above. */
+  @Post('listings/notify-boost-promotion')
+  sendBoostPromotion(@Body() dto: SendPostedNotificationDto): Promise<SendPostedNotificationResponseDto> {
+    return this.adminService.sendBoostPromotion(dto.listingIds);
+  }
+
   @Patch('listings/:id/review')
   setReviewed(@Param('id') id: string, @Body() dto: SetReviewedDto): Promise<ListingDetailDto> {
     return this.adminService.setReviewed(id, dto.adminReviewed);

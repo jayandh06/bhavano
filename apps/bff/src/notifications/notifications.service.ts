@@ -304,6 +304,78 @@ export class NotificationsService {
     );
   }
 
+  /**
+   * Admin-triggered promotion of Boost and Instant Alerts for one of an owner's live ads — the
+   * button behind AdminService.sendBoostPromotion.
+   *
+   * Email when there is one, WhatsApp otherwise, like everything else here. The WhatsApp half
+   * needs a Meta-approved MARKETING template (`whatsapp/boost-promotion/`, submitted by
+   * `whatsapp_create_boost_promotion_template.py`) and so is gated on
+   * `WHATSAPP_BOOST_PROMO_TEMPLATE` being set — exactly how `notifyWelcome` gates its own. Until
+   * that approval lands a phone-only owner gets nothing, and the admin result says so rather than
+   * reporting a send that never happened.
+   *
+   * The prices are passed in, read live from the admin-editable settings by the caller, rather
+   * than hardcoded in the copy: a promotion quoting a price the checkout then contradicts is
+   * worse than one that quotes none.
+   *
+   * The link is `/my-listings?openBoost=<id>`, which opens the Boost dialog directly — the same
+   * deep link the mobile app's own buttons use (see AutoOpenPurchaseModal). So the recipient lands
+   * on the payment step for that specific ad, not on a page where they have to find it again.
+   */
+  async notifyBoostPromotion(
+    user: NotifiableUser & { name?: string | null },
+    listing: { id: string; title: string; cityName: string; area: string },
+    prices: { boostPrice: number; boostDays: number; alertsPrice: number },
+  ): Promise<'email' | 'whatsapp' | null> {
+    const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const boostLink = `${site}/my-listings?openBoost=${listing.id}`;
+    const alertsLink = `${site}/my-listings?openInstantAlerts=${listing.id}`;
+    const vars = {
+      name: user.name ?? 'there',
+      title: listing.title,
+      location: `${listing.area}, ${listing.cityName}`,
+      boostPrice: String(prices.boostPrice),
+      boostDays: String(prices.boostDays),
+      alertsPrice: String(prices.alertsPrice),
+      alertsLink,
+    };
+
+    const tpl = loadTemplate('email/boost-promotion');
+    const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel ? renderTemplate(tpl.buttonLabel, vars) : undefined;
+    const html = renderEmail({
+      heading: renderTemplate(tpl.heading, vars),
+      preheader: renderTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel ? { label: buttonLabel, url: boostLink } : undefined,
+    });
+    const text =
+      `${paragraphs.join('\n\n')}\n\n` + (buttonLabel ? `${buttonLabel}: ${boostLink}` : boostLink);
+
+    const promoTemplate = this.config.get<string>('WHATSAPP_BOOST_PROMO_TEMPLATE');
+
+    return this.dispatchEmailPreferWhatsapp(
+      user,
+      { subject: renderTemplate(tpl.subject, vars), text, html, bcc: 'support@bhavano.com' },
+      promoTemplate
+        ? {
+            template: promoTemplate,
+            // Named, matching the submitted template — see WhatsappProvider.sendTemplate on why
+            // named is worth preferring past two variables.
+            params: {
+              name: vars.name,
+              title: vars.title,
+              boostPrice: vars.boostPrice,
+              alertsPrice: vars.alertsPrice,
+            },
+            // The template's button prefix already ends at "?openBoost=", so only the id follows.
+            buttonUrlSuffix: listing.id,
+          }
+        : undefined,
+    );
+  }
+
   /** The welcome email's subject/text/html — factored out of `notifyWelcome` so
    * `sendWelcomeEmail` (the admin-triggered forced-channel resend) can build the exact same
    * content without going through `dispatchEmailPreferWhatsapp`'s email-else-WhatsApp choice. */

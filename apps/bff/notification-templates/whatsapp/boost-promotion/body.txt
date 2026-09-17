@@ -1,0 +1,9 @@
+Hi {{name}},
+
+Your ad "{{title}}" is live on Bhavano. Two options if you would like it in front of more people:
+
+Boost from Rs {{boostPrice}} — your ad is placed above unboosted listings in its category and city, with a Featured label wherever it appears.
+
+Instant Alerts for Rs {{alertsPrice}} — you are notified the moment someone messages you about this ad, so you can reply while the enquiry is still warm.
+
+Both are one-time payments, no subscription. Tap below to choose. Your ad stays live and free either way.

@@ -25,6 +25,7 @@ import {
   rotateListingPhoto,
   sendMessage,
   sendPostedNotification,
+  sendBoostPromotion,
   setCoverPhoto,
   setListingStatus,
   setReviewed,
@@ -129,6 +130,21 @@ export async function sendPostedNotificationAction(
     return result;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to send notification" };
+  }
+}
+
+/** Backs the listings dashboard's bulk "Send boost promo" action. Marketing, not a resend of
+ * something owed — AdminService.sendBoostPromotion holds the cooldown and the skip rules. */
+export async function sendBoostPromotionAction(
+  listingIds: string[],
+): Promise<SendPostedNotificationResponseDto | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const result = await sendBoostPromotion(accessToken, { listingIds });
+    revalidatePath("/");
+    return result;
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to send promotion" };
   }
 }
 

@@ -727,6 +727,9 @@ export interface SendPostedNotificationResultDto {
      * the admin UI. */
     error?: string;
 }
+/** Shared by every admin bulk listing-notification action — the posted resend and the
+ * Boost/Instant Alerts promotion both report the same three things, so they share one shape
+ * rather than each growing a near-identical twin. */
 export interface SendPostedNotificationResponseDto {
     sent: number;
     failed: number;
