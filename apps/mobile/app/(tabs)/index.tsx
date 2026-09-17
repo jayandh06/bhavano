@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
-import type { PropertyTypeFilter } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { deriveHomeRequirementCriteria } from "../../src/lib/homeRequirementCriteria";
@@ -31,16 +30,15 @@ export default function HomeScreen() {
   const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 2 : 1;
 
   const [category, setCategory] = useState<HomeTabValue>("all");
-  // One slot for whichever sub-filter the active tab actually has — a property type for
-  // Buy/Rent & Lease, or a sharing-type/condition/service-type facet value for
-  // PG/Furniture/Interiors (see categories.ts's `HomeTab.subFilter`). Tabs are mutually
-  // exclusive, so a single string slot is enough; which BFF param it feeds is derived below
-  // from `category` rather than needing a separate state per tab.
+  // One slot for whichever sub-filter the active tab actually has — a sharing-type/condition/
+  // service-type facet value for PG/Furniture/Interiors (see categories.ts's `HomeTab.subFilter`).
+  // Buy/Rent & Lease no longer use this slot: property type used to live in CategoryChips' own
+  // scrolling sub-chip row (writing here via onSelectSubFilter), but now lives in FilterSheet
+  // instead, staged on `filters` like every other filter — see propertyType below.
   const [subFilterValue, setSubFilterValue] = useState<string | undefined>(undefined);
-  const propertyType =
-    category === "buy" || category === "rentLease" ? (subFilterValue as PropertyTypeFilter | undefined) : undefined;
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
+  const propertyType = category === "buy" || category === "rentLease" ? filters.propertyType : undefined;
   const [sort, setSort] = useState<SortValue>("auto");
 
   const filterSheetRef = useRef<BottomSheetModal>(null);
@@ -335,7 +333,6 @@ export default function HomeScreen() {
         ref={filterSheetRef}
         cityAreas={cityAreas}
         category={category}
-        propertyType={propertyType}
         applied={filters}
         onApply={onApplyFilters}
       />

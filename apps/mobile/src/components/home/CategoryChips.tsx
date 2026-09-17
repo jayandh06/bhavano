@@ -121,10 +121,14 @@ export function CategoryChips({
         </ScrollableRow>
       </View>
 
-      {/* Property type for Buy/Rent & Lease, sharing type/condition/service type for
-        * PG/Furniture/Interiors — every non-"All" tab has one of these (see categories.ts),
-        * so this no longer only covers the two real-estate tabs. */}
-      {activeTab.subFilter.options.length > 0 && (
+      {/* Sharing type/condition/service type for PG/Furniture/Interiors — every non-"All" tab has
+        * one of these sub-filters (see categories.ts), but Buy/Rent & Lease's own (property type)
+        * is deliberately excluded below: it now lives inside FilterSheet instead (see
+        * `(tabs)/index.tsx`'s "Filters" button), the only place a property type could be chosen
+        * from before this row existed, and the same place every other filter already lives.
+        * PG/Furniture/Interiors keep this row for now — the same reasoning likely applies to
+        * them too, but that wasn't what was asked for, so it's left alone rather than assumed. */}
+      {activeTab.subFilter.options.length > 0 && activeTab.subFilter.paramKey !== "propertyType" && (
         <ScrollableRow colors={colors} contentContainerStyle={[styles.row, { paddingTop: 2 }]}>
           {/* Same green-fill highlight as the tab above it, gold border instead of gold
             * underline since this row keeps its oval chip shape rather than going flat/edge-to-edge

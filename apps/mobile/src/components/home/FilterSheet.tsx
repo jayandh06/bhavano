@@ -5,7 +5,7 @@ import type { Area, ListingCategory, PropertyTypeFilter } from "@bhavano/types";
 import { PRICE_BOUNDS } from "@bhavano/types/priceBounds";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
 import { useAppTheme } from "../../theme/ThemeContext";
-import type { HomeTabValue } from "./categories";
+import { HOME_TABS, type HomeTabValue } from "./categories";
 
 export interface AppliedFilters {
   /** Empty = every area selected (no narrowing) — same convention as the web AreaFilter. */
@@ -15,6 +15,10 @@ export interface AppliedFilters {
   minPrice?: number;
   maxPrice?: number;
   furnished?: "unfurnished" | "semi" | "furnished";
+  /** Buy/Rent & Lease only — used to live in `CategoryChips`' own scrolling sub-chip row, which
+   * navigated immediately on tap; now staged here like every other filter, so it only takes
+   * effect on Apply along with whatever else changed in the same sheet visit. */
+  propertyType?: PropertyTypeFilter;
 }
 
 export const EMPTY_FILTERS: AppliedFilters = { areaIds: [], bedrooms: [] };
@@ -24,7 +28,8 @@ export function activeFilterCount(f: AppliedFilters): number {
     (f.areaIds.length > 0 ? 1 : 0) +
     (f.bedrooms.length > 0 ? 1 : 0) +
     (f.minPrice !== undefined || f.maxPrice !== undefined ? 1 : 0) +
-    (f.furnished ? 1 : 0)
+    (f.furnished ? 1 : 0) +
+    (f.propertyType ? 1 : 0)
   );
 }
 
@@ -76,11 +81,10 @@ export const FilterSheet = forwardRef<
   {
     cityAreas: Area[];
     category: HomeTabValue;
-    propertyType?: PropertyTypeFilter;
     applied: AppliedFilters;
     onApply: (next: AppliedFilters) => void;
   }
->(function FilterSheet({ cityAreas, category, propertyType, applied, onApply }, ref) {
+>(function FilterSheet({ cityAreas, category, applied, onApply }, ref) {
   const { colors } = useAppTheme();
   const [staged, setStaged] = useState<AppliedFilters>(applied);
 
@@ -88,8 +92,18 @@ export const FilterSheet = forwardRef<
   // dismiss-without-Apply (tap outside, swipe down) never leaves stale edits for next time.
   useEffect(() => setStaged(applied), [applied]);
 
-  const showBhkAndFurnished = propertyType === "house" || propertyType === "apartment";
-  const { listingCategory, isSale } = priceBoundsCategoryFor(category, propertyType);
+  // Buy/Rent & Lease only — every other tab's own category is fixed (PG is always "pg", etc.),
+  // so there's nothing to pick. Reuses HOME_TABS' own option list rather than a second copy, the
+  // same source CategoryChips' now-removed sub-chip row read from for these two tabs.
+  const propertyTypeOptions = HOME_TABS.find((t) => t.value === category)?.subFilter.options ?? [];
+  const offersPropertyType = category === "buy" || category === "rentLease";
+
+  function selectPropertyType(value: string | undefined) {
+    setStaged((prev) => ({ ...prev, propertyType: value as PropertyTypeFilter | undefined }));
+  }
+
+  const showBhkAndFurnished = staged.propertyType === "house" || staged.propertyType === "apartment";
+  const { listingCategory, isSale } = priceBoundsCategoryFor(category, staged.propertyType);
   const brackets = priceBracketsFor(listingCategory, isSale);
 
   const allAreaIds = cityAreas.map((a) => a.id);
@@ -148,6 +162,22 @@ export const FilterSheet = forwardRef<
               {cityAreas.map((area) => (
                 <Pressable key={area.id} onPress={() => toggleArea(area.id)} style={chipStyle(selectedAreaIds.has(area.id), colors)}>
                   <Text style={{ fontSize: 13, color: selectedAreaIds.has(area.id) ? colors.green : colors.text }}>{area.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {offersPropertyType && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>PROPERTY TYPE</Text>
+            <View style={styles.wrapRow}>
+              <Pressable onPress={() => selectPropertyType(undefined)} style={chipStyle(!staged.propertyType, colors)}>
+                <Text style={{ fontSize: 13, color: !staged.propertyType ? colors.green : colors.text }}>All</Text>
+              </Pressable>
+              {propertyTypeOptions.map((opt) => (
+                <Pressable key={opt.value} onPress={() => selectPropertyType(opt.value)} style={chipStyle(staged.propertyType === opt.value, colors)}>
+                  <Text style={{ fontSize: 13, color: staged.propertyType === opt.value ? colors.green : colors.text }}>{opt.label}</Text>
                 </Pressable>
               ))}
             </View>

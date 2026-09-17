@@ -160,8 +160,16 @@ export function CategoryTabs({
         * only on the two small arrow buttons left the rest of the row (behind the chip pills)
         * visibly that band's color rather than the page's own. Painting the whole wrapper covers
         * the entire row, arrows included, in one consistent color. Same `-mx-4`/`px-4` edge-bleed
-        * as the tab row above for the same reason — flush arrows, unmoved chip content. */}
-      {activeTabData && activeTabData.column1.length > 0 && (
+        * as the tab row above for the same reason — flush arrows, unmoved chip content.
+        *
+        * Not shown for Buy/Rent & Lease specifically: their column1 vocabulary is property type
+        * (House/Apartment/Villa/...), which `AssetTypeFilter` in BrowseListingsView's own
+        * "Filters" strip already offers as a pill, at every viewport including phone, on every
+        * page this row could appear on — a second, differently-styled control for the identical
+        * choice. PG/Furniture/Interiors keep this row for now; the same "already covered by
+        * BrowseFilterBar's facet pills" reasoning likely applies to them too, but that wasn't
+        * what was reported, so it's left alone rather than assumed. */}
+      {activeTabData && activeTabData.column1.length > 0 && active !== "buy" && active !== "rentLease" && (
         <HorizontalScroller
           ariaLabel={`${activeTabData.label} sub-categories`}
           className="flex gap-1.5 pt-1.5 px-4 sm:px-0"
