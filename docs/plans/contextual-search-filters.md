@@ -83,9 +83,30 @@ So asset selection changes shape depending on whether a transaction is chosen. T
 but it is the existing convention in both directions, and inventing `/{city}/{category}` would add
 a fourth URL shape for the same content and a canonical tag to keep it from competing with itself.
 
-The transaction filter offers **groups** (Buy, Rent & Lease), not the four raw `TransactionType`
-values — `buy|sell` and `rent|lease` are one browsing intent each, the path grammar speaks groups,
-and offering `sell` as a browse filter would produce URLs that don't exist.
+**Correction (2026-09-17, after the first implementation shipped): the leading filter is the tab
+vocabulary, not a transaction group.**
+
+It was first built over `TransactionGroup` (buy | rent-lease) because that is what the path
+grammar speaks. That was the wrong layer. This product's top-level axis is `HOME_TABS` — **All,
+Buy, Rent & Lease, PG, Furniture, Interiors** — and modelling it as a group had two visible
+consequences:
+
+- PG, Furniture and Interiors had nowhere to be in the filter at all.
+- `buildBrowsePath` drops the redundant group for a single-group category, so `/bengaluru/pg`
+  carries *no group* — meaning that page showed **"Any"** as its transaction and offered **houses
+  and apartments** as its asset types. Both nonsense, and both the same mistake.
+
+The filter now reads its options from `HOME_TABS` and its active value from
+`homeCategoryForSegments`, which already handled the group-less paths correctly — so the filter
+and the tab row cannot disagree about either the vocabulary or which one is active.
+
+`sell` still isn't offered: `buy|sell` and `rent|lease` are one browsing intent each and the path
+grammar has no shape for a sell-only browse page.
+
+**The asset filter renders nothing for PG, Furniture and Interiors.** Those categories *are* the
+asset, so a dropdown there was either empty or offering things the page cannot show. They are also
+excluded from the Buy and Rent & Lease asset lists, since "Buy → Interiors" would duplicate an
+intent under a second name.
 
 ## Which filters belong to which asset
 
@@ -145,6 +166,15 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
   `/bengaluru/buy` now carry both filters and no furnishing filter; `/bengaluru/buy/apartment`
   carries the furnishing filter and names the asset. The `!category` short-circuit was **kept**,
   not removed — see the correction above.
+- **Reworked same day** onto the tab vocabulary (see the correction in the URL-contract section).
+  The intent→assets mapping lives in `lib/assetFilters.ts`, not the component: it is domain logic,
+  it belongs beside the config-derived filter sets, and putting it there makes it testable without
+  importing a client component into Node. 19 checks cover the per-intent asset lists, all six URL
+  shapes resolving to the right intent, that no self-intent category is ever offered as an asset,
+  and that Buy offers plot while Rent & Lease does not. Verified live, one-to-one: `/bengaluru` →
+  All, `/bengaluru/buy` → Buy, `/bengaluru/rent-lease` → Rent & Lease, `/bengaluru/pg` → PG,
+  `/bengaluru/furniture` → Furniture, `/bengaluru/interiors` → Interiors — and no page shows
+  "Any" any more.
 - A gotcha worth recording: `CATEGORY_LABELS` must be imported from `seoRoute`, not `browseRoute`.
   The latter re-exports it but also pulls in `lib/bff`, whose `next/headers` import a client
   component cannot reach. The build caught it.
