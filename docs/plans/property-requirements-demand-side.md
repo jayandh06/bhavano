@@ -99,26 +99,120 @@ collapse requirement threads together. A database-level check that exactly one o
 keeps the invariant honest. The alternative — a parallel thread model — would mean duplicating
 unread counts, notification plumbing and the mobile thread UI, which is not worth it.
 
-## Phase 1 — out of the box (build first)
+## What the numbers say about this working at all (measured 2026-09-17)
+
+Before building any of the below, the production data was checked. It changes the shipping order.
+
+**Seekers act on immediate, concrete things and ignore everything else:**
+
+| action | count | character |
+|---|---|---|
+| Conversations | **116** | immediate, concrete, about one listing |
+| Contact reveals | 10 | immediate, concrete |
+| Favourites | 3 | deferred |
+| `SavedSearch` | **0** | abstract, buried, requires retyping |
+
+**That zero is the most important number here, and it is a placement failure, not a demand
+signal.** `SavedSearch` already does the core job — "tell me when something matching appears" — and
+has never been used once. There is **no "Save this search" control anywhere** on any results or
+search page: the only entries are the logged-in account dropdown
+(`HeaderAuthButtons`/`HeaderDrawerAccount`) and `/premium`, and once there the user must retype
+their criteria from scratch, detached from the search they were just doing. So it is evidence
+*for* the prefilled empty-state prompt and *against* any version of this that people have to go
+and find.
+
+**The supply side cannot answer a requirement yet:**
+
+- 320 active listings, but **85 distinct owners — and 78 of them posted exactly once** (one account
+  holds 223, the bulk-import placeholder). Real repeat posters: about six people.
+- **1 Agent Pro subscriber, 0 Plus.**
+- Real traffic is smaller than the raw counts suggest: **78 JS-confirmed sessions against 2,868
+  `isBot=false`** in the same window (see
+  [analytics-bot-filtering-and-attribution.md](analytics-bot-filtering-and-attribution.md)) — so
+  most of the "human" traffic still isn't. Roughly 100–150 real sessions a day.
+
+A demand *feed* needs people who return regularly to browse it. Six owners and one agent is not
+that audience, and a seeker who posts into silence is worse off than one who saw an honest empty
+state. So the feed is not the first thing to build — the capture is, and at 1–3 requirements a day
+**a human works every one of them**: search the 320 listings by hand, call the seeker, or point the
+existing `outreach` module (already doing Places lead-gen) at owners in that exact area with
+"someone is looking here right now". Deliberately unscalable, and it manufactures the inventory the
+site is short of. The feed earns its build when working them by hand stops being possible.
+
+## Phase 0 — capture only, no new model (build this first)
+
+Answers the actual goal — *seekers don't leave empty-handed, their details are captured, they get
+connected* — with **zero schema change**, by wiring the prompt to the `SavedSearch` that already
+exists:
+
+1. Search or area page returns nothing → the card at
+   [ListingGrid.tsx:9](apps/web/src/components/home/ListingGrid.tsx#L9), prefilled from the filters
+   already in the URL.
+2. One tap creates a `SavedSearch` (existing model, existing matcher) and sends the seeker a
+   genuine "we'll tell you as soon as one appears".
+3. A daily digest to admin of what people asked for and couldn't find.
+4. While there: add the missing **"Save this search"** control to the results page. It is the same
+   capture, and it fixes a built feature that is currently dead on the shelf.
+
+This measures the one number that decides everything downstream: **do people fill it in when asked
+at the right moment?** If yes, build Phase 1. If it is near zero, that was learned for the cost of
+one card and a notification.
+
+## Information architecture
+
+**How a seeker gets back to their posting**, in order of real-world use:
+
+1. **Pushed, not navigated to** — the confirmation message (WhatsApp/SMS/email) carries a direct
+   link. Precedent: the "your ad is live" acknowledgement and `ListingNotificationLog`. Assume most
+   seekers never open a menu.
+2. **Each response notifies them**, linking straight into the thread — `notifyNewMessage` and the
+   push module already do exactly this for listing inquiries.
+3. **`/my-requirements` in the account area**, immediately after "My Listings" in the web dropdown
+   (currently Profile / Favourites / Messages / My Listings / Premium / Saved searches / Help) and
+   inside the mobile **Account** tab. Mirrors `/my-listings`: status badge (active / expired /
+   fulfilled), response count, renew, withdraw.
+
+**No separate top-level tab**, for either meaning of "tab":
+
+- The homepage tabs (Buy / Rent & Lease / PG / Furniture / Interiors) are *intent filters over
+  listings*. Adding "Requirements" would make the primary nav mean supply and demand at once, for
+  the large majority who came to browse property.
+- The mobile bar has exactly four tabs (Home, Messages, Post, Account). A fifth for something
+  producing 1–3 items a day spends prime real estate on an empty room — a tab promises volume, and
+  breaking that promise is how `/cities` came to link 96 empty city pages.
+
+When the feed does earn a surface, it should be its own section (`/requirements`,
+`/requirements/{city}`) reached from **where the supply side already is**: a line on `/my-listings`
+("14 people are looking in Bengaluru — see what they want"), the footer, and the owner digest.
+Meeting owners where they are beats hoping they find a tab. On mobile, surface it inside Post or
+Account for users who have a listing, not as a global tab.
+
+**The framing this all rests on: the seeker's primary surface is the alert, not a page they
+revisit.** Their job is finished once they post; what they want next is a message saying "here's a
+match". `/my-requirements` exists for the minority who do come back, and so nobody feels their post
+vanished — but the product is the notification. The engagement table above is why: designing the
+revisit page as the centrepiece would be designing for the behaviour that measurably does not
+happen.
+
+## Phase 1 — the real thing (once Phase 0 shows people post)
 
 1. **Model + migration**, plus `RequirementStatus` enum.
 2. **`POST /requirements`** — login required (the OTP flow already proves a phone), rate-limited,
    `expiresAt` defaulted the way listings are.
 3. **`/post-requirement` form** (web) — the same field vocabulary as the posting wizard so the
    category attributes stay consistent, but far shorter: what, where, budget, by when, a note.
-4. **The empty-state prompt** — the one change with the highest leverage, at
-   [ListingGrid.tsx:9](apps/web/src/components/home/ListingGrid.tsx#L9). Replace the bare line with
-   a card: *"No 2 BHK apartments to rent in Koramangala right now. Tell owners what you're looking
-   for — they'll come to you."* plus a button carrying the current filters into the form. Must stay
-   a server-rendered leaf (no `"use client"` on the grid or page) so nothing moves out of the RSC
+4. **Point the Phase 0 prompt at the real form**, keeping the prefill. The card itself must stay a
+   server-rendered leaf (no `"use client"` on the grid or the page) so nothing moves out of the RSC
    output.
-5. **Requirement feed for supply-side users** — `/requirements`, filterable by city/area/category,
-   showing everything *except* the seeker's contact details.
+5. **`/my-requirements`** — see the information-architecture section above; mirrors `/my-listings`.
 6. **Admin moderation queue** — a tab reusing the listings-table machinery, since this is
    user-generated public text and will attract spam from day one.
 7. **Notify matching owners** — see the anti-spam rules below.
 
-Deliberately **not** in Phase 1: payment, SEO indexing, mobile posting, demand analytics.
+Deliberately **not** in Phase 1: the public `/requirements` feed (no audience yet — see the numbers
+above), payment, SEO indexing, mobile posting, demand analytics. Phase 1 still routes every
+requirement to a human, the difference from Phase 0 being that it is now a first-class object the
+seeker can manage, renew and withdraw.
 
 ## Matching and notification: the part that can go badly wrong
 
@@ -280,12 +374,18 @@ manual action if you index them at scale. So:
    the existing `freeRevealsPerUser` knob is the precedent, and it's admin-tunable, so the free
    allowance can be dialled down without a deploy.
 3. **Price per lead**, versus bundling into Agent Pro only.
-4. **Phase 1 scope**: is the empty-state prompt plus the feed enough to validate demand before any
-   payment work? I would ship exactly that and measure requirement-creation rate from empty
-   searches first — it is a small build, and if seekers don't post, nothing downstream matters.
-5. **Mobile**: read-only feed in Phase 1, or posting too? Posting needs the form; paid leads need
-   the iOS payment split.
-6. **Whether "calls OK" should be offerable at all**, or whether every requirement is
+4. **Whether to run Phase 0 at all, or go straight to the `Requirement` model.** Phase 0 costs a
+   card and a notification and answers the only question that matters; going straight to Phase 1
+   saves a small rework if the answer turns out to be yes. I would run Phase 0 — the engagement
+   table says the risk of nobody posting is real, not theoretical.
+5. **Login-gated posting, or anonymous?** Login (the OTP flow already proves a phone) makes the
+   requirement manageable, withdrawable and worth something as a lead; anonymous would get more
+   volume but leaves the single link in the confirmation message as the only way back, and raises
+   spam sharply. I'd gate it — the verified phone is the whole value of the lead.
+6. **Mobile**: read-only in Phase 1, or posting too? Posting needs the form; paid leads need the
+   iOS payment split. Either way "My requirements" belongs in the existing Account tab, not a
+   fifth global tab — see the information-architecture section.
+7. **Whether "calls OK" should be offerable at all**, or whether every requirement is
    messaging-only. Offering it is more useful to brokers and is the seeker's own choice; not
    offering it removes the irreversible-exposure case entirely. I lean toward offering it, default
    off, because a seeker who wants calls is expressing a real preference — but it is a judgement
