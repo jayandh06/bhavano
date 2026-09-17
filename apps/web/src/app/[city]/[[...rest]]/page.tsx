@@ -352,7 +352,6 @@ async function NationalBrowsePage({
       page={page}
       basePath={basePath}
       filterCategory={parsed.category}
-      filterIsSale={parsed.transactionGroup === "buy"}
       popularCities={allCities.filter((c) => c.isPopular)}
       userName={sessionHeaderName(session)}
       currentSegments={parsed}
@@ -588,7 +587,6 @@ export default async function CityBrowsePage({
         page={page}
         basePath={canonicalPath}
         filterCategory={parsed.category}
-        filterIsSale={parsed.transactionGroup === "buy"}
         popularCities={allCities.filter((c) => c.isPopular)}
         userName={sessionHeaderName(session)}
         currentSegments={parsed}

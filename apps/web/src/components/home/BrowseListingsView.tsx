@@ -77,7 +77,6 @@ export async function BrowseListingsView({
   page,
   basePath,
   filterCategory,
-  filterIsSale,
   popularCities,
   userName,
   currentSegments,
@@ -99,7 +98,6 @@ export async function BrowseListingsView({
   /** Which category's price/furnished quick-picks to show — omitted (city/group-root pages)
    * means no filter bar at all, since there's no single category to size price brackets for. */
   filterCategory?: ListingCategory;
-  filterIsSale?: boolean;
   popularCities: City[];
   userName?: string | null;
   currentSegments: ParsedSegments;
@@ -217,7 +215,6 @@ export async function BrowseListingsView({
             )}
             <BrowseFilterBar
               category={filterCategory}
-              isSale={filterIsSale ?? true}
               activeMinPrice={query.minPrice}
               activeMaxPrice={query.maxPrice}
               activeFurnished={query.furnished}

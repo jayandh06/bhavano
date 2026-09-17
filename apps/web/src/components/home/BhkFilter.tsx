@@ -61,11 +61,13 @@ export function BhkFilter({
       : new Set(BEDROOM_COUNTS);
 
   const allSelected = selected.size === BEDROOM_COUNTS.length;
+  // "3 BHK" for three *selected buckets* was indistinguishable from "3 BHK" the bedroom count —
+  // picking 2 and 3 read as "2 BHK". A count of selections has to say that it is one.
   const label = allSelected
     ? "All BHK"
     : selected.size === 1
       ? `${bedroomLabel([...selected][0])} BHK`
-      : `${selected.size} BHK`;
+      : `${selected.size} selected`;
 
   function navigate(nextSelected: Set<number>) {
     // Unchecking every box would mean "match nothing" — instead of blocking the click, fall back

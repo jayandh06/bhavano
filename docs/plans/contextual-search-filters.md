@@ -239,10 +239,12 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
     *subject* ("PG Double sharing in Bengaluru"), so a query-param choice has to suppress the
     category-label fallback the way a path facet does or the filter stays invisible. Condition is
     deliberately excluded — "Used Furniture" wants the category label.
-- **Custom price range.** The brackets are derived from each category's plausibility bounds, which
-  keeps them sane but coarse: three buckets cannot express ₹20,000–₹45,000. The price dropdown now
-  ends in two amount boxes; either may be left empty for an open-ended bound, and both empty is the
-  same as "Any". `lib/priceInput.ts` parses what people actually type — `20,000`, `₹45000`, `20k`,
+- **Price is "Any" plus two boxes, and nothing else.** The derived brackets went with the same
+  change that added the boxes: they were sized off each category's plausibility bounds, which made
+  them sane but arbitrary — three buckets per category, rarely the range anyone wanted, and a
+  second way to set the same two numbers. Either box may be left empty for an open-ended bound, and
+  both empty is "Any price". `filterIsSale`/`isSale` went with them: a typed amount needs no
+  per-category, per-transaction scale. `lib/priceInput.ts` parses what people actually type — `20,000`, `₹45000`, `20k`,
   `2 lakh`, `1.5Cr` — because the brackets above the box are themselves written in that notation.
   19 checks cover the parser and the pill label.
   - Bounds are **inclusive** (`>=`/`<=`), matching the backend's existing price filter. No separate
@@ -250,6 +252,9 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
     would be two controls for one meaning.
   - This also fixed the pill: a typed range matches no bracket and used to leave it reading "Price",
     as though nothing were filtered. It now reads "₹20k – ₹2L" / "Above ₹20k" / "Under ₹45k".
+- **The BHK pill counts selections, not bedrooms.** With several buckets ticked it read
+  "3 BHK" — the same words as the bedroom count, so picking 2 and 3 displayed "2 BHK". It now reads
+  "2 selected", and still names the value when exactly one is chosen.
 - **BHK reaches every page that has bedrooms.** It was rendered only when a city was resolved *and*
   a category was known, so `/buy/apartment` and the homepage with an apartment selected had no BHK
   filter at all. `BhkFilter` now takes an optional `cityName` (building the national path

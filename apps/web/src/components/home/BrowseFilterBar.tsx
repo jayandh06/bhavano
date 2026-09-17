@@ -3,31 +3,9 @@
 import { useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
-import { PRICE_BOUNDS } from "@bhavano/types/priceBounds";
 import { useClickOutside } from "@/lib/useClickOutside";
-import { formatINR } from "@/lib/seoRoute";
 import { assetFiltersFor, type FilterableKey } from "@/lib/assetFilters";
 import { customPriceLabel, parseAmount } from "@/lib/priceInput";
-
-interface PriceBracket {
-  label: string;
-  minPrice?: number;
-  maxPrice?: number;
-}
-
-/** Quick-pick price brackets sized off this category's own plausibility bounds
- * (packages/types/src/priceBounds.ts) — a PG's brackets land in the thousands, a house's in
- * lakhs/crores, without hand-tuning either separately. */
-function priceBracketsFor(category: ListingCategory, isSale: boolean): PriceBracket[] {
-  const bounds = PRICE_BOUNDS[category][isSale ? "sale" : "rental"];
-  const low = Math.min(bounds.min * 20, bounds.max);
-  const high = Math.min(bounds.min * 200, bounds.max);
-  return [
-    { label: `Under ${formatINR(low)}`, maxPrice: low },
-    { label: `${formatINR(low)} – ${formatINR(high)}`, minPrice: low, maxPrice: high },
-    { label: `${formatINR(high)}+`, minPrice: high },
-  ];
-}
 
 /** `price` plus whichever config-derived select filters this asset has. */
 type OpenFilter = "price" | FilterableKey | null;
@@ -42,12 +20,12 @@ export const buttonClass = (active: boolean) =>
 const dropdownClass =
   "absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[200px]";
 
-/** Category-aware refinement layer for a browse results page — narrows via query params on
- * top of the clean canonical path (e.g. ?minPrice=..&furnished=..), never changing the path
- * itself. `furnished` only renders for house/apartment; price brackets are sized per category. */
+/** Category-aware refinement layer for a browse results page — narrows via query params on top of
+ * the clean canonical path (e.g. ?minPrice=..&furnished=..), never changing the path itself. Which
+ * select filters appear is derived from the asset (see lib/assetFilters.ts); price is the same two
+ * boxes for every category, since a typed amount needs no per-category scale. */
 export function BrowseFilterBar({
   category,
-  isSale,
   activeMinPrice,
   activeMaxPrice,
   activeFurnished,
@@ -56,7 +34,6 @@ export function BrowseFilterBar({
   activeServiceType,
 }: {
   category?: ListingCategory;
-  isSale: boolean;
   activeMinPrice?: number;
   activeMaxPrice?: number;
   activeFurnished?: string;
@@ -87,21 +64,9 @@ export function BrowseFilterBar({
     setOpen(null);
   }
 
-  function selectBracket(bracket: PriceBracket) {
-    navigate({
-      minPrice: bracket.minPrice !== undefined ? String(bracket.minPrice) : undefined,
-      maxPrice: bracket.maxPrice !== undefined ? String(bracket.maxPrice) : undefined,
-    });
-  }
-
-  const brackets = priceBracketsFor(category, isSale);
-  const activeBracket =
-    activeMinPrice !== undefined || activeMaxPrice !== undefined
-      ? brackets.find((b) => b.minPrice === activeMinPrice && b.maxPrice === activeMaxPrice)
-      : undefined;
-  // A typed-in range matches no bracket, and used to leave the pill reading "Price" as though
-  // nothing were filtered. It now names itself: "₹20k – ₹2L".
-  const priceLabel = activeBracket?.label ?? customPriceLabel(activeMinPrice, activeMaxPrice) ?? "Price";
+  // The pill names the actual range — "₹20k – ₹2L", "Above ₹20k", "Under ₹45k" — rather than the
+  // bracket it happened to match.
+  const priceLabel = customPriceLabel(activeMinPrice, activeMaxPrice) ?? "Price";
   // Derived from CATEGORY_FIELD_CONFIG rather than hardcoded — see lib/assetFilters.ts. The
   // previous `category === "house" || category === "apartment"` was wrong in three ways: the
   // config says villa also has furnishing, commercial has furnishing, and PG/furniture/interiors
@@ -122,10 +87,15 @@ export function BrowseFilterBar({
         </button>
         {open === "price" && (
           <div className={`${dropdownClass} min-w-[248px]`}>
-            <DropdownOption label="Any" active={activeMinPrice === undefined && activeMaxPrice === undefined} onClick={() => selectBracket({ label: "Any" })} />
-            {brackets.map((b) => (
-              <DropdownOption key={b.label} label={b.label} active={activeBracket?.label === b.label} onClick={() => selectBracket(b)} />
-            ))}
+            {/* "Any", then the two boxes — no pre-baked brackets. They were derived from each
+              * category's plausibility bounds, which made them sane but arbitrary: three buckets
+              * per category, none of them the range anyone actually wanted, and each one a second
+              * way to set the same two numbers. */}
+            <DropdownOption
+              label="Any price"
+              active={activeMinPrice === undefined && activeMaxPrice === undefined}
+              onClick={() => navigate({ minPrice: undefined, maxPrice: undefined })}
+            />
             <CustomPriceRange
               activeMinPrice={activeMinPrice}
               activeMaxPrice={activeMaxPrice}
@@ -176,12 +146,10 @@ export function BrowseFilterBar({
 }
 
 /**
- * Type-your-own price range, under the quick picks.
+ * The price filter itself: two amount boxes, and that is all.
  *
- * The brackets are derived from each category's plausibility bounds, which makes them sane but
- * coarse — three buckets cannot express "₹20,000 to ₹45,000". Either bound may be left empty, which
- * is how "above ₹20k" and "under ₹45k" are expressed; both empty clears the filter, exactly like
- * the "Any" option.
+ * Either bound may be left empty, which is how "above ₹20k" and "under ₹45k" are expressed; both
+ * empty clears the filter, exactly like the "Any price" option above it.
  *
  * Bounds are inclusive (`>=` / `<=`), which is what the backend's price filter already does. There
  * is no separate strict-greater mode: at rupee granularity `> 20000` and `>= 20000` differ by a
@@ -215,7 +183,7 @@ function CustomPriceRange({
 
   return (
     <div className="border-t border-border mt-2 pt-2">
-      <div className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">Custom range</div>
+      <div className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">Set a range</div>
       <div className="flex items-center gap-1.5 px-2.5">
         <AmountInput value={min} onChange={setMin} onEnter={apply} placeholder="Min" label="Minimum price" />
         <span className="text-[12px] text-muted">–</span>
