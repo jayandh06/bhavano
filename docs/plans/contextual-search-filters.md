@@ -226,6 +226,43 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
 - 11 grammar checks cover the verb, furnishing, BHK-facet, area-count and all three price clauses
   (`between`/`under`/`above`), plus the no-group fallback.
 
+**Follow-ups from use. Implemented 2026-09-17.**
+- **The three Phase 2 selects were never applied.** `BrowseFilterBar` wrote `?sharingType=`,
+  `?condition=` and `?serviceType=`, and `ListListingsDto` accepted them, but neither branch of
+  `app/[city]/[[...rest]]/page.tsx` read them back out of `searchParams` — so the pill lit, the URL
+  changed, and the results didn't. Measured: `/bengaluru/pg?sharingType=double` returned the
+  unfiltered 34 where the path-facet spelling `/bengaluru/pg/double` returned 1. Both branches now
+  parse all three via one `parseAssetSelects`, with a query value winning over the path facet (the
+  precedence `?bedrooms=` and `?areas=` already had). Verified live: 1 for double, 33 for single,
+  34 unfiltered.
+  - The H1 follows, which needed one subtlety: sharing and service type name the heading's
+    *subject* ("PG Double sharing in Bengaluru"), so a query-param choice has to suppress the
+    category-label fallback the way a path facet does or the filter stays invisible. Condition is
+    deliberately excluded — "Used Furniture" wants the category label.
+- **Custom price range.** The brackets are derived from each category's plausibility bounds, which
+  keeps them sane but coarse: three buckets cannot express ₹20,000–₹45,000. The price dropdown now
+  ends in two amount boxes; either may be left empty for an open-ended bound, and both empty is the
+  same as "Any". `lib/priceInput.ts` parses what people actually type — `20,000`, `₹45000`, `20k`,
+  `2 lakh`, `1.5Cr` — because the brackets above the box are themselves written in that notation.
+  19 checks cover the parser and the pill label.
+  - Bounds are **inclusive** (`>=`/`<=`), matching the backend's existing price filter. No separate
+    strict-greater mode: at rupee granularity `> 20000` and `>= 20000` differ by one rupee, so it
+    would be two controls for one meaning.
+  - This also fixed the pill: a typed range matches no bracket and used to leave it reading "Price",
+    as though nothing were filtered. It now reads "₹20k – ₹2L" / "Above ₹20k" / "Under ₹45k".
+- **BHK reaches every page that has bedrooms.** It was rendered only when a city was resolved *and*
+  a category was known, so `/buy/apartment` and the homepage with an apartment selected had no BHK
+  filter at all. `BhkFilter` now takes an optional `cityName` (building the national path
+  `/buy/apartment/2bhk` without one) and an `urlMode`: `path` on the browse pages, where a single
+  bucket has a canonical URL of its own, and `query` on the homepage, which has no browse path and
+  expresses every filter as a param. The homepage's `?bedrooms=` accordingly became a list rather
+  than a single value; a single-value link from the mega menu parses as a one-element list
+  unchanged. The buckets themselves are unchanged — 1 … 5+, the top one being "or more" because
+  that is what the backend does.
+- **Still missing on the homepage**, and knowingly: price and furnishing. The homepage has never
+  parsed `minPrice`/`maxPrice`, so adding those controls is a route change rather than a component
+  one, and the browse pages are where price refinement belongs.
+
 **Phase 3 — counts.**
 - `/listings/facets`, chips carrying counts, zero counts de-emphasised and wired to the requirement
   capture.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
 import { MAX_BEDROOMS, bedroomLabel, type ParsedSegments } from "@/lib/seoRoute";
 import { buildBrowsePath } from "@/lib/listingPath";
@@ -18,17 +18,33 @@ const BEDROOM_COUNTS = Array.from({ length: MAX_BEDROOMS }, (_, i) => i + 1);
  * (`/{city}/{group}/{category}/{Nbhk}`) the mega-menu's own single-BHK links already produce —
  * this control is just a richer way to reach (or combine) those same buckets, not a second
  * parallel filter. Picking 2-4 buckets stays on the category-root path with `?bedrooms=1,3,5`
- * layered on top, mirroring how `AreaFilter` layers `?areas=` on top of its own canonical path. */
+ * layered on top, mirroring how `AreaFilter` layers `?areas=` on top of its own canonical path.
+ *
+ * `urlMode` exists because two pages express the same choice in two grammars, and this control has
+ * to speak both or one of them goes without a BHK filter (which is what happened: /buy/apartment
+ * and the homepage with an apartment selected had none):
+ *
+ * - **`path`** — the browse pages, where a single bucket has a canonical URL of its own. `cityName`
+ *   is optional here: without it the national form (`/buy/apartment/2bhk`) is built instead.
+ * - **`query`** — the homepage, which has no browse path at all and expresses every filter as a
+ *   query param. It writes `?bedrooms=` onto the current path, exactly as `BrowseFilterBar` does
+ *   with price and furnishing.
+ */
 export function BhkFilter({
   cityName,
   category,
   currentSegments,
+  urlMode = "path",
 }: {
-  cityName: string;
+  cityName?: string;
   category: ListingCategory;
-  currentSegments: ParsedSegments;
+  /** The path's parsed segments — supplies the transaction group the rebuilt path needs, and the
+   * single-BHK facet the selection may already be sitting on. Absent in `query` mode. */
+  currentSegments?: ParsedSegments;
+  urlMode?: "path" | "query";
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,7 +56,7 @@ export function BhkFilter({
   // no local staging, same reasoning as `AreaFilter`.
   const selected: Set<number> = bedroomsParam
     ? new Set(bedroomsParam.split(",").map(Number).filter(Boolean))
-    : typeof currentSegments.facetValue === "number"
+    : typeof currentSegments?.facetValue === "number"
       ? new Set([currentSegments.facetValue])
       : new Set(BEDROOM_COUNTS);
 
@@ -58,8 +74,19 @@ export function BhkFilter({
     const nextAllSelected = nextSelected.size === BEDROOM_COUNTS.length;
     const params = new URLSearchParams(searchParams.toString());
     params.delete("bedrooms");
+    // A narrowing change always returns to the first page, same as every other filter.
+    params.delete("page");
 
-    const { transactionGroup } = currentSegments;
+    if (urlMode === "query") {
+      // No path to rebuild: the homepage is one URL and every filter on it is a param. "All"
+      // clears the param rather than listing all five, so the default state stays the clean `/`.
+      if (!nextAllSelected) params.set("bedrooms", [...nextSelected].join(","));
+      const qs = params.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname);
+      return;
+    }
+
+    const transactionGroup = currentSegments?.transactionGroup;
 
     if (nextAllSelected) {
       const path = buildBrowsePath({ cityName, transactionGroup, category });

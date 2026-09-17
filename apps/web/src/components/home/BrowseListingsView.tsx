@@ -210,7 +210,10 @@ export async function BrowseListingsView({
             />
             {/* Config-driven, not `house || apartment`: CATEGORY_FIELD_CONFIG says villa has
               * bedrooms too, so the BHK filter was simply missing there. See lib/assetFilters.ts. */}
-            {cityName && filterCategory && hasAssetFilter(filterCategory, "bedrooms") && (
+            {/* `cityName` is no longer required: without one BhkFilter builds the national path
+              * (/buy/apartment/2bhk), so /buy/apartment is no longer the one apartment page in the
+              * site with no BHK filter. */}
+            {filterCategory && hasAssetFilter(filterCategory, "bedrooms") && (
               <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
             )}
             <BrowseFilterBar

@@ -7,6 +7,7 @@ import { PRICE_BOUNDS } from "@bhavano/types/priceBounds";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { formatINR } from "@/lib/seoRoute";
 import { assetFiltersFor, type FilterableKey } from "@/lib/assetFilters";
+import { customPriceLabel, parseAmount } from "@/lib/priceInput";
 
 interface PriceBracket {
   label: string;
@@ -94,10 +95,13 @@ export function BrowseFilterBar({
   }
 
   const brackets = priceBracketsFor(category, isSale);
-  const priceLabel =
+  const activeBracket =
     activeMinPrice !== undefined || activeMaxPrice !== undefined
-      ? brackets.find((b) => b.minPrice === activeMinPrice && b.maxPrice === activeMaxPrice)?.label ?? "Price"
-      : "Price";
+      ? brackets.find((b) => b.minPrice === activeMinPrice && b.maxPrice === activeMaxPrice)
+      : undefined;
+  // A typed-in range matches no bracket, and used to leave the pill reading "Price" as though
+  // nothing were filtered. It now names itself: "₹20k – ₹2L".
+  const priceLabel = activeBracket?.label ?? customPriceLabel(activeMinPrice, activeMaxPrice) ?? "Price";
   // Derived from CATEGORY_FIELD_CONFIG rather than hardcoded — see lib/assetFilters.ts. The
   // previous `category === "house" || category === "apartment"` was wrong in three ways: the
   // config says villa also has furnishing, commercial has furnishing, and PG/furniture/interiors
@@ -117,11 +121,21 @@ export function BrowseFilterBar({
           {priceLabel} <span className="text-[10px] text-muted">▾</span>
         </button>
         {open === "price" && (
-          <div className={dropdownClass}>
+          <div className={`${dropdownClass} min-w-[248px]`}>
             <DropdownOption label="Any" active={activeMinPrice === undefined && activeMaxPrice === undefined} onClick={() => selectBracket({ label: "Any" })} />
             {brackets.map((b) => (
-              <DropdownOption key={b.label} label={b.label} active={priceLabel === b.label} onClick={() => selectBracket(b)} />
+              <DropdownOption key={b.label} label={b.label} active={activeBracket?.label === b.label} onClick={() => selectBracket(b)} />
             ))}
+            <CustomPriceRange
+              activeMinPrice={activeMinPrice}
+              activeMaxPrice={activeMaxPrice}
+              onApply={(minPrice, maxPrice) =>
+                navigate({
+                  minPrice: minPrice !== undefined ? String(minPrice) : undefined,
+                  maxPrice: maxPrice !== undefined ? String(maxPrice) : undefined,
+                })
+              }
+            />
           </div>
         )}
       </div>
@@ -158,6 +172,103 @@ export function BrowseFilterBar({
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Type-your-own price range, under the quick picks.
+ *
+ * The brackets are derived from each category's plausibility bounds, which makes them sane but
+ * coarse — three buckets cannot express "₹20,000 to ₹45,000". Either bound may be left empty, which
+ * is how "above ₹20k" and "under ₹45k" are expressed; both empty clears the filter, exactly like
+ * the "Any" option.
+ *
+ * Bounds are inclusive (`>=` / `<=`), which is what the backend's price filter already does. There
+ * is no separate strict-greater mode: at rupee granularity `> 20000` and `>= 20000` differ by a
+ * single rupee, and offering both would be two controls for one meaning.
+ */
+function CustomPriceRange({
+  activeMinPrice,
+  activeMaxPrice,
+  onApply,
+}: {
+  activeMinPrice?: number;
+  activeMaxPrice?: number;
+  onApply: (minPrice: number | undefined, maxPrice: number | undefined) => void;
+}) {
+  const [min, setMin] = useState(activeMinPrice !== undefined ? String(activeMinPrice) : "");
+  const [max, setMax] = useState(activeMaxPrice !== undefined ? String(activeMaxPrice) : "");
+
+  const parsedMin = min.trim() ? parseAmount(min) : undefined;
+  const parsedMax = max.trim() ? parseAmount(max) : undefined;
+  const error =
+    (min.trim() && parsedMin === undefined) || (max.trim() && parsedMax === undefined)
+      ? "Enter an amount like 20000, 20k or 2L"
+      : parsedMin !== undefined && parsedMax !== undefined && parsedMin > parsedMax
+        ? "Min must be less than max"
+        : undefined;
+
+  function apply() {
+    if (error) return;
+    onApply(parsedMin, parsedMax);
+  }
+
+  return (
+    <div className="border-t border-border mt-2 pt-2">
+      <div className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">Custom range</div>
+      <div className="flex items-center gap-1.5 px-2.5">
+        <AmountInput value={min} onChange={setMin} onEnter={apply} placeholder="Min" label="Minimum price" />
+        <span className="text-[12px] text-muted">–</span>
+        <AmountInput value={max} onChange={setMax} onEnter={apply} placeholder="Max" label="Maximum price" />
+      </div>
+      {error ? (
+        <div className="px-2.5 pt-1.5 text-[11px] text-danger">{error}</div>
+      ) : (
+        // The accepted shorthand has to be visible, or nobody discovers it — the brackets above are
+        // written in the same notation, so this is telling them the box speaks the chips' language.
+        <div className="px-2.5 pt-1.5 text-[11px] text-muted">Leave one empty for an open-ended range. 20k, 2L, 1.5Cr all work.</div>
+      )}
+      <button
+        onClick={apply}
+        disabled={error !== undefined}
+        className={`mt-2 mx-2.5 mb-0.5 block w-[calc(100%-20px)] rounded-lg border px-3 py-2 text-[13px] font-semibold ${
+          error ? "border-border bg-surface text-muted cursor-not-allowed" : "border-green bg-green/10 text-green cursor-pointer"
+        }`}
+      >
+        Apply
+      </button>
+    </div>
+  );
+}
+
+function AmountInput({
+  value,
+  onChange,
+  onEnter,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onEnter: () => void;
+  placeholder: string;
+  label: string;
+}) {
+  return (
+    <input
+      // Not type="number": it rejects the "20k"/"2L" shorthand the brackets themselves use, and on
+      // Android it offers a keypad with no letters at all. `inputMode` still brings up the numeric
+      // pad on iOS for the common case of typing plain digits.
+      inputMode="numeric"
+      value={value}
+      aria-label={label}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onEnter();
+      }}
+      className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-2.5 py-2 text-[13px] text-text"
+    />
   );
 }
 

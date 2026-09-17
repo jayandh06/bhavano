@@ -9,6 +9,8 @@ import { Header } from "@/components/home/Header";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
 import { AreaFilter } from "@/components/home/AreaFilter";
 import { AssetTypeFilter, TransactionFilter } from "@/components/home/TypeFilters";
+import { BhkFilter } from "@/components/home/BhkFilter";
+import { hasAssetFilter } from "@/lib/assetFilters";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { Pagination } from "@/components/home/Pagination";
 import { Footer } from "@/components/home/Footer";
@@ -23,8 +25,8 @@ import {
   CONDITION_VALUES,
   FURNISHING_VALUES,
   parseEnum,
+  parseIntList,
   parsePage,
-  parsePositiveInt,
   PROPERTY_TYPE_VALUES,
   SERVICE_TYPE_VALUES,
   SHARING_TYPE_VALUES,
@@ -56,7 +58,12 @@ export default async function HomePage({
   const cityParam = typeof sp.city === "string" ? sp.city : undefined;
   const page = parsePage(sp.page);
 
-  const bedrooms = parsePositiveInt(sp.bedrooms);
+  // A list, not a single value: the BHK filter is a multi-select ("2 BHK or 3 BHK"), and a
+  // single-value `?bedrooms=3` from a mega-menu link parses as a one-element list unchanged.
+  const bedrooms = parseIntList(sp.bedrooms);
+  /** The one selected bucket, for the heading's "2 BHK Apartments" subject — meaningless once
+   * several are chosen, where the heading names the asset alone. */
+  const singleBedroom = bedrooms?.length === 1 ? bedrooms[0] : undefined;
   const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);
   const sharingType = parseEnum(sp.sharingType, SHARING_TYPE_VALUES);
   const condition = parseEnum(sp.condition, CONDITION_VALUES);
@@ -101,7 +108,7 @@ export default async function HomePage({
           cityId: resolvedCity?.id,
           areaIds,
           q: q || undefined,
-          bedrooms: bedrooms !== undefined ? [bedrooms] : undefined,
+          bedrooms,
           furnished,
           sharingType,
           condition,
@@ -118,6 +125,9 @@ export default async function HomePage({
   if (page > 1 && page > totalPages) notFound();
 
   const activeTab = HOME_TABS.find((t) => t.value === category) ?? HOME_TABS[0];
+  /** The asset the homepage is currently narrowed to, from either spelling — the raw
+   * `?listingCategory=` bypass or the tab row's own `?propertyType=`. */
+  const homeAsset: ListingCategory | undefined = listingCategory ?? (propertyType as ListingCategory | undefined);
   const cityName = resolvedCity?.name;
   // Full area list for both the search bar's placeholder hint and the AreaFilter multi-select.
   const cityAreas = resolvedCity ? await fetchAreas(resolvedCity.id, undefined, true) : [];
@@ -139,7 +149,7 @@ export default async function HomePage({
     // dropping the location and leaving a bare category.
     cityName: cityName ?? "India",
     propertyType,
-    bedrooms,
+    bedrooms: singleBedroom,
     listingCategory,
     transactionType,
     sharingType,
@@ -156,7 +166,7 @@ export default async function HomePage({
     if (propertyType) params.set("propertyType", propertyType);
     if (q) params.set("q", q);
     if (resolvedCity) params.set("city", slugify(resolvedCity.name));
-    if (bedrooms !== undefined) params.set("bedrooms", String(bedrooms));
+    if (bedrooms && bedrooms.length > 0) params.set("bedrooms", bedrooms.join(","));
     if (furnished) params.set("furnished", furnished);
     if (sharingType) params.set("sharingType", sharingType);
     if (condition) params.set("condition", condition);
@@ -213,16 +223,14 @@ export default async function HomePage({
           {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}
           {/* activeTab.value already *is* the intent here — the homepage's tab row and this
             * filter speak the same vocabulary, so no translation is needed. */}
-          <TransactionFilter
-            cityName={resolvedCity?.name}
-            activeIntent={activeTab.value}
-            activeAsset={listingCategory ?? (propertyType as ListingCategory | undefined)}
-          />
-          <AssetTypeFilter
-            cityName={resolvedCity?.name}
-            activeIntent={activeTab.value}
-            activeAsset={listingCategory ?? (propertyType as ListingCategory | undefined)}
-          />
+          <TransactionFilter cityName={resolvedCity?.name} activeIntent={activeTab.value} activeAsset={homeAsset} />
+          <AssetTypeFilter cityName={resolvedCity?.name} activeIntent={activeTab.value} activeAsset={homeAsset} />
+          {/* 1 BHK … 5+ BHK, once the chosen asset actually has bedrooms per
+            * CATEGORY_FIELD_CONFIG. `query` mode because the homepage has no browse path — it
+            * writes `?bedrooms=`, which this page has always accepted. */}
+          {homeAsset && hasAssetFilter(homeAsset, "bedrooms") && (
+            <BhkFilter category={homeAsset} urlMode="query" />
+          )}
         </div>
         {/* The homepage expresses every filter as a query param, so without this its searches
             were entirely invisible — a whole session logged one row reading `path: "/"`. */}
@@ -236,7 +244,7 @@ export default async function HomePage({
               category: listingCategory,
               transactionType,
               // No price filter on the homepage — it lives on the browse pages' filter bar.
-              bedrooms: bedrooms !== undefined ? [bedrooms] : undefined,
+              bedrooms,
               furnished,
               resultCount: listingsPage.total,
             }}
@@ -257,7 +265,7 @@ export default async function HomePage({
               category: listingCategory,
               transactionType,
               cityId: resolvedCity?.id,
-              bedrooms,
+              bedrooms: singleBedroom,
               landingPath: "/",
             },
           }}
