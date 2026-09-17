@@ -526,7 +526,7 @@ export function PostAdWizard({
           {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
             <Text key={s} style={{ fontSize: 11, fontWeight: "700", color: step === s ? colors.green : colors.muted }}>
               {i > 0 ? " → " : ""}
-              {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Review"}
+              {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Preview Ad"}
             </Text>
           ))}
         </View>
@@ -900,7 +900,7 @@ export function PostAdWizard({
               disabled={!detailsValid}
               style={[styles.reviewButton, { backgroundColor: colors.green, opacity: detailsValid ? 1 : 0.5 }]}
             >
-              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Review</Text>
+              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Preview Ad</Text>
             </Pressable>
           </View>
         </View>
