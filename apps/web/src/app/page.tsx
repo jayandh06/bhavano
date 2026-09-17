@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import type { ListingCategory } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
+import { segmentsForHomeCategory } from "@/lib/seoRoute";
 import { AreaFilter } from "@/components/home/AreaFilter";
+import { AssetTypeFilter, TransactionFilter } from "@/components/home/TypeFilters";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { Pagination } from "@/components/home/Pagination";
 import { Footer } from "@/components/home/Footer";
@@ -115,6 +118,10 @@ export default async function HomePage({
   if (page > 1 && page > totalPages) notFound();
 
   const activeTab = HOME_TABS.find((t) => t.value === category) ?? HOME_TABS[0];
+  // The homepage's tabs are intent groupings; the type filters speak the path grammar's
+  // transaction *group*. segmentsForHomeCategory is the existing translation between the two, so
+  // the filters agree with whichever tab is active rather than holding a second opinion.
+  const { transactionGroup: transactionGroupForTab } = segmentsForHomeCategory(activeTab.value);
   const cityName = resolvedCity?.name;
   // Full area list for both the search bar's placeholder hint and the AreaFilter multi-select.
   const cityAreas = resolvedCity ? await fetchAreas(resolvedCity.id, undefined, true) : [];
@@ -188,11 +195,23 @@ export default async function HomePage({
         <p className="sm:hidden truncate text-[13px] text-text-soft mb-5">
           Buy, rent, sell & lease — free, no brokerage, message sellers directly.
         </p>
-        {resolvedCity && (
-          <div className="mb-5">
-            <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
-          </div>
-        )}
+        {/* Transaction and asset render here too, and unconditionally — the homepage's "All" tab
+          * had no way to narrow by either, which is half of the reported problem. Both navigate
+          * to the corresponding browse path, exactly as the tab row above already does, so this
+          * introduces no new URL shapes. */}
+        <div className="mb-5 flex gap-2.5 flex-wrap items-start">
+          <TransactionFilter
+            cityName={resolvedCity?.name}
+            activeGroup={transactionGroupForTab}
+            activeAsset={listingCategory ?? (propertyType as ListingCategory | undefined)}
+          />
+          <AssetTypeFilter
+            cityName={resolvedCity?.name}
+            activeGroup={transactionGroupForTab}
+            activeAsset={listingCategory ?? (propertyType as ListingCategory | undefined)}
+          />
+          {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}
+        </div>
         {/* The homepage expresses every filter as a query param, so without this its searches
             were entirely invisible — a whole session logged one row reading `path: "/"`. */}
         {!noAreaSelected && (

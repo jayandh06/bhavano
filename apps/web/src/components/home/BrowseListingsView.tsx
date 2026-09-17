@@ -12,6 +12,7 @@ import { PickAnAreaNotice } from "./PickAnAreaNotice";
 import { SearchTracker } from "./SearchTracker";
 import { RequirementPrompt } from "./RequirementPrompt";
 import { AreaFilter } from "./AreaFilter";
+import { AssetTypeFilter, TransactionFilter } from "./TypeFilters";
 import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
 import { SortDropdown } from "./SortDropdown";
@@ -166,6 +167,25 @@ export async function BrowseListingsView({
           * bg-on-bg treatment it used to have gave it no visual identity of its own. */}
         <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
           <div className="flex gap-2.5 flex-wrap">
+            {/* Transaction and asset come first and render at every depth — including the
+              * city-root and group-root pages, which had no filters at all before. Everything
+              * after them is asset-dependent: BrowseFilterBar's price brackets are sized from
+              * PRICE_BOUNDS[category] and BhkFilter only means anything for a house or an
+              * apartment, so those appear once an asset is chosen rather than guessing a scale
+              * that would be wrong for a ₹4,000 sofa and a ₹90L flat at the same time. See
+              * docs/plans/contextual-search-filters.md. */}
+            <TransactionFilter
+              cityName={cityName}
+              areaName={pathAreaName}
+              activeGroup={currentSegments.transactionGroup}
+              activeAsset={currentSegments.category}
+            />
+            <AssetTypeFilter
+              cityName={cityName}
+              areaName={pathAreaName}
+              activeGroup={currentSegments.transactionGroup}
+              activeAsset={currentSegments.category}
+            />
             {cityName && <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />}
             {cityName && (filterCategory === "house" || filterCategory === "apartment") && (
               <BhkFilter cityName={cityName} category={filterCategory} currentSegments={currentSegments} />
