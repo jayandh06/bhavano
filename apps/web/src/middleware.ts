@@ -274,6 +274,16 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   const resolved = resolveSource(request);
   const response = NextResponse.next();
 
+  // Explicit rather than left to default: every one of these three cookies was set without it,
+  // and a stricter privacy mode (a browser's own tracking-prevention heuristics, or a
+  // cookie-blocking extension) is more likely to distrust — cap, or drop outright — a cookie
+  // that doesn't declare Secure, even when the connection genuinely is HTTPS throughout (Caddy
+  // terminates TLS in front of every deployed environment). Gated on NODE_ENV rather than
+  // hardcoded true: the local dev server runs on plain http://localhost, where a Secure cookie
+  // is refused by the browser outright, silently breaking the exact mechanism this is meant to
+  // protect.
+  const secureCookie = process.env.NODE_ENV === "production";
+
   if (cityChanged) {
     if (citySlug === null) {
       response.cookies.delete(CITY_COOKIE);
@@ -281,6 +291,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
       response.cookies.set(CITY_COOKIE, citySlug, {
         httpOnly: true,
         sameSite: "lax",
+        secure: secureCookie,
         path: "/",
         maxAge: CITY_COOKIE_MAX_AGE_SECONDS,
       });
@@ -291,6 +302,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
     response.cookies.set(ACQUISITION_COOKIE, JSON.stringify(resolved), {
       httpOnly: true,
       sameSite: "lax",
+      secure: secureCookie,
       path: "/",
       maxAge: ACQUISITION_COOKIE_MAX_AGE_SECONDS,
     });
@@ -300,6 +312,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
     response.cookies.set(SESSION_COOKIE, sessionId, {
       httpOnly: true,
       sameSite: "lax",
+      secure: secureCookie,
       path: "/",
       // No maxAge: a session cookie, cleared when the browser closes — reopening later starts a
       // new session/visit.
