@@ -248,6 +248,11 @@ function AmountInput({
       // Android it offers a keypad with no letters at all. `inputMode` still brings up the numeric
       // pad on iOS for the common case of typing plain digits.
       inputMode="numeric"
+      // An input's intrinsic width comes from `size`, which defaults to about 20 characters — two
+      // of those side by side made this panel's preferred width wider than a phone screen, so it
+      // only fitted by hitting its own max-width cap. Five characters is enough for "1.5Cr", and
+      // `flex-1` still stretches them to fill the row.
+      size={5}
       value={value}
       aria-label={label}
       placeholder={placeholder}
