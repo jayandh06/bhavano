@@ -21,6 +21,7 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
       bedrooms: data.bedrooms ?? null,
       landingPath: data.landingPath ?? null,
       savedSearchId: data.savedSearchId ?? null,
+      contactConsentAt: data.contactConsentAt ?? null,
       note: data.note ?? null,
       moveInBy: data.moveInBy ?? null,
       status: 'open',
@@ -120,6 +121,28 @@ describe('RequirementsService.create', () => {
     expect(requirementCreate).toHaveBeenCalled();
     expect(result.hasAlert).toBe(false);
   });
+
+  it('stamps contact consent only when the seeker actually gave it', async () => {
+    const { service, requirementCreate } = make();
+
+    const consented = await service.create('u1', { ...dto, contactConsent: true });
+    expect(requirementCreate.mock.calls[0][0].data.contactConsentAt).toBeInstanceOf(Date);
+    expect(consented.contactConsent).toBe(true);
+  });
+
+  it.each([{ contactConsent: false }, {}])(
+    // Absence must never read as permission: a row captured before the question existed, or by a
+    // client that never asks it, has not consented to anything.
+    'treats %p as no consent',
+    async (overrides) => {
+      const { service, requirementCreate } = make();
+
+      const result = await service.create('u1', { ...dto, ...overrides });
+
+      expect(requirementCreate.mock.calls[0][0].data.contactConsentAt).toBeNull();
+      expect(result.contactConsent).toBe(false);
+    },
+  );
 
   it('still captures when the confirmation fails to send', async () => {
     const { service, requirementCreate, notifyRequirementCaptured } = make();

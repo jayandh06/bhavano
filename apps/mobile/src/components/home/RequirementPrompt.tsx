@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import type { CreateRequirementInput } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
@@ -16,7 +15,10 @@ import { createRequirement } from "../../lib/bffClient";
  * plain "no results" message for it — see `(tabs)/index.tsx`'s `FlatList`, which had no
  * `ListEmptyComponent` at all.
  *
- * `criteria` comes from the screen's own resolved filters, same as web — nothing to re-enter.
+ * `criteria` comes from the screen's own resolved filters, same as web — nothing to re-enter, so
+ * the card states them back and asks for a confirmation rather than presenting a form. The one
+ * thing it does ask is the one thing the search cannot tell us: whether owners and agents with a
+ * matching property may contact them directly.
  */
 export function RequirementPrompt({
   criteria,
@@ -26,11 +28,13 @@ export function RequirementPrompt({
   label: string;
 }) {
   const { colors } = useAppTheme();
-  const router = useRouter();
   const { requireLogin, accessToken } = useHomeSheets();
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
   const [hasAlert, setHasAlert] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** On by default, same as web: someone asking us to go and find a house generally does want the
+   * person who has one to ring them, and the toggle is right there. */
+  const [allowContact, setAllowContact] = useState(true);
 
   async function submit() {
     if (!accessToken) {
@@ -42,7 +46,11 @@ export function RequirementPrompt({
     setState("saving");
     setError(null);
     try {
-      const requirement = await createRequirement(accessToken, { ...criteria, searchLabel: label });
+      const requirement = await createRequirement(accessToken, {
+        ...criteria,
+        searchLabel: label,
+        contactConsent: allowContact,
+      });
       setHasAlert(requirement.hasAlert);
       setState("done");
     } catch (e) {
@@ -56,8 +64,13 @@ export function RequirementPrompt({
       <View style={[styles.card, { borderColor: colors.green, backgroundColor: colors.surface }]}>
         <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5, textAlign: "center" }}>
           {hasAlert
-            ? "Noted — we'll message you as soon as something matching is posted."
-            : "Noted — our team will look into what's available and get back to you."}
+            ? "Confirmed — we'll message you as soon as something matching is posted."
+            : "Confirmed — our team will look into what's available and get back to you."}
+        </Text>
+        <Text style={{ color: colors.muted, fontSize: 12.5, textAlign: "center", marginTop: 6 }}>
+          {allowContact
+            ? "Owners and agents with a matching property can get in touch with you directly."
+            : "Only Bhavano will contact you — your number stays with us."}
         </Text>
       </View>
     );
@@ -65,30 +78,44 @@ export function RequirementPrompt({
 
   return (
     <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+      {/* A question, not an announcement: the old copy told them their search had failed and then
+        * asked them to "tell us what you need" — which they just had, by searching. */}
       <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 17, color: colors.text, textAlign: "center" }}>
-        Nothing matching {label} right now
+        Shall we find this for you?
       </Text>
-      <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", marginTop: 6, marginBottom: 18 }}>
-        Tell us what you're looking for and we'll go find it — you don't have to keep checking back.
+      <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", marginTop: 6, marginBottom: 14 }}>
+        There's nothing matching right now. Confirm below and we'll go looking — you don't have to
+        keep checking back.
       </Text>
-      <View style={{ flexDirection: "row", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
-        <Pressable
-          onPress={() => void submit()}
-          disabled={state === "saving"}
-          style={[styles.primaryButton, { backgroundColor: colors.green, opacity: state === "saving" ? 0.6 : 1 }]}
-        >
-          {state === "saving" ? (
-            <ActivityIndicator color={colors.onGreen} />
-          ) : (
-            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13.5 }}>Tell us what you need</Text>
-          )}
-        </Pressable>
-        {/* The other half of an empty result: whoever is reading this may be the person who could
-          * fill it — same reasoning as web's postAdHref. */}
-        <Pressable onPress={() => router.push("/post")} style={[styles.secondaryButton, { borderColor: colors.border }]}>
-          <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13.5 }}>Post an ad</Text>
-        </Pressable>
+      {/* The criteria, stated back — this is the thing being confirmed, and it is verbatim what
+        * gets stored as `searchLabel`. */}
+      <View style={[styles.criteria, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
+        <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>{label}</Text>
       </View>
+      <View style={styles.consentRow}>
+        <Switch value={allowContact} onValueChange={setAllowContact} disabled={state === "saving"} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: colors.text, fontSize: 13 }}>
+            Owners and agents with a matching property may call or message me.
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: 12 }}>
+            Turn this off and only Bhavano will contact you.
+          </Text>
+        </View>
+      </View>
+      <Pressable
+        onPress={() => void submit()}
+        disabled={state === "saving"}
+        style={[styles.primaryButton, { backgroundColor: colors.green, opacity: state === "saving" ? 0.6 : 1 }]}
+      >
+        {state === "saving" ? (
+          <ActivityIndicator color={colors.onGreen} />
+        ) : (
+          <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13.5, textAlign: "center" }}>
+            Yes, find this for me
+          </Text>
+        )}
+      </Pressable>
       {error && <Text style={{ color: "#c0554b", fontSize: 12, textAlign: "center", marginTop: 10 }}>{error}</Text>}
       <Text style={{ color: colors.muted, fontSize: 11.5, textAlign: "center", marginTop: 14 }}>
         Or adjust the filters above to widen the search.
@@ -99,6 +126,7 @@ export function RequirementPrompt({
 
 const styles = StyleSheet.create({
   card: { marginHorizontal: 16, marginVertical: 32, borderWidth: 1, borderRadius: 14, padding: 22 },
-  primaryButton: { borderRadius: 8, paddingVertical: 11, paddingHorizontal: 20 },
-  secondaryButton: { borderWidth: 1, borderRadius: 8, paddingVertical: 11, paddingHorizontal: 20 },
+  primaryButton: { borderRadius: 8, paddingVertical: 11, paddingHorizontal: 20, marginTop: 14 },
+  criteria: { borderWidth: 1, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12 },
+  consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginTop: 14 },
 });

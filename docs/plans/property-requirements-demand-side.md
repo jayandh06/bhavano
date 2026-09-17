@@ -4,6 +4,36 @@
 Phase 1 UI commit). Phase 2+ — the public feed, the paid contact path, SEO aggregates and mobile —
 is still plan only. Written 2026-09-16.
 
+## Consent, and the card as a confirmation (2026-09-17)
+
+The capture card used to say "Nothing matching X right now" and offer two buttons: **Tell us what
+you need** and **Post an ad**. Both are gone.
+
+- **"Post an ad" is removed.** It answered a different person's question. Someone whose search just
+  came up empty is not, in that moment, a supplier, and putting the two side by side made the card
+  ask them to choose between being a seeker and being an owner.
+- **The ask is now a confirmation, not a request.** "Tell us what you need" asked them to do the
+  thing they had just done by searching. The card now states the criteria back verbatim (the same
+  string stored as `searchLabel`), asks *"Shall we find this for you?"*, and writes the row only
+  when they confirm. Nothing about the flow got longer — it is still one tap for anyone who accepts
+  the default.
+- **It asks the one thing the search cannot tell us:** whether owners and agents with a matching
+  property may contact them directly. That is a real permission, stored as
+  `Requirement.contactConsentAt` — a timestamp, because consent is something that happened at a
+  moment, and null (the default, and every pre-existing row) means **no**. Absence is never read as
+  permission.
+  - With consent: the follow-up may hand their number to an owner who has a match. Without it, only
+    Bhavano contacts them, and the done-state says so in as many words rather than leaving them to
+    guess which one they agreed to.
+  - The admin queue shows it next to the phone number it governs — "Owners may contact: yes —
+    agreed" / "no — Bhavano only" — because that is the difference between "call them" and "we call
+    them".
+  - `RequirementMatchJob` is unchanged and still sends owners no seeker identity at all. Consent is
+    what makes the paid contact path of Phase 2 possible; it does not itself open one.
+- The inline variant (a link alongside real results) now expands into the same confirmation instead
+  of saving on the first click, so the consent question is asked on every path that creates a row.
+- Mobile mirrors all of this, using a `Switch` for the consent toggle as the rest of that app does.
+
 ## Context
 
 Today a search that finds nothing is a dead end. `ListingGrid` renders one line — *"No listings

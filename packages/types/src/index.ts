@@ -1109,6 +1109,9 @@ export interface RequirementDto {
   /** Whether an alert was created alongside — false when the seeker had used up their free
    * allowance, in which case nothing notifies them automatically and the follow-up is manual. */
   hasAlert: boolean;
+  /** Whether the seeker agreed that owners and agents with a matching property may contact them
+   * directly. False means only Bhavano gets in touch. */
+  contactConsent: boolean;
   createdAt: string;
 }
 
@@ -1196,6 +1199,10 @@ export interface CreateRequirementInput {
   maxPrice?: number;
   bedrooms?: number;
   landingPath?: string;
+  /** The seeker's answer to "may owners and agents with a match contact you directly?" — asked
+   * on the capture card itself, since it is the one thing about a requirement that cannot be
+   * inferred from the search. Absent is treated as no. */
+  contactConsent?: boolean;
 }
 
 export interface CreateSavedSearchInput {

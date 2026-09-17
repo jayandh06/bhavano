@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
 import type { ListingCategory, TransactionType } from '@bhavano/types';
 
 const LISTING_CATEGORIES: ListingCategory[] = [
@@ -77,4 +77,11 @@ export class CreateRequirementDto {
   @IsString()
   @MaxLength(500)
   landingPath?: string;
+
+  /** "May owners and agents with a matching property contact you directly?" Absent is no: this
+   * gates whether the seeker's number can ever be handed to a third party, so the permissive
+   * reading must be the one that requires an explicit answer. */
+  @IsOptional()
+  @IsBoolean()
+  contactConsent?: boolean;
 }

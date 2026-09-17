@@ -1493,6 +1493,14 @@ model Requirement {
   /** Last time matching owners were told about this, so the notifier never messages the same
    * owners about the same requirement twice — see RequirementMatchJob. */
   ownersNotifiedAt DateTime?
+  /** When the seeker agreed that owners and agents with a matching property may contact them
+   * directly. Null means they declined (or the row predates the question), and that is a real
+   * restriction, not a default to work around: without it the follow-up is Bhavano contacting
+   * them, never their number going out.
+   *
+   * A timestamp rather than a boolean because consent is a thing that happened at a moment — it
+   * is the record of *when* they agreed, which a bare flag cannot answer. */
+  contactConsentAt DateTime?
 
   @@index([status, createdAt])
   @@index([expiresAt])

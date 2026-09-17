@@ -141,6 +141,15 @@ function RequirementCard({ item }: { item: AdminRequirementDto }) {
             {item.hasAlert ? "yes" : "no — manual only"}
           </strong>
         </div>
+        <div>
+          {/* Whether their number may go to an owner at all. Worth seeing right next to the phone
+              number above it, because it is the difference between "call them" and "we call
+              them". */}
+          <span style={{ color: "var(--muted)" }}>Owners may contact: </span>
+          <strong style={{ color: item.contactConsent ? "var(--green)" : "var(--danger)" }}>
+            {item.contactConsent ? "yes — agreed" : "no — Bhavano only"}
+          </strong>
+        </div>
         {item.landingPath && (
           <div>
             <span style={{ color: "var(--muted)" }}>Searched: </span>

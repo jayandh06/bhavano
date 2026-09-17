@@ -13,7 +13,6 @@ export function ListingGrid({
     criteria: Omit<CreateRequirementInput, "searchLabel">;
     label: string;
     /** City-scoped `/post` link for the card's secondary action. */
-    postAdHref?: string;
   };
 }) {
   // Now that the footer sticks to the bottom of the viewport regardless of content height, a
@@ -30,7 +29,6 @@ export function ListingGrid({
         <RequirementPrompt
           criteria={requirement.criteria}
           label={requirement.label}
-          postAdHref={requirement.postAdHref}
         />
       );
     }

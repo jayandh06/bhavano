@@ -1126,6 +1126,7 @@ export class AdminService {
         expiresAt: row.expiresAt.toISOString(),
         isExpired: row.expiresAt.getTime() <= Date.now(),
         hasAlert: row.savedSearchId !== null,
+        contactConsent: row.contactConsentAt !== null,
         createdAt: row.createdAt.toISOString(),
         seekerId: row.seekerId,
         seekerName: row.seeker.name,

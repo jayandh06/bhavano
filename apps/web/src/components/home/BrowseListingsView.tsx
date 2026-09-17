@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import type { Area, City, ListingCardDto, ListingCategory } from "@bhavano/types";
-import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchListings, type ListingsQuery } from "@/lib/bff";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
@@ -279,7 +278,6 @@ export async function BrowseListingsView({
               items={listingsPage.items}
               requirement={{
                 label: heading,
-                postAdHref: cityName ? `/post?city=${slugify(cityName)}` : "/post",
                 criteria: {
                   category: query.category,
                   transactionType: query.transactionType,

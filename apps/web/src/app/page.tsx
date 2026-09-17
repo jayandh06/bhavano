@@ -257,7 +257,6 @@ export default async function HomePage({
           items={listingsPage.items}
           requirement={{
             label: heading,
-            postAdHref: cityName ? `/post?city=${slugify(cityName)}` : "/post",
             criteria: {
               // The homepage's tabs are intent groupings (homeCategory/propertyType) rather than
               // a single category, so only the concrete ones are carried — an admin reading the

@@ -40,6 +40,7 @@ function toDto(row: Requirement & { city: City | null; area: Area | null }): Req
     // its date for hours before any job gets to it, and every reader needs the same answer.
     isExpired: row.expiresAt.getTime() <= Date.now(),
     hasAlert: row.savedSearchId !== null,
+    contactConsent: row.contactConsentAt !== null,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -86,6 +87,9 @@ export class RequirementsService {
         moveInBy: dto.moveInBy ? new Date(dto.moveInBy) : undefined,
         expiresAt: expiryFromNow(),
         savedSearchId,
+        // Stamped at the moment they agreed, and only when they actually did — see the field's
+        // own note on why this is a timestamp and not a flag.
+        contactConsentAt: dto.contactConsent ? new Date() : null,
       },
       include: { city: true, area: true },
     });
