@@ -354,15 +354,37 @@ export function buildQueryForSegments(parsed: ParsedSegments): SegmentQuery {
  * than the homepage's own query-string-driven one. Falls back to "buy" for the bare city/group
  * root, matching the homepage's own default tab. */
 export function homeCategoryForSegments(parsed: ParsedSegments): HomeTabValue {
-  const { category, transactionGroup } = parsed;
+  const { category } = parsed;
   if (category === "furniture") return "furniture";
   if (category === "pg") return "pg";
   if (category === "interiors") return "interiors";
-  // No group and no category is the city root (/bengaluru) or the national root (/) — every
-  // category, which is what the "all" tab means. This used to fall through to "buy", so those
-  // pages rendered "All Listings in Bengaluru" under a highlighted Buy tab.
+  const transactionGroup = impliedTransactionGroup(parsed);
+  // No group and nothing to imply one from is the city root (/bengaluru) or the national root
+  // (/) — every category, which is what the "all" tab means. This used to fall through to "buy",
+  // so those pages rendered "All Listings in Bengaluru" under a highlighted Buy tab.
   if (!transactionGroup) return "all";
   return transactionGroup === "rent-lease" ? "rentLease" : "buy";
+}
+
+/**
+ * The transaction group a path means, including the one it leaves unsaid.
+ *
+ * `buildBrowsePath` drops the group whenever the category only has one — plots are sell-only, so
+ * Buy + Plots is `/bengaluru/plot`, not `/bengaluru/buy/plot`. That is a presentation choice, but
+ * every reader that asked `parsed.transactionGroup` directly took it as *no transaction chosen*:
+ * picking Plots under Buy made the transaction filter snap back to "All", which then hid the asset
+ * filter, so the selection looked like it had been thrown away. The path had not lost the
+ * transaction — it had never needed to spell it out.
+ *
+ * Only a single-group category implies anything. A house with no group in the path
+ * (`/bengaluru/apartment`, reachable from older links) genuinely has not chosen between buying and
+ * renting, and still answers `undefined`.
+ */
+export function impliedTransactionGroup(parsed: ParsedSegments): TransactionGroup | undefined {
+  if (parsed.transactionGroup) return parsed.transactionGroup;
+  if (!parsed.category) return undefined;
+  const groups = categoryGroupsFor(parsed.category);
+  return groups.length === 1 ? groups[0] : undefined;
 }
 
 /** Inverse of `homeCategoryForSegments` — the browse-path segments a header tab should land on,

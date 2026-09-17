@@ -277,6 +277,18 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
   filter appears with that transaction's own assets. This retires the `?propertyType=` branch of
   `buildFilterUrl` entirely: nothing in the UI can now produce an asset without a group except the
   self-intent categories, which have their own path segment.
+- **Picking Plots under Buy snapped the transaction filter back to All.** `buildBrowsePath` drops
+  the group whenever the category has only one — plots are sell-only, so Buy + Plots is
+  `/bengaluru/plot`, not `/bengaluru/buy/plot`. Every reader that asked `parsed.transactionGroup`
+  directly read that as "no transaction chosen", which set the tab to All and (since All offers no
+  assets) hid the asset filter too, so the choice looked discarded. `impliedTransactionGroup`
+  now answers with the group a single-group category implies, and `homeCategoryForSegments` and the
+  heading both use it. Same bug fixed for `/storage` and `/coworking`, which are rent-only.
+  `/bengaluru/apartment` still answers All: two groups, so nothing is implied and nothing has been
+  chosen. 15 checks.
+  - The heading follows, so `/bengaluru/plot` reads "Buy Plots in Bengaluru" rather than dropping
+    the verb the filter row shows. That changes those indexed titles, the same way the verb change
+    above did.
 - **Still missing on the homepage**, and knowingly: price and furnishing. The homepage has never
   parsed `minPrice`/`maxPrice`, so adding those controls is a route change rather than a component
   one, and the browse pages are where price refinement belongs.

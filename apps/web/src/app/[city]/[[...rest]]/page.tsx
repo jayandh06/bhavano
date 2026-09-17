@@ -18,6 +18,7 @@ import {
   parsePage,
   parsePositiveInt,
   parseSegments,
+  impliedTransactionGroup,
   isReservedSegment,
   SHARING_TYPE_VALUES,
   CONDITION_VALUES,
@@ -107,13 +108,15 @@ function headingFor(
   return buildHeading({
     ...filters,
     // Buy/Rent, from the path — so it is in the title too, which is where people's own phrasing
-    // ("rent apartment in koramangala") actually matches.
-    transactionGroup: parsed.transactionGroup,
+    // ("rent apartment in koramangala") actually matches. The *implied* group, so /bengaluru/plot
+    // (whose path omits the sell-only group as redundant) reads "Buy Plots in Bengaluru" rather
+    // than dropping the verb the filter row shows.
+    transactionGroup: impliedTransactionGroup(parsed),
     // A group with no category is not "All Listings" — /buy and /bengaluru/buy are specifically
     // things for sale, and said so nowhere before this. With the leading verb now carrying that,
     // the label drops the "for Sale"/"for Rent" it used to need: "Buy Properties in India", not
     // "Buy Properties for Sale in India".
-    fallbackLabel: parsed.transactionGroup ? "Properties" : "All Listings",
+    fallbackLabel: impliedTransactionGroup(parsed) ? "Properties" : "All Listings",
     cityName,
     areaName,
     propertyType: query.propertyType,
