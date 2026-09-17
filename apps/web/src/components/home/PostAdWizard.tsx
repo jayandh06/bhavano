@@ -601,7 +601,7 @@ export function PostAdWizard({
                     ? "Transaction"
                     : s === "details"
                       ? "Details"
-                      : "Review"}
+                      : "Preview Ad"}
               </span>
             ),
           )}
@@ -934,14 +934,19 @@ export function PostAdWizard({
               disabled={!detailsValid}
               className={`ml-auto ${primaryButtonClass}`}
             >
-              Review
+              Preview Ad
             </button>
           </div>
         </div>
       )}
 
       {step === "review" && category && transactionType && (
-        <div className="flex flex-col gap-3">
+        // max-w matches ListingPreviewCard's own cap: the wizard's other steps fill this
+        // container's full ~1200px desktop width, but the card below is only ever 340px wide —
+        // without this, the Back/Post ad row (and the text between them) stretched to that full
+        // width too, leaving "Post ad" floating in empty space far to the right of the card
+        // instead of sitting at its right edge.
+        <div className="flex flex-col gap-3 max-w-[340px] mx-auto">
           {/* What the actual browse-grid card will look like once this is posted — same
             * photo/badge/price/title/location/specs a buyer sees, not a plain text summary, so a
             * mistake (wrong photo order, a price that reads oddly, a spec that didn't come
