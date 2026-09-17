@@ -264,6 +264,19 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
   than a single value; a single-value link from the mega menu parses as a one-element list
   unchanged. The buckets themselves are unchanged — 1 … 5+, the top one being "or more" because
   that is what the backend does.
+- **Selecting Furniture in the transaction filter did nothing.** `buildFilterUrl` was written on
+  the belief that a category only exists underneath a group, and fell back to `?propertyType=`
+  whenever no group was chosen. Furniture's intent deliberately carries no group (it is postable as
+  both sell and rent, which is why `/furniture` exists at all) and is not one of that param's five
+  values — so the category was dropped and the click landed on the city root. `parseSegments` has
+  always accepted a bare category segment, so the fix is one `buildBrowsePath` call covering every
+  combination: group with asset, group alone, asset alone, neither. 20 transition checks.
+- **The All tab no longer offers asset types.** It used to list the five `?propertyType=` values,
+  which made the control change shape depending on whether a transaction was chosen — and "any
+  transaction, apartments" is not a thing anyone asks for. Pick Buy or Rent first and the asset
+  filter appears with that transaction's own assets. This retires the `?propertyType=` branch of
+  `buildFilterUrl` entirely: nothing in the UI can now produce an asset without a group except the
+  self-intent categories, which have their own path segment.
 - **Still missing on the homepage**, and knowingly: price and furnishing. The homepage has never
   parsed `minPrice`/`maxPrice`, so adding those controls is a route change rather than a component
   one, and the browse pages are where price refinement belongs.

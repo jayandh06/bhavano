@@ -1,6 +1,6 @@
 import type { ListingCategory } from "@bhavano/types";
 import type { HomeTabValue } from "./homeCategories";
-import { CATEGORY_LABELS, categoryGroupsFor, PROPERTY_TYPE_VALUES, segmentsForHomeCategory } from "./seoRoute";
+import { CATEGORY_LABELS, categoryGroupsFor, segmentsForHomeCategory } from "./seoRoute";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 
 /**
@@ -100,9 +100,11 @@ export function assetsForIntent(intent: HomeTabValue): ListingCategory[] {
 
   const { transactionGroup } = segmentsForHomeCategory(intent);
   if (!transactionGroup) {
-    // No transaction chosen, so an asset can only ride on `?propertyType=` — which speaks just
-    // these five values. See buildFilterUrl.
-    return PROPERTY_TYPE_VALUES as ListingCategory[];
+    // The All tab offers no asset types, so the asset filter does not render there at all: "any
+    // transaction, apartments" is a combination nobody asks for, and an asset list that changes
+    // shape depending on whether a transaction is chosen reads as the control being broken. Pick
+    // Buy or Rent first, then the assets that transaction actually has.
+    return [];
   }
   return (Object.keys(CATEGORY_LABELS) as ListingCategory[]).filter(
     (category) =>
