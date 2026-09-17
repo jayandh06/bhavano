@@ -1,6 +1,7 @@
 # Property requirements: letting seekers post demand
 
-**Status: plan, not yet implemented.** Written 2026-09-16.
+**Status: Phase 0 implemented and deployed 2026-09-17** (commit `d38d9ea`). Phases 1+ are still
+plan only. Written 2026-09-16.
 
 ## Context
 
@@ -139,7 +140,59 @@ existing `outreach` module (already doing Places lead-gen) at owners in that exa
 "someone is looking here right now". Deliberately unscalable, and it manufactures the inventory the
 site is short of. The feed earns its build when working them by hand stops being possible.
 
-## Phase 0 — capture only, no new model (build this first)
+## Phase 0 — capture (implemented 2026-09-17)
+
+**One premise of this section did not survive contact with the code**, and it is worth recording.
+Phase 0 was designed as "no schema change, just wire the prompt to the existing `SavedSearch`".
+That was impossible: `SavedSearch` was Plus-gated on **both** `create` and `notifyMatchingBuyers`,
+and there have never been any Plus subscribers — so the prompt would have thrown a 403 for every
+visitor, and even with a row the matcher would have skipped it. The "0 saved searches" finding
+above has a third cause the engagement table could not show: the feature was not merely
+undiscoverable, it was **paywalled behind a plan nobody had bought**.
+
+So Phase 0 shipped with a pricing decision (2026-09-17) and a small model after all:
+
+- **`SavedSearchSetting.freeAlertsPerUser`** — default 2, admin-tunable at `/settings/alerts`, `0`
+  puts alerts back behind Plus. The quota is counted by counting rows, exactly as
+  `ContactRevealService` counts free reveals.
+- **`SavedSearch.source`** (`free` | `plus`) — which bucket a row came from. The matcher honours a
+  `free` row regardless of subscription state, because it was promised to someone who never paid
+  and silently never firing is worse than not offering it; a `plus` row fires only while that
+  subscription is live, so a lapse keeps the free allowance and drops the rest.
+- **`Requirement`** — written *always*, even when the alert cannot be. The alert is best-effort,
+  and the confirmation message says which of the two things is actually happening rather than
+  implying an alert that will never arrive.
+
+What landed:
+
+1. The prefilled card at `ListingGrid`'s empty state, criteria taken from the page's own resolved
+   filters — `RequirementPrompt`, a client leaf so the grid and every page rendering it stay
+   server components.
+2. `POST /requirements`, login-gated (the OTP flow already proves a phone, which is the value of
+   the lead) and throttled to 10/min.
+3. The seeker confirmation, `notifyRequirementCaptured`, honest about alert vs manual follow-up.
+4. The admin **Requirements** queue — open-first, with the seeker's contact details, whether
+   anything will reach them automatically, the page the search failed on, and a status/note for
+   the follow-up. At this volume that screen *is* the matching engine.
+
+Verified in unit tests and against a real Postgres: the 1st and 2nd captures get alerts, the 3rd is
+recorded without one, all three requirements persist, both alerts are marked `source: free`, the
+confirmation told the truth each time, and a free alert is matchable by a new listing — which was
+impossible before. Live: `/agra/buy/villa` renders "Nothing matching Villas in Agra right now"
+server-side, and an anonymous `POST /requirements` is refused with 401.
+
+## Not yet done
+
+- **The "Save this search" control on results pages.** Phase 0 only added capture at the *empty*
+  state, so someone who sees results they don't like still has no way to be told when something
+  better appears — the other half of reviving the saved-search feature.
+- **`/my-requirements`.** `GET /requirements/mine` exists in the BFF; the page does not. The
+  confirmation message's link is the Phase 0 return path (see the information-architecture
+  section).
+- Everything in Phase 1 and beyond, including the public feed, the paid contact path, SEO
+  aggregates and mobile.
+
+## Phase 0 as originally planned (superseded by the above)
 
 Answers the actual goal — *seekers don't leave empty-handed, their details are captured, they get
 connected* — with **zero schema change**, by wiring the prompt to the `SavedSearch` that already
