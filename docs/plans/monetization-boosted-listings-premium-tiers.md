@@ -157,19 +157,36 @@ new surface for the owner to learn.
   bar already held the posted-notification resend, so this is a second button on a control admins
   use, not a new screen. Row selection widened to every listing — it was limited to ads still
   missing the posted acknowledgement, which was right while that was the only action.
-- **What the owner gets.** `email/boost-promotion/` if they have an email address, the
-  `boost_promotion` WhatsApp template otherwise. It names the ad, quotes Boost's 7-day entry price
-  and the Instant Alerts price, says what each one actually does for them, and states plainly that
-  the ad stays live and free either way.
-- **Where the button goes.** `/my-listings?openBoost=<id>` — the deep link `AutoOpenPurchaseModal`
-  already handles, so the owner lands on the Boost payment step *for that ad* rather than on a page
-  where they have to find it again. The body carries the `?openInstantAlerts=<id>` equivalent, since
-  the email layout has room for one button.
-- **Prices come from the live settings**, not the wording. `BoostPriceSettings` and
-  `InstantAlertsPriceSettings` are admin-editable, and a promotion quoting a figure the checkout
-  then contradicts is worse than one that quotes none. That is also why the WhatsApp template takes
-  the prices as variables rather than baking them in — a baked figure could not be corrected
-  without a fresh Meta approval.
+- **What the owner gets.** Two buttons and no links in the prose: **Boost my ad — ₹100** and
+  **Boost + Instant Alerts — ₹112**. `renderEmail` grew support for stacked buttons for this (first
+  filled, rest outlined); a promotional message with URLs scattered through its sentences reads
+  like a phishing attempt, and the two things worth choosing between deserve to be the two things
+  you can click.
+- **Where the buttons go.** `/my-listings?openBoost=<id>`, and the same with `&withAlerts=1`. Both
+  open the **post-ad picker** — durations, an Instant Alerts checkbox, one combined payment — so
+  the seller can still change their mind about either before paying.
+- **The offer is quoted from the live discount row.** `ACTIVE_PROMO_CODE` (`BHAVANO-SEP`) moved into
+  `@bhavano/types/promoCode`, since web, mobile and now the BFF all need the same string. The
+  message is sent in one of two wordings: `email/boost-promotion-offer/` when that code is active
+  and unexpired — discounted price beside the normal one, the percentage, and the date it ends, in
+  IST — and `email/boost-promotion/` when it is not. Two folders rather than conditional wording,
+  because `{{}}` substitution has no conditionals and a half-empty offer sentence is worse than
+  either version.
+- **Prices come from the live settings and the live discount**, never the wording.
+  `promoPriceFor` rounds the way `previewBoostPricing` rounds, so the figure in the email is the
+  figure on the screen its buttons open. Redemption caps are deliberately not pre-checked: the
+  per-user cap cannot be answered for a batch in one query, so checkout stays the authority — a
+  seller who already used the code sees full price there, exactly as they do on the post-ad screen.
+
+### The pricing split this uncovered
+
+The Boost modal reached from My Listings priced boosts itself with `boostPriceFor` and ordered with
+no discount code, while the post-ad picker previewed prices with the promo auto-applied. **The same
+7-day boost cost ₹199 from one route and ₹100 from the other**, and only the second could bundle
+Instant Alerts at all — two payments from anywhere else. `BoostProvider` now renders
+`BoostBundlePicker` itself, so there is one screen, one price and one combined checkout wherever a
+seller enters. Fixing that was a precondition for the promotion: quoting ₹100 in an email whose
+button opened a ₹199 screen would have been a lie.
 - **Restraint is the design.** This is marketing to people who have already trusted us with a
   listing, so: a 14-day per-listing cooldown (not a once-ever gate — a second nudge weeks later is
   fair, twice in a week is spam); live ads only, since selling a boost for a sold or expired ad is
@@ -180,8 +197,10 @@ new surface for the owner to learn.
   sells something — declaring it UTILITY would be both false and a quality-rating risk). Sending
   switches on with `WHATSAPP_BOOST_PROMO_TEMPLATE=boost_promotion`, the same env gate
   `notifyWelcome` uses. Until then a phone-only owner is reported as skipped, naming that variable,
-  rather than counted as sent.
-- 18 admin-service checks, most of them on what it refuses to send.
+  rather than counted as sent. Its wording assumes an offer is running, so it is skipped when no
+  promo resolves too — an empty parameter is a 400 from Meta, not a gap in a sentence. It carries
+  one button, since the screen it opens has the Instant Alerts checkbox on it.
+- 22 admin-service checks: what it refuses to send, and the offer/no-offer pricing either way.
 
 ## Explicitly out of scope for this plan
 

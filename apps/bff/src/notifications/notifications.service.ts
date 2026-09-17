@@ -315,50 +315,79 @@ export class NotificationsService {
    * that approval lands a phone-only owner gets nothing, and the admin result says so rather than
    * reporting a send that never happened.
    *
-   * The prices are passed in, read live from the admin-editable settings by the caller, rather
-   * than hardcoded in the copy: a promotion quoting a price the checkout then contradicts is
-   * worse than one that quotes none.
-   *
-   * The link is `/my-listings?openBoost=<id>`, which opens the Boost dialog directly — the same
-   * deep link the mobile app's own buttons use (see AutoOpenPurchaseModal). So the recipient lands
-   * on the payment step for that specific ad, not on a page where they have to find it again.
+   * The prices are passed in, read live from the admin-editable settings and the live discount
+   * row by the caller, rather than hardcoded in the copy: a promotion quoting a price the checkout
+   * then contradicts is worse than one that quotes none. When a promo is running, the offer
+   * variant of the copy goes out — the discounted figure beside the normal one, and the date it
+   * ends.
    */
   async notifyBoostPromotion(
     user: NotifiableUser & { name?: string | null },
     listing: { id: string; title: string; cityName: string; area: string },
-    prices: { boostPrice: number; boostDays: number; alertsPrice: number },
+    prices: {
+      /** What they will actually be charged, discount included. */
+      boostPrice: number;
+      bundlePrice: number;
+      boostDays: number;
+      alertsPrice: number;
+      /** Present only when a promo is live: the undiscounted figures and the offer's own terms,
+       * which switch the message to the offer wording. */
+      offer?: { discountPercent: number; boostBasePrice: number; bundleBasePrice: number; endsOn: string };
+    },
   ): Promise<'email' | 'whatsapp' | null> {
     const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    // Two destinations, one screen: both open the post-ad picker for this ad (BoostProvider now
+    // renders BoostBundlePicker), the second with Instant Alerts already ticked. No URL appears in
+    // the copy itself — a promotional message full of visible links reads like a phishing attempt,
+    // and the two things worth choosing between are buttons.
     const boostLink = `${site}/my-listings?openBoost=${listing.id}`;
-    const alertsLink = `${site}/my-listings?openInstantAlerts=${listing.id}`;
+    const bundleLink = `${boostLink}&withAlerts=1`;
     const vars = {
       name: user.name ?? 'there',
       title: listing.title,
       location: `${listing.area}, ${listing.cityName}`,
       boostPrice: String(prices.boostPrice),
+      bundlePrice: String(prices.bundlePrice),
       boostDays: String(prices.boostDays),
       alertsPrice: String(prices.alertsPrice),
-      alertsLink,
+      discountPercent: String(prices.offer?.discountPercent ?? ''),
+      boostBasePrice: String(prices.offer?.boostBasePrice ?? ''),
+      bundleBasePrice: String(prices.offer?.bundleBasePrice ?? ''),
+      offerEnds: prices.offer?.endsOn ?? '',
     };
 
-    const tpl = loadTemplate('email/boost-promotion');
+    // Two folders rather than one with conditional wording: `{{}}` substitution is plain string
+    // replacement with no conditionals (see templateLoader), and an offer sentence left half-empty
+    // when no promo is live would be worse than either version.
+    const tpl = loadTemplate(prices.offer ? 'email/boost-promotion-offer' : 'email/boost-promotion');
     const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
-    const buttonLabel = tpl.buttonLabel ? renderTemplate(tpl.buttonLabel, vars) : undefined;
+    const buttons = [
+      tpl.buttonLabel ? { label: renderTemplate(tpl.buttonLabel, vars), url: boostLink } : undefined,
+      tpl.secondaryButtonLabel
+        ? { label: renderTemplate(tpl.secondaryButtonLabel, vars), url: bundleLink }
+        : undefined,
+    ].filter((b): b is { label: string; url: string } => b !== undefined);
     const html = renderEmail({
       heading: renderTemplate(tpl.heading, vars),
       preheader: renderTemplate(tpl.preheader, vars),
       paragraphs,
-      button: buttonLabel ? { label: buttonLabel, url: boostLink } : undefined,
+      button: buttons,
     });
+    // The text/plain part is the one place a URL has to be spelled out — a button cannot be
+    // rendered in plain text, and a text-only client would otherwise show a message with no way to
+    // act on it at all.
     const text =
-      `${paragraphs.join('\n\n')}\n\n` + (buttonLabel ? `${buttonLabel}: ${boostLink}` : boostLink);
+      `${paragraphs.join('\n\n')}\n\n` + buttons.map((b) => `${b.label}: ${b.url}`).join('\n');
 
     const promoTemplate = this.config.get<string>('WHATSAPP_BOOST_PROMO_TEMPLATE');
 
     return this.dispatchEmailPreferWhatsapp(
       user,
       { subject: renderTemplate(tpl.subject, vars), text, html, bcc: 'support@bhavano.com' },
-      promoTemplate
+      // The approved template's wording is the offer one, so it is only sendable while a promo is
+      // live — an empty parameter is a 400 from Meta, not a gap in a sentence. A phone-only owner
+      // with no promo running is reported as skipped instead.
+      promoTemplate && prices.offer
         ? {
             template: promoTemplate,
             // Named, matching the submitted template — see WhatsappProvider.sendTemplate on why
@@ -366,8 +395,11 @@ export class NotificationsService {
             params: {
               name: vars.name,
               title: vars.title,
+              offerEnds: vars.offerEnds,
+              discountPercent: vars.discountPercent,
               boostPrice: vars.boostPrice,
-              alertsPrice: vars.alertsPrice,
+              boostBasePrice: vars.boostBasePrice,
+              bundlePrice: vars.bundlePrice,
             },
             // The template's button prefix already ends at "?openBoost=", so only the id follows.
             buttonUrlSuffix: listing.id,

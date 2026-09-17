@@ -38,7 +38,15 @@ export function AutoOpenPurchaseModal({
 
     if (openBoostId) {
       const listing = listings.find((l) => l.id === openBoostId);
-      if (listing) boost({ listingId: listing.id, category: listing.category });
+      // `withAlerts=1` opens the same screen with Instant Alerts already ticked — what the
+      // promotion email's "Boost my ad + Instant Alerts" button asks for, so the seller sees the
+      // combined price they clicked rather than having to find the checkbox.
+      if (listing)
+        boost({
+          listingId: listing.id,
+          category: listing.category,
+          withInstantAlerts: searchParams.get("withAlerts") === "1",
+        });
     }
     if (openInstantAlertsId) {
       getInstantAlerts({ listingId: openInstantAlertsId });
@@ -47,6 +55,7 @@ export function AutoOpenPurchaseModal({
     const params = new URLSearchParams(searchParams.toString());
     params.delete("openBoost");
     params.delete("openInstantAlerts");
+    params.delete("withAlerts");
     router.replace(params.toString() ? `/my-listings?${params.toString()}` : "/my-listings");
     // Only ever meant to fire once, off whatever the URL was on first paint — re-running this on
     // every searchParams/listings identity change would refight the router.replace above.

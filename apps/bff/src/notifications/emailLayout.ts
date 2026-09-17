@@ -21,7 +21,10 @@ export interface EmailLayoutInput {
   /** Paragraphs, in order. Plain text — escaped, so a listing title with an ampersand or a quote
    * in it cannot break the markup or inject anything. */
   paragraphs: string[];
-  button?: EmailButton;
+  /** One button, or several stacked — the first is the primary (filled), the rest outlined. More
+   * than one exists for the Boost promotion, which offers Boost and Boost + Instant Alerts as two
+   * separate destinations rather than a link buried in a sentence. */
+  button?: EmailButton | EmailButton[];
   /** The one-line summary inbox lists show beside the subject. Without it, clients fall back to
    * scraping the first text they find, which is usually the logo's alt text. */
   preheader: string;
@@ -70,15 +73,27 @@ export function renderEmail(input: EmailLayoutInput): string {
 
   // A "bulletproof" button: a table cell with a background colour and a link filling it. A styled
   // <a> alone loses its background in Outlook and collapses to bare underlined text.
-  const cta = button
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;">
+  //
+  // Each button gets its own single-cell table stacked under the last rather than two cells in one
+  // row: side-by-side buttons wrap unpredictably at phone width in the clients that support them
+  // at all, and a second choice that lands half off screen is worse than one under the other.
+  const buttons = button === undefined ? [] : Array.isArray(button) ? button : [button];
+  const cta = buttons
+    .map((b, i) => {
+      // The first is the recommended action, the rest are alternatives — filled vs outlined, the
+      // same relationship the app's own primary/secondary buttons have.
+      const primary = i === 0;
+      const bg = primary ? GREEN : '#ffffff';
+      const fg = primary ? ON_GREEN : TEXT;
+      return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:${i === 0 ? '8px' : '0'} 0 ${i === buttons.length - 1 ? '24px' : '10px'};">
          <tr>
-           <td align="center" bgcolor="${GREEN}" style="border-radius:8px;">
-             <a href="${esc(button.url)}" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:bold;color:${ON_GREEN};text-decoration:none;border-radius:8px;">${esc(button.label)}</a>
+           <td align="center" bgcolor="${bg}" style="border-radius:8px;border:1px solid ${primary ? GREEN : BORDER};">
+             <a href="${esc(b.url)}" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:bold;color:${fg};text-decoration:none;border-radius:8px;">${esc(b.label)}</a>
            </td>
          </tr>
-       </table>`
-    : '';
+       </table>`;
+    })
+    .join('');
 
   return `<!doctype html>
 <html lang="en">

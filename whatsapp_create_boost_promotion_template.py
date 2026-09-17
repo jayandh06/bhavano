@@ -14,14 +14,23 @@ PREVIEWS BY DEFAULT. Run with no arguments and it prints the exact template Meta
 character counts, every component, the body variables and the button's dynamic URL — and submits
 nothing. Only --submit calls the API.
 
-Four body variables ({{name}}, {{title}}, {{boostPrice}}, {{alertsPrice}}) plus one in the button
-(the listing id). Named for the body, per WhatsappProvider.sendTemplate's guidance for anything
+Seven body variables ({{name}}, {{title}}, {{offerEnds}}, {{discountPercent}}, {{boostPrice}},
+{{boostBasePrice}}, {{bundlePrice}}) plus one in the button (the listing id). Named for the body, per WhatsappProvider.sendTemplate's guidance for anything
 past two variables; the button URL variable stays positional, since Meta's dynamic URL buttons
 only ever take one.
 
-Prices are variables rather than baked into the wording on purpose — they are admin-editable
-settings (BoostPriceSettings / InstantAlertsPriceSettings), and a template quoting a stale figure
-could not be corrected without a fresh Meta approval.
+Prices and the offer's terms are variables rather than baked into the wording on purpose — they
+come from admin-editable settings (BoostPriceSettings / InstantAlertsPriceSettings) and from the
+live DiscountCode row, and a template quoting a stale figure or a passed deadline could not be
+corrected without a fresh Meta approval.
+
+The wording assumes an offer is running, which means this template is only sendable while one is:
+notifyBoostPromotion skips WhatsApp when no promo resolves, since an empty parameter is a 400 from
+Meta rather than a gap in a sentence. Email covers the no-offer case with its own second folder
+(notification-templates/email/boost-promotion/).
+
+One button, not two. The screen it opens is the post-ad picker, where adding Instant Alerts is a
+checkbox — so the second destination the email offers needs no second button here.
 
 Once approved, set WHATSAPP_BOOST_PROMO_TEMPLATE=boost_promotion in .env — 
 NotificationsService.notifyBoostPromotion already fills this template and is gated on that one
@@ -124,8 +133,11 @@ def build_payload(category):
                 "example": {"body_text_named_params": [
                     {"param_name": "name", "example": "Ravi"},
                     {"param_name": "title", "example": "2 BHK for rent in Koramangala"},
-                    {"param_name": "boostPrice", "example": "199"},
-                    {"param_name": "alertsPrice", "example": "25"},
+                    {"param_name": "offerEnds", "example": "30 September"},
+                    {"param_name": "discountPercent", "example": "50"},
+                    {"param_name": "boostPrice", "example": "100"},
+                    {"param_name": "boostBasePrice", "example": "199"},
+                    {"param_name": "bundlePrice", "example": "112"},
                 ]},
             },
             {"type": "FOOTER", "text": FOOTER_TEXT},
@@ -150,15 +162,21 @@ def show_preview(category):
     print("=" * 60)
     print("\nHEADER  (static, no variables)")
     print("  " + HEADER_TEXT)
-    print("\nBODY  (variables: {{name}}, {{title}}, {{boostPrice}}, {{alertsPrice}})")
+    print(
+        "\nBODY  (variables: {{name}}, {{title}}, {{offerEnds}}, {{discountPercent}}, "
+        "{{boostPrice}}, {{boostBasePrice}}, {{bundlePrice}})"
+    )
     for line in BODY_TEXT.split("\n"):
         print("  " + line)
     print("  ---- with example values ----")
     for line in (
         BODY_TEXT.replace("{{name}}", "Ravi")
         .replace("{{title}}", "2 BHK for rent in Koramangala")
-        .replace("{{boostPrice}}", "199")
-        .replace("{{alertsPrice}}", "25")
+        .replace("{{offerEnds}}", "30 September")
+        .replace("{{discountPercent}}", "50")
+        .replace("{{boostPrice}}", "100")
+        .replace("{{boostBasePrice}}", "199")
+        .replace("{{bundlePrice}}", "112")
     ).split("\n"):
         print("  " + line)
     print("\nFOOTER  (static)")

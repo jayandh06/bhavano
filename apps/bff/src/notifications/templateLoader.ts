@@ -13,6 +13,9 @@ export interface NotificationTemplate {
   /** Undefined when the folder has no `buttonLabel.txt` — a message with no call to action, e.g.
    * a plain status update, is allowed to have no button at all. */
   buttonLabel?: string;
+  /** A second, alternative action under the first — only the Boost promotion has one
+   * (`secondaryButtonLabel.txt`), which is why it is optional everywhere else. */
+  secondaryButtonLabel?: string;
 }
 
 /** Read once per call rather than cached at boot, on purpose: `docker-compose.prod.yml`
@@ -44,7 +47,7 @@ function templatesRoot(): string {
  *
  * Throws if `subject.txt`/`preheader.txt`/`heading.txt`/`body.txt` are missing — a typo'd folder
  * name should fail loudly at the one call site that uses it, not silently send a blank email.
- * `buttonLabel.txt` alone is optional. */
+ * `buttonLabel.txt` and `secondaryButtonLabel.txt` are the optional ones. */
 export function loadTemplate(name: string): NotificationTemplate {
   const subject = readField(name, 'subject.txt');
   const preheader = readField(name, 'preheader.txt');
@@ -64,6 +67,7 @@ export function loadTemplate(name: string): NotificationTemplate {
       .map((p) => p.trim())
       .filter(Boolean),
     buttonLabel: readField(name, 'buttonLabel.txt'),
+    secondaryButtonLabel: readField(name, 'secondaryButtonLabel.txt'),
   };
 }
 

@@ -17,7 +17,8 @@ email/buyer-premium-activated/          Bhavano Plus purchase confirmation
 email/seller-slot-pack-activated/       seller slot pack purchase confirmation
 email/agent-pro-activated/              Agent/Broker Pro purchase confirmation
 email/contact-reveal-credits-activated/ contact-reveal credit pack purchase confirmation
-email/boost-promotion/                  the admin-sent "boost this ad" offer
+email/boost-promotion/                  the admin-sent "boost this ad" nudge, no promo running
+email/boost-promotion-offer/            the same nudge while a promo code is live (prices, % and end date)
 whatsapp/welcome/         the approved WhatsApp welcome template's wording
 whatsapp/listing-posted/  the approved WhatsApp "ad is live" template's wording
 whatsapp/claim-listing/  the approved "claim_listing" WhatsApp template's wording
@@ -38,7 +39,10 @@ Leave anything inside `{{double braces}}` exactly as it is — those are filled 
 
 **Fields:** `subject.txt`, `preheader.txt` (the one-line summary an inbox shows beside the
 subject), `heading.txt`, `body.txt` (multiple paragraphs — separate with a blank line, same as
-writing an email), `buttonLabel.txt` (omit this file for a message with no button).
+writing an email), `buttonLabel.txt` (omit this file for a message with no button) and
+`secondaryButtonLabel.txt` (a second, alternative action stacked under the first — only the Boost
+promotion has one). Keep URLs out of `body.txt`: the buttons are the links, and a promotional
+message with links scattered through the prose reads like a phishing attempt.
 
 **Not here, and not meant to be:** the branded shell — logo, colours, the footer's legal links —
 is `emailLayout.ts`'s job. A button's destination URL is also code's job: it's a specific

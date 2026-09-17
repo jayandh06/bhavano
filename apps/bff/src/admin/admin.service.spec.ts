@@ -12,6 +12,7 @@ import { AccountDeletionService } from '../users/account-deletion.service';
 import type { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { DEFAULT_BOOST_PRICE_SETTINGS } from '@bhavano/types/boostPricing';
 import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
+import { ACTIVE_PROMO_CODE } from '@bhavano/types/promoCode';
 
 function makeService(overrides: Record<string, unknown> = {}, notificationsOverrides: Record<string, unknown> = {}) {
   const prisma = {
@@ -33,6 +34,8 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
     listing: { findMany: jest.fn().mockResolvedValue([]) },
     listingEditLog: { findMany: jest.fn().mockResolvedValue([]) },
     listingNotificationLog: { create: jest.fn() },
+    // The promotion quotes the live promo's price — no row means the plain, no-offer wording.
+    discountCode: { findUnique: jest.fn().mockResolvedValue(null) },
     message: { findMany: jest.fn().mockResolvedValue([]) },
     favourite: { findMany: jest.fn().mockResolvedValue([]) },
     listingView: { findMany: jest.fn().mockResolvedValue([]) },
@@ -255,8 +258,9 @@ describe('AdminService.sendBoostPromotion', () => {
     expect(notificationsService.notifyBoostPromotion).toHaveBeenCalledWith(
       { name: 'Owner', email: 'owner@example.com', phone: '+919876543210' },
       { id: 'listing1', title: 'A listing', cityName: 'Bengaluru', area: 'Koramangala' },
-      // apartment is a property-tier category, so the 7-day entry price, from settings.
-      { boostPrice: 199, boostDays: 7, alertsPrice: 25 },
+      // apartment is a property-tier category, so the 7-day entry price, from settings. No promo
+      // row in the default stub, so full price and no offer wording.
+      { boostPrice: 199, bundlePrice: 224, boostDays: 7, alertsPrice: 25 },
     );
     expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
       data: { listingId: 'listing1', kind: 'boost_promo', channel: 'email' },
@@ -368,6 +372,83 @@ describe('AdminService.sendBoostPromotion', () => {
 
     expect(prisma.listingNotificationLog.create).not.toHaveBeenCalled();
     expect(result.results[0].error).toContain('WHATSAPP_BOOST_PROMO_TEMPLATE');
+  });
+
+  it('quotes the discounted price, the original, and the end date while the promo is live', async () => {
+    const { service, notificationsService } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow()]) },
+      discountCode: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'd1',
+          code: ACTIVE_PROMO_CODE,
+          discountPercent: 50,
+          active: true,
+          expiresAt: new Date('2026-09-30T18:29:59Z'),
+        }),
+      },
+    });
+
+    await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      {
+        // ₹199 boost, ₹25 alerts, both halved and rounded the way the preview screen rounds.
+        boostPrice: 100,
+        bundlePrice: 112,
+        boostDays: 7,
+        alertsPrice: 25,
+        offer: {
+          discountPercent: 50,
+          boostBasePrice: 199,
+          bundleBasePrice: 224,
+          // IST, so the UTC 18:29:59 instant is still the 30th and not the 1st.
+          endsOn: '30 September',
+        },
+      },
+    );
+  });
+
+  it.each([
+    ['inactive', { active: false, expiresAt: null }],
+    ['expired', { active: true, expiresAt: new Date('2020-01-01T00:00:00Z') }],
+  ])('falls back to full price and no offer wording when the promo is %s', async (_label, overrides) => {
+    const { service, notificationsService } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow()]) },
+      discountCode: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'd1', code: ACTIVE_PROMO_CODE, discountPercent: 50, ...overrides }),
+      },
+    });
+
+    await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { boostPrice: 199, bundlePrice: 224, boostDays: 7, alertsPrice: 25 },
+    );
+  });
+
+  it('says "while it lasts" for an open-ended promo rather than inventing a date', async () => {
+    const { service, notificationsService } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow()]) },
+      discountCode: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'd1', code: ACTIVE_PROMO_CODE, discountPercent: 20, active: true, expiresAt: null }),
+      },
+    });
+
+    await service.sendBoostPromotion(['listing1']);
+
+    expect(notificationsService.notifyBoostPromotion).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ offer: expect.objectContaining({ endsOn: 'while it lasts' }) }),
+    );
   });
 
   it('processes a mixed batch independently', async () => {

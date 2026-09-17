@@ -1,0 +1,11 @@
+Hi {{name}},
+
+Your ad "{{title}}" in {{location}} is live on Bhavano, and until {{offerEnds}} you can boost it at {{discountPercent}}% off.
+
+Boost — ₹{{boostPrice}} for {{boostDays}} days, normally ₹{{boostBasePrice}}. Your ad is placed above unboosted listings in its category and city, and carries a Featured label wherever it appears, so it is the one buyers see first rather than one they scroll past.
+
+Boost with Instant Alerts — ₹{{bundlePrice}} together, normally ₹{{bundleBasePrice}}. Instant Alerts notifies you the moment someone messages you about this ad, instead of you finding out the next time you open the app. Enquiries go cold quickly, and the first reply usually wins the conversation.
+
+The discount is applied for you — there is no code to enter. Choose below and you will land on the payment screen for this ad, where you can still change the duration or drop Instant Alerts before paying.
+
+One-time payment, no subscription. If you would rather not, your ad stays live and free for its full term — nothing changes.

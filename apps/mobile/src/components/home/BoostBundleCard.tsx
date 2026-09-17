@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "re
 import RazorpayCheckout from "react-native-razorpay";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createBoostOrder, previewBoostPricing } from "../../lib/bffClient";
 import { Icon } from "../Icon";
@@ -15,7 +16,7 @@ const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 // the admin discount-codes screen — nothing here grants it on its own. Exported so the iOS
 // success-screen cards in PostAdWizard.tsx (which fetch pricing for display only, no in-app
 // checkout) apply the same code rather than carrying a third copy of this string.
-export const SEPTEMBER_PROMO_CODE = "BHAVANO-SEP";
+
 
 /**
  * Android-only inline replacement for the old separate BoostModal/InstantAlertsModal buttons on
@@ -53,7 +54,7 @@ export function BoostBundleCard({
 
   useEffect(() => {
     let cancelled = false;
-    previewBoostPricing(accessToken, category, SEPTEMBER_PROMO_CODE)
+    previewBoostPricing(accessToken, category, ACTIVE_PROMO_CODE)
       .then((result) => {
         if (!cancelled) setPricing(result);
       })
@@ -77,7 +78,7 @@ export function BoostBundleCard({
     setPending(true);
     setError(null);
     try {
-      const order = await createBoostOrder(accessToken, listingId, duration, SEPTEMBER_PROMO_CODE, addInstantAlerts);
+      const order = await createBoostOrder(accessToken, listingId, duration, ACTIVE_PROMO_CODE, addInstantAlerts);
 
       if (order.activated) {
         onActivating();

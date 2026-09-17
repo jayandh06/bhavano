@@ -33,7 +33,8 @@ import { createListing, fetchAreas, previewBoostPricing, uploadPhoto, uploadVide
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ScreenHeader } from "./ScreenHeader";
-import { BoostBundleCard, SEPTEMBER_PROMO_CODE } from "./BoostBundleCard";
+import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
+import { BoostBundleCard } from "./BoostBundleCard";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { appWebUrl } from "../../lib/appWebUrl";
 import { instantAlertsOnlyPrice, priceSuffix } from "../../lib/boostPriceDisplay";
@@ -231,7 +232,7 @@ export function PostAdWizard({
   useEffect(() => {
     if (Platform.OS !== "ios" || !createdListing || !postAccessToken) return;
     let cancelled = false;
-    previewBoostPricing(postAccessToken, createdListing.category, SEPTEMBER_PROMO_CODE)
+    previewBoostPricing(postAccessToken, createdListing.category, ACTIVE_PROMO_CODE)
       .then((result) => {
         if (!cancelled) setIosPricing(result);
       })

@@ -36,6 +36,7 @@ import type {
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { boostPriceFor, type BoostDurationDays } from '@bhavano/types/boostPricing';
+import { ACTIVE_PROMO_CODE, promoPriceFor } from '@bhavano/types/promoCode';
 import { ListingsService } from '../listings/listings.service';
 import { MessagingService } from '../messaging/messaging.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -200,6 +201,19 @@ function parseTextFilter(raw: string | undefined): Prisma.StringNullableFilter |
 // seedBulkImportOwner.ts — the placeholder account bulk-imported listings are posted under
 // until claimed. Never a real recipient for "your ad is live".
 const BULK_IMPORT_OWNER_PHONE = '9000000002';
+
+/** "30 September" in IST — the offer's own deadline, in the timezone every recipient is in.
+ * Rendered from the DiscountCode row rather than written into the copy, so extending the offer in
+ * the admin screen changes what the next message says. An open-ended code says "while it lasts",
+ * which is the only honest thing to say about a date that does not exist. */
+function formatOfferEnd(expiresAt: Date | null): string {
+  if (!expiresAt) return 'while it lasts';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'Asia/Kolkata',
+  }).format(expiresAt);
+}
 
 /** `ListingNotificationLog.kind` for the Boost/Instant Alerts promotion, alongside 'posted' and
  * the expiry reminder's own kind. */
@@ -856,7 +870,7 @@ export class AdminService {
    */
   async sendBoostPromotion(listingIds: string[]): Promise<SendPostedNotificationResponseDto> {
     const cooldownStart = new Date(Date.now() - PROMO_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
-    const [listings, boostPrices, alertsPrices] = await Promise.all([
+    const [listings, boostPrices, alertsPrices, promo] = await Promise.all([
       this.prisma.listing.findMany({
         where: { id: { in: listingIds } },
         include: {
@@ -871,9 +885,21 @@ export class AdminService {
       }),
       this.boostPricingSettingsService.getSettings(),
       this.instantAlertsPricingSettingsService.getSettings(),
+      // The app auto-applies this code at checkout (ACTIVE_PROMO_CODE), so the message has to
+      // quote the price that code produces or it would undersell — or worse, overstate. Read from
+      // the row, never assumed: no row, inactive or expired means the plain, no-offer wording.
+      // Redemption caps are deliberately *not* checked here: maxRedemptionsPerUser is per seller
+      // and one shared query cannot answer it for a batch, so the offer is quoted and the checkout
+      // is the authority — a seller who has already used it sees full price there, which is the
+      // same thing that happens today on the post-ad screen.
+      this.prisma.discountCode.findUnique({ where: { code: ACTIVE_PROMO_CODE } }),
     ]);
     const byId = new Map(listings.map((l) => [l.id, l]));
     const now = Date.now();
+    const offerPercent =
+      promo && promo.active && (promo.expiresAt === null || promo.expiresAt.getTime() > now)
+        ? promo.discountPercent
+        : undefined;
 
     const results: SendPostedNotificationResultDto[] = [];
     for (const listingId of listingIds) {
@@ -906,6 +932,8 @@ export class AdminService {
         continue;
       }
 
+      const boostBasePrice = boostPriceFor(listing.category, PROMO_BOOST_DAYS, boostPrices);
+      const bundleBasePrice = boostBasePrice + alertsPrices.instantAlertsPrice;
       const channel = await this.notificationsService.notifyBoostPromotion(
         listing.owner,
         {
@@ -915,9 +943,22 @@ export class AdminService {
           area: listing.area.name,
         },
         {
-          boostPrice: boostPriceFor(listing.category, PROMO_BOOST_DAYS, boostPrices),
+          // `promoPriceFor` rounds the way PaymentsService.previewBoostPricing does, so the figure
+          // in the message is the figure on the screen the buttons open.
+          boostPrice: offerPercent ? promoPriceFor(boostBasePrice, offerPercent) : boostBasePrice,
+          bundlePrice: offerPercent ? promoPriceFor(bundleBasePrice, offerPercent) : bundleBasePrice,
           boostDays: PROMO_BOOST_DAYS,
           alertsPrice: alertsPrices.instantAlertsPrice,
+          ...(offerPercent
+            ? {
+                offer: {
+                  discountPercent: offerPercent,
+                  boostBasePrice,
+                  bundleBasePrice,
+                  endsOn: formatOfferEnd(promo!.expiresAt),
+                },
+              }
+            : {}),
         },
       );
 

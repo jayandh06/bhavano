@@ -11,6 +11,7 @@ import type {
 } from "@bhavano/types";
 import type { BoostDurationDays, BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
+import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { auth } from "@/auth";
 import {
   createBoostOrder,
@@ -57,12 +58,8 @@ export async function createBoostOrderAction(
   }
 }
 
-// Temporary September promo — auto-applied on the post-ad success screen's Boost/Instant Alerts
-// picker rather than typed in, so the discounted price is just what the screen shows. Purely a
-// display/checkout convenience: the actual discount only ever takes effect if this code exists,
-// is active, and hasn't expired in the DiscountCode table (managed from the admin discount-codes
-// screen) — nothing here grants a discount on its own.
-const SEPTEMBER_PROMO_CODE = "BHAVANO-SEP";
+// The auto-applied promo now lives in @bhavano/types/promoCode — the BFF quotes the same code's
+// price in the admin-sent Boost promotion email, and three copies of one string is how they drift.
 
 export type PreviewBoostPricingResult =
   | { success: true; pricing: BoostPricingPreviewDto }
@@ -73,7 +70,7 @@ export async function previewBoostPricingAction(category: ListingCategory): Prom
   if (!session?.accessToken) return { success: false, error: "You must be logged in." };
 
   try {
-    const pricing = await previewBoostPricing(session.accessToken, category, SEPTEMBER_PROMO_CODE);
+    const pricing = await previewBoostPricing(session.accessToken, category, ACTIVE_PROMO_CODE);
     return { success: true, pricing };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load pricing" };
@@ -88,7 +85,7 @@ export async function createBoostBundleOrderAction(
   boostDays: BoostDurationDays,
   includeInstantAlerts: boolean,
 ): Promise<CreateBoostOrderResult> {
-  return createBoostOrderAction(listingId, boostDays, SEPTEMBER_PROMO_CODE, includeInstantAlerts);
+  return createBoostOrderAction(listingId, boostDays, ACTIVE_PROMO_CODE, includeInstantAlerts);
 }
 
 export type CreateSubscriptionOrderResult =

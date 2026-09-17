@@ -22,9 +22,14 @@ export function BoostBundlePicker({
   listingId,
   category,
   onActivating,
+  defaultAddInstantAlerts = false,
 }: {
   listingId: string;
   category: ListingCategory;
+  /** Pre-ticks "Add Instant Alerts". Set when the seller arrived by choosing that specifically —
+   * the Boost + Instant Alerts button in the admin-sent promotion email lands here with it on,
+   * so the screen already reflects what they clicked. */
+  defaultAddInstantAlerts?: boolean;
   /** Fired once the purchase is either activated for free (Pro credit) or paid for — the
    * success screen swaps this picker for a "Boost pending…" style state while the webhook
    * catches up, same contract BoostButton/BoostProvider already use elsewhere. */
@@ -33,7 +38,7 @@ export function BoostBundlePicker({
   const router = useRouter();
   const [pricing, setPricing] = useState<BoostPricingPreviewDto | null>(null);
   const [duration, setDuration] = useState<BoostDurationDays>(7);
-  const [addInstantAlerts, setAddInstantAlerts] = useState(false);
+  const [addInstantAlerts, setAddInstantAlerts] = useState(defaultAddInstantAlerts);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

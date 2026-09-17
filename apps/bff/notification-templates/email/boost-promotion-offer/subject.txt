@@ -1,0 +1,1 @@
+{{discountPercent}}% off: get "{{title}}" seen by more buyers

@@ -53,6 +53,10 @@
       "types": "./dist/boostPricing.d.ts",
       "default": "./dist/boostPricing.js"
     },
+    "./promoCode": {
+      "types": "./dist/promoCode.d.ts",
+      "default": "./dist/promoCode.js"
+    },
     "./instantAlertsPricing": {
       "types": "./dist/instantAlertsPricing.d.ts",
       "default": "./dist/instantAlertsPricing.js"
