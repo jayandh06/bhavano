@@ -1,6 +1,6 @@
 import type { ListingCategory, PropertyTypeFilter } from "@bhavano/types";
 import { buildBrowsePath } from "./listingPath";
-import { categoryGroupsFor, PROPERTY_TYPE_VALUES, type TransactionGroup } from "./seoRoute";
+import { PROPERTY_TYPE_VALUES, type TransactionGroup } from "./seoRoute";
 
 /**
  * The single place that turns a (transaction, asset) choice into a URL — shared by the transaction
@@ -46,22 +46,4 @@ export function buildFilterUrl(params: {
 
   const qs = next.toString();
   return qs ? `${path}?${qs}` : path;
-}
-
-/**
- * The asset to carry across a transaction change, or undefined to drop it.
- *
- * Categories are not universally available in both directions — PG is rent-only, interiors and
- * plots are sell-only (see `categoryGroupsFor`, derived from `POSTABLE_TRANSACTION_TYPES`). So
- * switching from Rent & Lease to Buy while holding "PG" would build `/{city}/buy/pg`: a path that
- * parses, returns nothing, and looks broken. Keeping the asset only where it genuinely exists in
- * the new group is the difference between a filter and a dead end.
- */
-export function assetSurvivingGroupChange(
-  asset: ListingCategory | undefined,
-  nextGroup: TransactionGroup | undefined,
-): ListingCategory | undefined {
-  if (!asset) return undefined;
-  if (!nextGroup) return asset;
-  return categoryGroupsFor(asset).includes(nextGroup) ? asset : undefined;
 }

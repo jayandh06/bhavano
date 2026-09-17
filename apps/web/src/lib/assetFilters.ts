@@ -1,4 +1,6 @@
 import type { ListingCategory } from "@bhavano/types";
+import type { HomeTabValue } from "./homeCategories";
+import { CATEGORY_LABELS, categoryGroupsFor, PROPERTY_TYPE_VALUES, segmentsForHomeCategory } from "./seoRoute";
 import { CATEGORY_FIELD_CONFIG } from "@bhavano/types/categoryFields";
 
 /**
@@ -70,4 +72,46 @@ export function assetFiltersFor(category: ListingCategory | undefined): AssetFil
 
 export function hasAssetFilter(category: ListingCategory | undefined, key: FilterableKey): boolean {
   return assetFiltersFor(category).some((filter) => filter.key === key);
+}
+
+/**
+ * Categories that *are* a transaction choice rather than an asset underneath one.
+ *
+ * PG, Furniture and Interiors are top-level intents in this product's own vocabulary
+ * (`HOME_TABS`), not property types you pick after choosing Buy or Rent. So they never appear in
+ * the asset list — offering "Buy → Interiors" would duplicate the Interiors intent under a second
+ * name — and it is why the asset filter disappears once one of them is chosen: the intent has
+ * already named the asset.
+ */
+const SELF_INTENT_CATEGORIES: ListingCategory[] = ["pg", "furniture", "interiors"];
+
+/**
+ * The asset types selectable under each intent.
+ *
+ * This is the fix for two things the first version got wrong. It modelled the leading filter as a
+ * `TransactionGroup` (buy | rent-lease), but this product's top-level axis is the tab vocabulary —
+ * so PG, Furniture and Interiors had nowhere to be, and `/bengaluru/pg` (whose path carries no
+ * group at all, since `buildBrowsePath` drops the redundant one for a single-group category)
+ * showed "Any" as its transaction and offered houses and apartments as its asset types. Neither
+ * made sense.
+ */
+export function assetsForIntent(intent: HomeTabValue): ListingCategory[] {
+  if (SELF_INTENT_CATEGORIES.includes(intent as ListingCategory)) return [];
+
+  const { transactionGroup } = segmentsForHomeCategory(intent);
+  if (!transactionGroup) {
+    // No transaction chosen, so an asset can only ride on `?propertyType=` — which speaks just
+    // these five values. See buildFilterUrl.
+    return PROPERTY_TYPE_VALUES as ListingCategory[];
+  }
+  return (Object.keys(CATEGORY_LABELS) as ListingCategory[]).filter(
+    (category) =>
+      !SELF_INTENT_CATEGORIES.includes(category) && categoryGroupsFor(category).includes(transactionGroup),
+  );
+}
+
+/** Whether the asset filter has anything to offer for an intent — exported so a caller laying out
+ * the row itself can tell whether it will render. */
+export function intentOffersAssets(intent: HomeTabValue): boolean {
+  return assetsForIntent(intent).length > 0;
 }

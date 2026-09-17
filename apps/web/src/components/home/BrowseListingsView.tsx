@@ -118,6 +118,10 @@ export async function BrowseListingsView({
   noAreaSelected?: boolean;
 }) {
   const session = await auth();
+  // The same reverse mapping the tab row uses, so the filter and the highlighted tab can never
+  // disagree about which intent this page is. It is also what makes /bengaluru/pg read as "PG"
+  // rather than "Any": that path carries no transaction group, only the category.
+  const activeIntent = homeCategoryForSegments(currentSegments);
   const offset = (page - 1) * PAGE_SIZE;
   const [listingsPage, popularSearches] = await Promise.all([
     // Nothing selected means there is nothing to ask for — skipping the call is both correct and
@@ -178,13 +182,13 @@ export async function BrowseListingsView({
             <TransactionFilter
               cityName={cityName}
               areaName={pathAreaName}
-              activeGroup={currentSegments.transactionGroup}
+              activeIntent={activeIntent}
               activeAsset={currentSegments.category}
             />
             <AssetTypeFilter
               cityName={cityName}
               areaName={pathAreaName}
-              activeGroup={currentSegments.transactionGroup}
+              activeIntent={activeIntent}
               activeAsset={currentSegments.category}
             />
             {cityName && <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />}

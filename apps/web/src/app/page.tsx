@@ -6,7 +6,6 @@ import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
-import { segmentsForHomeCategory } from "@/lib/seoRoute";
 import { AreaFilter } from "@/components/home/AreaFilter";
 import { AssetTypeFilter, TransactionFilter } from "@/components/home/TypeFilters";
 import { ListingGrid } from "@/components/home/ListingGrid";
@@ -118,10 +117,6 @@ export default async function HomePage({
   if (page > 1 && page > totalPages) notFound();
 
   const activeTab = HOME_TABS.find((t) => t.value === category) ?? HOME_TABS[0];
-  // The homepage's tabs are intent groupings; the type filters speak the path grammar's
-  // transaction *group*. segmentsForHomeCategory is the existing translation between the two, so
-  // the filters agree with whichever tab is active rather than holding a second opinion.
-  const { transactionGroup: transactionGroupForTab } = segmentsForHomeCategory(activeTab.value);
   const cityName = resolvedCity?.name;
   // Full area list for both the search bar's placeholder hint and the AreaFilter multi-select.
   const cityAreas = resolvedCity ? await fetchAreas(resolvedCity.id, undefined, true) : [];
@@ -200,14 +195,16 @@ export default async function HomePage({
           * to the corresponding browse path, exactly as the tab row above already does, so this
           * introduces no new URL shapes. */}
         <div className="mb-5 flex gap-2.5 flex-wrap items-start">
+          {/* activeTab.value already *is* the intent here — the homepage's tab row and this
+            * filter speak the same vocabulary, so no translation is needed. */}
           <TransactionFilter
             cityName={resolvedCity?.name}
-            activeGroup={transactionGroupForTab}
+            activeIntent={activeTab.value}
             activeAsset={listingCategory ?? (propertyType as ListingCategory | undefined)}
           />
           <AssetTypeFilter
             cityName={resolvedCity?.name}
-            activeGroup={transactionGroupForTab}
+            activeIntent={activeTab.value}
             activeAsset={listingCategory ?? (propertyType as ListingCategory | undefined)}
           />
           {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}

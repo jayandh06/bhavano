@@ -3,37 +3,52 @@
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
-import { assetSurvivingGroupChange, buildFilterUrl } from "@/lib/filterUrl";
+import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
+import { buildFilterUrl } from "@/lib/filterUrl";
+import { assetsForIntent, intentOffersAssets } from "@/lib/assetFilters";
 // From seoRoute, not browseRoute: the latter re-exports these but also pulls in lib/bff,
 // which imports next/headers — a client component cannot reach that module graph.
-import {
-  CATEGORY_LABELS,
-  categoryGroupsFor,
-  PROPERTY_TYPE_VALUES,
-  type TransactionGroup,
-} from "@/lib/seoRoute";
+import { CATEGORY_LABELS, segmentsForHomeCategory } from "@/lib/seoRoute";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { buttonClass } from "./BrowseFilterBar";
 import { Icon } from "./Icon";
 
-const GROUP_OPTIONS: { value: TransactionGroup | undefined; label: string }[] = [
-  { value: undefined, label: "Any" },
-  { value: "buy", label: "Buy" },
-  { value: "rent-lease", label: "Rent & Lease" },
-];
+/** Where a given (intent, asset) pair lives. The intent supplies the base segments — which for
+ * PG/Furniture/Interiors already carry the category — and a chosen asset overrides that category
+ * only where the intent actually offers a choice. */
+function urlForSelection(params: {
+  intent: HomeTabValue;
+  asset: ListingCategory | undefined;
+  cityName?: string;
+  areaName?: string;
+  searchParams: URLSearchParams;
+}): string {
+  const { intent, asset, cityName, areaName, searchParams } = params;
+  const base = segmentsForHomeCategory(intent);
+  return buildFilterUrl({
+    cityName,
+    areaName,
+    group: base.transactionGroup,
+    asset: intentOffersAssets(intent) ? asset : base.category,
+    searchParams,
+  });
+}
 
-/** Groups, not the four raw `TransactionType` values. `buy|sell` and `rent|lease` are one
- * browsing intent each, the path grammar speaks groups, and offering "Sell" as a *browse* filter
- * would build URLs that do not exist. */
+/**
+ * The transaction filter: this product's real top-level choice — All, Buy, Rent & Lease, PG,
+ * Furniture, Interiors — read from `HOME_TABS` so it and the tab row can never disagree about the
+ * vocabulary, and resolved from the URL by the caller via `homeCategoryForSegments` so they can
+ * never disagree about which one is active.
+ */
 export function TransactionFilter({
   cityName,
   areaName,
-  activeGroup,
+  activeIntent,
   activeAsset,
 }: {
   cityName?: string;
   areaName?: string;
-  activeGroup?: TransactionGroup;
+  activeIntent: HomeTabValue;
   activeAsset?: ListingCategory;
 }) {
   const router = useRouter();
@@ -42,17 +57,19 @@ export function TransactionFilter({
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
 
-  const label = GROUP_OPTIONS.find((o) => o.value === activeGroup)?.label ?? "Any";
+  const label = HOME_TABS.find((tab) => tab.value === activeIntent)?.label ?? "All";
 
-  function select(group: TransactionGroup | undefined) {
+  function select(intent: HomeTabValue) {
     setOpen(false);
     router.push(
-      buildFilterUrl({
+      urlForSelection({
+        intent,
+        // Carried over only where it still exists under the new intent: switching Rent & Lease to
+        // Buy while holding an asset that is rent-only would otherwise build a path that parses,
+        // returns nothing, and looks broken.
+        asset: activeAsset && assetsForIntent(intent).includes(activeAsset) ? activeAsset : undefined,
         cityName,
         areaName,
-        group,
-        // Dropped when it doesn't exist in the new group — see assetSurvivingGroupChange.
-        asset: assetSurvivingGroupChange(activeAsset, group),
         searchParams,
       }),
     );
@@ -60,17 +77,17 @@ export function TransactionFilter({
 
   return (
     <div ref={containerRef} className="relative">
-      <button onClick={() => setOpen((o) => !o)} className={buttonClass(open || activeGroup !== undefined)}>
+      <button onClick={() => setOpen((o) => !o)} className={buttonClass(open || activeIntent !== "all")}>
         <Icon name="key" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
       {open && (
         <div className={dropdownClass}>
-          {GROUP_OPTIONS.map((option) => (
+          {HOME_TABS.map((tab) => (
             <Option
-              key={option.label}
-              label={option.label}
-              active={activeGroup === option.value}
-              onClick={() => select(option.value)}
+              key={tab.value}
+              label={tab.label}
+              active={activeIntent === tab.value}
+              onClick={() => select(tab.value)}
             />
           ))}
         </div>
@@ -80,26 +97,26 @@ export function TransactionFilter({
 }
 
 /**
- * The asset type — "All types" plus the property categories.
+ * The asset type under the chosen intent.
  *
- * Deliberately not a gate. "All types" is a real, valid, listing-showing state, because
- * `/bengaluru` and `/bengaluru/buy` are indexable landing pages that Googlebot cannot click its
- * way out of, and because at current inventory the mixed grid is often the only non-empty view in
- * a city. See docs/plans/contextual-search-filters.md.
+ * Renders nothing when the intent has no assets to choose between — PG, Furniture and Interiors
+ * *are* the asset, so a dropdown there would either be empty or, as it was before this, offer
+ * houses and apartments the page cannot show.
  *
- * Which categories are offered depends on the chosen transaction: `categoryGroupsFor` knows that
- * PG is rent-only and plots and interiors are sell-only, so the list never offers a combination
- * that would return nothing by construction.
+ * "All types" stays a real, valid, listing-showing state: `/bengaluru` and `/bengaluru/buy` are
+ * indexable landing pages Googlebot cannot click its way out of, and at current inventory the
+ * mixed grid is often the only non-empty view in a city. See
+ * docs/plans/contextual-search-filters.md.
  */
 export function AssetTypeFilter({
   cityName,
   areaName,
-  activeGroup,
+  activeIntent,
   activeAsset,
 }: {
   cityName?: string;
   areaName?: string;
-  activeGroup?: TransactionGroup;
+  activeIntent: HomeTabValue;
   activeAsset?: ListingCategory;
 }) {
   const router = useRouter();
@@ -108,17 +125,14 @@ export function AssetTypeFilter({
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
 
-  // With no transaction chosen the asset has to ride on `?propertyType=`, which only speaks the
-  // five property values — so that is all this can honestly offer there.
-  const options: ListingCategory[] = activeGroup
-    ? (Object.keys(CATEGORY_LABELS) as ListingCategory[]).filter((c) => categoryGroupsFor(c).includes(activeGroup))
-    : (PROPERTY_TYPE_VALUES as ListingCategory[]);
+  const options = assetsForIntent(activeIntent);
+  if (options.length === 0) return null;
 
   const label = activeAsset ? (CATEGORY_LABELS[activeAsset] ?? "All types") : "All types";
 
   function select(asset: ListingCategory | undefined) {
     setOpen(false);
-    router.push(buildFilterUrl({ cityName, areaName, group: activeGroup, asset, searchParams }));
+    router.push(urlForSelection({ intent: activeIntent, asset, cityName, areaName, searchParams }));
   }
 
   return (
