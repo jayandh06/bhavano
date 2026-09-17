@@ -1,7 +1,7 @@
 # Contextual search filters: always show transaction and asset, derive the rest
 
-**Status: Phase 1 implemented and deployed 2026-09-17.** Phases 2 and 3 are still plan only.
-Written 2026-09-17.
+**Status: Phases 1 and 2 implemented and deployed 2026-09-17.** Phase 3 (facet counts) is still
+plan only. Written 2026-09-17.
 
 ## Context
 
@@ -149,9 +149,25 @@ be dropped to transaction-group level only, or omitted for the "All types" chip.
   The latter re-exports it but also pulls in `lib/bff`, whose `next/headers` import a client
   component cannot reach. The build caught it.
 
-**Phase 2 — derive the rest from the asset.**
-- Read `CATEGORY_FIELD_CONFIG` to decide which additional filters to render.
-- A category-agnostic price scale for "All types".
+**Phase 2 — derive the rest from the asset. Implemented 2026-09-17.**
+- `lib/assetFilters.ts` derives the set from `CATEGORY_FIELD_CONFIG`; `BrowseFilterBar` renders one
+  dropdown per select filter, with options read from the config's own arrays — so a value added to
+  the posting form becomes a filter option with no second edit, and can never drift from what
+  `ListListingsDto` accepts (which reads the same arrays).
+- **Three filters were missing entirely**, which is what made this worth doing rather than a
+  refactor: the hardcoded `category === "house" || category === "apartment"` hid **villa's BHK**,
+  **villa's furnishing** and **commercial's furnishing**, all of which the config declares and the
+  BFF accepts.
+- **Three more had no UI at all**: PG sharing type, furniture condition, interiors service type.
+  The BFF has always accepted them — they were reachable only by following a mega-menu link into a
+  path facet.
+- The category-agnostic price scale was dropped rather than built; see the correction above.
+- Verified live: villa carries BHK + Furnishing + Price, commercial carries Furnishing + Price (no
+  BHK), PG carries Sharing + Price, plot carries Price only. 16 unit checks cover the derivation
+  per category and that PG's options come from the config (single, double, triple, dormitory).
+- **Still not filterable**, and deliberately so: `sqft`, `plotAreaSqft` and seat counts are real
+  fields on their categories but `ListingsQuery` has no parameter for them. A control that cannot
+  narrow anything is worse than no control, so adding them is a backend change first.
 
 **Phase 3 — counts.**
 - `/listings/facets`, chips carrying counts, zero counts de-emphasised and wired to the requirement
