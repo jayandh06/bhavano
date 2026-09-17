@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useLayoutEffect } from "react";
 
 /** Gap left between a clamped panel and the edge of the screen. */
 const EDGE_MARGIN = 12;
@@ -18,44 +18,34 @@ const EDGE_MARGIN = 12;
  *
  * A measured shift rather than flipping to `right-0`: a flip solves the pill-on-the-right case and
  * breaks the pill-in-the-middle one, and it moves the panel away from the control it belongs to.
- * `useLayoutEffect` measures before paint, so the panel never renders in the wrong place first.
  *
- * Returns the number of pixels to shift left — 0 when it already fits, which is every desktop case.
+ * The offset is written straight to the node's own `transform` rather than held in React state.
+ * That is what this is — a measurement pushed back into the DOM — and routing it through `setState`
+ * inside a layout effect is both a cascading render and a lint error in this repo. Clearing the
+ * transform before measuring makes it idempotent with no bookkeeping: every run starts from the
+ * panel's unshifted position.
  */
-export function useClampToViewport(
-  ref: React.RefObject<HTMLElement | null>,
-  open: boolean,
-): number {
-  const [shift, setShift] = useState(0);
-
-  const measure = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    // Measured with the shift removed, so this is idempotent: re-running must not compound the
-    // correction it applied last time.
-    const rect = el.getBoundingClientRect();
-    const currentShift = Number(el.dataset.clampShift ?? 0);
-    const unshiftedRight = rect.right + currentShift;
-    const limit = document.documentElement.clientWidth - EDGE_MARGIN;
-    const overflow = unshiftedRight - limit;
-    // Never shift so far that the panel's own left edge leaves the screen — a panel wider than the
-    // viewport can only be capped by its `max-w`, not moved into fitting.
-    const next = overflow > 0 ? Math.min(overflow, Math.max(rect.left + currentShift - EDGE_MARGIN, 0)) : 0;
-    el.dataset.clampShift = String(next);
-    setShift(next);
-  }, [ref]);
-
+export function useClampToViewport(ref: React.RefObject<HTMLElement | null>, open: boolean): void {
   useLayoutEffect(() => {
-    if (!open) {
-      setShift(0);
-      return;
-    }
-    measure();
-    // Rotating a phone or an on-screen keyboard resizing the viewport both change the answer while
-    // the panel is still open.
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [open, measure]);
+    const el = ref.current;
+    if (!open || !el) return;
 
-  return shift;
+    function clamp(): void {
+      if (!el) return;
+      el.style.transform = "";
+      const rect = el.getBoundingClientRect();
+      const overflow = rect.right - (document.documentElement.clientWidth - EDGE_MARGIN);
+      if (overflow <= 0) return;
+      // Never shift so far that the panel's own left edge leaves the screen — a panel wider than
+      // the viewport can only be capped by its `max-w`, not moved into fitting.
+      const shift = Math.min(overflow, Math.max(rect.left - EDGE_MARGIN, 0));
+      if (shift > 0) el.style.transform = `translateX(-${shift}px)`;
+    }
+
+    clamp();
+    // Rotating a phone, or an on-screen keyboard resizing the viewport, both change the answer
+    // while the panel is still open.
+    window.addEventListener("resize", clamp);
+    return () => window.removeEventListener("resize", clamp);
+  }, [open, ref]);
 }

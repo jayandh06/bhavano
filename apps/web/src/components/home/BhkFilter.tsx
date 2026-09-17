@@ -51,7 +51,7 @@ export function BhkFilter({
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
   const panelRef = useRef<HTMLDivElement>(null);
-  const shift = useClampToViewport(panelRef, open);
+  useClampToViewport(panelRef, open);
 
   const bedroomsParam = searchParams.get("bedrooms");
 
@@ -137,7 +137,6 @@ export function BhkFilter({
         // AreaFilter/TypeFilters); without it this can run off the right edge of a phone screen.
         <div
           ref={panelRef}
-          style={shift ? { transform: `translateX(-${shift}px)` } : undefined}
           className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[160px] max-w-[calc(100vw-2rem)]">
           <button
             onClick={() => navigate(new Set(BEDROOM_COUNTS))}

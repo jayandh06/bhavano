@@ -60,8 +60,7 @@ export function BrowseFilterBar({
   // Anchored to its own pill, so how far right a panel reaches depends on where the row wrapped
   // that pill — see useClampToViewport.
   const panelRef = useRef<HTMLDivElement>(null);
-  const shift = useClampToViewport(panelRef, open !== null);
-  const panelStyle = shift ? { transform: `translateX(-${shift}px)` } : undefined;
+  useClampToViewport(panelRef, open !== null);
 
   if (!category) return null;
 
@@ -107,7 +106,7 @@ export function BrowseFilterBar({
           {priceLabel} <span className="text-[10px] text-muted">▾</span>
         </button>
         {open === "price" && (
-          <div ref={open === "price" ? panelRef : undefined} style={panelStyle} className={`${dropdownClass} min-w-[248px]`}>
+          <div ref={open === "price" ? panelRef : undefined} className={`${dropdownClass} min-w-[248px]`}>
             {/* "Any", then the two boxes — no pre-baked brackets. They were derived from each
               * category's plausibility bounds, which made them sane but arbitrary: three buckets
               * per category, none of them the range anyone actually wanted, and each one a second
@@ -143,7 +142,7 @@ export function BrowseFilterBar({
               {label} <span className="text-[10px] text-muted">▾</span>
             </button>
             {open === filter.key && (
-              <div ref={open === filter.key ? panelRef : undefined} style={panelStyle} className={dropdownClass}>
+              <div ref={open === filter.key ? panelRef : undefined} className={dropdownClass}>
                 <DropdownOption
                   label="Any"
                   active={active === undefined}

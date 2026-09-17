@@ -42,7 +42,7 @@ export function AreaFilter({
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
   const panelRef = useRef<HTMLDivElement>(null);
-  const shift = useClampToViewport(panelRef, open);
+  useClampToViewport(panelRef, open);
 
   if (areas.length <= 1) return null;
 
@@ -159,7 +159,6 @@ export function AreaFilter({
       {open && (
         <div
           ref={panelRef}
-          style={shift ? { transform: `translateX(-${shift}px)` } : undefined}
           className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[240px] max-w-[calc(100vw-2rem)] max-h-[360px] overflow-y-auto">
           {/* Only worth a search box once the list is long enough to be worth searching —
               below that it is one more thing between the visitor and the checkboxes. */}
