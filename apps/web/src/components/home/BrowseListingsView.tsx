@@ -10,6 +10,7 @@ import { ListingGrid } from "./ListingGrid";
 import { PickAnAreaNotice } from "./PickAnAreaNotice";
 import { SearchTracker } from "./SearchTracker";
 import { RequirementPrompt } from "./RequirementPrompt";
+import { Icon } from "./Icon";
 import { AreaFilter } from "./AreaFilter";
 import { AssetTypeFilter, TransactionFilter } from "./TypeFilters";
 import { hasAssetFilter } from "@/lib/assetFilters";
@@ -174,6 +175,12 @@ export async function BrowseListingsView({
           * distinct control surface (narrowing the results below), not page content, and the flat
           * bg-on-bg treatment it used to have gave it no visual identity of its own. */}
         <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
+          {/* Says what the strip is. Without it the row reads as a line of unrelated buttons —
+            * and which control comes first changes with depth (area inside a city, transaction
+            * without one), so the label belongs to the row rather than to any one pill. */}
+          <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
+            <Icon name="filter" /> Filters
+          </span>
           <div className="flex gap-2.5 flex-wrap">
             {/* Area first, but only inside a city — it is the question everything else is asked
               * *within*, and the one filter a visitor almost always sets before any other.

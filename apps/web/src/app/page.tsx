@@ -7,6 +7,7 @@ import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
+import { Icon } from "@/components/home/Icon";
 import { AreaFilter } from "@/components/home/AreaFilter";
 import { AssetTypeFilter, TransactionFilter } from "@/components/home/TypeFilters";
 import { BhkFilter } from "@/components/home/BhkFilter";
@@ -218,6 +219,10 @@ export default async function HomePage({
           * to the corresponding browse path, exactly as the tab row above already does, so this
           * introduces no new URL shapes. */}
         <div className="mb-5 flex gap-2.5 flex-wrap items-start">
+          {/* Same leading label as the browse pages' filter strip — see BrowseListingsView. */}
+          <span className="flex items-center gap-1.5 self-center text-[13px] font-semibold text-muted" aria-hidden>
+            <Icon name="filter" /> Filters
+          </span>
           {/* Area first when a city is chosen, same reasoning as the browse pages. City itself
             * stays a top-level choice in the header, not a filter — see BrowseListingsView. */}
           {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}

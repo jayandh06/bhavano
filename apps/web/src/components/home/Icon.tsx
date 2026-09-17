@@ -1,5 +1,6 @@
 import {
   ArrowUpDown,
+  SlidersHorizontal,
   BatteryCharging,
   Bath,
   Bed,
@@ -92,6 +93,7 @@ import {
  */
 export const ICONS = {
   pin: MapPin,
+  filter: SlidersHorizontal,
   eye: Eye,
   heart: Heart,
   message: MessageCircle,
