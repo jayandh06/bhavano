@@ -10,6 +10,8 @@ import { ListingGrid } from "@/components/home/ListingGrid";
 import { Pagination } from "@/components/home/Pagination";
 import { Footer } from "@/components/home/Footer";
 import { resolvePopularSearches } from "@/lib/popularSearches";
+import { parseAreaSelection } from "@/lib/areaSelection";
+import { PickAnAreaNotice } from "@/components/home/PickAnAreaNotice";
 import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
 import {
@@ -63,8 +65,9 @@ export default async function HomePage({
   const transactionType = typeof sp.transactionType === "string" && isTransactionType(sp.transactionType) ? sp.transactionType : undefined;
 
   // AreaFilter's multi-select, homepage mode — always a comma-separated list of area ids.
-  const areasQueryParam = typeof sp.areas === "string" ? sp.areas : undefined;
-  const areaIds = areasQueryParam ? areasQueryParam.split(",").filter(Boolean) : undefined;
+  // `noAreaSelected` is the visitor having unchecked every area — a real state, not "all", and
+  // not a search worth running. See lib/areaSelection.ts.
+  const { areaIds, noneSelected: noAreaSelected } = parseAreaSelection(sp.areas);
 
   // Fetched with `all=true` (not just the popular subset) so a tier-2 "more cities" selection
   // still resolves here instead of silently falling back to the default city.
@@ -81,25 +84,29 @@ export default async function HomePage({
     allCities.find((c) => slugify(c.name) === cityParam) ?? allCities.find((c) => c.id === cityParam);
 
   const offset = (page - 1) * PAGE_SIZE;
-  const listingsPage = await fetchListings(
-    {
-      homeCategory: category === "all" ? undefined : category,
-      propertyType,
-      category: listingCategory,
-      transactionType,
-      cityId: resolvedCity?.id,
-      areaIds,
-      q: q || undefined,
-      bedrooms: bedrooms !== undefined ? [bedrooms] : undefined,
-      furnished,
-      sharingType,
-      condition,
-      serviceType,
-      offset,
-      limit: PAGE_SIZE,
-    },
-    session?.accessToken,
-  );
+  // Nothing selected means there is nothing to ask for — skipping the call is both correct and
+  // one fewer uncached query per such page view. See lib/areaSelection.ts.
+  const listingsPage = noAreaSelected
+    ? { items: [], total: 0, nextCursor: null }
+    : await fetchListings(
+        {
+          homeCategory: category === "all" ? undefined : category,
+          propertyType,
+          category: listingCategory,
+          transactionType,
+          cityId: resolvedCity?.id,
+          areaIds,
+          q: q || undefined,
+          bedrooms: bedrooms !== undefined ? [bedrooms] : undefined,
+          furnished,
+          sharingType,
+          condition,
+          serviceType,
+          offset,
+          limit: PAGE_SIZE,
+        },
+        session?.accessToken,
+      );
 
   // Page 1 with zero results is a normal "nothing here yet" state — only pages *past* the last
   // real page are a crawl-trap/dead-end worth 404ing (see docs/plans/seo-distinct-window-pagination.md).
@@ -185,6 +192,9 @@ export default async function HomePage({
             <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
           </div>
         )}
+        {noAreaSelected ? (
+          <PickAnAreaNotice />
+        ) : (
         <ListingGrid
           items={listingsPage.items}
           requirement={{
@@ -201,7 +211,10 @@ export default async function HomePage({
             },
           }}
         />
-        <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
+        )}
+        {!noAreaSelected && (
+          <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
+        )}
       </main>
       <Footer currentCityName={resolvedCity?.name} cityAreas={cityAreas} allCities={allCities} />
     </div>

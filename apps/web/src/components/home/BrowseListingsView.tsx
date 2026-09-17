@@ -7,6 +7,7 @@ import { sessionAccessToken } from "@/lib/session";
 import { buildListingPath } from "@/lib/listingPath";
 import { Header } from "./Header";
 import { ListingGrid } from "./ListingGrid";
+import { PickAnAreaNotice } from "./PickAnAreaNotice";
 import { RequirementPrompt } from "./RequirementPrompt";
 import { AreaFilter } from "./AreaFilter";
 import { BhkFilter } from "./BhkFilter";
@@ -81,6 +82,7 @@ export async function BrowseListingsView({
   pathAreaName,
   cityAreas,
   allCities,
+  noAreaSelected = false,
 }: {
   query: Omit<ListingsQuery, "limit" | "cursor" | "offset">;
   /** Undefined for national browsing (`/buy`, `/furniture`). Without a city there is no area
@@ -106,11 +108,19 @@ export async function BrowseListingsView({
   /** Every city, passed through to the footer's all-cities block — the caller already fetches
    * this for `popularCities`, so reuse it instead of Footer fetching it again. */
   allCities: City[];
+  /** The visitor unchecked every area (`?areas=none`). There is nothing to ask the BFF for, so
+   * the fetch is skipped entirely and the grid is replaced by a prompt — see
+   * lib/areaSelection.ts. */
+  noAreaSelected?: boolean;
 }) {
   const session = await auth();
   const offset = (page - 1) * PAGE_SIZE;
   const [listingsPage, popularSearches] = await Promise.all([
-    fetchListings({ ...query, offset, limit: PAGE_SIZE }, session?.accessToken),
+    // Nothing selected means there is nothing to ask for — skipping the call is both correct and
+    // one fewer uncached query per such page view.
+    noAreaSelected
+      ? Promise.resolve({ items: [], total: 0, nextCursor: null })
+      : fetchListings({ ...query, offset, limit: PAGE_SIZE }, session?.accessToken),
     resolvePopularSearches(cityName ?? "India", query.cityId),
   ]);
 
@@ -169,42 +179,55 @@ export async function BrowseListingsView({
         {/* Count and sort share the line directly above the grid: the count reflects whatever
           * the filters above have narrowed it to, and sort is the one control that acts on the
           * results rather than defining them. */}
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <span className="text-[13px] text-muted">
-            {listingsPage.total} {listingsPage.total === 1 ? "listing" : "listings"}
-          </span>
-          <SortDropdown activeSort={query.sort} />
-        </div>
-        {listingsPage.items.length > 0 && (
-          <JsonLd
-            data={browseCollectionPageJsonLd({
-              heading,
-              url: `${SITE_URL}${page > 1 ? `${basePath}?page=${page}` : basePath}`,
-              itemList: browseItemListJsonLd(listingsPage.items, offset, listingsPage.total),
-            })}
-          />
+        {!noAreaSelected && (
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <span className="text-[13px] text-muted">
+              {listingsPage.total} {listingsPage.total === 1 ? "listing" : "listings"}
+            </span>
+            <SortDropdown activeSort={query.sort} />
+          </div>
         )}
-        <ListingGrid
-          items={listingsPage.items}
-          requirement={{
-            label: heading,
-            criteria: {
-              category: query.category,
-              transactionType: query.transactionType,
-              cityId: query.cityId,
-              // The single path area when there is one; the multi-select filter is intentionally
-              // not collapsed into one areaId, since "any of these five" is not a requirement.
-              areaId: query.areaId,
-              minPrice: query.minPrice,
-              maxPrice: query.maxPrice,
-              // SavedSearch/Requirement hold one bedroom count, the filter holds a set — take the
-              // smallest, which is the least restrictive reading of "2 or 3 BHK".
-              bedrooms: query.bedrooms?.length ? Math.min(...query.bedrooms) : undefined,
-              landingPath: basePath,
-            },
-          }}
-        />
-        <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
+        {noAreaSelected ? (
+          // Deliberately not the requirement capture: that one says "we have nothing here", and
+          // this says "you haven't told us where yet". Offering to go and find something before
+          // the visitor has named an area would be nonsense.
+          <PickAnAreaNotice />
+        ) : (
+          <>
+            {listingsPage.items.length > 0 && (
+              <JsonLd
+                data={browseCollectionPageJsonLd({
+                  heading,
+                  url: `${SITE_URL}${page > 1 ? `${basePath}?page=${page}` : basePath}`,
+                  itemList: browseItemListJsonLd(listingsPage.items, offset, listingsPage.total),
+                })}
+              />
+            )}
+            <ListingGrid
+              items={listingsPage.items}
+              requirement={{
+                label: heading,
+                criteria: {
+                  category: query.category,
+                  transactionType: query.transactionType,
+                  cityId: query.cityId,
+                  // The single path area when there is one; the multi-select filter is intentionally
+                  // not collapsed into one areaId, since "any of these five" is not a requirement.
+                  areaId: query.areaId,
+                  minPrice: query.minPrice,
+                  maxPrice: query.maxPrice,
+                  // SavedSearch/Requirement hold one bedroom count, the filter holds a set — take the
+                  // smallest, which is the least restrictive reading of "2 or 3 BHK".
+                  bedrooms: query.bedrooms?.length ? Math.min(...query.bedrooms) : undefined,
+                  landingPath: basePath,
+                },
+              }}
+            />
+          </>
+        )}
+        {!noAreaSelected && (
+          <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={(p) => buildPageHref(basePath, query, p)} />
+        )}
         {/* Someone who looked at results and left unsatisfied is unmet demand too, and until now
           * nothing captured them — only the zero-result case did. Quiet and below the grid on
           * purpose: it must not compete with the listings someone came to read. */}

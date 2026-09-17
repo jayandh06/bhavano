@@ -23,6 +23,7 @@ import {
   transactionGroupFor,
   type ParsedSegments,
 } from "@/lib/seoRoute";
+import { parseAreaSelection } from "@/lib/areaSelection";
 import { BrowseListingsView } from "@/components/home/BrowseListingsView";
 import { ListingDetailView } from "@/components/home/ListingDetailView";
 import { JsonLd } from "@/components/JsonLd";
@@ -499,8 +500,7 @@ export default async function CityBrowsePage({
   // `AreaFilter`'s multi-select — a comma-separated list of area ids (`?areas=`), distinct from
   // the single-locality `?area=`/path-based cases above. No resolution needed, these ids round-trip
   // straight into the backend's `areaIds` filter.
-  const areasQueryParam = typeof sp.areas === "string" ? sp.areas : undefined;
-  const areaIds = areasQueryParam ? areasQueryParam.split(",").filter(Boolean) : undefined;
+  const { areaIds, noneSelected: noAreaSelected } = parseAreaSelection(sp.areas);
 
   const baseQuery = buildQueryForSegments(parsed);
   const heading = headingFor(parsed, cityRow.name, areaRow?.name);
@@ -535,6 +535,7 @@ export default async function CityBrowsePage({
         areaName={areaRow?.name ?? cityAreas[0]?.name}
         cityAreas={cityAreas}
         allCities={allCities}
+        noAreaSelected={noAreaSelected}
       />
     </>
   );

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Area } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { useClickOutside } from "@/lib/useClickOutside";
+import { AREAS_NONE } from "@/lib/areaSelection";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { buildHomeUrl } from "@/lib/homeUrl";
 import type { ParsedSegments } from "@/lib/seoRoute";
@@ -36,6 +37,7 @@ export function AreaFilter({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
+  const [areaQuery, setAreaQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
 
@@ -52,28 +54,41 @@ export function AreaFilter({
   // no local staging, so it can never drift out of sync with what's actually being shown.
   const selected: Set<string> = pathAreaId
     ? new Set([pathAreaId])
-    : areasParam
-      ? new Set(areasParam.split(","))
-      : new Set(areas.map((a) => a.id));
+    : areasParam === AREAS_NONE
+      ? new Set()
+      : areasParam
+        ? new Set(areasParam.split(","))
+        : new Set(areas.map((a) => a.id));
 
   const allSelected = selected.size === areas.length;
-  const label = allSelected
+  const noneSelected = selected.size === 0;
+  const label = noneSelected
+    ? "Pick an area"
+    : allSelected
     ? "All areas"
     : selected.size === 1
       ? (areas.find((a) => selected.has(a.id))?.name ?? "1 area")
       : `${selected.size} areas`;
 
   function navigate(nextSelected: Set<string>) {
-    // Unchecking every box would mean "match nothing" — instead of blocking the click, fall back
-    // to the first area rather than leaving the previous selection in place, so the control
-    // always lands somewhere concrete; "Select all" is one click away regardless.
-    if (nextSelected.size === 0) nextSelected = new Set([areas[0].id]);
+    // Unchecking everything used to silently re-check the first area — a control that undoes
+    // what you just did, and shows a result set you didn't ask for. Zero is now a real state
+    // carried as `?areas=none`, and the page answers with "select at least one area to search".
+    const nextNoneSelected = nextSelected.size === 0;
     const nextAllSelected = nextSelected.size === areas.length;
     const params = new URLSearchParams(searchParams.toString());
     params.delete("areas");
 
     if (currentSegments) {
       const { transactionGroup, category, facetValue } = currentSegments;
+      if (nextNoneSelected) {
+        // The arealess path plus the sentinel — never a single-area path, which would contradict
+        // "nothing selected".
+        const path = buildBrowsePath({ cityName, transactionGroup, category, facetValue });
+        params.set("areas", AREAS_NONE);
+        router.push(`${path}?${params.toString()}`);
+        return;
+      }
       if (nextAllSelected) {
         const path = buildBrowsePath({ cityName, transactionGroup, category, facetValue });
         const qs = params.toString();
@@ -95,7 +110,11 @@ export function AreaFilter({
     }
 
     // Homepage — always query-based, whatever the count.
-    router.push(buildHomeUrl(searchParams, { areas: nextAllSelected ? undefined : [...nextSelected].join(",") }));
+    router.push(
+      buildHomeUrl(searchParams, {
+        areas: nextNoneSelected ? AREAS_NONE : nextAllSelected ? undefined : [...nextSelected].join(","),
+      }),
+    );
   }
 
   function toggle(id: string) {
@@ -104,6 +123,15 @@ export function AreaFilter({
     else next.add(id);
     navigate(next);
   }
+
+  // Prefix match, not "contains": typing "ko" should narrow to Koramangala and Kodihalli, not
+  // also surface every name with a "ko" buried in the middle — with a couple of hundred areas in
+  // the bigger cities, the front of the name is what someone is actually typing towards.
+  // Filtering starts at MIN_AREA_QUERY_LENGTH; below that the full list is shown, so clearing the
+  // box always returns everything.
+  const trimmedQuery = areaQuery.trim().toLowerCase();
+  const filtering = trimmedQuery.length >= MIN_AREA_QUERY_LENGTH;
+  const visibleAreas = filtering ? areas.filter((area) => area.name.toLowerCase().startsWith(trimmedQuery)) : areas;
 
   const active = open || !allSelected;
 
@@ -122,7 +150,18 @@ export function AreaFilter({
         <Icon name="pin" /> {label} <Icon name="chevronDown" className="text-muted" />
       </button>
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[220px] max-h-[320px] overflow-y-auto">
+        <div className="absolute top-[calc(100%+6px)] left-0 bg-surface border border-border rounded-[10px] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[240px] max-h-[360px] overflow-y-auto">
+          {/* Only worth a search box once the list is long enough to be worth searching —
+              below that it is one more thing between the visitor and the checkboxes. */}
+          {areas.length >= AREA_SEARCH_THRESHOLD && (
+            <input
+              value={areaQuery}
+              onChange={(e) => setAreaQuery(e.target.value)}
+              placeholder={`Type ${MIN_AREA_QUERY_LENGTH}+ letters to find an area`}
+              aria-label="Search areas"
+              className="w-full box-border mb-2 rounded-lg border border-border bg-surface px-2.5 py-2 text-[13px] text-text outline-none"
+            />
+          )}
           <button
             onClick={() => navigate(new Set(areas.map((a) => a.id)))}
             disabled={allSelected}
@@ -130,16 +169,31 @@ export function AreaFilter({
               allSelected ? "cursor-default opacity-50" : "cursor-pointer"
             }`}
           >
-            Select all
+            Select all areas
           </button>
-          {areas.map((area) => (
+          {filtering && visibleAreas.length === 0 && (
+            <p className="m-0 px-1 py-2 text-[12.5px] text-muted">No area starts with “{areaQuery.trim()}”.</p>
+          )}
+          {visibleAreas.map((area) => (
             <label key={area.id} className="flex items-center gap-2 px-1 py-[7px] text-[13px] text-text cursor-pointer">
               <input type="checkbox" checked={selected.has(area.id)} onChange={() => toggle(area.id)} />
               {area.name}
             </label>
           ))}
+          {filtering && visibleAreas.length > 0 && (
+            <p className="m-0 mt-1 border-t border-border px-1 pt-2 text-[11.5px] text-muted">
+              Showing {visibleAreas.length} of {areas.length} — clear the box to see all.
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+/** Filtering starts here, matching the threshold used by the admin dashboard's searchable
+ * selects and UserPicker, so every type-ahead in the product behaves the same. */
+const MIN_AREA_QUERY_LENGTH = 2;
+
+/** Below this many areas the list is scannable and a search box is just clutter. */
+const AREA_SEARCH_THRESHOLD = 8;
