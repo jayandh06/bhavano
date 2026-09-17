@@ -133,20 +133,63 @@ burns the sender domain the notification stack depends on. Rules:
   side; the supply side has far more matches per recipient and needs batching.
 - **Cap the fan-out per requirement** (say 20 owners, best-matched first) so one post cannot
   notify a thousand people.
-- **Never include the seeker's phone or email** in the notification. The whole contact path goes
-  through the gate below.
+- **Never include the seeker's phone or email** in the notification — or anywhere in the feed. The
+  entire contact path goes through the messaging flow below; the number is never a field an API
+  response carries until the seeker has replied.
 - **Reuse `ListingNotificationLog`'s precedent** — record what was sent, to whom, on which channel,
   so "did this lead actually get delivered" is answerable, as it now is for listings.
 
-## Monetization fit
+## Monetization fit, and how the contact path actually works
 
 This is the cleanest fit for **pay-per-lead**, which
 [monetization-boosted-listings-premium-tiers.md](monetization-boosted-listings-premium-tiers.md)
-names as pillar (3) and which the site does not yet monetize:
+names as pillar (3) and which the site does not yet monetize.
 
-- **Seeing a requirement is free. Contacting the seeker costs a contact-reveal credit** — the exact
-  mechanism `ContactReveal` already implements for listings, with `@@unique([listingId, userId])`
-  becoming `[requirementId, userId]` so a broker pays once per lead, not once per attempt.
+**Decision (2026-09-17): charge for the lead, not for the number. Pay to *message*; reveal the
+phone only when the seeker replies.**
+
+The obvious design is to gate the seeker's phone behind a contact-reveal credit, exactly as
+listings do. `ContactRevealSetting` already carries the knobs (2 free reveals per user, packs of 5
+for ₹125, 6-month expiry, all admin-tunable), `ContactReveal` is already unique per
+(target, viewer) so a broker pays once per lead rather than per attempt, and every reveal already
+writes an audit row. Renaming that constraint to `[requirementId, userId]` would be most of the
+build.
+
+That is the right *monetization* mechanism and it will be used — but on its own it is the wrong
+answer to the safety problem, and the distinction is worth keeping straight: **a price makes
+someone traceable and rate-limited by cost; it does not make them trustworthy.** Someone who
+intends to harass one seeker pays ₹25 and is through. It is also irreversible — there is no
+revoking a reveal — and the seeker has no say in *who* gets their number.
+
+This is where requirements differ from listings. A seller who publishes an ad has opted into calls
+from strangers; that is the deal. A seeker posting "I need a 2 BHK by December" has also invited
+contact, but the post advertises *need and urgency*, which is a different thing to hand an unvetted
+stranger, and that population skews toward people newer to the platform.
+
+So the flow is:
+
+1. A supply-side user spends a credit (or a free one) to **message** a requirement — not to unlock
+   a phone.
+2. The seeker sees it in the existing inbox, with who it is from and what listings they have, and
+   replies or ignores it.
+3. The number is exchanged only when the seeker **replies**, or explicitly taps "share my number".
+
+Revenue and the audit trail are unchanged; the worst case for a seeker becomes "a message I
+ignored" rather than "a stranger has my number permanently". It is also **cheaper to build** —
+`Conversation`/`Message`, unread counts, push and the mobile thread UI all exist — so Phase 1 can
+ship with no payment surface at all, measure whether supply-side users engage, and add the credit
+gate once there is something worth charging for.
+
+Paired controls, none of them expensive:
+
+- **The seeker chooses their contact preference when posting**, defaulting to message-only. "Calls
+  OK" becomes their explicit choice rather than the platform's default.
+- **A daily cap per account even when paying** — otherwise a budget simply defeats the economic
+  limit. Note the incentive here: per-reveal revenue aligns the platform with *maximising* reveals,
+  so this cap needs to be a deliberate policy number, not whatever revenue drifts toward.
+- Block and report on the thread; the 30-day expiry bounds the exposure window regardless.
+
+Beyond that:
 - **Agent Pro** (already planned) gets the requirement feed with filters, a daily digest, and a
   bundle of reveals — which finally gives that tier a concrete, defensible benefit instead of a
   badge.
@@ -182,9 +225,10 @@ manual action if you index them at scale. So:
 - Moderation queue, plus "mark fulfilled"/"withdraw" so seekers can close their own.
 - Cap active requirements per user (one genuine need at a time; brokers posting fake demand to
   harvest owner contacts is the obvious attack).
-- **Report** on both sides, and a block list — this creates a channel from strangers to a seeker's
-  phone, which is a bigger safety surface than anything the site has today. Worth its own review
-  before launch.
+- **Report** on both sides, and a block list. This is the feature's biggest safety surface — a
+  channel from strangers toward someone who has advertised a need — which is why the contact path
+  is messaging-first with the number released only on the seeker's reply (see the monetization
+  section). Paying for access is a volume control, not a substitute for that.
 
 ## How it extends
 
@@ -212,6 +256,11 @@ manual action if you index them at scale. So:
 
 - **Making requirements public with contact details** — instant spam magnet for the seeker, and it
   gives away the only thing worth charging for.
+- **Paid reveal of the seeker's number as the first contact** (i.e. listings' flow copied verbatim)
+  — considered and narrowed, 2026-09-17. Right mechanism, wrong trigger: it charges for something
+  irreversible that the seeker never got to consent to, and ₹25 deters bulk harvesting but not a
+  single determined bad actor. Kept as the *pricing* model, moved behind a reply. See the
+  monetization section.
 - **Reusing `SavedSearch` as the public entity** — different lifecycle, visibility and moderation
   needs; would put a visibility flag in the alerts hot path.
 - **A separate messaging stack** — duplicates unread counts, notifications and the mobile thread UI.
@@ -226,15 +275,21 @@ manual action if you index them at scale. So:
 1. **Who may see the feed at all** — any logged-in user, or only owners/agents (i.e. someone with a
    listing or a subscription)? Gating it tighter makes the leads more valuable and the spam lower,
    but slows adoption.
-2. **Free reveals to seed the market.** A pay-per-lead feed with no buyers is dead on arrival. I'd
-   give every owner a few free reveals initially and price later, once there's volume to price
-   against.
-3. **Price per reveal**, versus bundling into Agent Pro only.
+2. **Free messages to seed the market.** A pay-per-lead feed with no buyers is dead on arrival. I'd
+   make messaging a requirement free at launch and price it once there's volume to price against —
+   the existing `freeRevealsPerUser` knob is the precedent, and it's admin-tunable, so the free
+   allowance can be dialled down without a deploy.
+3. **Price per lead**, versus bundling into Agent Pro only.
 4. **Phase 1 scope**: is the empty-state prompt plus the feed enough to validate demand before any
    payment work? I would ship exactly that and measure requirement-creation rate from empty
    searches first — it is a small build, and if seekers don't post, nothing downstream matters.
-5. **Mobile**: read-only feed in Phase 1, or posting too? Posting needs the form; reveals need the
-   iOS payment split.
+5. **Mobile**: read-only feed in Phase 1, or posting too? Posting needs the form; paid leads need
+   the iOS payment split.
+6. **Whether "calls OK" should be offerable at all**, or whether every requirement is
+   messaging-only. Offering it is more useful to brokers and is the seeker's own choice; not
+   offering it removes the irreversible-exposure case entirely. I lean toward offering it, default
+   off, because a seeker who wants calls is expressing a real preference — but it is a judgement
+   call about the platform's duty rather than a technical one.
 
 ## Critical files
 
