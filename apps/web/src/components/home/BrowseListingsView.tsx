@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Area, City, ListingCardDto, ListingCategory } from "@bhavano/types";
+import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { fetchListings, type ListingsQuery } from "@/lib/bff";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
@@ -157,6 +158,7 @@ export async function BrowseListingsView({
             segments={currentSegments}
             listingTotal={listingsPage.total}
             cityAreas={cityAreas}
+            part="intro"
           />
         )}
         {/* Its own surface-alt panel rather than sitting directly on the page bg — this row is a
@@ -228,6 +230,7 @@ export async function BrowseListingsView({
               items={listingsPage.items}
               requirement={{
                 label: heading,
+                postAdHref: cityName ? `/post?city=${slugify(cityName)}` : "/post",
                 criteria: {
                   category: query.category,
                   transactionType: query.transactionType,
@@ -269,6 +272,21 @@ export async function BrowseListingsView({
               }}
             />
           </div>
+        )}
+        {/* "Explore nearby" lives here, at the bottom, rather than above the results: a dozen
+          * links that send people away had been sitting between the heading and the listings
+          * someone came to read. Still server-rendered in the same document, so crawlers see the
+          * same links — just after the content instead of ahead of it. */}
+        {page === 1 && cityName && (
+          <BrowseSeoIntro
+            heading={heading}
+            cityName={cityName}
+            areaName={pathAreaName}
+            segments={currentSegments}
+            listingTotal={listingsPage.total}
+            cityAreas={cityAreas}
+            part="links"
+          />
         )}
       </main>
       <Footer currentCityName={cityName} cityAreas={cityAreas} allCities={allCities} />

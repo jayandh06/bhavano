@@ -171,12 +171,12 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
 function buildIntroParagraphs(input: BrowseSeoCopyInput): string[] {
   const { heading, cityName, areaName, listingTotal } = input;
 
-  if (listingTotal === 0) {
-    return [
-      `There are no active listings for ${heading.toLowerCase()} right now.`,
-      `You can post a free ad on Bhavano or browse other categories and localities in ${cityName}.`,
-    ];
-  }
+  // Nothing on a zero-result page: the RequirementPrompt card says "nothing matching X right
+  // now" in the same words, offers to go and find it, and carries the Post-an-ad action that the
+  // second sentence used to describe. Two paragraphs restating the card above them read as a
+  // malfunction. The related links below still render — they are the useful half of this block on
+  // a page with no inventory.
+  if (listingTotal === 0) return [];
 
   const paragraphs = [
     `Browse ${listingTotal} listings for ${heading.toLowerCase()} on Bhavano. Ads are posted directly by owners and agents — no login required to search.`,

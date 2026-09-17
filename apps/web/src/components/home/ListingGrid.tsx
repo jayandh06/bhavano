@@ -9,7 +9,12 @@ export function ListingGrid({
   items: ListingCardDto[];
   /** The current search, for the zero-results prompt. Omit it and the empty state stays the
    * plain message — used where there is no single coherent search to capture. */
-  requirement?: { criteria: Omit<CreateRequirementInput, "searchLabel">; label: string };
+  requirement?: {
+    criteria: Omit<CreateRequirementInput, "searchLabel">;
+    label: string;
+    /** City-scoped `/post` link for the card's secondary action. */
+    postAdHref?: string;
+  };
 }) {
   // Now that the footer sticks to the bottom of the viewport regardless of content height, a
   // zero-result page would otherwise be a large blank void between the filters and the footer —
@@ -21,7 +26,13 @@ export function ListingGrid({
   // docs/plans/property-requirements-demand-side.md.
   if (items.length === 0) {
     if (requirement) {
-      return <RequirementPrompt criteria={requirement.criteria} label={requirement.label} />;
+      return (
+        <RequirementPrompt
+          criteria={requirement.criteria}
+          label={requirement.label}
+          postAdHref={requirement.postAdHref}
+        />
+      );
     }
     return <p className="text-muted text-sm py-10 text-center">No listings match your filters — try adjusting or clearing them.</p>;
   }

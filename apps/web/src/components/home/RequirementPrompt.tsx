@@ -25,6 +25,7 @@ export function RequirementPrompt({
   criteria,
   label,
   variant = "empty",
+  postAdHref,
 }: {
   criteria: Omit<CreateRequirementInput, "searchLabel">;
   /** How the search reads to a human — the page heading. Becomes both the copy here and the
@@ -33,6 +34,9 @@ export function RequirementPrompt({
   /** `empty` = the zero-results card. `inline` = a quiet link alongside real results, for
    * someone who looked and did not like what they found. */
   variant?: "empty" | "inline";
+  /** Where "Post an ad" goes, city-scoped by the caller. Absent on surfaces with no city in
+   * scope, where the button is simply not offered rather than pointing somewhere vague. */
+  postAdHref?: string;
 }) {
   const { requireLogin } = useAuthGate();
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
@@ -100,9 +104,19 @@ export function RequirementPrompt({
       <p className="text-muted text-[13px] m-0 mb-5">
         Tell us what you&apos;re looking for and we&apos;ll go find it — you don&apos;t have to keep checking back.
       </p>
-      <button type="button" onClick={() => void submit()} disabled={state === "saving"} className={primaryButtonClass}>
-        {state === "saving" ? "Saving…" : "Tell us what you need"}
-      </button>
+      <div className="flex items-center justify-center gap-2.5 flex-wrap">
+        <button type="button" onClick={() => void submit()} disabled={state === "saving"} className={primaryButtonClass}>
+          {state === "saving" ? "Saving…" : "Tell us what you need"}
+        </button>
+        {/* The other half of an empty result: whoever is reading this may be the person who could
+          * fill it. Used to be a sentence of prose underneath — it reads as an action, so it is
+          * one, and it sits next to the primary rather than competing with it. */}
+        {postAdHref && (
+          <Link href={postAdHref} className={secondaryButtonClass}>
+            Post an ad
+          </Link>
+        )}
+      </div>
       {error && <p className="text-[12px] text-danger mt-3 mb-0">{error}</p>}
       <p className="text-muted text-[11.5px] mt-4 mb-0">Or adjust the filters above to widen the search.</p>
     </div>
@@ -113,6 +127,9 @@ const doneCardClass = "my-10 mx-auto max-w-[520px] text-center border border-gre
 
 const primaryButtonClass =
   "bg-green text-on-green border-none rounded-lg px-5 py-2.5 text-[13.5px] font-bold cursor-pointer disabled:opacity-60";
+
+const secondaryButtonClass =
+  "bg-transparent text-text border border-border rounded-lg px-5 py-2.5 text-[13.5px] font-bold no-underline";
 
 const inlineButtonClass =
   "bg-transparent border-none p-0 text-[13px] font-bold text-green cursor-pointer underline disabled:opacity-60";
