@@ -42,7 +42,7 @@ describe('NotificationsService.notifyBoostPromotion', () => {
 
     // An offer, not a receipt: an owner who reads only one of the two would otherwise never see
     // it. Every other notification in the service stays email-else-WhatsApp.
-    expect(channels).toEqual(['email', 'whatsapp']);
+    expect(channels).toEqual([{ channel: 'email' }, { channel: 'whatsapp', messageId: 'req-1' }]);
     expect(sendBoostPromotion).toHaveBeenCalledTimes(1);
     const [, subject, text] = emailSend.mock.calls[0];
     expect(subject).toContain('50% off');
@@ -68,7 +68,8 @@ describe('NotificationsService.notifyBoostPromotion', () => {
       { ...PRICES, offer: OFFER },
     );
 
-    expect(channels).toEqual(['whatsapp']);
+    // The MSG91 id comes back with it, so the log row can carry it for delivery webhooks.
+    expect(channels).toEqual([{ channel: 'whatsapp', messageId: 'req-1' }]);
     // Not the Meta-direct provider — see this file's own note on why.
     expect(sendTemplate).not.toHaveBeenCalled();
     expect(sendBoostPromotion).toHaveBeenCalledWith(
@@ -104,6 +105,6 @@ describe('NotificationsService.notifyBoostPromotion', () => {
 
     // A failed template send must not lose the email that did go out — the admin summary and the
     // notification log both read this list.
-    expect(channels).toEqual(['email']);
+    expect(channels).toEqual([{ channel: 'email' }]);
   });
 });

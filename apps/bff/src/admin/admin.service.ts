@@ -981,7 +981,14 @@ export class AdminService {
       // reads ("has anything gone out recently", not "how many"). A single row with a combined
       // channel string would be a new value for every reader of `channel` to learn.
       await this.prisma.listingNotificationLog.createMany({
-        data: channels.map((channel) => ({ listingId, kind: BOOST_PROMO_NOTIFICATION_KIND, channel })),
+        data: channels.map(({ channel, messageId }) => ({
+          listingId,
+          kind: BOOST_PROMO_NOTIFICATION_KIND,
+          channel,
+          // Null for email, MSG91's request_id for WhatsApp — the key its delivery/read webhook
+          // correlates back by, exactly as the posted-notification row stores it.
+          providerMessageId: messageId ?? null,
+        })),
       });
       results.push({ listingId, success: true });
     }

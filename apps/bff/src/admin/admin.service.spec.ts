@@ -45,7 +45,7 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
 
   const notificationsService = {
     notifyListingPosted: jest.fn().mockResolvedValue({ channel: 'email' }),
-    notifyBoostPromotion: jest.fn().mockResolvedValue(['email']),
+    notifyBoostPromotion: jest.fn().mockResolvedValue([{ channel: 'email' }]),
     ...notificationsOverrides,
   } as unknown as NotificationsService;
 
@@ -263,7 +263,7 @@ describe('AdminService.sendBoostPromotion', () => {
       { boostPrice: 199, bundlePrice: 224, boostDays: 7, alertsPrice: 25 },
     );
     expect(prisma.listingNotificationLog.createMany).toHaveBeenCalledWith({
-      data: [{ listingId: 'listing1', kind: 'boost_promo', channel: 'email' }],
+      data: [{ listingId: 'listing1', kind: 'boost_promo', channel: 'email', providerMessageId: null }],
     });
     expect(result).toEqual({ sent: 1, failed: 0, results: [{ listingId: 'listing1', success: true }] });
   });

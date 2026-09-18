@@ -341,7 +341,7 @@ export class NotificationsService {
        * which switch the message to the offer wording. */
       offer?: { discountPercent: number; boostBasePrice: number; bundleBasePrice: number; endsOn: string };
     },
-  ): Promise<Array<'email' | 'whatsapp'>> {
+  ): Promise<Array<{ channel: 'email' | 'whatsapp'; messageId?: string | null }>> {
     const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
     // Two destinations, one screen: both open the post-ad picker for this ad (BoostProvider now
     // renders BoostBundlePicker), the second with Instant Alerts already ticked. No URL appears in
@@ -392,7 +392,11 @@ export class NotificationsService {
     // rate-limited per listing by a 14-day cooldown anyway, so "both" cannot become "twice as
     // often". Every other notification in this file stays email-else-WhatsApp; those are
     // confirmations of something the reader already did, where a second copy is just noise.
-    const channels: Array<'email' | 'whatsapp'> = [];
+    // The MSG91 id rides along so ListingNotificationLog can store it — that is the key a later
+    // delivery/read webhook correlates back by (see WhatsappWebhookController). Dropping it, as an
+    // earlier version of this did, costs nothing at send time and silently loses every status
+    // update afterwards.
+    const channels: Array<{ channel: 'email' | 'whatsapp'; messageId?: string | null }> = [];
 
     if (user.email) {
       const sent = await this.emailProvider.send(
@@ -401,7 +405,7 @@ export class NotificationsService {
         text,
         { html, bcc: 'support@bhavano.com' },
       );
-      if (sent) channels.push('email');
+      if (sent) channels.push({ channel: 'email' });
     }
 
     // WhatsApp via MSG91's approved `ad_boost_instant_alert`, not the Meta-direct WhatsappProvider
@@ -425,7 +429,7 @@ export class NotificationsService {
           bundleSuffix: `my-listings?openBoost=${listing.id}&withAlerts=1`,
         },
       );
-      if (result.sent) channels.push('whatsapp');
+      if (result.sent) channels.push({ channel: 'whatsapp', messageId: result.messageId });
     }
 
     return channels;
