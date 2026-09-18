@@ -31,17 +31,19 @@ const PRICES = { boostPrice: 100, bundlePrice: 112, boostDays: 7, alertsPrice: 2
 const OFFER = { discountPercent: 50, boostBasePrice: 199, bundleBasePrice: 224, endsOn: '30 September' };
 
 describe('NotificationsService.notifyBoostPromotion', () => {
-  it('emails when there is an address, and never touches WhatsApp', async () => {
+  it('sends on BOTH channels when the owner has an email and a phone', async () => {
     const { service, emailSend, sendBoostPromotion } = make();
 
-    const channel = await service.notifyBoostPromotion(
+    const channels = await service.notifyBoostPromotion(
       { name: 'Ravi', email: 'ravi@example.com', phone: '9876543210' },
       LISTING,
       { ...PRICES, offer: OFFER },
     );
 
-    expect(channel).toBe('email');
-    expect(sendBoostPromotion).not.toHaveBeenCalled();
+    // An offer, not a receipt: an owner who reads only one of the two would otherwise never see
+    // it. Every other notification in the service stays email-else-WhatsApp.
+    expect(channels).toEqual(['email', 'whatsapp']);
+    expect(sendBoostPromotion).toHaveBeenCalledTimes(1);
     const [, subject, text] = emailSend.mock.calls[0];
     expect(subject).toContain('50% off');
     // Both destinations reach the plain-text part, which is the only place a URL belongs.
@@ -60,13 +62,13 @@ describe('NotificationsService.notifyBoostPromotion', () => {
   it('falls back to MSG91 for a phone-only owner, with both button suffixes', async () => {
     const { service, sendBoostPromotion, sendTemplate } = make();
 
-    const channel = await service.notifyBoostPromotion(
+    const channels = await service.notifyBoostPromotion(
       { name: 'Ravi', email: null, phone: '9876543210' },
       LISTING,
       { ...PRICES, offer: OFFER },
     );
 
-    expect(channel).toBe('whatsapp');
+    expect(channels).toEqual(['whatsapp']);
     // Not the Meta-direct provider — see this file's own note on why.
     expect(sendTemplate).not.toHaveBeenCalled();
     expect(sendBoostPromotion).toHaveBeenCalledWith(
@@ -81,12 +83,27 @@ describe('NotificationsService.notifyBoostPromotion', () => {
 
   it('reports nothing sent when the owner has neither, and when MSG91 skips', async () => {
     const { service } = make();
-    expect(await service.notifyBoostPromotion({ name: null, email: null, phone: null }, LISTING, PRICES)).toBeNull();
+    expect(await service.notifyBoostPromotion({ name: null, email: null, phone: null }, LISTING, PRICES)).toEqual([]);
 
     const failing = make();
     (failing.sendBoostPromotion as jest.Mock).mockResolvedValueOnce({ sent: false, messageId: null });
     expect(
       await failing.service.notifyBoostPromotion({ name: 'Ravi', email: null, phone: '9876543210' }, LISTING, PRICES),
-    ).toBeNull();
+    ).toEqual([]);
+  });
+
+  it('still records the email when only the WhatsApp half fails', async () => {
+    const { service, sendBoostPromotion } = make();
+    (sendBoostPromotion as jest.Mock).mockResolvedValueOnce({ sent: false, messageId: null });
+
+    const channels = await service.notifyBoostPromotion(
+      { name: 'Ravi', email: 'ravi@example.com', phone: '9876543210' },
+      LISTING,
+      PRICES,
+    );
+
+    // A failed template send must not lose the email that did go out — the admin summary and the
+    // notification log both read this list.
+    expect(channels).toEqual(['email']);
   });
 });

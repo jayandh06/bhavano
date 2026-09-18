@@ -308,9 +308,11 @@ export class NotificationsService {
    * Admin-triggered promotion of Boost and Instant Alerts for one of an owner's live ads — the
    * button behind AdminService.sendBoostPromotion.
    *
-   * Email when there is one, WhatsApp otherwise, like everything else here — but the WhatsApp half
-   * goes through MSG91's approved `ad_boost_instant_alert` template rather than the Meta-direct
-   * provider, because that template has two dynamic URL buttons and `WhatsappProvider.sendTemplate`
+   * **Both channels when the owner has both**, unlike every other notification here: this is an
+   * offer rather than a confirmation, and an owner who only reads one of the two would otherwise
+   * never see it. The per-listing cooldown in `AdminService.sendBoostPromotion` is what stops
+   * "both" turning into "more often". The WhatsApp half goes through MSG91's approved
+   * `ad_boost_instant_alert` template rather than the Meta-direct provider, because that template has two dynamic URL buttons and `WhatsappProvider.sendTemplate`
    * only speaks one. It sends only once
    * `MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME`/`MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE` are set;
    * until then a phone-only owner is reported as skipped rather than as a send that never happened.
@@ -339,7 +341,7 @@ export class NotificationsService {
        * which switch the message to the offer wording. */
       offer?: { discountPercent: number; boostBasePrice: number; bundleBasePrice: number; endsOn: string };
     },
-  ): Promise<'email' | 'whatsapp' | null> {
+  ): Promise<Array<'email' | 'whatsapp'>> {
     const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
     // Two destinations, one screen: both open the post-ad picker for this ad (BoostProvider now
     // renders BoostBundlePicker), the second with Instant Alerts already ticked. No URL appears in
@@ -384,6 +386,14 @@ export class NotificationsService {
     const text =
       `${paragraphs.join('\n\n')}\n\n` + buttons.map((b) => `${b.label}: ${b.url}`).join('\n');
 
+    // Both channels when the owner has both, rather than email-else-WhatsApp like every other
+    // notification here. This one is an offer, not a receipt: an owner who reads WhatsApp and not
+    // email (or the reverse — both are common here) would otherwise never see it, and the send is
+    // rate-limited per listing by a 14-day cooldown anyway, so "both" cannot become "twice as
+    // often". Every other notification in this file stays email-else-WhatsApp; those are
+    // confirmations of something the reader already did, where a second copy is just noise.
+    const channels: Array<'email' | 'whatsapp'> = [];
+
     if (user.email) {
       const sent = await this.emailProvider.send(
         user.email,
@@ -391,7 +401,7 @@ export class NotificationsService {
         text,
         { html, bcc: 'support@bhavano.com' },
       );
-      return sent ? 'email' : null;
+      if (sent) channels.push('email');
     }
 
     // WhatsApp via MSG91's approved `ad_boost_instant_alert`, not the Meta-direct WhatsappProvider
@@ -415,10 +425,10 @@ export class NotificationsService {
           bundleSuffix: `my-listings?openBoost=${listing.id}&withAlerts=1`,
         },
       );
-      return result.sent ? 'whatsapp' : null;
+      if (result.sent) channels.push('whatsapp');
     }
 
-    return null;
+    return channels;
   }
 
   /** The welcome email's subject/text/html — factored out of `notifyWelcome` so

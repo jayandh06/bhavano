@@ -157,6 +157,12 @@ new surface for the owner to learn.
   bar already held the posted-notification resend, so this is a second button on a control admins
   use, not a new screen. Row selection widened to every listing — it was limited to ads still
   missing the posted acknowledgement, which was right while that was the only action.
+- **An owner with both an email and a phone gets both**, unlike every other notification in
+  `NotificationsService`, which is email-else-WhatsApp. Those are confirmations of something the
+  reader just did, where a second copy is noise; this is an offer, and an owner who reads only one
+  of the two channels would otherwise never see it. The per-listing cooldown is what stops "both"
+  becoming "more often", and the notification log gets one row per channel so the cooldown query
+  still answers "has anything gone out recently" unchanged.
 - **What the owner gets.** Two buttons and no links in the prose: **Boost my ad — ₹100** and
   **Boost + Instant Alerts — ₹112**. `renderEmail` grew support for stacked buttons for this (first
   filled, rest outlined); a promotional message with URLs scattered through its sentences reads

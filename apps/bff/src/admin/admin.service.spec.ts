@@ -33,7 +33,7 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
     loginEvent: { findMany: jest.fn().mockResolvedValue([]) },
     listing: { findMany: jest.fn().mockResolvedValue([]) },
     listingEditLog: { findMany: jest.fn().mockResolvedValue([]) },
-    listingNotificationLog: { create: jest.fn() },
+    listingNotificationLog: { create: jest.fn(), createMany: jest.fn() },
     // The promotion quotes the live promo's price — no row means the plain, no-offer wording.
     discountCode: { findUnique: jest.fn().mockResolvedValue(null) },
     message: { findMany: jest.fn().mockResolvedValue([]) },
@@ -45,7 +45,7 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
 
   const notificationsService = {
     notifyListingPosted: jest.fn().mockResolvedValue({ channel: 'email' }),
-    notifyBoostPromotion: jest.fn().mockResolvedValue('email'),
+    notifyBoostPromotion: jest.fn().mockResolvedValue(['email']),
     ...notificationsOverrides,
   } as unknown as NotificationsService;
 
@@ -262,8 +262,8 @@ describe('AdminService.sendBoostPromotion', () => {
       // row in the default stub, so full price and no offer wording.
       { boostPrice: 199, bundlePrice: 224, boostDays: 7, alertsPrice: 25 },
     );
-    expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
-      data: { listingId: 'listing1', kind: 'boost_promo', channel: 'email' },
+    expect(prisma.listingNotificationLog.createMany).toHaveBeenCalledWith({
+      data: [{ listingId: 'listing1', kind: 'boost_promo', channel: 'email' }],
     });
     expect(result).toEqual({ sent: 1, failed: 0, results: [{ listingId: 'listing1', success: true }] });
   });
@@ -365,13 +365,13 @@ describe('AdminService.sendBoostPromotion', () => {
             .mockResolvedValue([listingRow({ owner: { name: 'Ravi', email: null, phone: '+919876543210' } })]),
         },
       },
-      { notifyBoostPromotion: jest.fn().mockResolvedValue(null) },
+      { notifyBoostPromotion: jest.fn().mockResolvedValue([]) },
     );
 
     const result = await service.sendBoostPromotion(['listing1']);
 
-    expect(prisma.listingNotificationLog.create).not.toHaveBeenCalled();
-    expect(result.results[0].error).toContain('WHATSAPP_BOOST_PROMO_TEMPLATE');
+    expect(prisma.listingNotificationLog.createMany).not.toHaveBeenCalled();
+    expect(result.results[0].error).toContain('MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME');
   });
 
   it('quotes the discounted price, the original, and the end date while the promo is live', async () => {

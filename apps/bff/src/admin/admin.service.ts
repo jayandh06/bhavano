@@ -934,7 +934,7 @@ export class AdminService {
 
       const boostBasePrice = boostPriceFor(listing.category, PROMO_BOOST_DAYS, boostPrices);
       const bundleBasePrice = boostBasePrice + alertsPrices.instantAlertsPrice;
-      const channel = await this.notificationsService.notifyBoostPromotion(
+      const channels = await this.notificationsService.notifyBoostPromotion(
         listing.owner,
         {
           id: listing.id,
@@ -962,23 +962,26 @@ export class AdminService {
         },
       );
 
-      if (!channel) {
+      if (channels.length === 0) {
         results.push({
           listingId,
           success: false,
-          // Two different causes, and the difference decides what an admin does next: chase an
-          // email address, or get the WhatsApp template approved.
+          // The three causes need three different actions from an admin: chase an email address,
+          // fix the WhatsApp template config, or accept there is no way to reach this owner.
           error: listing.owner.email
             ? 'Send failed'
             : listing.owner.phone
-              ? 'Owner has no email, and no approved WhatsApp promo template (WHATSAPP_BOOST_PROMO_TEMPLATE)'
+              ? 'Owner has no email, and the WhatsApp promo send failed or is unconfigured (MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME/_NAMESPACE)'
               : 'Owner has no email or phone on file',
         });
         continue;
       }
 
-      await this.prisma.listingNotificationLog.create({
-        data: { listingId, kind: BOOST_PROMO_NOTIFICATION_KIND, channel },
+      // One row per channel — an owner with both gets two, which is what the cooldown query then
+      // reads ("has anything gone out recently", not "how many"). A single row with a combined
+      // channel string would be a new value for every reader of `channel` to learn.
+      await this.prisma.listingNotificationLog.createMany({
+        data: channels.map((channel) => ({ listingId, kind: BOOST_PROMO_NOTIFICATION_KIND, channel })),
       });
       results.push({ listingId, success: true });
     }
