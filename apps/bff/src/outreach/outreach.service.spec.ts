@@ -343,7 +343,8 @@ describe('OutreachService.sendClaimVerification — ListingNotificationLog write
     );
   });
 
-  // Regression test: MSG91's claim_listing template has its dynamic button's base URL
+  // Regression test: MSG91's claim-listing template (claim_listing_1 as of 2026-09-18) has its
+  // dynamic button's base URL
   // registered as the bare domain (confirmed live against a real delivered message), not
   // ".../claim/" — a bare `${listingId}?via=whatsapp` suffix landed on the domain root instead
   // of the claim page ("page not found"), while the body's own separately-built plain-text link

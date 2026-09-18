@@ -514,15 +514,19 @@ export class OutreachService {
           phone: contact.phoneE164,
           claimLink: `${siteUrl}/claim/${listingId}?via=whatsapp`,
         },
-        // The "Confirm Ownership" button's URL is this suffix appended to whatever base MSG91
-        // has registered for claim_listing's dynamic button — confirmed live (2026-09-13, real
-        // button copied from a delivered message) that base is just the bare domain
-        // (`https://www.bhavano.com/`), NOT `.../claim/` the way buttonUrlBase.txt/this code
-        // originally assumed — so a bare `${listingId}?via=whatsapp` suffix landed on the domain
-        // root instead of the claim page (button showed "page not found" while the body's own
-        // plain-text link, built independently above, worked fine). Prefixing `claim/` here
-        // compensates in code rather than depending on MSG91's dashboard to have the "right"
-        // base registered — works regardless of what's actually configured there.
+        // The "Confirm Ownership" button's URL is this suffix appended to whatever base MSG91 has
+        // registered for the template's dynamic button. Confirmed live on 2026-09-13 (a real
+        // button copied out of a delivered message) that `claim_listing`'s base was the bare
+        // domain — `https://www.bhavano.com/`, NOT `.../claim/` the way buttonUrlBase.txt and an
+        // earlier version of this code assumed — so a bare `${listingId}?via=whatsapp` suffix
+        // landed on the domain root and the button read "page not found" while the body's own
+        // plain-text link (built independently above) worked. Hence the `claim/` prefix here.
+        //
+        // **This prefix is not base-agnostic, despite what this comment used to claim.** It is
+        // correct for a bare-domain base and wrong for a `.../claim/` one, which would produce
+        // `/claim/claim/<id>`. The template was renamed to `claim_listing_1` on 2026-09-18 and a
+        // rename is a fresh template on Meta's side, so its button base is whatever it was created
+        // with: verify by sending one and opening the button before trusting this line.
         `claim/${listingId}?via=whatsapp`,
       );
       if (result.sent) channels.push('whatsapp');
