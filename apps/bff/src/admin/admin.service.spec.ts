@@ -469,3 +469,59 @@ describe('AdminService.sendBoostPromotion', () => {
     expect(result.results.find((r) => r.listingId === 'missing')?.error).toBe('Listing not found');
   });
 });
+
+describe('AdminService.listRecentLogins — the New user badge', () => {
+  it('flags a login as isFirstLogin only when it is that user\'s earliest LoginEvent, not just the earliest on this page', async () => {
+    const { service, prisma } = makeService({
+      loginEvent: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'le2',
+            userId: 'u1',
+            method: 'otp',
+            createdAt: new Date('2026-02-01T00:00:00Z'),
+            user: { name: 'Returning User', phone: null, email: null },
+          },
+          {
+            id: 'le3',
+            userId: 'u2',
+            method: 'google',
+            createdAt: new Date('2026-02-01T00:00:00Z'),
+            user: { name: 'Brand New User', phone: null, email: null },
+          },
+        ]),
+        count: jest.fn().mockResolvedValue(2),
+        // u1's real earliest login (across the whole table, not just this page) is a full month
+        // before the row fetched above — u1 is a returning user. u2's earliest login IS the row
+        // fetched above — a genuine first-ever login.
+        groupBy: jest.fn().mockResolvedValue([
+          { userId: 'u1', _min: { createdAt: new Date('2026-01-01T00:00:00Z') } },
+          { userId: 'u2', _min: { createdAt: new Date('2026-02-01T00:00:00Z') } },
+        ]),
+      },
+    });
+
+    const result = await service.listRecentLogins({ limit: 25 } as Parameters<typeof service.listRecentLogins>[0]);
+
+    expect(result.items.find((i) => i.userId === 'u1')?.isFirstLogin).toBe(false);
+    expect(result.items.find((i) => i.userId === 'u2')?.isFirstLogin).toBe(true);
+    expect(prisma.loginEvent.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ by: ['userId'], where: { userId: { in: ['u1', 'u2'] } } }),
+    );
+  });
+
+  it('skips the groupBy call entirely when the page has no rows', async () => {
+    const { service, prisma } = makeService({
+      loginEvent: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        groupBy: jest.fn(),
+      },
+    });
+
+    const result = await service.listRecentLogins({ limit: 25 } as Parameters<typeof service.listRecentLogins>[0]);
+
+    expect(result.items).toEqual([]);
+    expect(prisma.loginEvent.groupBy).not.toHaveBeenCalled();
+  });
+});

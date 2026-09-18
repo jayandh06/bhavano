@@ -125,8 +125,29 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>
-                    {login.userName ?? login.userPhone ?? login.userEmail ?? "Unknown user"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                      {login.userName ?? login.userPhone ?? login.userEmail ?? "Unknown user"}
+                    </div>
+                    {/* This login IS the user's first-ever one, not just the first on this page
+                      * — see LoginEventDto.isFirstLogin's own doc comment for why that's checked
+                      * against real login history rather than assumed from account creation
+                      * time. */}
+                    {login.isFirstLogin && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "var(--gold, #b8860b)",
+                          border: "1px solid var(--gold, #b8860b)",
+                          borderRadius: 6,
+                          padding: "2px 8px",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        New user
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
                     {[login.userPhone, login.userEmail].filter(Boolean).join(" · ")}

@@ -554,6 +554,12 @@ export interface LoginEventDto {
     userEmail: string | null;
     method: LoginMethod;
     createdAt: string;
+    /** True when this row is that user's very first-ever LoginEvent — not just the first one on
+     * this page. Not derivable from User.createdAt (a User row is usually created moments before
+     * its first LoginEvent in the same auth call, but not always — e.g. the bulk-import owner
+     * account is created by a seed script and may never log in itself), so the BFF computes this
+     * against the real login history instead. */
+    isFirstLogin: boolean;
 }
 export interface LoginEventsPage {
     items: LoginEventDto[];

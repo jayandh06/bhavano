@@ -444,6 +444,22 @@ export class AdminService {
       this.prisma.loginEvent.count({ where }),
     ]);
 
+    // "New user" badge — this row IS that user's very first-ever login, not just the first one
+    // on this page. Checked against the earliest LoginEvent per userId across the whole table
+    // (one groupBy for the whole page, not one query per row), not User.createdAt: the two
+    // usually coincide (a User row is created moments before its first LoginEvent, in the same
+    // auth call — see AuthService.verifyOtp/loginWithGoogle/loginWithApple), but not always — the
+    // bulk-import owner account is created by a seed script and may never log in itself.
+    const uniqueUserIds = [...new Set(rows.map((row) => row.userId))];
+    const earliestByUser = uniqueUserIds.length
+      ? await this.prisma.loginEvent.groupBy({
+          by: ['userId'],
+          where: { userId: { in: uniqueUserIds } },
+          _min: { createdAt: true },
+        })
+      : [];
+    const earliestAt = new Map(earliestByUser.map((row) => [row.userId, row._min.createdAt?.getTime()]));
+
     return {
       items: rows.map((row) => ({
         id: row.id,
@@ -453,6 +469,7 @@ export class AdminService {
         userEmail: row.user.email,
         method: row.method,
         createdAt: row.createdAt.toISOString(),
+        isFirstLogin: earliestAt.get(row.userId) === row.createdAt.getTime(),
       })),
       total,
     };
