@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import type { ListingCategory } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
-import { fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
+import { BffAuthError, fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
@@ -96,29 +96,39 @@ export default async function HomePage({
     allCities.find((c) => slugify(c.name) === cityParam) ?? allCities.find((c) => c.id === cityParam);
 
   const offset = (page - 1) * PAGE_SIZE;
+  const listingsQuery = {
+    homeCategory: category === "all" ? undefined : category,
+    propertyType,
+    category: listingCategory,
+    transactionType,
+    cityId: resolvedCity?.id,
+    areaIds,
+    q: q || undefined,
+    bedrooms,
+    furnished,
+    sharingType,
+    condition,
+    serviceType,
+    offset,
+    limit: PAGE_SIZE,
+  };
   // Nothing selected means there is nothing to ask for — skipping the call is both correct and
   // one fewer uncached query per such page view. See lib/areaSelection.ts.
+  //
+  // The homepage shows listings to every visitor, logged in or not — accessToken here is only
+  // ever an enhancement (e.g. isFavourited/contactRevealed on each card), never a requirement to
+  // see the page at all, unlike favourites/messages/profile/my-listings (see
+  // docs/plans/fix-stale-session-crash-on-authed-pages.md, which fixed those but missed this
+  // call). A stale session (its embedded BFF token expired, or invalidated by a secret rotation)
+  // must not crash the single highest-traffic route on the site — retrying once with no token
+  // shows the same real listings a logged-out visitor would see, instead of an error page or a
+  // login prompt that makes no sense here.
   const listingsPage = noAreaSelected
     ? { items: [], total: 0, nextCursor: null }
-    : await fetchListings(
-        {
-          homeCategory: category === "all" ? undefined : category,
-          propertyType,
-          category: listingCategory,
-          transactionType,
-          cityId: resolvedCity?.id,
-          areaIds,
-          q: q || undefined,
-          bedrooms,
-          furnished,
-          sharingType,
-          condition,
-          serviceType,
-          offset,
-          limit: PAGE_SIZE,
-        },
-        session?.accessToken,
-      );
+    : await fetchListings(listingsQuery, session?.accessToken).catch((error) => {
+        if (error instanceof BffAuthError) return fetchListings(listingsQuery, undefined);
+        throw error;
+      });
 
   // Page 1 with zero results is a normal "nothing here yet" state — only pages *past* the last
   // real page are a crawl-trap/dead-end worth 404ing (see docs/plans/seo-distinct-window-pagination.md).
