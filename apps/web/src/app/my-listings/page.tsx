@@ -155,7 +155,15 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
           </div>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+      {/* No `shrink-0` here on purpose — it disabled this group's own `flex-wrap`. Once the
+        * outer row (above) wraps this group onto its own line at a narrow width, `shrink-0` kept
+        * it sized to the sum of every button present (Renew + Boost + Instant Alerts + View +
+        * Edit, whichever combination applies) rather than the card's actual available width, so
+        * the rightmost button — Edit, last in this list — rendered past the card/viewport edge
+        * with nothing to catch the overflow. Removing it lets the group shrink to fit, so its own
+        * `flex-wrap` actually gets to do its job: buttons wrap onto a second line inside the
+        * card instead of running off it. */}
+      <div className="flex flex-wrap items-center gap-2.5">
         {canRenew && <RenewButton listingId={item.id} />}
         {item.status === "active" && !item.isExpired && !item.isBoosted && (
           <BoostButton listingId={item.id} category={item.category} />
