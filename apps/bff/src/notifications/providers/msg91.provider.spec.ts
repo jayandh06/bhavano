@@ -33,10 +33,9 @@ function mockFetch(body = OK_BODY, ok = true) {
 }
 
 const VARS = { name: 'Ravi', title: '2 BHK for rent in Koramangala', boostPrice: '100', bundlePrice: '112' };
-const BUTTONS = {
-  boostSuffix: 'my-listings?openBoost=abc123',
-  bundleSuffix: 'my-listings?openBoost=abc123&withAlerts=1',
-};
+// The bare id, and the id plus the alerts flag — the template's own base supplies
+// `…/checkout?plan=boost&ad=`, so a suffix carrying a path would double up.
+const BUTTONS = { boostSuffix: 'abc123', bundleSuffix: 'abc123&withAlerts=1' };
 
 describe('Msg91Provider.sendBoostPromotion', () => {
   it('sends the four body values in the order the approved copy reads, and two button suffixes', async () => {
@@ -55,23 +54,23 @@ describe('Msg91Provider.sendBoostPromotion', () => {
       body_2: { type: 'text', value: '2 BHK for rent in Koramangala' },
       body_3: { type: 'text', value: '100' },
       body_4: { type: 'text', value: '112' },
-      button_1: { subtype: 'url', type: 'text', value: 'my-listings?openBoost=abc123' },
-      button_2: { subtype: 'url', type: 'text', value: 'my-listings?openBoost=abc123&withAlerts=1' },
+      button_1: { subtype: 'url', type: 'text', value: 'abc123' },
+      button_2: { subtype: 'url', type: 'text', value: 'abc123&withAlerts=1' },
     });
   });
 
-  it('carries the whole path in each button suffix, since the template supplies only a base', async () => {
+  it('sends the id alone, since the template base already carries the path', async () => {
     const fetchMock = mockFetch();
 
     await makeProvider().sendBoostPromotion('9876543210', VARS, BUTTONS);
 
     const payload = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
     const { button_1, button_2 } = payload.payload.template.to_and_components[0].components;
-    // A bare id would land on the domain root against a bare-domain base — the mistake
-    // claim_listing already made once.
-    expect(button_1.value).toContain('my-listings?openBoost=');
-    expect(button_2.value).toContain('withAlerts=1');
-    expect(button_1.value).not.toBe(button_2.value);
+    // A path here would produce `…ad=my-listings?openBoost=<id>` — the mistake the first version
+    // made by assuming claim_listing's bare-domain base.
+    expect(button_1.value).toBe('abc123');
+    expect(button_2.value).toBe('abc123&withAlerts=1');
+    expect(button_1.value).not.toContain('my-listings');
   });
 
   it.each([

@@ -324,10 +324,14 @@ export class Msg91Provider {
    * Boost for this ad, button 2 to Boost with Instant Alerts already ticked.
    *
    * Each button's value is only the *suffix* appended to whatever base URL the template itself was
-   * created with — the same arrangement as `sendListingVerificationRequest`, and the same hazard:
-   * `claim_listing` turned out to carry a bare-domain base, so the suffix has to carry the whole
-   * path. These suffixes do (`my-listings?openBoost=…`), which is right for a bare-domain base and
-   * wrong for anything else. Verify by sending one and opening both buttons before trusting it.
+   * created with — the same arrangement as `sendListingVerificationRequest`, and the same hazard.
+   * Confirmed from a real send on 2026-09-18: this template's base is
+   * `https://www.bhavano.com/checkout?plan=boost&ad=`, **not** the bare domain `claim_listing`
+   * uses. So the suffix is the bare listing id (plus `&withAlerts=1` for the second button), and
+   * `/checkout` is a real route that forwards to `/my-listings?openBoost=<id>` — see
+   * `apps/web/src/app/checkout/page.tsx` for why that indirection exists rather than a new
+   * template. A suffix carrying a path instead produced `...ad=my-listings?openBoost=<id>`, which
+   * resolved to nothing.
    *
    * Body values are positional, so their order is the order the approved copy reads in, and
    * nothing in the payload names them. Getting that order wrong sends the price where the name

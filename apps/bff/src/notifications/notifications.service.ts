@@ -422,11 +422,15 @@ export class NotificationsService {
           boostPrice: vars.boostPrice,
           bundlePrice: vars.bundlePrice,
         },
-        // Whole paths, not bare ids: the template's registered base URL is appended to, and
-        // claim_listing's turned out to be the bare domain. See Msg91Provider.sendBoostPromotion.
+        // Just the id, and the id plus the alerts flag. `ad_boost_instant_alert` was approved with
+        // the base `https://www.bhavano.com/checkout?plan=boost&ad=`, so these land as
+        // `/checkout?plan=boost&ad=<id>[&withAlerts=1]` — which `app/checkout/page.tsx` forwards to
+        // `/my-listings?openBoost=<id>`, the same screen the email's buttons open. Sending a path
+        // here instead (as the first version did, assuming claim_listing's bare-domain base)
+        // produced `...ad=my-listings?openBoost=<id>`, a link that resolved to nothing.
         {
-          boostSuffix: `my-listings?openBoost=${listing.id}`,
-          bundleSuffix: `my-listings?openBoost=${listing.id}&withAlerts=1`,
+          boostSuffix: listing.id,
+          bundleSuffix: `${listing.id}&withAlerts=1`,
         },
       );
       if (result.sent) channels.push({ channel: 'whatsapp', messageId: result.messageId });

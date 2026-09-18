@@ -75,10 +75,8 @@ describe('NotificationsService.notifyBoostPromotion', () => {
     expect(sendBoostPromotion).toHaveBeenCalledWith(
       '9876543210',
       { name: 'Ravi', title: LISTING.title, boostPrice: '100', bundlePrice: '112' },
-      {
-        boostSuffix: 'my-listings?openBoost=abc123',
-        bundleSuffix: 'my-listings?openBoost=abc123&withAlerts=1',
-      },
+      // Bare id: the template's base supplies `/checkout?plan=boost&ad=`, and /checkout forwards.
+      { boostSuffix: 'abc123', bundleSuffix: 'abc123&withAlerts=1' },
     );
   });
 

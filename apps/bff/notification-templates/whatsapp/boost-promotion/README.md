@@ -15,18 +15,26 @@ The order `Msg91Provider.sendBoostPromotion` sends:
 | `body_3` | Boost price, discount already applied | `100` |
 | `body_4` | Boost + Instant Alerts price, discount applied | `112` |
 
-Two dynamic URL buttons, each carrying only the **suffix** appended to the base URL the template
-itself was created with:
+Two dynamic URL buttons, each carrying only the **suffix** appended to the base URL baked into the
+template. This template's base, confirmed from a real send on 2026-09-18, is:
 
-| Button | Suffix sent | Opens |
-| --- | --- | --- |
-| `button_1` | `my-listings?openBoost=<id>` | Boost for that ad |
-| `button_2` | `my-listings?openBoost=<id>&withAlerts=1` | the same screen, Instant Alerts ticked |
+```
+https://www.bhavano.com/checkout?plan=boost&ad=
+```
 
-Those suffixes assume a **bare-domain base** (`https://www.bhavano.com/`), which is what
-`claim_listing` turned out to have. If this template was created with a different base, both
-buttons land somewhere wrong while the message itself looks perfect — send one to your own number
-and open both before trusting it.
+| Button | Suffix sent | Resulting URL | Lands on |
+| --- | --- | --- | --- |
+| `button_1` | `<id>` | `/checkout?plan=boost&ad=<id>` | `/my-listings?openBoost=<id>` |
+| `button_2` | `<id>&withAlerts=1` | `/checkout?plan=boost&ad=<id>&withAlerts=1` | the same, Instant Alerts ticked |
+
+`/checkout` is a real route (`apps/web/src/app/checkout/page.tsx`) that exists purely to forward
+these to the screen the email's buttons open — a template's button base cannot be changed without a
+new template and a fresh Meta approval, so the base was made true instead of fought. It also reads
+the *older* suffix form (`my-listings?openBoost=<id>`) that already-delivered messages carry, so
+those buttons keep working.
+
+If this template is ever recreated with a bare-domain base, the suffixes here go back to carrying
+the whole path and `/checkout` can be deleted.
 
 Unlike the email, there is nowhere here for the discount percentage or the offer's end date: four
 slots, and the name, title and two prices use all of them. A WhatsApp recipient gets the offer

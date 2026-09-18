@@ -229,10 +229,17 @@ button opened a ₹199 screen would have been a lie.
     without the explanation around it. Unlike the earlier Meta-direct draft, this means the
     WhatsApp path is *not* gated on a promo being live — the prices it sends are simply whatever
     the checkout will charge.
-  - Each button carries the whole path (`my-listings?openBoost=<id>`, plus `&withAlerts=1`), since
-    only a suffix is sent and `claim_listing`'s registered base turned out to be the bare domain.
-    **If this template was created with a different base, both buttons land somewhere wrong while
-    the message looks perfect** — send one to your own number and open both before trusting it.
+  - **The buttons send the bare listing id, and `/checkout` forwards.** The first version sent a
+    path, assuming the bare-domain base `claim_listing` has. A real send on 2026-09-18 proved
+    otherwise: this template's base is `https://www.bhavano.com/checkout?plan=boost&ad=`, so the
+    button resolved to `…/checkout?plan=boost&ad=my-listings?openBoost=<id>` — a link to nothing.
+    A template's button base cannot be edited (a change means a new template and a fresh approval),
+    so `/checkout` was made a real route (`apps/web/src/app/checkout/page.tsx`) that redirects to
+    `/my-listings?openBoost=<id>[&withAlerts=1]`. It also reads the older suffix form, so buttons
+    in already-delivered messages keep working. 7 parse checks.
+    - The lesson generalises: a dynamic-URL button's base is invisible from the code that fills it,
+      and the message looks perfect either way. Send one and open the button — that is the only
+      way to know.
   - `whatsapp_create_boost_promotion_template.py` is deleted: it submitted a *Meta-direct* template
     that this one supersedes, and leaving it would invite creating a duplicate.
 - 22 admin-service checks: what it refuses to send, and the offer/no-offer pricing either way.
