@@ -165,6 +165,16 @@ their listing" needs a way to hand over a specific listing without a pre-existin
   Utility WhatsApp templates) already use — see
   `apps/bff/notification-templates/whatsapp/claim-listing/` (renamed from `claim-listing-pg/`).
   `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME` updated to `claim_listing` in prod's `.env` the same day.
+
+  **Update (2026-09-18): renamed again to `claim_listing_1`.** Same reason as the first rename —
+  Meta doesn't allow editing an approved template, so a reworded one comes back under a new name.
+  Prod's `.env` now carries `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME=claim_listing_1` and the bff was
+  restarted to pick it up. No code change was needed: the name has always been read from that
+  variable, which is what makes a rename a restart rather than a deploy. The payload shape
+  (positional `body_1`..`body_5` = business name, area, city, phone, claim link, plus `button_1`
+  carrying only the URL *suffix*) is unchanged — **if the new template's placeholders differ in
+  number or order, `Msg91Provider.sendListingVerificationRequest` has to change with it**, since
+  MSG91 will happily send the wrong value into the wrong slot.
   **The `MSG91_MARKETING_ENABLED` gate in `OutreachService.sendClaimVerification` was
   deliberately left in place** despite the category change — that gate exists because this is a
   cold, business-initiated contact to someone who's never interacted with Bhavano (a scraped
@@ -177,8 +187,9 @@ their listing" needs a way to hand over a specific listing without a pre-existin
     the contact to have a city/area on file (both feed the template). Builds the claim link from
     `PUBLIC_SITE_URL` (same fallback `NotificationsService` uses) + `/claim/<listingId>`. On
     success updates `OutreachContact.lastContactedAt`/`contactedCount`.
-  - Env vars — `MSG91_MARKETING_ENABLED`, `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME=claim_listing`
-    (renamed from `claim_listing_pg` on 2026-09-13 — see the Update note above),
+  - Env vars — `MSG91_MARKETING_ENABLED`, `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME=claim_listing_1`
+    (renamed from `claim_listing_pg` on 2026-09-13, then to `claim_listing_1` on 2026-09-18 — see
+    the Update notes above),
     `MSG91_WHATSAPP_CLAIM_NAMESPACE=b809c8aa_8ca6_40f4_81fd_6d3858c888dc`.
     `MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME`/`MSG91_WHATSAPP_CLAIM_NAMESPACE` were already scaffolded
     (empty) in `.env.production.example`; `MSG91_MARKETING_ENABLED` was not (added there now).

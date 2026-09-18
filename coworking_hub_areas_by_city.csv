@@ -1,0 +1,101 @@
+City,Rank,Area
+Bangalore,1,Koramangala
+Bangalore,2,Indiranagar
+Bangalore,3,MG Road
+Bangalore,4,Whitefield
+Bangalore,5,Outer Ring Road (Bellandur-Sarjapur)
+Bangalore,6,Electronic City
+Bangalore,7,HSR Layout
+Bangalore,8,Marathahalli
+Bangalore,9,Domlur
+Bangalore,10,Jayanagar
+Mumbai,1,Bandra Kurla Complex (BKC)
+Mumbai,2,Andheri East
+Mumbai,3,Lower Parel
+Mumbai,4,Powai
+Mumbai,5,Vikhroli
+Mumbai,6,Goregaon East
+Mumbai,7,Malad
+Mumbai,8,Thane
+Mumbai,9,Nariman Point
+Mumbai,10,Ghatkopar
+Delhi,1,Connaught Place
+Delhi,2,Nehru Place
+Delhi,3,Saket
+Delhi,4,Jasola
+Delhi,5,Netaji Subhash Place
+Delhi,6,Okhla
+Delhi,7,Vasant Kunj
+Delhi,8,Karol Bagh
+Delhi,9,Barakhamba Road
+Delhi,10,Rajouri Garden
+Pune,1,Hinjewadi
+Pune,2,Kharadi
+Pune,3,Baner
+Pune,4,Viman Nagar
+Pune,5,Magarpatta
+Pune,6,Koregaon Park
+Pune,7,Yerwada
+Pune,8,Aundh
+Pune,9,Shivajinagar
+Pune,10,Wakad
+Hyderabad,1,HITEC City
+Hyderabad,2,Gachibowli
+Hyderabad,3,Madhapur
+Hyderabad,4,Kondapur
+Hyderabad,5,Banjara Hills
+Hyderabad,6,Jubilee Hills
+Hyderabad,7,Begumpet
+Hyderabad,8,Financial District (Nanakramguda)
+Hyderabad,9,Uppal
+Hyderabad,10,Kukatpally
+Chennai,1,OMR (Sholinganallur)
+Chennai,2,Perungudi
+Chennai,3,Guindy
+Chennai,4,Anna Nagar
+Chennai,5,Nungambakkam
+Chennai,6,T Nagar
+Chennai,7,Velachery
+Chennai,8,Porur
+Chennai,9,Egmore
+Chennai,10,Ambattur
+Gurgaon,1,Cyber City
+Gurgaon,2,Golf Course Road
+Gurgaon,3,MG Road
+Gurgaon,4,Udyog Vihar
+Gurgaon,5,Sohna Road
+Gurgaon,6,DLF Phase 3
+Gurgaon,7,Golf Course Extension Road
+Gurgaon,8,Sector 44
+Gurgaon,9,Sector 29
+Gurgaon,10,IFFCO Chowk
+Noida,1,Sector 62
+Noida,2,Sector 63
+Noida,3,Sector 18
+Noida,4,Sector 16
+Noida,5,Sector 132
+Noida,6,Sector 135
+Noida,7,Sector 142
+Noida,8,Sector 60
+Noida,9,Film City (Sector 16A)
+Noida,10,Greater Noida (Techzone)
+Kolkata,1,Salt Lake Sector V
+Kolkata,2,New Town
+Kolkata,3,Park Street area
+Kolkata,4,Camac Street
+Kolkata,5,Rajarhat
+Kolkata,6,EM Bypass
+Kolkata,7,Ballygunge
+Kolkata,8,Topsia
+Kolkata,9,Alipore
+Kolkata,10,Salt Lake Sector 1
+Ahmedabad,1,SG Highway corridor
+Ahmedabad,2,Prahlad Nagar
+Ahmedabad,3,Satellite
+Ahmedabad,4,CG Road
+Ahmedabad,5,Navrangpura
+Ahmedabad,6,Vastrapur
+Ahmedabad,7,Bodakdev
+Ahmedabad,8,Thaltej
+Ahmedabad,9,Ashram Road
+Ahmedabad,10,Iscon

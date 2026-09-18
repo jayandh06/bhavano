@@ -21,7 +21,7 @@ email/boost-promotion/                  the admin-sent "boost this ad" nudge, no
 email/boost-promotion-offer/            the same nudge while a promo code is live (prices, % and end date)
 whatsapp/welcome/         the approved WhatsApp welcome template's wording
 whatsapp/listing-posted/  the approved WhatsApp "ad is live" template's wording
-whatsapp/claim-listing/  the approved "claim_listing" WhatsApp template's wording
+whatsapp/claim-listing/  the approved "claim_listing_1" WhatsApp template's wording
 whatsapp/boost-promotion/ the "boost_promotion" template's wording — NOT yet submitted to Meta
 ```
 

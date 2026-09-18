@@ -316,11 +316,13 @@ export class Msg91Provider {
 
   /** WhatsApp via MSG91 — "verify your listing" sent to a scraped PG/coworking business, asking
    * them to claim the listing bulk_upload_listings.py created for them (see
-   * ListingsService.claimListing). Approved template: "claim_listing" (renamed from
-   * "claim_listing_pg" when it was resubmitted and re-approved as Utility rather than Marketing
-   * — 2026-09-13; the template name/category live entirely on MSG91/Meta's side, nothing here
-   * depends on which category it's approved under). Component shape below is copied verbatim
-   * from this template's own MSG91 dashboard "Code" snippet (Templates -> claim_listing -> Code)
+   * ListingsService.claimListing). Approved template: "claim_listing_1" as of 2026-09-18 (it has
+   * now been renamed twice — "claim_listing_pg" -> "claim_listing" on 2026-09-13 when it was
+   * resubmitted and re-approved as Utility rather than Marketing, then "claim_listing_1"; Meta
+   * doesn't allow editing an approved template, so every wording change arrives as a new name).
+   * **The name is only ever read from the env var below** — nothing in this file hardcodes it, so
+   * a rename is a prod `.env` change and a restart, not a deploy. Component shape below is copied
+   * verbatim from this template's own MSG91 dashboard "Code" snippet (Templates -> Code)
    * — genuinely different from sendAdPostedConfirmation's shape above, confirming that comment's
    * own warning not to guess: positional `body_1`..`body_5` keys with no `parameter_name` at all,
    * and a real `namespace` (same one sendAdPostedConfirmation uses — see MSG91_WHATSAPP_CLAIM_NAMESPACE
@@ -330,7 +332,7 @@ export class Msg91Provider {
    * one in the body — separate from button_1's value, which is only the URL *suffix* appended to
    * a base URL baked into the template itself).
    *
-   * MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME is expected to be "claim_listing" and
+   * MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME is expected to be "claim_listing_1" and
    * MSG91_WHATSAPP_CLAIM_NAMESPACE to be set to the account's real namespace (not left unset —
    * the `?? null` below is only a safe fallback for local/dev environments that don't set it). */
   async sendListingVerificationRequest(
