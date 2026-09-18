@@ -19,7 +19,7 @@ import type {
   ListingEditLogPage,
   ListingEngagementPage,
   ListingOwnerDto,
-  LoginEventsPage,
+  UserLoginSummariesPage,
   MessageDto,
   PageVisitsPage,
   OutreachCampaignDto,
@@ -247,7 +247,7 @@ export class AdminController {
   }
 
   @Get('logins')
-  listRecentLogins(@Query() query: ListLoginsDto): Promise<LoginEventsPage> {
+  listRecentLogins(@Query() query: ListLoginsDto): Promise<UserLoginSummariesPage> {
     return this.adminService.listRecentLogins(query);
   }
 

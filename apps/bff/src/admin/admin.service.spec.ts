@@ -470,58 +470,95 @@ describe('AdminService.sendBoostPromotion', () => {
   });
 });
 
-describe('AdminService.listRecentLogins — the New user badge', () => {
-  it('flags a login as isFirstLogin only when it is that user\'s earliest LoginEvent, not just the earliest on this page', async () => {
-    const { service, prisma } = makeService({
+describe('AdminService.listRecentLogins — one row per user, not per LoginEvent', () => {
+  function runQuery(overrides: {
+    grouped: unknown[];
+    lastEvents?: unknown[];
+    visits?: unknown[];
+    listingOwners?: unknown[];
+    users?: unknown[];
+  }) {
+    return makeService({
       loginEvent: {
-        findMany: jest.fn().mockResolvedValue([
-          {
-            id: 'le2',
-            userId: 'u1',
-            method: 'otp',
-            createdAt: new Date('2026-02-01T00:00:00Z'),
-            user: { name: 'Returning User', phone: null, email: null },
-          },
-          {
-            id: 'le3',
-            userId: 'u2',
-            method: 'google',
-            createdAt: new Date('2026-02-01T00:00:00Z'),
-            user: { name: 'Brand New User', phone: null, email: null },
-          },
-        ]),
-        count: jest.fn().mockResolvedValue(2),
-        // u1's real earliest login (across the whole table, not just this page) is a full month
-        // before the row fetched above — u1 is a returning user. u2's earliest login IS the row
-        // fetched above — a genuine first-ever login.
-        groupBy: jest.fn().mockResolvedValue([
-          { userId: 'u1', _min: { createdAt: new Date('2026-01-01T00:00:00Z') } },
-          { userId: 'u2', _min: { createdAt: new Date('2026-02-01T00:00:00Z') } },
-        ]),
+        groupBy: jest.fn().mockResolvedValue(overrides.grouped),
+        findMany: jest.fn().mockResolvedValue(overrides.lastEvents ?? []),
       },
+      visit: { findMany: jest.fn().mockResolvedValue(overrides.visits ?? []) },
+      listing: { findMany: jest.fn().mockResolvedValue(overrides.listingOwners ?? []) },
+      user: { findMany: jest.fn().mockResolvedValue(overrides.users ?? []) },
+    });
+  }
+
+  it('builds a full per-user summary: first/last login, isNewUser, last method+device, hasPostedAd', async () => {
+    const { service, prisma } = runQuery({
+      // u1's first login is a full month before its last — a returning user. u2's first and
+      // last login are the exact same instant — logged in exactly once, ever.
+      grouped: [
+        { userId: 'u1', _min: { createdAt: new Date('2026-01-01T00:00:00Z') }, _max: { createdAt: new Date('2026-02-01T00:00:00Z') } },
+        { userId: 'u2', _min: { createdAt: new Date('2026-02-01T00:00:00Z') }, _max: { createdAt: new Date('2026-02-01T00:00:00Z') } },
+      ],
+      lastEvents: [
+        { userId: 'u1', method: 'google', sessionId: 'sess1' },
+        { userId: 'u2', method: 'otp', sessionId: null },
+      ],
+      visits: [{ sessionId: 'sess1', deviceType: 'desktop' }],
+      listingOwners: [{ ownerId: 'u1' }],
+      users: [
+        { id: 'u1', name: 'Returning User', phone: '+911', email: null },
+        { id: 'u2', name: 'Brand New User', phone: '+912', email: null },
+      ],
     });
 
     const result = await service.listRecentLogins({ limit: 25 } as Parameters<typeof service.listRecentLogins>[0]);
 
-    expect(result.items.find((i) => i.userId === 'u1')?.isFirstLogin).toBe(false);
-    expect(result.items.find((i) => i.userId === 'u2')?.isFirstLogin).toBe(true);
-    expect(prisma.loginEvent.groupBy).toHaveBeenCalledWith(
-      expect.objectContaining({ by: ['userId'], where: { userId: { in: ['u1', 'u2'] } } }),
-    );
+    const u1 = result.items.find((i) => i.userId === 'u1');
+    const u2 = result.items.find((i) => i.userId === 'u2');
+    expect(u1).toMatchObject({ isNewUser: false, lastLoginMethod: 'google', lastLoginDevice: 'desktop', hasPostedAd: true });
+    expect(u2).toMatchObject({ isNewUser: true, lastLoginMethod: 'otp', lastLoginDevice: null, hasPostedAd: false });
+    // u2's last login had no sessionId at all (a mobile-app login) — Visit is never even queried
+    // for it, since there's nothing to join against.
+    expect(prisma.visit.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { sessionId: { in: ['sess1'] } } }));
   });
 
-  it('skips the groupBy call entirely when the page has no rows', async () => {
-    const { service, prisma } = makeService({
-      loginEvent: {
-        findMany: jest.fn().mockResolvedValue([]),
-        count: jest.fn().mockResolvedValue(0),
-        groupBy: jest.fn(),
-      },
-    });
+  it('returns empty immediately when no user has ever logged in, without querying anything else', async () => {
+    const { service, prisma } = runQuery({ grouped: [] });
 
     const result = await service.listRecentLogins({ limit: 25 } as Parameters<typeof service.listRecentLogins>[0]);
 
-    expect(result.items).toEqual([]);
-    expect(prisma.loginEvent.groupBy).not.toHaveBeenCalled();
+    expect(result).toEqual({ items: [], total: 0 });
+    expect(prisma.loginEvent.findMany).not.toHaveBeenCalled();
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
+
+  it('filters on hasPostedAd and isNewUser as boolean-string query params, and sorts by userName', async () => {
+    const { service } = runQuery({
+      grouped: [
+        { userId: 'u1', _min: { createdAt: new Date('2026-01-01T00:00:00Z') }, _max: { createdAt: new Date('2026-02-01T00:00:00Z') } },
+        { userId: 'u2', _min: { createdAt: new Date('2026-02-05T00:00:00Z') }, _max: { createdAt: new Date('2026-02-05T00:00:00Z') } },
+        { userId: 'u3', _min: { createdAt: new Date('2026-02-01T00:00:00Z') }, _max: { createdAt: new Date('2026-02-01T00:00:00Z') } },
+      ],
+      lastEvents: [
+        { userId: 'u1', method: 'otp', sessionId: null },
+        { userId: 'u2', method: 'otp', sessionId: null },
+        { userId: 'u3', method: 'otp', sessionId: null },
+      ],
+      listingOwners: [{ ownerId: 'u1' }, { ownerId: 'u3' }],
+      users: [
+        { id: 'u1', name: 'Zed', phone: null, email: null },
+        { id: 'u2', name: 'Amy', phone: null, email: null },
+        { id: 'u3', name: 'Mo', phone: null, email: null },
+      ],
+    });
+
+    const result = await service.listRecentLogins({
+      hasPostedAd: 'true',
+      isNewUser: 'false',
+      sort: 'userName_asc',
+      limit: 25,
+    } as Parameters<typeof service.listRecentLogins>[0]);
+
+    // u2 (no ad) and u3 (a new user, first login === last login) are both filtered out — only
+    // u1 (has an ad, and a real returning user) survives.
+    expect(result.items.map((i) => i.userId)).toEqual(['u1']);
   });
 });

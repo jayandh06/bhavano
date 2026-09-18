@@ -26,7 +26,6 @@ import type {
   ListingEngagementPage,
   ListingOwnerDto,
   ListingStatus,
-  LoginEventsPage,
   LoginMethod,
   MessageDto,
   PageVisitsPage,
@@ -44,6 +43,7 @@ import type {
   SessionTrailDto,
   TransactionType,
   UserActivityDto,
+  UserLoginSummariesPage,
   UserRole,
   OutreachContactsPage,
   OutreachCampaignsPage,
@@ -78,8 +78,10 @@ export type AdminListingSortField =
 
 export type AdminListingSort = `${AdminListingSortField}_asc` | `${AdminListingSortField}_desc`;
 
-/** Mirrors the BFF's LOGIN_SORT_VALUES (apps/bff/src/admin/dto/list-logins.dto.ts). */
-export type AdminLoginSort = "createdAt_desc" | "createdAt_asc";
+/** Mirrors the BFF's LOGIN_SORT_VALUES (apps/bff/src/admin/dto/list-logins.dto.ts) — one row per
+ * user now, not per LoginEvent, so the sortable columns are the per-user summary fields. */
+export type AdminLoginSortField = "lastLoginAt" | "firstLoginAt" | "userName";
+export type AdminLoginSort = `${AdminLoginSortField}_asc` | `${AdminLoginSortField}_desc`;
 
 /** Mirrors the BFF's PAGE_VISIT_SORT_VALUES (apps/bff/src/admin/dto/list-page-visits.dto.ts) —
  * one asc/desc pair per sortable column, driving the page-visits table's header sort toggles.
@@ -378,18 +380,24 @@ export interface RecentLoginsQuery {
   from?: string;
   to?: string;
   userId?: string;
+  search?: string;
   method?: LoginMethod;
+  isNewUser?: boolean;
+  hasPostedAd?: boolean;
   sort?: AdminLoginSort;
   limit?: number;
 }
 
-export function fetchRecentLogins(accessToken: string, query: RecentLoginsQuery = {}): Promise<LoginEventsPage> {
+export function fetchRecentLogins(accessToken: string, query: RecentLoginsQuery = {}): Promise<UserLoginSummariesPage> {
   const params = new URLSearchParams();
   if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
   if (query.userId) params.set("userId", query.userId);
+  if (query.search) params.set("search", query.search);
   if (query.method) params.set("method", query.method);
+  if (query.isNewUser !== undefined) params.set("isNewUser", String(query.isNewUser));
+  if (query.hasPostedAd !== undefined) params.set("hasPostedAd", String(query.hasPostedAd));
   if (query.sort) params.set("sort", query.sort);
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/logins?${params.toString()}`, { cache: "no-store" });

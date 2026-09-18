@@ -619,32 +619,44 @@ export interface FlagListingInput {
   message: string;
 }
 
-export interface LoginEventDto {
-  id: string;
+/** Mirrors the BFF's DEVICE_TYPES (apps/bff/src/analytics/device-type.ts). */
+export type DeviceType = "desktop" | "mobile" | "tablet" | "mobile_app";
+
+/** One row per user (not per login event) for the admin "Recent logins" screen — every user who
+ * has ever logged in at least once, with their whole login history collapsed into one summary
+ * row. See AdminService.listRecentLogins's own doc comment for why this is computed from real
+ * LoginEvent history rather than from User.createdAt. */
+export interface UserLoginSummaryDto {
   userId: string;
   userName: string | null;
   userPhone: string | null;
   userEmail: string | null;
-  method: LoginMethod;
-  createdAt: string;
-  /** True when this row is that user's very first-ever LoginEvent — not just the first one on
-   * this page. Not derivable from User.createdAt (a User row is usually created moments before
-   * its first LoginEvent in the same auth call, but not always — e.g. the bulk-import owner
-   * account is created by a seed script and may never log in itself), so the BFF computes this
-   * against the real login history instead. */
-  isFirstLogin: boolean;
+  /** This user's very first-ever login. */
+  firstLoginAt: string;
+  /** This user's most recent login. */
+  lastLoginAt: string;
+  /** True when `firstLoginAt === lastLoginAt` — this user has logged in exactly once, ever, and
+   * never come back since. The per-user generalization of what used to be a per-event flag. */
+  isNewUser: boolean;
+  /** The method of the most recent login specifically, not any earlier one. */
+  lastLoginMethod: LoginMethod;
+  /** The device of the most recent login — only known when that login was on the web and had a
+   * session to join against `Visit.deviceType`. Every mobile-app login has no session at all
+   * (see `LoginEvent.sessionId`'s own schema comment), so this is null for such a user
+   * regardless of what device they actually used — not a sign that it's unknowable in general. */
+  lastLoginDevice: DeviceType | null;
+  /** Whether this user owns at least one Listing, of any status. */
+  hasPostedAd: boolean;
 }
 
-export interface LoginEventsPage {
-  items: LoginEventDto[];
+export interface UserLoginSummariesPage {
+  items: UserLoginSummaryDto[];
   total: number;
 }
 
 /** One `Visit` row (one browser session) flattened for the admin page-visits screen — the user
  * fields are joined in so a session that later signed in shows who it was. `ipCity`/`ipRegion`/
  * `ipCountry` are the best-effort GeoIP guess stored at write time, never a `City` FK. */
-/** Mirrors the BFF's DEVICE_TYPES (apps/bff/src/analytics/device-type.ts). */
-export type DeviceType = "desktop" | "mobile" | "tablet" | "mobile_app";
 
 export interface PageVisitDto {
   id: string;

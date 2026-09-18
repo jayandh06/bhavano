@@ -17,7 +17,6 @@ import type {
   ListingEngagementPage,
   ListingOwnerDto,
   ListingStatus,
-  LoginEventsPage,
   LoginMethod,
   MessageDto,
   PageVisitSessionLogin,
@@ -32,6 +31,8 @@ import type {
   SendWelcomeResultDto,
   SessionTrailDto,
   UserActivityDto,
+  UserLoginSummariesPage,
+  UserLoginSummaryDto,
   WelcomeChannel,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -69,10 +70,17 @@ const ACTIVITY_LIMIT_PER_SOURCE = 50;
 const ACTIVITY_TIMELINE_CAP = 100;
 const SESSION_TRAIL_CAP = 1000;
 
-/** Same tie-breaker convention as ListingsService's ORDER_BY tables. */
-const LOGIN_ORDER_BY: Record<LoginSort, Prisma.LoginEventOrderByWithRelationInput[]> = {
-  createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
-  createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
+/** listRecentLogins is one row per user, built from an in-memory aggregate (see its own doc
+ * comment for why) — so sorting is a plain comparator over that set rather than a Prisma
+ * `orderBy`. ISO date strings sort correctly with `localeCompare` (lexicographic order on
+ * ISO 8601 timestamps is chronological order). */
+const LOGIN_SUMMARY_COMPARATORS: Record<LoginSort, (a: UserLoginSummaryDto, b: UserLoginSummaryDto) => number> = {
+  lastLoginAt_desc: (a, b) => b.lastLoginAt.localeCompare(a.lastLoginAt),
+  lastLoginAt_asc: (a, b) => a.lastLoginAt.localeCompare(b.lastLoginAt),
+  firstLoginAt_desc: (a, b) => b.firstLoginAt.localeCompare(a.firstLoginAt),
+  firstLoginAt_asc: (a, b) => a.firstLoginAt.localeCompare(b.firstLoginAt),
+  userName_asc: (a, b) => (a.userName ?? '').localeCompare(b.userName ?? ''),
+  userName_desc: (a, b) => (b.userName ?? '').localeCompare(a.userName ?? ''),
 };
 
 /** Every entry keeps `createdAt desc` then `id asc` as tiebreakers, so a column full of nulls or
@@ -423,56 +431,126 @@ export class AdminService {
     });
   }
 
-  async listRecentLogins(query: ListLoginsDto): Promise<LoginEventsPage> {
-    const { offset, from, to, userId, method, sort, limit } = query;
-    const where: Prisma.LoginEventWhereInput = {
-      ...(from || to
-        ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
-        : {}),
-      ...(userId ? { userId } : {}),
-      ...(method ? { method } : {}),
-    };
+  /** One row per user (not per LoginEvent) — every user who has ever logged in at least once,
+   * collapsed into a summary: first login ever, most recent login (and that login's own method/
+   * device), whether they've posted an ad, and whether they've only ever logged in once ("New
+   * user" — see UserLoginSummaryDto.isNewUser's own doc comment).
+   *
+   * Deliberately not one SQL aggregate: getting a per-user MIN/MAX *and* the method/session of
+   * specifically the MAX row *and* a Listing-ownership join in one query needs either raw SQL or
+   * a window function Prisma doesn't expose cleanly. This is an admin-only report over a bounded
+   * set — every user who has ever logged in, thousands on this product, not millions — so
+   * fetching the full aggregate and filtering/sorting/paginating over it in memory is far
+   * simpler and safer than hand-written raw SQL, at a cost this scale doesn't notice. Revisit
+   * with a real SQL aggregate only if that stops being true. */
+  async listRecentLogins(query: ListLoginsDto): Promise<UserLoginSummariesPage> {
+    const { offset = 0, from, to, userId, search, method, isNewUser, hasPostedAd, sort, limit } = query;
 
-    const [rows, total] = await Promise.all([
-      this.prisma.loginEvent.findMany({
-        where,
-        include: { user: { select: { name: true, phone: true, email: true } } },
-        orderBy: LOGIN_ORDER_BY[sort ?? 'createdAt_desc'],
-        skip: offset ?? 0,
-        take: limit,
-      }),
-      this.prisma.loginEvent.count({ where }),
-    ]);
+    // Step 1: every user's first/last login instant — one indexed groupBy (LoginEvent has
+    // [userId, createdAt]), cheap regardless of total LoginEvent count.
+    const grouped = await this.prisma.loginEvent.groupBy({
+      by: ['userId'],
+      where: userId ? { userId } : {},
+      _min: { createdAt: true },
+      _max: { createdAt: true },
+    });
+    if (grouped.length === 0) return { items: [], total: 0 };
 
-    // "New user" badge — this row IS that user's very first-ever login, not just the first one
-    // on this page. Checked against the earliest LoginEvent per userId across the whole table
-    // (one groupBy for the whole page, not one query per row), not User.createdAt: the two
-    // usually coincide (a User row is created moments before its first LoginEvent, in the same
-    // auth call — see AuthService.verifyOtp/loginWithGoogle/loginWithApple), but not always — the
-    // bulk-import owner account is created by a seed script and may never log in itself.
-    const uniqueUserIds = [...new Set(rows.map((row) => row.userId))];
-    const earliestByUser = uniqueUserIds.length
-      ? await this.prisma.loginEvent.groupBy({
-          by: ['userId'],
-          where: { userId: { in: uniqueUserIds } },
-          _min: { createdAt: true },
+    const userIds = grouped.map((g) => g.userId);
+
+    // Step 2: the specific LoginEvent matching each user's own lastLoginAt, for its method and
+    // session (session resolves device, below). Matched by (userId, createdAt) rather than a
+    // second groupBy-to-id lookup, since there's no unique constraint tying an aggregate value
+    // straight back to one row's id — two logins landing on the exact same millisecond for one
+    // user isn't a real case worth defending against here.
+    const lastEvents = await this.prisma.loginEvent.findMany({
+      where: { OR: grouped.map((g) => ({ userId: g.userId, createdAt: g._max.createdAt! })) },
+      select: { userId: true, method: true, sessionId: true },
+    });
+    const lastEventByUser = new Map(lastEvents.map((e) => [e.userId, e]));
+
+    // Step 3: device — only resolvable for a web login with a session. See
+    // UserLoginSummaryDto.lastLoginDevice's own doc comment for why a mobile-app login never has
+    // one, at all, regardless of what device was actually used.
+    const sessionIds = lastEvents.map((e) => e.sessionId).filter((id): id is string => Boolean(id));
+    const visits = sessionIds.length
+      ? await this.prisma.visit.findMany({
+          where: { sessionId: { in: sessionIds } },
+          select: { sessionId: true, deviceType: true },
         })
       : [];
-    const earliestAt = new Map(earliestByUser.map((row) => [row.userId, row._min.createdAt?.getTime()]));
+    const deviceBySession = new Map(visits.map((v) => [v.sessionId, v.deviceType as DeviceType | null]));
 
-    return {
-      items: rows.map((row) => ({
-        id: row.id,
-        userId: row.userId,
-        userName: row.user.name,
-        userPhone: row.user.phone,
-        userEmail: row.user.email,
-        method: row.method,
-        createdAt: row.createdAt.toISOString(),
-        isFirstLogin: earliestAt.get(row.userId) === row.createdAt.getTime(),
-      })),
-      total,
-    };
+    // Step 4: has this user ever posted an ad, of any status — a distinct-owner scan, same
+    // batched-not-per-row shape as the device/user lookups above.
+    const listingOwners = await this.prisma.listing.findMany({
+      where: { ownerId: { in: userIds } },
+      select: { ownerId: true },
+      distinct: ['ownerId'],
+    });
+    const hasAdSet = new Set(listingOwners.map((l) => l.ownerId));
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, phone: true, email: true },
+    });
+    const userById = new Map(users.map((u) => [u.id, u]));
+
+    let items: UserLoginSummaryDto[] = grouped.map((g) => {
+      const user = userById.get(g.userId);
+      const lastEvent = lastEventByUser.get(g.userId);
+      const firstAt = g._min.createdAt!;
+      const lastAt = g._max.createdAt!;
+      return {
+        userId: g.userId,
+        userName: user?.name ?? null,
+        userPhone: user?.phone ?? null,
+        userEmail: user?.email ?? null,
+        firstLoginAt: firstAt.toISOString(),
+        lastLoginAt: lastAt.toISOString(),
+        isNewUser: firstAt.getTime() === lastAt.getTime(),
+        lastLoginMethod: lastEvent?.method ?? 'otp',
+        lastLoginDevice: lastEvent?.sessionId ? deviceBySession.get(lastEvent.sessionId) ?? null : null,
+        hasPostedAd: hasAdSet.has(g.userId),
+      };
+    });
+
+    // Filters that don't push down into the groupBy above — applied here, over the already-small
+    // per-user summary set rather than the raw event table.
+    if (from) {
+      const fromTime = new Date(from).getTime();
+      items = items.filter((i) => new Date(i.lastLoginAt).getTime() >= fromTime);
+    }
+    if (to) {
+      const toTime = new Date(to).getTime();
+      items = items.filter((i) => new Date(i.lastLoginAt).getTime() <= toTime);
+    }
+    if (search) {
+      const q = search.trim().toLowerCase();
+      items = items.filter(
+        (i) =>
+          i.userName?.toLowerCase().includes(q) ||
+          i.userPhone?.toLowerCase().includes(q) ||
+          i.userEmail?.toLowerCase().includes(q),
+      );
+    }
+    if (method) items = items.filter((i) => i.lastLoginMethod === method);
+    // IsBooleanString validates the shape but doesn't coerce it — @Type(() => Boolean) would
+    // convert the literal string "false" to `true` (any non-empty string is JS-truthy), so the
+    // comparison against the real accepted values stays explicit here instead.
+    if (isNewUser !== undefined) {
+      const want = isNewUser === 'true' || isNewUser === '1';
+      items = items.filter((i) => i.isNewUser === want);
+    }
+    if (hasPostedAd !== undefined) {
+      const want = hasPostedAd === 'true' || hasPostedAd === '1';
+      items = items.filter((i) => i.hasPostedAd === want);
+    }
+
+    items.sort(LOGIN_SUMMARY_COMPARATORS[sort ?? 'lastLoginAt_desc']);
+
+    const total = items.length;
+    return { items: items.slice(offset, offset + limit), total };
   }
 
   /** Page-visit log for the admin analytics screen — the raw per-session `Visit` rows behind
