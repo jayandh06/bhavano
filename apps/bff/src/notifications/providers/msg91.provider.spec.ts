@@ -60,8 +60,10 @@ describe('Msg91Provider.sendBoostPromotion', () => {
     expect(payload.payload.template.to_and_components[0].components).toEqual({
       body_1: { type: 'text', value: 'Ravi' },
       body_2: { type: 'text', value: '2 BHK for rent in Koramangala' },
-      body_3: { type: 'text', value: 'Koramangala, Bengaluru' },
-      body_4: { type: 'text', value: '30 September' },
+      // Date in 3, locality in 4 — the order two real samples established. Reversed, the message
+      // sends successfully and reads as nonsense.
+      body_3: { type: 'text', value: '30 September' },
+      body_4: { type: 'text', value: 'Koramangala, Bengaluru' },
       button_1: { subtype: 'url', type: 'text', value: 'my-listings?openBoost=abc123' },
       button_2: { subtype: 'url', type: 'text', value: 'my-listings?openBoost=abc123&withAlerts=1' },
     });

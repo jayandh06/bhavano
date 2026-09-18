@@ -231,8 +231,11 @@ button opened a ₹199 screen would have been a lie.
     the checkout will charge.
   - **Reworked onto `ad_boost_instant_alert_1` (2026-09-18).** The first template taught two
     lessons the hard way, both invisible from the code: its four positional body slots are name,
-    ad title, **locality** and **offer end date** — not the prices I guessed — and its button base
-    was `…/checkout?plan=boost&ad=`. A real sample send is what exposed both. The replacement
+    ad title, **offer end date** and **locality** — not the prices I guessed — and its button base
+    was `…/checkout?plan=boost&ad=`. Real sample sends are what exposed both, and it took two of
+    them to settle the slot order (prices first, then date and locality the wrong way round). The
+    order is only ever knowable by sending one and reading it: nothing in the payload names these
+    values and MSG91 validates the count, not the meaning. The replacement
     template was recreated with a base that resolves `/my-listings?openBoost=<id>` directly, so the
     suffixes carry the whole path again and no redirect hop is involved; it also carries **no
     namespace** (null), which the provider now sends as null rather than treating as unset — the

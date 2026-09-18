@@ -13,8 +13,13 @@ The order `Msg91Provider.sendBoostPromotion` sends:
 | --- | --- | --- |
 | `body_1` | owner's name (or "there") | `Ravi` |
 | `body_2` | the ad's title | `4 BHK` |
-| `body_3` | the ad's locality, as "area, city" | `Raikhad, Ahmedabad` |
-| `body_4` | the date the offer ends, IST | `30 September` |
+| `body_3` | the date the offer ends, IST | `30 September` |
+| `body_4` | the ad's locality, as "area, city" | `Raikhad, Ahmedabad` |
+
+**This order was established by sending real samples and being told what came out wrong — twice.**
+The first attempt put the two prices in slots 3 and 4; the second had the date and the locality
+reversed. Nothing in the code or the API can see the approved wording, so the only way to verify a
+change here is to send one and read it. Do not reorder on a hunch.
 
 **The prices are part of the approved copy's own fixed text, not variables.** Two consequences: the
 figures in the message cannot follow the admin-editable price settings the email's do, and the

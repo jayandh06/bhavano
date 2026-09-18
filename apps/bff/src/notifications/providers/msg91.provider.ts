@@ -339,11 +339,12 @@ export class Msg91Provider {
    *
    * Body values are positional, so their order is the order the approved copy reads in, and
    * nothing in the payload names them. Getting that order wrong sends a value into the wrong
-   * sentence without erroring — MSG91 validates the *count*, never the meaning, which is exactly
-   * how the first attempt shipped the boost price where the locality belongs and the bundle price
-   * where the offer's end date belongs. The order below (name, ad title, locality, offer end date)
-   * is the approved copy's, and the prices are part of that copy's own fixed text rather than
-   * variables — so unlike the email, this template can only be sent while an offer is running.
+   * sentence without erroring — MSG91 validates the *count*, never the meaning. This took two
+   * corrected samples to get right: the first attempt sent the two prices into slots 3 and 4, and
+   * the second had the offer date and the locality the wrong way round. The order is now
+   * **name, ad title, offer end date, locality**, and the prices are part of the approved copy's
+   * own fixed text rather than variables — so unlike the email, this template can only be sent
+   * while an offer is running.
    */
   async sendBoostPromotion(
     phone: string,
@@ -390,8 +391,11 @@ export class Msg91Provider {
                     components: {
                       body_1: { type: 'text', value: vars.name },
                       body_2: { type: 'text', value: vars.title },
-                      body_3: { type: 'text', value: vars.location },
-                      body_4: { type: 'text', value: vars.offerEnds },
+                      // Date first, then locality. Established by sending real samples and being
+                      // told what came out wrong — twice — not by reading the template, which this
+                      // code cannot see. Do not reorder without another sample.
+                      body_3: { type: 'text', value: vars.offerEnds },
+                      body_4: { type: 'text', value: vars.location },
                       button_1: { subtype: 'url', type: 'text', value: buttons.boostSuffix },
                       button_2: { subtype: 'url', type: 'text', value: buttons.bundleSuffix },
                     },
