@@ -26,6 +26,11 @@ services:
       # to role=admin automatically on login.
       ADMIN_PHONES: ${ADMIN_PHONES}
       ADMIN_EMAILS: ${ADMIN_EMAILS}
+      # TestFlight/App-Review test account — see AuthService.sendOtp's own doc comment and
+      # .env.production.example's own comment on these two. Both unset (the default) disables
+      # this outright; either without the other does nothing.
+      TEST_OTP_PHONE: ${TEST_OTP_PHONE}
+      TEST_OTP_CODE: ${TEST_OTP_CODE}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}

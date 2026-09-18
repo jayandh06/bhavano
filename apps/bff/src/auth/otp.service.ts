@@ -16,8 +16,12 @@ function hashCode(phone: string, code: string): string {
 export class OtpService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createChallenge(phone: string): Promise<string> {
-    const code = randomInt(100000, 1000000).toString();
+  /** `fixedCode`, when given, is used verbatim instead of a random one — the App-Review/
+   * TestFlight test-account exception in AuthService.sendOtp, nothing else. Everything past
+   * this point (hashing, TTL, attempts, verifyChallenge) treats it exactly like any other code;
+   * there is no separate verification path for it. */
+  async createChallenge(phone: string, fixedCode?: string): Promise<string> {
+    const code = fixedCode ?? randomInt(100000, 1000000).toString();
     await this.prisma.otpChallenge.create({
       data: {
         phone,

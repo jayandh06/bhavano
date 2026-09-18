@@ -175,6 +175,18 @@ Indian phone number or bypass code involved. Still worth a line in the review no
 out explicitly (reviewers don't know to try it otherwise), but this is no longer the login-screen
 stall it used to be.
 
+**Update: a fixed-code OTP exception now exists too, for a different audience.** The reasoning
+above still holds for Apple's own review team. It doesn't cover *external TestFlight testers* —
+real people, not Apple employees, who may not want to use (or have) an Apple ID, and who should
+ideally exercise the actual phone-OTP flow real users go through rather than only ever taking the
+Sign-in-with-Apple shortcut around it. `TEST_OTP_PHONE`/`TEST_OTP_CODE` (both unset by default,
+`.env.production.example`) name one specific phone number that gets a fixed, known 6-digit code
+instead of a random SMS — see `AuthService.sendOtp`'s own doc comment for the exact mechanics.
+Scoped to exactly one operator-chosen number, no wildcard/pattern, off unless both vars are set,
+and `verifyOtp`/`OtpService.verifyChallenge` needed zero changes (the fixed code is validated by
+the exact same comparison as any other). Give this phone+code pair to external testers directly;
+Sign in with Apple remains the right answer for Apple's own reviewers specifically.
+
 **Screenshots** for 6.7" and 6.5" iPhone only — `supportsTablet: false` (see above) means no iPad
 set is needed.
 

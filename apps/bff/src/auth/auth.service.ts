@@ -107,8 +107,28 @@ export class AuthService {
     @InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
   ) {}
 
+  /** TestFlight/App-Review test account exception: TEST_OTP_PHONE + TEST_OTP_CODE, both unset by
+   * default, so this is a no-op everywhere until an operator deliberately sets both. When the
+   * requested phone matches, the challenge is created with that fixed code instead of a random
+   * one (see OtpService.createChallenge's own doc comment) and no real SMS is sent for it —
+   * sending one would either cost a real MSG91 credit for a code the tester already knows, or
+   * actually deliver a fresh code to whatever number is configured, defeating the point of it
+   * being fixed and known in advance. verifyOtp itself needs no change at all: OtpService.
+   * verifyChallenge compares against whatever was actually stored, exactly the same way
+   * regardless of how that challenge was created.
+   *
+   * See docs/plans/ios-app-store-release.md's "Demo account for App Review" section for why
+   * this exists alongside Sign in with Apple rather than instead of it — Apple's own review
+   * team is a different audience from external TestFlight testers, and only this path actually
+   * exercises the real phone-OTP flow real users go through; Sign in with Apple alone never
+   * would. */
   async sendOtp(phone: string): Promise<void> {
-    const code = await this.otpService.createChallenge(phone);
+    const testPhone = this.config.get<string>('TEST_OTP_PHONE');
+    const testCode = this.config.get<string>('TEST_OTP_CODE');
+    const isTestPhone = Boolean(testPhone && testCode && phone === testPhone);
+
+    const code = await this.otpService.createChallenge(phone, isTestPhone ? testCode : undefined);
+    if (isTestPhone) return;
     await this.msg91.sendOtp(phone, code);
   }
 
