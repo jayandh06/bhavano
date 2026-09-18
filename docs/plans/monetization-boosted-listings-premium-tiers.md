@@ -204,14 +204,31 @@ button opened a ₹199 screen would have been a lie.
   fair, twice in a week is spam); live ads only, since selling a boost for a sold or expired ad is
   indefensible; and nothing at all to an ad that already has both boost and alerts. Each skip is
   reported per listing in the admin summary, so "nothing sent" is never silent.
-- **The WhatsApp half is written but not yet sendable.** A business-initiated message must be an
-  approved template; `whatsapp_create_boost_promotion_template.py` submits it as **MARKETING** (it
-  sells something — declaring it UTILITY would be both false and a quality-rating risk). Sending
-  switches on with `WHATSAPP_BOOST_PROMO_TEMPLATE=boost_promotion`, the same env gate
-  `notifyWelcome` uses. Until then a phone-only owner is reported as skipped, naming that variable,
-  rather than counted as sent. Its wording assumes an offer is running, so it is skipped when no
-  promo resolves too — an empty parameter is a 400 from Meta, not a gap in a sentence. It carries
-  one button, since the screen it opens has the Instant Alerts checkbox on it.
+- **The WhatsApp half goes through MSG91's `ad_boost_instant_alert`** (approved 2026-09-18), not
+  the Meta-direct `WhatsappProvider` the rest of `NotificationsService` falls back to. The template
+  shape decided that: it carries **two** dynamic URL buttons — Boost, and Boost + Instant Alerts —
+  and `WhatsappProvider.sendTemplate` takes a single positional button suffix, so it could only
+  ever have sent the first. Two buttons is exactly what this message wants, matching the email.
+  - Sends once `MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME` and
+    `MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE` are set (its own namespace var, not another template's —
+    MSG91 has issued this account different namespaces per template before). Until then a
+    phone-only owner is reported as skipped, not as a send that never happened.
+  - **Its four body values are positional and unnamed**, so their meaning is their order:
+    `body_1` name, `body_2` ad title, `body_3` boost price, `body_4` bundle price. MSG91 validates
+    the count, never the meaning, so a wrong order sends a nonsense message perfectly successfully.
+    The order is written down in `notification-templates/whatsapp/boost-promotion/README.md` and
+    pinned by tests in `msg91.provider.spec.ts`.
+  - **Four slots leave no room for the offer's terms.** The discount percentage and end date the
+    offer email carries have nowhere to sit, so a WhatsApp recipient gets the discounted price
+    without the explanation around it. Unlike the earlier Meta-direct draft, this means the
+    WhatsApp path is *not* gated on a promo being live — the prices it sends are simply whatever
+    the checkout will charge.
+  - Each button carries the whole path (`my-listings?openBoost=<id>`, plus `&withAlerts=1`), since
+    only a suffix is sent and `claim_listing`'s registered base turned out to be the bare domain.
+    **If this template was created with a different base, both buttons land somewhere wrong while
+    the message looks perfect** — send one to your own number and open both before trusting it.
+  - `whatsapp_create_boost_promotion_template.py` is deleted: it submitted a *Meta-direct* template
+    that this one supersedes, and leaving it would invite creating a duplicate.
 - 22 admin-service checks: what it refuses to send, and the offer/no-offer pricing either way.
 
 ## Explicitly out of scope for this plan

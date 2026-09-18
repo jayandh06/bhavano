@@ -3,13 +3,13 @@ Bangalore,1,Koramangala
 Bangalore,2,Indiranagar
 Bangalore,3,MG Road
 Bangalore,4,Whitefield
-Bangalore,5,Outer Ring Road (Bellandur-Sarjapur)
+Bangalore,5,Bellandur
 Bangalore,6,Electronic City
 Bangalore,7,HSR Layout
 Bangalore,8,Marathahalli
 Bangalore,9,Domlur
 Bangalore,10,Jayanagar
-Mumbai,1,Bandra Kurla Complex (BKC)
+Mumbai,1,Bandra Kurla Complex
 Mumbai,2,Andheri East
 Mumbai,3,Lower Parel
 Mumbai,4,Powai
@@ -46,10 +46,10 @@ Hyderabad,4,Kondapur
 Hyderabad,5,Banjara Hills
 Hyderabad,6,Jubilee Hills
 Hyderabad,7,Begumpet
-Hyderabad,8,Financial District (Nanakramguda)
+Hyderabad,8,Nanakramguda
 Hyderabad,9,Uppal
 Hyderabad,10,Kukatpally
-Chennai,1,OMR (Sholinganallur)
+Chennai,1,Sholinganallur
 Chennai,2,Perungudi
 Chennai,3,Guindy
 Chennai,4,Anna Nagar
@@ -77,11 +77,11 @@ Noida,5,Sector 132
 Noida,6,Sector 135
 Noida,7,Sector 142
 Noida,8,Sector 60
-Noida,9,Film City (Sector 16A)
-Noida,10,Greater Noida (Techzone)
+Noida,9,Sector 16A
+Noida,10,Greater Noida
 Kolkata,1,Salt Lake Sector V
 Kolkata,2,New Town
-Kolkata,3,Park Street area
+Kolkata,3,Park Street
 Kolkata,4,Camac Street
 Kolkata,5,Rajarhat
 Kolkata,6,EM Bypass
@@ -89,7 +89,7 @@ Kolkata,7,Ballygunge
 Kolkata,8,Topsia
 Kolkata,9,Alipore
 Kolkata,10,Salt Lake Sector 1
-Ahmedabad,1,SG Highway corridor
+Ahmedabad,1,SG Highway
 Ahmedabad,2,Prahlad Nagar
 Ahmedabad,3,Satellite
 Ahmedabad,4,CG Road

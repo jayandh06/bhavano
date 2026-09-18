@@ -314,6 +314,99 @@ export class Msg91Provider {
     }
   }
 
+  /**
+   * WhatsApp via MSG91 — the admin-sent Boost / Instant Alerts offer (see
+   * AdminService.sendBoostPromotion and NotificationsService.notifyBoostPromotion).
+   *
+   * Approved template: **`ad_boost_instant_alert`**, with the shape its own MSG91 dashboard "Code"
+   * snippet gives — four positional `body_1`..`body_4` values and, unusually for this codebase,
+   * **two** dynamic URL buttons. That maps exactly onto what the email offers: button 1 goes to
+   * Boost for this ad, button 2 to Boost with Instant Alerts already ticked.
+   *
+   * Each button's value is only the *suffix* appended to whatever base URL the template itself was
+   * created with — the same arrangement as `sendListingVerificationRequest`, and the same hazard:
+   * `claim_listing` turned out to carry a bare-domain base, so the suffix has to carry the whole
+   * path. These suffixes do (`my-listings?openBoost=…`), which is right for a bare-domain base and
+   * wrong for anything else. Verify by sending one and opening both buttons before trusting it.
+   *
+   * Body values are positional, so their order is the order the approved copy reads in, and
+   * nothing in the payload names them. Getting that order wrong sends the price where the name
+   * should go without erroring — MSG91 validates the *count*, never the meaning. The order sent
+   * here is documented in notification-templates/whatsapp/boost-promotion/body.txt; if the
+   * approved wording differs, that file and this call have to move together.
+   */
+  async sendBoostPromotion(
+    phone: string,
+    vars: { name: string; title: string; boostPrice: string; bundlePrice: string },
+    buttons: { boostSuffix: string; bundleSuffix: string },
+  ): Promise<{ sent: boolean; messageId: string | null }> {
+    const authKey = this.config.get<string>('MSG91_AUTH_KEY');
+    const integratedNumber = this.config.get<string>('MSG91_WHATSAPP_INTEGRATED_NUMBER');
+    const template = this.config.get<string>('MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME');
+    // Its own env var rather than reusing another template's: MSG91 has issued this account
+    // different namespaces per template before (see sendAdPostedConfirmation's own note), so
+    // assuming one would fail in a way that looks like a template problem.
+    const namespace = this.config.get<string>('MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE');
+    if (!authKey || !integratedNumber || !template || !namespace) {
+      this.logger.warn(
+        `MSG91 WhatsApp not configured (MSG91_WHATSAPP_INTEGRATED_NUMBER/` +
+          `MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME/MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE) — ` +
+          `skipping boost-promotion WhatsApp to ${phone}`,
+      );
+      return { sent: false, messageId: null };
+    }
+
+    try {
+      const res = await fetch(
+        'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
+        {
+          method: 'POST',
+          headers: { authkey: authKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            integrated_number: integratedNumber,
+            content_type: 'template',
+            payload: {
+              messaging_product: 'whatsapp',
+              type: 'template',
+              template: {
+                name: template,
+                language: { code: 'en', policy: 'deterministic' },
+                namespace,
+                to_and_components: [
+                  {
+                    to: [`91${phone}`],
+                    components: {
+                      body_1: { type: 'text', value: vars.name },
+                      body_2: { type: 'text', value: vars.title },
+                      body_3: { type: 'text', value: vars.boostPrice },
+                      body_4: { type: 'text', value: vars.bundlePrice },
+                      button_1: { subtype: 'url', type: 'text', value: buttons.boostSuffix },
+                      button_2: { subtype: 'url', type: 'text', value: buttons.bundleSuffix },
+                    },
+                  },
+                ],
+              },
+            },
+          }),
+        },
+      );
+      const responseBody = await res.text();
+      if (!res.ok || responseBody.includes('"error"')) {
+        this.logger.error(
+          `MSG91 WhatsApp boost-promotion send failed (${res.status}): ${responseBody}`,
+        );
+        return { sent: false, messageId: null };
+      }
+      this.logger.log(`MSG91 WhatsApp boost-promotion send response: ${responseBody}`);
+      return { sent: true, messageId: this.extractMessageId(responseBody) };
+    } catch (error) {
+      this.logger.error(
+        `Failed to send boost-promotion WhatsApp to ${phone}: ${error instanceof Error ? error.message : error}`,
+      );
+      return { sent: false, messageId: null };
+    }
+  }
+
   /** WhatsApp via MSG91 — "verify your listing" sent to a scraped PG/coworking business, asking
    * them to claim the listing bulk_upload_listings.py created for them (see
    * ListingsService.claimListing). Approved template: "claim_listing_1" as of 2026-09-18 (it has

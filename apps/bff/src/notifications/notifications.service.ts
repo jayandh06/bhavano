@@ -308,12 +308,17 @@ export class NotificationsService {
    * Admin-triggered promotion of Boost and Instant Alerts for one of an owner's live ads — the
    * button behind AdminService.sendBoostPromotion.
    *
-   * Email when there is one, WhatsApp otherwise, like everything else here. The WhatsApp half
-   * needs a Meta-approved MARKETING template (`whatsapp/boost-promotion/`, submitted by
-   * `whatsapp_create_boost_promotion_template.py`) and so is gated on
-   * `WHATSAPP_BOOST_PROMO_TEMPLATE` being set — exactly how `notifyWelcome` gates its own. Until
-   * that approval lands a phone-only owner gets nothing, and the admin result says so rather than
-   * reporting a send that never happened.
+   * Email when there is one, WhatsApp otherwise, like everything else here — but the WhatsApp half
+   * goes through MSG91's approved `ad_boost_instant_alert` template rather than the Meta-direct
+   * provider, because that template has two dynamic URL buttons and `WhatsappProvider.sendTemplate`
+   * only speaks one. It sends only once
+   * `MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME`/`MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE` are set;
+   * until then a phone-only owner is reported as skipped rather than as a send that never happened.
+   *
+   * Its four body values are positional and unnamed, so their meaning is their order. Only the
+   * name, the title and the two prices go into them — the discount percentage and the end date
+   * that the offer *email* carries have nowhere to sit in a four-variable template, so a
+   * WhatsApp recipient gets the offer price without the explanation around it.
    *
    * The prices are passed in, read live from the admin-editable settings and the live discount
    * row by the caller, rather than hardcoded in the copy: a promotion quoting a price the checkout
@@ -379,33 +384,41 @@ export class NotificationsService {
     const text =
       `${paragraphs.join('\n\n')}\n\n` + buttons.map((b) => `${b.label}: ${b.url}`).join('\n');
 
-    const promoTemplate = this.config.get<string>('WHATSAPP_BOOST_PROMO_TEMPLATE');
+    if (user.email) {
+      const sent = await this.emailProvider.send(
+        user.email,
+        renderTemplate(tpl.subject, vars),
+        text,
+        { html, bcc: 'support@bhavano.com' },
+      );
+      return sent ? 'email' : null;
+    }
 
-    return this.dispatchEmailPreferWhatsapp(
-      user,
-      { subject: renderTemplate(tpl.subject, vars), text, html, bcc: 'support@bhavano.com' },
-      // The approved template's wording is the offer one, so it is only sendable while a promo is
-      // live — an empty parameter is a 400 from Meta, not a gap in a sentence. A phone-only owner
-      // with no promo running is reported as skipped instead.
-      promoTemplate && prices.offer
-        ? {
-            template: promoTemplate,
-            // Named, matching the submitted template — see WhatsappProvider.sendTemplate on why
-            // named is worth preferring past two variables.
-            params: {
-              name: vars.name,
-              title: vars.title,
-              offerEnds: vars.offerEnds,
-              discountPercent: vars.discountPercent,
-              boostPrice: vars.boostPrice,
-              boostBasePrice: vars.boostBasePrice,
-              bundlePrice: vars.bundlePrice,
-            },
-            // The template's button prefix already ends at "?openBoost=", so only the id follows.
-            buttonUrlSuffix: listing.id,
-          }
-        : undefined,
-    );
+    // WhatsApp via MSG91's approved `ad_boost_instant_alert`, not the Meta-direct WhatsappProvider
+    // the rest of this file's fallbacks use: that template lives on the MSG91 account (its own
+    // namespace) and carries **two** dynamic URL buttons, which `WhatsappProvider.sendTemplate`
+    // cannot express — it takes a single positional button suffix. Two buttons is exactly what
+    // this message wants, so the template shape decided the provider.
+    if (user.phone) {
+      const result = await this.msg91.sendBoostPromotion(
+        user.phone,
+        {
+          name: vars.name,
+          title: listing.title,
+          boostPrice: vars.boostPrice,
+          bundlePrice: vars.bundlePrice,
+        },
+        // Whole paths, not bare ids: the template's registered base URL is appended to, and
+        // claim_listing's turned out to be the bare domain. See Msg91Provider.sendBoostPromotion.
+        {
+          boostSuffix: `my-listings?openBoost=${listing.id}`,
+          bundleSuffix: `my-listings?openBoost=${listing.id}&withAlerts=1`,
+        },
+      );
+      return result.sent ? 'whatsapp' : null;
+    }
+
+    return null;
   }
 
   /** The welcome email's subject/text/html — factored out of `notifyWelcome` so

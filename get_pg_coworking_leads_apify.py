@@ -282,13 +282,24 @@ def collect_city(apify_token, actor_id, city, city_id, locations, categories, ma
     collect_city() — same (areaId, category, queryPrefix) skip-check key, same PlacesFetchLog
     create-before-search-then-patch-after flow, so a mixed history of Google-sourced and
     Apify-sourced fetches for the same city coexists correctly (they're keyed by search term and
-    area, not by which script or provider ran it)."""
+    area, not by which script or provider ran it).
+
+    The skip-check only ever applies when `loc["areaId"]` is a real, resolved area — never for
+    `areaId is None` (an --areas-csv area with no match in Bhavano's curated Area list, or the
+    deliberate city-level supplemental query --areas-csv adds). FetchedPairDto has no
+    areaSearched field, only (areaId, category, queryPrefix) — so every areaId-less location in a
+    city collapses onto the exact same key server-side. Skipping on that key once one of them was
+    fetched silently drops every *other* areaId-less location for the rest of that city's history
+    (confirmed in production: Bangalore's "Outer Ring Road" and "Domlur" both had no areaId, and
+    fetching one made the other look done forever). Always re-searching costs a little extra on a
+    repeat run for these specific locations — cheap, and nothing here is expensive enough to
+    justify risking silently losing real coverage again."""
     seen = {}
     pair_stats = {}
     for loc in locations:
         for category in categories:
             noun = query_prefix or QUERY_NOUNS[category]
-            if (loc["areaId"], category, noun) in fetched_pairs and not force:
+            if loc["areaId"] and (loc["areaId"], category, noun) in fetched_pairs and not force:
                 continue
             query = build_query(noun, city, loc["area"])
             location_text = f"{loc['area']}, {city}, India" if loc["area"] else f"{city}, India"
@@ -381,11 +392,17 @@ def resolve_locations_from_csv(bff_url, city, area_names):
     verbatim instead of Bhavano's own curated Area table. Still looks up Bhavano's City/Area
     records (via CITY_NAME_ALIASES for cases like "Bangalore" vs. the DB's "Bengaluru") purely to
     attach a real areaId where one matches by name — an unmatched area still gets searched, just
-    without that FK link, same graceful-degrade as an unseeded city elsewhere in this pipeline."""
+    without that FK link, same graceful-degrade as an unseeded city elsewhere in this pipeline.
+
+    Always appends one trailing {"area": None, "areaId": None} entry — a plain city-level query
+    (build_query() renders it as "<noun> in <city>", no area) run alongside the hand-picked areas,
+    not instead of them. The curated CSV is a best guess at "the areas that matter," not ground
+    truth, so this is a cheap catch-all for whatever it missed. Reuses collect_city()'s own
+    place_id dedup, so anything this also finds via an area query above isn't double-counted."""
     city_obj = lookup_city(bff_url, CITY_NAME_ALIASES.get(city, city))
     if not city_obj:
         print(f"  '{city}' not found in Bhavano's City table — areas will have no areaId", file=sys.stderr)
-        return None, [{"area": a, "areaId": None} for a in area_names]
+        return None, [{"area": a, "areaId": None} for a in area_names] + [{"area": None, "areaId": None}]
 
     known_areas = {a["name"].strip().lower(): a["id"] for a in lookup_areas(bff_url, city_obj["id"])}
     locations = []
@@ -394,6 +411,7 @@ def resolve_locations_from_csv(bff_url, city, area_names):
         if not area_id:
             print(f"  '{name}' not in Bhavano's curated Area list for {city} — no areaId", file=sys.stderr)
         locations.append({"area": name, "areaId": area_id})
+    locations.append({"area": None, "areaId": None})
     return city_obj["id"], locations
 
 
