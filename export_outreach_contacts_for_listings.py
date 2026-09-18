@@ -73,12 +73,13 @@ PRICE_ON_REQUEST_CATEGORIES = {"pg", "coworking"}
 # CATEGORY_FIELD_CONFIG's pg/coworking entries. Required ones are marked in the header so a
 # human filling the CSV knows which blanks block the upload.
 #
-# attr_sharingType_REQUIRED and attr_gender are both multi-select (a PG can offer more than one
-# sharing type, or be open to more than one gender) — a human filling either cell in by hand
-# should `;`-join multiple values (e.g. "single;double"), same convention guess_gender() below
-# already uses when it pre-fills attr_gender. Nothing pre-fills attr_sharingType_REQUIRED the same
-# way (sharing type isn't inferable from Google Places data), so there's no example of the
-# convention already in the cell for this column — call it out here instead.
+# attr_sharingType_REQUIRED, attr_gender, and attr_seatType_REQUIRED are all multi-select (a PG
+# can offer more than one sharing type or be open to more than one gender; a coworking space can
+# offer more than one seat type) — a human filling any of these cells in by hand should `;`-join
+# multiple values (e.g. "single;double", "hot-desk;private-cabin"), same convention guess_gender()
+# below already uses when it pre-fills attr_gender. Nothing pre-fills attr_sharingType_REQUIRED or
+# attr_seatType_REQUIRED the same way (neither is inferable from Google Places data), so there's
+# no example of the convention already in the cell for either column — call it out here instead.
 ATTRIBUTE_COLUMNS = {
     "pg": ["attr_sharingType_REQUIRED", "attr_gender", "attr_meals"],
     "coworking": ["attr_seatType_REQUIRED", "attr_amenities"],

@@ -200,7 +200,7 @@ function deriveFields(category: ListingCategory, transactionType: TransactionTyp
       return {
         title: `${seat.label} Coworking Space ${suffix} in ${areaName}`,
         specs: [seat.label, '24/7 access', 'Meeting rooms'],
-        attributes: { seatType: seat.value, amenities: 'High-speed wifi, meeting rooms, pantry' },
+        attributes: { seatType: [seat.value], amenities: 'High-speed wifi, meeting rooms, pantry' },
       };
     }
     case 'furniture': {

@@ -74,7 +74,7 @@ async function main() {
         cityId: blr,
         tag: 'COWORKING',
         specs: ['Hot desk', '24/7 access', 'Meeting rooms'],
-        attributes: { seatType: 'hot-desk' },
+        attributes: { seatType: ['hot-desk'] },
         ownerId: owner.id,
         expiresAt: defaultExpiresAt,
       },

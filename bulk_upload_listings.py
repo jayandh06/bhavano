@@ -50,7 +50,7 @@ MAX_PHOTOS = 6
 # pg/coworking CSV pipeline later.
 # sharingType joined gender here once a PG could offer more than one sharing type at a time
 # (e.g. "single;double") — same `;`-join convention, no other change to this pipeline needed.
-MULTI_SELECT_ATTRIBUTE_KEYS = {"gender", "sharingType"}
+MULTI_SELECT_ATTRIBUTE_KEYS = {"gender", "sharingType", "seatType"}
 
 
 def attribute_key(column_name):

@@ -745,9 +745,13 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
   ],
   coworking: [
     {
+      // Multi-select, not select — a coworking space can genuinely offer more than one seat
+      // type at once (e.g. hot desks and private cabins in the same space). See
+      // backfillSeatTypeMultiSelect.ts for the one-off data fix this required, same pattern as
+      // PG's sharingType.
       key: "seatType",
       label: "Seat type",
-      type: "select",
+      type: "multi-select",
       section: "workspaceDetails",
       options: [
         { value: "hot-desk", label: "Hot desk" },
