@@ -12,6 +12,7 @@ import { hasSessionAction } from "@/app/actions/auth";
 import { buildListingPath } from "@/lib/listingPath";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
+import { ShareButton } from "./ShareButton";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
   const { requireLogin } = useAuthGate();
@@ -132,17 +133,27 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1"><Icon name="featured" filled /> Featured</span>
           )}
         </div>
-        <button
-          onClick={onToggleFavourite}
-          className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-[#ffffffee] border-none cursor-pointer text-[15px] z-[1] ${
-            // This circle's background is a fixed near-white overlay on the photo, not a theme
-            // color — so the icon's color must also be fixed (never `inherit`/theme text color),
-            // or it silently disappears against the circle in dark mode (near-white on near-white).
-            isFavourited ? "text-[#c0554b]" : "text-[#3a3a3a]"
-          }`}
-        >
-          <Icon name="heart" filled={isFavourited} />
-        </button>
+        {/* Share sits here rather than in the bottom action row so it's visible on your own
+          * listing too, unlike Message/Contact below — a seller sharing their own ad is a real
+          * use case those two aren't. Same fixed near-white circle as the favourite button, for
+          * the same reason: this overlay sits on a photo, not a themed surface, so its icon color
+          * has to be fixed too or it vanishes into the circle in dark mode. */}
+        <div className="absolute top-2.5 right-2.5 flex gap-2 z-[1]">
+          <ShareButton
+            path={href}
+            title={item.title}
+            listingId={item.id}
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-[#ffffffee] border-none cursor-pointer text-[15px] text-[#3a3a3a]"
+          />
+          <button
+            onClick={onToggleFavourite}
+            className={`w-8 h-8 rounded-full bg-[#ffffffee] border-none cursor-pointer text-[15px] ${
+              isFavourited ? "text-[#c0554b]" : "text-[#3a3a3a]"
+            }`}
+          >
+            <Icon name="heart" filled={isFavourited} />
+          </button>
+        </div>
       </div>
 
       <div className="p-[18px] flex flex-col gap-2.5 flex-1">
