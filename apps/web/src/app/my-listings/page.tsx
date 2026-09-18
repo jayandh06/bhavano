@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
-import { BffAuthError, fetchMyListings, fetchProfile } from "@/lib/bff";
+import { BffAuthError, fetchMyListings, fetchProfile, previewBoostPricing } from "@/lib/bff";
+import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { buildListingPath } from "@/lib/listingPath";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
@@ -58,7 +59,11 @@ export default async function MyListingsPage({
         {!session?.accessToken ? (
           <RequireLoginPrompt message="Log in to view and edit the ads you've posted." />
         ) : (
-          <MyListingsGrid accessToken={session.accessToken} cityName={city?.name} />
+          <MyListingsGrid
+            accessToken={session.accessToken}
+            cityName={city?.name}
+            openBoostId={typeof sp.openBoost === "string" ? sp.openBoost : undefined}
+          />
         )}
       </div>
       <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
@@ -66,7 +71,17 @@ export default async function MyListingsPage({
   );
 }
 
-async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; cityName?: string }) {
+async function MyListingsGrid({
+  accessToken,
+  cityName,
+  openBoostId,
+}: {
+  accessToken: string;
+  cityName?: string;
+  /** `?openBoost=<id>` — set when the visitor arrived from a Boost link in an email or WhatsApp
+   * message, which is the case that needs its price resolved here rather than in the browser. */
+  openBoostId?: string;
+}) {
   let listings;
   let profile;
   try {
@@ -96,9 +111,38 @@ async function MyListingsGrid({ accessToken, cityName }: { accessToken: string; 
   const activeListings = listings.filter((item) => !item.isExpired);
   const pastListings = listings.filter((item) => item.isExpired);
 
+  // The deep-linked dialog's price, resolved server-side.
+  //
+  // It used to be fetched by the dialog itself on mount, which is fine for an in-app click but not
+  // for arriving from a message: the visitor logs in first, and the price then depended on a
+  // client round trip racing a just-established session and a `router.refresh()` still in flight.
+  // The symptom was a dialog that showed no price until it was touched. Resolving it here means
+  // the price is part of the page the browser is handed — there is no timing left to get wrong.
+  //
+  // Best-effort: a failure leaves the dialog to its own fetch (with its retries), which is exactly
+  // the behaviour this replaces rather than a new failure mode.
+  const openBoostListing = openBoostId ? listings.find((item) => item.id === openBoostId) : undefined;
+  const openBoostPricing = openBoostListing
+    ? await previewBoostPricing(accessToken, openBoostListing.category, ACTIVE_PROMO_CODE).catch(
+        (error: unknown) => {
+          // Logged, not swallowed. If this ever fails, the dialog falls back to fetching for
+          // itself and the visitor may see no price — and a silent catch is why the last round of
+          // this bug had to be diagnosed from a screenshot instead of a log line.
+          console.error(
+            `[my-listings] boost price preview failed for ${openBoostListing.id} (${openBoostListing.category}):`,
+            error instanceof Error ? error.message : error,
+          );
+          return undefined;
+        },
+      )
+    : undefined;
+
   return (
     <div className="flex flex-col gap-3">
-      <AutoOpenPurchaseModal listings={listings.map((l) => ({ id: l.id, category: l.category }))} />
+      <AutoOpenPurchaseModal
+        listings={listings.map((l) => ({ id: l.id, category: l.category }))}
+        initialPricing={openBoostPricing}
+      />
       <ListingSlotMeter profile={profile} />
       {activeListings.map((item) => (
         <MyListingRow key={item.id} item={item} accessToken={accessToken} />

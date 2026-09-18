@@ -23,6 +23,7 @@ export function BoostBundlePicker({
   category,
   onActivating,
   defaultAddInstantAlerts = false,
+  initialPricing,
 }: {
   listingId: string;
   category: ListingCategory;
@@ -30,13 +31,17 @@ export function BoostBundlePicker({
    * the Boost + Instant Alerts button in the admin-sent promotion email lands here with it on,
    * so the screen already reflects what they clicked. */
   defaultAddInstantAlerts?: boolean;
+  /** A price resolved before this mounted — the deep-link path passes the one its page's server
+   * render produced. With it, there is no fetch, no retry ladder and no race with a
+   * just-established session: the dialog opens showing the price. */
+  initialPricing?: BoostPricingPreviewDto;
   /** Fired once the purchase is either activated for free (Pro credit) or paid for — the
    * success screen swaps this picker for a "Boost pending…" style state while the webhook
    * catches up, same contract BoostButton/BoostProvider already use elsewhere. */
   onActivating?: () => void;
 }) {
   const router = useRouter();
-  const [pricing, setPricing] = useState<BoostPricingPreviewDto | null>(null);
+  const [pricing, setPricing] = useState<BoostPricingPreviewDto | null>(initialPricing ?? null);
   const [duration, setDuration] = useState<BoostDurationDays>(7);
   const [addInstantAlerts, setAddInstantAlerts] = useState(defaultAddInstantAlerts);
   const [pending, setPending] = useState(false);
@@ -58,6 +63,9 @@ export function BoostBundlePicker({
   // Backing off across several retries covers the slow-but-still-quick cases; the focus listener
   // below covers the popup case, where no timer here would ever fire while the tab is backgrounded.
   useEffect(() => {
+    // Nothing to fetch when the page already handed us one.
+    if (initialPricing) return;
+
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
 
@@ -81,7 +89,7 @@ export function BoostBundlePicker({
       cancelled = true;
       if (retry) clearTimeout(retry);
     };
-  }, [category, fetchKey]);
+  }, [category, fetchKey, initialPricing]);
 
   // Logging in via the Google OAuth popup steals focus for the whole flow, so by the time the
   // visitor is back on this tab the backoff above may have already exhausted its retries (or the

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { ListingCategory } from "@bhavano/types";
+import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import { useBoost } from "./BoostProvider";
 import { useInstantAlerts } from "./InstantAlertsProvider";
 
@@ -20,8 +20,14 @@ import { useInstantAlerts } from "./InstantAlertsProvider";
  */
 export function AutoOpenPurchaseModal({
   listings,
+  initialPricing,
 }: {
   listings: { id: string; category: ListingCategory }[];
+  /** The deep-linked listing's price, already resolved by the page's own server render (see
+   * my-listings/page.tsx). Handed to the dialog so it opens with a price instead of fetching one
+   * — which is what broke arriving from an emailed link: the fetch raced a session that had only
+   * just been established, and a dialog with no price is the one thing this flow cannot afford. */
+  initialPricing?: BoostPricingPreviewDto;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -46,6 +52,7 @@ export function AutoOpenPurchaseModal({
           listingId: listing.id,
           category: listing.category,
           withInstantAlerts: searchParams.get("withAlerts") === "1",
+          initialPricing,
         });
     }
     if (openInstantAlertsId) {

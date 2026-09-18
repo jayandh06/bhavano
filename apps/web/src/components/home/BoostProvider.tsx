@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import type { ListingCategory } from "@bhavano/types";
+import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import { BoostBundlePicker } from "./BoostBundlePicker";
 
 /**
@@ -31,6 +31,10 @@ interface BoostOptions {
   /** Opens with "Add Instant Alerts" already ticked — used by the deep link the promotion email's
    * "Boost + Instant Alerts" button carries. */
   withInstantAlerts?: boolean;
+  /** A price the caller already has, so the dialog does not have to fetch one. Only the deep-link
+   * path supplies it (resolved in my-listings' own server render); an in-app click leaves it unset
+   * and the dialog fetches as before, with a session that is long since warm. */
+  initialPricing?: BoostPricingPreviewDto;
 }
 
 interface BoostContextValue {
@@ -72,6 +76,7 @@ export function BoostProvider({ children }: { children: ReactNode }) {
               listingId={opts.listingId}
               category={opts.category}
               defaultAddInstantAlerts={opts.withInstantAlerts}
+              initialPricing={opts.initialPricing}
               onActivating={() => {
                 setOpen(false);
                 opts.onActivating?.();
