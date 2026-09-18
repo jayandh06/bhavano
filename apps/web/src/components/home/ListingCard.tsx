@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ListingCardDto } from "@bhavano/types";
@@ -27,6 +27,40 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   const [ownerPhone, setOwnerPhone] = useState(item.ownerPhone);
   const [ownerEmail, setOwnerEmail] = useState(item.ownerEmail);
   const [revealPending, setRevealPending] = useState(false);
+
+  // A small, cheap benefit of being Featured, not a full swipeable carousel: cycling through
+  // every photo would mean loading N images per boosted card up front, on a page that can show a
+  // couple dozen cards at once — real risk to LCP on browse pages, which are this site's
+  // SEO-critical routes. Hovering is the one interaction that's already "I'm actually looking at
+  // this card" without costing anything for cards nobody hovers — one extra image request at a
+  // time, only while genuinely being looked at. `(hover: hover)` (same idiom CategoryTabs.tsx
+  // already uses) keeps this off touch devices entirely: a tap-triggered synthetic hover there
+  // would fire the cycle right before navigating away, for no benefit and a wasted request.
+  const [hoverPhotoIndex, setHoverPhotoIndex] = useState(0);
+  const hoverIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const canCyclePhotos = item.isBoosted && item.photos.length > 1;
+
+  useEffect(() => {
+    return () => {
+      if (hoverIntervalRef.current) clearInterval(hoverIntervalRef.current);
+    };
+  }, []);
+
+  function startPhotoCycle() {
+    if (!canCyclePhotos) return;
+    if (typeof window === "undefined" || !window.matchMedia("(hover: hover)").matches) return;
+    hoverIntervalRef.current = setInterval(() => {
+      setHoverPhotoIndex((i) => (i + 1) % item.photos.length);
+    }, 1200);
+  }
+
+  function stopPhotoCycle() {
+    if (hoverIntervalRef.current) {
+      clearInterval(hoverIntervalRef.current);
+      hoverIntervalRef.current = null;
+    }
+    setHoverPhotoIndex(0);
+  }
 
   async function onToggleFavourite(e: React.MouseEvent) {
     e.preventDefault();
@@ -99,6 +133,8 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     <div className="bg-surface border border-border/70 rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both] transition-[box-shadow,border-color] duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.04)] sm:hover:border-green/40 sm:hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
       <div
         className="relative h-[200px]"
+        onMouseEnter={startPhotoCycle}
+        onMouseLeave={stopPhotoCycle}
         // Dynamic per-listing placeholder gradient stays inline — it's data, not a static style.
         style={
           item.photos[0]
@@ -109,7 +145,22 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
         }
       >
         {item.photos[0] && (
-          <Image src={item.photos[0]} alt={item.title} fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
+          <Image
+            src={item.photos[hoverPhotoIndex] ?? item.photos[0]}
+            alt={item.title}
+            fill
+            sizes="(max-width: 768px) 100vw, 400px"
+            className="object-cover"
+          />
+        )}
+        {/* The resting hint that hovering does something, and mobile/no-hover's only signal that
+          * more photos exist at all, since it never gets the cycle above. Static — a dot-per-photo
+          * indicator that tracked hoverPhotoIndex would be reaching back toward carousel
+          * territory for a benefit nobody but a hovering desktop visitor could even see change. */}
+        {canCyclePhotos && (
+          <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 bg-[#00000099] text-white text-[11px] font-bold px-2 py-1 rounded-md pointer-events-none">
+            <Icon name="camera" /> {item.photos.length}
+          </span>
         )}
         {/* TEMP(auth-gate): viewing listing details is open without login for now. */}
         {/* prefetch={false} — the whole card is one link repeated twice (photo + body), and a
