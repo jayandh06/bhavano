@@ -4,7 +4,7 @@ import type { ConfigService } from '@nestjs/config';
 /**
  * The payload shape is the whole point of these tests.
  *
- * `ad_boost_instant_alert`'s four body values are positional and unnamed — MSG91 validates that
+ * `ad_boost_instant_alert_1`'s four body values are positional and unnamed — MSG91 validates that
  * four arrived, never what they mean — so sending the price where the name belongs produces a
  * perfectly successful send of a nonsense message. The same goes for the two button suffixes:
  * swapping them sends someone who clicked "Boost + Instant Alerts" to plain Boost. Neither
@@ -16,8 +16,9 @@ function makeProvider(env: Record<string, string | undefined> = {}) {
       ({
         MSG91_AUTH_KEY: 'key',
         MSG91_WHATSAPP_INTEGRATED_NUMBER: '918667496339',
-        MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME: 'ad_boost_instant_alert',
-        MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE: 'b809c8aa_8ca6_40f4_81fd_6d3858c888dc',
+        MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME: 'ad_boost_instant_alert_1',
+        // This template carries no namespace — null is its correct value, not a missing setting.
+        MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE: undefined,
         ...env,
       })[key],
   } as unknown as ConfigService;
@@ -32,10 +33,17 @@ function mockFetch(body = OK_BODY, ok = true) {
   return fetchMock;
 }
 
-const VARS = { name: 'Ravi', title: '2 BHK for rent in Koramangala', boostPrice: '100', bundlePrice: '112' };
-// The bare id, and the id plus the alerts flag — the template's own base supplies
-// `…/checkout?plan=boost&ad=`, so a suffix carrying a path would double up.
-const BUTTONS = { boostSuffix: 'abc123', bundleSuffix: 'abc123&withAlerts=1' };
+const VARS = {
+  name: 'Ravi',
+  title: '2 BHK for rent in Koramangala',
+  location: 'Koramangala, Bengaluru',
+  offerEnds: '30 September',
+};
+// Whole paths: ad_boost_instant_alert_1's base resolves these directly.
+const BUTTONS = {
+  boostSuffix: 'my-listings?openBoost=abc123',
+  bundleSuffix: 'my-listings?openBoost=abc123&withAlerts=1',
+};
 
 describe('Msg91Provider.sendBoostPromotion', () => {
   it('sends the four body values in the order the approved copy reads, and two button suffixes', async () => {
@@ -45,37 +53,35 @@ describe('Msg91Provider.sendBoostPromotion', () => {
 
     expect(result).toEqual({ sent: true, messageId: 'req-1' });
     const payload = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
-    expect(payload.payload.template.name).toBe('ad_boost_instant_alert');
-    expect(payload.payload.template.namespace).toBe('b809c8aa_8ca6_40f4_81fd_6d3858c888dc');
+    expect(payload.payload.template.name).toBe('ad_boost_instant_alert_1');
+    expect(payload.payload.template.namespace).toBeNull();
     // 91-prefixed here, not by the caller — every WhatsApp method in this provider does it itself.
     expect(payload.payload.template.to_and_components[0].to).toEqual(['919876543210']);
     expect(payload.payload.template.to_and_components[0].components).toEqual({
       body_1: { type: 'text', value: 'Ravi' },
       body_2: { type: 'text', value: '2 BHK for rent in Koramangala' },
-      body_3: { type: 'text', value: '100' },
-      body_4: { type: 'text', value: '112' },
-      button_1: { subtype: 'url', type: 'text', value: 'abc123' },
-      button_2: { subtype: 'url', type: 'text', value: 'abc123&withAlerts=1' },
+      body_3: { type: 'text', value: 'Koramangala, Bengaluru' },
+      body_4: { type: 'text', value: '30 September' },
+      button_1: { subtype: 'url', type: 'text', value: 'my-listings?openBoost=abc123' },
+      button_2: { subtype: 'url', type: 'text', value: 'my-listings?openBoost=abc123&withAlerts=1' },
     });
   });
 
-  it('sends the id alone, since the template base already carries the path', async () => {
+  it('carries the whole path in each button suffix', async () => {
     const fetchMock = mockFetch();
 
     await makeProvider().sendBoostPromotion('9876543210', VARS, BUTTONS);
 
     const payload = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
     const { button_1, button_2 } = payload.payload.template.to_and_components[0].components;
-    // A path here would produce `…ad=my-listings?openBoost=<id>` — the mistake the first version
-    // made by assuming claim_listing's bare-domain base.
-    expect(button_1.value).toBe('abc123');
-    expect(button_2.value).toBe('abc123&withAlerts=1');
-    expect(button_1.value).not.toContain('my-listings');
+    expect(button_1.value).toBe('my-listings?openBoost=abc123');
+    expect(button_2.value).toBe('my-listings?openBoost=abc123&withAlerts=1');
   });
 
+  // Deliberately no namespace case: null is this template's correct value, so requiring it would
+  // skip every send — which is what an earlier version did.
   it.each([
     ['template name', { MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME: undefined }],
-    ['namespace', { MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE: undefined }],
     ['auth key', { MSG91_AUTH_KEY: undefined }],
   ])('skips without sending when the %s is unset', async (_label, env) => {
     const fetchMock = mockFetch();

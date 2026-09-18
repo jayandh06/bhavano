@@ -317,10 +317,10 @@ export class NotificationsService {
    * `MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME`/`MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE` are set;
    * until then a phone-only owner is reported as skipped rather than as a send that never happened.
    *
-   * Its four body values are positional and unnamed, so their meaning is their order. Only the
-   * name, the title and the two prices go into them — the discount percentage and the end date
-   * that the offer *email* carries have nowhere to sit in a four-variable template, so a
-   * WhatsApp recipient gets the offer price without the explanation around it.
+   * Its four body values are positional and unnamed, so their meaning is their order: name, ad
+   * title, locality, and the date the offer ends. The prices are part of the approved copy's own
+   * fixed text rather than variables, which is why the WhatsApp half only goes out while an offer
+   * is actually running.
    *
    * The prices are passed in, read live from the admin-editable settings and the live discount
    * row by the caller, rather than hardcoded in the copy: a promotion quoting a price the checkout
@@ -413,24 +413,29 @@ export class NotificationsService {
     // namespace) and carries **two** dynamic URL buttons, which `WhatsappProvider.sendTemplate`
     // cannot express — it takes a single positional button suffix. Two buttons is exactly what
     // this message wants, so the template shape decided the provider.
-    if (user.phone) {
+    // Only while an offer is running. The approved copy names the offer's end date in `body_4` and
+    // carries the prices as its own fixed text, so there is no wording for "no promo on" — and an
+    // empty parameter is an error from MSG91, not a gap in a sentence. The email has a second
+    // template for that case; WhatsApp simply waits for the next offer.
+    if (user.phone && prices.offer) {
       const result = await this.msg91.sendBoostPromotion(
         user.phone,
         {
           name: vars.name,
           title: listing.title,
-          boostPrice: vars.boostPrice,
-          bundlePrice: vars.bundlePrice,
+          // Slots 3 and 4 are the locality and the offer's end date, not prices. The first version
+          // sent prices here: MSG91 accepted all four values happily and the message read as
+          // nonsense, which is what positional-and-unnamed costs when it is guessed at.
+          location: vars.location,
+          offerEnds: prices.offer.endsOn,
         },
-        // Just the id, and the id plus the alerts flag. `ad_boost_instant_alert` was approved with
-        // the base `https://www.bhavano.com/checkout?plan=boost&ad=`, so these land as
-        // `/checkout?plan=boost&ad=<id>[&withAlerts=1]` — which `app/checkout/page.tsx` forwards to
-        // `/my-listings?openBoost=<id>`, the same screen the email's buttons open. Sending a path
-        // here instead (as the first version did, assuming claim_listing's bare-domain base)
-        // produced `...ad=my-listings?openBoost=<id>`, a link that resolved to nothing.
+        // `ad_boost_instant_alert_1` was recreated with a base that makes these resolve directly,
+        // so the suffix carries the whole path again — the link in the message is
+        // `/my-listings?openBoost=<id>` itself rather than a `/checkout?...` hop. The older
+        // template's `/checkout` route stays in place for messages already delivered.
         {
-          boostSuffix: listing.id,
-          bundleSuffix: `${listing.id}&withAlerts=1`,
+          boostSuffix: `my-listings?openBoost=${listing.id}`,
+          bundleSuffix: `my-listings?openBoost=${listing.id}&withAlerts=1`,
         },
       );
       if (result.sent) channels.push({ channel: 'whatsapp', messageId: result.messageId });

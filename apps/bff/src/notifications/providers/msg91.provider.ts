@@ -318,10 +318,14 @@ export class Msg91Provider {
    * WhatsApp via MSG91 — the admin-sent Boost / Instant Alerts offer (see
    * AdminService.sendBoostPromotion and NotificationsService.notifyBoostPromotion).
    *
-   * Approved template: **`ad_boost_instant_alert`**, with the shape its own MSG91 dashboard "Code"
-   * snippet gives — four positional `body_1`..`body_4` values and, unusually for this codebase,
-   * **two** dynamic URL buttons. That maps exactly onto what the email offers: button 1 goes to
-   * Boost for this ad, button 2 to Boost with Instant Alerts already ticked.
+   * Approved template: **`ad_boost_instant_alert_1`**, with the shape its own MSG91 dashboard
+   * "Code" snippet gives — four positional `body_1`..`body_4` values and, unusually for this
+   * codebase, **two** dynamic URL buttons. That maps exactly onto what the email offers: button 1
+   * goes to Boost for this ad, button 2 to Boost with Instant Alerts already ticked.
+   *
+   * `namespace` is genuinely null for this one (the dashboard snippet says so), unlike every other
+   * MSG91 template here — so it is sent as null rather than treated as missing configuration. An
+   * earlier version required it and would have skipped every send.
    *
    * Each button's value is only the *suffix* appended to whatever base URL the template itself was
    * created with — the same arrangement as `sendListingVerificationRequest`, and the same hazard.
@@ -334,14 +338,16 @@ export class Msg91Provider {
    * resolved to nothing.
    *
    * Body values are positional, so their order is the order the approved copy reads in, and
-   * nothing in the payload names them. Getting that order wrong sends the price where the name
-   * should go without erroring — MSG91 validates the *count*, never the meaning. The order sent
-   * here is documented in notification-templates/whatsapp/boost-promotion/body.txt; if the
-   * approved wording differs, that file and this call have to move together.
+   * nothing in the payload names them. Getting that order wrong sends a value into the wrong
+   * sentence without erroring — MSG91 validates the *count*, never the meaning, which is exactly
+   * how the first attempt shipped the boost price where the locality belongs and the bundle price
+   * where the offer's end date belongs. The order below (name, ad title, locality, offer end date)
+   * is the approved copy's, and the prices are part of that copy's own fixed text rather than
+   * variables — so unlike the email, this template can only be sent while an offer is running.
    */
   async sendBoostPromotion(
     phone: string,
-    vars: { name: string; title: string; boostPrice: string; bundlePrice: string },
+    vars: { name: string; title: string; location: string; offerEnds: string },
     buttons: { boostSuffix: string; bundleSuffix: string },
   ): Promise<{ sent: boolean; messageId: string | null }> {
     const authKey = this.config.get<string>('MSG91_AUTH_KEY');
@@ -350,12 +356,14 @@ export class Msg91Provider {
     // Its own env var rather than reusing another template's: MSG91 has issued this account
     // different namespaces per template before (see sendAdPostedConfirmation's own note), so
     // assuming one would fail in a way that looks like a template problem.
-    const namespace = this.config.get<string>('MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE');
-    if (!authKey || !integratedNumber || !template || !namespace) {
+    // Null is the correct value here, not a missing setting: this template carries no namespace
+    // (its dashboard snippet sends `"namespace": null`). So it is not part of the guard below —
+    // requiring it, as the first version did, would have skipped every send.
+    const namespace = this.config.get<string>('MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE') ?? null;
+    if (!authKey || !integratedNumber || !template) {
       this.logger.warn(
         `MSG91 WhatsApp not configured (MSG91_WHATSAPP_INTEGRATED_NUMBER/` +
-          `MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME/MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE) — ` +
-          `skipping boost-promotion WhatsApp to ${phone}`,
+          `MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME) — skipping boost-promotion WhatsApp to ${phone}`,
       );
       return { sent: false, messageId: null };
     }
@@ -382,8 +390,8 @@ export class Msg91Provider {
                     components: {
                       body_1: { type: 'text', value: vars.name },
                       body_2: { type: 'text', value: vars.title },
-                      body_3: { type: 'text', value: vars.boostPrice },
-                      body_4: { type: 'text', value: vars.bundlePrice },
+                      body_3: { type: 'text', value: vars.location },
+                      body_4: { type: 'text', value: vars.offerEnds },
                       button_1: { subtype: 'url', type: 'text', value: buttons.boostSuffix },
                       button_2: { subtype: 'url', type: 'text', value: buttons.bundleSuffix },
                     },

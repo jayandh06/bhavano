@@ -51,6 +51,22 @@ describe('NotificationsService.notifyBoostPromotion', () => {
     expect(text).toContain('withAlerts=1');
   });
 
+  it('skips WhatsApp entirely with no offer running, since the template names an end date', async () => {
+    const { service, sendBoostPromotion, emailSend } = make();
+
+    const channels = await service.notifyBoostPromotion(
+      { name: 'Ravi', email: 'ravi@example.com', phone: '9876543210' },
+      LISTING,
+      PRICES,
+    );
+
+    // An empty body parameter is an error from MSG91, not a gap in a sentence — so the email goes
+    // (it has a no-offer wording of its own) and WhatsApp waits for the next offer.
+    expect(sendBoostPromotion).not.toHaveBeenCalled();
+    expect(emailSend).toHaveBeenCalled();
+    expect(channels).toEqual([{ channel: 'email' }]);
+  });
+
   it('sends the offer wording only while a promo is live', async () => {
     const { service, emailSend } = make();
 
@@ -74,9 +90,15 @@ describe('NotificationsService.notifyBoostPromotion', () => {
     expect(sendTemplate).not.toHaveBeenCalled();
     expect(sendBoostPromotion).toHaveBeenCalledWith(
       '9876543210',
-      { name: 'Ravi', title: LISTING.title, boostPrice: '100', bundlePrice: '112' },
-      // Bare id: the template's base supplies `/checkout?plan=boost&ad=`, and /checkout forwards.
-      { boostSuffix: 'abc123', bundleSuffix: 'abc123&withAlerts=1' },
+      // Slots 3 and 4 are the locality and the offer's end date — the approved copy's order, and
+      // the thing the first version got wrong by sending prices.
+      { name: 'Ravi', title: LISTING.title, location: 'Koramangala, Bengaluru', offerEnds: '30 September' },
+      // Whole path: ad_boost_instant_alert_1 was recreated with a base that resolves these
+      // directly, so the message's link is /my-listings?openBoost=<id> with no redirect hop.
+      {
+        boostSuffix: 'my-listings?openBoost=abc123',
+        bundleSuffix: 'my-listings?openBoost=abc123&withAlerts=1',
+      },
     );
   });
 
@@ -87,7 +109,10 @@ describe('NotificationsService.notifyBoostPromotion', () => {
     const failing = make();
     (failing.sendBoostPromotion as jest.Mock).mockResolvedValueOnce({ sent: false, messageId: null });
     expect(
-      await failing.service.notifyBoostPromotion({ name: 'Ravi', email: null, phone: '9876543210' }, LISTING, PRICES),
+      await failing.service.notifyBoostPromotion({ name: 'Ravi', email: null, phone: '9876543210' }, LISTING, {
+        ...PRICES,
+        offer: OFFER,
+      }),
     ).toEqual([]);
   });
 
@@ -98,7 +123,7 @@ describe('NotificationsService.notifyBoostPromotion', () => {
     const channels = await service.notifyBoostPromotion(
       { name: 'Ravi', email: 'ravi@example.com', phone: '9876543210' },
       LISTING,
-      PRICES,
+      { ...PRICES, offer: OFFER },
     );
 
     // A failed template send must not lose the email that did go out — the admin summary and the

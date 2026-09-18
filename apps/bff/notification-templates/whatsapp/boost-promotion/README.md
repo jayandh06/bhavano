@@ -1,41 +1,38 @@
-# `ad_boost_instant_alert` (MSG91)
+# `ad_boost_instant_alert_1` (MSG91)
 
-**Reference only — editing this file changes nothing.** This template is approved on the MSG91
-account, and its wording lives there. This copy exists so the variable *order* is written down
-somewhere a reader of the code can find, because the payload sends the four body values
-positionally and unnamed: get the order wrong and the price goes where the name should, with no
-error from anyone.
+**Reference only — editing this file changes nothing.** The template is approved on the MSG91
+account and its wording lives there. This file exists so the variable *order* is written down
+somewhere a reader of the code can find, because the payload sends four body values positionally
+and unnamed: MSG91 validates that four arrived, never what they mean, so a wrong order sends a
+perfectly successful message that reads as nonsense. It has already happened once — prices went
+into the two slots that belong to the locality and the offer's end date.
 
 The order `Msg91Provider.sendBoostPromotion` sends:
 
 | Slot | Value | Example |
 | --- | --- | --- |
-| `body_1` | owner's first name (or "there") | `Ravi` |
-| `body_2` | the ad's title | `2 BHK for rent in Koramangala` |
-| `body_3` | Boost price, discount already applied | `100` |
-| `body_4` | Boost + Instant Alerts price, discount applied | `112` |
+| `body_1` | owner's name (or "there") | `Ravi` |
+| `body_2` | the ad's title | `4 BHK` |
+| `body_3` | the ad's locality, as "area, city" | `Raikhad, Ahmedabad` |
+| `body_4` | the date the offer ends, IST | `30 September` |
+
+**The prices are part of the approved copy's own fixed text, not variables.** Two consequences: the
+figures in the message cannot follow the admin-editable price settings the email's do, and the
+WhatsApp half is only sendable while an offer is actually running — with no offer there is no end
+date for `body_4`, and an empty parameter is an error rather than a gap in a sentence. The email
+has a separate no-offer wording for that case; WhatsApp waits for the next offer.
+
+`namespace` is **null** for this template (its dashboard snippet says so), unlike every other MSG91
+template here. It is sent as null rather than treated as missing configuration.
 
 Two dynamic URL buttons, each carrying only the **suffix** appended to the base URL baked into the
-template. This template's base, confirmed from a real send on 2026-09-18, is:
+template. This template was recreated specifically so that base resolves the real page directly:
 
-```
-https://www.bhavano.com/checkout?plan=boost&ad=
-```
+| Button | Suffix sent | Opens |
+| --- | --- | --- |
+| `button_1` | `my-listings?openBoost=<id>` | Boost for that ad |
+| `button_2` | `my-listings?openBoost=<id>&withAlerts=1` | the same screen, Instant Alerts ticked |
 
-| Button | Suffix sent | Resulting URL | Lands on |
-| --- | --- | --- | --- |
-| `button_1` | `<id>` | `/checkout?plan=boost&ad=<id>` | `/my-listings?openBoost=<id>` |
-| `button_2` | `<id>&withAlerts=1` | `/checkout?plan=boost&ad=<id>&withAlerts=1` | the same, Instant Alerts ticked |
-
-`/checkout` is a real route (`apps/web/src/app/checkout/page.tsx`) that exists purely to forward
-these to the screen the email's buttons open — a template's button base cannot be changed without a
-new template and a fresh Meta approval, so the base was made true instead of fought. It also reads
-the *older* suffix form (`my-listings?openBoost=<id>`) that already-delivered messages carry, so
-those buttons keep working.
-
-If this template is ever recreated with a bare-domain base, the suffixes here go back to carrying
-the whole path and `/checkout` can be deleted.
-
-Unlike the email, there is nowhere here for the discount percentage or the offer's end date: four
-slots, and the name, title and two prices use all of them. A WhatsApp recipient gets the offer
-price without the explanation around it.
+The predecessor (`ad_boost_instant_alert`) had the base `https://www.bhavano.com/checkout?plan=boost&ad=`,
+which is why `apps/web/src/app/checkout/page.tsx` exists — messages already delivered still carry
+those buttons, so that route stays until they have aged out of people's chat histories.

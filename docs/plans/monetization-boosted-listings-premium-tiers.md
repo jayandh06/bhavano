@@ -229,14 +229,25 @@ button opened a ₹199 screen would have been a lie.
     without the explanation around it. Unlike the earlier Meta-direct draft, this means the
     WhatsApp path is *not* gated on a promo being live — the prices it sends are simply whatever
     the checkout will charge.
-  - **The buttons send the bare listing id, and `/checkout` forwards.** The first version sent a
+  - **Reworked onto `ad_boost_instant_alert_1` (2026-09-18).** The first template taught two
+    lessons the hard way, both invisible from the code: its four positional body slots are name,
+    ad title, **locality** and **offer end date** — not the prices I guessed — and its button base
+    was `…/checkout?plan=boost&ad=`. A real sample send is what exposed both. The replacement
+    template was recreated with a base that resolves `/my-listings?openBoost=<id>` directly, so the
+    suffixes carry the whole path again and no redirect hop is involved; it also carries **no
+    namespace** (null), which the provider now sends as null rather than treating as unset — the
+    first version required a namespace and would have skipped every send.
+  - **The prices live in the approved copy's fixed text**, not in variables. So the WhatsApp figures
+    cannot follow the admin-editable price settings the email's do, and WhatsApp is only sendable
+    while an offer is running: no offer means no end date for `body_4`, and an empty parameter is an
+    error rather than a gap in a sentence. Email keeps its own no-offer wording.
+  - **`/checkout` stays** for now. The buttons in messages already delivered still point at it, and
+    they stay tappable for as long as those chats exist: The first version sent a
     path, assuming the bare-domain base `claim_listing` has. A real send on 2026-09-18 proved
     otherwise: this template's base is `https://www.bhavano.com/checkout?plan=boost&ad=`, so the
     button resolved to `…/checkout?plan=boost&ad=my-listings?openBoost=<id>` — a link to nothing.
-    A template's button base cannot be edited (a change means a new template and a fresh approval),
-    so `/checkout` was made a real route (`apps/web/src/app/checkout/page.tsx`) that redirects to
-    `/my-listings?openBoost=<id>[&withAlerts=1]`. It also reads the older suffix form, so buttons
-    in already-delivered messages keep working. 7 parse checks.
+    it is a real route (`apps/web/src/app/checkout/page.tsx`) that redirects to
+    `/my-listings?openBoost=<id>[&withAlerts=1]` and reads both suffix forms. 7 parse checks.
     - The lesson generalises: a dynamic-URL button's base is invisible from the code that fills it,
       and the message looks perfect either way. Send one and open the button — that is the only
       way to know.
