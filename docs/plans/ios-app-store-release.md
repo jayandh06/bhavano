@@ -188,12 +188,41 @@ eas build --platform ios --profile production
 eas submit --platform ios --profile production
 ```
 
-EAS can manage the signing certificates and provisioning profile itself, which is the path of
-least resistance on a new developer account. `appVersionSource: "remote"` plus `autoIncrement`
-already means build numbers are handled.
+**A development build cannot go to TestFlight, and neither can `preview`.** Both are
+`distribution: "internal"` in `eas.json` — ad-hoc signed against registered device UDIDs, which is
+what makes them installable by a link and is exactly why App Store Connect refuses them. Only the
+`production` profile (no `distribution` key, so it defaults to `store`) produces an App Store-signed
+`.ipa`. This is the single most common way the question "how do I get my Expo build to testers"
+starts in the wrong place.
 
-Fill in `submit.production` with `appleId`, `ascAppId` and `appleTeamId` once the app record
-exists in App Store Connect, so submission does not prompt each time.
+Credentials are already provisioned (checked 2026-09-18): a distribution certificate and an App
+Store provisioning profile exist under Apple team `L6RKCXT9K4`, both valid to 2027-08-28, so
+`--non-interactive` builds work without an Apple login prompt. `appVersionSource: "remote"` plus
+`autoIncrement` handles build numbers.
+
+`submit.production` is filled in and uses **App Store Connect API key** auth (`ascApiKeyPath` /
+`ascApiKeyId` / `ascApiKeyIssuerId` + `ascAppId: 6811878602`) rather than the `appleId` /
+`appleTeamId` pair this section originally called for — an API key needs no 2FA prompt, which is
+what makes submission scriptable. The key lives outside the repo at
+`~/.config/bhavano-secrets/AuthKey_6KPL9BLM97.p8`; a machine without that file cannot submit.
+
+### Getting it to testers
+
+1. `eas build --platform ios --profile production` (or add `--auto-submit` to do the next step
+   automatically).
+2. `eas submit --platform ios --profile production` — uploads to App Store Connect. Processing then
+   takes roughly 10-15 minutes before the build appears in TestFlight.
+3. **Internal testers** (up to 100 people who hold a role on the App Store Connect account) can
+   install as soon as processing finishes — no review. **External testers** (up to 10,000, invited
+   by email or a public link) require **Beta App Review** first, which is a separate, lighter
+   review than App Store submission but still a wait of about a day.
+4. Export compliance is already answered by `ITSAppUsesNonExemptEncryption: false`, so no
+   questionnaire appears per build.
+
+Both of this document's blockers are now implemented, so a TestFlight build is not gated on them:
+Sign in with Apple via `expo-apple-authentication` (`HomeSheetsProvider.signInAsync`) and in-app
+account deletion (`bffClient.deleteAccount`). They mattered for App Review, not for TestFlight,
+which reviews nothing for internal testers.
 
 ## Suggested order
 
@@ -201,7 +230,9 @@ exists in App Store Connect, so submission does not prompt each time.
    matters until they exist.
 2. Permission strings; drop `supportsTablet` unless iPad is genuinely being tested.
 3. TestFlight internal build. Exercise phone OTP on a real device — MSG91 delivery has its own
-   history (see `msg91-sms-otp-activation.md`) and it has never run from an iOS client.
+   history (see `msg91-sms-otp-activation.md`) and it has never run from an iOS client. First
+   store-distribution build was `3402641a-bc26-407b-80e0-bc4814e792e7` on 2026-09-18; every build
+   before it was the `development` profile.
 4. Privacy labels and the ATT decision, honestly reflecting the GTM tags.
 5. Screenshots, review notes with demo credentials, submit.
 
