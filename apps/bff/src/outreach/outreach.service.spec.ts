@@ -638,6 +638,43 @@ describe('OutreachService.createListingFromContact — the full success path', (
       'owner1',
     );
   });
+
+  it('defaults a coworking listing\'s basic amenities to available, not unknown', async () => {
+    const { service, prisma, config, storage, listingsService } = makeService();
+    (prisma.outreachContact.findUnique as jest.Mock).mockResolvedValue(
+      contact({
+        businessCategory: 'coworking',
+        cityId: 'city1',
+        areaId: 'area1',
+        claimedListing: null,
+        businessStatus: 'OPERATIONAL',
+        googlePlaceId: 'place1',
+        lat: 12.9,
+        lng: 77.6,
+      }),
+    );
+    (config.get as jest.Mock).mockReturnValue(dir);
+    (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({ id: 'owner1' });
+    (storage.putObject as jest.Mock).mockResolvedValue(undefined);
+    (listingsService.create as jest.Mock).mockResolvedValue({ id: 'listing1' });
+
+    await service.createListingFromContact('c1');
+
+    expect(listingsService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'coworking',
+        attributes: {
+          seatType: ['hot-desk', 'dedicated-desk'],
+          twoWheelerParking: 'yes',
+          fourWheelerParking: 'yes',
+          internet: 'yes',
+          printerAccess: 'yes',
+          powerBackup: 'yes',
+        },
+      }),
+      'owner1',
+    );
+  });
 });
 
 describe('buildContactOrderBy — the admin table\'s sortable Name/Rating/City/Listing/Notification/Consent headers', () => {

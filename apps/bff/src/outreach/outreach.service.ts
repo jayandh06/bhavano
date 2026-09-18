@@ -581,13 +581,14 @@ export class OutreachService {
 
   /** Skips the CSV/bulk_upload_listings.py round-trip entirely — creates a real Listing straight
    * from a scraped OutreachContact, using only what's actually known plus a sensible default for
-   * whatever a real poster would otherwise have to answer (sharingType/seatType), on the
-   * philosophy that the business claiming the listing later is responsible for completing the
-   * rest (description, real pricing, its own photos) — see docs/plans/outreach-direct-listing-
-   * creation.md. Reuses ListingsService.create() completely unmodified: no validation is
-   * bypassed, every default here is chosen specifically to already satisfy it (a real
-   * sharingType/seatType value, at least one real photo), so a normal poster's requirements never
-   * get quietly relaxed for anyone else.
+   * whatever a real poster would otherwise have to answer (sharingType/seatType, and for
+   * coworking specifically its basic amenities too — parking, internet, printer access, power
+   * backup), on the philosophy that the business claiming the listing later is responsible for
+   * completing the rest (description, real pricing, its own photos) — see docs/plans/
+   * outreach-direct-listing-creation.md. Reuses ListingsService.create() completely unmodified:
+   * no validation is bypassed, every default here is chosen specifically to already satisfy it (a
+   * real sharingType/seatType value, at least one real photo), so a normal poster's requirements
+   * never get quietly relaxed for anyone else.
    *
    * Photos come from wherever get_pg_coworking_leads.py downloaded them when it ran — on the
    * app server itself now (SCRAPED_PHOTOS_DIR), not a laptop, so this can read them straight off
@@ -638,7 +639,21 @@ export class OutreachService {
     const attributes: Record<string, unknown> =
       contact.businessCategory === 'pg'
         ? { sharingType: ['single'], ...(guessGender(contact.name).length ? { gender: guessGender(contact.name) } : {}) }
-        : { seatType: ['hot-desk'] };
+        : {
+            seatType: ['hot-desk', 'dedicated-desk'],
+            // A real coworking space overwhelmingly has all four of these — defaulting to "yes"
+            // is a far better guess than the categoryFields.ts posting form's own blank/"unknown"
+            // starting point (which only pre-fills `internet` this way, via its defaultValue —
+            // that default has no effect on this direct-creation path, since it's a UI-only
+            // convenience, not applied here). Same claiming-owner-corrects-it-later philosophy as
+            // seatType above: wrong is a one-click fix once they're editing their own listing,
+            // blank looks broken to the buyer browsing it before then.
+            twoWheelerParking: 'yes',
+            fourWheelerParking: 'yes',
+            internet: 'yes',
+            printerAccess: 'yes',
+            powerBackup: 'yes',
+          };
 
     return this.listingsService.create(
       {
