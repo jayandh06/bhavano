@@ -532,7 +532,20 @@ export function HomeSheetsProvider({
         </BottomSheetScrollView>
       </BottomSheetModal>
 
-      <BottomSheetModal ref={loginSheetRef} snapPoints={["55%"]} backgroundStyle={{ backgroundColor: colors.surface }}>
+      {/* keyboardBehavior/android_keyboardInputMode/keyboardBlurBehavior — without these, the
+        * number-pad keyboard for the phone/OTP steps below just overlapped whatever sat in the
+        * bottom half of this sheet's fixed 55% height, with nothing pushing the sheet or its
+        * content up to stay visible above it. "interactive" tracks the keyboard's own show/hide
+        * animation instead of jumping; adjustResize is the Android-specific half of this (iOS
+        * gorhom handles automatically, Android needs the window's own resize mode set). */}
+      <BottomSheetModal
+        ref={loginSheetRef}
+        snapPoints={["55%"]}
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
+      >
         <BottomSheetView style={styles.sheetContent}>
           {loginStep === "choose" && (
             <>

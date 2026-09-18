@@ -1,10 +1,10 @@
 import { forwardRef, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import type { Area, ListingCategory, PropertyTypeFilter } from "@bhavano/types";
-import { PRICE_BOUNDS } from "@bhavano/types/priceBounds";
+import type { Area, PropertyTypeFilter } from "@bhavano/types";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { parseAmount } from "../../lib/priceInput";
 import { HOME_TABS, type HomeTabValue } from "./categories";
 
 export interface AppliedFilters {
@@ -34,38 +34,6 @@ export function activeFilterCount(f: AppliedFilters): number {
 }
 
 const BEDROOM_BUCKETS = Array.from({ length: MAX_BEDROOMS }, (_, i) => i + 1);
-
-interface PriceBracket {
-  label: string;
-  minPrice?: number;
-  maxPrice?: number;
-}
-
-/** Same geometric-bracket sizing as web's `priceBracketsFor` — a PG's brackets land in the
- * thousands, a house's in lakhs/crores, without hand-tuning either separately. Kept local rather
- * than shared: lifting it into `@bhavano/types` is only worth it once a third caller needs it. */
-function priceBracketsFor(category: ListingCategory, isSale: boolean): PriceBracket[] {
-  const bounds = PRICE_BOUNDS[category][isSale ? "sale" : "rental"];
-  const low = Math.min(bounds.min * 20, bounds.max);
-  const high = Math.min(bounds.min * 200, bounds.max);
-  const fmt = (n: number) => (n >= 10_000_000 ? `₹${(n / 10_000_000).toFixed(1)}Cr` : n >= 100_000 ? `₹${(n / 100_000).toFixed(1)}L` : `₹${n.toLocaleString("en-IN")}`);
-  return [
-    { label: `Under ${fmt(low)}`, maxPrice: low },
-    { label: `${fmt(low)} – ${fmt(high)}`, minPrice: low, maxPrice: high },
-    { label: `${fmt(high)}+`, minPrice: high },
-  ];
-}
-
-/** Best-effort mapping from the homepage's tab-grouped category to a real `ListingCategory` +
- * sale/rental flag, purely to size the price quick-picks — not filtering logic (the actual
- * minPrice/maxPrice values sent to the backend are category-agnostic). */
-function priceBoundsCategoryFor(category: HomeTabValue, propertyType?: PropertyTypeFilter): { listingCategory: ListingCategory; isSale: boolean } {
-  if (category === "all" || category === "buy") return { listingCategory: propertyType ?? "house", isSale: true };
-  if (category === "rentLease") return { listingCategory: propertyType ?? "house", isSale: false };
-  if (category === "pg") return { listingCategory: "pg", isSale: false };
-  if (category === "furniture") return { listingCategory: "furniture", isSale: true };
-  return { listingCategory: "interiors", isSale: true };
-}
 
 const chipStyle = (active: boolean, colors: ReturnType<typeof useAppTheme>["colors"]) => ({
   borderWidth: 1,
@@ -103,8 +71,44 @@ export const FilterSheet = forwardRef<
   }
 
   const showBhkAndFurnished = staged.propertyType === "house" || staged.propertyType === "apartment";
-  const { listingCategory, isSale } = priceBoundsCategoryFor(category, staged.propertyType);
-  const brackets = priceBracketsFor(listingCategory, isSale);
+
+  // Free min/max entry, not fixed brackets — matches web's own price filter (BrowseFilterBar.tsx's
+  // CustomPriceRange), which dropped brackets there for the same reason: a fixed set of ranges
+  // either lands wrong for a category outside what it was tuned for, or a genuine boundary case
+  // ("show me under ₹45k") that no bracket happens to land on exactly. Kept as their own strings,
+  // not staged.minPrice/maxPrice directly, so "2L" stays visible while typing rather than
+  // collapsing to "200000" the instant it parses — same reasoning as web's own min/max boxes.
+  const [minText, setMinText] = useState(applied.minPrice !== undefined ? String(applied.minPrice) : "");
+  const [maxText, setMaxText] = useState(applied.maxPrice !== undefined ? String(applied.maxPrice) : "");
+  useEffect(() => {
+    setMinText(applied.minPrice !== undefined ? String(applied.minPrice) : "");
+    setMaxText(applied.maxPrice !== undefined ? String(applied.maxPrice) : "");
+  }, [applied]);
+
+  const parsedMin = minText.trim() ? parseAmount(minText) : undefined;
+  const parsedMax = maxText.trim() ? parseAmount(maxText) : undefined;
+  const priceError =
+    (minText.trim() && parsedMin === undefined) || (maxText.trim() && parsedMax === undefined)
+      ? "Enter an amount like 20000, 20k or 2L"
+      : parsedMin !== undefined && parsedMax !== undefined && parsedMin > parsedMax
+        ? "Min must be less than max"
+        : undefined;
+
+  function onMinChange(text: string) {
+    setMinText(text);
+    const parsed = text.trim() ? parseAmount(text) : undefined;
+    setStaged((prev) => ({ ...prev, minPrice: parsed }));
+  }
+  function onMaxChange(text: string) {
+    setMaxText(text);
+    const parsed = text.trim() ? parseAmount(text) : undefined;
+    setStaged((prev) => ({ ...prev, maxPrice: parsed }));
+  }
+  function clearPrice() {
+    setMinText("");
+    setMaxText("");
+    setStaged((prev) => ({ ...prev, minPrice: undefined, maxPrice: undefined }));
+  }
 
   const allAreaIds = cityAreas.map((a) => a.id);
   const selectedAreaIds = staged.areaIds.length === 0 ? new Set(allAreaIds) : new Set(staged.areaIds);
@@ -127,16 +131,14 @@ export const FilterSheet = forwardRef<
     setStaged((prev) => ({ ...prev, bedrooms: next.size === BEDROOM_BUCKETS.length ? [] : [...next] }));
   }
 
-  function selectBracket(bracket: PriceBracket | null) {
-    setStaged((prev) => ({ ...prev, minPrice: bracket?.minPrice, maxPrice: bracket?.maxPrice }));
-  }
-
   function selectFurnished(value: AppliedFilters["furnished"]) {
     setStaged((prev) => ({ ...prev, furnished: value }));
   }
 
   function reset() {
     setStaged(EMPTY_FILTERS);
+    setMinText("");
+    setMaxText("");
   }
 
   // Dismissal is the caller's job (it already holds the ref) — `onApply` both commits the
@@ -198,25 +200,40 @@ export const FilterSheet = forwardRef<
         )}
 
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.muted }]}>PRICE</Text>
-          <View style={styles.wrapRow}>
-            <Pressable
-              onPress={() => selectBracket(null)}
-              style={chipStyle(staged.minPrice === undefined && staged.maxPrice === undefined, colors)}
-            >
-              <Text style={{ fontSize: 13, color: staged.minPrice === undefined && staged.maxPrice === undefined ? colors.green : colors.text }}>
-                Any
-              </Text>
-            </Pressable>
-            {brackets.map((b) => {
-              const active = staged.minPrice === b.minPrice && staged.maxPrice === b.maxPrice;
-              return (
-                <Pressable key={b.label} onPress={() => selectBracket(b)} style={chipStyle(active, colors)}>
-                  <Text style={{ fontSize: 13, color: active ? colors.green : colors.text }}>{b.label}</Text>
-                </Pressable>
-              );
-            })}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>PRICE</Text>
+            {(minText || maxText) && (
+              <Pressable onPress={clearPrice}>
+                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>Clear</Text>
+              </Pressable>
+            )}
           </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TextInput
+              value={minText}
+              onChangeText={onMinChange}
+              placeholder="Min"
+              placeholderTextColor={colors.muted}
+              keyboardType="numeric"
+              style={[styles.priceInput, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+            />
+            <Text style={{ color: colors.muted }}>–</Text>
+            <TextInput
+              value={maxText}
+              onChangeText={onMaxChange}
+              placeholder="Max"
+              placeholderTextColor={colors.muted}
+              keyboardType="numeric"
+              style={[styles.priceInput, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+            />
+          </View>
+          {/* parseAmount also accepts web's "20k"/"2L"/"1.5Cr" shorthand, but keyboardType="numeric"
+            * shows a pure number pad with no letter keys — unlike web's text input, there's no way
+            * to actually type a letter here, so advertising shorthand in this hint would promise
+            * something the visible keyboard can't do. */}
+          <Text style={{ fontSize: 11.5, color: priceError ? "#c0554b" : colors.muted, marginTop: 6 }}>
+            {priceError ?? "One bound is enough."}
+          </Text>
         </View>
 
         {showBhkAndFurnished && (
@@ -238,7 +255,11 @@ export const FilterSheet = forwardRef<
           <Pressable onPress={reset} style={[styles.resetButton, { borderColor: colors.border }]}>
             <Text style={{ color: colors.textSoft, fontWeight: "700", fontSize: 14 }}>Reset</Text>
           </Pressable>
-          <Pressable onPress={apply} style={[styles.applyButton, { backgroundColor: colors.green }]}>
+          <Pressable
+            onPress={apply}
+            disabled={!!priceError}
+            style={[styles.applyButton, { backgroundColor: colors.green, opacity: priceError ? 0.5 : 1 }]}
+          >
             <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Apply</Text>
           </Pressable>
         </View>
@@ -254,6 +275,7 @@ const styles = StyleSheet.create({
   sectionHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   sectionLabel: { fontSize: 12, fontWeight: "700", marginBottom: 10, letterSpacing: 0.3 },
   wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  priceInput: { flex: 1, borderWidth: 1, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12, fontSize: 14 },
   footerRow: { flexDirection: "row", gap: 10, marginTop: 8 },
   resetButton: { flex: 1, borderWidth: 1.5, borderRadius: 10, paddingVertical: 13, alignItems: "center" },
   applyButton: { flex: 2, borderRadius: 10, paddingVertical: 13, alignItems: "center" },

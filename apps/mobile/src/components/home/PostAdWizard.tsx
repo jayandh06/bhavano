@@ -32,6 +32,7 @@ import { Icon, isIconName, type IconName } from "../Icon";
 import { createListing, fetchAreas, previewBoostPricing, uploadPhoto, uploadVideo } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
+import { ErrorBoundary } from "../ErrorBoundary";
 import { ScreenHeader } from "./ScreenHeader";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { BoostBundleCard } from "./BoostBundleCard";
@@ -553,12 +554,18 @@ export function PostAdWizard({
     <ScreenHeader title="Post an Ad" onBack={prevStep ? () => setStep(prevStep) : undefined} />
     <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
       {step !== "success" && (
-        <View style={styles.stepper}>
+        // A vector icon, not a "→" text glyph, between steps — a Unicode arrow's rendering
+        // depends on the device's own font having that glyph at all, which isn't guaranteed on
+        // every Android font/OS version (it showed up missing/wrong on real Android devices,
+        // while iOS's SF fonts always had it). An SVG icon has no such dependency.
+        <View style={[styles.stepper, { alignItems: "center" }]}>
           {(["category", "transactionType", "details", "review"] as Step[]).map((s, i) => (
-            <Text key={s} style={{ fontSize: 11, fontWeight: "700", color: step === s ? colors.green : colors.muted }}>
-              {i > 0 ? " → " : ""}
-              {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Preview Ad"}
-            </Text>
+            <View key={s} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              {i > 0 && <Icon name="chevronRight" size={11} color={colors.muted} />}
+              <Text style={{ fontSize: 11, fontWeight: "700", color: step === s ? colors.green : colors.muted }}>
+                {i + 1}. {s === "category" ? "Category" : s === "transactionType" ? "Transaction" : s === "details" ? "Details" : "Preview Ad"}
+              </Text>
+            </View>
           ))}
         </View>
       )}
@@ -656,10 +663,22 @@ export function PostAdWizard({
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Pin your exact location (optional — helps buyers find you, and auto-fills City/Area below)
           </Text>
-          <LocationMapPicker
-            defaultCenter={cityOptions.find((c) => c.id === cityId) ?? cities[0] ?? { lat: 20.5937, lng: 78.9629 }}
-            onPinChange={onPinChange}
-          />
+          {/* The pin picker is explicitly optional (see the label above it), and City/Area right
+            * below are the real fallback — a native map failure (e.g. a missing/invalid Google
+            * Maps API key, which react-native-maps can throw on rather than degrade from) must
+            * not take the rest of this form down with it. */}
+          <ErrorBoundary
+            fallback={
+              <Text style={[styles.label, { color: colors.muted, fontStyle: "italic" }]}>
+                Map unavailable right now — pick your City/Area below instead.
+              </Text>
+            }
+          >
+            <LocationMapPicker
+              defaultCenter={cityOptions.find((c) => c.id === cityId) ?? cities[0] ?? { lat: 20.5937, lng: 78.9629 }}
+              onPinChange={onPinChange}
+            />
+          </ErrorBoundary>
 
           <Text style={[styles.label, { color: colors.textSoft }]}>City</Text>
           {/* Collapsed by default. Rendering a chip for every city pushed the rest of the form off
@@ -771,7 +790,10 @@ export function PostAdWizard({
                       hitSlop={8}
                       style={[styles.counterButton, { borderRightWidth: 1, borderRightColor: colors.border }]}
                     >
-                      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>−</Text>
+                      {/* Plain ASCII hyphen, not the Unicode minus (−) this used to be — same
+                        * "not every font has this glyph" risk as the stepper arrow above, ASCII
+                        * is guaranteed to render everywhere. */}
+                      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>-</Text>
                     </Pressable>
                     <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700", flex: 1, textAlign: "center" }}>
                       {countOf(field.key)}
@@ -1063,8 +1085,12 @@ export function PostAdWizard({
           {/* A real push (not the replace() this used to do straight out of onSubmit) — see this
               screen's own header comment for why that mattered: it's what makes the listing's
               back arrow have somewhere to return to. */}
-          <Pressable onPress={() => router.push(`/listing/${createdListing.id}`)}>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>View my ad →</Text>
+          <Pressable
+            onPress={() => router.push(`/listing/${createdListing.id}`)}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>View my ad</Text>
+            <Icon name="chevronRight" size={12} color={colors.muted} />
           </Pressable>
 
         </View>
