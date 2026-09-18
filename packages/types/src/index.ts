@@ -251,6 +251,20 @@ export interface ListingDetailDto extends ListingCardDto {
    * first status event arrives, and stays null forever for an email send (no such signal exists
    * there) or a WhatsApp send from before this tracking existed. */
   postedNotificationDeliveryStatus?: string | null;
+  /** The Boost / Instant Alerts promotion's send history for this listing — how many went out on
+   * each channel and when the last one did, derived from ListingNotificationLog rows
+   * (`kind: "boost_promo"`), one per channel per send. Admin queue only, same precedent as
+   * postedNotificationSent above.
+   *
+   * Counts rather than a boolean because this one repeats: a promotion can go out again after its
+   * cooldown, and "three times, last one in July" is a different situation from "once, yesterday"
+   * when deciding whether to send another. */
+  boostPromo?: {
+    emailCount: number;
+    whatsappCount: number;
+    /** Newest send on any channel, ISO. Null only when nothing was ever sent. */
+    lastSentAt: string | null;
+  };
   /** Buyer-inquiry (`type: "inquiry"`) conversation count — never counts the admin↔owner
    * moderation thread. Only populated in the admin moderation queue (ListingsService.listForAdmin),
    * same precedent as postedNotificationSent above. */

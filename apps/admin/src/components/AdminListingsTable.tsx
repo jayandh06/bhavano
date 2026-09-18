@@ -274,6 +274,13 @@ export function AdminListingsTable({
       defaultVisible: true,
       nowrap: true,
     },
+    {
+      key: "boostPromo",
+      label: "Boost promo",
+      render: (item) => <BoostPromoBadge promo={item.boostPromo} />,
+      defaultVisible: true,
+      nowrap: true,
+    },
     { key: "views", label: "Views", sortField: "viewCount", render: (item) => item.viewCount, defaultVisible: true },
     { key: "likes", label: "Likes", sortField: "likeCount", render: (item) => item.likeCount, defaultVisible: true },
     {
@@ -736,7 +743,32 @@ function PostedNotificationBadge({
   return <Badge label={label} color={color} />;
 }
 
-/** One pill, so the five badges above don't each carry their own copy of the same eight style
+/** Whether the Boost / Instant Alerts promotion has gone to this listing's owner, on which
+ * channels, how many times and when the last one went.
+ *
+ * Counts, not a yes/no, because unlike the posted acknowledgement this one repeats: it can go
+ * again after its 14-day cooldown, and "3× email, last in July" is a different decision from
+ * "1×, yesterday" when choosing whether to send another. An owner with both an email and a phone
+ * gets one row per channel per send, so `2× email · 2× WhatsApp` means two sends, not four.
+ *
+ * "WhatsApp", not "SMS": the promotion has never gone out over SMS — the two channels are the
+ * templated WhatsApp message and the email. */
+function BoostPromoBadge({ promo }: { promo?: { emailCount: number; whatsappCount: number; lastSentAt: string | null } }) {
+  if (!promo) return dash;
+  const parts = [
+    promo.emailCount > 0 ? `${promo.emailCount}× email` : null,
+    promo.whatsappCount > 0 ? `${promo.whatsappCount}× WhatsApp` : null,
+  ].filter(Boolean);
+  if (parts.length === 0) return <Badge label="Never sent" color="var(--muted)" borderColor="var(--border)" />;
+  return (
+    <Badge
+      label={`${parts.join(" · ")}${promo.lastSentAt ? ` · ${formatDate(promo.lastSentAt)}` : ""}`}
+      color="var(--green)"
+    />
+  );
+}
+
+/** One pill, so the badges above don't each carry their own copy of the same eight style
  * properties. */
 function Badge({ label, color, borderColor }: { label: string; color: string; borderColor?: string }) {
   return (

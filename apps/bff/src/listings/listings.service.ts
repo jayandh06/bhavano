@@ -723,7 +723,16 @@ export class ListingsService {
           ...LISTING_MEDIA_INCLUDE,
           // Newest "posted" row only — mirrors AdminService.listUsers' notificationLogs include
           // for the "welcomed" column. Admin-only: no other listForAdmin caller pays for this.
-          notificationLogs: { where: { kind: 'posted' }, orderBy: { sentAt: 'desc' }, take: 1 },
+          notificationLogs: {
+            // Both kinds in one relation load rather than two includes (Prisma allows only one
+            // per relation): 'posted' is a one-shot the columns below read as newest-only, and
+            // every 'boost_promo' row is needed since the point is how many went out. `take` is
+            // generous rather than absent — a listing promoted every cooldown for a year is 26
+            // rows, and nothing here wants an unbounded relation load.
+            where: { kind: { in: ['posted', 'boost_promo'] } },
+            orderBy: { sentAt: 'desc' },
+            take: 60,
+          },
           // Buyer-inquiry count for the admin dashboard's Messages column — a filtered relation
           // count, not a second query, and never includes the admin↔owner moderation thread
           // (same listingId, different `type`).
@@ -738,16 +747,28 @@ export class ListingsService {
 
     // Admin queue — every viewer here is an admin, so full video status/entitlement visibility.
     return {
-      items: rows.map((row) => ({
+      items: rows.map((row) => {
+        // Split here rather than in two queries — see the include's own comment.
+        const posted = row.notificationLogs.filter((log) => log.kind === 'posted');
+        const promos = row.notificationLogs.filter((log) => log.kind === 'boost_promo');
+        return {
         ...this.toDetailDto(row, undefined, true),
-        postedNotificationSent: row.notificationLogs.length > 0,
-        postedNotificationChannel: row.notificationLogs[0]?.channel ?? null,
-        postedNotificationSentAt: row.notificationLogs[0]?.sentAt.toISOString() ?? null,
-        postedNotificationDeliveryStatus: row.notificationLogs[0]?.deliveryStatus ?? null,
+        postedNotificationSent: posted.length > 0,
+        postedNotificationChannel: posted[0]?.channel ?? null,
+        postedNotificationSentAt: posted[0]?.sentAt.toISOString() ?? null,
+        postedNotificationDeliveryStatus: posted[0]?.deliveryStatus ?? null,
+        boostPromo: {
+          emailCount: promos.filter((log) => log.channel === 'email').length,
+          whatsappCount: promos.filter((log) => log.channel === 'whatsapp').length,
+          // Ordered newest-first by the include, so the first row is the latest send on any
+          // channel — an owner with both gets two rows a second apart, and either answers "when".
+          lastSentAt: promos[0]?.sentAt.toISOString() ?? null,
+        },
         messageCount: row._count.conversations,
         source: row.source,
         claimSource: row.claimSource,
-      })),
+        };
+      }),
       total,
     };
   }
