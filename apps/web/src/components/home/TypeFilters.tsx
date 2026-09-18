@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ListingCategory } from "@bhavano/types";
-import { HOME_TABS, type HomeTabValue } from "@/lib/homeCategories";
+import type { HomeTabValue } from "@/lib/homeCategories";
 import { buildFilterUrl } from "@/lib/filterUrl";
 import { assetsForIntent, intentOffersAssets } from "@/lib/assetFilters";
 // From seoRoute, not browseRoute: the latter re-exports these but also pulls in lib/bff,
@@ -33,70 +33,6 @@ function urlForSelection(params: {
     asset: intentOffersAssets(intent) ? asset : base.category,
     searchParams,
   });
-}
-
-/**
- * The transaction filter: this product's real top-level choice — All, Buy, Rent & Lease, PG,
- * Furniture, Interiors — read from `HOME_TABS` so it and the tab row can never disagree about the
- * vocabulary, and resolved from the URL by the caller via `homeCategoryForSegments` so they can
- * never disagree about which one is active.
- */
-export function TransactionFilter({
-  cityName,
-  areaName,
-  activeIntent,
-  activeAsset,
-}: {
-  cityName?: string;
-  areaName?: string;
-  activeIntent: HomeTabValue;
-  activeAsset?: ListingCategory;
-}) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  useClickOutside(containerRef, () => setOpen(false));
-  const panelRef = useRef<HTMLDivElement>(null);
-  useClampToViewport(panelRef, open);
-
-  const label = HOME_TABS.find((tab) => tab.value === activeIntent)?.label ?? "All";
-
-  function select(intent: HomeTabValue) {
-    setOpen(false);
-    router.push(
-      urlForSelection({
-        intent,
-        // Carried over only where it still exists under the new intent: switching Rent & Lease to
-        // Buy while holding an asset that is rent-only would otherwise build a path that parses,
-        // returns nothing, and looks broken.
-        asset: activeAsset && assetsForIntent(intent).includes(activeAsset) ? activeAsset : undefined,
-        cityName,
-        areaName,
-        searchParams,
-      }),
-    );
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button onClick={() => setOpen((o) => !o)} className={buttonClass(open || activeIntent !== "all")}>
-        <Icon name="key" /> {label} <Icon name="chevronDown" className="text-muted" />
-      </button>
-      {open && (
-        <div ref={panelRef} className={dropdownClass}>
-          {HOME_TABS.map((tab) => (
-            <Option
-              key={tab.value}
-              label={tab.label}
-              active={activeIntent === tab.value}
-              onClick={() => select(tab.value)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 /**

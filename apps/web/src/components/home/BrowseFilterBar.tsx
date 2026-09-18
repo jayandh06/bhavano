@@ -98,8 +98,8 @@ export function BrowseFilterBar({
   };
 
   // No bottom margin here — this sits as one flex item inside BrowseListingsView's shared
-  // `flex flex-wrap` filter row alongside AreaFilter/TransactionFilter/AssetTypeFilter/BhkFilter,
-  // not stacked below them. A margin on a flex item still counts toward that row's height even
+  // `flex flex-wrap` filter row alongside AreaFilter/AssetTypeFilter/BhkFilter, not stacked below
+  // them. A margin on a flex item still counts toward that row's height even
   // under `items-start`, so the `mb-5` this used to carry (from before it lived in that row)
   // was adding 20px of dead space under the whole filter box on every page where this actually
   // renders a pill — every single-category tab (PG/Furniture/Interiors) and Buy/Rent once a

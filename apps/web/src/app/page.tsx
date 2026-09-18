@@ -9,7 +9,7 @@ import { Header } from "@/components/home/Header";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
 import { Icon } from "@/components/home/Icon";
 import { AreaFilter } from "@/components/home/AreaFilter";
-import { AssetTypeFilter, TransactionFilter } from "@/components/home/TypeFilters";
+import { AssetTypeFilter } from "@/components/home/TypeFilters";
 import { BhkFilter } from "@/components/home/BhkFilter";
 import { hasAssetFilter } from "@/lib/assetFilters";
 import { ListingGrid } from "@/components/home/ListingGrid";
@@ -230,9 +230,10 @@ export default async function HomePage({
             {/* Area first when a city is chosen, same reasoning as the browse pages. City itself
               * stays a top-level choice in the header, not a filter — see BrowseListingsView. */}
             {resolvedCity && <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />}
-            {/* activeTab.value already *is* the intent here — the homepage's tab row and this
-              * filter speak the same vocabulary, so no translation is needed. */}
-            <TransactionFilter cityName={resolvedCity?.name} activeIntent={activeTab.value} activeAsset={homeAsset} />
+            {/* No transaction-type pill here — the tab row above it (CategoryTabs) already *is*
+              * that choice (All/Buy/Rent & Lease/PG/Furniture/Interiors) with identical options and
+              * identical navigation, just in a second style. Same removal as BrowseListingsView's
+              * own filter row. */}
             <AssetTypeFilter cityName={resolvedCity?.name} activeIntent={activeTab.value} activeAsset={homeAsset} />
             {/* 1 BHK … 5+ BHK, once the chosen asset actually has bedrooms per
               * CATEGORY_FIELD_CONFIG. `query` mode because the homepage has no browse path — it

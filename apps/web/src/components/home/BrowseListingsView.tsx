@@ -12,7 +12,7 @@ import { SearchTracker } from "./SearchTracker";
 import { RequirementPrompt } from "./RequirementPrompt";
 import { Icon } from "./Icon";
 import { AreaFilter } from "./AreaFilter";
-import { AssetTypeFilter, TransactionFilter } from "./TypeFilters";
+import { AssetTypeFilter } from "./TypeFilters";
 import { hasAssetFilter } from "@/lib/assetFilters";
 import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
@@ -199,19 +199,16 @@ export async function BrowseListingsView({
               {cityName && (
                 <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
               )}
-              {/* Then the transaction and asset, at every depth a real tab resolves to (group-root
-                * pages included, e.g. /buy or /bengaluru/buy with no asset chosen yet). Everything
-                * after them is asset-dependent: BrowseFilterBar's price brackets are sized from
+              {/* Then the asset, at every depth a real tab resolves to (group-root pages included,
+                * e.g. /buy or /bengaluru/buy with no asset chosen yet). No transaction-type pill
+                * here — the tab row above (CategoryTabs) already *is* that choice (All/Buy/Rent &
+                * Lease/PG/Furniture/Interiors), and this dropdown offered the identical options
+                * with identical navigation, just in a second style. Everything after this filter
+                * is asset-dependent: BrowseFilterBar's price brackets are sized from
                 * PRICE_BOUNDS[category] and BhkFilter only means anything where the config says the
                 * asset has bedrooms, so those appear once an asset is chosen rather than guessing a
                 * scale that would be wrong for a ₹4,000 sofa and a ₹90L flat at once. See
                 * docs/plans/contextual-search-filters.md. */}
-              <TransactionFilter
-                cityName={cityName}
-                areaName={pathAreaName}
-                activeIntent={activeIntent}
-                activeAsset={currentSegments.category}
-              />
               <AssetTypeFilter
                 cityName={cityName}
                 areaName={pathAreaName}
