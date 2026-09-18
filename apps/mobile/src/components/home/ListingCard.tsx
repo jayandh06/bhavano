@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View, Linking } from "react-native";
+import { Image, Pressable, Share, StyleSheet, Text, View, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import type { ListingCardDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { BffError, revealContact, toggleFavourite } from "../../lib/bffClient";
+import { publicWebUrl } from "../../lib/appWebUrl";
 import { Icon } from "../Icon";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
@@ -20,6 +21,21 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
 
   // TEMP(auth-gate): viewing listing details is open without login for now.
   const openDetail = () => router.push(`/listing/${item.id}`);
+
+  // The plain, untagged public URL (see publicWebUrl's own doc comment for why not appWebUrl) —
+  // `/listings/{id}` redirects to the real canonical page (see apps/web/src/app/listings/[id]/
+  // page.tsx), so a recipient with no app installed still lands on a real, working listing page.
+  // `message` carries the URL as text on both platforms — Share's own dedicated `url` field is
+  // iOS-only, so Android would otherwise get a share sheet with no link in it at all.
+  async function onShare() {
+    const url = publicWebUrl(`/listings/${item.id}`);
+    try {
+      await Share.share({ message: `${item.title} — ${item.price}\n${url}`, url, title: item.title });
+    } catch {
+      // Share.share() resolves normally on a plain dismiss — this only catches the share sheet
+      // itself genuinely failing to open, which has nothing to recover from or show an error for.
+    }
+  }
 
   async function onToggleFavourite() {
     if (!accessToken) {
@@ -94,6 +110,11 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             </View>
           )}
         </View>
+        {/* Sits here rather than the actions row below so it's visible on your own listing too,
+          * unlike Message/Contact there — sharing your own ad is a real use case those aren't. */}
+        <Pressable onPress={onShare} style={styles.shareButton}>
+          <Icon name="share" size={14} color="#000" />
+        </Pressable>
         <Pressable onPress={onToggleFavourite} style={styles.heartButton}>
           <Icon name="heart" size={14} filled={isFavourited} color={isFavourited ? "#c0554b" : "#000"} />
         </Pressable>
@@ -201,6 +222,20 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#ffffffee",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Same 28px circle, same fixed near-white background as heartButton — this sits on a photo,
+  // not a themed surface, so a theme-aware color would vanish into it in dark mode just the
+  // same way. 8 (heartButton's own right inset) + 28 (its width) + 8 (gap) = 44.
+  shareButton: {
+    position: "absolute",
+    top: 8,
+    right: 44,
     width: 28,
     height: 28,
     borderRadius: 14,

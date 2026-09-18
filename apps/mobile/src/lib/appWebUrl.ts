@@ -11,3 +11,13 @@ export function appWebUrl(path: string): string {
   const separator = path.includes("?") ? "&" : "?";
   return `${SITE_URL}${path}${separator}app=1`;
 }
+
+/**
+ * A plain bhavano.com URL with no `app=1` tag — for a link handed to someone else entirely
+ * (native Share sheet, WhatsApp, copy-link), not opened in this app's own in-app browser. That
+ * tag means "this visit came from our own in-app browser" to the web app's middleware; tagging a
+ * link a recipient opens in their own regular browser would misattribute their visit as ours.
+ */
+export function publicWebUrl(path: string): string {
+  return `${SITE_URL}${path}`;
+}

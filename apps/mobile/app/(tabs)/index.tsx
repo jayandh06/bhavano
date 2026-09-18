@@ -266,17 +266,24 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.filterSortRow}>
-              <Pressable
-                onPress={() => filterSheetRef.current?.present()}
-                style={[styles.pillButton, { backgroundColor: colors.surfaceAlt, borderColor: filterCount > 0 ? colors.green : colors.border }]}
-              >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: filterCount > 0 ? colors.green : colors.text }}>Filters</Text>
-                {filterCount > 0 && (
-                  <View style={[styles.badge, { backgroundColor: colors.green }]}>
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.onGreen }}>{filterCount}</Text>
-                  </View>
-                )}
-              </Pressable>
+              {/* The All tab mixes every category together, so none of these filters mean one
+                * consistent thing across a PG, a plot, and a sofa in the same list — same
+                * reasoning as the web app's own filter row, which hides itself the same way (see
+                * BrowseListingsView.tsx). Sort still applies fine regardless of category, so it
+                * stays. */}
+              {category !== "all" && (
+                <Pressable
+                  onPress={() => filterSheetRef.current?.present()}
+                  style={[styles.pillButton, { backgroundColor: colors.surfaceAlt, borderColor: filterCount > 0 ? colors.green : colors.border }]}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: filterCount > 0 ? colors.green : colors.text }}>Filters</Text>
+                  {filterCount > 0 && (
+                    <View style={[styles.badge, { backgroundColor: colors.green }]}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: colors.onGreen }}>{filterCount}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              )}
               <Pressable
                 onPress={() => sortSheetRef.current?.present()}
                 style={[styles.pillButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}

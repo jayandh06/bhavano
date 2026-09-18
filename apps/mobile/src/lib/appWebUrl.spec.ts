@@ -1,4 +1,4 @@
-import { appWebUrl } from "./appWebUrl";
+import { appWebUrl, publicWebUrl } from "./appWebUrl";
 
 describe("appWebUrl", () => {
   it("tags a plain path with app=1", () => {
@@ -19,5 +19,11 @@ describe("appWebUrl", () => {
     const { appWebUrl: appWebUrlWithEnv } = require("./appWebUrl");
     expect(appWebUrlWithEnv("/post")).toBe("https://staging.bhavano.com/post?app=1");
     process.env.EXPO_PUBLIC_SITE_URL = prev;
+  });
+});
+
+describe("publicWebUrl", () => {
+  it("builds a plain URL with no app=1 tag, for links handed to someone else", () => {
+    expect(publicWebUrl("/listings/abc123")).toBe("https://bhavano.com/listings/abc123");
   });
 });
