@@ -60,6 +60,13 @@ services:
       # just this one send (logs and skips), same degrade as every other MSG91_WHATSAPP_* var here.
       MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME: ${MSG91_WHATSAPP_CLAIM_TEMPLATE_NAME}
       MSG91_WHATSAPP_CLAIM_NAMESPACE: ${MSG91_WHATSAPP_CLAIM_NAMESPACE}
+      # The approved template for the admin-sent Boost / Instant Alerts offer —
+      # "ad_boost_instant_alert", 4 positional body variables and TWO url buttons (Boost, and
+      # Boost + Instant Alerts), with its own namespace like every other template here. Unset
+      # disables just this one send: a phone-only owner is reported as skipped rather than as a
+      # send that never happened (see Msg91Provider.sendBoostPromotion).
+      MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME: ${MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME}
+      MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE: ${MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE}
       # Validates inbound MSG91 WhatsApp status webhooks — see WhatsappWebhookController and
       # .env.production.example's own comment on this var.
       MSG91_WEBHOOK_SECRET: ${MSG91_WEBHOOK_SECRET}
