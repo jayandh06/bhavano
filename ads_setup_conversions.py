@@ -34,6 +34,11 @@ CONVERSIONS = [
     ("Boost purchase", "PURCHASE", True),
     ("Subscription purchase", "PURCHASE", True),
     ("Contact reveal credits purchase", "PURCHASE", True),
+    # Added 2026-09-20. The only paid product with no conversion action: its dataLayer event
+    # (instant_alerts_purchase, pushed by InstantAlertsProvider with value and currency) had
+    # nowhere to land, so those purchases reached neither GA4 nor Ads. Same shape as the three
+    # above — a real payment, so it carries its own value rather than a default.
+    ("Instant alerts purchase", "PURCHASE", True),
     ("Post ad success", "SUBMIT_LEAD_FORM", False),
     ("New registration", "SIGNUP", False),
     ("Save a search", "SUBMIT_LEAD_FORM", False),
@@ -44,6 +49,7 @@ EVENT_FOR = {
     "Boost purchase": "boost_purchase",
     "Subscription purchase": "subscription_purchase",
     "Contact reveal credits purchase": "contact_reveal_credits_purchase",
+    "Instant alerts purchase": "instant_alerts_purchase",
     "Post ad success": "post_ad_success",
     "New registration": "signup_complete",
     "Save a search": "save_search",

@@ -65,6 +65,8 @@ EVENTS = {
     "begin_checkout_subscription": ["transactionId", "tier", "months", "value", "currency"],
     "contact_reveal_credits_purchase": ["transactionId", "listingId", "value", "currency"],
     "begin_checkout_contact_reveal_credits": ["transactionId", "listingId", "value", "currency"],
+    "instant_alerts_purchase": ["transactionId", "listingId", "value", "currency"],
+    "begin_checkout_instant_alerts": ["transactionId", "listingId", "value", "currency"],
     "signup_complete": ["method"],
     "save_search": ["category", "transactionType"],
     "contact_owner": ["listingId"],
@@ -77,13 +79,24 @@ EVENTS = {
 # ads_setup_conversions.py (re-run it to re-print these). Event name -> label.
 ADS_CONVERSION_LABELS = {
     "boost_purchase": "wj7ACIPWxOgcEK2A5K5E",
+    # Empty until the action exists in Ads — paste the label here and re-run. Until then the tag
+    # below is skipped rather than created with a blank label, which would fire a conversion Ads
+    # cannot attribute to anything. InstantAlertsProvider has been pushing this event with its
+    # value all along; it was the only paid product with no Ads action to receive it, so those
+    # purchases have been reaching neither GA4 nor Ads.
+    "instant_alerts_purchase": "",
     "subscription_purchase": "mmAyCIbWxOgcEK2A5K5E",
     "contact_reveal_credits_purchase": "fUb6CMu5wfEcEK2A5K5E",
     "post_ad_success": "ztuNCInWxOgcEK2A5K5E",
     "signup_complete": "PH9hCIzWxOgcEK2A5K5E",
     "save_search": "5zhCCI_WxOgcEK2A5K5E",
 }
-ADS_VALUE_EVENTS = {"boost_purchase", "subscription_purchase", "contact_reveal_credits_purchase"}
+ADS_VALUE_EVENTS = {
+    "boost_purchase",
+    "subscription_purchase",
+    "contact_reveal_credits_purchase",
+    "instant_alerts_purchase",
+}
 
 DRY = "--dry-run" in sys.argv
 
@@ -253,6 +266,12 @@ def main():
         print("  Google Ads, put their labels in this file, and re-run to add them.")
     for event, label in ADS_CONVERSION_LABELS.items():
         name = "Ads - %s" % event
+        if not label:
+            # A blank label is "the action does not exist in Ads yet", not "send conversions with
+            # no label" — the latter reports a conversion Ads cannot attribute, which is worse
+            # than reporting none.
+            print("  NEEDS LABEL   tag       %s (add its label to ADS_CONVERSION_LABELS)" % name)
+            continue
         if name in have_tags:
             print("  exists        tag       %s" % name)
             continue

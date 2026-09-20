@@ -281,3 +281,45 @@ workspace unpublished since the contact form was built, while `ContactForm.tsx` 
 the event. Every submission between the form going live and version 5 was dropped. Building in the
 workspace and publishing are separate acts, and `gtm_audit.py` reads the *workspace* — use
 `gtm_publish.py --dry-run`, which diffs against the live version, to see what is actually serving.
+
+
+## Instant Alerts was never wired (found 2026-09-20)
+
+Of the four paid products, three report a conversion to Ads with its rupee value —
+`boost_purchase`, `subscription_purchase`, `contact_reveal_credits_purchase`, each with
+`conversionValue`, `currencyCode` and `orderId`. **Instant Alerts reported nothing to anywhere.**
+
+`InstantAlertsProvider` has been pushing `instant_alerts_purchase` with `value` and `currency` on
+every successful payment since it was built. The string `instant_alert` appeared nowhere in
+`gtm_build.py`: no `EVENTS` entry, no trigger, no GA4 tag, no `ADS_CONVERSION_LABELS` entry. The
+event fired into an empty container slot — the same failure mode this document's own closing note
+describes for `contact_form_submit`, except that one was built-but-unpublished while this was never
+built at all. Worth generalising: **a dataLayer push is not instrumentation.** The push, the
+trigger, the tag and the published version are four separate acts, and code review only ever sees
+the first.
+
+Prepared, not yet applied:
+
+- `gtm_build.py` gains `instant_alerts_purchase` and `begin_checkout_instant_alerts` in `EVENTS`
+  (so GA4 receives them like the other three pairs), and `instant_alerts_purchase` in
+  `ADS_VALUE_EVENTS`. Its `ADS_CONVERSION_LABELS` entry is deliberately `""` until the action
+  exists in Ads, and the tag loop now **skips a blank label** with a `NEEDS LABEL` line rather than
+  creating a tag with an empty label — which would report a conversion Ads cannot attribute, worse
+  than reporting none.
+- `ads_setup_conversions.py` gains `("Instant alerts purchase", "PURCHASE", True)`, so the action
+  is created by the same idempotent script as the others and prints its label.
+
+**Blocked on:** the Google Ads OAuth refresh token is expired or revoked
+(`invalid_grant: Token has been expired or revoked`), so every `ads_*.py` script — including
+`ads_report.py` — currently fails before it reaches the API. Re-authorising needs an interactive
+browser flow. Once that is done: run `ads_setup_conversions.py`, paste the printed label into
+`ADS_CONVERSION_LABELS`, run `gtm_build.py`, then publish the workspace.
+
+### Still uninstrumented, and deliberate to name here
+
+- **No purchase is uploaded server-side.** `GoogleAdsConversionProvider` covers only
+  `NEW_REGISTRATION` and `POST_AD_SUCCESS`. All four paid conversions depend on the browser tag
+  firing, so an ad blocker loses the conversion with no backstop — even though the Razorpay webhook
+  knows the exact amount. See `server-side-google-ads-conversion-upload.md`.
+- **Mobile reports nothing.** `apps/mobile` has no GTM, Firebase or gtag; a purchase through
+  `RazorpayCheckout` is invisible to both GA4 and Ads.
