@@ -108,6 +108,52 @@ Authorization: Bearer <access token, datamanager-scoped>
 `adsConversionUploadedAt` migration on `User`, module wiring (`AdsModule` imported by
 `AuthModule`/`ListingsModule`) — see the commit for full detail.
 
+## Part D — Purchases (2026-09-20)
+
+Extended to every paid purchase, for a reason the data made plain. In 30 days Razorpay took 12
+payments worth ₹1,000.50, **10 of them from a stored gclid** (`google/cpc`) worth ₹752, while
+Google Ads showed one purchase conversion: ₹149. The browser tag only fires in a browser, and this
+product's sellers manage their listings in the mobile app, where no tag can run at all.
+
+- **Four `UPLOAD_CLICKS` actions** created by `ads_create_offline_conversion_actions.py`: Boost
+  purchase (offline) `7781548730`, Instant alerts purchase (offline) `7781544854`, Contact reveal
+  credits purchase (offline) `7781653126`, Subscription purchase (offline) `7781648601` — the last
+  shared by all three tiers, matching how the client tag already grouped them.
+- **A `--dry-run` caught a duplicate before it happened.** The script's names for the two original
+  actions no longer matched the account: they had been renamed in the Ads UI, the upload actions
+  taking the plain names and the superseded webpage ones suffixed `_removed`. Running it blind
+  would have created a second "New registration (offline)" and "Post ad success (offline)".
+- **The provider now carries `conversionValue` + `currency`** (Data Manager's own field names) and
+  an `eventSource` of WEB or APP. Value is `Payment.amount / 100` — rupees, after discount, the
+  figure actually charged.
+- **Two new `Payment` columns**, captured at order time because the webhook is a server-to-server
+  callback that sees neither: `adsTrackingAuthorized` (an ATT denial must never become an upload)
+  and `platform` (from a new `X-Client: app` header, so an in-app purchase reports as APP —
+  older mobile builds send nothing, which reads as unknown, not as web).
+- **`PaymentsService.reportPurchaseConversion`** fires from the webhook after the row is marked
+  paid, fire-and-forget. `transactionId` is the payment id, so a Razorpay webhook retry updates
+  that event rather than counting a second conversion. 11 tests.
+- **Part A repeated for purchases**: `gtm_disable_ads_tags.py` now also pauses
+  `Ads - boost_purchase`, `Ads - subscription_purchase`, `Ads - contact_reveal_credits_purchase`
+  and `Ads - instant_alerts_purchase`, published as container **version 9**. Without that, a web
+  purchase would report twice — once per path, into two different conversion actions, which
+  Google's own dedupe does not catch because it works within an action, not across them.
+- **Backfill**: the 11 historical paid purchases were uploaded through the same service method,
+  skipping the one subscription the browser tag had already counted.
+
+### A correction worth keeping
+
+Mid-investigation I read "Boost purchase: 0 conversions" from the Ads API and concluded the web tag
+was broken for boosts. An hour later the same query returned **5 conversions, ₹380**. Ads conversion
+reporting lags by hours and backfills against the *click* date, so a zero for recent purchases means
+"not yet attributed", not "not recorded". The genuine gap was narrower than it looked: web purchases
+were being counted, in-app ones were not.
+
+One consequence of acting before that was clear: the backfill re-uploaded purchases the tag had
+already counted, so up to 5 boost conversions (~₹380) now appear in **both** the webpage action and
+the offline one for 14–20 September. Count one action or the other for that window, not their sum.
+Everything from version 9 onward reports through exactly one path.
+
 ## Verification
 
 1. ✅ Manual prerequisites done, confirmed via a real `events:ingest` smoke test (`200`,

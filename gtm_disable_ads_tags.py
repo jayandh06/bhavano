@@ -1,4 +1,4 @@
-"""Pauses the two client-side Ads conversion tags that server-side upload replaces.
+"""Pauses the client-side Ads conversion tags that server-side upload replaces.
 
 Part A of docs/plans/server-side-google-ads-conversion-upload.md. The bff now uploads
 `New registration` / `Post ad success` conversions directly to Google Ads
@@ -22,7 +22,18 @@ import argparse
 
 import gtm_api
 
-TAG_NAMES = ["Ads - signup_complete", "Ads - post_ad_success"]
+TAG_NAMES = [
+    "Ads - signup_complete",
+    "Ads - post_ad_success",
+    # Purchases, added 2026-09-20 when the Razorpay webhook began uploading them
+    # (PaymentsService.reportPurchaseConversion). Same reason as the two above, with one extra:
+    # the browser tag cannot fire at all for a purchase made in the mobile app, so leaving it on
+    # would keep web purchases double-counted while still missing every in-app one.
+    "Ads - boost_purchase",
+    "Ads - subscription_purchase",
+    "Ads - contact_reveal_credits_purchase",
+    "Ads - instant_alerts_purchase",
+]
 
 
 def main():
