@@ -12,11 +12,28 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { PaymentsService } from './payments.service';
+import { parseTrackingAuthorized } from '../ads/tracking-authorized';
 import { CreateBoostOrderDto } from './dto/create-boost-order.dto';
 import { CreateSubscriptionOrderDto } from './dto/create-subscription-order.dto';
 import { CreateContactRevealCreditsOrderDto } from './dto/create-contact-reveal-credits-order.dto';
 import { CreateInstantAlertsOrderDto } from './dto/create-instant-alerts-order.dto';
 import { PreviewBoostPricingDto } from './dto/preview-boost-pricing.dto';
+
+/** What the order needs to remember about the client for the sake of the conversion upload that
+ * happens much later, in a webhook with none of this context: whether ad tracking was allowed
+ * (iOS ATT — see ads/tracking-authorized.ts) and which client the purchase was made from.
+ * `x-client` is absent from every mobile build shipped before it existed, so null means unknown
+ * rather than web. */
+function purchaseContext(trackingHeader?: string, clientHeader?: string): {
+  adsTrackingAuthorized?: boolean;
+  platform?: string;
+} {
+  const authorized = parseTrackingAuthorized(trackingHeader);
+  return {
+    ...(authorized === false ? { adsTrackingAuthorized: false } : {}),
+    ...(clientHeader === 'app' || clientHeader === 'web' ? { platform: clientHeader } : {}),
+  };
+}
 
 @Controller('payments')
 export class PaymentsController {
@@ -24,8 +41,20 @@ export class PaymentsController {
 
   @Post('orders')
   @UseGuards(AuthGuard)
-  createOrder(@Body() dto: CreateBoostOrderDto, @CurrentUser() user: RequestUser): Promise<CreateBoostOrderResponseDto> {
-    return this.paymentsService.createBoostOrder(user.id, dto.listingId, dto.boostDays, dto.discountCode, dto.includeInstantAlerts);
+  createOrder(
+    @Body() dto: CreateBoostOrderDto,
+    @CurrentUser() user: RequestUser,
+    @Headers('x-tracking-authorized') tracking?: string,
+    @Headers('x-client') client?: string,
+  ): Promise<CreateBoostOrderResponseDto> {
+    return this.paymentsService.createBoostOrder(
+      user.id,
+      dto.listingId,
+      dto.boostDays,
+      dto.discountCode,
+      dto.includeInstantAlerts,
+      purchaseContext(tracking, client),
+    );
   }
 
   @Get('boost-pricing-preview')
@@ -42,8 +71,17 @@ export class PaymentsController {
   createSubscriptionOrder(
     @Body() dto: CreateSubscriptionOrderDto,
     @CurrentUser() user: RequestUser,
+    @Headers('x-tracking-authorized') tracking?: string,
+    @Headers('x-client') client?: string,
   ): Promise<CreateSubscriptionOrderResponseDto> {
-    return this.paymentsService.createSubscriptionOrder(user.id, dto.tier, dto.months, dto.agentProUnits, dto.discountCode);
+    return this.paymentsService.createSubscriptionOrder(
+      user.id,
+      dto.tier,
+      dto.months,
+      dto.agentProUnits,
+      dto.discountCode,
+      purchaseContext(tracking, client),
+    );
   }
 
   @Post('instant-alerts')
@@ -51,8 +89,15 @@ export class PaymentsController {
   createInstantAlertsOrder(
     @Body() dto: CreateInstantAlertsOrderDto,
     @CurrentUser() user: RequestUser,
+    @Headers('x-tracking-authorized') tracking?: string,
+    @Headers('x-client') client?: string,
   ): Promise<CreateInstantAlertsOrderResponseDto> {
-    return this.paymentsService.createInstantAlertsOrder(user.id, dto.listingId, dto.discountCode);
+    return this.paymentsService.createInstantAlertsOrder(
+      user.id,
+      dto.listingId,
+      dto.discountCode,
+      purchaseContext(tracking, client),
+    );
   }
 
   @Post('contact-reveal-credits')
@@ -60,8 +105,14 @@ export class PaymentsController {
   createContactRevealCreditsOrder(
     @Body() dto: CreateContactRevealCreditsOrderDto,
     @CurrentUser() user: RequestUser,
+    @Headers('x-tracking-authorized') tracking?: string,
+    @Headers('x-client') client?: string,
   ): Promise<CreateContactRevealCreditsOrderResponseDto> {
-    return this.paymentsService.createContactRevealCreditsOrder(user.id, dto.discountCode);
+    return this.paymentsService.createContactRevealCreditsOrder(
+      user.id,
+      dto.discountCode,
+      purchaseContext(tracking, client),
+    );
   }
 
   /** Public (no AuthGuard) — Razorpay calls this server-to-server, authenticated by HMAC

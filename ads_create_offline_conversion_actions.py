@@ -27,9 +27,21 @@ CID = "4214066478"
 DRY = "--dry-run" in sys.argv
 
 # name -> category
+# Names must match what is actually in the account, or skip-if-exists silently creates a
+# duplicate. These two were renamed in the Ads UI after creation: the UPLOAD_CLICKS actions took
+# the plain names and the superseded WEBPAGE ones were suffixed "_removed". A --dry-run on
+# 2026-09-20 still listed them as "(offline)" and would have created a second copy of each.
 ACTIONS = [
-    ("New registration (offline)", "SIGNUP"),
-    ("Post ad success (offline)", "SUBMIT_LEAD_FORM"),
+    ("New registration", "SIGNUP"),
+    ("Post ad success", "SUBMIT_LEAD_FORM"),
+    # Purchases, added 2026-09-20. The client-side WEBPAGE tags only fire in a browser, so every
+    # in-app purchase was invisible to Ads — 9 boost payments from google/cpc clicks recorded as
+    # zero conversions. These are uploaded from the Razorpay webhook instead, which sees the
+    # purpose, the exact amount and the buyer's stored gclid regardless of platform or ad blocker.
+    ("Boost purchase (offline)", "PURCHASE"),
+    ("Instant alerts purchase (offline)", "PURCHASE"),
+    ("Contact reveal credits purchase (offline)", "PURCHASE"),
+    ("Subscription purchase (offline)", "PURCHASE"),
 ]
 
 

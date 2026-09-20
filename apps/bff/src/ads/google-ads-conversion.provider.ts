@@ -13,6 +13,26 @@ import { toE164India } from '../outreach/phone';
 export const NEW_REGISTRATION_CONVERSION_ACTION_ID = '7750776144';
 export const POST_AD_SUCCESS_CONVERSION_ACTION_ID = '7750575968';
 
+/**
+ * Purchase upload actions, created 2026-09-20 by ads_create_offline_conversion_actions.py.
+ *
+ * They exist because the client-side WEBPAGE tags only fire in a browser: nine boost purchases
+ * from `google/cpc` clicks — every one with a gclid on file — were recorded by Ads as zero
+ * conversions, because the buying happens in the mobile app and in checkout flows a tag can miss.
+ * Uploading from the Razorpay webhook instead catches every paid purchase regardless of platform,
+ * ad blocker or closed tab, with the exact amount charged.
+ */
+export const PURCHASE_CONVERSION_ACTION_IDS: Record<string, string> = {
+  listing_boost: '7781548730',
+  instant_alerts: '7781544854',
+  contact_reveal_credits: '7781653126',
+  // The three subscription tiers share one action, matching how the client-side tag already
+  // reports them — GA4 still separates them by `tier`.
+  buyer_premium: '7781648601',
+  agent_pro: '7781648601',
+  seller_slot_pack: '7781648601',
+};
+
 interface UploadClickConversionInput {
   /** Optional — Google's own guidance for this account was "you are only importing events that
    * have both user-provided data and a click ID; send all events that have user-provided data,
@@ -30,6 +50,17 @@ interface UploadClickConversionInput {
   eventTimestamp: Date;
   email?: string | null;
   phone?: string | null;
+  /** The conversion's monetary value, for the purchase actions. Omitted for signup/post-ad,
+   * which are valueless by design — a ₹0 conversion would drag ROAS down rather than say
+   * nothing. Rupees, not paise: `Payment.amount / 100`, the figure actually charged after any
+   * discount, so bidding optimises against real revenue. */
+  value?: number;
+  /** ISO 4217, alongside `value`. Google rejects a value with no currency. */
+  currency?: string;
+  /** Where the conversion happened. Defaults to WEB, which is what every browser-side event is;
+   * a purchase made in the mobile app is APP. Wrong here is only a reporting-dimension error,
+   * but there is no reason to state it wrongly when the payment row knows. */
+  eventSource?: 'WEB' | 'APP';
 }
 
 const AW_CUSTOMER_ID = '4214066478';
@@ -108,7 +139,12 @@ export class GoogleAdsConversionProvider {
           transactionId: input.transactionId,
           ...(input.gclid ? { adIdentifiers: { gclid: input.gclid } } : {}),
           ...(userIdentifiers ? { userData: { userIdentifiers } } : {}),
-          eventSource: 'WEB',
+          // Both or neither: Google rejects a conversionValue with no currency, and a currency
+          // with no value says nothing.
+          ...(input.value !== undefined && input.currency
+            ? { conversionValue: input.value, currency: input.currency }
+            : {}),
+          eventSource: input.eventSource ?? 'WEB',
         },
       ],
     };

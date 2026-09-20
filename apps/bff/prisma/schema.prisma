@@ -879,6 +879,17 @@ model Payment {
   subscriptionMonths Int?
   /** agent_pro orders only — number of ₹499 blocks purchased (20 slots each). */
   agentProUnits     Int?
+  /** Whether this buyer's device allowed ad tracking, captured from `x-tracking-authorized` when
+   * the order was created. The Razorpay webhook that later reports this purchase to Google Ads is
+   * a server-to-server callback with no such header, so the decision has to be carried on the row
+   * — the alternative is uploading a conversion for someone who denied App Tracking Transparency.
+   * Null means never asked (web, or a mobile build predating the prompt), which is authorized. */
+  adsTrackingAuthorized Boolean?
+  /** "web" or "app", from `x-client` — null for clients that don't send it, including every
+   * mobile build shipped before that header existed. Feeds the upload's `eventSource` and answers
+   * a question the data could not previously: nine boost purchases from ad clicks recorded zero
+   * conversions, and whether that was mobile or a broken web tag was unknowable. */
+  platform          String?
   /** contact_reveal_credits orders only — how many credits this order buys, read from
    * ContactRevealSetting at order-creation time (never client-supplied). */
   creditPackSize    Int?

@@ -58,7 +58,17 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
     isTrackingAuthorized() === false ? { "X-Tracking-Authorized": "false" } : undefined;
   const res = await fetch(`${BFF_URL}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...trackingHeaders, ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      // Says which client this is, so a purchase made here is recorded as an app purchase rather
+      // than assumed to be web. It matters because the browser-side conversion tag cannot fire in
+      // this app at all: purchases made here were reported to Google Ads nowhere, and the payment
+      // row had no way to say so. Only takes effect for builds shipped after this — older
+      // installs send nothing, and the server reads that as unknown rather than as web.
+      "X-Client": "app",
+      ...trackingHeaders,
+      ...init?.headers,
+    },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");

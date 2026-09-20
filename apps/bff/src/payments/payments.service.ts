@@ -24,6 +24,10 @@ import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
 import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  GoogleAdsConversionProvider,
+  PURCHASE_CONVERSION_ACTION_IDS,
+} from '../ads/google-ads-conversion.provider';
 import { CONTACT_REVEAL_SETTINGS_ID, DEFAULT_CONTACT_REVEAL_SETTINGS } from '../contact-reveal/contact-reveal.constants';
 import {
   BOOST_PRICE_SETTINGS_ID,
@@ -49,6 +53,14 @@ function utcMonthKey(date = new Date()): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+/** Captured when an order is created and stored on the Payment, because the Razorpay webhook that
+ * later reports the purchase to Google Ads is a server-to-server callback that sees neither. See
+ * Payment.adsTrackingAuthorized / Payment.platform. */
+export interface PurchaseContext {
+  adsTrackingAuthorized?: boolean;
+  platform?: string;
+}
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -58,6 +70,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly notificationsService: NotificationsService,
+    private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
   ) {}
 
   private getRazorpay(): Razorpay {
@@ -69,6 +82,72 @@ export class PaymentsService {
     }
     this.razorpay = new Razorpay({ key_id, key_secret });
     return this.razorpay;
+  }
+
+  /**
+   * Tells Google Ads a purchase happened, with the amount actually charged.
+   *
+   * Uploaded server-side (Data Manager API, see GoogleAdsConversionProvider) rather than left to
+   * the client-side tag, for the reason the data showed: the tag only fires in a browser, so
+   * purchases made in the mobile app — where sellers manage their listings — were reported
+   * nowhere at all, and a blocked or closed tab loses a share of the rest.
+   *
+   * Three things gate it, all deliberate:
+   *
+   * - **ATT.** A buyer whose device denied App Tracking Transparency is never uploaded. That
+   *   decision is read from `Payment.adsTrackingAuthorized`, captured when the order was created,
+   *   because this webhook is a server-to-server callback with no such header.
+   * - **A known purpose.** An unmapped purpose uploads nothing rather than guessing an action.
+   * - **Identity.** The provider skips when there is neither a gclid nor a hashed email/phone —
+   *   an event Ads cannot attribute to anyone is noise.
+   *
+   * `transactionId` is the payment id, which is what makes this idempotent: Razorpay retries
+   * webhooks, and a repeated ingest with the same id updates that event rather than counting a
+   * second conversion.
+   */
+  private async reportPurchaseConversion(payment: {
+    id: string;
+    userId: string;
+    purpose: string;
+    amount: number;
+    currency: string;
+    paidAt: Date;
+    adsTrackingAuthorized: boolean | null;
+    platform: string | null;
+  }): Promise<void> {
+    if (payment.adsTrackingAuthorized === false) return;
+
+    const conversionActionId = PURCHASE_CONVERSION_ACTION_IDS[payment.purpose];
+    if (!conversionActionId) {
+      this.logger.warn(`No conversion action mapped for purpose ${payment.purpose} — not reported to Ads`);
+      return;
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payment.userId },
+      select: { email: true, phone: true, acquisitionGclid: true },
+    });
+    if (!user) return;
+
+    await this.googleAdsConversionProvider
+      .uploadClickConversion({
+        conversionActionId,
+        // Paise to rupees — the figure actually charged, discount included, matching what the
+        // client-side tag reports for the purchases it does see.
+        value: payment.amount / 100,
+        currency: payment.currency,
+        transactionId: payment.id,
+        eventTimestamp: payment.paidAt,
+        eventSource: payment.platform === 'app' ? 'APP' : 'WEB',
+        gclid: user.acquisitionGclid ?? undefined,
+        email: user.email,
+        phone: user.phone,
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Ads conversion upload failed for payment ${payment.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
   }
 
   private async activateListingBoost(listingId: string, boostDays: number, paymentId: string): Promise<void> {
@@ -256,6 +335,7 @@ export class PaymentsService {
     boostDays: BoostDurationDays,
     discountCode?: string,
     includeInstantAlerts = false,
+    context: PurchaseContext = {},
   ): Promise<CreateBoostOrderResponseDto> {
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
@@ -334,6 +414,7 @@ export class PaymentsService {
         boostDays,
         boostIncludesInstantAlerts: includeInstantAlerts,
         discountCodeId: discount?.id,
+        ...context,
       },
     });
 
@@ -407,6 +488,7 @@ export class PaymentsService {
     userId: string,
     listingId: string,
     discountCode?: string,
+    context: PurchaseContext = {},
   ): Promise<CreateInstantAlertsOrderResponseDto> {
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
@@ -437,6 +519,7 @@ export class PaymentsService {
         purpose: 'instant_alerts',
         listingId,
         discountCodeId: discount?.id,
+        ...context,
       },
     });
 
@@ -455,6 +538,7 @@ export class PaymentsService {
     months: number,
     agentProUnits = 1,
     discountCode?: string,
+    context: PurchaseContext = {},
   ): Promise<CreateSubscriptionOrderResponseDto> {
     if (tier === 'agentPro') {
       if (months !== 1) throw new BadRequestException('Agent/Broker Pro is available as a monthly subscription only');
@@ -491,6 +575,7 @@ export class PaymentsService {
         subscriptionMonths: months,
         agentProUnits: tier === 'agentPro' ? units : null,
         discountCodeId: discount?.id,
+        ...context,
       },
     });
 
@@ -510,6 +595,7 @@ export class PaymentsService {
   async createContactRevealCreditsOrder(
     userId: string,
     discountCode?: string,
+    context: PurchaseContext = {},
   ): Promise<CreateContactRevealCreditsOrderResponseDto> {
     const settings =
       (await this.prisma.contactRevealSetting.findUnique({ where: { id: CONTACT_REVEAL_SETTINGS_ID } })) ??
@@ -537,6 +623,7 @@ export class PaymentsService {
         purpose: 'contact_reveal_credits',
         creditPackSize: settings.creditPackSize,
         discountCodeId: discount?.id,
+        ...context,
       },
     });
 
@@ -567,10 +654,17 @@ export class PaymentsService {
     }
     if (payment.status === 'paid') return;
 
+    const paidAt = new Date();
     await this.prisma.payment.update({
       where: { id: payment.id },
-      data: { status: 'paid', razorpayPaymentId, paidAt: new Date() },
+      data: { status: 'paid', razorpayPaymentId, paidAt },
     });
+
+    // Reported here rather than from a browser tag, because the browser is not where most of
+    // these happen: nine boost purchases from google/cpc clicks, every one with a gclid on file,
+    // were recorded by Google Ads as zero conversions. Fire-and-forget, and after the row is
+    // already marked paid — a reporting call must never delay or fail an activation.
+    void this.reportPurchaseConversion({ ...payment, paidAt });
 
     if (payment.purpose === 'listing_boost' && payment.listingId && payment.boostDays) {
       await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
