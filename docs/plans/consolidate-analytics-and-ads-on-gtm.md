@@ -298,7 +298,11 @@ built at all. Worth generalising: **a dataLayer push is not instrumentation.** T
 trigger, the tag and the published version are four separate acts, and code review only ever sees
 the first.
 
-Prepared, not yet applied:
+**Shipped as container version 8 on 2026-09-20** — conversion action `Instant alerts purchase`
+(label `Uc3ACKS8pv4cEK2A5K5E`) created by `ads_setup_conversions.py`, then `CE` triggers, GA4 tags
+and the Ads tag built and published. Rollback is `python gtm_publish.py --rollback-to 7`.
+
+What changed:
 
 - `gtm_build.py` gains `instant_alerts_purchase` and `begin_checkout_instant_alerts` in `EVENTS`
   (so GA4 receives them like the other three pairs), and `instant_alerts_purchase` in
@@ -309,11 +313,23 @@ Prepared, not yet applied:
 - `ads_setup_conversions.py` gains `("Instant alerts purchase", "PURCHASE", True)`, so the action
   is created by the same idempotent script as the others and prints its label.
 
-**Blocked on:** the Google Ads OAuth refresh token is expired or revoked
-(`invalid_grant: Token has been expired or revoked`), so every `ads_*.py` script — including
-`ads_report.py` — currently fails before it reaches the API. Re-authorising needs an interactive
-browser flow. Once that is done: run `ads_setup_conversions.py`, paste the printed label into
-`ADS_CONVERSION_LABELS`, run `gtm_build.py`, then publish the workspace.
+### The auth detour, worth recording
+
+The local `GOOGLE_ADS_REFRESH_TOKEN` was dead (`invalid_grant: Token has been expired or revoked`),
+which blocks every `ads_*.py` script. Re-minting it via `get_refresh_token.py` hit a Google
+Workspace security hold — "try again in 2 days" after a new passkey — so the obvious path was a
+two-day wait.
+
+It was not needed: **prod's `.env` carried a different, still-valid refresh token minted from the
+same OAuth client** (client id, client secret and developer token all identical), so copying that
+value locally restored the tooling immediately. Worth remembering the next time a token expires —
+check the other environments before re-minting.
+
+A related correction: 20 `invalid_grant` failures in the bff log dated 14 Sep were read here as
+"production uploads are dead". They were not. Prod's token mints an access token fine with both
+`adwords` and `datamanager` scopes, and the provider only logs *failures* — so silence is what
+success looks like, and absence of success lines proved nothing. The genuine loss is the ~20
+conversions stamped during that 14 Sep window, not the 177 rows carrying `adsConversionUploadedAt`.
 
 ### Still uninstrumented, and deliberate to name here
 

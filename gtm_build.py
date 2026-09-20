@@ -79,12 +79,10 @@ EVENTS = {
 # ads_setup_conversions.py (re-run it to re-print these). Event name -> label.
 ADS_CONVERSION_LABELS = {
     "boost_purchase": "wj7ACIPWxOgcEK2A5K5E",
-    # Empty until the action exists in Ads — paste the label here and re-run. Until then the tag
-    # below is skipped rather than created with a blank label, which would fire a conversion Ads
-    # cannot attribute to anything. InstantAlertsProvider has been pushing this event with its
-    # value all along; it was the only paid product with no Ads action to receive it, so those
-    # purchases have been reaching neither GA4 nor Ads.
-    "instant_alerts_purchase": "",
+    # Created 2026-09-20 by ads_setup_conversions.py. InstantAlertsProvider had been pushing this
+    # event with its value all along; it was the only paid product with no Ads action to receive
+    # it, so those purchases reached neither GA4 nor Ads.
+    "instant_alerts_purchase": "Uc3ACKS8pv4cEK2A5K5E",
     "subscription_purchase": "mmAyCIbWxOgcEK2A5K5E",
     "contact_reveal_credits_purchase": "fUb6CMu5wfEcEK2A5K5E",
     "post_ad_success": "ztuNCInWxOgcEK2A5K5E",
