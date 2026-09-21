@@ -38,14 +38,16 @@ export function persistableQuery(query: string): string {
 /**
  * The URL to restore, or null to leave the visitor where they are.
  *
- * Only ever restores on the **first** run for a mounted screen, and only when the URL carries no
- * query at all. Both conditions matter:
+ * Only ever restores on the **first** run since arriving at this pathname, and only when the URL
+ * carries no query at all. Both conditions matter:
  *
  * - A URL that already has a query is a deliberate destination — a shared link, a nav item with
  *   its own params, a click through from another screen — and must win over what was stored.
- * - Restoring after the first run would fight the visitor: clearing the filters navigates to a
- *   bare path, and a restore there would put them straight back, making "reset" impossible. After
- *   the first run this module only ever *writes*, so a reset is stored as empty and stays reset.
+ * - Restoring after that first run would fight the visitor: clearing the filters navigates to a
+ *   bare path (same pathname), and a restore there would put them straight back, making "reset"
+ *   impossible. After the first run for a given pathname this module only ever *writes*, so a
+ *   reset is stored as empty and stays reset — until the visitor actually leaves and comes back,
+ *   which is a fresh arrival and gets one more restore chance.
  */
 export function restoreTarget(input: {
   pathname: string;
@@ -53,7 +55,9 @@ export function restoreTarget(input: {
   currentQuery: string;
   /** Whatever was stored for this path, or null. */
   saved: string | null;
-  /** False only on the first effect run after this screen mounted. */
+  /** False only on the first effect run since the visitor arrived at this pathname — NOT the
+   * first run ever. The caller must reset this per-pathname (see RememberFilters.tsx), since a
+   * single session-wide flag would only ever allow a restore on whichever screen loaded first. */
   hydrated: boolean;
 }): string | null {
   const { pathname, currentQuery, saved, hydrated } = input;
