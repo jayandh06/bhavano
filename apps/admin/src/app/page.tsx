@@ -100,10 +100,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 24px" }}>Listing moderation</h1>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {/* prefetch={false} — same reasoning as SortableHeader.tsx/Pagination.tsx: all three
+            * tabs are always visible together, so Next would proactively prefetch every one on
+            * load (each one harmless data-wise, since hrefForTab always carries a real query, but
+            * still a background request nobody asked for). */}
           {TABS.map((t) => (
             <Link
               key={t.value}
               href={hrefForTab(sp, t.value)}
+              prefetch={false}
               style={{
                 fontSize: 13,
                 fontWeight: 700,
