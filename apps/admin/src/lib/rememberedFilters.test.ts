@@ -1,10 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { persistableQuery, restoreTarget, storageKey } from "./rememberedFilters";
+import {
+  decideFilterAction,
+  isExcludedPath,
+  parseSavedFilters,
+  persistableQuery,
+} from "./rememberedFilters";
 
-describe("storageKey", () => {
-  it("namespaces by pathname", () => {
-    expect(storageKey("/listings")).toBe("bhavano-admin-filters:/listings");
-    expect(storageKey("/listings/abc123")).toBe("bhavano-admin-filters:/listings/abc123");
+describe("isExcludedPath", () => {
+  it("excludes NextAuth's own routes, not admin screens", () => {
+    expect(isExcludedPath("/login")).toBe(true);
+    expect(isExcludedPath("/auth/complete")).toBe(true);
+    expect(isExcludedPath("/listings")).toBe(false);
+    expect(isExcludedPath("/")).toBe(false);
+  });
+});
+
+describe("parseSavedFilters", () => {
+  it("reads back a stored map", () => {
+    expect(parseSavedFilters('{"/listings":"status=active"}')).toEqual({ "/listings": "status=active" });
+  });
+
+  it("treats missing, malformed, or non-object cookies as nothing remembered", () => {
+    expect(parseSavedFilters(null)).toEqual({});
+    expect(parseSavedFilters(undefined)).toEqual({});
+    expect(parseSavedFilters("")).toEqual({});
+    expect(parseSavedFilters("not json")).toEqual({});
+    expect(parseSavedFilters("[1,2,3]")).toEqual({});
+    expect(parseSavedFilters('"just a string"')).toEqual({});
   });
 });
 
@@ -13,75 +35,126 @@ describe("persistableQuery", () => {
     expect(persistableQuery("status=active&cols=id,name&page=7")).toBe("status=active&cols=id%2Cname");
   });
 
-  it("is stable on an already-page-less query", () => {
-    expect(persistableQuery("status=active")).toBe("status=active");
-  });
-
-  it("collapses to empty for a bare query", () => {
+  it("collapses to empty for a page-only or bare query", () => {
     expect(persistableQuery("")).toBe("");
     expect(persistableQuery("page=3")).toBe("");
   });
 });
 
-describe("restoreTarget", () => {
-  it("restores saved filters onto a bare first visit", () => {
+describe("decideFilterAction", () => {
+  it("remembers a real query, regardless of referer", () => {
     expect(
-      restoreTarget({ pathname: "/listings", currentQuery: "", saved: "status=active", hydrated: false }),
-    ).toBe("/listings?status=active");
+      decideFilterAction({
+        pathname: "/listings",
+        currentQuery: "status=active",
+        refererPathname: null,
+        saved: {},
+      }),
+    ).toEqual({ type: "write", saved: { "/listings": "status=active" } });
   });
 
-  it("does nothing when nothing was ever saved", () => {
-    expect(restoreTarget({ pathname: "/listings", currentQuery: "", saved: null, hydrated: false })).toBeNull();
+  it("does nothing when the incoming query already matches what's remembered", () => {
+    expect(
+      decideFilterAction({
+        pathname: "/listings",
+        currentQuery: "status=active",
+        refererPathname: null,
+        saved: { "/listings": "status=active" },
+      }),
+    ).toEqual({ type: "noop" });
   });
 
-  it("never overrides a URL that already carries its own query — a deliberate destination wins", () => {
+  it("restores on a fresh arrival at a screen with something remembered", () => {
     expect(
-      restoreTarget({ pathname: "/listings", currentQuery: "status=paused", saved: "status=active", hydrated: false }),
-    ).toBeNull();
+      decideFilterAction({
+        pathname: "/listings",
+        currentQuery: "",
+        refererPathname: "/users", // came from a different screen
+        saved: { "/listings": "status=active" },
+      }),
+    ).toEqual({ type: "restore", query: "status=active" });
   });
 
-  it("does not restore on a second run for the same visit — lets an in-page reset stick", () => {
-    // Same screen, filters just cleared by the visitor (bare query), but this is the second
-    // effect run since arriving here — restoring now would fight the reset.
+  it("does nothing on a bare arrival with nothing remembered for it", () => {
     expect(
-      restoreTarget({ pathname: "/listings", currentQuery: "", saved: "status=active", hydrated: true }),
-    ).toBeNull();
+      decideFilterAction({ pathname: "/listings", currentQuery: "", refererPathname: null, saved: {} }),
+    ).toEqual({ type: "noop" });
+  });
+
+  it("treats a bare navigation with no referer as a fresh arrival, not a same-screen reset", () => {
+    // A typed URL, a bookmark, or a brand new tab all arrive with no Referer at all — must not be
+    // mistaken for "the visitor was already here and clicked reset".
+    expect(
+      decideFilterAction({
+        pathname: "/listings",
+        currentQuery: "",
+        refererPathname: null,
+        saved: { "/listings": "status=active" },
+      }),
+    ).toEqual({ type: "restore", query: "status=active" });
   });
 
   /**
-   * The regression this was actually filed for: RememberFilters is a singleton mounted once in
-   * the root layout, so it never remounts when the visitor navigates between admin screens.
-   * `hydrated` therefore can't be a single flag that's true forever after the first-ever effect
-   * run — that would mean only the very first screen loaded in a session could ever restore, and
-   * every later visit (including a revisit) would look like "hydrated", so it would fall through
-   * to the write branch and silently overwrite that screen's saved filters with the bare query.
-   *
-   * This simulates the actual sequence RememberFilters.tsx runs — restore, then (if it fires) an
-   * immediate re-run for the router.replace(), landing on hydrated=true for the reason above —
-   * exactly like the component does when it recomputes `hydrated` per pathname rather than once.
+   * The case a stateless, request-scoped decision can't get from `currentQuery` alone: a bare
+   * URL is ambiguous between "fresh arrival, please restore" and "I was already here and just
+   * cleared my filters, please don't put them right back". Referer is what tells them apart — the
+   * visitor navigating to this exact same pathname's bare form, from this exact same pathname,
+   * only happens via an in-page "clear filters" action.
    */
-  it("still restores a screen's filters after navigating away and back to it", () => {
-    let hydratedPath: string | null = null;
-    const saved: Record<string, string> = { "/listings": "status=active" };
+  it("treats a bare navigation FROM the same screen as a deliberate reset, not a restore", () => {
+    const action = decideFilterAction({
+      pathname: "/listings",
+      currentQuery: "",
+      refererPathname: "/listings",
+      saved: { "/listings": "status=active" },
+    });
+    expect(action).toEqual({ type: "write", saved: { "/listings": "" } });
+  });
 
-    function runEffect(pathname: string, currentQuery: string) {
-      const hydrated = hydratedPath === pathname;
-      const target = restoreTarget({ pathname, currentQuery, saved: saved[pathname] ?? null, hydrated });
-      hydratedPath = pathname;
-      return target;
-    }
+  it("does not keep re-writing an already-cleared reset", () => {
+    expect(
+      decideFilterAction({
+        pathname: "/listings",
+        currentQuery: "",
+        refererPathname: "/listings",
+        saved: { "/listings": "" },
+      }),
+    ).toEqual({ type: "noop" });
+  });
 
-    // First arrival at /listings — restores.
-    expect(runEffect("/listings", "")).toBe("/listings?status=active");
-    // router.replace() lands back on /listings with the restored query — same pathname, so this
-    // run must NOT try to restore again (it would loop).
-    expect(runEffect("/listings", "status=active")).toBeNull();
+  it("an empty remembered value never gets restored — the reset stays stuck", () => {
+    expect(
+      decideFilterAction({
+        pathname: "/listings",
+        currentQuery: "",
+        refererPathname: "/users",
+        saved: { "/listings": "" },
+      }),
+    ).toEqual({ type: "noop" });
+  });
 
-    // Navigate to a different screen entirely.
-    expect(runEffect("/users", "")).toBeNull();
+  it("keeps each path's filters independent", () => {
+    const saved = { "/listings": "status=active" };
+    expect(
+      decideFilterAction({ pathname: "/users", currentQuery: "role=admin", refererPathname: null, saved }),
+    ).toEqual({ type: "write", saved: { "/listings": "status=active", "/users": "role=admin" } });
+  });
 
-    // Navigate back to /listings — a fresh arrival, so this must restore again. Before the fix,
-    // a single session-wide `hydrated` flag would have made this (incorrectly) return null.
-    expect(runEffect("/listings", "")).toBe("/listings?status=active");
+  it("evicts the least-recently-touched path once over the cap", () => {
+    const saved: Record<string, string> = {};
+    for (let i = 0; i < 40; i++) saved[`/path-${i}`] = "q=1";
+
+    const action = decideFilterAction({
+      pathname: "/path-40",
+      currentQuery: "q=1",
+      refererPathname: null,
+      saved,
+    });
+
+    expect(action.type).toBe("write");
+    if (action.type !== "write") throw new Error("unreachable");
+    expect(Object.keys(action.saved)).toHaveLength(40);
+    expect(action.saved["/path-0"]).toBeUndefined(); // oldest, evicted
+    expect(action.saved["/path-40"]).toBe("q=1"); // newest, present
   });
 });

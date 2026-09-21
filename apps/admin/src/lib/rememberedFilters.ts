@@ -1,28 +1,55 @@
 /**
  * Remembering each admin screen's filters between visits.
  *
- * Every screen here is a server component that reads its filters from the URL — which is the right
- * design (sorting needs the real order for pagination, and a filtered view stays shareable), but it
- * means the filters live only in the query string. Open a listing from the queue and come back via
- * the nav, and the nav's href is a bare `/`: the filters are gone, and they have to be re-entered
- * from scratch every time.
+ * Every screen here is a server component that reads its filters from the URL — which is the
+ * right design (sorting needs the real order for pagination, and a filtered view stays
+ * shareable) — but it means restoring a remembered filter has to change the URL before that
+ * screen renders, not after. A client-side approach (localStorage + a `router.replace()` once
+ * mounted) tried that first and always cost a second render: the server component fetches once
+ * for the bare URL, the client then discovers the saved filter and replaces the URL, and the
+ * server component fetches *again* for the real one. `localStorage` simply isn't readable during
+ * server rendering, so there was no way to avoid that from the client side.
  *
- * So the last query string is kept per path in `localStorage` and restored when a screen is opened
- * with no query of its own. The logic is here rather than in the component so it can be tested
- * without a browser — the interesting parts are all edge cases.
+ * This version instead keeps the last query string per path in a single cookie, decided and
+ * written entirely in `middleware.ts` — server-side, before any page renders, so a remembered
+ * filter is applied in the same request that fetches data, and a bare visit with nothing to
+ * restore costs nothing extra. The decision logic lives here rather than in the middleware file
+ * so it can be tested without spinning up a request/response pair — the interesting parts are all
+ * edge cases.
  */
 
-const PREFIX = "bhavano-admin-filters:";
+export const COOKIE_NAME = "bhavano_admin_filters";
 
-/** Keyed by path, so each screen remembers its own filters. A detail route's id is part of its
- * path and therefore part of its key, which is harmless: nothing is saved for a path whose URL
- * never carried a query. */
-export function storageKey(pathname: string): string {
-  return `${PREFIX}${pathname}`;
+/** Caps how many distinct paths this remembers at once, evicting the least-recently-touched entry
+ * past this. Cookies have a real size ceiling (~4KB) that localStorage never did — this is
+ * comfortably above the number of actual filtered index screens (about a dozen), and only matters
+ * if id-suffixed detail routes ever start carrying their own persisted query params too. */
+export const MAX_REMEMBERED_PATHS = 40;
+
+/** Paths whose query string is never "a screen's filters" — NextAuth's own callback/error params
+ * — so they must never be written to or restored from. */
+export function isExcludedPath(pathname: string): boolean {
+  return pathname === "/login" || pathname.startsWith("/auth/");
+}
+
+/** Safe parse of the cookie's stored value. Never throws: a corrupted or tampered cookie (this is
+ * client-writable in the sense that any cookie is) just reads as "nothing remembered yet" rather
+ * than breaking the request. */
+export function parseSavedFilters(raw: string | undefined | null): Record<string, string> {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, string>;
+    }
+  } catch {
+    // fall through
+  }
+  return {};
 }
 
 /**
- * What to write to storage for a given URL — everything except `page`.
+ * What to remember for a given URL — everything except `page`.
  *
  * Returning to page 7 of a queue you last looked at yesterday is not "where I was", it is a
  * stale offset into rows that have since moved; the filters are the part worth keeping. `cols`
@@ -35,34 +62,70 @@ export function persistableQuery(query: string): string {
   return params.toString();
 }
 
+export type FilterAction =
+  | { type: "restore"; query: string }
+  | { type: "write"; saved: Record<string, string> }
+  | { type: "noop" };
+
 /**
- * The URL to restore, or null to leave the visitor where they are.
+ * The single decision middleware.ts needs to make on every matched request: restore a remembered
+ * filter, remember the current one, or do nothing.
  *
- * Only ever restores on the **first** run since arriving at this pathname, and only when the URL
- * carries no query at all. Both conditions matter:
- *
- * - A URL that already has a query is a deliberate destination — a shared link, a nav item with
- *   its own params, a click through from another screen — and must win over what was stored.
- * - Restoring after that first run would fight the visitor: clearing the filters navigates to a
- *   bare path (same pathname), and a restore there would put them straight back, making "reset"
- *   impossible. After the first run for a given pathname this module only ever *writes*, so a
- *   reset is stored as empty and stays reset — until the visitor actually leaves and comes back,
- *   which is a fresh arrival and gets one more restore chance.
+ * - A URL that already carries a query is a deliberate destination — a shared link, a nav item
+ *   with its own params, a click through from another screen — so it always wins: it's simply
+ *   remembered as-is (dropping `page`), never overridden by what was stored before.
+ * - A bare URL (no query at all) is ambiguous on its own: it's either a fresh arrival at this
+ *   screen (from elsewhere, or a brand new tab) that should restore whatever was last remembered,
+ *   or a deliberate in-page reset — a "clear filters" link on this same screen, navigating to its
+ *   own bare path — that must NOT be immediately undone by restoring the old filter right back.
+ *   `refererPathname` is what tells these apart: if the visitor was already on this exact
+ *   pathname, this is a reset, and gets remembered as empty so it stays cleared; otherwise it's a
+ *   fresh arrival, and restores. This relies on the browser actually sending a same-origin
+ *   Referer, which a stripped/blocked one would defeat — the failure mode there is just "the
+ *   reset doesn't stick until next visit", not a wrong answer that lasts.
  */
-export function restoreTarget(input: {
+export function decideFilterAction(input: {
   pathname: string;
-  /** `searchParams.toString()` for the current URL. */
+  /** `nextUrl.searchParams.toString()` for the current request — the raw query, before dropping
+   * `page`. */
   currentQuery: string;
-  /** Whatever was stored for this path, or null. */
-  saved: string | null;
-  /** False only on the first effect run since the visitor arrived at this pathname — NOT the
-   * first run ever. The caller must reset this per-pathname (see RememberFilters.tsx), since a
-   * single session-wide flag would only ever allow a restore on whichever screen loaded first. */
-  hydrated: boolean;
-}): string | null {
-  const { pathname, currentQuery, saved, hydrated } = input;
-  if (hydrated) return null;
-  if (currentQuery !== "") return null;
-  if (!saved) return null;
-  return `${pathname}?${saved}`;
+  /** The pathname portion of the Referer header, or null if absent/unparseable/cross-origin. */
+  refererPathname: string | null;
+  /** Whatever `parseSavedFilters` returned for the request's cookie. */
+  saved: Record<string, string>;
+}): FilterAction {
+  const { pathname, currentQuery, refererPathname, saved } = input;
+
+  if (currentQuery !== "") {
+    const toStore = persistableQuery(currentQuery);
+    if (saved[pathname] === toStore) return { type: "noop" };
+    return { type: "write", saved: withRemembered(saved, pathname, toStore) };
+  }
+
+  if (refererPathname === pathname) {
+    // Deliberate in-page reset. Remembering it as "" (rather than deleting the key) is what makes
+    // the reset stick: the restore check below treats an empty string the same as nothing saved.
+    if (saved[pathname] === "" || !(pathname in saved)) return { type: "noop" };
+    return { type: "write", saved: withRemembered(saved, pathname, "") };
+  }
+
+  const rememberedQuery = saved[pathname];
+  if (!rememberedQuery) return { type: "noop" };
+  return { type: "restore", query: rememberedQuery };
+}
+
+/** Re-inserts `pathname` at the end (most-recently-touched) and evicts the oldest entry once over
+ * the cap — object key order is insertion order for these non-numeric string keys, so deleting
+ * then re-adding is what makes this an LRU rather than a fixed slot. */
+function withRemembered(
+  saved: Record<string, string>,
+  pathname: string,
+  value: string,
+): Record<string, string> {
+  const next = { ...saved };
+  delete next[pathname];
+  next[pathname] = value;
+  const paths = Object.keys(next);
+  if (paths.length > MAX_REMEMBERED_PATHS) delete next[paths[0]];
+  return next;
 }
