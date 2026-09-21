@@ -49,6 +49,24 @@ export function parseSavedFilters(raw: string | undefined | null): Record<string
 }
 
 /**
+ * Next's own RSC-fetch cache-token, appended to the query string of EVERY client-side `<Link>`
+ * navigation request — a real click, a soft navigation, or a background prefetch alike, not just
+ * the ones this module already has to reason about. An otherwise-bare navigation the visitor
+ * perceives as "/page-visits" arrives at middleware.ts as "/page-visits?_rsc=<token>" — read as a
+ * real query (which is all `currentQuery !== ""` checks anywhere in this module see), that looks
+ * exactly like a deliberate destination and silently overwrites whatever was remembered with just
+ * that token, discarding the real filter. This must be stripped before anything else runs: a raw
+ * `fetch`/curl reproduction of the same navigation sequence never sends `_rsc` at all, which is
+ * why testing this module's logic directly (or against a plain HTTP client) never caught it — only
+ * an actual browser's client-side router does.
+ */
+export function stripFrameworkParams(query: string): string {
+  const params = new URLSearchParams(query);
+  params.delete("_rsc");
+  return params.toString();
+}
+
+/**
  * What to remember for a given URL — everything except `page`.
  *
  * Returning to page 7 of a queue you last looked at yesterday is not "where I was", it is a

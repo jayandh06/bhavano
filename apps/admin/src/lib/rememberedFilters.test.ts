@@ -4,6 +4,7 @@ import {
   isExcludedPath,
   parseSavedFilters,
   persistableQuery,
+  stripFrameworkParams,
 } from "./rememberedFilters";
 
 describe("isExcludedPath", () => {
@@ -38,6 +39,53 @@ describe("persistableQuery", () => {
   it("collapses to empty for a page-only or bare query", () => {
     expect(persistableQuery("")).toBe("");
     expect(persistableQuery("page=3")).toBe("");
+  });
+});
+
+describe("stripFrameworkParams", () => {
+  it("removes Next's _rsc cache-token", () => {
+    expect(stripFrameworkParams("_rsc=7uylb0PiNewL3a1J")).toBe("");
+    expect(stripFrameworkParams("status=active&_rsc=7uylb0PiNewL3a1J")).toBe("status=active");
+  });
+
+  it("leaves a real query untouched when there's no _rsc", () => {
+    expect(stripFrameworkParams("status=active&cols=id,name")).toBe("status=active&cols=id%2Cname");
+    expect(stripFrameworkParams("")).toBe("");
+  });
+
+  /**
+   * The actual production bug, reproduced end to end: a real filter is applied (a full-page form
+   * submit, no _rsc), then the visitor clicks a plain nav link back to the same bare screen — a
+   * client-side <Link> navigation, which Next tags with its own _rsc token regardless of whether
+   * it's a genuine click or a background prefetch. Without stripFrameworkParams, that arrives at
+   * decideFilterAction as a non-empty "real" query and silently overwrites the remembered filter
+   * with nothing but the token. A curl-based reproduction of this exact sequence never catches it
+   * (curl never sends _rsc), which is why the middleware-level fix (prefetch={false}, verified
+   * directly against the dev server) shipped first and this one — the actual root cause — didn't
+   * surface until a real browser's HAR was inspected.
+   */
+  it("without stripping _rsc, a nav-link revisit would silently erase the remembered filter", () => {
+    const afterApplyingAFilter = { "/page-visits": "traffic=js_confirmed&city=Mumbai" };
+
+    const rawRevisitQuery = "_rsc=jLHZ-Scs7iFp0fWn"; // exactly what Next's router actually sends
+    const buggyAction = decideFilterAction({
+      pathname: "/page-visits",
+      currentQuery: rawRevisitQuery, // unstripped
+      refererPathname: "/users",
+      saved: afterApplyingAFilter,
+    });
+    expect(buggyAction).toEqual({
+      type: "write",
+      saved: { "/page-visits": "_rsc=jLHZ-Scs7iFp0fWn" }, // the filter is gone
+    });
+
+    const fixedAction = decideFilterAction({
+      pathname: "/page-visits",
+      currentQuery: stripFrameworkParams(rawRevisitQuery), // what middleware.ts actually passes
+      refererPathname: "/users",
+      saved: afterApplyingAFilter,
+    });
+    expect(fixedAction).toEqual({ type: "restore", query: "traffic=js_confirmed&city=Mumbai" });
   });
 });
 

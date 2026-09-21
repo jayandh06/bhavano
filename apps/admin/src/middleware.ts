@@ -4,6 +4,7 @@ import {
   decideFilterAction,
   isExcludedPath,
   parseSavedFilters,
+  stripFrameworkParams,
 } from "@/lib/rememberedFilters";
 
 /** Restores/remembers each admin screen's filters — see lib/rememberedFilters.ts for the reasoning
@@ -11,18 +12,29 @@ import {
  * page's own data fetch (a server component reading `searchParams`) only ever runs once, against
  * the right URL, instead of once for a bare visit and again after a client-side redirect.
  *
- * A prefetch of a link with a real query attached (sorting, pagination, a nav link that happened
- * to carry a filter) is harmless — it only ever hits the "remember" branch with a value that was
- * going to be remembered anyway once actually clicked. The one prefetch that ISN'T harmless is a
- * bare link whose target is the page currently on screen (the admin nav's own "you are here" tab,
- * or a screen's "Reset" link) — decideFilterAction reads that request's Referer to tell a
- * deliberate same-screen reset apart from a fresh arrival elsewhere, and a background prefetch of
- * that link carries the exact same Referer a real click would. There is no request header on this
- * Next version that tells a prefetch apart from a genuine click-driven navigation (both show
- * `sec-fetch-dest: empty`, unlike apps/web's middleware, which only needs to tell a prefetch apart
- * from a real *document* load) — so rather than trying to infer intent here, every link whose href
- * can coincide with the current page is rendered `prefetch={false}` (AdminNav.tsx, and every
- * screen's "Reset" link) so the phantom request never fires at all.
+ * Two distinct bugs shipped before this actually worked in a real browser, both invisible to a
+ * curl-based reproduction of the same request sequence (curl never sends `_rsc` and never
+ * prefetches anything, so both look correct in isolation):
+ *
+ * 1. **`_rsc` (fixed via stripFrameworkParams)** — Next's client router appends its own
+ *    `?_rsc=<token>` to every `<Link>` navigation, real click or prefetch alike. Read as a real
+ *    query, a click on a bare nav link looked exactly like a deliberate destination and silently
+ *    overwrote the remembered filter with nothing but that token — the actual cause of "filters
+ *    don't survive navigating to another screen and back." This was the primary bug; the second
+ *    one below only matters once this one no longer masks it.
+ * 2. **Prefetch vs. a real reset click (fixed via `prefetch={false}`)** — with (1) fixed, a bare
+ *    link's request now correctly reads as empty, but that's ambiguous on its own: a fresh
+ *    arrival at a screen (restore) and a deliberate same-screen "clear filters" click (don't
+ *    restore) both look like "bare query, "referer" resolves to real signal only for genuine
+ *    navigations. Next's automatic prefetch of a link whose target happens to be the page
+ *    currently on screen (the nav's own "you are here" tab, or a screen's own "Reset" link)
+ *    carries that same page as its Referer, indistinguishable from a real click — and this Next
+ *    version exposes no header that tells a prefetch apart from a genuine click-driven navigation
+ *    (both read `sec-fetch-dest: empty`, unlike apps/web's middleware, which only needs to tell a
+ *    prefetch apart from a real *document* load). So every link whose href can coincide with the
+ *    current page is rendered `prefetch={false}` (AdminNav.tsx, and every screen's "Reset" link)
+ *    so the phantom request never fires at all, rather than trying to infer intent from headers
+ *    this Next version doesn't reliably expose.
  */
 export function middleware(request: NextRequest): NextResponse {
   const { pathname, searchParams } = request.nextUrl;
@@ -31,7 +43,9 @@ export function middleware(request: NextRequest): NextResponse {
   const saved = parseSavedFilters(request.cookies.get(COOKIE_NAME)?.value);
   const action = decideFilterAction({
     pathname,
-    currentQuery: searchParams.toString(),
+    // stripFrameworkParams: Next's own _rsc cache-token rides along on every client-side <Link>
+    // navigation and must never be mistaken for a real filter — see that function's own comment.
+    currentQuery: stripFrameworkParams(searchParams.toString()),
     refererPathname: refererPathnameOf(request),
     saved,
   });
