@@ -80,51 +80,65 @@ export function persistableQuery(query: string): string {
   return params.toString();
 }
 
+/** The explicit signal a "Reset"/"Clear filters" link carries, e.g. `?__clearFilters=1` — see
+ * decideFilterAction's own comment for why this exists instead of inferring the same intent from
+ * Referer. Exported so every screen's Reset link and AdminListingsTable's `hrefResetting` build
+ * the exact same param rather than retyping the string. */
+export const CLEAR_FILTERS_PARAM = "__clearFilters";
+
 export type FilterAction =
   | { type: "restore"; query: string }
   | { type: "write"; saved: Record<string, string> }
+  /** Like "write" (persists `saved`), but middleware.ts must ALSO redirect to the bare pathname —
+   * unlike an ordinary write, the incoming URL here carries a marker param that must never reach
+   * the rendered page or get remembered as part of "the filter". */
+  | { type: "reset"; saved: Record<string, string> }
   | { type: "noop" };
 
 /**
  * The single decision middleware.ts needs to make on every matched request: restore a remembered
- * filter, remember the current one, or do nothing.
+ * filter, remember the current one, clear it, or do nothing.
  *
- * - A URL that already carries a query is a deliberate destination — a shared link, a nav item
- *   with its own params, a click through from another screen — so it always wins: it's simply
- *   remembered as-is (dropping `page`), never overridden by what was stored before.
- * - A bare URL (no query at all) is ambiguous on its own: it's either a fresh arrival at this
- *   screen (from elsewhere, or a brand new tab) that should restore whatever was last remembered,
- *   or a deliberate in-page reset — a "clear filters" link on this same screen, navigating to its
- *   own bare path — that must NOT be immediately undone by restoring the old filter right back.
- *   `refererPathname` is what tells these apart: if the visitor was already on this exact
- *   pathname, this is a reset, and gets remembered as empty so it stays cleared; otherwise it's a
- *   fresh arrival, and restores. This relies on the browser actually sending a same-origin
- *   Referer, which a stripped/blocked one would defeat — the failure mode there is just "the
- *   reset doesn't stick until next visit", not a wrong answer that lasts.
+ * A bare URL (no query, no `CLEAR_FILTERS_PARAM`) is a fresh arrival at this screen — from
+ * elsewhere, a brand new tab, or a bookmark — and restores whatever was last remembered, if
+ * anything.
+ *
+ * An earlier version tried to tell that apart from a deliberate "clear filters" navigation (also a
+ * bare-looking URL) by checking whether the Referer's pathname matched this one — reasoning that
+ * only an in-page reset link, not a fresh arrival, would navigate to this exact same screen's own
+ * bare path. That reasoning had a real hole: the admin nav renders a link to EVERY screen,
+ * including whichever one is currently on screen, and clicking that "you are here" tab — an
+ * entirely normal thing to do, not a reset — produces the exact same signal (bare URL, Referer ==
+ * this pathname) as an actual Reset click. Every such click silently wiped the remembered filter,
+ * which is why filters looked like they "stopped working after switching tabs a few times" rather
+ * than failing outright — it only took one accidental re-click of the current tab, not a bug in
+ * every navigation.
+ *
+ * So a reset is now its own explicit, unambiguous signal instead of an inference: every "Reset"
+ * link carries `CLEAR_FILTERS_PARAM=1` in its href, and ONLY that marker clears the remembered
+ * filter. A same-pathname Referer is no longer consulted for anything.
  */
 export function decideFilterAction(input: {
   pathname: string;
   /** `nextUrl.searchParams.toString()` for the current request — the raw query, before dropping
-   * `page`. */
+   * `page` or `CLEAR_FILTERS_PARAM`. */
   currentQuery: string;
-  /** The pathname portion of the Referer header, or null if absent/unparseable/cross-origin. */
-  refererPathname: string | null;
   /** Whatever `parseSavedFilters` returned for the request's cookie. */
   saved: Record<string, string>;
 }): FilterAction {
-  const { pathname, currentQuery, refererPathname, saved } = input;
+  const { pathname, currentQuery, saved } = input;
+  const params = new URLSearchParams(currentQuery);
+
+  if (params.has(CLEAR_FILTERS_PARAM)) {
+    // Always acts, even if this path was already remembered as cleared — the marker still has to
+    // be redirected away so it never reaches the rendered page or lingers in the address bar.
+    return { type: "reset", saved: withRemembered(saved, pathname, "") };
+  }
 
   if (currentQuery !== "") {
     const toStore = persistableQuery(currentQuery);
     if (saved[pathname] === toStore) return { type: "noop" };
     return { type: "write", saved: withRemembered(saved, pathname, toStore) };
-  }
-
-  if (refererPathname === pathname) {
-    // Deliberate in-page reset. Remembering it as "" (rather than deleting the key) is what makes
-    // the reset stick: the restore check below treats an empty string the same as nothing saved.
-    if (saved[pathname] === "" || !(pathname in saved)) return { type: "noop" };
-    return { type: "write", saved: withRemembered(saved, pathname, "") };
   }
 
   const rememberedQuery = saved[pathname];

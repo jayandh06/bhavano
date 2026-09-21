@@ -19,6 +19,7 @@ import { SearchableSelect } from "@/components/SearchableSelect";
 import type { AdminListingSortField } from "@/lib/bff";
 import { formatDate } from "@/lib/formatDateTime";
 import { buildSuffixSortHref, str, suffixSortDirectionFor, type SearchParams } from "@/lib/searchParams";
+import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { SortableHeader } from "@/components/SortableHeader";
 
 /** The dashboard's listing moderation queue as an actual table — was previously a card list
@@ -658,7 +659,12 @@ function ColumnSelector({
 }
 
 /** Drops `cols` entirely rather than listing the defaults out — an absent param is what "default
- * columns" means, so this keeps the URL clean and the default able to change later. */
+ * columns" means, so this keeps the URL clean and the default able to change later.
+ *
+ * When no other filter survives that drop, the result would otherwise be a bare "/" — the exact
+ * shape middleware.ts's restore check is looking for, and this is a column reset, not a "please
+ * bring back whatever filter I had" request. CLEAR_FILTERS_PARAM makes that explicit instead of
+ * leaving it to look like a fresh arrival. */
 function hrefResetting(sp: SearchParams): string {
   const params = new URLSearchParams();
   for (const [k, value] of Object.entries(sp)) {
@@ -667,7 +673,7 @@ function hrefResetting(sp: SearchParams): string {
     if (v) params.set(k, v);
   }
   const qs = params.toString();
-  return qs ? `/?${qs}` : "/";
+  return qs ? `/?${qs}` : `/?${CLEAR_FILTERS_PARAM}=1`;
 }
 
 const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {

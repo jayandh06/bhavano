@@ -18,6 +18,7 @@ import {
   type SearchParams,
 } from "@/lib/searchParams";
 import { formatDateTime } from "@/lib/formatDateTime";
+import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
@@ -200,11 +201,16 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             <button type="submit" style={applyButtonStyle}>
               Apply filters
             </button>
-            {/* prefetch={false} — see AdminNav.tsx's comment: a background prefetch of this bare
-              * self-link would look identical to a real reset click to middleware.ts. This is the
-              * one that was actually observed: the nav's own "Page visits" tab (same issue,
-              * fixed there too) kept silently clearing a just-applied filter on every page view. */}
-            <Link href="/page-visits" prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+            {/* CLEAR_FILTERS_PARAM + prefetch={false} — see logins/page.tsx's comment on the same
+              * link shape, and rememberedFilters.ts's decideFilterAction for the full reasoning.
+              * This screen is where the bug was actually observed: a plain bare "/page-visits"
+              * href here was indistinguishable, to middleware.ts, from clicking the nav's own
+              * "Page visits" tab while already on this screen — which isn't a reset at all. */}
+            <Link
+              href={`/page-visits?${CLEAR_FILTERS_PARAM}=1`}
+              prefetch={false}
+              style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}
+            >
               Reset
             </Link>
           </div>

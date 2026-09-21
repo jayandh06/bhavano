@@ -3,6 +3,7 @@ import type { ListingCategory, ListingStatus, ModerationState, TransactionType }
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
+import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { AdminListingsTable } from "@/components/AdminListingsTable";
@@ -156,9 +157,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
-          {/* prefetch={false} — see AdminNav.tsx's comment: a background prefetch of this bare
-            * self-link would look identical to a real reset click to middleware.ts. */}
-          <Link href="/" prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+          {/* CLEAR_FILTERS_PARAM + prefetch={false} — see logins/page.tsx's comment on the same
+            * link shape, and rememberedFilters.ts's decideFilterAction for the full reasoning. */}
+          <Link
+            href={`/?${CLEAR_FILTERS_PARAM}=1`}
+            prefetch={false}
+            style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}
+          >
             Reset
           </Link>
         </form>

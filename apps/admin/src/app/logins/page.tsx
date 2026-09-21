@@ -12,6 +12,7 @@ import {
   type SearchParams,
 } from "@/lib/searchParams";
 import { formatDateTime } from "@/lib/formatDateTime";
+import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
@@ -126,11 +127,16 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
             <button type="submit" style={applyButtonStyle}>
               Apply filters
             </button>
-            {/* prefetch={false}: this is a bare link to the page it's already rendered on — a
-              * background prefetch of it would carry this same page as its Referer, indistinguishable
-              * from a real click, and middleware.ts uses exactly that to detect a deliberate reset.
-              * See AdminNav.tsx's comment on the same issue. */}
-            <Link href="/logins" prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+            {/* CLEAR_FILTERS_PARAM, not a bare "/logins" href: middleware.ts needs an explicit,
+              * unambiguous "this is a reset" signal — see decideFilterAction's own comment for why
+              * inferring it from Referer broke on the nav's own "you are here" tab. prefetch={false}
+              * because a background prefetch of a link that clears filters shouldn't fire just from
+              * it being visible, before anyone actually clicks it. */}
+            <Link
+              href={`/logins?${CLEAR_FILTERS_PARAM}=1`}
+              prefetch={false}
+              style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}
+            >
               Reset
             </Link>
           </div>

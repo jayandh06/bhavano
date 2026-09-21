@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchOutreachContacts, fetchOutreachContactCategories, fetchCities, fetchAreas } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams";
+import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { OutreachContactsList } from "@/components/OutreachContactsList";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
@@ -218,9 +219,13 @@ export default async function OutreachContactsPage({
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
-          {/* prefetch={false} — see AdminNav.tsx's comment: a background prefetch of this bare
-            * self-link would look identical to a real reset click to middleware.ts. */}
-          <Link href="/outreach/contacts" prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+          {/* CLEAR_FILTERS_PARAM + prefetch={false} — see logins/page.tsx's comment on the same
+            * link shape, and rememberedFilters.ts's decideFilterAction for the full reasoning. */}
+          <Link
+            href={`/outreach/contacts?${CLEAR_FILTERS_PARAM}=1`}
+            prefetch={false}
+            style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}
+          >
             Reset
           </Link>
         </form>

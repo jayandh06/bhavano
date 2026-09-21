@@ -12,6 +12,7 @@ import {
   type SearchParams,
 } from "@/lib/searchParams";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
+import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
@@ -167,9 +168,13 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
             <button type="submit" style={applyButtonStyle}>
               Apply filters
             </button>
-            {/* prefetch={false} — see AdminNav.tsx's comment: a background prefetch of this bare
-              * self-link would look identical to a real reset click to middleware.ts. */}
-            <Link href="/subscriptions" prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+            {/* CLEAR_FILTERS_PARAM + prefetch={false} — see logins/page.tsx's comment on the same
+              * link shape, and rememberedFilters.ts's decideFilterAction for the full reasoning. */}
+            <Link
+              href={`/subscriptions?${CLEAR_FILTERS_PARAM}=1`}
+              prefetch={false}
+              style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}
+            >
               Reset
             </Link>
           </div>
