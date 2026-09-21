@@ -12,7 +12,7 @@ import {
   type SearchParams,
 } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
-import { daysAgoIST, todayIST } from "@/lib/dateRangeDefaults";
+import { daysAgoIST, istDayEnd, istDayStart, todayIST } from "@/lib/dateRangeDefaults";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
@@ -59,8 +59,13 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
 
   const result = await fetchRecentLogins(accessToken, {
     offset: (currentPage - 1) * limit,
-    from,
-    to,
+    // Widened to full IST-day instants, same as page-visits/page.tsx and now page.tsx — see
+    // page.tsx's comment on the same fix for why: a bare "YYYY-MM-DD" passed straight through
+    // parses as UTC midnight, and the "1 day" preset sends the *same* date for both ends, making
+    // an unwidened gte/lte a zero-width window that matches nothing. `from`/`to` (the bare
+    // strings) stay as they are for the <input> defaultValue and DateRangeFilter's preset match.
+    from: istDayStart(from),
+    to: istDayEnd(to),
     userId,
     search,
     method,

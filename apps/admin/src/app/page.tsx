@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
-import { daysAgoIST, todayIST } from "@/lib/dateRangeDefaults";
+import { daysAgoIST, istDayEnd, istDayStart, todayIST } from "@/lib/dateRangeDefaults";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { AdminListingsTable } from "@/components/AdminListingsTable";
@@ -73,10 +73,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       cityId,
       areaId,
       userId,
-      createdFrom,
-      createdTo,
-      updatedFrom,
-      updatedTo,
+      // Widened to full IST-day instants here, same as page-visits/page.tsx already does for
+      // from/to — the BFF does `new Date(createdFrom)` directly on whatever it's given, and a
+      // bare "YYYY-MM-DD" parses as UTC midnight. For a single-day range (the "1 day" preset
+      // sends the *same* date string for both ends) that made gte and lte the exact same instant
+      // — a zero-width window that could only ever match a listing created at that literal
+      // millisecond, i.e. none. createdFrom/createdTo (the bare strings) stay as they are for the
+      // <input> defaultValue and DateRangeFilter's preset-matching, which both need the
+      // unwidened YYYY-MM-DD form.
+      createdFrom: istDayStart(createdFrom),
+      createdTo: istDayEnd(createdTo),
+      updatedFrom: istDayStart(updatedFrom),
+      updatedTo: istDayEnd(updatedTo),
       sort,
       offset: (currentPage - 1) * limit,
       limit,
