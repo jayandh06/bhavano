@@ -23,6 +23,14 @@ export function SortableHeader({
   return (
     <Link
       href={href}
+      // Every sortable column on a table renders one of these — 9+ on Page visits alone — and
+      // Next's <Link> proactively prefetches every one the moment it's visible, each one a real
+      // request (sometimes two, since a dynamic route with no loading.tsx boundary can get a
+      // partial prefetch pass followed by a fuller one). Each prefetch's target already carries
+      // the real current filter + that column's sort (harmless data-wise, see
+      // rememberedFilters.ts's decideFilterAction), but there's no reason to pay for up to a
+      // couple dozen background requests nobody asked for just because the headers are on screen.
+      prefetch={false}
       style={{ color: "inherit", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
     >
       {label}

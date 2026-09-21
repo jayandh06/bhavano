@@ -106,8 +106,12 @@ export function Pagination({
     >
       {totalPages > 1 && (
         <nav aria-label="Pagination" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          {/* prefetch={false} on every link here — same reasoning as SortableHeader.tsx: with up
+            * to 7 page numbers plus Prev/Next all visible at once, proactively prefetching every
+            * one is pure waste, not a correctness issue (each target already carries the real
+            * current filters). */}
           {currentPage > 1 && (
-            <Link href={buildHref(currentPage - 1)} aria-label="Previous page" style={adjacentButtonStyle}>
+            <Link href={buildHref(currentPage - 1)} prefetch={false} aria-label="Previous page" style={adjacentButtonStyle}>
               ← Prev
             </Link>
           )}
@@ -118,14 +122,14 @@ export function Pagination({
                 …
               </span>
             ) : (
-              <Link key={p} href={buildHref(p)} style={pageButtonStyle(p === currentPage)}>
+              <Link key={p} href={buildHref(p)} prefetch={false} style={pageButtonStyle(p === currentPage)}>
                 {p}
               </Link>
             ),
           )}
 
           {currentPage < totalPages && (
-            <Link href={buildHref(currentPage + 1)} aria-label="Next page" style={adjacentButtonStyle}>
+            <Link href={buildHref(currentPage + 1)} prefetch={false} aria-label="Next page" style={adjacentButtonStyle}>
               Next →
             </Link>
           )}
