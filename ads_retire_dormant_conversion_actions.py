@@ -1,21 +1,26 @@
-"""Retires the dormant, superseded WEBPAGE-type conversion actions: "Sign-up", "Post ad success",
-"New registration". Uses a `remove` operation (not `update.status = REMOVED` — the API rejects
-setting REMOVED directly via update: "Enum value 'REMOVED' cannot be used", learned by trying it).
-Google Ads preserves each action's historical reporting data; only new attribution/bidding stops.
+"""Retires dormant, superseded WEBPAGE-type conversion actions, matched by NAME.
 
-Why these three and not others: "Post ad success"/"New registration" had their GTM tags
-deliberately paused when tracking moved server-side to the "(offline)" UPLOAD_CLICKS actions (see
-docs/plans/server-side-google-ads-conversion-upload.md, which already flagged full retirement —
-status: REMOVED — as "a fine future cleanup"). "Sign-up" is a separate, never-wired account-default
-action the same doc calls out as unused. All three currently show 0 conversions and
-"Needs attention"/"Misconfigured" while still primary_for_goal=true, so they count toward
-Maximise-Conversions bidding goals despite contributing nothing.
+STALE WARNING, read before adding a name here: "Post ad success" and "New registration" used to
+be the dormant WEBPAGE actions this script targeted. They no longer are — both were manually
+renamed to "<name>_removed" (and retired) once their GTM tags were paused in favour of the
+"(offline)" UPLOAD_CLICKS actions, which then took over the plain name. If you re-add either name
+to NAMES_TO_RETIRE today, this script will happily retire the *live* UPLOAD_CLICKS action instead,
+since name lookup can't tell the difference. The same thing later happened to "Boost purchase",
+"Subscription purchase", "Contact reveal credits purchase" and "Instant alerts purchase" —
+see rename_retire_offline_actions.py, which targets by conversion action ID for exactly this
+reason rather than by name.
 
-Explicitly NOT touched: "Boost purchase", "Subscription purchase", "Save a search" — those are
-correctly wired (tags live, event names match, code reachable) and simply have zero real usage
-yet, not a defect — retiring them would be wrong, not a cleanup.
+"Sign-up" is the one name still safely retireable here: a separate, never-wired account-default
+action (docs/plans/server-side-google-ads-conversion-upload.md calls it out as unused) with no
+"(offline)" successor to collide with.
 
-Idempotent: an already-REMOVED action is left alone and reported as such, so re-running is safe.
+Uses a `remove` operation (not `update.status = REMOVED` — the API rejects setting REMOVED
+directly via update: "Enum value 'REMOVED' cannot be used", learned by trying it). Google Ads
+preserves each action's historical reporting data; only new attribution/bidding stops.
+
+Idempotent: an already-REMOVED action is left alone and reported as such, so re-running is safe —
+but idempotency only protects against re-running on the SAME target; it does nothing to stop a
+future edit from pointing NAMES_TO_RETIRE at a name that has since been reassigned.
 
 Run: python ads_retire_dormant_conversion_actions.py --dry-run
      python ads_retire_dormant_conversion_actions.py
@@ -29,7 +34,7 @@ from google.ads.googleads.errors import GoogleAdsException
 CID = "4214066478"
 DRY = "--dry-run" in sys.argv
 
-NAMES_TO_RETIRE = ["Sign-up", "Post ad success", "New registration"]
+NAMES_TO_RETIRE = ["Sign-up"]
 
 
 def main():

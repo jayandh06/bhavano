@@ -154,6 +154,24 @@ already counted, so up to 5 boost conversions (~₹380) now appear in **both** t
 the offline one for 14–20 September. Count one action or the other for that window, not their sum.
 Everything from version 9 onward reports through exactly one path.
 
+## Part E — Renamed the 4 purchase actions to drop "(offline)" (2026-09-21)
+
+The `(offline)` suffix on live conversion actions read as "this one is off" in the Ads UI — the
+opposite of reality, and confusing next to the now-dormant plain-named actions showing a
+"Misconfigured" warning. Applied the same treatment "New registration"/"Post ad success" already
+had (see Part B/D): for each of Boost purchase, Subscription purchase, Contact reveal credits
+purchase, Instant alerts purchase —
+1. Renamed the old dormant WEBPAGE action `"X"` → `"X_removed"` and retired it (`remove`
+   operation; historical data stays visible in reports).
+2. Renamed the live UPLOAD_CLICKS `"X (offline)"` action to the plain `"X"`.
+
+Script: `rename_retire_offline_actions.py`, targeting by conversion action **ID** rather than
+name — renaming and matching-by-name in the same operation is exactly what made
+`ads_retire_dormant_conversion_actions.py`'s `NAMES_TO_RETIRE` stale for "Post ad success"/"New
+registration" (fixed in that script's docstring alongside this change). Final state for all 6
+purchase/lead actions with an offline successor now matches: plain name = live UPLOAD_CLICKS
+action, `<name>_removed` = REMOVED WEBPAGE action.
+
 ## Verification
 
 1. ✅ Manual prerequisites done, confirmed via a real `events:ingest` smoke test (`200`,

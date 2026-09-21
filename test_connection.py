@@ -17,14 +17,33 @@ config = {
     "client_id": os.getenv("GOOGLE_ADS_CLIENT_ID"),
     "client_secret": os.getenv("GOOGLE_ADS_CLIENT_SECRET"),
     "refresh_token": os.getenv("GOOGLE_ADS_REFRESH_TOKEN"),
-    "login_customer_id": os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "").replace("-", ""),
     "use_proto_plus": True,
 }
 
+customer_id = os.getenv("GOOGLE_ADS_CUSTOMER_ID", "").replace("-", "")
+login_customer_id = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "").replace("-", "")
+
+# GOOGLE_ADS_LOGIN_CUSTOMER_ID names a manager (MCC) account. Sending that header when the
+# authenticated login has no access to that MCC is itself a USER_PERMISSION_DENIED — which
+# reads like a broken token/connection but isn't (see ads_setup_conversions.py's make_client
+# for the same guard). Drop it when the login reaches the target customer directly instead.
+if login_customer_id and login_customer_id != customer_id:
+    probe = GoogleAdsClient.load_from_dict(config)
+    reachable = {
+        rn.split("/")[-1]
+        for rn in probe.get_service("CustomerService").list_accessible_customers().resource_names
+    }
+    if login_customer_id in reachable:
+        config["login_customer_id"] = login_customer_id
+    else:
+        print(
+            "note: GOOGLE_ADS_LOGIN_CUSTOMER_ID=%s is not accessible to this login "
+            "(reachable: %s) — omitting the login-customer-id header."
+            % (login_customer_id, ", ".join(sorted(reachable)) or "none")
+        )
+
 client = GoogleAdsClient.load_from_dict(config)
 ga_service = client.get_service("GoogleAdsService")
-
-customer_id = os.getenv("GOOGLE_ADS_CUSTOMER_ID", "").replace("-", "")
 query = """
     SELECT campaign.id, campaign.name, campaign.status
     FROM campaign
