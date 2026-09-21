@@ -8,8 +8,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { BottomSheetModal, BottomSheetScrollView, BottomSheetView } from "@gorhom/bottom-sheet";
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
@@ -484,7 +489,7 @@ export function HomeSheetsProvider({
             <Text style={{ color: "#c0554b", fontSize: 12, marginTop: 6, marginBottom: 4 }}>{detectError}</Text>
           ) : null}
           <Text style={[styles.sheetLabel, { color: colors.muted }]}>OR SEARCH CITY / AREA / PINCODE</Text>
-          <TextInput
+          <BottomSheetTextInput
             value={locationQuery}
             onChangeText={onLocationQueryChange}
             placeholder="e.g. Koramangala, Bangalore or 560034"
@@ -602,7 +607,7 @@ export function HomeSheetsProvider({
                 <View style={[styles.countryChip, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
                   <Text style={{ color: colors.text, fontWeight: "700" }}>+91</Text>
                 </View>
-                <TextInput
+                <BottomSheetTextInput
                   value={phone}
                   onChangeText={(v) => setPhone(v.replace(/\D/g, "").slice(0, 10))}
                   placeholder="10-digit mobile number"
@@ -632,7 +637,7 @@ export function HomeSheetsProvider({
           {loginStep === "otp" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Enter the OTP</Text>
-              <TextInput
+              <BottomSheetTextInput
                 value={otp}
                 onChangeText={(v) => setOtp(v.replace(/\D/g, "").slice(0, 6))}
                 placeholder="······"

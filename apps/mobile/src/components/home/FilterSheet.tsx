@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { BottomSheetModal, BottomSheetScrollView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import type { Area, PropertyTypeFilter } from "@bhavano/types";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -8,7 +8,9 @@ import { parseAmount } from "../../lib/priceInput";
 import { HOME_TABS, type HomeTabValue } from "./categories";
 
 export interface AppliedFilters {
-  /** Empty = every area selected (no narrowing) — same convention as the web AreaFilter. */
+  /** Empty = no area filter, i.e. the whole city. Note this differs from how the sheet now
+   * *displays* it: an empty list shows no rows ticked, rather than every row ticked, so that
+   * "Clear all" has a visible result. Same convention as the web AreaFilter. */
   areaIds: string[];
   /** Empty = every bucket selected (no narrowing) — same convention as web's BhkFilter. */
   bedrooms: number[];
@@ -58,7 +60,18 @@ export const FilterSheet = forwardRef<
 
   // Re-sync staged state to whatever's actually applied every time the sheet is reopened, so a
   // dismiss-without-Apply (tap outside, swipe down) never leaves stale edits for next time.
-  useEffect(() => setStaged(applied), [applied]);
+  //
+  // No area filter is expanded to every area ticked, rather than shown as an empty list: "all of
+  // them" is what no filter actually means, and opening on a blank checklist reads as though the
+  // city had nothing in it. `apply()` collapses it back to [] so this never counts as an active
+  // filter. cityAreas is in the deps because it arrives from a query — seeding against the empty
+  // first render would otherwise leave nothing ticked once the real list landed.
+  useEffect(() => {
+    setStaged({
+      ...applied,
+      areaIds: applied.areaIds.length > 0 ? applied.areaIds : cityAreas.map((a) => a.id),
+    });
+  }, [applied, cityAreas]);
 
   // Buy/Rent & Lease only — every other tab's own category is fixed (PG is always "pg", etc.),
   // so there's nothing to pick. Reuses HOME_TABS' own option list rather than a second copy, the
@@ -110,15 +123,28 @@ export const FilterSheet = forwardRef<
     setStaged((prev) => ({ ...prev, minPrice: undefined, maxPrice: undefined }));
   }
 
+  const [areaQuery, setAreaQuery] = useState("");
+  /** Search narrows what is shown, never what "Select all" / "Clear all" act on — those always
+   * mean every area in the city, which is why they don't say "these". Same call web makes. */
+  const visibleAreas = areaQuery.trim()
+    ? cityAreas.filter((a) => a.name.toLowerCase().includes(areaQuery.trim().toLowerCase()))
+    : cityAreas;
+
   const allAreaIds = cityAreas.map((a) => a.id);
-  const selectedAreaIds = staged.areaIds.length === 0 ? new Set(allAreaIds) : new Set(staged.areaIds);
+  /** Empty now means "none selected" and renders that way. It used to be displayed as
+   * *every* area selected, which made the empty state unreachable — deselecting the last chip
+   * normalised straight back to [] and every chip lit up again. Same problem web's AreaFilter
+   * already fixed by pairing "Select all areas" with "Clear all". An empty set still means no
+   * area filter as far as the query is concerned, so clearing shows the whole city. */
+  const selectedAreaIds = new Set(staged.areaIds);
+  const allAreasSelected = staged.areaIds.length === allAreaIds.length && allAreaIds.length > 0;
+  const noAreasSelected = staged.areaIds.length === 0;
 
   function toggleArea(id: string) {
     const next = new Set(selectedAreaIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
-    if (next.size === 0) return; // keep at least one selected, same as web's AreaFilter
-    setStaged((prev) => ({ ...prev, areaIds: next.size === allAreaIds.length ? [] : [...next] }));
+    setStaged((prev) => ({ ...prev, areaIds: [...next] }));
   }
 
   const selectedBedrooms = staged.bedrooms.length === 0 ? new Set(BEDROOM_BUCKETS) : new Set(staged.bedrooms);
@@ -136,7 +162,7 @@ export const FilterSheet = forwardRef<
   }
 
   function reset() {
-    setStaged(EMPTY_FILTERS);
+    setStaged({ ...EMPTY_FILTERS, areaIds: cityAreas.map((a) => a.id) });
     setMinText("");
     setMaxText("");
   }
@@ -144,11 +170,24 @@ export const FilterSheet = forwardRef<
   // Dismissal is the caller's job (it already holds the ref) — `onApply` both commits the
   // filters and closes the sheet, e.g. `(next) => { setFilters(next); sheetRef.current?.dismiss(); }`.
   function apply() {
-    onApply(staged);
+    // Every area ticked is the same search as no area filter, so it is stored as none — otherwise
+    // the default state would count as an active filter in the badge and send every id in the
+    // city as a query param for no reason.
+    onApply({ ...staged, areaIds: allAreasSelected ? [] : staged.areaIds });
   }
 
+  // The keyboard props here, plus BottomSheetTextInput on the price fields below, are what keep
+  // those fields visible while typing: a plain TextInput focuses without telling the sheet, so
+  // the keyboard slides over a sheet that never moves and covers the value being entered.
   return (
-    <BottomSheetModal ref={ref} snapPoints={["75%"]} backgroundStyle={{ backgroundColor: colors.surface }}>
+    <BottomSheetModal
+      ref={ref}
+      snapPoints={["75%"]}
+      backgroundStyle={{ backgroundColor: colors.surface }}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
+    >
       <BottomSheetScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.title, { color: colors.text }]}>Filters</Text>
 
@@ -156,16 +195,78 @@ export const FilterSheet = forwardRef<
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Text style={[styles.sectionLabel, { color: colors.muted }]}>AREAS</Text>
-              <Pressable onPress={() => setStaged((prev) => ({ ...prev, areaIds: [] }))}>
-                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>Select all</Text>
-              </Pressable>
-            </View>
-            <View style={styles.wrapRow}>
-              {cityAreas.map((area) => (
-                <Pressable key={area.id} onPress={() => toggleArea(area.id)} style={chipStyle(selectedAreaIds.has(area.id), colors)}>
-                  <Text style={{ fontSize: 13, color: selectedAreaIds.has(area.id) ? colors.green : colors.text }}>{area.name}</Text>
+              {/* Both directions, matching web's AreaFilter. Each greys out once it would do
+                  nothing, so the pair also reads as a status: which end you are already at. */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                <Pressable
+                  onPress={() => setStaged((prev) => ({ ...prev, areaIds: [...allAreaIds] }))}
+                  disabled={allAreasSelected}
+                >
+                  <Text
+                    style={{
+                      color: colors.green,
+                      fontWeight: "700",
+                      fontSize: 12.5,
+                      opacity: allAreasSelected ? 0.4 : 1,
+                    }}
+                  >
+                    Select all
+                  </Text>
                 </Pressable>
-              ))}
+                <Pressable
+                  onPress={() => setStaged((prev) => ({ ...prev, areaIds: [] }))}
+                  disabled={noAreasSelected}
+                >
+                  <Text
+                    style={{
+                      color: colors.muted,
+                      fontWeight: "700",
+                      fontSize: 12.5,
+                      opacity: noAreasSelected ? 0.4 : 1,
+                    }}
+                  >
+                    Clear all
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+            {/* A checklist, not chips. A city can have a hundred areas, and as a wrapped chip
+                grid that is a wall of pills several screens tall with the selected ones
+                distinguished only by tint — hard to scan, and it buried every filter below it.
+                Rows read top-to-bottom with an explicit tick, and the search box narrows a long
+                list instead of making you hunt. Deliberately NOT its own ScrollView: nesting one
+                inside the sheet's BottomSheetScrollView makes the two fight over the drag
+                gesture. The outer sheet scrolls, and `maxHeight` keeps the list from pushing the
+                other sections off the end. */}
+            {cityAreas.length > 8 && (
+              <BottomSheetTextInput
+                value={areaQuery}
+                onChangeText={setAreaQuery}
+                placeholder={`Search ${cityAreas.length} areas`}
+                placeholderTextColor={colors.muted}
+                style={[styles.areaSearch, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+              />
+            )}
+            <View style={[styles.areaList, { borderColor: colors.border }]}>
+              {visibleAreas.length === 0 ? (
+                <Text style={{ color: colors.muted, fontSize: 12.5, paddingVertical: 10, paddingHorizontal: 12 }}>
+                  No area matches “{areaQuery.trim()}”.
+                </Text>
+              ) : (
+                visibleAreas.map((area, i) => {
+                  const on = selectedAreaIds.has(area.id);
+                  return (
+                    <Pressable
+                      key={area.id}
+                      onPress={() => toggleArea(area.id)}
+                      style={[styles.areaRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}
+                    >
+                      <Text style={{ fontSize: 13.5, color: colors.text, flex: 1 }}>{area.name}</Text>
+                      {on && <Text style={{ color: colors.green, fontSize: 15, fontWeight: "700" }}>✓</Text>}
+                    </Pressable>
+                  );
+                })
+              )}
             </View>
           </View>
         )}
@@ -209,7 +310,7 @@ export const FilterSheet = forwardRef<
             )}
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <TextInput
+            <BottomSheetTextInput
               value={minText}
               onChangeText={onMinChange}
               placeholder="Min"
@@ -218,7 +319,7 @@ export const FilterSheet = forwardRef<
               style={[styles.priceInput, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
             />
             <Text style={{ color: colors.muted }}>–</Text>
-            <TextInput
+            <BottomSheetTextInput
               value={maxText}
               onChangeText={onMaxChange}
               placeholder="Max"
@@ -272,6 +373,9 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingBottom: 24 },
   title: { fontWeight: "700", fontSize: 19, marginBottom: 16 },
   section: { marginBottom: 20 },
+  areaSearch: { borderWidth: 1, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 12, fontSize: 13.5, marginBottom: 8 },
+  areaList: { borderWidth: 1, borderRadius: 9, overflow: "hidden" },
+  areaRow: { flexDirection: "row", alignItems: "center", paddingVertical: 11, paddingHorizontal: 12 },
   sectionHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   sectionLabel: { fontSize: 12, fontWeight: "700", marginBottom: 10, letterSpacing: 0.3 },
   wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
