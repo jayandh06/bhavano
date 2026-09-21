@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
+  AdminListingRowDto,
   Area,
   City,
   ClaimSource,
@@ -14,8 +15,9 @@ import type {
   SendPostedNotificationResponseDto,
   TransactionType,
 } from "@bhavano/types";
-import { sendBoostPromotionAction, sendPostedNotificationAction } from "@/app/actions/admin";
+import { fetchListingDetailAction, sendBoostPromotionAction, sendPostedNotificationAction } from "@/app/actions/admin";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { ListingRowDetail } from "@/components/ListingRowDetail";
 import type { AdminListingSortField } from "@/lib/bff";
 import { formatDate } from "@/lib/formatDateTime";
 import { buildSuffixSortHref, str, suffixSortDirectionFor, type SearchParams } from "@/lib/searchParams";
@@ -80,7 +82,7 @@ interface ListingColumn {
   sortField?: AdminListingSortField;
   /** Rendered in the header's filter row. Omitted for columns the BFF can't filter on. */
   filter?: ReactNode;
-  render: (item: ListingDetailDto) => ReactNode;
+  render: (item: AdminListingRowDto) => ReactNode;
   /** Off-by-default columns exist so their already-supported filters have a home, without making
    * the default table even wider — Category/Transaction/City/Area were filterable long before
    * they were ever shown. */
@@ -106,7 +108,7 @@ export function AdminListingsTable({
   cities,
   areas,
 }: {
-  items: ListingDetailDto[];
+  items: AdminListingRowDto[];
   sp: SearchParams;
   cities: City[];
   areas: Area[];
@@ -115,6 +117,24 @@ export function AdminListingsTable({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  // Expand-on-demand, cached, multiple rows can stay open at once — same shape as
+  // ConversationsTable/PageVisitsTable, fetching the full ListingDetailDto only once per listing.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [details, setDetails] = useState<Record<string, ListingDetailDto | "loading" | "error">>({});
+
+  async function onToggleExpand(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    if (details[id] !== undefined) return;
+
+    setDetails((prev) => ({ ...prev, [id]: "loading" }));
+    const result = await fetchListingDetailAction(id);
+    setDetails((prev) => ({ ...prev, [id]: result.success ? result.listing : "error" }));
+  }
 
   // Every row is selectable. Selection used to be limited to listings still missing the "your ad
   // is live" acknowledgement, which was right while that was the only bulk action — it is no
@@ -476,30 +496,51 @@ export function AdminListingsTable({
               )}
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr
-                  key={item.id}
-                  className="admin-table-row"
-                  onClick={() => router.push(`/listings/${item.id}`)}
-                  style={{ borderTop: "1px solid var(--border)" }}
-                >
-                  <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
-                  </td>
-                  {visible.map((c) => (
-                    <td
-                      key={c.key}
-                      style={{
-                        ...tdStyle,
-                        ...(c.nowrap ? { whiteSpace: "nowrap" as const } : {}),
-                        ...(c.key === "title" ? { fontWeight: 700, maxWidth: 260 } : {}),
-                      }}
+              {items.map((item) => {
+                const isOpen = expandedIds.has(item.id);
+                return (
+                  <Fragment key={item.id}>
+                    <tr
+                      className="admin-table-row"
+                      onClick={() => router.push(`/listings/${item.id}`)}
+                      style={{ borderTop: "1px solid var(--border)" }}
                     >
-                      {c.render(item)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+                      <td style={{ ...tdStyle, whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => onToggleExpand(item.id)}
+                            aria-label={isOpen ? "Collapse details" : "Expand details"}
+                            style={expandButtonStyle}
+                          >
+                            {isOpen ? "▾" : "▸"}
+                          </button>
+                          <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
+                        </div>
+                      </td>
+                      {visible.map((c) => (
+                        <td
+                          key={c.key}
+                          style={{
+                            ...tdStyle,
+                            ...(c.nowrap ? { whiteSpace: "nowrap" as const } : {}),
+                            ...(c.key === "title" ? { fontWeight: 700, maxWidth: 260 } : {}),
+                          }}
+                        >
+                          {c.render(item)}
+                        </td>
+                      ))}
+                    </tr>
+                    {isOpen && (
+                      <tr>
+                        <td colSpan={visible.length + 1} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
+                          <ListingRowDetail state={details[item.id]} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
               {items.length === 0 && (
                 <tr style={{ borderTop: "1px solid var(--border)" }}>
                   {/* Inside the table, so the header filters stay reachable — filtering down to
@@ -810,6 +851,21 @@ const thStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 const tdStyle: React.CSSProperties = { padding: "9px 12px", verticalAlign: "top" };
+const expandButtonStyle: React.CSSProperties = {
+  background: "none",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  width: 20,
+  height: 20,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  fontSize: 11,
+  color: "var(--text-soft)",
+  padding: 0,
+  flexShrink: 0,
+};
 
 /** Tight under the labels it belongs to, with a bottom border so the two rows read as one header
  * block rather than the inputs looking like a first data row. */

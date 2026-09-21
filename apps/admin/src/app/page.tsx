@@ -4,9 +4,11 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
+import { daysAgoIST, todayIST } from "@/lib/dateRangeDefaults";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { AdminListingsTable } from "@/components/AdminListingsTable";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
 
 type FilterTab = "needsReview" | "flagged" | "all";
 
@@ -45,8 +47,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const search = str(sp.search);
   const userId = str(sp.userId);
   const userLabel = str(sp.userLabel);
-  const createdFrom = str(sp.createdFrom);
-  const createdTo = str(sp.createdTo);
+  // Silent default to a 1-day window, same pattern as page-visits/page.tsx's DEFAULT_TRAFFIC —
+  // confirmed with the user that this applies to Listings too, so the moderation queue defaults
+  // to "created today" rather than unbounded history. Doesn't redirect the URL to show it.
+  const createdFrom = str(sp.createdFrom) ?? daysAgoIST(1);
+  const createdTo = str(sp.createdTo) ?? todayIST();
   const updatedFrom = str(sp.updatedFrom);
   const updatedTo = str(sp.updatedTo);
   const category = str(sp.category) as ListingCategory | undefined;
@@ -129,11 +134,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
           </Field>
 
-          <Field label="Created from">
-            <input type="date" name="createdFrom" defaultValue={createdFrom} style={dateInputStyle} />
-          </Field>
-          <Field label="Created to">
-            <input type="date" name="createdTo" defaultValue={createdTo} style={dateInputStyle} />
+          <Field label="Created (date range)">
+            <DateRangeFilter basePath="/" sp={sp} currentFrom={createdFrom} currentTo={createdTo} fromParam="createdFrom" toParam="createdTo">
+              <Field label="Created from">
+                <input type="date" name="createdFrom" defaultValue={createdFrom} style={dateInputStyle} />
+              </Field>
+              <Field label="Created to">
+                <input type="date" name="createdTo" defaultValue={createdTo} style={dateInputStyle} />
+              </Field>
+            </DateRangeFilter>
           </Field>
           <Field label="Modified from">
             <input type="date" name="updatedFrom" defaultValue={updatedFrom} style={dateInputStyle} />

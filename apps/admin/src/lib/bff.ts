@@ -43,6 +43,7 @@ import type {
   SessionTrailDto,
   TransactionType,
   UserActivityDto,
+  UserLoginHistoryPage,
   UserLoginSummariesPage,
   UserRole,
   OutreachContactsPage,
@@ -401,6 +402,19 @@ export function fetchRecentLogins(accessToken: string, query: RecentLoginsQuery 
   if (query.sort) params.set("sort", query.sort);
   if (query.limit) params.set("limit", String(query.limit));
   return authedBffFetch(accessToken, `/admin/logins?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchUserLoginHistory(
+  accessToken: string,
+  userId: string,
+  query: { offset?: number; limit?: number } = {},
+): Promise<UserLoginHistoryPage> {
+  const params = new URLSearchParams();
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
+  if (query.limit) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/users/${userId}/login-history?${params.toString()}`, {
+    cache: "no-store",
+  });
 }
 
 export interface PageVisitsQuery {

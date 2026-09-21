@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
+  AdminListingRowDto,
   AdminListingsPage,
   ClaimSource,
   CreateListingInput,
@@ -717,10 +718,12 @@ export class ListingsService {
     const [rows, total] = await Promise.all([
       this.prisma.listing.findMany({
         where,
+        // No ...LISTING_MEDIA_INCLUDE here (photos/videos/owner/renewals) — AdminListingsTable
+        // never reads any of it; see AdminListingRowDto's own doc comment. Expanding a row fetches
+        // the full ListingDetailDto on demand instead of every row paying for it on every load.
         include: {
           city: true,
           area: true,
-          ...LISTING_MEDIA_INCLUDE,
           // Newest "posted" row only — mirrors AdminService.listUsers' notificationLogs include
           // for the "welcomed" column. Admin-only: no other listForAdmin caller pays for this.
           notificationLogs: {
@@ -745,14 +748,13 @@ export class ListingsService {
       this.prisma.listing.count({ where }),
     ]);
 
-    // Admin queue — every viewer here is an admin, so full video status/entitlement visibility.
     return {
       items: rows.map((row) => {
         // Split here rather than in two queries — see the include's own comment.
         const posted = row.notificationLogs.filter((log) => log.kind === 'posted');
         const promos = row.notificationLogs.filter((log) => log.kind === 'boost_promo');
         return {
-        ...this.toDetailDto(row, undefined, true),
+        ...this.toAdminQueueRowDto(row),
         postedNotificationSent: posted.length > 0,
         postedNotificationChannel: posted[0]?.channel ?? null,
         postedNotificationSentAt: posted[0]?.sentAt.toISOString() ?? null,
@@ -770,6 +772,34 @@ export class ListingsService {
         };
       }),
       total,
+    };
+  }
+
+  /** Thin row mapper for the admin moderation queue only — see AdminListingRowDto's own doc
+   * comment for why this exists separately from toCardDto/toDetailDto: neither of those can be
+   * reused here without also pulling in listingPhotos/listingVideos (toCardDto's own required
+   * fields), which AdminListingsTable never renders. The two-line price-formatting rule below
+   * duplicates toCardDto's rather than sharing it, since sharing would mean widening this query's
+   * `include` right back out to match toCardDto's signature. */
+  private toAdminQueueRowDto(listing: Listing & { city: City; area: Area }): AdminListingRowDto {
+    return {
+      id: listing.id,
+      title: listing.title,
+      status: listing.status,
+      moderationState: listing.moderationState,
+      adminReviewed: listing.adminReviewed,
+      category: listing.category,
+      transactionType: listing.transactionType,
+      cityName: listing.city.name,
+      area: listing.area.name,
+      price: listing.price === 0 ? 'Contact for price' : `₹${priceFormatter.format(listing.price)}`,
+      priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
+      viewCount: listing.viewCount,
+      likeCount: listing.likeCount,
+      createdAt: listing.createdAt.toISOString(),
+      updatedAt: listing.updatedAt.toISOString(),
+      expiresAt: listing.expiresAt.toISOString(),
+      isExpired: listing.expiresAt.getTime() < Date.now(),
     };
   }
 

@@ -561,4 +561,49 @@ describe('AdminService.listRecentLogins — one row per user, not per LoginEvent
     // u1 (has an ad, and a real returning user) survives.
     expect(result.items.map((i) => i.userId)).toEqual(['u1']);
   });
+
+  /** The correctness fix `from`/`to` being pushed into the groupBy's own `where` required: once
+   * a date range narrows which LoginEvent rows the aggregate even sees, a returning user's
+   * windowed first and last can coincide (only their one recent login is visible to the
+   * windowed query) even though they are not new at all — a second `groupBy` scoped to just the
+   * users in the windowed result, unrestricted by date, is what tells the two cases apart. */
+  it('does not call a returning user "new" just because a date window hid their earlier login', async () => {
+    let call = 0;
+    const groupBy = jest.fn().mockImplementation(() => {
+      call += 1;
+      // Call 1: the windowed groupBy — u1's older login (months ago) falls outside the
+      // window, so only yesterday's is visible, making windowed first === windowed last.
+      if (call === 1) {
+        return Promise.resolve([
+          { userId: 'u1', _min: { createdAt: new Date('2026-02-20T00:00:00Z') }, _max: { createdAt: new Date('2026-02-20T00:00:00Z') } },
+          { userId: 'u2', _min: { createdAt: new Date('2026-02-20T00:00:00Z') }, _max: { createdAt: new Date('2026-02-20T00:00:00Z') } },
+        ]);
+      }
+      // Call 2: the true-all-time-first lookup — u1's real first login was months earlier;
+      // u2 really did only ever log in once, so their true first matches the windowed one.
+      return Promise.resolve([
+        { userId: 'u1', _min: { createdAt: new Date('2025-11-01T00:00:00Z') } },
+        { userId: 'u2', _min: { createdAt: new Date('2026-02-20T00:00:00Z') } },
+      ]);
+    });
+
+    const { service } = makeService({
+      loginEvent: { groupBy, findMany: jest.fn().mockResolvedValue([]) },
+      visit: { findMany: jest.fn().mockResolvedValue([]) },
+      listing: { findMany: jest.fn().mockResolvedValue([]) },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    const result = await service.listRecentLogins({
+      from: '2026-02-19T00:00:00.000Z',
+      to: '2026-02-21T00:00:00.000Z',
+      limit: 25,
+    } as Parameters<typeof service.listRecentLogins>[0]);
+
+    const u1 = result.items.find((i) => i.userId === 'u1');
+    const u2 = result.items.find((i) => i.userId === 'u2');
+    expect(u1?.isNewUser).toBe(false); // returning user, older login just outside the window
+    expect(u2?.isNewUser).toBe(true); // genuinely only ever logged in once, within the window
+    expect(groupBy).toHaveBeenCalledTimes(2);
+  });
 });

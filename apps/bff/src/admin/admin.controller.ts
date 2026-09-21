@@ -19,6 +19,7 @@ import type {
   ListingEditLogPage,
   ListingEngagementPage,
   ListingOwnerDto,
+  UserLoginHistoryPage,
   UserLoginSummariesPage,
   MessageDto,
   PageVisitsPage,
@@ -50,6 +51,7 @@ import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { SetListingStatusDto } from './dto/set-listing-status.dto';
 import { AdminUpdateListingDto } from '../listings/dto/update-listing.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
+import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { ListUsersDto } from './dto/list-users.dto';
 import { SendWelcomeDto } from './dto/send-welcome.dto';
@@ -249,6 +251,14 @@ export class AdminController {
   @Get('logins')
   listRecentLogins(@Query() query: ListLoginsDto): Promise<UserLoginSummariesPage> {
     return this.adminService.listRecentLogins(query);
+  }
+
+  @Get('users/:userId/login-history')
+  getUserLoginHistory(
+    @Param('userId') userId: string,
+    @Query() query: ListUserLoginHistoryDto,
+  ): Promise<UserLoginHistoryPage> {
+    return this.adminService.getUserLoginHistory(userId, query);
   }
 
   @Get('page-visits')

@@ -31,6 +31,7 @@ import type {
   SendWelcomeResultDto,
   SessionTrailDto,
   UserActivityDto,
+  UserLoginHistoryPage,
   UserLoginSummariesPage,
   UserLoginSummaryDto,
   WelcomeChannel,
@@ -50,6 +51,7 @@ import { AccountDeletionService } from '../users/account-deletion.service';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
+import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
 import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
@@ -431,32 +433,57 @@ export class AdminService {
     });
   }
 
-  /** One row per user (not per LoginEvent) — every user who has ever logged in at least once,
-   * collapsed into a summary: first login ever, most recent login (and that login's own method/
-   * device), whether they've posted an ad, and whether they've only ever logged in once ("New
-   * user" — see UserLoginSummaryDto.isNewUser's own doc comment).
+  /** One row per user (not per LoginEvent) — every user with a login *within the selected
+   * date range* (see below), collapsed into a summary: their first/last login within that range
+   * (and the last one's method/device), whether they've posted an ad, and whether their very
+   * first-ever login falls inside this range ("New user" — see UserLoginSummaryDto.isNewUser's
+   * own doc comment, and the note on `trueFirstByUser` further down for why this is no longer a
+   * plain equality check on the windowed aggregate alone).
    *
-   * Deliberately not one SQL aggregate: getting a per-user MIN/MAX *and* the method/session of
-   * specifically the MAX row *and* a Listing-ownership join in one query needs either raw SQL or
-   * a window function Prisma doesn't expose cleanly. This is an admin-only report over a bounded
-   * set — every user who has ever logged in, thousands on this product, not millions — so
-   * fetching the full aggregate and filtering/sorting/paginating over it in memory is far
-   * simpler and safer than hand-written raw SQL, at a cost this scale doesn't notice. Revisit
-   * with a real SQL aggregate only if that stops being true. */
+   * `from`/`to` are pushed into this groupBy's `where` (LoginEvent has `@@index([userId,
+   * createdAt])`/`@@index([createdAt])`) rather than applied afterward — the admin screen this
+   * backs now defaults to a 1-day window, and scanning the entire LoginEvent table on every
+   * request to then throw most of it away in memory stopped being the cheap option once the
+   * common case is "just today". Still not one SQL aggregate for the rest: getting a per-user
+   * MIN/MAX *and* the method/session of specifically the MAX row *and* a Listing-ownership join in
+   * one query needs either raw SQL or a window function Prisma doesn't expose cleanly, and the
+   * date-scoped result set is small enough that filtering/sorting/paginating the rest in memory is
+   * still simpler and safer than hand-written raw SQL for it. */
   async listRecentLogins(query: ListLoginsDto): Promise<UserLoginSummariesPage> {
     const { offset = 0, from, to, userId, search, method, isNewUser, hasPostedAd, sort, limit } = query;
 
-    // Step 1: every user's first/last login instant — one indexed groupBy (LoginEvent has
-    // [userId, createdAt]), cheap regardless of total LoginEvent count.
+    // Step 1: every user's first/last login WITHIN the window — one indexed groupBy.
+    const dateWhere: Prisma.LoginEventWhereInput = {
+      ...(userId ? { userId } : {}),
+      ...(from || to
+        ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
+        : {}),
+    };
     const grouped = await this.prisma.loginEvent.groupBy({
       by: ['userId'],
-      where: userId ? { userId } : {},
+      where: dateWhere,
       _min: { createdAt: true },
       _max: { createdAt: true },
     });
     if (grouped.length === 0) return { items: [], total: 0 };
 
     const userIds = grouped.map((g) => g.userId);
+
+    // Step 1b: each of these users' TRUE all-time first login, not just within the window —
+    // an indexed per-user lookup (userId IN (...)), not a scan, so this stays cheap regardless of
+    // the date range. Without this, someone who logged in months ago and then again today would
+    // read as "New user" in a "last 1 day" view, because their windowed min and max would
+    // coincide even though they are nothing of the kind. Skipped entirely when there's no `from`
+    // — an unbounded-below window's own windowed min already IS the true one, `to` alone never
+    // excludes an earlier login.
+    const trueFirstLogins = from
+      ? await this.prisma.loginEvent.groupBy({
+          by: ['userId'],
+          where: { userId: { in: userIds } },
+          _min: { createdAt: true },
+        })
+      : grouped;
+    const trueFirstByUser = new Map(trueFirstLogins.map((g) => [g.userId, g._min.createdAt!]));
 
     // Step 2: the specific LoginEvent matching each user's own lastLoginAt, for its method and
     // session (session resolves device, below). Matched by (userId, createdAt) rather than a
@@ -501,6 +528,7 @@ export class AdminService {
       const lastEvent = lastEventByUser.get(g.userId);
       const firstAt = g._min.createdAt!;
       const lastAt = g._max.createdAt!;
+      const trueFirstAt = trueFirstByUser.get(g.userId) ?? firstAt;
       return {
         userId: g.userId,
         userName: user?.name ?? null,
@@ -508,23 +536,23 @@ export class AdminService {
         userEmail: user?.email ?? null,
         firstLoginAt: firstAt.toISOString(),
         lastLoginAt: lastAt.toISOString(),
-        isNewUser: firstAt.getTime() === lastAt.getTime(),
+        // Two conditions, both necessary: only one login fell within the window (the original,
+        // unwindowed check was exactly this — firstAt === lastAt — and stays exactly this when
+        // there's no `from` at all, since trueFirstByUser then just reuses `grouped` and the
+        // second condition is trivially true), AND that one login is also this user's true
+        // all-time first — without this second check, someone who logged in months ago and then
+        // again within a narrow window would have their windowed first/last coincide (only the
+        // recent login is even visible to the query) and read as "new" despite being nothing of
+        // the kind. See trueFirstByUser's own comment above.
+        isNewUser: firstAt.getTime() === lastAt.getTime() && trueFirstAt.getTime() === firstAt.getTime(),
         lastLoginMethod: lastEvent?.method ?? 'otp',
         lastLoginDevice: lastEvent?.sessionId ? deviceBySession.get(lastEvent.sessionId) ?? null : null,
         hasPostedAd: hasAdSet.has(g.userId),
       };
     });
 
-    // Filters that don't push down into the groupBy above — applied here, over the already-small
-    // per-user summary set rather than the raw event table.
-    if (from) {
-      const fromTime = new Date(from).getTime();
-      items = items.filter((i) => new Date(i.lastLoginAt).getTime() >= fromTime);
-    }
-    if (to) {
-      const toTime = new Date(to).getTime();
-      items = items.filter((i) => new Date(i.lastLoginAt).getTime() <= toTime);
-    }
+    // from/to are already enforced at the DB level via dateWhere above — no in-memory date
+    // filtering needed here, unlike search/method/isNewUser/hasPostedAd below.
     if (search) {
       const q = search.trim().toLowerCase();
       items = items.filter(
@@ -551,6 +579,45 @@ export class AdminService {
 
     const total = items.length;
     return { items: items.slice(offset, offset + limit), total };
+  }
+
+  /** A single user's full login history — the row-expand for the Recent logins screen, which
+   * otherwise only ever shows the one most-recent login per user. Device resolution follows the
+   * same manual `sessionId`-based `Visit` lookup `listRecentLogins` already uses (LoginEvent.
+   * sessionId is deliberately not a Prisma relation — see the schema comment on it), just scoped
+   * to one user's own events instead of a batch of many users' latest ones. */
+  async getUserLoginHistory(userId: string, query: ListUserLoginHistoryDto): Promise<UserLoginHistoryPage> {
+    const { offset = 0, limit } = query;
+
+    const [events, total] = await Promise.all([
+      this.prisma.loginEvent.findMany({
+        where: { userId },
+        select: { id: true, method: true, sessionId: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      this.prisma.loginEvent.count({ where: { userId } }),
+    ]);
+
+    const sessionIds = events.map((e) => e.sessionId).filter((id): id is string => Boolean(id));
+    const visits = sessionIds.length
+      ? await this.prisma.visit.findMany({
+          where: { sessionId: { in: sessionIds } },
+          select: { sessionId: true, deviceType: true },
+        })
+      : [];
+    const deviceBySession = new Map(visits.map((v) => [v.sessionId, v.deviceType as DeviceType | null]));
+
+    return {
+      items: events.map((e) => ({
+        id: e.id,
+        method: e.method,
+        device: e.sessionId ? deviceBySession.get(e.sessionId) ?? null : null,
+        createdAt: e.createdAt.toISOString(),
+      })),
+      total,
+    };
   }
 
   /** Page-visit log for the admin analytics screen — the raw per-session `Visit` rows behind

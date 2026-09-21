@@ -9,17 +9,23 @@ import type {
   ContactRevealSettingsDto,
   RequirementStatus,
   SavedSearchSettingsDto,
+  ListingDetailDto,
   ListingStatus,
   MessageDto,
   RateLimitSettingsDto,
   SendPostedNotificationResponseDto,
+  SessionTrailDto,
+  UserLoginHistoryPage,
 } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   approveListing,
   deleteListing,
+  fetchListingById,
   fetchListingConversationMessages,
+  fetchSessionTrail,
   fetchThread,
+  fetchUserLoginHistory,
   flagListing,
   revokeBoost,
   rotateListingPhoto,
@@ -300,5 +306,52 @@ export async function fetchConversationMessagesAction(
     return { success: true, messages };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load messages" };
+  }
+}
+
+/** Same shape as fetchConversationMessagesAction — PageVisitsTable's row-expand fetches a
+ * session's full page-view trail on demand instead of navigating to the standalone
+ * /page-visits/[sessionId] page. That route still exists (direct links/bookmarks still work),
+ * it's just no longer the primary way to see this from the table. */
+export async function fetchSessionTrailAction(
+  sessionId: string,
+): Promise<{ success: true; trail: SessionTrailDto } | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const trail = await fetchSessionTrail(accessToken, sessionId);
+    return { success: true, trail };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to load session trail" };
+  }
+}
+
+/** Same shape again — AdminListingsTable's row-expand fetches a listing's full detail (photos,
+ * description, attributes, renewal history, contact info) on demand via the existing
+ * GET /listings/:id (findOne), confirmed to have no side effects worth avoiding here (no
+ * view-count increment — just reads plus a ContactRevealService lookup), rather than the admin
+ * queue's own list query carrying all of that for every row on every page load. */
+export async function fetchListingDetailAction(
+  listingId: string,
+): Promise<{ success: true; listing: ListingDetailDto } | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const listing = await fetchListingById(accessToken, listingId);
+    return { success: true, listing };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to load listing detail" };
+  }
+}
+
+/** Same shape again — RecentLoginsTable's row-expand fetches a user's full login history on
+ * demand (every LoginEvent, not just the one most-recent login UserLoginSummaryDto carries). */
+export async function fetchUserLoginHistoryAction(
+  userId: string,
+): Promise<{ success: true; history: UserLoginHistoryPage } | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const history = await fetchUserLoginHistory(accessToken, userId);
+    return { success: true, history };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to load login history" };
   }
 }

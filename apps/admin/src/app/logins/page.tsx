@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { DeviceType, LoginMethod } from "@bhavano/types";
+import type { LoginMethod } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminLoginSort, AdminLoginSortField, fetchRecentLogins } from "@/lib/bff";
 import {
@@ -11,35 +11,24 @@ import {
   suffixSortDirectionFor,
   type SearchParams,
 } from "@/lib/searchParams";
-import { formatDateTime } from "@/lib/formatDateTime";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
+import { daysAgoIST, todayIST } from "@/lib/dateRangeDefaults";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
 import { SortableHeader } from "@/components/SortableHeader";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { RecentLoginsTable } from "@/components/RecentLoginsTable";
 
 /** What the BFF falls back to with no `?sort=` — named here so the Last login column's header
  * still shows its ▼ before anything has been clicked. */
 const DEFAULT_SORT: AdminLoginSort = "lastLoginAt_desc";
-
-const METHOD_LABELS: Record<LoginMethod, string> = {
-  otp: "OTP",
-  google: "Google",
-  apple: "Apple",
-};
 
 const METHOD_OPTIONS: { value: LoginMethod; label: string }[] = [
   { value: "otp", label: "OTP" },
   { value: "google", label: "Google" },
   { value: "apple", label: "Apple" },
 ];
-
-const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
-  desktop: "Desktop",
-  mobile: "Mobile",
-  tablet: "Tablet",
-  mobile_app: "Mobile App",
-};
 
 /** Kept as a plain `""`/`"true"`/`"false"` string in the URL (not a checkbox) — a three-state
  * filter (any/yes/no) needs a neutral "not filtering on this at all" option a checkbox can't
@@ -57,8 +46,11 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
   const limit = parsePageSize(str(sp.limit));
   const userId = str(sp.userId);
   const userLabel = str(sp.userLabel);
-  const from = str(sp.from);
-  const to = str(sp.to);
+  // Same silent-default pattern as page-visits/page.tsx's DEFAULT_TRAFFIC — absent from/to
+  // defaults to a 1-day window (now enforced at the DB level in listRecentLogins, not just
+  // applied afterward) rather than every user who has ever logged in.
+  const from = str(sp.from) ?? daysAgoIST(1);
+  const to = str(sp.to) ?? todayIST();
   const search = str(sp.search);
   const method = str(sp.method) as LoginMethod | undefined;
   const isNewUserParam = str(sp.isNewUser);
@@ -117,11 +109,15 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
               <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
             </Field>
 
-            <Field label="From (last login)">
-              <input type="date" name="from" defaultValue={from} style={dateInputStyle} />
-            </Field>
-            <Field label="To (last login)">
-              <input type="date" name="to" defaultValue={to} style={dateInputStyle} />
+            <Field label="Date range">
+              <DateRangeFilter basePath="/logins" sp={sp} currentFrom={from} currentTo={to}>
+                <Field label="From (last login)">
+                  <input type="date" name="from" defaultValue={from} style={dateInputStyle} />
+                </Field>
+                <Field label="To (last login)">
+                  <input type="date" name="to" defaultValue={to} style={dateInputStyle} />
+                </Field>
+              </DateRangeFilter>
             </Field>
 
             <button type="submit" style={applyButtonStyle}>
@@ -205,58 +201,7 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                {result.items.map((row) => (
-                  <tr key={row.userId} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={tdStyle}>
-                      <Link href={`/users/${row.userId}`} style={{ color: "var(--green)", fontWeight: 700, textDecoration: "none" }}>
-                        {row.userName ?? row.userPhone ?? row.userEmail ?? "Unknown user"}
-                      </Link>
-                      <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                        {[row.userPhone, row.userEmail].filter(Boolean).join(" · ")}
-                      </div>
-                    </td>
-                    <td style={tdStyle}>
-                      {row.isNewUser ? (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: "var(--gold, #b8860b)",
-                            border: "1px solid var(--gold, #b8860b)",
-                            borderRadius: 6,
-                            padding: "2px 8px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          New user
-                        </span>
-                      ) : (
-                        dash
-                      )}
-                    </td>
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDateTime(row.firstLoginAt)}</td>
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDateTime(row.lastLoginAt)}</td>
-                    <td style={tdStyle}>{METHOD_LABELS[row.lastLoginMethod]}</td>
-                    {/* Only known for a web login with a session — see UserLoginSummaryDto.
-                        lastLoginDevice's own doc comment for why a mobile-app login never has
-                        one at all, which is why this reads "—" for plenty of real app users, not
-                        just for missing data. */}
-                    <td style={tdStyle}>{row.lastLoginDevice ? DEVICE_TYPE_LABELS[row.lastLoginDevice] : dash}</td>
-                    <td style={tdStyle}>{row.hasPostedAd ? "Yes" : "No"}</td>
-                  </tr>
-                ))}
-                {/* Inside the table, not instead of it — filtering down to zero shouldn't take
-                    the filter inputs away with it, leaving no way to widen whatever just emptied
-                    the page. */}
-                {result.items.length === 0 && (
-                  <tr style={{ borderTop: "1px solid var(--border)" }}>
-                    <td colSpan={7} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
-                      No users match these filters.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+              <RecentLoginsTable items={result.items} />
             </table>
           </div>
         </form>
@@ -281,8 +226,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
-
-const dash = <span style={{ color: "var(--muted)" }}>—</span>;
 
 const dateInputStyle: React.CSSProperties = {
   border: "1px solid var(--border)",
@@ -327,4 +270,3 @@ const headerInputStyle: React.CSSProperties = {
 };
 
 const headerSelectStyle: React.CSSProperties = { ...headerInputStyle, width: 110 };
-const tdStyle: React.CSSProperties = { padding: "9px 12px", verticalAlign: "top" };

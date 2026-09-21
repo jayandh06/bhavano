@@ -571,10 +571,48 @@ export interface UpdateProfileInput {
    * adoption unsafe — see docs/plans/account-linking-phone-and-email.md. */
 }
 
-/** Admin moderation queue — same listing shape as the public/owner views, just without the
- * `moderationState: 'approved'` filter the public browse endpoint applies. */
+/** Admin moderation queue — deliberately NOT the same shape as the public/owner detail view.
+ * `AdminListingsTable` only ever renders this subset (title/status/moderation/category/
+ * transactionType/city/area/source/claimSource/the notification-send-log fields/boostPromo/
+ * counts/price/dates) — it never needed the full `ListingDetailDto` (photos, videos, attributes,
+ * renewal history, contact-reveal fields) that used to be fetched for every row on every page
+ * load regardless. Expanding a row fetches the full `ListingDetailDto` on demand instead (see
+ * fetchListingDetailAction in apps/admin/src/app/actions/admin.ts), reusing the existing
+ * `GET /listings/:id` rather than adding a second heavy endpoint. */
+export interface AdminListingRowDto {
+  id: string;
+  title: string;
+  status: ListingStatus;
+  moderationState: ModerationState;
+  adminReviewed: boolean;
+  category: ListingCategory;
+  transactionType: TransactionType;
+  cityName: string;
+  area: string;
+  source?: ListingSource;
+  claimSource?: ClaimSource | null;
+  postedNotificationSent?: boolean;
+  postedNotificationChannel?: string | null;
+  postedNotificationSentAt?: string | null;
+  postedNotificationDeliveryStatus?: string | null;
+  boostPromo?: {
+    emailCount: number;
+    whatsappCount: number;
+    lastSentAt: string | null;
+  };
+  viewCount: number;
+  likeCount: number;
+  messageCount?: number;
+  price: string;
+  priceQualifier: string;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+  isExpired: boolean;
+}
+
 export interface AdminListingsPage {
-  items: ListingDetailDto[];
+  items: AdminListingRowDto[];
   total: number;
 }
 
@@ -736,6 +774,22 @@ export interface PageViewDto {
 export interface SessionTrailDto {
   visit: PageVisitDto;
   pageViews: PageViewDto[];
+}
+
+/** One `LoginEvent` row for the Recent logins admin screen's row-expand — every login a user has
+ * ever made, not just the single most-recent one `UserLoginSummaryDto` carries. `device` uses the
+ * same `sessionId`-based `Visit` lookup as `lastLoginDevice` there, for the same reason: a mobile
+ * app login has no session/device to resolve. */
+export interface UserLoginHistoryEntryDto {
+  id: string;
+  method: LoginMethod;
+  device: DeviceType | null;
+  createdAt: string;
+}
+
+export interface UserLoginHistoryPage {
+  items: UserLoginHistoryEntryDto[];
+  total: number;
 }
 
 /** One entry in a user's merged activity timeline — sourced from several tables

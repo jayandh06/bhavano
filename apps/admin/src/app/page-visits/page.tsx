@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { DeviceType, PageVisitDto } from "@bhavano/types";
+import type { DeviceType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   AdminPageVisitIdentity,
@@ -17,12 +17,14 @@ import {
   suffixSortDirectionFor,
   type SearchParams,
 } from "@/lib/searchParams";
-import { formatDateTime } from "@/lib/formatDateTime";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
+import { daysAgoIST, istDayEnd, istDayStart, todayIST } from "@/lib/dateRangeDefaults";
 import { UserPicker } from "@/components/UserPicker";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
 import { SortableHeader } from "@/components/SortableHeader";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { PageVisitsTable } from "@/components/PageVisitsTable";
 
 /** What the BFF falls back to with no `?sort=` — named here so the Time column's header still
  * shows its ▼ before anything has been clicked. */
@@ -53,13 +55,6 @@ const TRAFFIC_OPTIONS: { value: AdminPageVisitTraffic; label: string }[] = [
  * `humans`. Revisit this default once there's a full window of confirmed history. */
 const DEFAULT_TRAFFIC: AdminPageVisitTraffic = "humans";
 
-const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
-  desktop: "Desktop",
-  mobile: "Mobile",
-  tablet: "Tablet",
-  mobile_app: "Mobile App",
-};
-
 const DEVICE_TYPE_OPTIONS: { value: DeviceType | "any"; label: string }[] = [
   { value: "any", label: "All devices" },
   { value: "desktop", label: "Desktop" },
@@ -67,13 +62,6 @@ const DEVICE_TYPE_OPTIONS: { value: DeviceType | "any"; label: string }[] = [
   { value: "tablet", label: "Tablet" },
   { value: "mobile_app", label: "Mobile App" },
 ];
-
-/** The date pickers are read as IST calendar days: an inclusive range from the start of the
- * "from" day to the last millisecond of the "to" day, both at +05:30. Kept as raw YYYY-MM-DD in
- * the URL (so the inputs round-trip); only widened to instants when calling the BFF. */
-const IST_OFFSET = "+05:30";
-const istDayStart = (d: string | undefined) => (d ? `${d}T00:00:00.000${IST_OFFSET}` : undefined);
-const istDayEnd = (d: string | undefined) => (d ? `${d}T23:59:59.999${IST_OFFSET}` : undefined);
 
 export default async function PageVisitsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accessToken } = await requireAdmin();
@@ -87,8 +75,11 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const traffic = (str(sp.traffic) as AdminPageVisitTraffic | undefined) ?? DEFAULT_TRAFFIC;
   const deviceTypeRaw = str(sp.deviceType);
   const deviceType = deviceTypeRaw && deviceTypeRaw !== "any" ? (deviceTypeRaw as DeviceType) : undefined;
-  const from = str(sp.from);
-  const to = str(sp.to);
+  // Same silent-default pattern as DEFAULT_TRAFFIC above: absent from/to defaults to a 1-day
+  // window rather than unbounded history, but doesn't redirect the URL to show it — the URL only
+  // gains ?from=&to= once the visitor actually picks a range (a preset or Custom).
+  const from = str(sp.from) ?? daysAgoIST(1);
+  const to = str(sp.to) ?? todayIST();
   const source = str(sp.source);
   const medium = str(sp.medium);
   const ip = str(sp.ip);
@@ -134,8 +125,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
           {result.avgPageViewsPerSession !== null && (
             <>
               {" "}
-              Avg <strong>{result.avgPageViewsPerSession.toFixed(1)}</strong> pages/session
-              {from || to ? " in the selected date range" : " overall"}.
+              Avg <strong>{result.avgPageViewsPerSession.toFixed(1)}</strong> pages/session in the
+              selected date range.
             </>
           )}
         </p>
@@ -191,11 +182,15 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
               </SelectField>
             </Field>
 
-            <Field label="From (IST)">
-              <input type="date" name="from" defaultValue={from} style={dateInputStyle} />
-            </Field>
-            <Field label="To (IST)">
-              <input type="date" name="to" defaultValue={to} style={dateInputStyle} />
+            <Field label="Date range (IST)">
+              <DateRangeFilter basePath="/page-visits" sp={sp} currentFrom={from} currentTo={to}>
+                <Field label="From (IST)">
+                  <input type="date" name="from" defaultValue={from} style={dateInputStyle} />
+                </Field>
+                <Field label="To (IST)">
+                  <input type="date" name="to" defaultValue={to} style={dateInputStyle} />
+                </Field>
+              </DateRangeFilter>
             </Field>
 
             <button type="submit" style={applyButtonStyle}>
@@ -310,62 +305,12 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                {result.items.map((v) => (
-                  <tr key={v.id} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDateTime(v.createdAt)}</td>
-                    <td style={tdStyle}>
-                      <SessionUsers visit={v} />
-                    </td>
-                    <td style={tdStyle}>
-                      <Link href={`/page-visits/${v.sessionId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
-                        {v.pageViewCount}
-                      </Link>
-                    </td>
-                    <td style={tdStyle}>{v.deviceType ? DEVICE_TYPE_LABELS[v.deviceType] : dash}</td>
-                    <td style={tdStyle}>{v.source ?? dash}</td>
-                    <td style={tdStyle}>{v.medium ?? dash}</td>
-                    <td style={tdStyle}>{v.campaign ?? dash}</td>
-                    <td style={tdStyle}>{v.campaignName ?? v.campaignId ?? dash}</td>
-                    <td style={tdStyle}>{v.adGroupName ?? v.adGroupId ?? dash}</td>
-                    <td style={{ ...tdStyle, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={v.landingPath ?? undefined}>
-                      {v.landingPath ?? dash}
-                    </td>
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{v.ip ?? dash}</td>
-                    <td style={tdStyle}>{v.ipCity ?? dash}</td>
-                    <td style={tdStyle}>{v.ipRegion ?? dash}</td>
-                    <td style={tdStyle}>{v.ipCountry ?? dash}</td>
-                  </tr>
-                ))}
-                {/* Inside the table, not instead of it — filtering down to zero used to replace
-                    the whole thing with a bare paragraph, taking the filter inputs away with it
-                    and leaving no way to widen the filter that just emptied the page. */}
-                {result.items.length === 0 && (
-                  <tr style={{ borderTop: "1px solid var(--border)" }}>
-                    <td colSpan={14} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
-                      No visits match these filters.
-                      {/* Expected right after the crawler filter shipped, and confusing without
-                          saying so: every session recorded before it has no stored User-Agent to
-                          judge, so none of them can be called human. Only sessions recorded from
-                          then on are classified. */}
-                      {traffic === "humans" && (
-                        <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.6 }}>
-                          Only sessions recorded since the crawler filter shipped are classified — older ones have no
-                          stored User-Agent to judge. Switch Traffic to{" "}
-                          <Link href={buildTrafficHref(sp, "unclassified")} style={{ color: "var(--green)", fontWeight: 700 }}>
-                            Unclassified
-                          </Link>{" "}
-                          for the history, or{" "}
-                          <Link href={buildTrafficHref(sp, "any")} style={{ color: "var(--green)", fontWeight: 700 }}>
-                            Everything
-                          </Link>
-                          .
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+              <PageVisitsTable
+                items={result.items}
+                traffic={traffic}
+                unclassifiedHref={buildTrafficHref(sp, "unclassified")}
+                everythingHref={buildTrafficHref(sp, "any")}
+              />
             </table>
           </div>
         </form>
@@ -382,8 +327,6 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   );
 }
 
-const dash = <span style={{ color: "var(--muted)" }}>—</span>;
-
 /** Same URL with a different Traffic value, keeping every other filter and dropping `page`
  * (a different traffic class has a different row count, so an old page number can be out of
  * range). Used by the empty state's "try Unclassified/Everything" links. */
@@ -396,53 +339,6 @@ function buildTrafficHref(sp: SearchParams, traffic: AdminPageVisitTraffic): str
   }
   params.set("traffic", traffic);
   return `/page-visits?${params.toString()}`;
-}
-
-/**
- * Every account that logged in during this session, not just `Visit.userId`.
- *
- * `Visit` holds one userId, so it can only ever name whoever logged in *first* — a session where
- * two accounts sign in (a shared desktop, or one person signing up by phone and then by Google
- * seconds later) used to show only the first, and the second was absent from this screen
- * entirely. `sessionLogins` comes from `LoginEvent.sessionId` instead, so all of them show.
- *
- * Two or more here is also worth a second look: it's usually one person who now has two accounts
- * (see docs/plans/account-linking-phone-and-email.md), which is why they're flagged rather than
- * just listed.
- */
-function SessionUsers({ visit }: { visit: PageVisitDto }) {
-  const logins = visit.sessionLogins;
-
-  // Pre-LoginEvent.sessionId rows have no logins recorded, so fall back to whatever the Visit
-  // itself names rather than claiming the session was anonymous.
-  if (logins.length === 0) {
-    if (!visit.userId) return <span style={{ color: "var(--muted)" }}>anonymous</span>;
-    return (
-      <Link href={`/users/${visit.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
-        {visit.userName ?? visit.userPhone ?? visit.userEmail ?? visit.userId}
-      </Link>
-    );
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {logins.map((l) => (
-        <Link
-          key={l.userId}
-          href={`/users/${l.userId}`}
-          style={{ color: "var(--green)", fontWeight: 700, whiteSpace: "nowrap" }}
-        >
-          {l.name ?? l.phone ?? l.email ?? l.userId}
-          <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 11 }}> · {l.method}</span>
-        </Link>
-      ))}
-      {logins.length > 1 && (
-        <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gold, #b8860b)", whiteSpace: "nowrap" }}>
-          {logins.length} accounts — possible duplicate
-        </span>
-      )}
-    </div>
-  );
 }
 
 function Code({ children }: { children: React.ReactNode }) {
@@ -530,4 +426,3 @@ const headerInputStyle: React.CSSProperties = {
 };
 
 const headerSelectStyle: React.CSSProperties = { ...headerInputStyle, width: 120 };
-const tdStyle: React.CSSProperties = { padding: "9px 12px", verticalAlign: "top" };
