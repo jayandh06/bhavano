@@ -126,7 +126,11 @@ export default async function LoginsPage({ searchParams }: { searchParams: Promi
             <button type="submit" style={applyButtonStyle}>
               Apply filters
             </button>
-            <Link href="/logins" style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+            {/* prefetch={false}: this is a bare link to the page it's already rendered on — a
+              * background prefetch of it would carry this same page as its Referer, indistinguishable
+              * from a real click, and middleware.ts uses exactly that to detect a deliberate reset.
+              * See AdminNav.tsx's comment on the same issue. */}
+            <Link href="/logins" prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
               Reset
             </Link>
           </div>

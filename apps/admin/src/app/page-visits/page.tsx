@@ -200,7 +200,11 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
             <button type="submit" style={applyButtonStyle}>
               Apply filters
             </button>
-            <Link href="/page-visits" style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+            {/* prefetch={false} — see AdminNav.tsx's comment: a background prefetch of this bare
+              * self-link would look identical to a real reset click to middleware.ts. This is the
+              * one that was actually observed: the nav's own "Page visits" tab (same issue,
+              * fixed there too) kept silently clearing a just-applied filter on every page view. */}
+            <Link href="/page-visits" prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
               Reset
             </Link>
           </div>

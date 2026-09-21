@@ -11,11 +11,18 @@ import {
  * page's own data fetch (a server component reading `searchParams`) only ever runs once, against
  * the right URL, instead of once for a bare visit and again after a client-side redirect.
  *
- * Deliberately not guarded against Next's `<Link>` prefetching the way apps/web's middleware is
- * (see that file's prefetch-header comments) — this app's nav links point at bare index paths,
- * not ones with a filter query baked in, so a background prefetch here only ever hits the
- * "restore" branch (harmless — it just prefetches the right, filtered version) rather than the
- * "remember" branch recording a filter the visitor never actually chose.
+ * A prefetch of a link with a real query attached (sorting, pagination, a nav link that happened
+ * to carry a filter) is harmless — it only ever hits the "remember" branch with a value that was
+ * going to be remembered anyway once actually clicked. The one prefetch that ISN'T harmless is a
+ * bare link whose target is the page currently on screen (the admin nav's own "you are here" tab,
+ * or a screen's "Reset" link) — decideFilterAction reads that request's Referer to tell a
+ * deliberate same-screen reset apart from a fresh arrival elsewhere, and a background prefetch of
+ * that link carries the exact same Referer a real click would. There is no request header on this
+ * Next version that tells a prefetch apart from a genuine click-driven navigation (both show
+ * `sec-fetch-dest: empty`, unlike apps/web's middleware, which only needs to tell a prefetch apart
+ * from a real *document* load) — so rather than trying to infer intent here, every link whose href
+ * can coincide with the current page is rendered `prefetch={false}` (AdminNav.tsx, and every
+ * screen's "Reset" link) so the phantom request never fires at all.
  */
 export function middleware(request: NextRequest): NextResponse {
   const { pathname, searchParams } = request.nextUrl;

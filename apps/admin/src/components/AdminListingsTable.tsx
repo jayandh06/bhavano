@@ -642,7 +642,14 @@ function ColumnSelector({
             </Link>
           );
         })}
-        <Link href={hrefResetting(sp)} style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", alignSelf: "center" }}>
+        {/* prefetch={false}: when no other filter is active this resolves to a bare "/" — the
+          * same page it's rendered on — and see AdminNav.tsx's comment for why that specific case
+          * needs prefetching disabled. */}
+        <Link
+          href={hrefResetting(sp)}
+          prefetch={false}
+          style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", alignSelf: "center" }}
+        >
           Reset to default
         </Link>
       </div>

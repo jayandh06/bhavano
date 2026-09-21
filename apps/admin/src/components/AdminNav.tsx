@@ -24,6 +24,16 @@ const NAV_LINKS: { href: string; label: string }[] = [
 
 const SCROLL_STEP = 160;
 
+/** Every link below is `prefetch={false}`, deliberately. Next's automatic viewport prefetch fires
+ * a real request to every link's href, including whichever nav item points at the page currently
+ * on screen — and middleware.ts reads that request's Referer to tell a genuine same-screen
+ * "cleared my filters" navigation apart from a fresh arrival elsewhere restoring them. A prefetch
+ * of the current page's own nav link carries that same page as its Referer too, which is
+ * indistinguishable from a real click and was silently wiping the just-applied filter every time
+ * the nav (present on every page) simply rendered. There's no request header that tells a
+ * background prefetch apart from an actual click-driven navigation on this Next version — see
+ * middleware.ts's own comment — so the fix is to stop the phantom request from firing at all. */
+
 /** `/` only matches itself — every other link matches its own path and anything nested under it
  * (e.g. `/users/[id]`, reached from the users list or the logins list, highlights "Users"). */
 function isActive(pathname: string, href: string): boolean {
@@ -193,6 +203,7 @@ export function AdminNav() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch={false}
                   className="admin-nav-link"
                   onClick={() => setMenuOpen(false)}
                   style={{
@@ -245,6 +256,7 @@ export function AdminNav() {
               <Link
                 key={link.href}
                 href={link.href}
+                prefetch={false}
                 className="admin-nav-link"
                 style={{
                   fontSize: 13,

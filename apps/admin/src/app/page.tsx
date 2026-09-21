@@ -156,7 +156,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
-          <Link href="/" style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+          {/* prefetch={false} — see AdminNav.tsx's comment: a background prefetch of this bare
+            * self-link would look identical to a real reset click to middleware.ts. */}
+          <Link href="/" prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
             Reset
           </Link>
         </form>

@@ -120,7 +120,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
-          <Link href="/users" style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+          {/* prefetch={false} — see AdminNav.tsx's comment: a background prefetch of this bare
+            * self-link would look identical to a real reset click to middleware.ts. */}
+          <Link href="/users" prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
             Reset
           </Link>
         </form>
