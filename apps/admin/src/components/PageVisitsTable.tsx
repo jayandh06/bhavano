@@ -220,7 +220,21 @@ function SessionUsers({ visit }: { visit: PageVisitDto }) {
   const logins = visit.sessionLogins;
 
   if (logins.length === 0) {
-    if (!visit.userId) return <span style={{ color: "var(--muted)" }}>anonymous</span>;
+    // Still identifiable, just not by a logged-in account: the session id is already this row's
+    // own unique key (same href the "Open full session page" link elsewhere in this file uses),
+    // shortened to a git-short-hash-style prefix for the table — matches an anonymous visitor
+    // across the columns already on screen instead of a plain, useless "anonymous" label.
+    if (!visit.userId) {
+      return (
+        <Link
+          href={`/page-visits/${visit.sessionId}`}
+          style={{ color: "var(--muted)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}
+          title={visit.sessionId}
+        >
+          {visit.sessionId.slice(0, 8)}
+        </Link>
+      );
+    }
     return (
       <Link href={`/users/${visit.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
         {visit.userName ?? visit.userPhone ?? visit.userEmail ?? visit.userId}
