@@ -21,3 +21,12 @@ export declare const ACTIVE_PROMO_CODE = "BHAVANO-SEP";
  * direction for a rounding difference to fall.
  */
 export declare function promoPriceFor(baseRupees: number, discountPercent: number): number;
+/**
+ * The inverse of `promoPriceFor` — recovers the discount percent from a `BoostPricingOptionDto`'s
+ * already-resolved `amount`/`originalAmount`, for screens that want to say "50% OFF" in a card
+ * title. Deliberately derived rather than a second hardcoded "50" alongside `ACTIVE_PROMO_CODE`:
+ * the real percent lives on the `DiscountCode` row an admin edits, so a hardcoded label would go
+ * quietly wrong the moment that row changes, while this stays correct without a code change.
+ * Rounds the same direction `promoPriceFor` does, so recomputing from its own output round-trips.
+ */
+export declare function discountPercentFor(amount: number, originalAmount: number): number;

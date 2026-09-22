@@ -1155,8 +1155,9 @@ export function PostAdWizard({
                 ) : (
                   <>
                     <p className="text-[13px] text-text-soft mt-0 mb-3">
-                      Payment for your {selectedBoostPlan.duration}-day Boost
-                      {selectedBoostPlan.includeInstantAlerts ? " + Instant Alerts" : ""} didn&rsquo;t go through.
+                      {`Payment for your ${selectedBoostPlan.duration}-day Boost${
+                        selectedBoostPlan.includeInstantAlerts ? " + Instant Alerts" : ""
+                      } didn’t go through.`}
                     </p>
                     <button onClick={retryBoostCheckout} className={primaryButtonClass}>
                       Finish boosting this listing

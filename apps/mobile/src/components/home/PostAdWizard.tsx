@@ -1240,8 +1240,9 @@ export function PostAdWizard({
                 ) : (
                   <>
                     <Text style={{ fontSize: 13, color: colors.textSoft, marginBottom: 12 }}>
-                      Payment for your {selectedBoostPlan.duration}-day Boost
-                      {selectedBoostPlan.includeInstantAlerts ? " + Instant Alerts" : ""} didn&rsquo;t go through.
+                      {`Payment for your ${selectedBoostPlan.duration}-day Boost${
+                        selectedBoostPlan.includeInstantAlerts ? " + Instant Alerts" : ""
+                      } didn’t go through.`}
                     </Text>
                     <Pressable onPress={retryBoostCheckout} style={[styles.submitButton, { backgroundColor: colors.green }]}>
                       <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Finish boosting this listing</Text>

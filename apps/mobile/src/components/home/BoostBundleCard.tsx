@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
-import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
+import { ACTIVE_PROMO_CODE, discountPercentFor } from "@bhavano/types/promoCode";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { previewBoostPricing } from "../../lib/bffClient";
 import { startBoostCheckout } from "../../lib/boostCheckout";
@@ -107,6 +107,11 @@ export function BoostBundleCard({
         <Icon name="boost" size={17} color={colors.gold} />
         <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
           Reach more buyers, faster
+          {/* Same discount-derived label as BoostPlanSelector's title — see its comment for why
+              this is computed from the option's own amount/originalAmount rather than hardcoded. */}
+          {option?.discountApplied && (
+            <Text style={{ color: colors.gold }}> — {discountPercentFor(option.amount, option.originalAmount)}% OFF</Text>
+          )}
         </Text>
       </View>
 

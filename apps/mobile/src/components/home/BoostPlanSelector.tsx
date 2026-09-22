@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import type { BoostPlanSelection, BoostPricingPreviewDto } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { discountPercentFor } from "@bhavano/types/promoCode";
 import { Icon } from "../Icon";
 
 const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
@@ -52,6 +53,12 @@ export function BoostPlanSelector({
         <Icon name="boost" size={17} color={colors.gold} />
         <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
           Boost this ad
+          {/* Appended only while a discount is actually live on the option being shown, and
+              computed from its own amount/originalAmount rather than a hardcoded "50" — the real
+              percent lives on an admin-edited DiscountCode row, so this can't quietly go stale. */}
+          {option.discountApplied && (
+            <Text style={{ color: colors.gold }}> — {discountPercentFor(option.amount, option.originalAmount)}% OFF</Text>
+          )}
         </Text>
       </View>
 
