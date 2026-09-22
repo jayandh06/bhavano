@@ -268,6 +268,7 @@ export function PostAdWizard({
   const [planPricingSettings, setPlanPricingSettings] = useState<{
     boost: BoostPriceSettings;
     instantAlerts: InstantAlertsPriceSettings;
+    activeDiscountPercent: number | null;
   } | null>(null);
   // A boost/instant-alerts choice made ahead of time on the review step — null means the
   // advertiser explicitly skipped it (see selectCategory's pre-fill and BoostPlanSelector's own
@@ -293,7 +294,15 @@ export function PostAdWizard({
   }, []);
 
   const previewBoostDisplay = useMemo(
-    () => (category && planPricingSettings ? buildDisplayBoostPricing(category, planPricingSettings.boost, planPricingSettings.instantAlerts) : null),
+    () =>
+      category && planPricingSettings
+        ? buildDisplayBoostPricing(
+            category,
+            planPricingSettings.boost,
+            planPricingSettings.instantAlerts,
+            planPricingSettings.activeDiscountPercent,
+          )
+        : null,
     [category, planPricingSettings],
   );
 

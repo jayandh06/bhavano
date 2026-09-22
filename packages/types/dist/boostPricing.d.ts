@@ -26,11 +26,13 @@ export interface BoostPriceSettings {
  * settings have ever been saved) reuses this exact same constant rather than redefining it. */
 export declare const DEFAULT_BOOST_PRICE_SETTINGS: BoostPriceSettings;
 export declare function boostPriceFor(category: ListingCategory, days: BoostDurationDays, settings?: BoostPriceSettings): number;
-/** Undiscounted display pricing built from the two public, no-login-required singleton-settings
- * rows (`GET /plans/pricing`) — for the ad-preview step's `BoostPlanSelector`, which has to be
- * usable before the advertiser has necessarily logged in (posting an ad only asks for an account
- * at the final "Post ad" tap). `PaymentsService.previewBoostPricing` is the authenticated,
- * personalized equivalent (resolves discount codes and the Agent Pro free-credit case) used
- * everywhere else a price is shown post-login — this is deliberately never used to decide what a
- * checkout actually charges, only what the selector displays before that fetch is even possible. */
-export declare function buildDisplayBoostPricing(category: ListingCategory, boostSettings: BoostPriceSettings, instantAlertsSettings: InstantAlertsPriceSettings): BoostPricingPreviewDto;
+/** Display pricing built from the public, no-login-required settings + active-promo endpoint
+ * (`GET /plans/pricing`, `activeDiscountPercent`) — for the ad-preview step's `BoostPlanSelector`,
+ * which has to be usable before the advertiser has necessarily logged in (posting an ad only asks
+ * for an account at the final "Post ad" tap). `PaymentsService.previewBoostPricing` is the
+ * authenticated, personalized equivalent (also resolves per-user redemption caps and the Agent
+ * Pro free-credit case) used everywhere else a price is shown post-login — this is deliberately
+ * never used to decide what a checkout actually charges, only what the selector displays before
+ * that fetch is even possible. `discountPercent` omitted/`null` shows undiscounted prices, same
+ * as `previewBoostPricing` would once the code turns out invalid/expired/exhausted. */
+export declare function buildDisplayBoostPricing(category: ListingCategory, boostSettings: BoostPriceSettings, instantAlertsSettings: InstantAlertsPriceSettings, discountPercent?: number | null): BoostPricingPreviewDto;

@@ -284,6 +284,7 @@ export function fetchPlanPricing(): Promise<{
   boost: BoostPriceSettings;
   subscription: SubscriptionPlanSettings;
   instantAlerts: InstantAlertsPriceSettings;
+  activeDiscountPercent: number | null;
 }> {
   return bffFetch("/plans/pricing", { cache: "no-store" });
 }

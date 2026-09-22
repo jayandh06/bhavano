@@ -1,5 +1,6 @@
 import type { BoostPricingOptionDto, BoostPricingPreviewDto, ListingCategory } from "./index";
 import type { InstantAlertsPriceSettings } from "./instantAlertsPricing";
+import { promoPriceFor } from "./promoCode";
 
 export type BoostDurationDays = 7 | 15;
 
@@ -54,27 +55,28 @@ export function boostPriceFor(
   return days === 7 ? price7d : price15d;
 }
 
-/** Undiscounted display pricing built from the two public, no-login-required singleton-settings
- * rows (`GET /plans/pricing`) — for the ad-preview step's `BoostPlanSelector`, which has to be
- * usable before the advertiser has necessarily logged in (posting an ad only asks for an account
- * at the final "Post ad" tap). `PaymentsService.previewBoostPricing` is the authenticated,
- * personalized equivalent (resolves discount codes and the Agent Pro free-credit case) used
- * everywhere else a price is shown post-login — this is deliberately never used to decide what a
- * checkout actually charges, only what the selector displays before that fetch is even possible. */
+/** Display pricing built from the public, no-login-required settings + active-promo endpoint
+ * (`GET /plans/pricing`, `activeDiscountPercent`) — for the ad-preview step's `BoostPlanSelector`,
+ * which has to be usable before the advertiser has necessarily logged in (posting an ad only asks
+ * for an account at the final "Post ad" tap). `PaymentsService.previewBoostPricing` is the
+ * authenticated, personalized equivalent (also resolves per-user redemption caps and the Agent
+ * Pro free-credit case) used everywhere else a price is shown post-login — this is deliberately
+ * never used to decide what a checkout actually charges, only what the selector displays before
+ * that fetch is even possible. `discountPercent` omitted/`null` shows undiscounted prices, same
+ * as `previewBoostPricing` would once the code turns out invalid/expired/exhausted. */
 export function buildDisplayBoostPricing(
   category: ListingCategory,
   boostSettings: BoostPriceSettings,
   instantAlertsSettings: InstantAlertsPriceSettings,
+  discountPercent?: number | null,
 ): BoostPricingPreviewDto {
   const boost7 = boostPriceFor(category, 7, boostSettings);
   const boost15 = boostPriceFor(category, 15, boostSettings);
   const alerts = instantAlertsSettings.instantAlertsPrice;
-  const option = (amount: number): BoostPricingOptionDto => ({
-    amount,
-    originalAmount: amount,
-    discountApplied: false,
-    free: false,
-  });
+  const option = (amount: number): BoostPricingOptionDto =>
+    discountPercent
+      ? { amount: promoPriceFor(amount, discountPercent), originalAmount: amount, discountApplied: true, free: false }
+      : { amount, originalAmount: amount, discountApplied: false, free: false };
   return {
     boost7: option(boost7),
     boost15: option(boost15),

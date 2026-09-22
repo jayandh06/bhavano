@@ -51,7 +51,7 @@ export function BoostPlanSelector({
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <Icon name="boost" size={17} color={colors.gold} />
         <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-          Boost this ad (optional)
+          Boost this ad
         </Text>
       </View>
 

@@ -24,6 +24,7 @@ import {
   uploadPhoto,
 } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
+import { NEEDS_LOGIN_ERROR } from "@/lib/postAdErrors";
 
 export type CreateListingResult =
   | { success: true; listing: ListingDetailDto }
@@ -34,7 +35,7 @@ export type CreateListingResult =
 export async function createListingAction(input: CreateListingInput): Promise<CreateListingResult> {
   const session = await auth();
   if (!session || !isAccessTokenValid(session.accessToken)) {
-    return { success: false, error: "You must be logged in to post an ad." };
+    return { success: false, error: NEEDS_LOGIN_ERROR };
   }
 
   try {
@@ -51,7 +52,7 @@ export async function createListingAction(input: CreateListingInput): Promise<Cr
 export async function uploadPhotoAction(formData: FormData): Promise<{ hash?: string; ext?: string; error?: string }> {
   const session = await auth();
   if (!session || !isAccessTokenValid(session.accessToken)) {
-    return { error: "You must be logged in to post an ad." };
+    return { error: NEEDS_LOGIN_ERROR };
   }
 
   try {

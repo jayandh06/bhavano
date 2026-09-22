@@ -25,7 +25,12 @@ import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
-import { fetchBoostPricingAction, fetchInstantAlertsPricingAction } from "@/app/actions/payments";
+import { NEEDS_LOGIN_ERROR } from "@/lib/postAdErrors";
+import {
+  fetchActiveBoostDiscountPercentAction,
+  fetchBoostPricingAction,
+  fetchInstantAlertsPricingAction,
+} from "@/app/actions/payments";
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { useAuthGate } from "./AuthGateProvider";
 import { CategoryFieldsAccordion } from "@/components/home/CategoryFieldsAccordion";
@@ -231,6 +236,7 @@ export function PostAdWizard({
   const [planPricingSettings, setPlanPricingSettings] = useState<{
     boost: BoostPriceSettings;
     instantAlerts: InstantAlertsPriceSettings;
+    activeDiscountPercent: number | null;
   } | null>(null);
   // A boost/instant-alerts choice made ahead of time on the review step — null means the
   // advertiser explicitly skipped it (see selectCategory's pre-fill and BoostPlanSelector's own
@@ -243,9 +249,9 @@ export function PostAdWizard({
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchBoostPricingAction(), fetchInstantAlertsPricingAction()])
-      .then(([boost, instantAlerts]) => {
-        if (!cancelled) setPlanPricingSettings({ boost, instantAlerts });
+    Promise.all([fetchBoostPricingAction(), fetchInstantAlertsPricingAction(), fetchActiveBoostDiscountPercentAction()])
+      .then(([boost, instantAlerts, activeDiscountPercent]) => {
+        if (!cancelled) setPlanPricingSettings({ boost, instantAlerts, activeDiscountPercent });
       })
       .catch(() => undefined);
     return () => {
@@ -256,7 +262,12 @@ export function PostAdWizard({
   const previewBoostDisplay = useMemo(
     () =>
       category && planPricingSettings
-        ? buildDisplayBoostPricing(category, planPricingSettings.boost, planPricingSettings.instantAlerts)
+        ? buildDisplayBoostPricing(
+            category,
+            planPricingSettings.boost,
+            planPricingSettings.instantAlerts,
+            planPricingSettings.activeDiscountPercent,
+          )
         : null,
     [category, planPricingSettings],
   );
@@ -600,8 +611,16 @@ export function PostAdWizard({
       formData.set("photoNo", String(photoNo));
       const uploadResult = await uploadPhotoAction(formData);
       if (uploadResult.error || !uploadResult.hash || !uploadResult.ext) {
-        setError(uploadResult.error ?? "Failed to upload a photo");
         setPending(false);
+        // A session can lapse between onSubmit's own upfront check and this request (a slow
+        // upload in between, a token that expired in the interim) — reopen the login dialog
+        // rather than leaving the advertiser looking at a plain error for something a login
+        // fixes. onSuccess resumes the whole submit, same as the upfront check's own requireLogin.
+        if (uploadResult.error === NEEDS_LOGIN_ERROR) {
+          requireLogin({ onSuccess: () => void onSubmit() });
+        } else {
+          setError(uploadResult.error ?? "Failed to upload a photo");
+        }
         return;
       }
       uploadedPhotos.push({
@@ -655,6 +674,10 @@ export function PostAdWizard({
 
     setPending(false);
     if (!result.success) {
+      if (result.error === NEEDS_LOGIN_ERROR) {
+        requireLogin({ onSuccess: () => void onSubmit() });
+        return;
+      }
       setSlotCap(result.slotCap ?? null);
       setError(result.error ?? "Failed to create listing");
       return;

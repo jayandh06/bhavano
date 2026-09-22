@@ -51,7 +51,7 @@ export function BoostPlanSelector({
     >
       <div className="flex items-center gap-2 mb-3">
         <Icon name="boost" className="text-[color:var(--gold)] text-lg" />
-        <span className="font-lora font-bold text-[15px] text-text">Boost this ad (optional)</span>
+        <span className="font-lora font-bold text-[15px] text-text">Boost this ad</span>
       </div>
 
       <div className="flex flex-col gap-2.5">

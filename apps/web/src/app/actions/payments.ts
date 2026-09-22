@@ -39,6 +39,17 @@ export async function fetchInstantAlertsPricingAction(): Promise<InstantAlertsPr
   return instantAlerts;
 }
 
+/** Same reasoning as fetchBoostPricingAction — called from PostAdWizard's Preview-step selector,
+ * which (unlike the post-creation BoostBundlePicker) has to compute a discounted display price
+ * before the advertiser is necessarily logged in, so it can't use previewBoostPricingAction's
+ * personalized, per-user-redemption-aware resolution. `null` means the active promo code isn't
+ * usable right now (inactive, expired, or its total redemption cap is spent) — see
+ * PlansController.getActiveDiscountPercent. */
+export async function fetchActiveBoostDiscountPercentAction(): Promise<number | null> {
+  const { activeDiscountPercent } = await fetchPlanPricing();
+  return activeDiscountPercent;
+}
+
 export type CreateBoostOrderResult = { success: true; order: CreateBoostOrderResponseDto } | { success: false; error: string };
 
 export async function createBoostOrderAction(
