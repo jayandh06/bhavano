@@ -15,18 +15,27 @@ import type { Msg91Provider } from './providers/msg91.provider';
 function make() {
   const emailSend = jest.fn().mockResolvedValue(true);
   const sendBoostPromotion = jest.fn().mockResolvedValue({ sent: true, messageId: 'req-1' });
+  const sendAdPostedConfirmation = jest.fn().mockResolvedValue({ sent: true, messageId: 'req-2' });
   const sendTemplate = jest.fn().mockResolvedValue(true);
 
   const service = new NotificationsService(
     { send: emailSend } as unknown as EmailProvider,
     { sendTemplate } as unknown as WhatsappProvider,
-    { sendBoostPromotion } as unknown as Msg91Provider,
+    { sendBoostPromotion, sendAdPostedConfirmation } as unknown as Msg91Provider,
     { get: jest.fn().mockReturnValue('https://www.bhavano.com') } as unknown as ConfigService,
   );
-  return { service, emailSend, sendBoostPromotion, sendTemplate };
+  return { service, emailSend, sendBoostPromotion, sendAdPostedConfirmation, sendTemplate };
 }
 
-const LISTING = { id: 'abc123', title: '2 BHK for rent in Koramangala', cityName: 'Bengaluru', area: 'Koramangala' };
+const LISTING = {
+  id: 'abc123',
+  slug: '2-bhk-for-rent-in-koramangala',
+  category: 'apartment',
+  transactionType: 'rent',
+  title: '2 BHK for rent in Koramangala',
+  cityName: 'Bengaluru',
+  area: 'Koramangala',
+} as const;
 const PRICES = { boostPrice: 100, bundlePrice: 112, boostDays: 7, alertsPrice: 25 };
 const OFFER = { discountPercent: 50, boostBasePrice: 199, bundleBasePrice: 224, endsOn: '30 September' };
 
@@ -129,5 +138,69 @@ describe('NotificationsService.notifyBoostPromotion', () => {
     // A failed template send must not lose the email that did go out — the admin summary and the
     // notification log both read this list.
     expect(channels).toEqual([{ channel: 'email' }]);
+  });
+});
+
+/**
+ * support@bhavano.com is meant to see a copy of every welcome/listing-posted send regardless of
+ * which channel the owner actually got it on — previously the BCC only ever attached to the
+ * email branch, so a phone-only owner (WhatsApp instead) meant support saw nothing at all.
+ */
+describe('NotificationsService — support@ visibility on the WhatsApp branch', () => {
+  it('notifyWelcome emails support@ directly when the owner is WhatsApp-only', async () => {
+    const { service, emailSend, sendTemplate } = make();
+
+    const channel = await service.notifyWelcome({ name: 'Ravi', email: null, phone: '9876543210' });
+
+    expect(channel).toBe('whatsapp');
+    expect(sendTemplate).toHaveBeenCalledTimes(1);
+    // The owner never gets an email here (no address on file) — this call is entirely the
+    // internal visibility copy, sent straight to support@ since there's no BCC header to
+    // piggyback on.
+    expect(emailSend).toHaveBeenCalledTimes(1);
+    const [supportTo] = emailSend.mock.calls[0];
+    expect(supportTo).toBe('support@bhavano.com');
+  });
+
+  it('notifyWelcome does not email support@ twice when the owner has an email (BCC covers it)', async () => {
+    const { service, emailSend, sendTemplate } = make();
+
+    const channel = await service.notifyWelcome({ name: 'Ravi', email: 'ravi@example.com', phone: '9876543210' });
+
+    expect(channel).toBe('email');
+    expect(sendTemplate).not.toHaveBeenCalled();
+    expect(emailSend).toHaveBeenCalledTimes(1);
+    const [ownerTo, , , ownerOptions] = emailSend.mock.calls[0];
+    expect(ownerTo).toBe('ravi@example.com');
+    expect(ownerOptions).toMatchObject({ bcc: 'support@bhavano.com' });
+  });
+
+  it('notifyListingPosted emails support@ directly when the owner is WhatsApp-only', async () => {
+    const { service, emailSend, sendAdPostedConfirmation } = make();
+
+    const result = await service.notifyListingPosted(
+      { name: 'Ravi', email: null, phone: '9876543210' },
+      LISTING,
+    );
+
+    expect(result).toEqual({ channel: 'whatsapp', messageId: 'req-2' });
+    expect(sendAdPostedConfirmation).toHaveBeenCalledTimes(1);
+    expect(emailSend).toHaveBeenCalledTimes(1);
+    const [to, , , options] = emailSend.mock.calls[0];
+    expect(to).toBe('support@bhavano.com');
+    expect(options).not.toHaveProperty('bcc');
+  });
+
+  it('notifyListingPosted skips the support@ copy when the WhatsApp send itself fails', async () => {
+    const { service, emailSend, sendAdPostedConfirmation } = make();
+    (sendAdPostedConfirmation as jest.Mock).mockResolvedValueOnce({ sent: false, messageId: null });
+
+    const result = await service.notifyListingPosted(
+      { name: 'Ravi', email: null, phone: '9876543210' },
+      LISTING,
+    );
+
+    expect(result).toBeNull();
+    expect(emailSend).not.toHaveBeenCalled();
   });
 });

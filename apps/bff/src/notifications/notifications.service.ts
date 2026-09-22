@@ -631,6 +631,16 @@ export class NotificationsService {
         whatsapp.params,
         whatsapp.buttonUrlSuffix,
       );
+      // `email.bcc` doubles as "give support@ visibility into this send" even on this branch —
+      // a WhatsApp send has no user-facing email to attach a BCC header to, so this fires the
+      // same content straight to support@ instead. Only runs for calls that already opted into
+      // support visibility (bcc set) on the email branch above; best-effort, since a failed
+      // internal visibility copy shouldn't affect what the caller sees for the real send.
+      if (sent && email.bcc) {
+        this.emailProvider
+          .send(email.bcc, email.subject, email.text, { html: email.html })
+          .catch(() => undefined);
+      }
       return sent ? 'whatsapp' : null;
     }
     return null;
@@ -672,31 +682,35 @@ export class NotificationsService {
     const link = `${site}${path}`;
     const vars = { name: user.name ?? 'there', title: listing.title };
 
+    // Built once regardless of channel: the owner's own email when they have one, and — since
+    // notifyListingPosted doesn't route through dispatchEmailPreferWhatsapp's shared BCC handling
+    // — support's visibility copy when they're WhatsApp-only and there's no user-facing email to
+    // attach a BCC header to instead.
+    const tpl = loadTemplate('email/listing-posted');
+    const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel
+      ? renderTemplate(tpl.buttonLabel, vars)
+      : undefined;
+    const html = renderEmail({
+      heading: renderTemplate(tpl.heading, vars),
+      preheader: renderTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+    });
+    // The plain-text part mirrors the HTML rather than reusing renderEmail's own text — that
+    // function only ever produces markup, matching notifyWelcome's separate emailBody/html
+    // pair. A link with nothing to hang an href on needs to be a bare URL here instead of a
+    // button label, or it would be unreadable in a text-only client.
+    const text =
+      `${paragraphs.join('\n\n')}\n\n` +
+      (buttonLabel ? `${buttonLabel}: ${link}` : link);
+    const subject = renderTemplate(tpl.subject, vars);
+
     if (user.email) {
-      const tpl = loadTemplate('email/listing-posted');
-      const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
-      const buttonLabel = tpl.buttonLabel
-        ? renderTemplate(tpl.buttonLabel, vars)
-        : undefined;
-      const html = renderEmail({
-        heading: renderTemplate(tpl.heading, vars),
-        preheader: renderTemplate(tpl.preheader, vars),
-        paragraphs,
-        button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+      await this.emailProvider.send(user.email, subject, text, {
+        html,
+        bcc: 'support@bhavano.com',
       });
-      // The plain-text part mirrors the HTML rather than reusing renderEmail's own text — that
-      // function only ever produces markup, matching notifyWelcome's separate emailBody/html
-      // pair. A link with nothing to hang an href on needs to be a bare URL here instead of a
-      // button label, or it would be unreadable in a text-only client.
-      const text =
-        `${paragraphs.join('\n\n')}\n\n` +
-        (buttonLabel ? `${buttonLabel}: ${link}` : link);
-      await this.emailProvider.send(
-        user.email,
-        renderTemplate(tpl.subject, vars),
-        text,
-        { html, bcc: 'support@bhavano.com' },
-      );
       return { channel: 'email' };
     }
 
@@ -718,6 +732,15 @@ export class NotificationsService {
         },
         path.replace(/^\//, ''),
       );
+      // Support gets the same email support@ would have been BCC'd on above — the owner never
+      // gets an email themselves here (WhatsApp-only), so there's no BCC header to piggyback on;
+      // fired directly instead. Best-effort: a failed internal visibility copy shouldn't affect
+      // what the caller sees for the real send.
+      if (result.sent) {
+        this.emailProvider
+          .send('support@bhavano.com', subject, text, { html })
+          .catch(() => undefined);
+      }
       return result.sent ? { channel: 'whatsapp', messageId: result.messageId } : null;
     }
 
