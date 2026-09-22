@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { discountPercentFor } from "@bhavano/types/promoCode";
 import { previewBoostPricingAction } from "@/app/actions/payments";
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { Icon } from "./Icon";
@@ -145,7 +146,14 @@ export function BoostBundlePicker({
     <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-3">
         <Icon name="boost" className="text-[color:var(--gold)] text-lg" />
-        <span className="font-lora font-bold text-[15px] text-text">Reach more buyers, faster</span>
+        <span className="font-lora font-bold text-[15px] text-text">
+          Reach more buyers, faster
+          {/* Computed from the option's own amount/originalAmount rather than hardcoded — the
+            * real percent lives on an admin-edited DiscountCode row, so this can't go stale. */}
+          {option?.discountApplied && (
+            <span className="text-[color:var(--gold)]"> — {discountPercentFor(option.amount, option.originalAmount)}% OFF</span>
+          )}
+        </span>
       </div>
       <ul className="flex flex-col gap-2 m-0 p-0 list-none mb-4">
         {(

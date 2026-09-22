@@ -2,6 +2,7 @@
 
 import type { BoostPlanSelection, BoostPricingPreviewDto } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { discountPercentFor } from "@bhavano/types/promoCode";
 import { Icon } from "./Icon";
 
 const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
@@ -51,7 +52,14 @@ export function BoostPlanSelector({
     >
       <div className="flex items-center gap-2 mb-3">
         <Icon name="boost" className="text-[color:var(--gold)] text-lg" />
-        <span className="font-lora font-bold text-[15px] text-text">Boost this ad</span>
+        <span className="font-lora font-bold text-[15px] text-text">
+          Boost this ad
+          {/* Computed from the option's own amount/originalAmount rather than hardcoded — the
+            * real percent lives on an admin-edited DiscountCode row, so this can't go stale. */}
+          {option.discountApplied && (
+            <span className="text-[color:var(--gold)]"> — {discountPercentFor(option.amount, option.originalAmount)}% OFF</span>
+          )}
+        </span>
       </div>
 
       <div className="flex flex-col gap-2.5">
