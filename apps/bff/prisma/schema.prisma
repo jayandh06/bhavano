@@ -356,6 +356,13 @@ model Listing {
   source           ListingSource     @default(direct)
   price            Int
   priceQualifier   String            @default("")
+  /// Set only for sell/lease listings whose category has an area field (Plot, Commercial) when
+  /// the seller chose to express price per unit of area rather than as a lump sum — one of the
+  /// AreaUnit codes ("sqft"/"acre"/"cent"/"hectare"/"sqm"), or null for a plain whole-price
+  /// listing (every listing before this column existed, and the default going forward). `price`
+  /// itself always stays the whole-rupee total either way — this only changes how it's entered
+  /// and displayed, never what it's compared against for sorting/filtering/moderation bounds.
+  priceUnit        String?
   title            String
   slug             String
   areaId           String

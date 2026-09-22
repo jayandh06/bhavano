@@ -15,6 +15,7 @@ import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, fieldIsVisible } from "@bhavano/types/categoryFields";
+import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
@@ -197,6 +198,11 @@ export function PostAdWizard({
 
   const [price, setPrice] = useState("");
   const [priceQualifier, setPriceQualifier] = useState("");
+  // "Whole price vs price per unit" — only offered for a sell/lease listing whose category has
+  // an area field (see CATEGORY_FIELD_CONFIG), and always expressed in whatever unit that area
+  // field is currently set to (never a separately-chosen one) — see
+  // docs/plans/plot-commercial-area-units-and-price-per-unit.md.
+  const [priceMode, setPriceMode] = useState<"total" | "perUnit">("total");
   const [title, setTitle] = useState("");
   // Grows when the map picker's reverse-geocode resolves to a just-created city (not in this
   // initially-fetched list) — see `onPinChange` below.
@@ -324,6 +330,10 @@ export function PostAdWizard({
   function selectCategory(next: ListingCategory) {
     setCategory(next);
     setAttributes(defaultAttributesFor(next));
+    // A category swap can invalidate "price per unit" (the new category might have no area field
+    // at all, or a different one) — reset to the plain default rather than risk submitting a
+    // priceUnit that no longer matches anything.
+    setPriceMode("total");
     // Pre-filled default for the Preview-step selector (15-day boost + Instant Alerts) — set once,
     // here, rather than in a useEffect keyed on `category`, since that can't tell "never chosen
     // yet" apart from "explicitly skipped" (BoostPlanSelector's own Skip sets this back to null).
@@ -349,6 +359,9 @@ export function PostAdWizard({
         ? (getPriceQualifierOptions(category, next)[0]?.value ?? "")
         : "",
     );
+    // Price-per-unit is sell/lease only — switching to rent must not carry a stale "perUnit" mode
+    // forward into a combination the server would reject.
+    if (next !== "sell" && next !== "lease") setPriceMode("total");
     setStep("details");
   }
 
@@ -540,6 +553,14 @@ export function PostAdWizard({
         fieldIsVisible(field, transactionType!, attributes),
       )
     : [];
+
+  // "Whole price vs price per unit" is only offered for a sell/lease listing whose category has
+  // an area field — see priceMode's own comment.
+  const priceUnitAreaField =
+    category && (transactionType === "sell" || transactionType === "lease")
+      ? CATEGORY_FIELD_CONFIG[category].find((field) => field.type === "area")
+      : undefined;
+  const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
   // Only currently-visible required fields block submission — a required field hidden behind
   // an unmet `dependsOn` (none today, but the config allows it) can't be filled in anyway.
   const requiredAttributesFilled = visibleFields.every((field) => {
@@ -660,6 +681,7 @@ export function PostAdWizard({
       transactionType,
       price: Number(price),
       priceQualifier: priceQualifier || undefined,
+      priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined,
       title,
       areaId: areaId ?? undefined,
       areaName: areaId ? undefined : areaQuery.trim(),
@@ -899,34 +921,57 @@ export function PostAdWizard({
               onAttributesChange={setAttributes}
               sectionExtras={{
                 pricing: (
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <RequiredLabel text="Price (₹)" />
-                      <input
-                        type="number"
-                        // Native constraints have to agree with `priceValid` above, or a browser
-                        // that enforces them (native form submission) blocks a legitimate
-                        // "Contact for price" pg/coworking post that the JS state already allows.
-                        required={!priceOnRequestAllowed}
-                        min={priceOnRequestAllowed ? 0 : 1}
-                        max={maxPriceFor(transactionType)}
-                        inputMode="numeric"
-                        value={price}
-                        onChange={(e) => setPrice(clampPrice(e.target.value, transactionType))}
-                        className={fieldClass}
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <RequiredLabel text="Price qualifier" />
-                      <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)}>
-                        {getPriceQualifierOptions(category, transactionType).map(
-                          (opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ),
-                        )}
-                      </SelectField>
+                  <div className="flex flex-col gap-3">
+                    {priceUnitAreaField && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPriceMode("total")}
+                          className={`text-[12.5px] font-bold px-3 py-1.5 rounded-md border ${priceMode === "total" ? "border-green bg-green/10 text-text" : "border-border text-muted"}`}
+                        >
+                          Total price
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPriceMode("perUnit")}
+                          className={`text-[12.5px] font-bold px-3 py-1.5 rounded-md border ${priceMode === "perUnit" ? "border-green bg-green/10 text-text" : "border-border text-muted"}`}
+                        >
+                          Price per {areaUnitShortLabel(currentAreaUnit, 1)}
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <RequiredLabel text={priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"} />
+                        <input
+                          type="number"
+                          // Native constraints have to agree with `priceValid` above, or a browser
+                          // that enforces them (native form submission) blocks a legitimate
+                          // "Contact for price" pg/coworking post that the JS state already allows.
+                          required={!priceOnRequestAllowed}
+                          min={priceOnRequestAllowed ? 0 : 1}
+                          max={priceMode === "perUnit" ? undefined : maxPriceFor(transactionType)}
+                          inputMode="numeric"
+                          value={price}
+                          // clampPrice's own max (maxPriceFor(transactionType), a whole-price
+                          // bound) is generous enough to never actually trigger for a realistic
+                          // per-unit figure — safe to reuse as-is for both modes.
+                          onChange={(e) => setPrice(clampPrice(e.target.value, transactionType))}
+                          className={fieldClass}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <RequiredLabel text="Price qualifier" />
+                        <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)}>
+                          {getPriceQualifierOptions(category, transactionType).map(
+                            (opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ),
+                          )}
+                        </SelectField>
+                      </div>
                     </div>
                   </div>
                 ),
@@ -1086,6 +1131,7 @@ export function PostAdWizard({
                 transactionType={transactionType}
                 title={title}
                 price={price}
+                priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
                 priceQualifier={priceQualifier}
                 areaName={areaQuery}
                 cityName={cities.find((c) => c.id === cityId)?.name ?? ""}

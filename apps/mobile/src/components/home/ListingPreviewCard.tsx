@@ -2,6 +2,7 @@ import { Image, StyleSheet, Text, View } from "react-native";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
+import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 
@@ -20,6 +21,7 @@ export function ListingPreviewCard({
   transactionType,
   title,
   price,
+  priceUnit,
   priceQualifier,
   areaName,
   cityName,
@@ -30,8 +32,10 @@ export function ListingPreviewCard({
   transactionType: TransactionType;
   title: string;
   /** Raw digits as typed, or empty/"0" for a price-on-request category — formatted here the
-   * same way the real card's `₹`-prefixed, comma-grouped price is. */
+   * same way the real card's `₹`-prefixed, comma-grouped price is. When `priceUnit` is set, this
+   * is the per-unit figure the seller typed, not the total the server will compute and store. */
   price: string;
+  priceUnit?: AreaUnit;
   priceQualifier: string;
   areaName: string;
   cityName: string;
@@ -39,7 +43,10 @@ export function ListingPreviewCard({
 }) {
   const { colors } = useAppTheme();
   const priceNum = Number(price);
-  const priceDisplay = priceNum > 0 ? `₹${priceNum.toLocaleString("en-IN")}` : "Contact for price";
+  const priceDisplay =
+    priceNum > 0
+      ? `₹${priceNum.toLocaleString("en-IN")}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}`
+      : "Contact for price";
   const specs = deriveCardSpecs(category, attributes);
 
   return (

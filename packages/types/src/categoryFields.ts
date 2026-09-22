@@ -1,4 +1,5 @@
 import type { ListingCategory, TransactionType } from "./index";
+import type { AreaUnit } from "./areaUnit";
 
 export interface FieldOption {
   value: string;
@@ -55,10 +56,18 @@ export const SECTION_ORDER: FieldSection[] = [
 export interface FieldDef {
   key: string;
   label: string;
-  type: "text" | "number" | "select" | "multi-select";
+  type: "text" | "number" | "select" | "multi-select" | "area";
   options?: FieldOption[];
   placeholder?: string;
   min?: number;
+  /** `type: "area"` only — which units this field's number can be entered in. A single-entry
+   * list (or omitted entirely) renders as a plain sqft number input, visually identical to every
+   * other numeric field; more than one renders a unit dropdown alongside the number. Only Plot
+   * and Commercial get more than `["sqft"]` — carpet/size areas for the other categories are
+   * never measured in acres/cents/hectares in practice. The chosen unit is stored in a sibling
+   * attribute key, `${key}Unit` (absent = "sqft", covering every pre-existing listing with no
+   * backfill — see docs/plans/plot-commercial-area-units-and-price-per-unit.md). */
+  units?: AreaUnit[];
   /** A single emoji shown next to the label in both the posting form and the listing detail
    * page — set on amenity/furnishing fields, where a quick visual scan matters more than for a
    * plain count or select. Not required elsewhere. */
@@ -153,6 +162,10 @@ export function pruneHiddenAttributes(
         !fieldIsVisible(field, transactionType, next)
       ) {
         delete next[field.key];
+        // `type: "area"` fields carry a second, sibling attribute key for the chosen unit —
+        // see FieldDef.units's own doc comment. No area field is conditional today, but a
+        // future one that hides its number must not leave its unit behind as an orphan.
+        if (field.type === "area") delete next[`${field.key}Unit`];
         removedAny = true;
       }
     }
@@ -949,10 +962,18 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
   plot: [
     {
       key: "plotAreaSqft",
-      label: "Plot Area (sqft)",
-      type: "number",
+      label: "Plot Area",
+      type: "area",
+      units: ["sqft", "acre", "cent", "hectare", "sqm"],
       required: true,
       section: "plotDetails",
+    },
+    {
+      key: "plotDimensions",
+      label: "Dimensions (optional)",
+      type: "text",
+      section: "plotDetails",
+      placeholder: "e.g. 30 x 40 ft",
     },
     {
       key: "facing",
@@ -1025,8 +1046,9 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
   commercial: [
     {
       key: "sqft",
-      label: "Area (sqft)",
-      type: "number",
+      label: "Area",
+      type: "area",
+      units: ["sqft", "acre", "cent", "hectare", "sqm"],
       required: true,
       section: "spaceDetails",
     },

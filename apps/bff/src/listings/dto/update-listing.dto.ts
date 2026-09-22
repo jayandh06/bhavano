@@ -12,7 +12,9 @@ import {
   MinLength,
 } from 'class-validator';
 import type { ListingCategory, ListingStatus, TransactionType } from '@bhavano/types';
+import type { AreaUnit } from '@bhavano/types/areaUnit';
 
+const AREA_UNITS: AreaUnit[] = ['sqft', 'sqm', 'acre', 'hectare', 'cent'];
 const LISTING_STATUSES: ListingStatus[] = ['active', 'sold', 'rented', 'deactivated'];
 const LISTING_CATEGORIES: ListingCategory[] = [
   'house',
@@ -39,6 +41,14 @@ export class UpdateListingDto {
   @IsOptional()
   @IsString()
   priceQualifier?: string;
+
+  // Three states: omitted = leave the listing's current whole-price/per-unit state alone; `null`
+  // = explicitly switch back to a whole-price listing (passes `@IsIn` trivially — `@IsOptional`
+  // treats both undefined and null as "skip further validation"); a real AreaUnit = set/change
+  // it. See `UpdateListingInput.priceUnit`'s own doc comment for the full contract.
+  @IsOptional()
+  @IsIn(AREA_UNITS)
+  priceUnit?: AreaUnit | null;
 
   @IsOptional()
   @IsString()

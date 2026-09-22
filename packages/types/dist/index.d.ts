@@ -1,5 +1,6 @@
 import type { VideoEntitlement } from "./videoLimits";
 import type { BoostDurationDays } from "./boostPricing";
+import type { AreaUnit } from "./areaUnit";
 export type ListingCategory = "house" | "apartment" | "villa" | "pg" | "storage" | "coworking" | "furniture" | "interiors" | "plot" | "commercial";
 export type TransactionType = "buy" | "sell" | "rent" | "lease";
 export type ListingStatus = "active" | "sold" | "rented" | "deactivated";
@@ -140,6 +141,14 @@ export interface ListingDetailDto extends ListingCardDto {
     /** The seller's own prose. Null for anything posted before the field existed — most listings.
      * Distinct from `specs`, which are the short chips the card renders in one row. */
     description: string | null;
+    /** Raw unit code when `price` (inherited from `ListingCardDto`) is a per-unit figure rather
+     * than the whole-rupee total — null for a plain whole-price listing, which is every listing
+     * before this field existed. `ListingCardDto.price` itself already has the "/unit" suffix baked
+     * into its formatted string for plain display (see `ListingsService`'s price formatting) — this
+     * field exists only so an edit form can reconstruct its own "total vs per-unit" toggle state
+     * and re-derive the raw per-unit number, the same way it already reverse-parses the formatted
+     * `price` string back into a number for editing. */
+    priceUnit: AreaUnit | null;
     status: ListingStatus;
     moderationState: ModerationState;
     adminReviewed: boolean;
@@ -268,6 +277,14 @@ export interface ListingMetaDto {
 export interface UpdateListingInput {
     price?: number;
     priceQualifier?: string;
+    /** Present only when `price` above is a per-unit figure (e.g. 5000 meaning "₹5,000 per cent"),
+     * not the whole-rupee total — the server multiplies it out by the submitted area attribute and
+     * stores the computed total, same as `CreateListingInput.priceUnit`. Three states, since this is
+     * a partial update: omitted entirely = don't touch the listing's current per-unit/whole-price
+     * state; `null` = explicitly switch back to a whole-price listing; an `AreaUnit` = set/change it.
+     * Only takes effect together with `price` in the *same* request — the server never re-derives a
+     * new total from a stale stored one, which would double the multiplication. */
+    priceUnit?: AreaUnit | null;
     title?: string;
     specs?: string[];
     description?: string;
@@ -323,6 +340,8 @@ export interface CreateListingInput {
     transactionType: TransactionType;
     price: number;
     priceQualifier?: string;
+    /** Same contract as `UpdateListingInput.priceUnit` — see its own doc comment. */
+    priceUnit?: AreaUnit;
     title: string;
     /** Exactly one of areaId/areaName should be set — areaId picks an existing Area,
      * areaName creates one (case-insensitively matched first) if it doesn't already exist. */

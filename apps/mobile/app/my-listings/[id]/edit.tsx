@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
+import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { MAX_PHOTOS } from "@bhavano/types/photoLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
@@ -77,6 +79,10 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   const [description, setDescription] = useState(initialListing.description ?? "");
   const [price, setPrice] = useState(String(initialListing.price).replace(/[^0-9]/g, ""));
   const [priceQualifier, setPriceQualifier] = useState(initialListing.priceQualifier);
+  // "Whole price vs price per unit" — see web EditListingForm.tsx's identical toggle. Category/
+  // transactionType are fixed in this screen (owner editing can't change them), so no
+  // reset-on-change is needed here.
+  const [priceMode, setPriceMode] = useState<"total" | "perUnit">(initialListing.priceUnit ? "perUnit" : "total");
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>(
     attributesToStrings(initialListing.attributes),
   );
@@ -93,6 +99,11 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
 
   const fieldConfig = CATEGORY_FIELD_CONFIG[listing.category];
   const visibleFields = fieldConfig.filter((field) => fieldIsVisible(field, listing.transactionType, attributes));
+  const priceUnitAreaField =
+    listing.transactionType === "sell" || listing.transactionType === "lease"
+      ? fieldConfig.find((field) => field.type === "area")
+      : undefined;
+  const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
   const requiredAttributesFilled = visibleFields.every((field) => {
     if (!field.required) return true;
@@ -118,6 +129,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         title: title.trim(),
         price: priceValue,
         priceQualifier,
+        priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
         description: description.trim(),
         attributes,
         status,
@@ -212,8 +224,18 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
     }
   }
 
+  // react-native-keyboard-controller's KeyboardAvoidingView, not RN's own — see
+  // ProfileFields'/ConversationThread's identical comment for why "padding" is now unconditional
+  // rather than iOS-only.
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+    <ScrollView
+      contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
+      // Same reasoning as PostAdWizard/ProfileFields: a long form with conditionally-nested
+      // fields, where KeyboardAvoidingView's padding alone did not reliably scroll a
+      // newly-focused one into view.
+      automaticallyAdjustKeyboardInsets
+    >
       <Text style={[styles.label, { color: colors.textSoft }]}>Category / transaction</Text>
       <View style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
         <Text style={{ color: colors.textSoft, fontSize: 14 }}>
@@ -251,9 +273,27 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         style={[styles.input, styles.textarea, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
       />
 
+      {priceUnitAreaField && (
+        <View style={[styles.chipRow, { marginTop: 0 }]}>
+          <Pressable
+            onPress={() => setPriceMode("total")}
+            style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "total" ? colors.surfaceAlt : "transparent" }]}
+          >
+            <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Total price</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setPriceMode("perUnit")}
+            style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "perUnit" ? colors.surfaceAlt : "transparent" }]}
+          >
+            <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Price per {areaUnitShortLabel(currentAreaUnit, 1)}</Text>
+          </Pressable>
+        </View>
+      )}
       <View style={{ flexDirection: "row", gap: 12 }}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.label, { color: colors.textSoft }]}>Price (₹) *</Text>
+          <Text style={[styles.label, { color: colors.textSoft }]}>
+            {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹) *` : "Price (₹) *"}
+          </Text>
           <TextInput
             value={price}
             onChangeText={(v) => setPrice(clampPrice(v, listing.transactionType))}
@@ -429,6 +469,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         {saving ? <ActivityIndicator color={colors.onGreen} /> : <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Save changes</Text>}
       </Pressable>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

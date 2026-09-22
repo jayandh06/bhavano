@@ -35,9 +35,10 @@ import type {
 import { categoryImagePlaceholder } from '@bhavano/types/tokens';
 import { slugify } from '@bhavano/types/slugify';
 import { deriveTag } from '@bhavano/types/listingTag';
-import { CATEGORY_FIELD_CONFIG, defaultAttributesFor } from '@bhavano/types/categoryFields';
+import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, type FieldDef } from '@bhavano/types/categoryFields';
 import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from '@bhavano/types/priceQualifiers';
+import { areaUnitShortLabel, type AreaUnit } from '@bhavano/types/areaUnit';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { MAX_PHOTOS } from '@bhavano/types/photoLimits';
@@ -792,7 +793,7 @@ export class ListingsService {
       transactionType: listing.transactionType,
       cityName: listing.city.name,
       area: listing.area.name,
-      price: listing.price === 0 ? 'Contact for price' : `₹${priceFormatter.format(listing.price)}`,
+      price: this.formatListingPrice(listing),
       priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
       viewCount: listing.viewCount,
       likeCount: listing.likeCount,
@@ -1056,7 +1057,7 @@ export class ListingsService {
       cityName: listing.city.name,
       area: listing.area.name,
       title: listing.title,
-      price: listing.price === 0 ? 'Contact for price' : `₹${priceFormatter.format(listing.price)}`,
+      price: this.formatListingPrice(listing),
       priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
       priceOnRequest: listing.price === 0,
       description: listing.description,
@@ -1110,7 +1111,14 @@ export class ListingsService {
       input.transactionType,
       input.priceQualifier,
     );
-    this.assertValidPrice(input.category, input.price);
+    const resolvedPrice = this.resolveListingPrice(
+      input.category,
+      input.transactionType,
+      input.price,
+      input.priceUnit,
+      attributes,
+    );
+    this.assertValidPrice(input.category, resolvedPrice.price);
 
     const moderation = await this.moderationService.moderate(input);
     if (!moderation.ok) throw new BadRequestException(moderation.reason);
@@ -1127,7 +1135,8 @@ export class ListingsService {
         id: input.id,
         category: input.category,
         transactionType: input.transactionType,
-        price: input.price,
+        price: resolvedPrice.price,
+        priceUnit: resolvedPrice.priceUnit,
         priceQualifier: input.priceQualifier ?? '',
         title: input.title,
         slug: slugify(input.title),
@@ -1709,8 +1718,28 @@ export class ListingsService {
         priceQualifierToValidate,
       );
     }
+    // Only resolved (multiplied by area) when `dto.price` is present in *this* request — never
+    // re-derived from `existing.price`, which is already the stored total and would otherwise get
+    // multiplied a second time. See resolveListingPrice's own doc comment.
+    let resolvedPrice: { price: number; priceUnit: AreaUnit | null } | undefined;
+    if (dto.price !== undefined) {
+      const priceUnitForThisEdit =
+        dto.priceUnit !== undefined ? dto.priceUnit : existing.priceUnit;
+      resolvedPrice = this.resolveListingPrice(
+        nextCategory,
+        nextTransactionType,
+        dto.price,
+        priceUnitForThisEdit ?? undefined,
+        attributesToValidate ?? ((existing.attributes as Record<string, unknown> | null) ?? {}),
+      );
+    } else if (dto.priceUnit === null) {
+      // Explicitly clearing back to whole-price with no new number submitted — keep the
+      // currently-stored total as-is, just drop the per-unit flag.
+      resolvedPrice = { price: existing.price, priceUnit: null };
+    }
+
     const priceToValidate =
-      dto.price ?? (categoryOrTxnChanged ? existing.price : undefined);
+      resolvedPrice?.price ?? (categoryOrTxnChanged ? existing.price : undefined);
     if (priceToValidate !== undefined) {
       this.assertValidPrice(nextCategory, priceToValidate);
     }
@@ -1738,7 +1767,7 @@ export class ListingsService {
     const listing = await this.prisma.listing.update({
       where: { id },
       data: {
-        ...(dto.price !== undefined ? { price: dto.price } : {}),
+        ...(resolvedPrice !== undefined ? { price: resolvedPrice.price, priceUnit: resolvedPrice.priceUnit } : {}),
         ...(dto.priceQualifier !== undefined
           ? { priceQualifier: dto.priceQualifier }
           : {}),
@@ -2138,7 +2167,10 @@ export class ListingsService {
   ): Record<string, unknown> {
     const normalized: Record<string, unknown> = { ...attributes };
     for (const field of CATEGORY_FIELD_CONFIG[category]) {
-      if (field.type !== 'number') continue;
+      // `area` is a number with an accompanying unit — the number itself normalizes exactly like
+      // `number` does; the unit sibling key isn't touched here; validated/defaulted in
+      // assertValidAttributes and normalizeAreaUnit below.
+      if (field.type !== 'number' && field.type !== 'area') continue;
       const value = normalized[field.key];
       if (typeof value !== 'string' || value.trim() === '') continue;
       const parsed = Number(value);
@@ -2167,21 +2199,27 @@ export class ListingsService {
       }
 
       if (value !== undefined && value !== null && value !== '') {
-        if (field.type === 'number') {
+        if (field.type === 'number' || field.type === 'area') {
           const numberValue =
             typeof value === 'number'
               ? value
               : typeof value === 'string' && value.trim() !== ''
                 ? Number(value)
                 : NaN;
-          if (
-            !Number.isInteger(numberValue) ||
-            numberValue < (field.min ?? 0)
-          ) {
+          // Unlike a plain `number` field, an area's value isn't required to be a whole number
+          // — 2.5 acres is a completely ordinary answer, unlike "2.5 bedrooms".
+          const isValid =
+            field.type === 'area'
+              ? Number.isFinite(numberValue) && numberValue >= (field.min ?? 0)
+              : Number.isInteger(numberValue) && numberValue >= (field.min ?? 0);
+          if (!isValid) {
             throw new BadRequestException(
-              `${field.label} must be a whole number of at least ${field.min ?? 0}`,
+              field.type === 'area'
+                ? `${field.label} must be a number of at least ${field.min ?? 0}`
+                : `${field.label} must be a whole number of at least ${field.min ?? 0}`,
             );
           }
+          if (field.type === 'area') this.assertValidAreaUnit(field, attributes[`${field.key}Unit`]);
         } else if (field.type === 'multi-select') {
           if (
             !Array.isArray(value) ||
@@ -2321,6 +2359,92 @@ export class ListingsService {
     }
   }
 
+  /** `field.units` defaults to `["sqft"]` when absent (every non-Plot/Commercial area field) —
+   * same "no unit stored means sqft" rule the whole feature relies on for zero-backfill backward
+   * compatibility. Throws if a submitted unit isn't one this field actually offers. */
+  private assertValidAreaUnit(field: FieldDef, unit: unknown): void {
+    if (unit === undefined || unit === null || unit === '') return;
+    const allowed = field.units ?? ['sqft'];
+    if (typeof unit !== 'string' || !allowed.includes(unit as AreaUnit)) {
+      throw new BadRequestException(`Invalid unit for ${field.label}`);
+    }
+  }
+
+  private areaFieldFor(category: ListingCategory): FieldDef | undefined {
+    return CATEGORY_FIELD_CONFIG[category].find((f) => f.type === 'area');
+  }
+
+  /** `price`/`priceUnit` as submitted by the client (`CreateListingInput`/`UpdateListingInput`)
+   * always represent what the seller actually typed — the whole-rupee total when `priceUnit` is
+   * absent, or a per-unit figure (e.g. 5000 meaning "₹5,000 per cent") when it's set. This
+   * resolves that down to the one number ever stored in `Listing.price` — see `priceUnit`'s own
+   * schema doc comment for why the total, never the per-unit figure, is what's stored and what
+   * every existing sort/filter/bound continues to compare against.
+   *
+   * Only ever called for `sell`/`lease` (checked below) on a category with an `area` field — the
+   * area value comes from the *same* attributes payload this request already carries, not a
+   * re-read of the listing, so create and update behave identically. */
+  private resolveListingPrice(
+    category: ListingCategory,
+    transactionType: TransactionType,
+    price: number,
+    priceUnit: string | undefined,
+    attributes: Record<string, unknown>,
+  ): { price: number; priceUnit: AreaUnit | null } {
+    if (!priceUnit) return { price, priceUnit: null };
+
+    if (transactionType !== 'sell' && transactionType !== 'lease') {
+      throw new BadRequestException('Price per unit is only available for Sell or Lease listings');
+    }
+    const areaField = this.areaFieldFor(category);
+    if (!areaField) {
+      throw new BadRequestException(`${category} listings don't have an area to price per unit of`);
+    }
+    this.assertValidAreaUnit(areaField, priceUnit);
+
+    const areaRaw = attributes[areaField.key];
+    const areaValue = typeof areaRaw === 'number' ? areaRaw : Number(areaRaw);
+    if (!Number.isFinite(areaValue) || areaValue <= 0) {
+      throw new BadRequestException(`${areaField.label} is required to price per unit of area`);
+    }
+    // Price-per-unit is always expressed in the area's own unit, never a separately-chosen one —
+    // see FieldDef.units's own doc comment ("no separate unit choice for price"). A client that
+    // somehow disagrees (a stale form, a direct API call) is a bug, not a legitimate combination.
+    const resolvedAreaUnit = (attributes[`${areaField.key}Unit`] as AreaUnit | undefined) ?? 'sqft';
+    if (priceUnit !== resolvedAreaUnit) {
+      throw new BadRequestException("Price-per-unit must match the listing's own area unit");
+    }
+
+    return { price: Math.round(price * areaValue), priceUnit };
+  }
+
+  /** The reverse of `resolveListingPrice` — re-derives what the seller actually typed (the
+   * per-unit figure) from the stored whole-rupee total, for display. Division introduces the same
+   * harmless rounding drift `promoPriceFor` already accepts elsewhere in this codebase; a listing
+   * re-saved unchanged round-trips back to the same total either way. */
+  private perUnitPrice(listing: { category: ListingCategory; price: number; priceUnit: string | null; attributes: unknown }): number | null {
+    if (!listing.priceUnit) return null;
+    const areaField = this.areaFieldFor(listing.category);
+    const attrs = (listing.attributes as Record<string, unknown> | null) ?? {};
+    const areaRaw = areaField ? attrs[areaField.key] : undefined;
+    const areaValue = typeof areaRaw === 'number' ? areaRaw : Number(areaRaw);
+    if (!areaField || !Number.isFinite(areaValue) || areaValue <= 0) return null;
+    return Math.round(listing.price / areaValue);
+  }
+
+  /** "₹1,50,000" or, when `priceUnit` is set, "₹5,000/cent" — every display call site (card,
+   * detail, admin queue row) renders this one formatted string, same convention `priceQualifier`
+   * already uses for a rental-cadence suffix (see that field's own history) rather than exposing
+   * the raw per-unit number and unit separately to callers that only ever print it. */
+  private formatListingPrice(listing: { category: ListingCategory; price: number; priceUnit: string | null; attributes: unknown }): string {
+    if (listing.price === 0) return 'Contact for price';
+    const perUnit = this.perUnitPrice(listing);
+    if (perUnit === null || !listing.priceUnit) {
+      return `₹${priceFormatter.format(listing.price)}`;
+    }
+    return `₹${priceFormatter.format(perUnit)}/${areaUnitShortLabel(listing.priceUnit as AreaUnit, perUnit)}`;
+  }
+
   /** Writes one ListingEditLog row — see that model's own doc comment for the shape. Awaited
    * (not fire-and-forget) since this is meant to be a reliable audit trail, not a best-effort
    * notification like ListingNotificationLog — but a logging failure still must never fail or
@@ -2397,6 +2521,7 @@ export class ListingsService {
 
     return {
       ...this.toCardDto(listing, favouritedIds),
+      priceUnit: listing.priceUnit as AreaUnit | null,
       description: listing.description,
       status: listing.status,
       moderationState: listing.moderationState,
@@ -2501,7 +2626,7 @@ export class ListingsService {
       transactionType: listing.transactionType,
       slug: listing.slug,
       tag: listing.tag,
-      price: listing.price === 0 ? 'Contact for price' : `₹${priceFormatter.format(listing.price)}`,
+      price: this.formatListingPrice(listing),
       // A qualifier ("/month") next to "Contact for price" reads oddly, so it's suppressed here
       // rather than at posting time — the stored value (if any) survives for if/when the owner
       // sets a real price.

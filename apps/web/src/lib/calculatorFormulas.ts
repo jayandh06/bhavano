@@ -36,29 +36,11 @@ export function calculateMaxLoanAmount(
   return (availableEmi * (factor - 1)) / (r * factor);
 }
 
-export type AreaUnit = "sqft" | "sqm" | "acre" | "hectare" | "cent";
-
-export const AREA_UNIT_LABELS: Record<AreaUnit, string> = {
-  sqft: "Square feet",
-  sqm: "Square metres",
-  acre: "Acre",
-  hectare: "Hectare",
-  cent: "Cent",
-};
-
-/** Canonical base is square metres (the one exact SI unit) — every other factor is derived from
- * it once, rather than hand-maintaining an N×N conversion table. */
-export const AREA_UNIT_TO_SQM: Record<AreaUnit, number> = {
-  sqft: 0.09290304, // exact: (0.3048 m)^2
-  sqm: 1,
-  acre: 4046.8564224, // exact: 43,560 sqft
-  hectare: 10000, // exact, by definition
-  cent: 40.468564224, // exact: acre / 100
-};
-
-export function convertArea(value: number, from: AreaUnit, to: AreaUnit): number {
-  return (value * AREA_UNIT_TO_SQM[from]) / AREA_UNIT_TO_SQM[to];
-}
+/** Moved to @bhavano/types/areaUnit so a listing's own area field (Plot/Commercial's unit picker)
+ * and this calculator share one vocabulary — re-exported here so this page's existing imports
+ * don't need to change. */
+export type { AreaUnit } from "@bhavano/types/areaUnit";
+export { AREA_UNIT_LABELS, AREA_UNIT_TO_SQM, convertArea } from "@bhavano/types/areaUnit";
 
 /** Simple income-ratio rule of thumb — no interaction with other obligations. */
 export function calculateMaxAffordableRent(monthlyIncome: number, rentPercent: number): number {

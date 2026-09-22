@@ -2,6 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deriveCardSpecs = deriveCardSpecs;
 const categoryFields_1 = require("./categoryFields");
+const areaUnit_1 = require("./areaUnit");
+const AREA_UNITS = ["sqft", "sqm", "acre", "hectare", "cent"];
+function isAreaUnit(value) {
+    return typeof value === "string" && AREA_UNITS.includes(value);
+}
 const PROPERTY = [
     { kind: "count", key: "bedrooms", one: "Bed", many: "Beds" },
     { kind: "count", key: "bathrooms", one: "Bath", many: "Baths" },
@@ -28,6 +33,7 @@ const RECIPES = {
     interiors: [{ kind: "option", key: "serviceType" }],
     plot: [
         { kind: "unit", key: "plotAreaSqft", suffix: "sqft" },
+        { kind: "text", key: "plotDimensions" },
         { kind: "optionSuffix", key: "facing", suffix: "facing" },
     ],
     commercial: [
@@ -89,11 +95,21 @@ function deriveCardSpecs(category, attributes) {
             const n = toNumber(raw);
             if (n === undefined || n <= 0)
                 continue;
-            chips.push(`${n.toLocaleString("en-IN")} ${chip.suffix}`);
+            // Only Plot/Commercial's area fields ever have a sibling `${key}Unit` attribute (see
+            // FieldDef.units's own doc comment) — every other "unit" chip (bedrooms' carpetAreaSqft,
+            // storage's sizeSqft) simply finds nothing here and keeps its fixed `chip.suffix`, so this
+            // needs no per-category branching.
+            const storedUnit = attributes[`${chip.key}Unit`];
+            const suffix = isAreaUnit(storedUnit) ? (0, areaUnit_1.areaUnitShortLabel)(storedUnit, n) : chip.suffix;
+            chips.push(`${n.toLocaleString("en-IN")} ${suffix}`);
         }
         else if (chip.kind === "flag") {
             if (typeof raw === "string" && chip.when.includes(raw))
                 chips.push(chip.label);
+        }
+        else if (chip.kind === "text") {
+            if (typeof raw === "string" && raw.trim() !== "")
+                chips.push(raw.trim());
         }
         else {
             const label = optionLabel(category, chip.key, raw);

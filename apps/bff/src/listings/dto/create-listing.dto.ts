@@ -15,6 +15,9 @@ import {
   ValidateNested,
 } from 'class-validator';
 import type { ListingCategory, TransactionType } from '@bhavano/types';
+import type { AreaUnit } from '@bhavano/types/areaUnit';
+
+const AREA_UNITS: AreaUnit[] = ['sqft', 'sqm', 'acre', 'hectare', 'cent'];
 
 const LISTING_CATEGORIES: ListingCategory[] = [
   'house',
@@ -77,6 +80,10 @@ export class CreateListingDto {
   @IsOptional()
   @IsString()
   priceQualifier?: string;
+
+  @IsOptional()
+  @IsIn(AREA_UNITS)
+  priceUnit?: AreaUnit;
 
   @IsString()
   @MinLength(3)

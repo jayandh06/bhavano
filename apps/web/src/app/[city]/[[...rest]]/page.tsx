@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import type { ListingCategory, ListingDetailDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { AMENITY_KEYS } from "@bhavano/types/categoryFields";
+import type { AreaUnit } from "@bhavano/types/areaUnit";
 import { auth } from "@/auth";
 import { fetchAreas, fetchCities, fetchListingById, fetchListingMeta, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
@@ -233,6 +234,16 @@ function numericAttribute(value: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+// schema.org's `unitCode` uses UN/CEFACT codes — there's no standard one for "cent" (a
+// India-specific land unit), so a Plot/Commercial listing measured in cents omits `floorSize`
+// entirely rather than emitting a wrong unit code.
+const AREA_UNIT_CODE: Partial<Record<AreaUnit, string>> = {
+  sqft: "FTK",
+  sqm: "MTK",
+  acre: "ACR",
+  hectare: "HAR",
+};
+
 /** What this listing is, in one string, for a machine to read.
  *
  * The seller's own description first — it is the only field written to describe the place rather
@@ -260,11 +271,21 @@ function listingJsonLd(listing: ListingDetailDto) {
   // priceOnRequest listings ("Contact for price") have no real amount to report — emitting
   // `price: "0"` would be actively misleading to crawlers/rich results, so the whole Offer is
   // omitted rather than reporting a fake price. See docs/plans/pg-coworking-google-places-leadgen.md.
+  // Offer.price must be the actual whole-rupee total a buyer pays — when `priceUnit` is set,
+  // `listing.price` is a per-unit display figure ("5,000" meaning ₹5,000/cent), not the total, so
+  // it's re-derived from the area attribute rather than reported as-is.
+  const offerPriceDigits = (() => {
+    const shown = Number(listing.price.replace(/[^\d]/g, ""));
+    if (!listing.priceUnit) return String(shown);
+    const areaKey = SQFT_ATTRIBUTE_KEY[listing.category];
+    const areaValue = areaKey ? numericAttribute(listing.attributes[areaKey]) : undefined;
+    return areaValue ? String(Math.round(shown * areaValue)) : String(shown);
+  })();
   const offers = listing.priceOnRequest
     ? undefined
     : {
         "@type": "Offer",
-        price: listing.price.replace(/[^\d]/g, ""),
+        price: offerPriceDigits,
         priceCurrency: "INR",
         availability: listing.status === "active" ? "https://schema.org/InStock" : "https://schema.org/SoldOut",
         url: `${SITE_URL}${buildListingPath(listing)}`,
@@ -283,6 +304,9 @@ function listingJsonLd(listing: ListingDetailDto) {
 
   const sqftKey = SQFT_ATTRIBUTE_KEY[listing.category];
   const sqft = sqftKey ? numericAttribute(listing.attributes[sqftKey]) : undefined;
+  const areaUnitCode = sqftKey
+    ? AREA_UNIT_CODE[(listing.attributes[`${sqftKey}Unit`] as AreaUnit | undefined) ?? "sqft"]
+    : undefined;
   const bedrooms = numericAttribute(listing.attributes.bedrooms);
 
   return {
@@ -301,7 +325,7 @@ function listingJsonLd(listing: ListingDetailDto) {
       ? { geo: { "@type": "GeoCoordinates", latitude: listing.lat, longitude: listing.lng } }
       : {}),
     ...(bedrooms !== undefined ? { numberOfRooms: bedrooms } : {}),
-    ...(sqft !== undefined ? { floorSize: { "@type": "QuantitativeValue", value: sqft, unitCode: "FTK" } } : {}),
+    ...(sqft !== undefined && areaUnitCode ? { floorSize: { "@type": "QuantitativeValue", value: sqft, unitCode: areaUnitCode } } : {}),
     ...(offers ? { offers } : {}),
   };
 }

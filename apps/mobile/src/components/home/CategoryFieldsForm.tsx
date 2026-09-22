@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG, fieldIsVisible, groupFieldsBySection } from "@bhavano/types/categoryFields";
+import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
@@ -32,6 +33,16 @@ function maxCountFor(field: FieldConfig): number {
 
 function digitsOnly(value: string): string {
   return value.replace(/[^0-9]/g, "");
+}
+
+/** Unlike every other numeric field here (counts, prices — always whole numbers), an area value
+ * is routinely a decimal ("2.5 acres") — this keeps digits and at most one decimal point instead
+ * of `digitsOnly`'s all-digits rule. */
+function sanitizeAreaInput(value: string): string {
+  const cleaned = value.replace(/[^0-9.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  if (firstDot === -1) return cleaned;
+  return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
 }
 
 function clampDigits(value: string, maxDigits: number | undefined): string {
@@ -119,7 +130,48 @@ export function CategoryFieldsForm({
                     {field.label}
                     {field.required ? " *" : ""}
                   </Text>
-                  {counter ? (
+                  {field.type === "area" ? (
+                    <View style={{ gap: 8 }}>
+                      <TextInput
+                        value={typeof attributes[field.key] === "string" ? (attributes[field.key] as string) : ""}
+                        onChangeText={(v) => onAttributesChange((prev) => ({ ...prev, [field.key]: sanitizeAreaInput(v) }))}
+                        keyboardType="decimal-pad"
+                        placeholder={field.placeholder}
+                        placeholderTextColor={colors.muted}
+                        style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                      />
+                      {/* Only Plot/Commercial ever have more than one unit — every other area
+                        * field renders as a plain number input, same as before this field type
+                        * existed. */}
+                      {(field.units ?? ["sqft"]).length > 1 && (
+                        <View style={[styles.segmented, { borderColor: colors.border, flexWrap: "wrap" }]}>
+                          {(field.units ?? ["sqft"]).map((unit, i) => {
+                            const current = (attributes[`${field.key}Unit`] as AreaUnit | undefined) ?? "sqft";
+                            const selected = current === unit;
+                            return (
+                              <Pressable
+                                key={unit}
+                                onPress={() => onAttributesChange((prev) => ({ ...prev, [`${field.key}Unit`]: unit }))}
+                                style={[
+                                  styles.segment,
+                                  i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border },
+                                  selected && { backgroundColor: colors.green },
+                                ]}
+                              >
+                                <Text
+                                  style={{ color: selected ? colors.onGreen : colors.text, fontSize: 12, fontWeight: "700" }}
+                                  numberOfLines={1}
+                                >
+                                  {/* value=2 forces the pluralized short form ("acres", not "acre") for a picker chip. */}
+                                  {areaUnitShortLabel(unit, 2)}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  ) : counter ? (
                     <View style={[styles.counter, { borderColor: colors.border }]}>
                       <Pressable
                         onPress={() => bumpCount(field, -1)}

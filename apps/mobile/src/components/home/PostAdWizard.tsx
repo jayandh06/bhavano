@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
@@ -29,6 +30,7 @@ import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCatego
 import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
+import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLimits";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
@@ -122,6 +124,15 @@ function digitsOnly(value: string): string {
 /** Truncates to the field's own `maxDigits`, so a percent field can't take a third digit. */
 function clampDigits(value: string, maxDigits: number | undefined): string {
   return maxDigits === undefined ? value : value.slice(0, maxDigits);
+}
+
+/** Unlike every other numeric field here (counts, prices — always whole numbers), an area value
+ * is routinely a decimal ("2.5 acres") — keeps digits and at most one decimal point. */
+function sanitizeAreaInput(value: string): string {
+  const cleaned = value.replace(/[^0-9.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  if (firstDot === -1) return cleaned;
+  return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
 }
 
 /** A price is what the listing is for; 0 or blank is not a listing — except for pg/coworking,
@@ -229,6 +240,9 @@ export function PostAdWizard({
   );
   const [price, setPrice] = useState("");
   const [priceQualifier, setPriceQualifier] = useState("");
+  // "Whole price vs price per unit" — see web's identical toggle in PostAdWizard.tsx for the
+  // full reasoning. Only offered for a sell/lease listing whose category has an area field.
+  const [priceMode, setPriceMode] = useState<"total" | "perUnit">("total");
   const [title, setTitle] = useState("");
   const [areaQuery, setAreaQuery] = useState("");
   const [areaId, setAreaId] = useState<string | null>(null);
@@ -373,6 +387,9 @@ export function PostAdWizard({
   function selectCategory(next: ListingCategory) {
     setCategory(next);
     setAttributes(defaultAttributesFor(next));
+    // A category swap can invalidate "price per unit" (the new category might have no area field
+    // at all, or a different one) — reset to the plain default.
+    setPriceMode("total");
     // Pre-filled default for the Preview-step selector (15-day boost + Instant Alerts) — set once,
     // here, rather than in a useEffect keyed on `category`, since that can't tell "never chosen
     // yet" apart from "explicitly skipped" (BoostPlanSelector's own Skip sets this back to null).
@@ -392,6 +409,9 @@ export function PostAdWizard({
   function selectTransactionType(next: TransactionType) {
     setTransactionType(next);
     setPriceQualifier(category ? getPriceQualifierOptions(category, next)[0]?.value ?? "" : "");
+    // Price-per-unit is sell/lease only — switching to rent must not carry a stale "perUnit"
+    // mode forward into a combination the server would reject.
+    if (next !== "sell" && next !== "lease") setPriceMode("total");
     setStep("details");
   }
 
@@ -563,6 +583,14 @@ export function PostAdWizard({
       ? CATEGORY_FIELD_CONFIG[category].filter((field) => fieldIsVisible(field, transactionType, attributes))
       : [];
 
+  // "Whole price vs price per unit" is only offered for a sell/lease listing whose category has
+  // an area field — see priceMode's own comment.
+  const priceUnitAreaField =
+    category && (transactionType === "sell" || transactionType === "lease")
+      ? CATEGORY_FIELD_CONFIG[category].find((field) => field.type === "area")
+      : undefined;
+  const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
+
   // Only currently-visible required fields block submission — one hidden behind an unmet gate
   // can't be filled in anyway.
   const requiredAttributesFilled = category
@@ -637,6 +665,7 @@ export function PostAdWizard({
           transactionType,
           price: Number(price),
           priceQualifier: priceQualifier || undefined,
+          priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined,
           title,
           areaId: areaId ?? undefined,
           areaName: areaId ? undefined : areaQuery.trim(),
@@ -680,14 +709,14 @@ export function PostAdWizard({
   }
   const prevStep = previousStep();
 
-  // KeyboardAvoidingView wraps only the header+ScrollView, not the BottomSheetModal below (the
-  // option-picker sheet) — that already has its own keyboard handling via gorhom's props, and
-  // nesting it inside this would fight that. Same iOS/Android split as ProfileFields/edit.tsx:
-  // iOS needs the padding behavior explicitly; Android gets it from app.config.js's
-  // android.softwareKeyboardLayoutMode.
+  // react-native-keyboard-controller's KeyboardAvoidingView, not RN's own — see ProfileFields'
+  // identical comment for why "padding" is now unconditional. Wraps only the header+ScrollView,
+  // not the BottomSheetModal below (the option-picker sheet) — that already has its own keyboard
+  // handling via gorhom's props, unrelated to this library, and nesting it inside this would fight
+  // that rather than help it.
   return (
     <>
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
     <ScreenHeader title="Post an Ad" onBack={prevStep ? () => setStep(prevStep) : undefined} />
     <ScrollView
       ref={scrollRef}
@@ -762,7 +791,27 @@ export function PostAdWizard({
 
       {step === "details" && category && transactionType && detailsReady && (
         <View style={{ gap: 4 }}>
-          <Text style={[styles.label, { color: colors.textSoft }]}>Price (₹) *</Text>
+          {priceUnitAreaField && (
+            <View style={[styles.chipRow, { marginBottom: 4 }]}>
+              <Pressable
+                onPress={() => setPriceMode("total")}
+                style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "total" ? colors.surfaceAlt : "transparent" }]}
+              >
+                <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Total price</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setPriceMode("perUnit")}
+                style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "perUnit" ? colors.surfaceAlt : "transparent" }]}
+              >
+                <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>
+                  Price per {areaUnitShortLabel(currentAreaUnit, 1)}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+          <Text style={[styles.label, { color: colors.textSoft }]}>
+            {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹) *` : "Price (₹) *"}
+          </Text>
           <TextInput
             value={price}
             onChangeText={(v) => setPrice(clampPrice(v, transactionType))}
@@ -937,7 +986,47 @@ export function PostAdWizard({
                   {field.label}
                   {field.required ? " *" : ""}
                 </Text>
-                {counter ? (
+                {field.type === "area" ? (
+                  <View style={{ gap: 8 }}>
+                    <TextInput
+                      value={typeof attributes[field.key] === "string" ? (attributes[field.key] as string) : ""}
+                      onChangeText={(v) => setAttributes((prev) => ({ ...prev, [field.key]: sanitizeAreaInput(v) }))}
+                      keyboardType="decimal-pad"
+                      placeholder={field.placeholder}
+                      placeholderTextColor={colors.muted}
+                      style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                    />
+                    {/* Only Plot/Commercial ever have more than one unit — every other area field
+                      * renders as a plain number input, same as before this field type existed. */}
+                    {(field.units ?? ["sqft"]).length > 1 && (
+                      <View style={[styles.segmented, { borderColor: colors.border, flexWrap: "wrap" }]}>
+                        {(field.units ?? ["sqft"]).map((unit, i) => {
+                          const current = (attributes[`${field.key}Unit`] as AreaUnit | undefined) ?? "sqft";
+                          const selected = current === unit;
+                          return (
+                            <Pressable
+                              key={unit}
+                              onPress={() => setAttributes((prev) => ({ ...prev, [`${field.key}Unit`]: unit }))}
+                              style={[
+                                styles.segment,
+                                i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border },
+                                selected && { backgroundColor: colors.green },
+                              ]}
+                            >
+                              <Text
+                                style={{ color: selected ? colors.onGreen : colors.text, fontSize: 12, fontWeight: "700" }}
+                                numberOfLines={1}
+                              >
+                                {/* value=2 forces the pluralized short form ("acres", not "acre"). */}
+                                {areaUnitShortLabel(unit, 2)}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                ) : counter ? (
                   <View style={[styles.counter, { borderColor: colors.border }]}>
                     <Pressable
                       onPress={() => bumpCount(field, -1)}
@@ -1126,6 +1215,7 @@ export function PostAdWizard({
             transactionType={transactionType}
             title={title}
             price={price}
+            priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
             priceQualifier={priceQualifier}
             areaName={areaQuery}
             cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}

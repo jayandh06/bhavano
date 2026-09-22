@@ -81,6 +81,11 @@ function pruneHiddenAttributes(category, transactionType, attributes) {
             if (field.key in next &&
                 !fieldIsVisible(field, transactionType, next)) {
                 delete next[field.key];
+                // `type: "area"` fields carry a second, sibling attribute key for the chosen unit —
+                // see FieldDef.units's own doc comment. No area field is conditional today, but a
+                // future one that hides its number must not leave its unit behind as an orphan.
+                if (field.type === "area")
+                    delete next[`${field.key}Unit`];
                 removedAny = true;
             }
         }
@@ -875,10 +880,18 @@ exports.CATEGORY_FIELD_CONFIG = {
     plot: [
         {
             key: "plotAreaSqft",
-            label: "Plot Area (sqft)",
-            type: "number",
+            label: "Plot Area",
+            type: "area",
+            units: ["sqft", "acre", "cent", "hectare", "sqm"],
             required: true,
             section: "plotDetails",
+        },
+        {
+            key: "plotDimensions",
+            label: "Dimensions (optional)",
+            type: "text",
+            section: "plotDetails",
+            placeholder: "e.g. 30 x 40 ft",
         },
         {
             key: "facing",
@@ -951,8 +964,9 @@ exports.CATEGORY_FIELD_CONFIG = {
     commercial: [
         {
             key: "sqft",
-            label: "Area (sqft)",
-            type: "number",
+            label: "Area",
+            type: "area",
+            units: ["sqft", "acre", "cent", "hectare", "sqm"],
             required: true,
             section: "spaceDetails",
         },

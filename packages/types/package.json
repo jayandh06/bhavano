@@ -49,6 +49,10 @@
       "types": "./dist/priceBounds.d.ts",
       "default": "./dist/priceBounds.js"
     },
+    "./areaUnit": {
+      "types": "./dist/areaUnit.d.ts",
+      "default": "./dist/areaUnit.js"
+    },
     "./boostPricing": {
       "types": "./dist/boostPricing.d.ts",
       "default": "./dist/boostPricing.js"

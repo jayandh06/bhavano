@@ -1,5 +1,11 @@
 import type { ListingCategory } from "./index";
 import { CATEGORY_FIELD_CONFIG } from "./categoryFields";
+import { areaUnitShortLabel, type AreaUnit } from "./areaUnit";
+
+const AREA_UNITS: readonly AreaUnit[] = ["sqft", "sqm", "acre", "hectare", "cent"];
+function isAreaUnit(value: unknown): value is AreaUnit {
+  return typeof value === "string" && (AREA_UNITS as readonly string[]).includes(value);
+}
 
 /**
  * The two or three facts a listing card shows under its title.
@@ -28,7 +34,9 @@ type Chip =
    *  reads "Meals included" rather than "Yes", and `meals: "no"` shows nothing. */
   | { kind: "flag"; key: string; when: string[]; label: string }
   /** A select rendered as its label plus a suffix — "East facing". */
-  | { kind: "optionSuffix"; key: string; suffix: string };
+  | { kind: "optionSuffix"; key: string; suffix: string }
+  /** A free-text value shown verbatim — "30 x 40 ft". */
+  | { kind: "text"; key: string };
 
 const PROPERTY: Chip[] = [
   { kind: "count", key: "bedrooms", one: "Bed", many: "Beds" },
@@ -57,6 +65,7 @@ const RECIPES: Record<ListingCategory, Chip[]> = {
   interiors: [{ kind: "option", key: "serviceType" }],
   plot: [
     { kind: "unit", key: "plotAreaSqft", suffix: "sqft" },
+    { kind: "text", key: "plotDimensions" },
     { kind: "optionSuffix", key: "facing", suffix: "facing" },
   ],
   commercial: [
@@ -119,9 +128,17 @@ export function deriveCardSpecs(
     } else if (chip.kind === "unit") {
       const n = toNumber(raw);
       if (n === undefined || n <= 0) continue;
-      chips.push(`${n.toLocaleString("en-IN")} ${chip.suffix}`);
+      // Only Plot/Commercial's area fields ever have a sibling `${key}Unit` attribute (see
+      // FieldDef.units's own doc comment) — every other "unit" chip (bedrooms' carpetAreaSqft,
+      // storage's sizeSqft) simply finds nothing here and keeps its fixed `chip.suffix`, so this
+      // needs no per-category branching.
+      const storedUnit = attributes[`${chip.key}Unit`];
+      const suffix = isAreaUnit(storedUnit) ? areaUnitShortLabel(storedUnit, n) : chip.suffix;
+      chips.push(`${n.toLocaleString("en-IN")} ${suffix}`);
     } else if (chip.kind === "flag") {
       if (typeof raw === "string" && chip.when.includes(raw)) chips.push(chip.label);
+    } else if (chip.kind === "text") {
+      if (typeof raw === "string" && raw.trim() !== "") chips.push(raw.trim());
     } else {
       const label = optionLabel(category, chip.key, raw);
       if (!label) continue;

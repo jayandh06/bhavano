@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
+import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { updateListingAction } from "@/app/actions/listings";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass, primaryButtonClass } from "@/lib/formStyles";
@@ -51,6 +52,10 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
     String(listing.price).replace(/[^0-9]/g, ""),
   );
   const [priceQualifier, setPriceQualifier] = useState(listing.priceQualifier);
+  // "Whole price vs price per unit" — see PostAdWizard.tsx's identical toggle for the full
+  // reasoning. Category/transactionType are fixed in this form (only admin editing can change
+  // them), so unlike the wizard, no reset-on-change is needed here.
+  const [priceMode, setPriceMode] = useState<"total" | "perUnit">(listing.priceUnit ? "perUnit" : "total");
   const [description, setDescription] = useState(listing.description ?? "");
   const [attributes, setAttributes] = useState<
     Record<string, string | string[]>
@@ -66,6 +71,11 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
   const visibleFields = fieldConfig.filter((field) =>
     fieldIsVisible(field, listing.transactionType, attributes),
   );
+  const priceUnitAreaField =
+    listing.transactionType === "sell" || listing.transactionType === "lease"
+      ? fieldConfig.find((field) => field.type === "area")
+      : undefined;
+  const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
   // Only currently-visible required fields block saving — a required field hidden behind an
   // unmet `dependsOn` (none today, but the config allows it) can't be filled in anyway.
@@ -105,6 +115,7 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
       title: title.trim(),
       price: priceValue,
       priceQualifier,
+      priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
       description: description.trim(),
       attributes,
       status,
@@ -169,32 +180,52 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
           onAttributesChange={setAttributes}
           sectionExtras={{
             pricing: (
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <RequiredLabel text="Price (₹)" />
-                  <input
-                    type="number"
-                    // Native constraints have to agree with `valid` above, or a browser that
-                    // enforces them blocks a legitimate "Contact for price" pg/coworking save
-                    // that the JS state already allows.
-                    required={!priceOnRequestAllowed}
-                    min={priceOnRequestAllowed ? 0 : 1}
-                    max={maxPriceFor(listing.transactionType)}
-                    inputMode="numeric"
-                    value={price}
-                    onChange={(e) => setPrice(clampPrice(e.target.value, listing.transactionType))}
-                    className={fieldClass}
-                  />
-                </div>
-                <div className="flex-1">
-                  <RequiredLabel text="Price qualifier" />
-                  <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)}>
-                    {priceQualifierChoices.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </SelectField>
+              <div className="flex flex-col gap-3">
+                {priceUnitAreaField && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPriceMode("total")}
+                      className={`text-[12.5px] font-bold px-3 py-1.5 rounded-md border ${priceMode === "total" ? "border-green bg-green/10 text-text" : "border-border text-muted"}`}
+                    >
+                      Total price
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPriceMode("perUnit")}
+                      className={`text-[12.5px] font-bold px-3 py-1.5 rounded-md border ${priceMode === "perUnit" ? "border-green bg-green/10 text-text" : "border-border text-muted"}`}
+                    >
+                      Price per {areaUnitShortLabel(currentAreaUnit, 1)}
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <RequiredLabel text={priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"} />
+                    <input
+                      type="number"
+                      // Native constraints have to agree with `valid` above, or a browser that
+                      // enforces them blocks a legitimate "Contact for price" pg/coworking save
+                      // that the JS state already allows.
+                      required={!priceOnRequestAllowed}
+                      min={priceOnRequestAllowed ? 0 : 1}
+                      max={priceMode === "perUnit" ? undefined : maxPriceFor(listing.transactionType)}
+                      inputMode="numeric"
+                      value={price}
+                      onChange={(e) => setPrice(clampPrice(e.target.value, listing.transactionType))}
+                      className={fieldClass}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <RequiredLabel text="Price qualifier" />
+                    <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)}>
+                      {priceQualifierChoices.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </SelectField>
+                  </div>
                 </div>
               </div>
             ),

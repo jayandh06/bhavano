@@ -16,6 +16,7 @@ import {
   type FieldSection,
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
+import { AREA_UNIT_LABELS, areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { clampDigits } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
@@ -228,11 +229,48 @@ function CategoryFieldInput({
   field,
   value,
   onChange,
+  unitValue,
+  onUnitChange,
 }: {
   field: FieldDef;
   value: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
+  /** `type: "area"` only — the sibling `${field.key}Unit` attribute's current value. */
+  unitValue?: string;
+  onUnitChange?: (unit: string) => void;
 }) {
+  if (field.type === "area") {
+    const units = field.units ?? ["sqft"];
+    const unit = (unitValue as AreaUnit | undefined) ?? "sqft";
+    return (
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          type="number"
+          min={field.min ?? 0}
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onChange(sanitizeNonNegative(e.target.value))}
+          placeholder={field.placeholder}
+          style={inputStyle}
+        />
+        {/* Only Plot/Commercial ever have more than one unit — every other area field renders a
+          * plain number input, visually identical to before this field type existed. */}
+        {units.length > 1 && (
+          <SelectField
+            value={unit}
+            onChange={(e) => onUnitChange?.(e.target.value)}
+            style={{ ...inputStyle, width: 130, flexShrink: 0 }}
+          >
+            {units.map((u) => (
+              <option key={u} value={u}>
+                {AREA_UNIT_LABELS[u]}
+              </option>
+            ))}
+          </SelectField>
+        )}
+      </div>
+    );
+  }
+
   if (isYesNoField(field)) {
     return <YesNoToggle checked={value === "yes"} onChange={onChange} />;
   }
@@ -282,10 +320,14 @@ function CategoryField({
   field,
   value,
   onChange,
+  unitValue,
+  onUnitChange,
 }: {
   field: FieldDef;
   value: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
+  unitValue?: string;
+  onUnitChange?: (unit: string) => void;
 }) {
   if (isYesNoField(field)) {
     return (
@@ -304,7 +346,7 @@ function CategoryField({
         {field.label}
         {field.required && <span style={{ color: "var(--danger)" }}> *</span>}
       </label>
-      <CategoryFieldInput field={field} value={value} onChange={onChange} />
+      <CategoryFieldInput field={field} value={value} onChange={onChange} unitValue={unitValue} onUnitChange={onUnitChange} />
     </div>
   );
 }
@@ -365,13 +407,17 @@ function FieldRunBlock({
   run,
   attributes,
   onChange,
+  onUnitChange,
 }: {
   run: FieldRun;
   attributes: Record<string, string | string[]>;
   onChange: (field: FieldDef, value: string | string[]) => void;
+  onUnitChange: (field: FieldDef, unit: string) => void;
 }) {
   const toggleFields = run.fields.filter(isYesNoField);
   const otherFields = run.fields.filter((field) => !isYesNoField(field));
+  const unitOf = (field: FieldDef) =>
+    typeof attributes[`${field.key}Unit`] === "string" ? (attributes[`${field.key}Unit`] as string) : undefined;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {toggleFields.length > 0 && (
@@ -384,8 +430,17 @@ function FieldRunBlock({
       {otherFields.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 14 }}>
           {otherFields.map((field) => (
-            <div key={field.key} style={field.type === "text" || field.type === "multi-select" ? { gridColumn: "1 / -1" } : undefined}>
-              <CategoryField field={field} value={attributes[field.key]} onChange={(value) => onChange(field, value)} />
+            <div
+              key={field.key}
+              style={field.type === "text" || field.type === "multi-select" || field.type === "area" ? { gridColumn: "1 / -1" } : undefined}
+            >
+              <CategoryField
+                field={field}
+                value={attributes[field.key]}
+                onChange={(value) => onChange(field, value)}
+                unitValue={unitOf(field)}
+                onUnitChange={(unit) => onUnitChange(field, unit)}
+              />
             </div>
           ))}
         </div>
@@ -410,6 +465,9 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
   const [title, setTitle] = useState(listing.title);
   const [price, setPrice] = useState(String(parseRawPrice(listing.price, listing.priceOnRequest)));
   const [priceQualifier, setPriceQualifier] = useState(listing.priceQualifier);
+  // "Whole price vs price per unit" — see web's identical toggle in PostAdWizard.tsx/
+  // EditListingForm.tsx for the full reasoning.
+  const [priceMode, setPriceMode] = useState<"total" | "perUnit">(listing.priceUnit ? "perUnit" : "total");
   const [description, setDescription] = useState(listing.description ?? "");
   const [specsValue, setSpecsValue] = useState(listing.specs.join(", "));
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>(
@@ -456,6 +514,9 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
     if (!newQualifierOptions.some((opt) => opt.value === priceQualifier)) {
       setPriceQualifier(newQualifierOptions[0]?.value ?? "");
     }
+    // A category swap can invalidate "price per unit" (the new category might have no area field
+    // at all, or a different one) — reset to the plain default.
+    setPriceMode("total");
   }
 
   function onTransactionTypeChange(value: string) {
@@ -468,6 +529,8 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
     if (!newQualifierOptions.some((opt) => opt.value === priceQualifier)) {
       setPriceQualifier(newQualifierOptions[0]?.value ?? "");
     }
+    // Price-per-unit is sell/lease only.
+    if (newTransactionType !== "sell" && newTransactionType !== "lease") setPriceMode("total");
   }
 
   function onCityChange(newCityId: string) {
@@ -516,6 +579,11 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
       );
 
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(category);
+  const priceUnitAreaField =
+    transactionType === "sell" || transactionType === "lease"
+      ? CATEGORY_FIELD_CONFIG[category].find((field) => field.type === "area")
+      : undefined;
+  const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
   const requiredAttributesFilled = visibleFields.every((field) => {
     if (!field.required) return true;
@@ -542,6 +610,10 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
     setAttributes((prev) => pruneHiddenAttributes(category, transactionType, { ...prev, [field.key]: value }));
   }
 
+  function setFieldUnit(field: FieldDef, unit: string) {
+    setAttributes((prev) => pruneHiddenAttributes(category, transactionType, { ...prev, [`${field.key}Unit`]: unit }));
+  }
+
   async function onSave() {
     setError(null);
     setSaved(false);
@@ -550,6 +622,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
       title: title.trim(),
       price: priceValue,
       priceQualifier,
+      priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
       description: description.trim(),
       specs: specsValue.split(",").map((s) => s.trim()).filter(Boolean),
       attributes,
@@ -745,33 +818,72 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
           <summary style={sectionSummaryStyle}>{section.label}</summary>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "12px 16px 16px" }}>
             {section.section === "pricing" && (
-              <div style={{ display: "flex", gap: 10 }}>
-                <div style={{ flex: 1, maxWidth: 200 }}>
-                  <label style={labelStyle}>
-                    Price (₹) {!priceOnRequestAllowed && <span style={{ color: "var(--danger)" }}>*</span>}
-                  </label>
-                  <input
-                    type="number"
-                    min={priceOnRequestAllowed ? 0 : 1}
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
-                    style={inputStyle}
-                  />
-                </div>
-                <div style={{ flex: 1, maxWidth: 220 }}>
-                  <label style={labelStyle}>Price qualifier</label>
-                  <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={inputStyle}>
-                    {priceQualifierChoices.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label || "(none)"}
-                      </option>
-                    ))}
-                  </SelectField>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {priceUnitAreaField && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setPriceMode("total")}
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        padding: "6px 12px",
+                        borderRadius: 7,
+                        border: `1px solid ${priceMode === "total" ? "var(--green)" : "var(--border)"}`,
+                        background: priceMode === "total" ? "var(--surface-alt)" : "var(--surface)",
+                        color: priceMode === "total" ? "var(--text)" : "var(--muted)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Total price
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPriceMode("perUnit")}
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        padding: "6px 12px",
+                        borderRadius: 7,
+                        border: `1px solid ${priceMode === "perUnit" ? "var(--green)" : "var(--border)"}`,
+                        background: priceMode === "perUnit" ? "var(--surface-alt)" : "var(--surface)",
+                        color: priceMode === "perUnit" ? "var(--text)" : "var(--muted)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Price per {areaUnitShortLabel(currentAreaUnit, 1)}
+                    </button>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ flex: 1, maxWidth: 200 }}>
+                    <label style={labelStyle}>
+                      {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"}{" "}
+                      {!priceOnRequestAllowed && <span style={{ color: "var(--danger)" }}>*</span>}
+                    </label>
+                    <input
+                      type="number"
+                      min={priceOnRequestAllowed ? 0 : 1}
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ flex: 1, maxWidth: 220 }}>
+                    <label style={labelStyle}>Price qualifier</label>
+                    <SelectField value={priceQualifier} onChange={(e) => setPriceQualifier(e.target.value)} style={inputStyle}>
+                      {priceQualifierChoices.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label || "(none)"}
+                        </option>
+                      ))}
+                    </SelectField>
+                  </div>
                 </div>
               </div>
             )}
             {groupFieldsByChain(section.fields).map((run) => (
-              <FieldRunBlock key={run.fields[0].key} run={run} attributes={attributes} onChange={setFieldValue} />
+              <FieldRunBlock key={run.fields[0].key} run={run} attributes={attributes} onChange={setFieldValue} onUnitChange={setFieldUnit} />
             ))}
           </div>
         </details>

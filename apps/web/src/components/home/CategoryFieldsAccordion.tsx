@@ -10,6 +10,7 @@ import {
   SECTION_ORDER,
 } from "@bhavano/types/categoryFields";
 import { clampDigits } from "@bhavano/types/listingLimits";
+import { AREA_UNIT_LABELS, type AreaUnit } from "@bhavano/types/areaUnit";
 import { fieldClass, labelClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
 import { useClickOutside } from "@/lib/useClickOutside";
@@ -138,11 +139,49 @@ function CategoryFieldInput({
   field,
   value,
   onChange,
+  unitValue,
+  onUnitChange,
 }: {
   field: FieldDef;
   value: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
+  /** `type: "area"` only — the sibling `${field.key}Unit` attribute's current value. */
+  unitValue?: string;
+  onUnitChange?: (unit: string) => void;
 }) {
+  if (field.type === "area") {
+    const units = field.units ?? ["sqft"];
+    const unit = (unitValue as AreaUnit | undefined) ?? "sqft";
+    return (
+      <div className="flex gap-2">
+        <input
+          type="number"
+          inputMode="decimal"
+          min={field.min ?? 0}
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onChange(sanitizeNonNegative(e.target.value))}
+          placeholder={field.placeholder}
+          className={fieldClass}
+        />
+        {/* Only Plot/Commercial ever have more than one unit — every other area field renders a
+          * plain number input, visually identical to before this field type existed. */}
+        {units.length > 1 && (
+          <SelectField
+            value={unit}
+            onChange={(e) => onUnitChange?.(e.target.value)}
+            className="w-[130px] shrink-0"
+          >
+            {units.map((u) => (
+              <option key={u} value={u}>
+                {AREA_UNIT_LABELS[u]}
+              </option>
+            ))}
+          </SelectField>
+        )}
+      </div>
+    );
+  }
+
   if (isYesNoField(field)) {
     return (
       <YesNoToggle checked={value === "yes"} onChange={onChange} />
@@ -310,10 +349,12 @@ function FieldRunBlock({
   run,
   attributes,
   onChange,
+  onUnitChange,
 }: {
   run: FieldRun;
   attributes: Record<string, string | string[]>;
   onChange: (field: FieldDef, value: string | string[]) => void;
+  onUnitChange: (field: FieldDef, unit: string) => void;
 }) {
   const toggleFields = run.fields.filter(isYesNoField);
   const otherFields = run.fields.filter((field) => !isYesNoField(field));
@@ -327,6 +368,8 @@ function FieldRunBlock({
               field={field}
               value={attributes[field.key]}
               onChange={(value) => onChange(field, value)}
+              unitValue={typeof attributes[`${field.key}Unit`] === "string" ? (attributes[`${field.key}Unit`] as string) : undefined}
+              onUnitChange={(unit) => onUnitChange(field, unit)}
             />
           ))}
         </div>
@@ -337,7 +380,7 @@ function FieldRunBlock({
             <div
               key={field.key}
               className={
-                field.type === "text" || field.type === "multi-select"
+                field.type === "text" || field.type === "multi-select" || field.type === "area"
                   ? "col-span-full"
                   : undefined
               }
@@ -346,6 +389,8 @@ function FieldRunBlock({
                 field={field}
                 value={attributes[field.key]}
                 onChange={(value) => onChange(field, value)}
+                unitValue={typeof attributes[`${field.key}Unit`] === "string" ? (attributes[`${field.key}Unit`] as string) : undefined}
+                onUnitChange={(unit) => onUnitChange(field, unit)}
               />
             </div>
           ))}
@@ -363,10 +408,14 @@ function CategoryField({
   field,
   value,
   onChange,
+  unitValue,
+  onUnitChange,
 }: {
   field: FieldDef;
   value: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
+  unitValue?: string;
+  onUnitChange?: (unit: string) => void;
 }) {
   const labelText = (
     <>
@@ -395,7 +444,7 @@ function CategoryField({
       <label className={`${labelClass} truncate`} title={field.label}>
         {labelText}
       </label>
-      <CategoryFieldInput field={field} value={value} onChange={onChange} />
+      <CategoryFieldInput field={field} value={value} onChange={onChange} unitValue={unitValue} onUnitChange={onUnitChange} />
     </div>
   );
 }
@@ -453,6 +502,15 @@ export function CategoryFieldsAccordion({
     );
   }
 
+  function setFieldUnit(field: FieldDef, unit: string) {
+    onAttributesChange((prev) =>
+      pruneHiddenAttributes(category, transactionType, {
+        ...prev,
+        [`${field.key}Unit`]: unit,
+      }),
+    );
+  }
+
   return (
     // Capped like Title's own max-w-[720px] in PostAdWizard/EditListingForm — a bit wider since
     // this holds multi-column grids of short fields rather than one text input, but without a
@@ -482,6 +540,7 @@ export function CategoryFieldsAccordion({
                     run={run}
                     attributes={attributes}
                     onChange={setFieldValue}
+                    onUnitChange={setFieldUnit}
                   />
                 ))}
               </div>

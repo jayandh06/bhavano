@@ -1,4 +1,5 @@
 import type { ListingCategory, TransactionType } from "./index";
+import type { AreaUnit } from "./areaUnit";
 export interface FieldOption {
     value: string;
     label: string;
@@ -15,10 +16,18 @@ export declare const SECTION_ORDER: FieldSection[];
 export interface FieldDef {
     key: string;
     label: string;
-    type: "text" | "number" | "select" | "multi-select";
+    type: "text" | "number" | "select" | "multi-select" | "area";
     options?: FieldOption[];
     placeholder?: string;
     min?: number;
+    /** `type: "area"` only — which units this field's number can be entered in. A single-entry
+     * list (or omitted entirely) renders as a plain sqft number input, visually identical to every
+     * other numeric field; more than one renders a unit dropdown alongside the number. Only Plot
+     * and Commercial get more than `["sqft"]` — carpet/size areas for the other categories are
+     * never measured in acres/cents/hectares in practice. The chosen unit is stored in a sibling
+     * attribute key, `${key}Unit` (absent = "sqft", covering every pre-existing listing with no
+     * backfill — see docs/plans/plot-commercial-area-units-and-price-per-unit.md). */
+    units?: AreaUnit[];
     /** A single emoji shown next to the label in both the posting form and the listing detail
      * page — set on amenity/furnishing fields, where a quick visual scan matters more than for a
      * plain count or select. Not required elsewhere. */
