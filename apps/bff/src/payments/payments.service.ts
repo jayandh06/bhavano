@@ -478,6 +478,7 @@ export class PaymentsService {
       boost15: option(boost15Rupees, false),
       boost7WithInstantAlerts: option(boost7Rupees + alertsRupees, false),
       boost15WithInstantAlerts: option(boost15Rupees + alertsRupees, false),
+      showSelectorOnPreview: boostPriceSettings.showSelectorOnPreview,
     };
   }
 

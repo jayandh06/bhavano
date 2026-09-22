@@ -1,4 +1,5 @@
 import type { VideoEntitlement } from "./videoLimits";
+import type { BoostDurationDays } from "./boostPricing";
 export type ListingCategory = "house" | "apartment" | "villa" | "pg" | "storage" | "coworking" | "furniture" | "interiors" | "plot" | "commercial";
 export type TransactionType = "buy" | "sell" | "rent" | "lease";
 export type ListingStatus = "active" | "sold" | "rented" | "deactivated";
@@ -849,15 +850,27 @@ export interface BoostPricingOptionDto {
     discountApplied: boolean;
     free: boolean;
 }
-/** Live pricing for the post-ad success screen's Boost/Instant Alerts picker — one call, every
- * option's final price (any auto-applied discount code and the free Agent Pro credit both
- * already resolved), so the screen never shows a price before knowing what it actually is. See
- * PaymentsService.previewBoostPricing. */
+/** Live pricing for the Boost/Instant Alerts picker — one call, every option's final price (any
+ * auto-applied discount code and the free Agent Pro credit both already resolved), so the screen
+ * never shows a price before knowing what it actually is. See PaymentsService.previewBoostPricing.
+ * `showSelectorOnPreview` rides along on this same response (rather than a separate settings
+ * fetch) so every caller — the post-ad success screen's card/picker and the ad-preview step's
+ * selector — can each decide "am I the one that should render right now?" from one payload,
+ * without risk of two callers disagreeing mid-session. See BoostPriceSettings.showSelectorOnPreview
+ * and docs/plans/boost-instant-alerts-preview-selector.md. */
 export interface BoostPricingPreviewDto {
     boost7: BoostPricingOptionDto;
     boost15: BoostPricingOptionDto;
     boost7WithInstantAlerts: BoostPricingOptionDto;
     boost15WithInstantAlerts: BoostPricingOptionDto;
+    showSelectorOnPreview: boolean;
+}
+/** A boost/instant-alerts choice made ahead of time on the ad-preview step — `null` means the
+ * advertiser skipped it (still fully optional). Carried in wizard state from the moment it's
+ * picked through to the follow-up checkout call once the listing exists. */
+export interface BoostPlanSelection {
+    duration: BoostDurationDays;
+    includeInstantAlerts: boolean;
 }
 /** One field's before/after value in a ListingEditLogEntryDto's `changes` — values are
  * `unknown` because different actions touch completely different field types (a number for

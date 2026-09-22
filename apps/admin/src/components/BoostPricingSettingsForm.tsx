@@ -19,10 +19,11 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
   const [furnitureInteriorsBoostPrice15d, setFurnitureInteriorsBoostPrice15d] = useState(
     String(initial.furnitureInteriorsBoostPrice15d),
   );
+  const [showSelectorOnPreview, setShowSelectorOnPreview] = useState(initial.showSelectorOnPreview);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const parsed: BoostPriceSettings = {
+  const prices = {
     propertyBoostPrice7d: Number(propertyBoostPrice7d),
     propertyBoostPrice15d: Number(propertyBoostPrice15d),
     coworkingPgStorageBoostPrice7d: Number(coworkingPgStorageBoostPrice7d),
@@ -30,7 +31,10 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
     furnitureInteriorsBoostPrice7d: Number(furnitureInteriorsBoostPrice7d),
     furnitureInteriorsBoostPrice15d: Number(furnitureInteriorsBoostPrice15d),
   };
-  const valid = Object.values(parsed).every((n) => Number.isInteger(n) && n > 0);
+  const parsed: BoostPriceSettings = { ...prices, showSelectorOnPreview };
+  // Only the price fields need this check — showSelectorOnPreview is a boolean, not a positive
+  // integer, so it can't be folded into the same Object.values(...).every(...) sweep.
+  const valid = Object.values(prices).every((n) => Number.isInteger(n) && n > 0);
 
   async function onSave() {
     setSaving(true);
@@ -82,6 +86,27 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
             onChange={setFurnitureInteriorsBoostPrice15d}
           />
         </div>
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={showSelectorOnPreview}
+            onChange={(e) => setShowSelectorOnPreview(e.target.checked)}
+            style={{ marginTop: 3 }}
+          />
+          <span>
+            <span style={{ fontWeight: 700, fontSize: 14, display: "block" }}>
+              Show the Boost/Instant Alerts selector on the ad Preview step
+            </span>
+            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+              When checked, advertisers pick a plan before posting instead of being offered one
+              afterward. The two placements are mutually exclusive — checking this hides the
+              post-ad upsell card entirely.
+            </span>
+          </span>
+        </label>
       </div>
 
       {message && (

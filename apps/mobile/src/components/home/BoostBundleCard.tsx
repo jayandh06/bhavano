@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
-import RazorpayCheckout from "react-native-razorpay";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { useAppTheme } from "../../theme/ThemeContext";
-import { createBoostOrder, previewBoostPricing } from "../../lib/bffClient";
+import { previewBoostPricing } from "../../lib/bffClient";
+import { startBoostCheckout } from "../../lib/boostCheckout";
 import { Icon } from "../Icon";
 
 const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
@@ -77,38 +77,17 @@ export function BoostBundleCard({
   async function onPay() {
     setPending(true);
     setError(null);
-    try {
-      const order = await createBoostOrder(accessToken, listingId, duration, ACTIVE_PROMO_CODE, addInstantAlerts);
-
-      if (order.activated) {
-        onActivating();
-        return;
-      }
-
-      if (!order.razorpayOrderId || !order.razorpayKeyId) {
-        setError("Couldn't open checkout — please try again.");
-        return;
-      }
-
-      await RazorpayCheckout.open({
-        key: order.razorpayKeyId,
-        amount: order.amount,
-        currency: order.currency,
-        order_id: order.razorpayOrderId,
-        name: "Bhavano",
-        description: `Boost this ad for ${duration} days${addInstantAlerts ? " + Instant Alerts" : ""}`,
-      });
-
-      onActivating();
-    } catch (e) {
-      // Same "no distinct cancel signal" gotcha BoostModal/InstantAlertsModal already document —
-      // the native SDK reports a plain dismiss as a rejection too.
-      const err = e as { code?: number; description?: string };
-      const isCancel = err.description?.toLowerCase().includes("cancel");
-      if (!isCancel) setError(err.description || "Payment failed — please try again.");
-    } finally {
-      setPending(false);
-    }
+    const result = await startBoostCheckout({
+      accessToken,
+      listingId,
+      duration,
+      includeInstantAlerts: addInstantAlerts,
+      discountCode: ACTIVE_PROMO_CODE,
+    });
+    setPending(false);
+    if (result.outcome === "activated" || result.outcome === "paid") onActivating();
+    else if (result.outcome === "error") setError(result.message);
+    // "cancelled" — same as before, no error shown, just re-enable the button.
   }
 
   function priceText(opt: BoostPricingPreviewDto["boost7"] | undefined): string {
@@ -116,6 +95,11 @@ export function BoostBundleCard({
     if (opt.free) return "Free";
     return opt.discountApplied ? `₹${opt.originalAmount} → ₹${opt.amount}` : `₹${opt.amount}`;
   }
+
+  // Admin has moved this offer onto the ad-preview step instead — see
+  // docs/plans/boost-instant-alerts-preview-selector.md. The two placements are mutually
+  // exclusive, so this post-creation card stays hidden entirely rather than duplicating the offer.
+  if (pricing?.showSelectorOnPreview) return null;
 
   return (
     <View style={[styles.card, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>

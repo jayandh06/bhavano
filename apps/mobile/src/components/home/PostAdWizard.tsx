@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
@@ -7,6 +7,7 @@ import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import type {
   Area,
+  BoostPlanSelection,
   BoostPricingPreviewDto,
   City,
   CreatedVideoInput,
@@ -15,6 +16,9 @@ import type {
   ReverseGeocodeResultDto,
   TransactionType,
 } from "@bhavano/types";
+import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
+import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
@@ -29,13 +33,15 @@ import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLi
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
-import { createListing, fetchAreas, previewBoostPricing, uploadPhoto, uploadVideo } from "../../lib/bffClient";
+import { createListing, fetchAreas, fetchPlanPricing, previewBoostPricing, uploadPhoto, uploadVideo } from "../../lib/bffClient";
+import { startBoostCheckout } from "../../lib/boostCheckout";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { ScreenHeader } from "./ScreenHeader";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { BoostBundleCard } from "./BoostBundleCard";
+import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { appWebUrl } from "../../lib/appWebUrl";
 import { instantAlertsOnlyPrice, priceSuffix } from "../../lib/boostPriceDisplay";
@@ -176,6 +182,30 @@ export function PostAdWizard({
   );
 
   const [step, setStep] = useState<Step>("category");
+  // The "details" step mounts everything at once — city picker, the whole grouped attribute
+  // grid, price fields, photo/video pickers — commonly 30+ native views in a single Fabric
+  // commit. On Android that has crashed with "IllegalStateException: addViewAt: Failed to
+  // insert view [...] into parent [...] at index N", a different index each time (a race, not a
+  // fixed bug in one view), which is the known signature of Android's Fabric child-index
+  // bookkeeping losing a race against a very large batch of view insertions landing together.
+  // Rendering the step's container in one commit and its actual content one tick later — into an
+  // already-settled parent, exactly like LocationMapPicker's own deferred MapView mount below —
+  // splits that one huge batch into two much smaller ones.
+  const [detailsReady, setDetailsReady] = useState(false);
+  useEffect(() => {
+    if (step !== "details") {
+      setDetailsReady(false);
+      return;
+    }
+    // requestAnimationFrame, not a bare state update: a plain setState here can still flush in
+    // the same native frame as the commit that triggered this effect, since nothing forces
+    // Android's Choreographer to actually process a frame boundary in between — which is
+    // exactly why this alone didn't stop the crash the first time. rAF hands control back to
+    // the native event loop before the callback runs, guaranteeing the small first commit
+    // (stepper + placeholder) genuinely finishes as its own frame before the big one starts.
+    const raf = requestAnimationFrame(() => setDetailsReady(true));
+    return () => cancelAnimationFrame(raf);
+  }, [step]);
   const scrollRef = useRef<ScrollView>(null);
   // Mirrors the web wizard's StepTracker scroll reset (apps/web/src/components/home/
   // PostAdWizard.tsx) — without it, a step reached after scrolling down on the previous one
@@ -229,6 +259,94 @@ export function PostAdWizard({
   // is about processing a paid transaction in-app, not about showing what something costs before
   // sending the buyer to the website to actually pay.
   const [iosPricing, setIosPricing] = useState<BoostPricingPreviewDto | null>(null);
+  // Public, no-login-required settings (GET /plans/pricing) — read as soon as the wizard mounts,
+  // not gated on being logged in, since the Preview-step selector below has to work before the
+  // "Post ad" tap that's this wizard's usual, deliberate point of first asking for an account
+  // (see onSubmit's own comment). previewBoostPricing (used everywhere else pricing is shown) is
+  // AuthGuard-protected and would force a premature login — see
+  // docs/plans/boost-instant-alerts-preview-selector.md.
+  const [planPricingSettings, setPlanPricingSettings] = useState<{
+    boost: BoostPriceSettings;
+    instantAlerts: InstantAlertsPriceSettings;
+  } | null>(null);
+  // A boost/instant-alerts choice made ahead of time on the review step — null means the
+  // advertiser explicitly skipped it (see selectCategory's pre-fill and BoostPlanSelector's own
+  // "Skip" affordance). Only ever read/acted on when previewBoostDisplay?.showSelectorOnPreview.
+  const [selectedBoostPlan, setSelectedBoostPlan] = useState<BoostPlanSelection | null>(null);
+  const [boostCheckoutPending, setBoostCheckoutPending] = useState(false);
+  // null until a checkout attempt (auto-fired right after posting, or a manual retry) resolves.
+  // Drives the narrow "Finish boosting this listing" retry prompt on the success step — see that
+  // block's own comment for why this can't just reuse BoostBundleCard's `bundleActivating`.
+  const [boostCheckoutOutcome, setBoostCheckoutOutcome] = useState<"succeeded" | "failed" | null>(null);
+  const boostAutoFiredRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlanPricing()
+      .then((result) => {
+        if (!cancelled) setPlanPricingSettings(result);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const previewBoostDisplay = useMemo(
+    () => (category && planPricingSettings ? buildDisplayBoostPricing(category, planPricingSettings.boost, planPricingSettings.instantAlerts) : null),
+    [category, planPricingSettings],
+  );
+
+  // Fires once, right after the listing actually exists, using whatever was chosen on the review
+  // step. Android/web: the real in-app checkout. iOS: never an in-app checkout (Apple Guideline
+  // 3.1.1) — instead the same website redirect the existing always-visible iOS buttons below use,
+  // just opened automatically instead of waiting for a tap.
+  useEffect(() => {
+    if (boostAutoFiredRef.current) return;
+    if (!createdListing || !postAccessToken || !selectedBoostPlan) return;
+    if (!previewBoostDisplay?.showSelectorOnPreview) return;
+    boostAutoFiredRef.current = true;
+
+    if (Platform.OS === "ios") {
+      WebBrowser.openBrowserAsync(
+        appWebUrl(
+          `/my-listings?openBoost=${createdListing.id}${selectedBoostPlan.includeInstantAlerts ? "&withAlerts=1" : ""}`,
+        ),
+      );
+      return;
+    }
+
+    setBoostCheckoutPending(true);
+    startBoostCheckout({
+      accessToken: postAccessToken,
+      listingId: createdListing.id,
+      duration: selectedBoostPlan.duration,
+      includeInstantAlerts: selectedBoostPlan.includeInstantAlerts,
+      discountCode: ACTIVE_PROMO_CODE,
+    }).then((result) => {
+      setBoostCheckoutPending(false);
+      setBoostCheckoutOutcome(result.outcome === "activated" || result.outcome === "paid" ? "succeeded" : "failed");
+    });
+  }, [createdListing, postAccessToken, selectedBoostPlan, previewBoostDisplay]);
+
+  // Manual retry for the narrow success-step prompt — same call the auto-fire above makes,
+  // re-run against the same pre-made selection (a fresh Razorpay order, same as re-tapping
+  // BoostBundleCard's own button already does today).
+  function retryBoostCheckout() {
+    if (!createdListing || !postAccessToken || !selectedBoostPlan) return;
+    setBoostCheckoutPending(true);
+    setBoostCheckoutOutcome(null);
+    startBoostCheckout({
+      accessToken: postAccessToken,
+      listingId: createdListing.id,
+      duration: selectedBoostPlan.duration,
+      includeInstantAlerts: selectedBoostPlan.includeInstantAlerts,
+      discountCode: ACTIVE_PROMO_CODE,
+    }).then((result) => {
+      setBoostCheckoutPending(false);
+      setBoostCheckoutOutcome(result.outcome === "activated" || result.outcome === "paid" ? "succeeded" : "failed");
+    });
+  }
 
   useEffect(() => {
     if (Platform.OS !== "ios" || !createdListing || !postAccessToken) return;
@@ -246,6 +364,10 @@ export function PostAdWizard({
   function selectCategory(next: ListingCategory) {
     setCategory(next);
     setAttributes(defaultAttributesFor(next));
+    // Pre-filled default for the Preview-step selector (15-day boost + Instant Alerts) — set once,
+    // here, rather than in a useEffect keyed on `category`, since that can't tell "never chosen
+    // yet" apart from "explicitly skipped" (BoostPlanSelector's own Skip sets this back to null).
+    setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
     const postable = POSTABLE_TRANSACTION_TYPES[next];
     if (postable.length === 1) {
       setTransactionType(postable[0]);
@@ -549,10 +671,25 @@ export function PostAdWizard({
   }
   const prevStep = previousStep();
 
+  // KeyboardAvoidingView wraps only the header+ScrollView, not the BottomSheetModal below (the
+  // option-picker sheet) — that already has its own keyboard handling via gorhom's props, and
+  // nesting it inside this would fight that. Same iOS/Android split as ProfileFields/edit.tsx:
+  // iOS needs the padding behavior explicitly; Android gets it from app.config.js's
+  // android.softwareKeyboardLayoutMode.
   return (
     <>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
     <ScreenHeader title="Post an Ad" onBack={prevStep ? () => setStep(prevStep) : undefined} />
-    <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
+    <ScrollView
+      ref={scrollRef}
+      style={{ flex: 1 }}
+      contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
+      // See ProfileFields' identical prop in app/(tabs)/account.tsx for why: this form is long
+      // and its fields nest inside several conditional sections (category, step, field type),
+      // deep enough that KeyboardAvoidingView's padding alone does not reliably scroll a newly
+      // -focused one into view.
+      automaticallyAdjustKeyboardInsets
+    >
       {step !== "success" && (
         // A vector icon, not a "→" text glyph, between steps — a Unicode arrow's rendering
         // depends on the device's own font having that glyph at all, which isn't guaranteed on
@@ -606,7 +743,15 @@ export function PostAdWizard({
         </View>
       )}
 
-      {step === "details" && category && transactionType && (
+      {step === "details" && category && transactionType && !detailsReady && (
+        // The one-commit-later placeholder itself — see detailsReady's own comment above for why
+        // this exists. Keeps the step from flashing blank for that single frame.
+        <View style={{ paddingVertical: 60, alignItems: "center" }}>
+          <ActivityIndicator color={colors.green} />
+        </View>
+      )}
+
+      {step === "details" && category && transactionType && detailsReady && (
         <View style={{ gap: 4 }}>
           <Text style={[styles.label, { color: colors.textSoft }]}>Price (₹) *</Text>
           <TextInput
@@ -978,6 +1123,10 @@ export function PostAdWizard({
             attributes={attributes}
           />
 
+          {previewBoostDisplay?.showSelectorOnPreview && (
+            <BoostPlanSelector pricing={previewBoostDisplay} value={selectedBoostPlan} onChange={setSelectedBoostPlan} />
+          )}
+
           {error && <Text style={{ color: "#c0554b", fontSize: 13 }}>{error}</Text>}
 
           <Text style={{ color: colors.muted, fontSize: 12 }}>
@@ -1066,6 +1215,32 @@ export function PostAdWizard({
                 </Pressable>
               </View>
             </>
+          ) : previewBoostDisplay?.showSelectorOnPreview ? (
+            // The full picker stays hidden here — the choice was already made on the review step
+            // (BoostBundleCard's own showSelectorOnPreview self-gate covers this too, redundantly
+            // safe). Only a narrow retry surfaces, and only while an actual attempt is
+            // in-flight/failed — a skipped or already-succeeded plan renders nothing, per
+            // docs/plans/boost-instant-alerts-preview-selector.md's mutual-exclusivity rule.
+            selectedBoostPlan && (boostCheckoutPending || boostCheckoutOutcome === "failed") ? (
+              <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
+                {boostCheckoutPending ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <ActivityIndicator color={colors.green} />
+                    <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Finishing your boost purchase…</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={{ fontSize: 13, color: colors.textSoft, marginBottom: 12 }}>
+                      Payment for your {selectedBoostPlan.duration}-day Boost
+                      {selectedBoostPlan.includeInstantAlerts ? " + Instant Alerts" : ""} didn&rsquo;t go through.
+                    </Text>
+                    <Pressable onPress={retryBoostCheckout} style={[styles.submitButton, { backgroundColor: colors.green }]}>
+                      <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Finish boosting this listing</Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            ) : null
           ) : bundleActivating ? (
             <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }]}>
               <Icon name="boost" size={16} color={colors.green} />
@@ -1096,6 +1271,7 @@ export function PostAdWizard({
         </View>
       )}
     </ScrollView>
+    </KeyboardAvoidingView>
 
     {/* One sheet reused by every collapsed select, driven by `openField` — a modal per field would
         mount a dozen sheets for a form the user mostly scrolls past. Sits outside the ScrollView

@@ -820,6 +820,9 @@ model BoostPriceSetting {
   coworkingPgStorageBoostPrice15d Int      @default(179)
   furnitureInteriorsBoostPrice7d  Int      @default(49)
   furnitureInteriorsBoostPrice15d Int      @default(89)
+  /// Where the Boost/Instant Alerts picker appears: false (default) = post-ad upsell only
+  /// (today's behavior); true = on the ad-preview step instead. Mutually exclusive.
+  showSelectorOnPreview           Boolean  @default(false)
   updatedAt                       DateTime @updatedAt
 }
 

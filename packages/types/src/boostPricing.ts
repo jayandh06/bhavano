@@ -1,4 +1,5 @@
-import type { ListingCategory } from "./index";
+import type { BoostPricingOptionDto, BoostPricingPreviewDto, ListingCategory } from "./index";
+import type { InstantAlertsPriceSettings } from "./instantAlertsPricing";
 
 export type BoostDurationDays = 7 | 15;
 
@@ -15,6 +16,11 @@ export interface BoostPriceSettings {
   coworkingPgStorageBoostPrice15d: number;
   furnitureInteriorsBoostPrice7d: number;
   furnitureInteriorsBoostPrice15d: number;
+  /** Where the Boost/Instant Alerts picker appears: `false` (default) is today's behavior — only
+   * as an upsell after the ad is posted. `true` moves it onto the ad-preview step instead, before
+   * posting — the two placements are mutually exclusive, never both at once. See
+   * docs/plans/boost-instant-alerts-preview-selector.md. */
+  showSelectorOnPreview: boolean;
 }
 
 /** Bundled into this shared package (not just the BFF) since `boostPriceFor` below is also
@@ -28,6 +34,7 @@ export const DEFAULT_BOOST_PRICE_SETTINGS: BoostPriceSettings = {
   coworkingPgStorageBoostPrice15d: 179,
   furnitureInteriorsBoostPrice7d: 49,
   furnitureInteriorsBoostPrice15d: 89,
+  showSelectorOnPreview: false,
 };
 
 const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "plot", "commercial"]);
@@ -45,4 +52,34 @@ export function boostPriceFor(
       ? [settings.coworkingPgStorageBoostPrice7d, settings.coworkingPgStorageBoostPrice15d]
       : [settings.furnitureInteriorsBoostPrice7d, settings.furnitureInteriorsBoostPrice15d];
   return days === 7 ? price7d : price15d;
+}
+
+/** Undiscounted display pricing built from the two public, no-login-required singleton-settings
+ * rows (`GET /plans/pricing`) — for the ad-preview step's `BoostPlanSelector`, which has to be
+ * usable before the advertiser has necessarily logged in (posting an ad only asks for an account
+ * at the final "Post ad" tap). `PaymentsService.previewBoostPricing` is the authenticated,
+ * personalized equivalent (resolves discount codes and the Agent Pro free-credit case) used
+ * everywhere else a price is shown post-login — this is deliberately never used to decide what a
+ * checkout actually charges, only what the selector displays before that fetch is even possible. */
+export function buildDisplayBoostPricing(
+  category: ListingCategory,
+  boostSettings: BoostPriceSettings,
+  instantAlertsSettings: InstantAlertsPriceSettings,
+): BoostPricingPreviewDto {
+  const boost7 = boostPriceFor(category, 7, boostSettings);
+  const boost15 = boostPriceFor(category, 15, boostSettings);
+  const alerts = instantAlertsSettings.instantAlertsPrice;
+  const option = (amount: number): BoostPricingOptionDto => ({
+    amount,
+    originalAmount: amount,
+    discountApplied: false,
+    free: false,
+  });
+  return {
+    boost7: option(boost7),
+    boost15: option(boost15),
+    boost7WithInstantAlerts: option(boost7 + alerts),
+    boost15WithInstantAlerts: option(boost15 + alerts),
+    showSelectorOnPreview: boostSettings.showSelectorOnPreview,
+  };
 }

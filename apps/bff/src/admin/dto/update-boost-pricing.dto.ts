@@ -1,4 +1,4 @@
-import { IsInt, Min } from 'class-validator';
+import { IsBoolean, IsInt, Min } from 'class-validator';
 
 export class UpdateBoostPricingDto {
   @IsInt()
@@ -24,4 +24,7 @@ export class UpdateBoostPricingDto {
   @IsInt()
   @Min(1)
   furnitureInteriorsBoostPrice15d!: number;
+
+  @IsBoolean()
+  showSelectorOnPreview!: boolean;
 }

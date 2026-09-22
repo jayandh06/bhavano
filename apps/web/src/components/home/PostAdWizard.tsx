@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type {
   Area,
+  BoostPlanSelection,
   City,
   ListingCategory,
   ListingDetailDto,
   ReverseGeocodeResultDto,
   TransactionType,
 } from "@bhavano/types";
+import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
+import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, fieldIsVisible } from "@bhavano/types/categoryFields";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
@@ -21,6 +25,8 @@ import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
 import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
+import { fetchBoostPricingAction, fetchInstantAlertsPricingAction } from "@/app/actions/payments";
+import { startBoostCheckout } from "@/lib/boostCheckout";
 import { useAuthGate } from "./AuthGateProvider";
 import { CategoryFieldsAccordion } from "@/components/home/CategoryFieldsAccordion";
 import { ListingSlotCapPrompt } from "@/components/home/ListingSlotCapPrompt";
@@ -37,6 +43,7 @@ import {
 } from "@/lib/formStyles";
 import { uploadVideoDirect } from "@/lib/videoUpload";
 import { BoostBundlePicker } from "./BoostBundlePicker";
+import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
@@ -215,12 +222,101 @@ export function PostAdWizard({
   // Informational, non-blocking note about the map pin's reverse-geocode result — either "we
   // added this city for you" or "couldn't confidently place this pin" (see `onPinChange`).
   const [pinLookupNote, setPinLookupNote] = useState<string | null>(null);
+  // Public, no-login-required settings (fetchBoostPricingAction/fetchInstantAlertsPricingAction,
+  // both already used elsewhere for exactly this reason) — read as soon as the wizard mounts, not
+  // gated on being logged in, since the Preview-step selector below has to work before onSubmit's
+  // own deliberate first login prompt. previewBoostPricingAction (used by BoostBundlePicker post-
+  // creation) requires a session and would force a premature login — see
+  // docs/plans/boost-instant-alerts-preview-selector.md.
+  const [planPricingSettings, setPlanPricingSettings] = useState<{
+    boost: BoostPriceSettings;
+    instantAlerts: InstantAlertsPriceSettings;
+  } | null>(null);
+  // A boost/instant-alerts choice made ahead of time on the review step — null means the
+  // advertiser explicitly skipped it (see selectCategory's pre-fill and BoostPlanSelector's own
+  // "Skip" affordance). Only ever read/acted on when previewBoostDisplay?.showSelectorOnPreview.
+  const [selectedBoostPlan, setSelectedBoostPlan] = useState<BoostPlanSelection | null>(null);
+  // null until a checkout attempt (auto-fired right after posting, or a manual retry) resolves —
+  // drives the narrow "Finish boosting this listing" retry prompt on the success step.
+  const [boostCheckoutOutcome, setBoostCheckoutOutcome] = useState<"succeeded" | "failed" | null>(null);
+  const boostAutoFiredRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([fetchBoostPricingAction(), fetchInstantAlertsPricingAction()])
+      .then(([boost, instantAlerts]) => {
+        if (!cancelled) setPlanPricingSettings({ boost, instantAlerts });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const previewBoostDisplay = useMemo(
+    () =>
+      category && planPricingSettings
+        ? buildDisplayBoostPricing(category, planPricingSettings.boost, planPricingSettings.instantAlerts)
+        : null,
+    [category, planPricingSettings],
+  );
+
+  // Derived, not its own state: true from the moment the listing exists (with a plan selected)
+  // until a checkout attempt resolves one way or the other. Keeping this derived rather than a
+  // separately-set boolean avoids a synchronous setState at the top of the effect below, which
+  // the lint rule below it exists to catch (react-hooks/set-state-in-effect).
+  const boostCheckoutInFlight = !!(
+    createdListing &&
+    selectedBoostPlan &&
+    previewBoostDisplay?.showSelectorOnPreview &&
+    boostCheckoutOutcome === null
+  );
+
+  // Fires once, right after the listing actually exists, using whatever was chosen on the review
+  // step — the real in-app/embedded Razorpay checkout (web has no iOS-style App Store constraint).
+  useEffect(() => {
+    if (boostAutoFiredRef.current) return;
+    if (!createdListing || !category || !selectedBoostPlan) return;
+    if (!previewBoostDisplay?.showSelectorOnPreview) return;
+    boostAutoFiredRef.current = true;
+
+    startBoostCheckout({
+      listingId: createdListing.id,
+      category,
+      duration: selectedBoostPlan.duration,
+      includeInstantAlerts: selectedBoostPlan.includeInstantAlerts,
+    }).then((result) => {
+      setBoostCheckoutOutcome(result.outcome === "activated" || result.outcome === "paid" ? "succeeded" : "failed");
+    });
+  }, [createdListing, category, selectedBoostPlan, previewBoostDisplay]);
+
+  // Manual retry for the narrow success-step prompt — same call the auto-fire above makes,
+  // re-run against the same pre-made selection (a fresh Razorpay order, same as re-clicking
+  // BoostBundlePicker's own button already does today). Resetting the outcome to null here is
+  // what makes boostCheckoutInFlight true again — this runs from a click handler, not an effect,
+  // so no purity-lint concern.
+  function retryBoostCheckout() {
+    if (!createdListing || !category || !selectedBoostPlan) return;
+    setBoostCheckoutOutcome(null);
+    startBoostCheckout({
+      listingId: createdListing.id,
+      category,
+      duration: selectedBoostPlan.duration,
+      includeInstantAlerts: selectedBoostPlan.includeInstantAlerts,
+    }).then((result) => {
+      setBoostCheckoutOutcome(result.outcome === "activated" || result.outcome === "paid" ? "succeeded" : "failed");
+    });
+  }
 
   useClickOutside(areaFieldRef, () => setShowAreaSuggestions(false));
 
   function selectCategory(next: ListingCategory) {
     setCategory(next);
     setAttributes(defaultAttributesFor(next));
+    // Pre-filled default for the Preview-step selector (15-day boost + Instant Alerts) — set once,
+    // here, rather than in a useEffect keyed on `category`, since that can't tell "never chosen
+    // yet" apart from "explicitly skipped" (BoostPlanSelector's own Skip sets this back to null).
+    setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
     const postable = POSTABLE_TRANSACTION_TYPES[next];
     if (postable.length === 1) {
       setTransactionType(postable[0]);
@@ -941,28 +1037,47 @@ export function PostAdWizard({
       )}
 
       {step === "review" && category && transactionType && (
-        // max-w matches ListingPreviewCard's own cap: the wizard's other steps fill this
-        // container's full ~1200px desktop width, but the card below is only ever 340px wide —
-        // without this, the Back/Post ad row (and the text between them) stretched to that full
-        // width too, leaving "Post ad" floating in empty space far to the right of the card
-        // instead of sitting at its right edge.
-        <div className="flex flex-col gap-3 max-w-[340px] mx-auto">
-          {/* What the actual browse-grid card will look like once this is posted — same
-            * photo/badge/price/title/location/specs a buyer sees, not a plain text summary, so a
-            * mistake (wrong photo order, a price that reads oddly, a spec that didn't come
-            * through) is obvious here rather than after the ad is already live. */}
-          <ListingPreviewCard
-            photoUrl={photos[0].previewUrl}
-            category={category}
-            transactionType={transactionType}
-            title={title}
-            price={price}
-            priceQualifier={priceQualifier}
-            areaName={areaQuery}
-            cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
-            attributes={attributes}
-          />
+        // max-w matches ListingPreviewCard's own cap when there's nothing beside it: the wizard's
+        // other steps fill this container's full ~1200px desktop width, but the card below is
+        // only ever 340px wide — without this, the Back/Post ad row (and the text between them)
+        // stretched to that full width too, leaving "Post ad" floating in empty space far to the
+        // right of the card instead of sitting at its right edge. Widened, and laid out as a row,
+        // only once there's a second thing (the boost selector) to sit beside the card — see
+        // docs/plans/boost-instant-alerts-preview-selector.md.
+        <div className={`mx-auto ${previewBoostDisplay?.showSelectorOnPreview ? "max-w-[680px]" : "max-w-[340px]"}`}>
+          <div
+            className={
+              previewBoostDisplay?.showSelectorOnPreview
+                ? "flex flex-col sm:flex-row gap-5 sm:items-start"
+                : "flex flex-col gap-3"
+            }
+          >
+            {/* What the actual browse-grid card will look like once this is posted — same
+              * photo/badge/price/title/location/specs a buyer sees, not a plain text summary, so a
+              * mistake (wrong photo order, a price that reads oddly, a spec that didn't come
+              * through) is obvious here rather than after the ad is already live. */}
+            <div className="w-full sm:max-w-[340px] sm:shrink-0">
+              <ListingPreviewCard
+                photoUrl={photos[0].previewUrl}
+                category={category}
+                transactionType={transactionType}
+                title={title}
+                price={price}
+                priceQualifier={priceQualifier}
+                areaName={areaQuery}
+                cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
+                attributes={attributes}
+              />
+            </div>
 
+            {previewBoostDisplay?.showSelectorOnPreview && (
+              <div className="w-full sm:flex-1">
+                <BoostPlanSelector pricing={previewBoostDisplay} value={selectedBoostPlan} onChange={setSelectedBoostPlan} />
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 mt-3">
           {slotCap ? (
             <ListingSlotCapPrompt slotCap={slotCap} />
           ) : error ? (
@@ -988,6 +1103,7 @@ export function PostAdWizard({
               {pending ? "Posting…" : "Post ad"}
             </button>
           </div>
+          </div>
         </div>
       )}
 
@@ -1003,12 +1119,37 @@ export function PostAdWizard({
             </div>
           </div>
 
-          {/* Boost + Instant Alerts — one combined picker instead of two separate cards, each of
-            * which used to only reveal its price after being clicked. Prices for every
-            * combination (including the current promo code and the Agent Pro free-credit case)
-            * are fetched up front; adding Instant Alerts checks out as a single payment via
-            * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */}
-          <BoostBundlePicker listingId={createdListing.id} category={createdListing.category} />
+          {previewBoostDisplay?.showSelectorOnPreview ? (
+            // The full picker stays hidden here — the choice was already made on the review step
+            // (BoostBundlePicker's own showSelectorOnPreview self-gate covers this too,
+            // redundantly safe). Only a narrow retry surfaces, and only while an actual attempt is
+            // in-flight/failed — a skipped or already-succeeded plan renders nothing, per
+            // docs/plans/boost-instant-alerts-preview-selector.md's mutual-exclusivity rule.
+            selectedBoostPlan && (boostCheckoutInFlight || boostCheckoutOutcome === "failed") && (
+              <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
+                {boostCheckoutInFlight ? (
+                  <p className="text-sm font-bold text-green m-0">Finishing your boost purchase…</p>
+                ) : (
+                  <>
+                    <p className="text-[13px] text-text-soft mt-0 mb-3">
+                      Payment for your {selectedBoostPlan.duration}-day Boost
+                      {selectedBoostPlan.includeInstantAlerts ? " + Instant Alerts" : ""} didn&rsquo;t go through.
+                    </p>
+                    <button onClick={retryBoostCheckout} className={primaryButtonClass}>
+                      Finish boosting this listing
+                    </button>
+                  </>
+                )}
+              </div>
+            )
+          ) : (
+            /* Boost + Instant Alerts — one combined picker instead of two separate cards, each of
+             * which used to only reveal its price after being clicked. Prices for every
+             * combination (including the current promo code and the Agent Pro free-credit case)
+             * are fetched up front; adding Instant Alerts checks out as a single payment via
+             * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */
+            <BoostBundlePicker listingId={createdListing.id} category={createdListing.category} />
+          )}
 
           <div className="w-full flex justify-center">
             <VideoManager listing={createdListing} accessToken={token ?? ""} />

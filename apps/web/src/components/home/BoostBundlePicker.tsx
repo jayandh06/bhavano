@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
-import { createBoostBundleOrderAction, previewBoostPricingAction } from "@/app/actions/payments";
-import { loadRazorpayScript } from "@/lib/razorpay";
-import { pushDataLayerEvent } from "@/lib/gtm";
+import { previewBoostPricingAction } from "@/app/actions/payments";
+import { startBoostCheckout } from "@/lib/boostCheckout";
 import { Icon } from "./Icon";
 
 const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
@@ -121,69 +120,26 @@ export function BoostBundlePicker({
     setPending(true);
     setError(null);
 
-    const result = await createBoostBundleOrderAction(listingId, duration, addInstantAlerts);
-    if (!result.success) {
-      setPending(false);
-      setError(result.error);
-      return;
-    }
+    const result = await startBoostCheckout({ listingId, category, duration, includeInstantAlerts: addInstantAlerts });
+    setPending(false);
 
-    if (result.order.activated) {
-      setPending(false);
+    if (result.outcome === "activated") {
       onActivating?.();
       setTimeout(() => router.refresh(), 1500);
-      return;
+    } else if (result.outcome === "paid") {
+      onActivating?.();
+      setTimeout(() => router.refresh(), 4000);
+    } else if (result.outcome === "error") {
+      setError(result.message);
     }
-
-    if (!result.order.razorpayOrderId || !result.order.razorpayKeyId) {
-      setPending(false);
-      setError("Couldn't open checkout — please try again.");
-      return;
-    }
-
-    const { order } = result;
-    pushDataLayerEvent("begin_checkout_boost", {
-      transactionId: order.paymentId,
-      listingId,
-      category,
-      boostDays: duration,
-      includeInstantAlerts: addInstantAlerts,
-      value: order.amount / 100,
-      currency: order.currency,
-    });
-
-    try {
-      await loadRazorpayScript();
-      const razorpay = new window.Razorpay({
-        // Both non-null by the guard above — same pattern BoostProvider uses.
-        key: order.razorpayKeyId!,
-        amount: order.amount,
-        currency: order.currency,
-        order_id: order.razorpayOrderId!,
-        name: "Bhavano",
-        description: `Boost this ad for ${duration} days${addInstantAlerts ? " + Instant Alerts" : ""}`,
-        handler: () => {
-          setPending(false);
-          onActivating?.();
-          pushDataLayerEvent("boost_purchase", {
-            transactionId: order.paymentId,
-            listingId,
-            category,
-            boostDays: duration,
-            includeInstantAlerts: addInstantAlerts,
-            value: order.amount / 100,
-            currency: order.currency,
-          });
-          setTimeout(() => router.refresh(), 4000);
-        },
-        modal: { ondismiss: () => setPending(false) },
-      });
-      razorpay.open();
-    } catch {
-      setPending(false);
-      setError("Couldn't open checkout — please try again.");
-    }
+    // "cancelled" — no error shown, just re-enable the button, same as before.
   }
+
+  // Admin has moved this offer onto the ad-preview step instead — see
+  // docs/plans/boost-instant-alerts-preview-selector.md. The two placements are mutually
+  // exclusive, so this post-creation picker stays hidden entirely rather than duplicating the
+  // offer.
+  if (pricing?.showSelectorOnPreview) return null;
 
   return (
     <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
