@@ -380,7 +380,7 @@ function FieldRunBlock({
             <div
               key={field.key}
               className={
-                field.type === "text" || field.type === "multi-select" || field.type === "area"
+                field.type === "multi-select" || (field.type === "text" && !field.compact)
                   ? "col-span-full"
                   : undefined
               }

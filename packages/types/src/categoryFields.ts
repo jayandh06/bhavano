@@ -40,6 +40,10 @@ export const SECTION_LABELS: Record<FieldSection, string> = {
  * category's array, so a field can be added anywhere without reshuffling its section's
  * position in the UI. */
 export const SECTION_ORDER: FieldSection[] = [
+  // "plotDetails" ahead of "pricing" is deliberate and only affects Plot (no other category has
+  // a "plotDetails" field) — Plot's price-per-unit toggle reads the area unit chosen here, so the
+  // seller needs to reach this section before the toggle's "Price per <unit>" label means anything.
+  "plotDetails",
   "pricing",
   "basics",
   "roomDetails",
@@ -47,7 +51,6 @@ export const SECTION_ORDER: FieldSection[] = [
   "workspaceDetails",
   "itemDetails",
   "serviceDetails",
-  "plotDetails",
   "preferences",
   "furnishing",
   "amenities",
@@ -66,8 +69,13 @@ export interface FieldDef {
    * and Commercial get more than `["sqft"]` — carpet/size areas for the other categories are
    * never measured in acres/cents/hectares in practice. The chosen unit is stored in a sibling
    * attribute key, `${key}Unit` (absent = "sqft", covering every pre-existing listing with no
-   * backfill — see docs/plans/plot-commercial-area-units-and-price-per-unit.md). */
+   * backfill — see docs/plans/multiple-area-units-price-per-unit.md). */
   units?: AreaUnit[];
+  /** `type: "text"` only — renders in a normal grid cell instead of spanning the full row.
+   * Text fields default to full width (room for a website URL, an amenities list, etc.); set
+   * this on short fields like plot dimensions ("30 x 40 ft") that read fine at half width and
+   * pair naturally alongside the field before/after them. */
+  compact?: boolean;
   /** A single emoji shown next to the label in both the posting form and the listing detail
    * page — set on amenity/furnishing fields, where a quick visual scan matters more than for a
    * plain count or select. Not required elsewhere. */
@@ -972,6 +980,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       key: "plotDimensions",
       label: "Dimensions (optional)",
       type: "text",
+      compact: true,
       section: "plotDetails",
       placeholder: "e.g. 30 x 40 ft",
     },

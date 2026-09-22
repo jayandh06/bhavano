@@ -26,8 +26,13 @@ export interface FieldDef {
      * and Commercial get more than `["sqft"]` — carpet/size areas for the other categories are
      * never measured in acres/cents/hectares in practice. The chosen unit is stored in a sibling
      * attribute key, `${key}Unit` (absent = "sqft", covering every pre-existing listing with no
-     * backfill — see docs/plans/plot-commercial-area-units-and-price-per-unit.md). */
+     * backfill — see docs/plans/multiple-area-units-price-per-unit.md). */
     units?: AreaUnit[];
+    /** `type: "text"` only — renders in a normal grid cell instead of spanning the full row.
+     * Text fields default to full width (room for a website URL, an amenities list, etc.); set
+     * this on short fields like plot dimensions ("30 x 40 ft") that read fine at half width and
+     * pair naturally alongside the field before/after them. */
+    compact?: boolean;
     /** A single emoji shown next to the label in both the posting form and the listing detail
      * page — set on amenity/furnishing fields, where a quick visual scan matters more than for a
      * plain count or select. Not required elsewhere. */

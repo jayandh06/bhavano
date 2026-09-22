@@ -23,6 +23,10 @@ exports.SECTION_LABELS = {
  * category's array, so a field can be added anywhere without reshuffling its section's
  * position in the UI. */
 exports.SECTION_ORDER = [
+    // "plotDetails" ahead of "pricing" is deliberate and only affects Plot (no other category has
+    // a "plotDetails" field) — Plot's price-per-unit toggle reads the area unit chosen here, so the
+    // seller needs to reach this section before the toggle's "Price per <unit>" label means anything.
+    "plotDetails",
     "pricing",
     "basics",
     "roomDetails",
@@ -30,7 +34,6 @@ exports.SECTION_ORDER = [
     "workspaceDetails",
     "itemDetails",
     "serviceDetails",
-    "plotDetails",
     "preferences",
     "furnishing",
     "amenities",
@@ -890,6 +893,7 @@ exports.CATEGORY_FIELD_CONFIG = {
             key: "plotDimensions",
             label: "Dimensions (optional)",
             type: "text",
+            compact: true,
             section: "plotDetails",
             placeholder: "e.g. 30 x 40 ft",
         },
