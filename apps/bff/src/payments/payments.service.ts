@@ -599,8 +599,9 @@ export class PaymentsService {
       }
     }
 
-    const totalRupees = feeRupees + boostRupees;
-    const amountInPaise = this.applyDiscount(totalRupees * 100, discount?.discountPercent);
+    // Promo codes apply to Boost / Instant Alerts only — platform fee is always charged in full.
+    const amountInPaise =
+      feeRupees * 100 + this.applyDiscount(boostRupees * 100, discount?.discountPercent);
 
     if (amountInPaise === 0) {
       const payment = await this.prisma.payment.create({

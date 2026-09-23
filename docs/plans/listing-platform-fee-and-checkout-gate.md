@@ -396,8 +396,9 @@ Phase 1 matches the user ask for Preview + post screens **when fee applies for t
 2. **Abandoned `pending_checkout` TTL** — 48h auto-deactivate vs hard delete (affects slot recovery).
 3. **Post-success boost failure (fee off)** — full gate in Phase 2 vs accepting legacy “posted but
    un-boosted” for that placement only.
-4. **Discount codes** — apply to platform fee, boost, or both (recommend: same code applies to entire
-   cart subtotal unless product says otherwise).
+4. **Discount codes** — apply to **Boost and Instant Alerts only** on `listing_publish` checkout;
+   platform fee is always charged at the admin-configured full amount (implemented in
+   `PaymentsService.createListingPublishOrder`).
 
 ---
 

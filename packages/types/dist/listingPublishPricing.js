@@ -3,7 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.listingPublishCheckoutTotalRupees = listingPublishCheckoutTotalRupees;
 exports.listingPublishRequiresCheckout = listingPublishRequiresCheckout;
 const platformFeePricing_1 = require("./platformFeePricing");
-/** Rupee total for the publish checkout cart (display only — PaymentsService is authoritative). */
+/** Rupee total for the publish checkout cart (display only — PaymentsService is authoritative).
+ * Platform fee is never promo-discounted; `boostPricing` amounts may already include the active
+ * boost/IA discount for display. */
 function listingPublishCheckoutTotalRupees(category, platformFeeSettings, boostPricing, boostSelection) {
     let total = (0, platformFeePricing_1.platformFeeFor)(category, platformFeeSettings);
     if (!boostSelection || !boostPricing)

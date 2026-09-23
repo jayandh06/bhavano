@@ -2,7 +2,9 @@ import type { BoostPlanSelection, BoostPricingPreviewDto } from "./index";
 import type { PlatformFeeSettings } from "./platformFeePricing";
 import { platformFeeFor } from "./platformFeePricing";
 
-/** Rupee total for the publish checkout cart (display only — PaymentsService is authoritative). */
+/** Rupee total for the publish checkout cart (display only — PaymentsService is authoritative).
+ * Platform fee is never promo-discounted; `boostPricing` amounts may already include the active
+ * boost/IA discount for display. */
 export function listingPublishCheckoutTotalRupees(
   category: Parameters<typeof platformFeeFor>[0],
   platformFeeSettings: PlatformFeeSettings,
