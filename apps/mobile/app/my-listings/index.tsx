@@ -115,14 +115,15 @@ export default function MyListingsScreen() {
                   </Text>
                 </View>
                 <View style={styles.badgeRow}>
-                  {isPendingPublish ? (
+                  <View style={[styles.badge, { borderColor: statusColor(item.status, colors) }]}>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: statusColor(item.status, colors) }}>
+                      {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
+                    </Text>
+                  </View>
+                  {isPendingPublish && (
                     <View style={[styles.badge, { borderColor: "#b3413a" }]}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#b3413a" }}>Payment incomplete</Text>
-                    </View>
-                  ) : (
-                    <View style={[styles.badge, { borderColor: statusColor(item.status, colors) }]}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: statusColor(item.status, colors) }}>
-                        {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#b3413a" }}>
+                        Not live — payment pending
                       </Text>
                     </View>
                   )}

@@ -47,6 +47,7 @@ const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
 
 export function EditListingForm({ listing, accessToken }: { listing: ListingDetailDto; accessToken: string }) {
   const router = useRouter();
+  const isPendingPublish = listing.publishState === "pending_checkout";
   const [title, setTitle] = useState(listing.title);
   const [price, setPrice] = useState(
     String(listing.price).replace(/[^0-9]/g, ""),
@@ -259,6 +260,29 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
 
       <div className="max-w-[420px]">
         <label className={labelClass}>Status</label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          <span
+            className="text-[11px] font-bold rounded-md px-2 py-0.5 border"
+            style={{
+              color:
+                status === "active" ? "var(--green)" : status === "deactivated" ? "#b3413a" : "var(--muted)",
+              borderColor:
+                status === "active" ? "var(--green)" : status === "deactivated" ? "#b3413a" : "var(--muted)",
+            }}
+          >
+            {STATUS_OPTIONS.find((o) => o.value === status)?.label.split(" — ")[0] ?? status}
+          </span>
+          {isPendingPublish && (
+            <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-[#b3413a] text-[#b3413a]">
+              Not live — payment pending
+            </span>
+          )}
+        </div>
+        {isPendingPublish && (
+          <p className="text-[13px] text-[#b3413a] m-0 mb-2">
+            This ad is not visible to buyers until you complete publish checkout on My listings.
+          </p>
+        )}
         <SelectField value={status} onChange={(e) => setStatus(e.target.value as ListingStatus)}>
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>

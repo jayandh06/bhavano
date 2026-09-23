@@ -188,16 +188,15 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
       <div className="min-w-0">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="font-bold text-[15px]">{item.title}</span>
-          {isPendingPublish ? (
+          <span
+            className="text-[11px] font-bold rounded-md px-2 py-0.5 border"
+            style={{ color: STATUS_COLORS[item.status], borderColor: STATUS_COLORS[item.status] }}
+          >
+            {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
+          </span>
+          {isPendingPublish && (
             <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-[#b3413a] text-[#b3413a]">
-              Payment incomplete
-            </span>
-          ) : (
-            <span
-              className="text-[11px] font-bold rounded-md px-2 py-0.5 border"
-              style={{ color: STATUS_COLORS[item.status], borderColor: STATUS_COLORS[item.status] }}
-            >
-              {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
+              Not live — payment pending
             </span>
           )}
           {item.isBoosted && (

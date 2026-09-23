@@ -12,6 +12,7 @@ import type {
   ListingDetailDto,
   ListingSource,
   ListingStatus,
+  ListingPublishState,
   SendPostedNotificationResponseDto,
   TransactionType,
 } from "@bhavano/types";
@@ -169,7 +170,13 @@ export function AdminListingsTable({
           ))}
         </select>
       ),
-      render: (item) => <ListingStatusBadge status={item.status} isExpired={item.isExpired} />,
+      render: (item) => (
+        <ListingStatusBadge
+          status={item.status}
+          isExpired={item.isExpired}
+          publishState={item.publishState}
+        />
+      ),
       defaultVisible: true,
       nowrap: true,
     },
@@ -729,10 +736,21 @@ const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
  * review, not whether the listing itself is live. A listing can be `status: active` and still
  * past its own `expiresAt` (isExpired) — the public `list()` only ever shows approved, active,
  * unexpired listings, so "Active" alone would be misleading for one a real visitor can no longer
- * see; shown as "Expired" instead in that case, since that's the more actionable fact here. */
-function ListingStatusBadge({ status, isExpired }: { status: ListingStatus; isExpired: boolean }) {
-  const label = status === "active" && isExpired ? "Expired" : LISTING_STATUS_LABELS[status];
-  const color =
+ * see; shown as "Expired" instead in that case, since that's the more actionable fact here.
+ *
+ * `publishState: pending_checkout` is shown as a second badge beside lifecycle status — create()
+ * still stores `status: active`, but the ad is not buyer-visible until publish payment completes. */
+function ListingStatusBadge({
+  status,
+  isExpired,
+  publishState,
+}: {
+  status: ListingStatus;
+  isExpired: boolean;
+  publishState: ListingPublishState;
+}) {
+  const statusLabel = status === "active" && isExpired ? "Expired" : LISTING_STATUS_LABELS[status];
+  const statusColor =
     status === "active" && isExpired
       ? "var(--danger)"
       : status === "active"
@@ -740,7 +758,15 @@ function ListingStatusBadge({ status, isExpired }: { status: ListingStatus; isEx
         : status === "deactivated"
           ? "var(--danger)"
           : "var(--muted)";
-  return <Badge label={label} color={color} />;
+
+  return (
+    <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+      <Badge label={statusLabel} color={statusColor} />
+      {publishState === "pending_checkout" && (
+        <Badge label="Not live — payment pending" color="var(--danger)" />
+      )}
+    </span>
+  );
 }
 
 function StatusBadge({ moderationState, adminReviewed }: { moderationState: string; adminReviewed: boolean }) {

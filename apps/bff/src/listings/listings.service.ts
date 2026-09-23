@@ -794,6 +794,7 @@ export class ListingsService {
       id: listing.id,
       title: listing.title,
       status: listing.status,
+      publishState: listing.publishState,
       moderationState: listing.moderationState,
       adminReviewed: listing.adminReviewed,
       category: listing.category,
