@@ -1080,7 +1080,7 @@ export function PostAdWizard({
             )}
           </div>
 
-          <div className="flex gap-2.5">
+          <div className="flex gap-2.5 max-w-[720px]">
             <button
               onClick={() =>
                 setStep(
