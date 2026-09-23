@@ -273,56 +273,6 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         style={[styles.input, styles.textarea, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
       />
 
-      {priceUnitAreaField && (
-        <View style={[styles.chipRow, { marginTop: 0 }]}>
-          <Pressable
-            onPress={() => setPriceMode("total")}
-            style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "total" ? colors.surfaceAlt : "transparent" }]}
-          >
-            <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Total price</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setPriceMode("perUnit")}
-            style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "perUnit" ? colors.surfaceAlt : "transparent" }]}
-          >
-            <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Price per {areaUnitShortLabel(currentAreaUnit, 1)}</Text>
-          </Pressable>
-        </View>
-      )}
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.label, { color: colors.textSoft }]}>
-            {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹) *` : "Price (₹) *"}
-          </Text>
-          <TextInput
-            value={price}
-            onChangeText={(v) => setPrice(clampPrice(v, listing.transactionType))}
-            keyboardType="number-pad"
-            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier</Text>
-          <View style={[styles.chipRow, { marginTop: 0 }]}>
-            {priceQualifierChoices.map((opt) => (
-              <Pressable
-                key={opt.value}
-                onPress={() => setPriceQualifier(opt.value)}
-                style={[styles.chip, { borderColor: colors.border, backgroundColor: priceQualifier === opt.value ? colors.surfaceAlt : "transparent" }]}
-              >
-                <Text style={{ color: colors.text, fontSize: 12, fontWeight: "700" }}>{opt.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      </View>
-      {price.length > 0 && priceValue <= 0 && !priceOnRequestAllowed && (
-        <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
-      )}
-      {priceValue > maxPriceFor(listing.transactionType) && (
-        <Text style={styles.fieldError}>That&rsquo;s above the allowed maximum.</Text>
-      )}
-
       <View style={[styles.divider, { borderColor: colors.border, marginTop: 18 }]}>
         <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
           {POST_CATEGORIES.find((c) => c.value === listing.category)?.label} details
@@ -332,6 +282,65 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
           transactionType={listing.transactionType}
           attributes={attributes}
           onAttributesChange={setAttributes}
+          sectionExtras={{
+            // Folded into the top of the "Pricing & fees" box CategoryFieldsForm itself renders
+            // for the category's own pricing fields (brokerage, maintenance), rather than left to
+            // render here with no heading, disconnected from where a category's other pricing
+            // fields show up further down — see CategoryFieldsForm's own comment on this prop.
+            pricing: (
+              <View style={{ gap: 4, marginBottom: 8 }}>
+                {priceUnitAreaField && (
+                  <View style={[styles.chipRow, { marginTop: 0 }]}>
+                    <Pressable
+                      onPress={() => setPriceMode("total")}
+                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "total" ? colors.surfaceAlt : "transparent" }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Total price</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setPriceMode("perUnit")}
+                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "perUnit" ? colors.surfaceAlt : "transparent" }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Price per {areaUnitShortLabel(currentAreaUnit, 1)}</Text>
+                    </Pressable>
+                  </View>
+                )}
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.label, { color: colors.textSoft }]}>
+                      {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹) *` : "Price (₹) *"}
+                    </Text>
+                    <TextInput
+                      value={price}
+                      onChangeText={(v) => setPrice(clampPrice(v, listing.transactionType))}
+                      keyboardType="number-pad"
+                      style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier</Text>
+                    <View style={[styles.chipRow, { marginTop: 0 }]}>
+                      {priceQualifierChoices.map((opt) => (
+                        <Pressable
+                          key={opt.value}
+                          onPress={() => setPriceQualifier(opt.value)}
+                          style={[styles.chip, { borderColor: colors.border, backgroundColor: priceQualifier === opt.value ? colors.surfaceAlt : "transparent" }]}
+                        >
+                          <Text style={{ color: colors.text, fontSize: 12, fontWeight: "700" }}>{opt.label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+                {price.length > 0 && priceValue <= 0 && !priceOnRequestAllowed && (
+                  <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
+                )}
+                {priceValue > maxPriceFor(listing.transactionType) && (
+                  <Text style={styles.fieldError}>That&rsquo;s above the allowed maximum.</Text>
+                )}
+              </View>
+            ),
+          }}
         />
       </View>
 

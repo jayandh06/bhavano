@@ -339,11 +339,13 @@ function FieldRunBlock({
   const toggleFields = run.fields.filter(isYesNoField);
   const otherFields = run.fields.filter((field) => !isYesNoField(field));
   // Plot details is short enough — Area, its Unit, Dimensions, Facing — to fill an entire row
-  // itself at a fixed 25% each, on every viewport including a narrow phone browser, rather than
-  // the general responsive 2/3/4-column grid every other section uses.
+  // itself at a fixed 25% each once there's room for four short fields side by side. A phone-
+  // width browser doesn't have that room (a fixed 4-up there crushed each cell down to a sliver),
+  // so it stays 2-up until the sm: breakpoint, then jumps straight to 4 — no 3-column step, unlike
+  // the general grid below, since a run of exactly four fields has no even way to split across 3.
   const otherFieldsGridClass =
     section === "plotDetails"
-      ? "grid grid-cols-4 gap-x-2 gap-y-4"
+      ? "grid grid-cols-2 sm:grid-cols-4 gap-x-2 gap-y-4"
       : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-4";
   return (
     <div className="flex flex-col gap-3">

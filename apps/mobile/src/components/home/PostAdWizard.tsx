@@ -25,12 +25,13 @@ import {
   fieldIsVisible,
   groupFieldsBySection,
   pruneHiddenAttributes,
+  SECTION_LABELS,
 } from "@bhavano/types/categoryFields";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
-import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
+import { AREA_UNIT_LABELS, areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLimits";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
@@ -534,6 +535,156 @@ export function PostAdWizard({
     });
   }
 
+  /** One field's label + control, as a `styles.attrCell` (two fit per row — see the grid's own
+   * comment). Returns an array rather than a single node so an `area` field with more than one
+   * allowed unit (Plot/Commercial only) can render as two cells side by side — the number input
+   * and, right beside it, its own Unit dropdown — instead of squeezing a unit picker inside the
+   * same cell as the number, which is what pushed Dimensions/Facing out of a clean two-per-row
+   * layout. The Unit dropdown reuses the same collapsed-select sheet every other select/multi-
+   * select field opens, via a synthetic field whose `key` is the real field's own sibling
+   * `${field.key}Unit` attribute — the sheet reads/writes that key with no special-casing. */
+  function renderFieldCells(field: FieldConfig): ReactNode[] {
+    const segmented = isSegmented(field);
+    const counter = isCounter(field);
+    const selectedOption = field.options?.find((o) => o.value === attributes[field.key]);
+    const chosen = Array.isArray(attributes[field.key]) ? (attributes[field.key] as string[]) : [];
+    const summaryLabel =
+      field.type === "multi-select"
+        ? field.options
+            ?.filter((o) => chosen.includes(o.value))
+            .map((o) => o.label)
+            .join(", ") || null
+        : (selectedOption?.label ?? null);
+
+    const cells: ReactNode[] = [
+      <View key={field.key} style={styles.attrCell}>
+        <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
+          {field.label}
+          {field.required ? " *" : ""}
+        </Text>
+        {field.type === "area" ? (
+          <TextInput
+            value={typeof attributes[field.key] === "string" ? (attributes[field.key] as string) : ""}
+            onChangeText={(v) => setAttributes((prev) => ({ ...prev, [field.key]: sanitizeAreaInput(v) }))}
+            keyboardType="decimal-pad"
+            placeholder={field.placeholder}
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+          />
+        ) : counter ? (
+          <View style={[styles.counter, { borderColor: colors.border }]}>
+            <Pressable
+              onPress={() => bumpCount(field, -1)}
+              hitSlop={8}
+              style={[styles.counterButton, { borderRightWidth: 1, borderRightColor: colors.border }]}
+            >
+              {/* Plain ASCII hyphen, not the Unicode minus (−) this used to be — same
+                * "not every font has this glyph" risk as the stepper arrow above, ASCII
+                * is guaranteed to render everywhere. */}
+              <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>-</Text>
+            </Pressable>
+            <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700", flex: 1, textAlign: "center" }}>
+              {countOf(field.key)}
+            </Text>
+            <Pressable
+              onPress={() => bumpCount(field, 1)}
+              hitSlop={8}
+              style={[styles.counterButton, { borderLeftWidth: 1, borderLeftColor: colors.border }]}
+            >
+              <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>+</Text>
+            </Pressable>
+          </View>
+        ) : segmented ? (
+          <View style={[styles.segmented, { borderColor: colors.border }]}>
+            {field.options?.map((opt, i) => {
+              const selected = attributes[field.key] === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => setAttributes((prev) => ({ ...prev, [field.key]: opt.value }))}
+                  style={[
+                    styles.segment,
+                    i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border },
+                    selected && { backgroundColor: colors.green },
+                  ]}
+                >
+                  <Text
+                    style={{ color: selected ? colors.onGreen : colors.text, fontSize: 12.5, fontWeight: "700" }}
+                    numberOfLines={1}
+                  >
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : field.type === "multi-select" || field.type === "select" ? (
+          <Pressable
+            onPress={() => {
+              setOpenField(field);
+              optionSheetRef.current?.present();
+            }}
+            style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          >
+            <Text
+              style={{ color: summaryLabel ? colors.text : colors.muted, fontSize: 13.5, flex: 1 }}
+              numberOfLines={1}
+            >
+              {summaryLabel ?? "Select…"}
+            </Text>
+            <Icon name="chevronDown" size={13} color={colors.muted} />
+          </Pressable>
+        ) : (
+          <TextInput
+            value={typeof attributes[field.key] === "string" ? (attributes[field.key] as string) : ""}
+            onChangeText={(v) =>
+              setAttributes((prev) => ({
+                ...prev,
+                [field.key]: field.type === "number" ? clampDigits(digitsOnly(v), field.maxDigits) : v,
+              }))
+            }
+            keyboardType={field.type === "number" ? "number-pad" : "default"}
+            placeholder={field.placeholder}
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+          />
+        )}
+      </View>,
+    ];
+
+    const unitOptions = field.type === "area" ? (field.units ?? ["sqft"]) : [];
+    if (unitOptions.length > 1) {
+      const currentUnit = (attributes[`${field.key}Unit`] as AreaUnit | undefined) ?? "sqft";
+      const unitField: FieldConfig = {
+        key: `${field.key}Unit`,
+        label: "Unit",
+        type: "select",
+        options: unitOptions.map((u) => ({ value: u, label: AREA_UNIT_LABELS[u] })),
+      };
+      cells.push(
+        <View key={`${field.key}-unit`} style={styles.attrCell}>
+          <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
+            Unit
+          </Text>
+          <Pressable
+            onPress={() => {
+              setOpenField(unitField);
+              optionSheetRef.current?.present();
+            }}
+            style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          >
+            <Text style={{ color: colors.text, fontSize: 13.5, flex: 1 }} numberOfLines={1}>
+              {AREA_UNIT_LABELS[currentUnit]}
+            </Text>
+            <Icon name="chevronDown" size={13} color={colors.muted} />
+          </Pressable>
+        </View>,
+      );
+    }
+
+    return cells;
+  }
+
   /** Google's City/Area resolution is a suggestion, never auto-locked — the user can still
    * change the City chip / Area field manually after the map pre-fills them. */
   function onPinChange(nextPin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) {
@@ -590,6 +741,14 @@ export function PostAdWizard({
       ? CATEGORY_FIELD_CONFIG[category].find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
+
+  // Pulled out of the main section loop below and rendered inside the hardcoded Price/Price-per-
+  // unit block instead — that block used to sit above "Pricing & fees" with no heading of its own
+  // while a category's own pricing fields (brokerage, maintenance) rendered in a second "Pricing &
+  // fees" box further down; the seller landed on that second box looking for the price toggle and
+  // didn't find it there. One box now, same as the website's `sectionExtras.pricing`.
+  const pricingFields = visibleFields.filter((field) => field.section === "pricing");
+  const otherVisibleFields = visibleFields.filter((field) => field.section !== "pricing");
 
   // Only currently-visible required fields block submission — one hidden behind an unmet gate
   // can't be filled in anyway.
@@ -791,6 +950,18 @@ export function PostAdWizard({
 
       {step === "details" && category && transactionType && detailsReady && (
         <View style={{ gap: 4 }}>
+          {/* One "Pricing & fees" box for the price/toggle/qualifier below plus the category's
+            * own pricing fields (brokerage, maintenance) — see pricingFields' own comment for why
+            * those are pulled out of the main section loop rather than left to render in a
+            * second, separate "Pricing & fees" box further down the form. */}
+          <Text
+            style={[
+              styles.sectionHeading,
+              { color: colors.green, backgroundColor: colors.surfaceAlt, borderLeftColor: colors.green },
+            ]}
+          >
+            {SECTION_LABELS.pricing}
+          </Text>
           {priceUnitAreaField && (
             <View style={[styles.chipRow, { marginBottom: 4 }]}>
               <Pressable
@@ -836,6 +1007,10 @@ export function PostAdWizard({
               </Pressable>
             ))}
           </View>
+
+          {pricingFields.length > 0 && (
+            <View style={[styles.attrGrid, { marginTop: 4 }]}>{pricingFields.flatMap(renderFieldCells)}</View>
+          )}
 
           <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
             <Text style={[styles.label, { color: colors.textSoft }]}>Title</Text>
@@ -951,10 +1126,12 @@ export function PostAdWizard({
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
               {POST_CATEGORIES.find((c) => c.value === category)?.label} details
             </Text>
-            {/* Grouped into the config's own sections (pricing, preferences, …) in SECTION_ORDER,
+            {/* Grouped into the config's own sections (basics, preferences, …) in SECTION_ORDER,
                 the same helper the desktop wizard uses — one flat run of twenty-odd controls gave
-                the seller no sense of where they were or how much was left. */}
-            {groupFieldsBySection(visibleFields).map((group) => (
+                the seller no sense of where they were or how much was left. "pricing" is excluded
+                here — see pricingFields' own comment — since it already rendered above, folded
+                into the Price/Price-per-unit block. */}
+            {groupFieldsBySection(otherVisibleFields).map((group) => (
             <View key={group.section}>
             <Text
               style={[
@@ -964,150 +1141,9 @@ export function PostAdWizard({
             >
               {group.label}
             </Text>
-            <View style={styles.attrGrid}>
-            {group.fields.map((field) => {
-              const segmented = isSegmented(field);
-              const counter = isCounter(field);
-              const selectedOption = field.options?.find((o) => o.value === attributes[field.key]);
-              const chosen = Array.isArray(attributes[field.key]) ? (attributes[field.key] as string[]) : [];
-              const summaryLabel =
-                field.type === "multi-select"
-                  ? field.options
-                      ?.filter((o) => chosen.includes(o.value))
-                      .map((o) => o.label)
-                      .join(", ") || null
-                  : (selectedOption?.label ?? null);
-
-              return (
-              // Two per row: these are mostly one-word labels over a small control, so a full-width
-              // row wasted most of its width and made the section three screens long.
-              <View key={field.key} style={styles.attrCell}>
-                <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
-                  {field.label}
-                  {field.required ? " *" : ""}
-                </Text>
-                {field.type === "area" ? (
-                  <View style={{ gap: 8 }}>
-                    <TextInput
-                      value={typeof attributes[field.key] === "string" ? (attributes[field.key] as string) : ""}
-                      onChangeText={(v) => setAttributes((prev) => ({ ...prev, [field.key]: sanitizeAreaInput(v) }))}
-                      keyboardType="decimal-pad"
-                      placeholder={field.placeholder}
-                      placeholderTextColor={colors.muted}
-                      style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-                    />
-                    {/* Only Plot/Commercial ever have more than one unit — every other area field
-                      * renders as a plain number input, same as before this field type existed. */}
-                    {(field.units ?? ["sqft"]).length > 1 && (
-                      <View style={[styles.segmented, { borderColor: colors.border, flexWrap: "wrap" }]}>
-                        {(field.units ?? ["sqft"]).map((unit, i) => {
-                          const current = (attributes[`${field.key}Unit`] as AreaUnit | undefined) ?? "sqft";
-                          const selected = current === unit;
-                          return (
-                            <Pressable
-                              key={unit}
-                              onPress={() => setAttributes((prev) => ({ ...prev, [`${field.key}Unit`]: unit }))}
-                              style={[
-                                styles.segment,
-                                i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border },
-                                selected && { backgroundColor: colors.green },
-                              ]}
-                            >
-                              <Text
-                                style={{ color: selected ? colors.onGreen : colors.text, fontSize: 12, fontWeight: "700" }}
-                                numberOfLines={1}
-                              >
-                                {/* value=2 forces the pluralized short form ("acres", not "acre"). */}
-                                {areaUnitShortLabel(unit, 2)}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    )}
-                  </View>
-                ) : counter ? (
-                  <View style={[styles.counter, { borderColor: colors.border }]}>
-                    <Pressable
-                      onPress={() => bumpCount(field, -1)}
-                      hitSlop={8}
-                      style={[styles.counterButton, { borderRightWidth: 1, borderRightColor: colors.border }]}
-                    >
-                      {/* Plain ASCII hyphen, not the Unicode minus (−) this used to be — same
-                        * "not every font has this glyph" risk as the stepper arrow above, ASCII
-                        * is guaranteed to render everywhere. */}
-                      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>-</Text>
-                    </Pressable>
-                    <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700", flex: 1, textAlign: "center" }}>
-                      {countOf(field.key)}
-                    </Text>
-                    <Pressable
-                      onPress={() => bumpCount(field, 1)}
-                      hitSlop={8}
-                      style={[styles.counterButton, { borderLeftWidth: 1, borderLeftColor: colors.border }]}
-                    >
-                      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>+</Text>
-                    </Pressable>
-                  </View>
-                ) : segmented ? (
-                  <View style={[styles.segmented, { borderColor: colors.border }]}>
-                    {field.options?.map((opt, i) => {
-                      const selected = attributes[field.key] === opt.value;
-                      return (
-                        <Pressable
-                          key={opt.value}
-                          onPress={() => setAttributes((prev) => ({ ...prev, [field.key]: opt.value }))}
-                          style={[
-                            styles.segment,
-                            i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border },
-                            selected && { backgroundColor: colors.green },
-                          ]}
-                        >
-                          <Text
-                            style={{ color: selected ? colors.onGreen : colors.text, fontSize: 12.5, fontWeight: "700" }}
-                            numberOfLines={1}
-                          >
-                            {opt.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ) : field.type === "multi-select" || field.type === "select" ? (
-                  <Pressable
-                    onPress={() => {
-                      setOpenField(field);
-                      optionSheetRef.current?.present();
-                    }}
-                    style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                  >
-                    <Text
-                      style={{ color: summaryLabel ? colors.text : colors.muted, fontSize: 13.5, flex: 1 }}
-                      numberOfLines={1}
-                    >
-                      {summaryLabel ?? "Select…"}
-                    </Text>
-                    <Icon name="chevronDown" size={13} color={colors.muted} />
-                  </Pressable>
-                ) : (
-                  <TextInput
-                    value={typeof attributes[field.key] === "string" ? (attributes[field.key] as string) : ""}
-                    onChangeText={(v) =>
-                      setAttributes((prev) => ({
-                        ...prev,
-                        [field.key]: field.type === "number" ? clampDigits(digitsOnly(v), field.maxDigits) : v,
-                      }))
-                    }
-                    keyboardType={field.type === "number" ? "number-pad" : "default"}
-                    placeholder={field.placeholder}
-                    placeholderTextColor={colors.muted}
-                    style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-                  />
-                )}
-              </View>
-              );
-            })}
-            </View>
+            {/* Two per row: these are mostly one-word labels over a small control, so a full-width
+                row wasted most of its width and made the section three screens long. */}
+            <View style={styles.attrGrid}>{group.fields.flatMap(renderFieldCells)}</View>
             </View>
             ))}
           </View>
