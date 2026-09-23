@@ -217,11 +217,11 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   //                     (and, that guard being inert, this is what finally fixes it).
   //
   // The known cost: a client-side `<Link>` navigation is an RSC request, so it reads as `empty`
-  // and is NOT counted — the trail is "pages opened as documents", not every route change. There
-  // is no way to separate a real client-side navigation from a prefetch here, because the two
-  // differ *only* by the header Next strips. Listing views are unaffected (ListingCard opens in a
-  // new tab, a real document load); header and category-tab navigation is what goes uncounted.
-  // Recovering it needs a client-side ping on real route changes, not a middleware check.
+  // and is NOT counted here — the trail from middleware alone is "pages opened as documents".
+  // SoftNavPageViews (root layout) closes that gap with a client ping on real pathname changes.
+  // There is no way to separate a real client-side navigation from a prefetch in middleware,
+  // because the two differ *only* by the header Next strips. Listing views are unaffected
+  // (ListingCard opens in a new tab, a real document load).
   const fetchDest = request.headers.get('sec-fetch-dest');
   if (fetchDest !== null && fetchDest !== 'document') return NextResponse.next();
 

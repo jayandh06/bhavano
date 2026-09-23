@@ -100,12 +100,19 @@ stops stripping it — but is now documented as inert rather than load-bearing. 
 naming: the `bhavano_city` corruption that guard was written for was therefore **never actually
 fixed**; this gate is what fixes it.
 
-**Known cost, accepted.** A client-side `<Link>` navigation is an RSC request, so it reads as
-`empty` and is **not counted**. The trail is now "pages opened as documents", not every route
+**Known cost, accepted (until soft-nav ping).** A client-side `<Link>` navigation is an RSC request, so it reads as
+`empty` and is **not counted by middleware**. The trail was "pages opened as documents", not every route
 change. There is no middleware-level fix: a real client-side navigation and a prefetch differ *only*
 by the header Next strips. Listing views are unaffected (`ListingCard` opens in a new tab, a real
-document load); header and category-tab navigation is what is lost. Recovering it needs a
-client-side ping on real route changes.
+document load); header and category-tab navigation is what was lost.
+
+**Soft-nav coverage (implemented).** `SoftNavPageViews` in the root layout watches `usePathname` and
+POSTs to `/api/analytics/pageview` (httpOnly session hop, same shape as confirm/search) on every
+pathname change after the first paint. Middleware still owns the document-load row for the landing
+path; the client skips that first path so the two writers do not race. Soft clicks to `/post`,
+account pages, category tabs, city/area browse, messages, etc. now appear in the Page visits trail.
+Query-only filter changes still share one pathname and do not add a row (same as middleware, which
+stores `pathname` only). The 2-second same-path dedupe in `recordPageView` still applies.
 
 **Also implemented — stop paying for prefetches we don't want.** Counting was the smaller half:
 every prefetch is a full uncached server render plus real Postgres queries, because every BFF fetch
@@ -306,7 +313,8 @@ store (165k rows).
 2. **Reverse+forward DNS verification as a background job** over recent rows, cached per IP, never
    on the live request. Names the crawler rather than just excluding it, and answers the Googlebot
    crawl-coverage question Part 1 gave up.
-3. **Client-side page-view ping** for in-app navigations (the accepted gap in Part 2).
+
+Soft-nav page views (former rung 3) shipped via `SoftNavPageViews` + `/api/analytics/pageview`.
 
 **A free sanity check available today:** GA4 already collects JS-verified sessions through GTM.
 Comparing its session count against the Page visits screen measures the remaining bot share with no

@@ -6,10 +6,11 @@ import {
   Post,
   Req,
   UploadedFiles,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { memoryStorage } from 'multer';
 import type { Request } from 'express';
 import {
@@ -32,6 +33,7 @@ export class SupportController {
    * real completion rate and would add a third-party script to a page kept lean for SEO. */
   @Post('tickets')
   @HttpCode(201)
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @UseInterceptors(
     FilesInterceptor('attachments', MAX_ATTACHMENTS, {

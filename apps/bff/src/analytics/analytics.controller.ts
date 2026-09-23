@@ -1,5 +1,5 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AnalyticsService } from './analytics.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
 import { RecordPageViewDto } from './dto/record-pageview.dto';
@@ -24,6 +24,7 @@ export class AnalyticsController {
    * session, not just the first, so the app-wide default (20/60s, shared with every other
    * endpoint that IP hits) would truncate an active browsing session's trail; raised well above
    * anything a real visitor's click rate could produce. */
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Post('pageview')
   @HttpCode(200)
@@ -38,6 +39,7 @@ export class AnalyticsController {
    * Throttled like pageview rather than at the app default: someone actively filtering a browse
    * page generates a search per click, and truncating that would lose exactly the exploratory
    * sessions this is meant to measure. */
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Post('search')
   @HttpCode(200)

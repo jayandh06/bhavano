@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type {
   ContactRevealBalanceDto,
   LinkIdentifierResult,
@@ -88,6 +88,7 @@ export class UsersController {
    * budget as OTP send rather than the default. */
   @Post('email/request-code')
   @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   async requestEmailCode(
     @CurrentUser() user: RequestUser,
@@ -99,6 +100,7 @@ export class UsersController {
 
   @Post('email/verify')
   @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   verifyEmail(
     @CurrentUser() user: RequestUser,
@@ -113,6 +115,7 @@ export class UsersController {
    * or forged call cannot merge accounts the caller does not control. */
   @Post('merge/confirm')
   @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async confirmMerge(
     @CurrentUser() user: RequestUser,
@@ -139,6 +142,7 @@ export class UsersController {
    * stale session nor a guessed identifier is enough. */
   @Delete()
   @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   async deleteAccount(
     @CurrentUser() user: RequestUser,

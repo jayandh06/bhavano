@@ -7,7 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { AuthSession, LinkIdentifierResult } from '@bhavano/types';
 import { AuthGuard } from './guards/auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -26,6 +26,7 @@ export class AuthController {
 
   @Post('otp/send')
   @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   async sendOtp(@Body() dto: SendOtpDto): Promise<{ success: true }> {
     await this.authService.sendOtp(dto.phone);
@@ -34,6 +35,7 @@ export class AuthController {
 
   @Post('otp/verify')
   @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   verifyOtp(
     @Body() dto: VerifyOtpDto,
@@ -111,7 +113,7 @@ export class AuthController {
 
   @Post('otp/link')
   @HttpCode(200)
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, ThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   linkPhone(
     @Body() dto: VerifyOtpDto,

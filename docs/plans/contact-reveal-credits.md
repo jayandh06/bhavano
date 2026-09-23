@@ -121,3 +121,9 @@ pattern, and `MessagingService`'s auth-gated idempotent-get-or-create shape (now
 - No discount-code redemption-limit race-condition hardening beyond the transactional reveal
   spend — two near-simultaneous redemptions of a code at its last remaining slot could both pass
   the pre-webhook count check; low risk (a discount %, not free money) but worth knowing.
+
+## Related: phones pasted into listing text
+
+Sellers who write a mobile into the title or description bypass reveal. That free text is masked
+on create/edit — see [mask-phones-in-listing-text.md](./mask-phones-in-listing-text.md).
+Photos with overlaid numbers are still open.

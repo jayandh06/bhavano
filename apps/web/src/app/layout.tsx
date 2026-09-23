@@ -10,6 +10,7 @@ import { InstantAlertsProvider } from "@/components/home/InstantAlertsProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
 import { ProfileCompletionDialog } from "@/components/home/ProfileCompletionDialog";
 import { JsConfirmation } from "@/components/home/JsConfirmation";
+import { SoftNavPageViews } from "@/components/home/SoftNavPageViews";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
 import { JsonLd } from "@/components/JsonLd";
 import "./globals.css";
@@ -113,6 +114,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <BoostProvider>
                 <InstantAlertsProvider>
                   <JsConfirmation />
+                  <SoftNavPageViews />
                   <SignupConversionTracker />
                   <ProfileCompletionBanner />
                   <ProfileCompletionDialog />

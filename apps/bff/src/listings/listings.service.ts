@@ -91,6 +91,7 @@ import {
 import { ContactRevealService, type ContactRevealState } from '../contact-reveal/contact-reveal.service';
 import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
 import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
+import { scrubPhonesInText } from './scrub-listing-phones';
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
@@ -1241,6 +1242,13 @@ export class ListingsService {
       platformFeeApplies(input.category, platformFeeSettings) || wantsBoost;
     const now = new Date();
 
+    // Full mobiles in free text bypass contact-reveal — mask before persist so the stored
+    // title/description never publish a dialable number. See docs/plans/mask-phones-in-listing-text.md.
+    const title = scrubPhonesInText(input.title.trim());
+    const description = input.description?.trim()
+      ? scrubPhonesInText(input.description.trim())
+      : null;
+
     const created = await this.prisma.listing.create({
       data: {
         id: input.id,
@@ -1249,14 +1257,14 @@ export class ListingsService {
         price: resolvedPrice.price,
         priceUnit: resolvedPrice.priceUnit,
         priceQualifier: input.priceQualifier ?? '',
-        title: input.title,
-        slug: slugify(input.title),
+        title,
+        slug: slugify(title),
         areaId,
         cityId: input.cityId,
         specs: input.specs ?? [],
         // Empty string normalised to null: "left blank" and "cleared" are the same thing here,
         // and a null keeps the "has a description" check a single test everywhere downstream.
-        description: input.description?.trim() || null,
+        description,
         attributes: attributes as Prisma.InputJsonValue,
         tag: deriveTag(input),
         ownerId,
@@ -1861,6 +1869,16 @@ export class ListingsService {
       }
     }
 
+    // Same masking as create — owner and admin edits both persist the scrubbed text.
+    const nextTitle =
+      dto.title !== undefined ? scrubPhonesInText(dto.title.trim()) : undefined;
+    const nextDescription =
+      dto.description !== undefined
+        ? dto.description.trim()
+          ? scrubPhonesInText(dto.description.trim())
+          : null
+        : undefined;
+
     const listing = await this.prisma.listing.update({
       where: { id },
       data: {
@@ -1868,13 +1886,11 @@ export class ListingsService {
         ...(dto.priceQualifier !== undefined
           ? { priceQualifier: dto.priceQualifier }
           : {}),
-        ...(dto.title !== undefined
-          ? { title: dto.title, slug: slugify(dto.title) }
+        ...(nextTitle !== undefined
+          ? { title: nextTitle, slug: slugify(nextTitle) }
           : {}),
         ...(dto.specs !== undefined ? { specs: dto.specs } : {}),
-        ...(dto.description !== undefined
-          ? { description: dto.description.trim() || null }
-          : {}),
+        ...(nextDescription !== undefined ? { description: nextDescription } : {}),
         ...(attributesToValidate !== undefined
           ? { attributes: attributesToValidate as Prisma.InputJsonValue }
           : {}),
@@ -1919,9 +1935,9 @@ export class ListingsService {
       {
         price: dto.price,
         priceQualifier: dto.priceQualifier,
-        title: dto.title,
+        title: nextTitle,
         specs: dto.specs,
-        description: dto.description,
+        description: nextDescription,
         attributes: attributesToValidate,
         status: dto.status,
         category: dto.category,
