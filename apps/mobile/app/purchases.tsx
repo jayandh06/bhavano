@@ -8,6 +8,7 @@ import { ScreenHeader } from "../src/components/home/ScreenHeader";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   listing_boost: "Listing boost",
+  listing_publish: "Publish listing",
   buyer_premium: "Bhavano Plus",
   agent_pro: "Agent/Broker Pro",
   seller_slot_pack: "Seller slot pack",

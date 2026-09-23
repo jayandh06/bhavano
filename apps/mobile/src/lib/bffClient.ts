@@ -156,6 +156,7 @@ export function fetchPlanPricing(): Promise<{
   boost: BoostPriceSettings;
   subscription: SubscriptionPlanSettings;
   instantAlerts: InstantAlertsPriceSettings;
+  platformFee: import("@bhavano/types/platformFeePricing").PlatformFeeSettings;
   activeDiscountPercent: number | null;
 }> {
   return bffFetch("/plans/pricing");
@@ -550,6 +551,19 @@ export function createBoostOrder(
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
     body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts }),
+  });
+}
+
+export function createListingPublishOrder(
+  accessToken: string,
+  listingId: string,
+  boostDays?: 7 | 15,
+  includeInstantAlerts?: boolean,
+  discountCode?: string,
+): Promise<import("@bhavano/types").CreateListingPublishOrderResponseDto> {
+  return authedBffFetch(accessToken, "/payments/listing-publish-order", {
+    method: "POST",
+    body: JSON.stringify({ listingId, boostDays, includeInstantAlerts, discountCode }),
   });
 }
 

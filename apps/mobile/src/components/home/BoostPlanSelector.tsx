@@ -1,6 +1,9 @@
 import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
-import type { BoostPlanSelection, BoostPricingPreviewDto } from "@bhavano/types";
+import type { BoostPlanSelection, BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { listingPublishCheckoutTotalRupees } from "@bhavano/types/listingPublishPricing";
+import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
+import { platformFeeFor } from "@bhavano/types/platformFeePricing";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import { Icon } from "../Icon";
@@ -24,13 +27,32 @@ export function BoostPlanSelector({
   pricing,
   value,
   onChange,
+  category,
+  platformFeeSettings,
+  showBoostOptions = true,
 }: {
   pricing: BoostPricingPreviewDto;
   value: BoostPlanSelection | null;
   onChange: (value: BoostPlanSelection | null) => void;
+  category: ListingCategory;
+  platformFeeSettings?: PlatformFeeSettings;
+  showBoostOptions?: boolean;
 }) {
   const { colors } = useAppTheme();
   const effective: BoostPlanSelection = value ?? { duration: 15, includeInstantAlerts: true };
+  const platformFeeRupees =
+    platformFeeSettings && platformFeeFor(category, platformFeeSettings) > 0
+      ? platformFeeFor(category, platformFeeSettings)
+      : 0;
+  const dueToday =
+    platformFeeRupees > 0 || value
+      ? listingPublishCheckoutTotalRupees(
+          category,
+          platformFeeSettings ?? { propertyListingFee: 0, coworkingPgStorageListingFee: 0, furnitureInteriorsListingFee: 0 },
+          pricing,
+          value,
+        )
+      : platformFeeRupees;
 
   const optionKey =
     effective.duration === 7
@@ -58,11 +80,20 @@ export function BoostPlanSelector({
   }
 
   return (
-    <View style={[styles.card, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, opacity: value ? 1 : 0.55 }]}>
+    <View style={[styles.card, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, opacity: showBoostOptions && !value ? 0.55 : 1 }]}>
+      {platformFeeRupees > 0 && (
+        <View style={[styles.optionButton, { borderColor: colors.green, backgroundColor: `${colors.green}1a`, marginBottom: 12 }]}>
+          <Text style={{ flex: 1, fontWeight: "700", fontSize: 14, color: colors.text }}>Platform fee (required)</Text>
+          <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>₹{platformFeeRupees}</Text>
+        </View>
+      )}
+
+      {showBoostOptions && (
+        <>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <Icon name="boost" size={17} color={colors.gold} />
         <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-          Boost this ad
+          Boost this ad (optional)
           {/* Appended only while a discount is actually live on the option being shown, and
               computed from its own amount/originalAmount rather than a hardcoded "50" — the real
               percent lives on an admin-edited DiscountCode row, so this can't quietly go stale. */}
@@ -124,6 +155,12 @@ export function BoostPlanSelector({
           {value ? "Skip — post without boosting" : "Add it back"}
         </Text>
       </Pressable>
+        </>
+      )}
+
+      {(platformFeeRupees > 0 || value) && (
+        <Text style={{ fontWeight: "700", fontSize: 13, color: colors.green, marginTop: 12 }}>Due today: ₹{dueToday}</Text>
+      )}
     </View>
   );
 }

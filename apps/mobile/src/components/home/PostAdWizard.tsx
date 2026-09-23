@@ -40,6 +40,11 @@ import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
 import { createListing, fetchAreas, fetchPlanPricing, previewBoostPricing, uploadPhoto, uploadVideo } from "../../lib/bffClient";
 import { startBoostCheckout } from "../../lib/boostCheckout";
+import { startListingPublishCheckout } from "../../lib/listingPublishCheckout";
+import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPricing";
+import { platformFeeApplies } from "@bhavano/types/platformFeePricing";
+import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
+import { fetchListingById } from "../../lib/bffClient";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -285,8 +290,10 @@ export function PostAdWizard({
   const [planPricingSettings, setPlanPricingSettings] = useState<{
     boost: BoostPriceSettings;
     instantAlerts: InstantAlertsPriceSettings;
+    platformFee: PlatformFeeSettings;
     activeDiscountPercent: number | null;
   } | null>(null);
+  const [publishCheckoutError, setPublishCheckoutError] = useState<string | null>(null);
   // A boost/instant-alerts choice made ahead of time on the review step — null means the
   // advertiser explicitly skipped it (see selectCategory's pre-fill and BoostPlanSelector's own
   // "Skip" affordance). Only ever read/acted on when previewBoostDisplay?.showSelectorOnPreview.
@@ -323,6 +330,55 @@ export function PostAdWizard({
     [category, planPricingSettings],
   );
 
+  const showPublishPanelOnReview = !!(
+    category &&
+    planPricingSettings &&
+    (platformFeeApplies(category, planPricingSettings.platformFee) || previewBoostDisplay?.showSelectorOnPreview)
+  );
+
+  const showBoostOnReview =
+    !!previewBoostDisplay?.showSelectorOnPreview ||
+    !!(category && planPricingSettings && platformFeeApplies(category, planPricingSettings.platformFee));
+
+  async function waitForListingLive(listingId: string, token: string): Promise<boolean> {
+    for (let i = 0; i < 20; i++) {
+      const listing = await fetchListingById(listingId, token);
+      if (listing.publishState === "live") return true;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    return false;
+  }
+
+  async function finishPublishCheckout(listing: ListingDetailDto, token: string): Promise<boolean> {
+    setPublishCheckoutError(null);
+    if (Platform.OS === "ios") {
+      await WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openBoost=${listing.id}`));
+      setPublishCheckoutError("Complete payment on the website to publish your ad.");
+      return false;
+    }
+    const checkout = await startListingPublishCheckout({
+      accessToken: token,
+      listingId: listing.id,
+      boostSelection: selectedBoostPlan,
+    });
+    if (checkout.outcome === "cancelled") {
+      setPublishCheckoutError("Payment was cancelled — your ad is not live yet.");
+      return false;
+    }
+    if (checkout.outcome === "error") {
+      setPublishCheckoutError(checkout.message);
+      return false;
+    }
+    if (checkout.outcome === "paid") {
+      const live = await waitForListingLive(listing.id, token);
+      if (!live) {
+        setPublishCheckoutError("Payment received — still confirming publish. Please retry in a moment.");
+        return false;
+      }
+    }
+    return true;
+  }
+
   // Fires once, right after the listing actually exists, using whatever was chosen on the review
   // step. Android/web: the real in-app checkout. iOS: never an in-app checkout (Apple Guideline
   // 3.1.1) — instead the same website redirect the existing always-visible iOS buttons below use,
@@ -331,6 +387,7 @@ export function PostAdWizard({
     if (boostAutoFiredRef.current) return;
     if (!createdListing || !postAccessToken || !selectedBoostPlan) return;
     if (!previewBoostDisplay?.showSelectorOnPreview) return;
+    if (createdListing.publishState === "pending_checkout") return;
     boostAutoFiredRef.current = true;
 
     if (Platform.OS === "ios") {
@@ -835,6 +892,11 @@ export function PostAdWizard({
         }
       }
 
+      const needsCheckout =
+        category &&
+        planPricingSettings &&
+        listingPublishRequiresCheckout(category, planPricingSettings.platformFee, selectedBoostPlan);
+
       const listing = await createListing(
         {
           id: listingId,
@@ -856,16 +918,25 @@ export function PostAdWizard({
           attributes: pruneHiddenAttributes(category, transactionType, attributes),
           lat: pin?.lat,
           lng: pin?.lng,
+          ...(needsCheckout
+            ? {
+                checkoutIntent: selectedBoostPlan
+                  ? {
+                      boostDays: selectedBoostPlan.duration,
+                      includeInstantAlerts: selectedBoostPlan.includeInstantAlerts,
+                    }
+                  : undefined,
+              }
+            : {}),
         },
         activeToken,
       );
 
-      // Stays in the wizard on a "success" step (matching web's own PostAdWizard) rather than
-      // navigating straight to the listing — that's also what made the listing's own back arrow
-      // throw "GO_BACK was not handled": router.replace() drops this screen from history
-      // entirely, so there was nothing left to go back to. "View my ad" below pushes instead,
-      // so back from the listing now correctly returns here.
       setCreatedListing(listing);
+      if (listing.publishState === "pending_checkout") {
+        const published = await finishPublishCheckout(listing, activeToken);
+        if (!published) return;
+      }
       setStep("success");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create listing");
@@ -1258,11 +1329,20 @@ export function PostAdWizard({
             attributes={attributes}
           />
 
-          {previewBoostDisplay?.showSelectorOnPreview && (
-            <BoostPlanSelector pricing={previewBoostDisplay} value={selectedBoostPlan} onChange={setSelectedBoostPlan} />
+          {showPublishPanelOnReview && previewBoostDisplay && category && planPricingSettings && (
+            <BoostPlanSelector
+              pricing={previewBoostDisplay}
+              value={selectedBoostPlan}
+              onChange={setSelectedBoostPlan}
+              category={category}
+              platformFeeSettings={planPricingSettings.platformFee}
+              showBoostOptions={showBoostOnReview}
+            />
           )}
 
-          {error && <Text style={{ color: "#c0554b", fontSize: 13 }}>{error}</Text>}
+          {(error || publishCheckoutError) && (
+            <Text style={{ color: "#c0554b", fontSize: 13 }}>{error ?? publishCheckoutError}</Text>
+          )}
 
           <Text style={{ color: colors.muted, fontSize: 12 }}>
             Your phone/email may be shown to users who unlock this listing&rsquo;s contact details.
