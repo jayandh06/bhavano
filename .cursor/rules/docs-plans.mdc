@@ -1,0 +1,12 @@
+---
+description: Plans live in docs/plans — read before implementing, update when behavior lands
+alwaysApply: true
+---
+
+# Plans & research (`docs/plans/`)
+
+- **Save finalized plans** in `docs/plans/<descriptive-slug>.md`, not only in machine-local scratch paths, so design stays in git with the code.
+- **Before implementing or answering a design question**, check `docs/plans/` for an existing doc — use its reasoning and caveats instead of re-deriving or contradicting deliberate decisions.
+- **When shipped behavior diverges from a plan doc** (renamed fields, reworked flows, resolved caveats), update that plan in the same change so the doc stays accurate.
+
+For any planning or research task, create and reference files under `docs/plans/`.

@@ -1,0 +1,19 @@
+---
+description: Preserve SEO when changing routes, rendering, or web page structure
+globs: apps/web/**/*
+alwaysApply: false
+---
+
+# SEO requirements (web)
+
+Before changing routing, rendering, or page structure:
+
+- **Don't convert SEO-relevant Server Components to Client Components** unnecessarily. Add `"use client"` only on the smallest leaf that needs interactivity — not on parent pages/layouts.
+- **Preserve metadata** (`generateMetadata`, `metadata`, title, description, canonical, Open Graph) on all routes.
+- **Keep crawlable content server-rendered.** Don't move above-the-fold or indexable copy into client-only `useEffect` + `fetch`.
+- **Don't break URL structure** without 301s for renames/slug changes.
+- **Preserve JSON-LD** during refactors.
+- **Watch bundle/hydration impact** on Core Web Vitals (avoid unnecessary client conversion).
+- **Don't change `robots.txt` / sitemap** without explicit confirmation.
+
+If a change affects a page users or crawlers land on directly (not authed dashboards), flag SEO impact first.

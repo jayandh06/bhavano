@@ -11,3 +11,6 @@
   diverges from what a `docs/plans/` file describes — a field renamed, a flow reworked, a caveat
   resolved — update that doc in the same change so it stays a reliable account of the current
   design, not a stale record of the original one.
+
+**Cursor:** the same plan conventions plus SEO/URL rules from `.claude/claude.md` are mirrored in
+`.cursor/rules/` — see [`.cursor/SETUP.md`](.cursor/SETUP.md) and [`AGENTS.md`](AGENTS.md).

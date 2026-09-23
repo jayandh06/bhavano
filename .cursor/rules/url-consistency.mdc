@@ -1,0 +1,15 @@
+---
+description: Slug-based URLs, no raw IDs in public links, canonicals for filter variants
+globs: apps/web/**/*
+alwaysApply: false
+---
+
+# URL consistency
+
+URLs are bookmarked, shared, and indexed — keep them readable and stable.
+
+- **Never put a database id in a URL.** Use slugs (`slugify(city.name)`), not cuids — in paths and query params (`?city=bengaluru`, not `?city=cmrkwg8gk…`).
+- **Prefer paths over query params** for rankable pages (e.g. `/bengaluru/buy/apartments` vs `/?city=…&category=…`). Query params filter an page that already has its own URL.
+- **Query-param variants of a rankable page need a canonical** to the plain route (same pattern as homepage `alternates.canonical`).
+- **When changing URL shape**, accept the old form as fallback or add a 301 — silent fallback to a default breaks shared links unnoticed.
+- **Be consistent app-wide** — one divergent builder reintroduces id-based query params.
