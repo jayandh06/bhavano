@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { fetchProfile } from "@/lib/bff";
+import { fetchAreas, fetchProfile } from "@/lib/bff";
+import { resolveDefaultCity } from "@/lib/defaultCity";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { isAccessTokenValid } from "@/lib/session";
 import { resolveVideoEntitlement } from "@bhavano/types/videoLimits";
@@ -19,9 +20,23 @@ export default async function PostAdPage({
   // `resolvePageCityContext`'s `allCities` is fetched with `all=true` — not just the popular
   // subset — so a previously-selected tier-2 city is still a real option in the wizard's
   // dropdown, not just a dangling id with no matching entry.
-  const [session, { city, cityAreas, allCities }] = await Promise.all([auth(), resolvePageCityContext(citySlug)]);
+  const [session, { city: slugCity, cityAreas: slugCityAreas, allCities }] = await Promise.all([
+    auth(),
+    resolvePageCityContext(citySlug),
+  ]);
   const accessToken = session?.accessToken;
   const loggedIn = isAccessTokenValid(accessToken);
+
+  // No `?city=` in the URL (or it named one that no longer resolves) — every other page is fine
+  // falling back to "all cities" here, but the wizard's own city dropdown needs *some* concrete
+  // default to preselect, and with nothing supplied it fell back to whichever city sorts first
+  // alphabetically ("Ahmedabad"), which has nothing to do with where the seller actually is.
+  // `resolveDefaultCity` reuses the same `bhavano_city` cookie every other page already reads —
+  // set by browsing a specific city, or by "Auto-detect my current location" (an explicit click,
+  // reverse-geocoded GPS) — never a silent guess. See docs/plans/remove-automatic-ip-city-
+  // detection.md for why this app deliberately doesn't auto-guess location on page load.
+  const city = slugCity ?? (await resolveDefaultCity(allCities));
+  const cityAreas = slugCity ? slugCityAreas : city ? await fetchAreas(city.id, undefined, true) : [];
 
   // Resolved server-side and passed down as a plain value — the wizard must never recompute tier
   // itself from a possibly-stale agentProUntil (see resolveVideoEntitlement's doc comment). No

@@ -233,11 +233,6 @@ export function PostAdWizard({
   // Informational, non-blocking note about the map pin's reverse-geocode result — either "we
   // added this city for you" or "couldn't confidently place this pin" (see `onPinChange`).
   const [pinLookupNote, setPinLookupNote] = useState<string | null>(null);
-  // Set instead of silently switching city when a pin resolves to a DIFFERENT city than the one
-  // already selected — see onPinChange's own comment and
-  // docs/plans/fix-wrong-city-geocoding-locality-alias.md. Holds the full suggestion so
-  // confirming applies both City and Area atomically, the same pair the matched-city path applies.
-  const [pinCityMismatch, setPinCityMismatch] = useState<ReverseGeocodeResultDto | null>(null);
   // Public, no-login-required settings (fetchBoostPricingAction/fetchInstantAlertsPricingAction,
   // both already used elsewhere for exactly this reason) — read as soon as the wizard mounts, not
   // gated on being logged in, since the Preview-step selector below has to work before onSubmit's
@@ -512,24 +507,19 @@ export function PostAdWizard({
    * BFF) rather than silently left unresolved — this list only needs to grow to *display* one
    * that's not in the initially-fetched set, since it already exists in the DB by this point.
    *
-   * A resolved city that DIFFERS from the one already selected is no longer applied silently —
-   * geocoding can still get this wrong (a ward inside a real city mistaken for its own city; see
-   * docs/plans/fix-wrong-city-geocoding-locality-alias.md for the backend half of this fix), and
-   * silently switching away from a city the seller may have deliberately chosen risked posting
-   * under the wrong one. `pinCityMismatch` holds the suggestion until they confirm via
-   * `applyPinCityMismatch`; Area is held back too, since it belongs to the suggested city, not
-   * the one still selected. */
+   * Applied directly, no confirmation step — the BFF's own resolution
+   * (docs/plans/fix-wrong-city-geocoding-locality-alias.md) is what makes a resolved city
+   * trustworthy enough to set automatically; a village/ward inside an already-curated city no
+   * longer resolves to itself there, so there's nothing left here worth double-checking with the
+   * seller before applying. */
   function onPinChange(
     nextPin: { lat: number; lng: number },
     suggestion: ReverseGeocodeResultDto | null,
   ) {
     setPin(nextPin);
-    if (!suggestion) {
-      setPinCityMismatch(null);
-      return;
-    }
+    if (!suggestion) return;
 
-    if (suggestion.cityId && suggestion.cityId !== cityId) {
+    if (suggestion.cityId) {
       setCities((prev) =>
         prev.some((c) => c.id === suggestion.cityId)
           ? prev
@@ -545,13 +535,7 @@ export function PostAdWizard({
               },
             ],
       );
-      setPinLookupNote(null);
-      setPinCityMismatch(suggestion);
-      return;
-    }
-
-    setPinCityMismatch(null);
-    if (suggestion.cityId) {
+      onCityChange(suggestion.cityId);
       setPinLookupNote(
         suggestion.isNewCity
           ? `We've added ${suggestion.cityName ?? "this city"} as a new city on Bhavano!`
@@ -568,24 +552,6 @@ export function PostAdWizard({
       setAreaQuery(suggestion.resolvedLocality);
       setAreaSuggestions([]);
     }
-  }
-
-  /** "Use {suggested city}" from the mismatch note — applies City and Area together, exactly the
-   * pair `onPinChange` would have applied directly if it had matched the selected city already. */
-  function applyPinCityMismatch() {
-    if (!pinCityMismatch?.cityId) return;
-    onCityChange(pinCityMismatch.cityId);
-    setPinLookupNote(
-      pinCityMismatch.isNewCity
-        ? `We've added ${pinCityMismatch.cityName ?? "this city"} as a new city on Bhavano!`
-        : null,
-    );
-    if (pinCityMismatch.areaId && pinCityMismatch.resolvedLocality) {
-      setAreaId(pinCityMismatch.areaId);
-      setAreaQuery(pinCityMismatch.resolvedLocality);
-      setAreaSuggestions([]);
-    }
-    setPinCityMismatch(null);
   }
 
   const visibleFields = category
@@ -883,29 +849,6 @@ export function PostAdWizard({
             />
             {pinLookupNote && (
               <p className="text-xs text-muted mt-1.5">{pinLookupNote}</p>
-            )}
-            {pinCityMismatch?.cityId && (
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <p className="text-xs text-muted m-0">
-                  Your pin looks like it&rsquo;s in{" "}
-                  {pinCityMismatch.cityName ?? "a different city"}, not{" "}
-                  {cities.find((c) => c.id === cityId)?.name ?? "the selected city"}.
-                </p>
-                <button
-                  type="button"
-                  onClick={applyPinCityMismatch}
-                  className="text-[12px] font-bold px-2.5 py-1 rounded-md border border-green bg-green/10 text-text"
-                >
-                  Use {pinCityMismatch.cityName ?? "this city"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPinCityMismatch(null)}
-                  className="text-[12px] font-bold px-2.5 py-1 rounded-md border border-border text-muted"
-                >
-                  Keep {cities.find((c) => c.id === cityId)?.name ?? "current city"}
-                </button>
-              </div>
             )}
           </div>
 

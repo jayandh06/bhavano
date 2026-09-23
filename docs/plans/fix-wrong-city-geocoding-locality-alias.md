@@ -84,19 +84,20 @@ CRUD screen, so a small `apps/bff/prisma/addLocalityAlias.ts` (name + city id/na
 Siddhapudur" → Coimbatore and similar known cases as they surface. An admin UI is a reasonable
 future follow-up, not bundled here.
 
-### Phase 2 — Stop silently overriding an already-selected city on pin-drop
+### Phase 2 — considered, reverted: confirm-before-switching-city on pin-drop
 
-`onPinChange` in both `apps/web/src/components/home/PostAdWizard.tsx` (lines 509-549) and
-`apps/mobile/src/components/home/PostAdWizard.tsx` (lines 692-728) currently call
-`onCityChange(suggestion.cityId)` unconditionally whenever a suggestion resolves *any* city.
-Change: only auto-apply silently when `suggestion.cityId === cityId` (today's fast path, area still
-fills in as now). When it resolves a *different* city than what's currently selected, don't call
-`onCityChange` — instead surface the mismatch (reusing the existing `pinLookupNote` text-note
-pattern on web, adding the equivalent on mobile which currently has no such note at all) with two
-explicit actions: "Use `{suggested city}`" (calls `onCityChange` on tap) and "Keep `{current
-city}`" (dismisses the note, no change). This directly implements the brief's point 4 — prompt
-instead of silently trusting Google's answer — while leaving the already-correct "no confident
-match at all" case (today's "couldn't confidently match a city" note) untouched.
+Originally implemented as: `onPinChange` in both `apps/web/src/components/home/PostAdWizard.tsx`
+and `apps/mobile/src/components/home/PostAdWizard.tsx` would stop calling
+`onCityChange(suggestion.cityId)` unconditionally, and instead surface a mismatch note ("Use
+`{suggested city}`" / "Keep `{current city}`") whenever a pin resolved to a *different* city than
+the one already selected, applying only on explicit confirmation.
+
+**Reverted at the user's explicit direction** ("Instead asking user use `<city>` set the city
+automatically") once Phase 1 shipped: with the backend priority chain now resolving the correct
+city in the case this was guarding against, the confirmation step was redundant friction rather
+than a real safeguard — `onPinChange` on both platforms went back to applying `suggestion.cityId`
+directly, no confirmation, exactly as it worked before this plan (see each file's own updated
+`onPinChange` doc comment). Phase 1 is what actually makes that direct-apply trustworthy again.
 
 ### Phase 3 — Constrain the web search box to India
 
@@ -118,8 +119,8 @@ behavior change for a legitimate Indian address search.
   (Delhi NCR's internal Delhi/Faridabad/Gurugram mixing) — unrelated, already explicitly deferred
   there.
 - A soft-bias `bounds` on the web Autocomplete toward the currently-selected city — country
-  restriction is the clear, low-risk win; city-level biasing is a UX refinement that can follow
-  once Phase 2's mismatch-confirmation ships and there's real signal on how often it fires.
+  restriction is the clear, low-risk win; city-level biasing would be a separate UX refinement.
+- Confirm-before-switching-city on pin-drop — see Phase 2 above; tried and reverted.
 
 ## Critical files
 
@@ -132,11 +133,11 @@ behavior change for a legitimate Indian address search.
   wins over district wins over locality wins over legacy fallback), mocking `global.fetch` for
   `reverseGeocodeGoogle` and reusing the existing `makeService` Prisma-mock helper for `ensureCity`/
   `ensureArea` pass-through behavior.
-- `apps/web/src/components/home/PostAdWizard.tsx` (`onPinChange`, lines 509-549) and
-  `apps/mobile/src/components/home/PostAdWizard.tsx` (`onPinChange`, lines 692-728) — mismatch
-  confirmation instead of silent override.
 - `apps/web/src/components/home/LocationMapPicker.tsx:125` — `componentRestrictions: { country:
   "in" }` on the `Autocomplete` constructor.
+
+Both `PostAdWizard.tsx` files' `onPinChange` were touched then reverted back to their original
+direct-apply form — see Phase 2 above.
 
 ## Verification
 
@@ -155,8 +156,5 @@ behavior change for a legitimate Indian address search.
    created.
 5. Confirm a pin genuinely outside any curated city (a real uncovered town) still auto-creates a
    new city as before — Phase 1 must not block legitimate expansion into new cities.
-6. Web: drop a pin that resolves to a *different* city than the one currently selected in the
-   dropdown and confirm the city does NOT silently change — the mismatch note with both actions
-   appears instead, and each button does what it says. Repeat on mobile.
-7. Web: type a non-Indian address into the search box and confirm no suggestions appear (or only
+6. Web: type a non-Indian address into the search box and confirm no suggestions appear (or only
    Indian ones), matching mobile's existing behavior.
