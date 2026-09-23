@@ -632,6 +632,17 @@ export function updateInstantAlertsPricingSettings(
   return authedBffFetch(accessToken, "/admin/instant-alerts-pricing", { method: "PATCH", body: JSON.stringify(input) });
 }
 
+export function fetchPlatformFeeSettings(accessToken: string): Promise<import("@bhavano/types/platformFeePricing").PlatformFeeSettings> {
+  return authedBffFetch(accessToken, "/admin/platform-fee", { cache: "no-store" });
+}
+
+export function updatePlatformFeeSettings(
+  accessToken: string,
+  input: import("@bhavano/types/platformFeePricing").PlatformFeeSettings,
+): Promise<import("@bhavano/types/platformFeePricing").PlatformFeeSettings> {
+  return authedBffFetch(accessToken, "/admin/platform-fee", { method: "PATCH", body: JSON.stringify(input) });
+}
+
 export interface ListDiscountCodesQuery {
   offset?: number;
   limit?: number;

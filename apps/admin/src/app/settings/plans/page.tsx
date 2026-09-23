@@ -1,16 +1,23 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchBoostPricingSettings, fetchInstantAlertsPricingSettings, fetchSubscriptionPlanSettings } from "@/lib/bff";
+import {
+  fetchBoostPricingSettings,
+  fetchInstantAlertsPricingSettings,
+  fetchPlatformFeeSettings,
+  fetchSubscriptionPlanSettings,
+} from "@/lib/bff";
 import { BoostPricingSettingsForm } from "@/components/BoostPricingSettingsForm";
+import { PlatformFeeSettingsForm } from "@/components/PlatformFeeSettingsForm";
 import { SubscriptionPlanSettingsForm } from "@/components/SubscriptionPlanSettingsForm";
 import { InstantAlertsPricingSettingsForm } from "@/components/InstantAlertsPricingSettingsForm";
 
 export default async function PlansSettingsPage() {
   const { accessToken } = await requireAdmin();
-  const [boostPricing, subscriptionPlans, instantAlertsPricing] = await Promise.all([
+  const [boostPricing, subscriptionPlans, instantAlertsPricing, platformFee] = await Promise.all([
     fetchBoostPricingSettings(accessToken),
     fetchSubscriptionPlanSettings(accessToken),
     fetchInstantAlertsPricingSettings(accessToken),
+    fetchPlatformFeeSettings(accessToken),
   ]);
 
   return (
@@ -28,6 +35,11 @@ export default async function PlansSettingsPage() {
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 32, maxWidth: 720 }}>
+          <section>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Platform fee</h2>
+            <PlatformFeeSettingsForm initial={platformFee} />
+          </section>
+
           <section>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Boost prices</h2>
             <BoostPricingSettingsForm initial={boostPricing} />

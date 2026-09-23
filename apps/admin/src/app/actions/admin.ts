@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
+import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import type {
   AdminUpdateListingInput,
   ContactRevealSettingsDto,
@@ -40,6 +41,7 @@ import {
   updateRequirement,
   updateSavedSearchSettings,
   updateInstantAlertsPricingSettings,
+  updatePlatformFeeSettings,
   updateListingAsAdmin,
   updateRateLimitSettings,
   updateSubscriptionPlanSettings,
@@ -243,6 +245,17 @@ export async function updateInstantAlertsPricingAction(input: InstantAlertsPrice
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update Instant Alerts pricing" };
+  }
+}
+
+export async function updatePlatformFeeAction(input: PlatformFeeSettings): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updatePlatformFeeSettings(accessToken, input);
+    revalidatePath("/settings/plans");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update platform fee" };
   }
 }
 

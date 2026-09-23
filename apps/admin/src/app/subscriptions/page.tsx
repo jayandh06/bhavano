@@ -25,6 +25,7 @@ const DEFAULT_SORT: AdminPaymentSort = "createdAt_desc";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
   listing_boost: "Boost",
+  listing_publish: "Publish listing",
   buyer_premium: "Bhavano Plus",
   agent_pro: "Agent/Broker Pro",
   seller_slot_pack: "Seller Slot Pack",
