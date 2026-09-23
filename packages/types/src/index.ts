@@ -1660,3 +1660,27 @@ export type LinkIdentifierResult =
       reauthRequired: boolean;
     }
   | { status: "confirm"; summary: AccountMergeSummary };
+
+/** A UI crash a client caught (React error boundary, or — mobile only — a JS exception outside
+ * any render boundary) and is reporting to `POST /client-errors`, which logs it through the BFF's
+ * pino/Loki pipeline. Public, unauthenticated (a crash can happen before login), so nothing here
+ * is trusted: `userId` is the client's own unverified claim, never re-verified server-side. See
+ * docs/plans/client-error-reporting-loki-grafana.md. */
+export interface ClientErrorInput {
+  app: "web" | "admin" | "mobile";
+  message: string;
+  stack?: string;
+  /** React's own field (`ErrorInfo.componentStack`) — absent for an error caught outside a
+   * render boundary. */
+  componentStack?: string;
+  url?: string;
+  /** Next.js's own error-boundary correlation id (`error.digest`) — web/admin only. */
+  digest?: string;
+  userAgent?: string;
+  /** Mobile only — `Constants.expoConfig?.version`. */
+  appVersion?: string;
+  userId?: string;
+  /** Set only by a caller proxying through a server (web/admin's Server Actions) — see the BFF's
+   * `CreateClientErrorDto.ip` for why. Mobile calls the BFF directly and never sets this. */
+  ip?: string;
+}

@@ -10,6 +10,7 @@ import type {
   AuthSession,
   BoostPricingPreviewDto,
   City,
+  ClientErrorInput,
   ContactRevealBalanceDto,
   ContactRevealSettingsDto,
   ConversationDetailDto,
@@ -221,6 +222,21 @@ export function reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseG
     body: JSON.stringify({ lat, lng }),
     cache: "no-store",
   });
+}
+
+/** Best-effort — a failed error *report* must never itself surface as a second error, so this
+ * swallows its own failure rather than throwing back to the error boundary that called it. See
+ * docs/plans/client-error-reporting-loki-grafana.md. */
+export async function reportClientError(input: ClientErrorInput): Promise<void> {
+  try {
+    await bffFetch<null>("/client-errors", {
+      method: "POST",
+      body: JSON.stringify(input),
+      cache: "no-store",
+    });
+  } catch {
+    // Nothing to do — there's no second place to report a failed error report to.
+  }
 }
 
 /** Phase 0 of docs/plans/property-requirements-demand-side.md — records what a seeker wanted

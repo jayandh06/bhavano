@@ -5,6 +5,7 @@ import type {
   Area,
   BoostPricingPreviewDto,
   City,
+  ClientErrorInput,
   ContactRevealBalanceDto,
   ConversationDetailDto,
   ConversationSummaryDto,
@@ -79,6 +80,20 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 function authedBffFetch<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
   return bffFetch<T>(path, { ...init, headers: { Authorization: `Bearer ${accessToken}`, ...init?.headers } });
+}
+
+/** Reports a UI crash to the BFF's Loki-backed logging — called by ErrorBoundary's
+ * componentDidCatch and the global.ErrorUtils handler set up in app/_layout.tsx. No `ip` field:
+ * unlike web/admin (which proxy through a Server Action and must forward the visitor's real IP
+ * explicitly), this app calls the BFF directly, so `req.ip` there is already correct. Swallows its
+ * own failure — a failed error *report* must never itself surface as a second error. See
+ * docs/plans/client-error-reporting-loki-grafana.md. */
+export async function reportClientError(input: Omit<ClientErrorInput, "app" | "ip">): Promise<void> {
+  try {
+    await bffFetch<null>("/client-errors", { method: "POST", body: JSON.stringify({ ...input, app: "mobile" }) });
+  } catch {
+    // Nothing to do — there's no second place to report a failed error report to.
+  }
 }
 
 export interface ListingsQuery {

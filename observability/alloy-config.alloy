@@ -30,11 +30,17 @@ loki.process "bff" {
   // (which is fine — an absent label just doesn't match a `{provider="..."}` selector). Cheap to
   // index for the same reason `level`/`service` are, and it's the fast first filter for "show me
   // every MSG91 call" before narrowing further with `| json`.
+  //
+  // `app` (see docs/plans/client-error-reporting-loki-grafana.md) is the same kind of addition —
+  // exactly three fixed values ("web", "admin", "mobile"), stamped only on `client_error` log
+  // lines (`clientErrorLogger.ts`), absent everywhere else. Distinct from `service`, which is
+  // always "bff" here: `app` says which *client* crashed, not which backend service logged it.
   stage.json {
     expressions = {
       level    = "level",
       service  = "service",
       provider = "provider",
+      app      = "app",
     }
   }
 
@@ -43,6 +49,7 @@ loki.process "bff" {
       level    = "",
       service  = "",
       provider = "",
+      app      = "",
     }
   }
 }

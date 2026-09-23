@@ -14,6 +14,7 @@ import type {
   AuthSession,
   City,
   ClaimSource,
+  ClientErrorInput,
   ContactRevealSettingsDto,
   ConversationSummaryDto,
   CreateDiscountCodeInput,
@@ -157,6 +158,16 @@ export function sendOtp(phone: string): Promise<{ success: true }> {
 
 export function verifyOtp(phone: string, code: string): Promise<AuthSession> {
   return bffFetch("/auth/otp/verify", { method: "POST", body: JSON.stringify({ phone, code }) });
+}
+
+/** Best-effort — a failed error *report* must never itself surface as a second error. See
+ * docs/plans/client-error-reporting-loki-grafana.md. */
+export async function reportClientError(input: ClientErrorInput): Promise<void> {
+  try {
+    await bffFetch<null>("/client-errors", { method: "POST", body: JSON.stringify(input) });
+  } catch {
+    // Nothing to do — there's no second place to report a failed error report to.
+  }
 }
 
 export function loginWithGoogle(idToken: string): Promise<AuthSession> {
