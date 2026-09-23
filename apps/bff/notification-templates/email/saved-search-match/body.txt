@@ -1,0 +1,3 @@
+A new listing just went up matching your saved search "{{savedSearchName}}": "{{title}}".
+
+Take a look before anyone else does.

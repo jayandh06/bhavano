@@ -19,6 +19,9 @@ email/agent-pro-activated/              Agent/Broker Pro purchase confirmation
 email/contact-reveal-credits-activated/ contact-reveal credit pack purchase confirmation
 email/boost-promotion/                  the admin-sent "boost this ad" nudge, no promo running
 email/boost-promotion-offer/            the same nudge while a promo code is live (prices, % and end date)
+email/requirement-captured/             requirement-submitted confirmation, seeker has an alert
+email/requirement-captured-no-alert/    same confirmation, seeker had no alert allowance left
+email/saved-search-match/               "a new listing matches your saved search/requirement"
 whatsapp/welcome/         the approved WhatsApp welcome template's wording
 whatsapp/listing-posted/  the approved WhatsApp "ad is live" template's wording
 whatsapp/claim-listing/  the approved "claim_listing_1" WhatsApp template's wording

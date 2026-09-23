@@ -110,8 +110,13 @@ export class SavedSearchesService {
    * matches it against every active Plus subscriber's saved-search criteria and notifies
    * immediately, instead of buyers having to keep re-checking browse pages themselves. A lapsed
    * subscriber's saved searches are never matched (the `user.premiumUntil` filter below), even
-   * though the rows themselves aren't deleted when a subscription expires. */
-  async notifyMatchingBuyers(listing: Listing): Promise<void> {
+   * though the rows themselves aren't deleted when a subscription expires.
+   *
+   * Takes `city`/`area` alongside the plain `Listing` row — needed so `notifySavedSearchMatch`'s
+   * button can link straight to the matching listing (`buildListingPath` needs the names, not
+   * just the ids this row alone carries). The caller already has both included from its own
+   * post-create re-fetch, so this costs no extra query. */
+  async notifyMatchingBuyers(listing: Listing & { city: City; area: Area }): Promise<void> {
     const candidates = await this.prisma.savedSearch.findMany({
       where: {
         // A "free" alert is honoured regardless of subscription state — it was promised to
@@ -141,7 +146,19 @@ export class SavedSearchesService {
 
     await Promise.all(
       matches.map(async (s) => {
-        const channel = await this.notificationsService.notifySavedSearchMatch(s.user, listing.title, s.name);
+        const channel = await this.notificationsService.notifySavedSearchMatch(
+          s.user,
+          {
+            id: listing.id,
+            slug: listing.slug,
+            category: listing.category,
+            transactionType: listing.transactionType,
+            cityName: listing.city.name,
+            area: listing.area.name,
+            title: listing.title,
+          },
+          s.name,
+        );
         if (channel) {
           await this.prisma.listingNotificationLog.create({
             data: { listingId: listing.id, kind: 'saved_search_match', channel },

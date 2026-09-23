@@ -1,0 +1,5 @@
+Thanks for telling us what you're looking for — {{searchLabel}}.
+
+Our team will check what's currently available and get back to you directly.
+
+You can also turn on instant alerts from your account so new matches reach you the moment they're posted.

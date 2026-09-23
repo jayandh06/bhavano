@@ -196,25 +196,22 @@ export class NotificationsService {
   /** Confirms a requirement captured from an empty search — see
    * docs/plans/property-requirements-demand-side.md.
    *
-   * The message is deliberately honest about which of two things is happening. With an alert
-   * (the seeker was inside their free quota, or has Plus) we can promise to tell them
-   * automatically. Without one, we can only promise that a person will look — and saying so is
-   * better than implying an alert that will never arrive. */
+   * Two separate template folders, not one with an in-template conditional (same reasoning as
+   * `notifyBoostPromotion`'s offer/no-offer split) — the message is deliberately honest about
+   * which of two things is happening. With an alert (the seeker was inside their free quota, or
+   * has Plus) it promises to tell them automatically; without one it can only promise that a
+   * person will look, and saying so is better than implying an alert that will never arrive. */
   async notifyRequirementCaptured(
-    user: NotifiableUser,
+    user: NotifiableUser & { name?: string | null },
     searchLabel: string,
     hasAlert: boolean,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `We're looking for: ${searchLabel}`;
-    const body = hasAlert
-      ? `Thanks — we've noted that you're looking for ${searchLabel}. ` +
-        `We'll message you as soon as something matching is posted, and our team will also check ` +
-        `whether anything already listed is close enough to be worth a look.`
-      : `Thanks — we've noted that you're looking for ${searchLabel}. ` +
-        `Our team will check what's available and get back to you. ` +
-        `You can also turn on instant alerts from your account so new matches reach you the moment they're posted.`;
+    const vars = { name: user.name ?? 'there', searchLabel };
+    const template = hasAlert ? 'email/requirement-captured' : 'email/requirement-captured-no-alert';
+    const linkPath = hasAlert ? '/my-requirements' : '/premium';
+    const { subject, text, html } = this.renderPurchaseEmail(template, vars, linkPath);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Daily digest of unmet demand to whoever runs the site — see RequirementDigestJob.
@@ -262,17 +259,34 @@ export class NotificationsService {
     return this.dispatchEmailPreferWhatsapp(owner, { subject, text: body });
   }
 
+  /** The seeker-facing half of `SavedSearchesService.notifyMatchingBuyers` — "a listing now
+   * matches your saved search/requirement", as opposed to `notifyRequirementsToOwner`'s
+   * owner-facing "demand matches your inventory". Links straight to the matching listing (same
+   * `buildListingPath` every other listing-carrying email in this file uses), not a generic
+   * browse page — the seeker already knows what they're looking for, so the button should open
+   * exactly the thing that matched. */
   async notifySavedSearchMatch(
     user: NotifiableUser,
-    listingTitle: string,
+    listing: Pick<ListingDetailDto, 'id' | 'slug' | 'category' | 'transactionType' | 'cityName' | 'area' | 'title'>,
     savedSearchName: string,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `New match for your saved search "${savedSearchName}"`;
-    const body =
-      `A new listing just went up matching your saved search "${savedSearchName}": "${listingTitle}". ` +
-      `Check it out on Bhavano before anyone else does.`;
+    const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const link = `${site}${buildListingPath(listing)}`;
+    const vars = { title: listing.title, savedSearchName };
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+    const tpl = loadTemplate('email/saved-search-match');
+    const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel ? renderTemplate(tpl.buttonLabel, vars) : undefined;
+    const html = renderEmail({
+      heading: renderTemplate(tpl.heading, vars),
+      preheader: renderTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+    });
+    const text = `${paragraphs.join('\n\n')}\n\n` + (buttonLabel ? `${buttonLabel}: ${link}` : link);
+    const subject = renderTemplate(tpl.subject, vars);
+
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Fired once, on a user's first-ever login (see AuthService.verifyOtp/loginWithGoogle) —

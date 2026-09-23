@@ -1209,9 +1209,11 @@ export class ListingsService {
     });
 
     // Fire-and-forget — Bhavano Plus's early-access alerts should never add latency to (or
-    // break) the poster's own submission.
+    // break) the poster's own submission. Passes the just-fetched `listing` (city/area included),
+    // not `created` — notifyMatchingBuyers' own match email links straight to this listing, which
+    // needs the city/area names `created` alone doesn't carry.
     this.savedSearchesService
-      .notifyMatchingBuyers(created)
+      .notifyMatchingBuyers(listing)
       .catch(() => undefined);
 
     // Reports the "Post ad success" conversion to Google Ads directly from the backend, using

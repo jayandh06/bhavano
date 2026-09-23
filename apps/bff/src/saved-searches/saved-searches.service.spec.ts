@@ -3,7 +3,7 @@ import { SavedSearchesService } from './saved-searches.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { LocationsService } from '../locations/locations.service';
-import type { Listing } from '@prisma/client';
+import type { Area, City, Listing } from '@prisma/client';
 
 const HOUR_MS = 60 * 60 * 1000;
 const future = (hours = 1) => new Date(Date.now() + hours * HOUR_MS);
@@ -120,13 +120,17 @@ describe('SavedSearchesService', () => {
   describe('notifyMatchingBuyers — only currently-active premium subscribers are notified', () => {
     const listing = {
       id: 'l1',
+      slug: 'test-listing',
+      title: 'Test listing',
       category: 'apartment',
       transactionType: 'rent',
       cityId: 'city1',
+      city: { name: 'Bengaluru' },
       areaId: 'area1',
+      area: { name: 'Indiranagar' },
       price: 20000,
       attributes: { bedrooms: 2 },
-    } as unknown as Listing;
+    } as unknown as Listing & { city: City; area: Area };
 
     it('matches free alerts unconditionally and plus alerts only while the subscription is live', async () => {
       const { service, prisma } = makeService();

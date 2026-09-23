@@ -1,0 +1,5 @@
+Thanks for telling us what you're looking for — {{searchLabel}}.
+
+We've saved this as an alert, so the moment a matching listing goes live on Bhavano, you'll be the first to know.
+
+In the meantime, our team is also checking what's already listed to see if anything close is worth a look.
