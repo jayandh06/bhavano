@@ -2,6 +2,8 @@ import { Controller, Get } from '@nestjs/common';
 import type { BoostPriceSettings } from '@bhavano/types/boostPricing';
 import type { SubscriptionPlanSettings } from '@bhavano/types/subscriptionPricing';
 import type { InstantAlertsPriceSettings } from '@bhavano/types/instantAlertsPricing';
+import type { PlatformFeeSettings } from '@bhavano/types/platformFeePricing';
+import { PlatformFeeSettingsService } from './platform-fee-settings.service';
 import { ACTIVE_PROMO_CODE } from '@bhavano/types/promoCode';
 import { PrismaService } from '../prisma/prisma.service';
 import { BoostPricingSettingsService } from './boost-pricing-settings.service';
@@ -19,6 +21,7 @@ export class PlansController {
     private readonly boostPricingSettingsService: BoostPricingSettingsService,
     private readonly subscriptionPlanSettingsService: SubscriptionPlanSettingsService,
     private readonly instantAlertsPricingSettingsService: InstantAlertsPricingSettingsService,
+    private readonly platformFeeSettingsService: PlatformFeeSettingsService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -27,15 +30,17 @@ export class PlansController {
     boost: BoostPriceSettings;
     subscription: SubscriptionPlanSettings;
     instantAlerts: InstantAlertsPriceSettings;
+    platformFee: PlatformFeeSettings;
     activeDiscountPercent: number | null;
   }> {
-    const [boost, subscription, instantAlerts, activeDiscountPercent] = await Promise.all([
+    const [boost, subscription, instantAlerts, platformFee, activeDiscountPercent] = await Promise.all([
       this.boostPricingSettingsService.getSettings(),
       this.subscriptionPlanSettingsService.getSettings(),
       this.instantAlertsPricingSettingsService.getSettings(),
+      this.platformFeeSettingsService.getSettings(),
       this.getActiveDiscountPercent(),
     ]);
-    return { boost, subscription, instantAlerts, activeDiscountPercent };
+    return { boost, subscription, instantAlerts, platformFee, activeDiscountPercent };
   }
 
   /** The percent off `ACTIVE_PROMO_CODE` currently gives, or `null` if it isn't usable right now

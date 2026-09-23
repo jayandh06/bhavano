@@ -38,6 +38,8 @@ import type {
 import type { BoostPriceSettings } from '@bhavano/types/boostPricing';
 import type { SubscriptionPlanSettings } from '@bhavano/types/subscriptionPricing';
 import type { InstantAlertsPriceSettings } from '@bhavano/types/instantAlertsPricing';
+import type { PlatformFeeSettings } from '@bhavano/types/platformFeePricing';
+import { UpdatePlatformFeeDto } from './dto/update-platform-fee.dto';
 import { AdminGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
@@ -373,6 +375,16 @@ export class AdminController {
   @Patch('instant-alerts-pricing')
   updateInstantAlertsPricingSettings(@Body() dto: UpdateInstantAlertsPricingDto): Promise<InstantAlertsPriceSettings> {
     return this.adminService.updateInstantAlertsPricingSettings(dto);
+  }
+
+  @Get('platform-fee')
+  getPlatformFeeSettings(): Promise<PlatformFeeSettings> {
+    return this.adminService.getPlatformFeeSettings();
+  }
+
+  @Patch('platform-fee')
+  updatePlatformFeeSettings(@Body() dto: UpdatePlatformFeeDto): Promise<PlatformFeeSettings> {
+    return this.adminService.updatePlatformFeeSettings(dto);
   }
 
   @Get('discount-codes')

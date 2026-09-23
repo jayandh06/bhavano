@@ -45,6 +45,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { BoostPricingSettingsService } from '../plans/boost-pricing-settings.service';
+import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
+import { UpdatePlatformFeeDto } from './dto/update-platform-fee.dto';
 import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pricing-settings.service';
 import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
@@ -249,6 +251,7 @@ export class AdminService {
     private readonly boostPricingSettingsService: BoostPricingSettingsService,
     private readonly subscriptionPlanSettingsService: SubscriptionPlanSettingsService,
     private readonly instantAlertsPricingSettingsService: InstantAlertsPricingSettingsService,
+    private readonly platformFeeSettingsService: PlatformFeeSettingsService,
     private readonly accountDeletion: AccountDeletionService,
     private readonly savedSearchesService: SavedSearchesService,
   ) {}
@@ -1338,6 +1341,14 @@ export class AdminService {
 
   updateInstantAlertsPricingSettings(dto: UpdateInstantAlertsPricingDto) {
     return this.instantAlertsPricingSettingsService.updateSettings(dto);
+  }
+
+  getPlatformFeeSettings() {
+    return this.platformFeeSettingsService.getSettings();
+  }
+
+  updatePlatformFeeSettings(dto: UpdatePlatformFeeDto) {
+    return this.platformFeeSettingsService.updateSettings(dto);
   }
 
   /** Admin-managed discount codes — see docs/plans/contact-reveal-credits.md. `redemptionCount`

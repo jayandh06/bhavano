@@ -3,6 +3,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import type { ConfigService } from '@nestjs/config';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provider';
+import type { ListingsService } from '../listings/listings.service';
 
 /**
  * What the webhook reports to Google Ads, and — more importantly — what it refuses to report.
@@ -31,6 +32,7 @@ function make(overrides: { user?: Record<string, unknown> | null } = {}) {
     { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
     {} as NotificationsService,
     { uploadClickConversion } as unknown as GoogleAdsConversionProvider,
+    { completePendingPublish: jest.fn() } as unknown as ListingsService,
   );
   return { service, uploadClickConversion, prisma };
 }

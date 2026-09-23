@@ -14,6 +14,7 @@ import type {
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
   CreateInstantAlertsOrderResponseDto,
+  CreateListingPublishOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
   ListingCategory,
   PaymentHistoryPage,
@@ -35,7 +36,10 @@ import {
   SUBSCRIPTION_PLAN_SETTINGS_ID,
   DEFAULT_SUBSCRIPTION_PLAN_SETTINGS,
   INSTANT_ALERTS_PRICE_SETTINGS_ID,
+  PLATFORM_FEE_SETTINGS_ID,
 } from '../plans/plans.constants';
+import { platformFeeFor } from '@bhavano/types/platformFeePricing';
+import { ListingsService } from '../listings/listings.service';
 
 interface RazorpayWebhookPayload {
   event: string;
@@ -71,6 +75,7 @@ export class PaymentsService {
     private readonly config: ConfigService,
     private readonly notificationsService: NotificationsService,
     private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
+    private readonly listingsService: ListingsService,
   ) {}
 
   private getRazorpay(): Razorpay {
@@ -533,6 +538,188 @@ export class PaymentsService {
     };
   }
 
+  async createListingPublishOrder(
+    userId: string,
+    listingId: string,
+    boostDays?: BoostDurationDays,
+    includeInstantAlerts = false,
+    discountCode?: string,
+    context: PurchaseContext = {},
+  ): Promise<CreateListingPublishOrderResponseDto> {
+    const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
+    if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+    if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+    if (listing.publishState !== 'pending_checkout') {
+      throw new BadRequestException('This listing is not awaiting publish checkout');
+    }
+    if (includeInstantAlerts && !boostDays) {
+      throw new BadRequestException('Instant Alerts requires a Boost selection at publish time');
+    }
+
+    const [platformFeeSettings, boostPriceSettings, instantAlertsPriceSettings] = await Promise.all([
+      this.prisma.platformFeeSetting.findUnique({ where: { id: PLATFORM_FEE_SETTINGS_ID } }),
+      this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } }),
+      includeInstantAlerts
+        ? this.prisma.instantAlertsPriceSetting.findUnique({ where: { id: INSTANT_ALERTS_PRICE_SETTINGS_ID } })
+        : Promise.resolve(null),
+    ]);
+    const feeRupees = platformFeeFor(listing.category, platformFeeSettings ?? undefined);
+    let boostRupees = 0;
+    if (boostDays) {
+      boostRupees =
+        boostPriceFor(listing.category, boostDays, boostPriceSettings ?? DEFAULT_BOOST_PRICE_SETTINGS) +
+        (includeInstantAlerts
+          ? (instantAlertsPriceSettings ?? DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS).instantAlertsPrice
+          : 0);
+    }
+    if (feeRupees === 0 && !boostDays) {
+      throw new BadRequestException('Nothing to charge for this listing');
+    }
+
+    const discount = await this.resolveDiscountCode(discountCode, userId);
+
+    let proCreditRedeem:
+      | { id: string }
+      | null = null;
+    if (boostDays === 7 && !includeInstantAlerts && boostRupees > 0) {
+      const owner = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { agentProUntil: true },
+      });
+      const isPro = (owner?.agentProUntil?.getTime() ?? 0) > Date.now();
+      if (isPro) {
+        const monthKey = utcMonthKey();
+        const credit = await this.prisma.proBoostCredit.findUnique({
+          where: { userId_monthKey: { userId, monthKey } },
+        });
+        if (credit && !credit.redeemedAt) {
+          proCreditRedeem = { id: credit.id };
+          boostRupees = 0;
+        }
+      }
+    }
+
+    const totalRupees = feeRupees + boostRupees;
+    const amountInPaise = this.applyDiscount(totalRupees * 100, discount?.discountPercent);
+
+    if (amountInPaise === 0) {
+      const payment = await this.prisma.payment.create({
+        data: {
+          userId,
+          razorpayOrderId: `listing_publish_${listingId}_${Date.now()}`,
+          amount: 0,
+          currency: 'INR',
+          purpose: 'listing_publish',
+          listingId,
+          boostDays: boostDays ?? null,
+          boostIncludesInstantAlerts: includeInstantAlerts,
+          discountCodeId: discount?.id,
+          status: 'paid',
+          paidAt: new Date(),
+          ...context,
+        },
+      });
+      if (discount?.id) {
+        await this.prisma.discountCodeRedemption.create({
+          data: { discountCodeId: discount.id, userId, paymentId: payment.id },
+        });
+      }
+      if (proCreditRedeem) {
+        await this.prisma.proBoostCredit.update({
+          where: { id: proCreditRedeem.id },
+          data: { redeemedAt: new Date(), listingId },
+        });
+      }
+      await this.fulfillListingPublishPayment(payment);
+      return {
+        paymentId: payment.id,
+        amount: 0,
+        currency: 'INR',
+        activated: true,
+      };
+    }
+
+    const order = await this.getRazorpay().orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `lpub_${listingId}_${Date.now()}`,
+      notes: {
+        purpose: 'listing_publish',
+        listingId,
+        boostDays: boostDays ? String(boostDays) : '',
+        includeInstantAlerts: String(includeInstantAlerts),
+      },
+    });
+
+    const payment = await this.prisma.payment.create({
+      data: {
+        userId,
+        razorpayOrderId: order.id,
+        amount: amountInPaise,
+        currency: 'INR',
+        purpose: 'listing_publish',
+        listingId,
+        boostDays: boostDays ?? null,
+        boostIncludesInstantAlerts: includeInstantAlerts,
+        discountCodeId: discount?.id,
+        ...context,
+      },
+    });
+
+    return {
+      paymentId: payment.id,
+      razorpayOrderId: order.id,
+      razorpayKeyId: this.config.get<string>('RAZORPAY_KEY_ID') ?? '',
+      amount: amountInPaise,
+      currency: 'INR',
+    };
+  }
+
+  private async tryRedeemProBoostCreditForListing(userId: string, listingId: string): Promise<void> {
+    const owner = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { agentProUntil: true },
+    });
+    const isPro = (owner?.agentProUntil?.getTime() ?? 0) > Date.now();
+    if (!isPro) return;
+    const monthKey = utcMonthKey();
+    const credit = await this.prisma.proBoostCredit.findUnique({
+      where: { userId_monthKey: { userId, monthKey } },
+    });
+    if (!credit || credit.redeemedAt) return;
+    await this.prisma.proBoostCredit.update({
+      where: { id: credit.id },
+      data: { redeemedAt: new Date(), listingId },
+    });
+  }
+
+  private async fulfillListingPublishPayment(payment: {
+    id: string;
+    userId: string;
+    listingId: string | null;
+    boostDays: number | null;
+    boostIncludesInstantAlerts: boolean;
+    adsTrackingAuthorized: boolean | null;
+  }): Promise<void> {
+    if (!payment.listingId) return;
+    await this.listingsService.completePendingPublish(
+      payment.listingId,
+      payment.adsTrackingAuthorized ?? undefined,
+    );
+    if (payment.boostDays) {
+      if (payment.boostDays === 7 && !payment.boostIncludesInstantAlerts) {
+        await this.tryRedeemProBoostCreditForListing(payment.userId, payment.listingId);
+      }
+      await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
+      if (payment.boostIncludesInstantAlerts) {
+        await this.activateInstantAlerts(payment.listingId, payment.id);
+        this.notifyBoostAndInstantAlertsActivated(payment.listingId, payment.boostDays);
+      } else {
+        this.notifyListingBoostActivated(payment.listingId, payment.boostDays);
+      }
+    }
+  }
+
   async createSubscriptionOrder(
     userId: string,
     tier: SubscriptionTier,
@@ -666,6 +853,11 @@ export class PaymentsService {
     // were recorded by Google Ads as zero conversions. Fire-and-forget, and after the row is
     // already marked paid — a reporting call must never delay or fail an activation.
     void this.reportPurchaseConversion({ ...payment, paidAt });
+
+    if (payment.purpose === 'listing_publish' && payment.listingId) {
+      await this.fulfillListingPublishPayment(payment);
+      this.logger.log(`Listing publish fulfilled for ${payment.listingId}`);
+    }
 
     if (payment.purpose === 'listing_boost' && payment.listingId && payment.boostDays) {
       await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);

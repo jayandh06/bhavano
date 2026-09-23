@@ -8,6 +8,7 @@ import { LocationsService } from '../locations/locations.service';
 import { R2StorageService } from '../storage/r2-storage.service';
 import { CdnPurgeService } from '../storage/cdn-purge.service';
 import { ListingSlotsService } from '../listing-slots/listing-slots.service';
+import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
 import { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provider';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { ConfigService } from '@nestjs/config';
@@ -49,6 +50,13 @@ function makeService() {
     listingSlotsService,
     {} as GoogleAdsConversionProvider,
     {} as ContactRevealService,
+    {
+      getSettings: jest.fn().mockResolvedValue({
+        propertyListingFee: 0,
+        coworkingPgStorageListingFee: 0,
+        furnitureInteriorsListingFee: 0,
+      }),
+    } as unknown as PlatformFeeSettingsService,
   );
   return { service, prisma, notificationsService, listingSlotsService };
 }
@@ -82,6 +90,13 @@ describe('ListingsService.list — word match + fuzzy title search', () => {
       {} as ListingSlotsService,
       {} as GoogleAdsConversionProvider,
       contactRevealService,
+      {
+        getSettings: jest.fn().mockResolvedValue({
+          propertyListingFee: 0,
+          coworkingPgStorageListingFee: 0,
+          furnitureInteriorsListingFee: 0,
+        }),
+      } as unknown as PlatformFeeSettingsService,
     );
     return { service, findMany, count, queryRaw };
   }
@@ -155,6 +170,13 @@ describe('ListingsService.list — amenity filter', () => {
       {} as ListingSlotsService,
       {} as GoogleAdsConversionProvider,
       contactRevealService,
+      {
+        getSettings: jest.fn().mockResolvedValue({
+          propertyListingFee: 0,
+          coworkingPgStorageListingFee: 0,
+          furnitureInteriorsListingFee: 0,
+        }),
+      } as unknown as PlatformFeeSettingsService,
     );
     return { service, count };
   }
@@ -340,6 +362,13 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
       {} as ListingSlotsService,
       {} as GoogleAdsConversionProvider,
       contactRevealService,
+      {
+        getSettings: jest.fn().mockResolvedValue({
+          propertyListingFee: 0,
+          coworkingPgStorageListingFee: 0,
+          furnitureInteriorsListingFee: 0,
+        }),
+      } as unknown as PlatformFeeSettingsService,
     );
     return { service, findMany };
   }
@@ -467,6 +496,13 @@ describe('ListingsService.listEngagement', () => {
       {} as ListingSlotsService,
       {} as GoogleAdsConversionProvider,
       {} as ContactRevealService,
+      {
+        getSettings: jest.fn().mockResolvedValue({
+          propertyListingFee: 0,
+          coworkingPgStorageListingFee: 0,
+          furnitureInteriorsListingFee: 0,
+        }),
+      } as unknown as PlatformFeeSettingsService,
     );
     return { service, prisma };
   }
@@ -985,6 +1021,13 @@ describe('ListingsService', () => {
         {} as ListingSlotsService,
         {} as GoogleAdsConversionProvider,
         {} as ContactRevealService,
+        {
+          getSettings: jest.fn().mockResolvedValue({
+            propertyListingFee: 0,
+            coworkingPgStorageListingFee: 0,
+            furnitureInteriorsListingFee: 0,
+          }),
+        } as unknown as PlatformFeeSettingsService,
       );
       // getMine's own plumbing (toDetailDto etc.) isn't what these tests are about — stubbed so
       // a resolved add/delete just needs to not throw, not exercise the whole DTO pipeline.

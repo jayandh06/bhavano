@@ -33,6 +33,11 @@ enum ListingStatus {
   deactivated
 }
 
+enum ListingPublishState {
+  live
+  pending_checkout
+}
+
 enum ListingCondition {
   new
   used
@@ -118,6 +123,7 @@ enum PaymentStatus {
 
 enum PaymentPurpose {
   listing_boost
+  listing_publish
   buyer_premium
   agent_pro
   seller_slot_pack
@@ -364,6 +370,9 @@ model Listing {
   category         ListingCategory
   transactionType  TransactionType
   status           ListingStatus     @default(active)
+  /// Gates browse visibility and deferred post-live side effects until publish checkout completes.
+  publishState     ListingPublishState @default(live)
+  publishedAt      DateTime?
   moderationState  ModerationState   @default(approved)
   adminReviewed    Boolean           @default(false)
   moderatedAt      DateTime?
@@ -855,6 +864,16 @@ model InstantAlertsPriceSetting {
   id                 String   @id
   instantAlertsPrice Int      @default(25)
   updatedAt          DateTime @updatedAt
+}
+
+/** Singleton — mandatory listing platform fee per category tier when > 0. See
+ * docs/plans/listing-platform-fee-and-checkout-gate.md. */
+model PlatformFeeSetting {
+  id                           String   @id
+  propertyListingFee           Int      @default(0)
+  coworkingPgStorageListingFee Int      @default(0)
+  furnitureInteriorsListingFee Int      @default(0)
+  updatedAt                    DateTime @updatedAt
 }
 
 /** Singleton row (fixed id "singleton", upserted) — admin-editable subscription tier prices and

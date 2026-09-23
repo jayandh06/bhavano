@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsLatitude,
@@ -43,6 +44,16 @@ export class CreatedPhotoInputDto {
 
   @IsString()
   ext!: string;
+}
+
+export class ListingCheckoutIntentDto {
+  @IsOptional()
+  @IsIn([7, 15])
+  boostDays?: 7 | 15;
+
+  @IsOptional()
+  @IsBoolean()
+  includeInstantAlerts?: boolean;
 }
 
 export class CreatedVideoInputDto {
@@ -143,4 +154,9 @@ export class CreateListingDto {
   @IsOptional()
   @IsString()
   claimContactId?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ListingCheckoutIntentDto)
+  checkoutIntent?: ListingCheckoutIntentDto;
 }

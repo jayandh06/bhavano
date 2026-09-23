@@ -26,6 +26,7 @@ export const POST_AD_SUCCESS_CONVERSION_ACTION_ID = '7750575968';
  */
 export const PURCHASE_CONVERSION_ACTION_IDS: Record<string, string> = {
   listing_boost: '7781548730',
+  listing_publish: '7781548730',
   instant_alerts: '7781544854',
   contact_reveal_credits: '7781653126',
   // The three subscription tiers share one action, matching how the client-side tag already

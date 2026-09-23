@@ -87,6 +87,8 @@ import {
   POST_AD_SUCCESS_CONVERSION_ACTION_ID,
 } from '../ads/google-ads-conversion.provider';
 import { ContactRevealService, type ContactRevealState } from '../contact-reveal/contact-reveal.service';
+import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
+import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
@@ -382,6 +384,7 @@ export class ListingsService {
     private readonly listingSlotsService: ListingSlotsService,
     private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
     private readonly contactRevealService: ContactRevealService,
+    private readonly platformFeeSettingsService: PlatformFeeSettingsService,
   ) {}
 
   async list(
@@ -498,6 +501,7 @@ export class ListingsService {
     const where: Prisma.ListingWhereInput = {
       ...categoryWhere,
       status: 'active',
+      publishState: 'live',
       moderationState: 'approved',
       expiresAt: { gt: new Date() },
       ...(cityId ? { cityId } : {}),
@@ -1006,6 +1010,9 @@ export class ListingsService {
     if (listing.moderationState === 'flagged' && !isOwnerOrAdmin) {
       throw new NotFoundException(`Listing ${id} not found`);
     }
+    if (listing.publishState === 'pending_checkout' && !isOwnerOrAdmin) {
+      throw new NotFoundException(`Listing ${id} not found`);
+    }
 
     const favouritedIds = await this.getFavouritedIds(currentUser?.id, [id]);
     const revealState = await this.contactRevealService.getRevealState(
@@ -1044,7 +1051,7 @@ export class ListingsService {
         },
       },
     });
-    if (!listing || listing.moderationState === 'flagged') {
+    if (!listing || listing.moderationState === 'flagged' || listing.publishState !== 'live') {
       throw new NotFoundException(`Listing ${id} not found`);
     }
 
@@ -1066,6 +1073,99 @@ export class ListingsService {
         ? publicVariantUrl(this.cdnBase(), listing.id, firstPhoto.photoNo, 'full', firstPhoto.updatedAt)
         : null,
     };
+  }
+
+  private async runPostLiveSideEffects(
+    listing: Listing & { city: City; area: Area },
+    owner: {
+      email: string | null;
+      phone: string | null;
+      acquisitionGclid: string | null;
+    } | null,
+    trackingAuthorized: boolean | undefined,
+    ownerId: string,
+    isBulkImportOwner = owner?.phone === BULK_IMPORT_OWNER_PHONE,
+  ): Promise<void> {
+    this.savedSearchesService.notifyMatchingBuyers(listing).catch(() => undefined);
+
+    if (
+      trackingAuthorized !== false &&
+      !isBulkImportOwner &&
+      (owner?.acquisitionGclid || owner?.email || owner?.phone)
+    ) {
+      void this.googleAdsConversionProvider
+        .uploadClickConversion({
+          gclid: owner!.acquisitionGclid ?? undefined,
+          conversionActionId: POST_AD_SUCCESS_CONVERSION_ACTION_ID,
+          transactionId: `listing-${listing.id}`,
+          eventTimestamp: listing.publishedAt ?? listing.createdAt,
+          email: owner!.email,
+          phone: owner!.phone,
+        })
+        .catch(() => undefined);
+    }
+
+    if (!isBulkImportOwner && owner) {
+      this.notificationsService
+        .notifyListingPosted(owner, {
+          id: listing.id,
+          slug: listing.slug,
+          category: listing.category,
+          transactionType: listing.transactionType,
+          cityName: listing.city.name,
+          area: listing.area.name,
+          title: listing.title,
+        })
+        .then((result) => {
+          if (!result) return;
+          return this.prisma.listingNotificationLog.create({
+            data: {
+              listingId: listing.id,
+              kind: 'posted',
+              channel: result.channel,
+              providerMessageId: result.messageId ?? null,
+            },
+          });
+        })
+        .catch(() => undefined);
+    }
+  }
+
+  /** Idempotent — flips `pending_checkout` → `live` and runs deferred post-live side effects. */
+  async completePendingPublish(listingId: string, trackingAuthorized?: boolean): Promise<void> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+    });
+    if (!listing || listing.publishState === 'live') return;
+
+    const publishedAt = new Date();
+    await this.prisma.listing.update({
+      where: { id: listingId },
+      data: { publishState: 'live', publishedAt },
+    });
+
+    const owner = await this.prisma.user.findUnique({
+      where: { id: listing.ownerId },
+      select: {
+        deletedAt: true,
+        name: true,
+        email: true,
+        phone: true,
+        acquisitionGclid: true,
+      },
+    });
+    if (owner?.deletedAt) return;
+
+    const liveListing = { ...listing, publishState: 'live' as const, publishedAt };
+    const isBulkImportOwner = owner?.phone === BULK_IMPORT_OWNER_PHONE;
+    await this.runPostLiveSideEffects(
+      liveListing,
+      owner,
+      trackingAuthorized,
+      listing.ownerId,
+      isBulkImportOwner,
+    );
   }
 
   async create(
@@ -1130,6 +1230,15 @@ export class ListingsService {
       Date.now() + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000,
     );
 
+    const platformFeeSettings = await this.platformFeeSettingsService.getSettings();
+    const wantsBoost = input.checkoutIntent?.boostDays !== undefined;
+    if (input.checkoutIntent?.includeInstantAlerts && !wantsBoost) {
+      throw new BadRequestException('Instant Alerts requires a Boost selection at publish time');
+    }
+    const pendingCheckout =
+      platformFeeApplies(input.category, platformFeeSettings) || wantsBoost;
+    const now = new Date();
+
     const created = await this.prisma.listing.create({
       data: {
         id: input.id,
@@ -1153,6 +1262,8 @@ export class ListingsService {
         lat: input.lat,
         lng: input.lng,
         claimContactId: input.claimContactId ?? null,
+        publishState: pendingCheckout ? 'pending_checkout' : 'live',
+        publishedAt: pendingCheckout ? null : now,
         // A post-creation addPhoto atomically increments this — see the field's own doc comment
         // in schema.prisma for why it must start at least as high as any photoNo already in use.
         photoNoCounter: Math.max(0, ...input.photos.map((p) => p.photoNo)),
@@ -1208,71 +1319,10 @@ export class ListingsService {
       include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
     });
 
-    // Fire-and-forget — Bhavano Plus's early-access alerts should never add latency to (or
-    // break) the poster's own submission. Passes the just-fetched `listing` (city/area included),
-    // not `created` — notifyMatchingBuyers' own match email links straight to this listing, which
-    // needs the city/area names `created` alone doesn't carry.
-    this.savedSearchesService
-      .notifyMatchingBuyers(listing)
-      .catch(() => undefined);
-
-    // Reports the "Post ad success" conversion to Google Ads directly from the backend, using
-    // the owner's first-touch gclid (captured at their signup — not a listing-time gclid; see
-    // docs/plans/server-side-google-ads-conversion-upload.md for why, and the caveat that
-    // implies for an owner posting long after signing up) when there is one, but proceeding on
-    // email/phone alone otherwise — Google's own guidance for this account was to send every
-    // event with user-provided data rather than only ones that also have a click id (see
-    // GoogleAdsConversionProvider.uploadClickConversion's doc comment). Never blocks or fails the
-    // listing creation itself — uploadClickConversion already never throws, .catch() is
-    // belt-and-braces.
     const isBulkImportOwner = owner?.phone === BULK_IMPORT_OWNER_PHONE;
 
-    // trackingAuthorized === false is an explicit iOS App Tracking Transparency denial (see
-    // AuthController's parseTrackingAuthorized) — must block this upload regardless of how much
-    // contact info is on file, same reasoning as AuthService.reportSignupConversion.
-    if (
-      trackingAuthorized !== false &&
-      !isBulkImportOwner &&
-      (owner?.acquisitionGclid || owner?.email || owner?.phone)
-    ) {
-      void this.googleAdsConversionProvider
-        .uploadClickConversion({
-          gclid: owner.acquisitionGclid ?? undefined,
-          conversionActionId: POST_AD_SUCCESS_CONVERSION_ACTION_ID,
-          transactionId: `listing-${created.id}`,
-          eventTimestamp: created.createdAt,
-          email: owner.email,
-          phone: owner.phone,
-        })
-        .catch(() => undefined);
-    }
-
-    // Same fire-and-forget rule for the poster's own acknowledgement — see
-    // docs/plans/post-ad-acknowledgement.md. `owner` is never null here: `assertCanPublish`
-    // above and the `deletedAt` check both already require the row to exist.
-    if (!isBulkImportOwner) {
-      this.notificationsService
-        .notifyListingPosted(owner!, {
-          id: listing.id,
-          slug: listing.slug,
-          category: listing.category,
-          transactionType: listing.transactionType,
-          cityName: listing.city.name,
-          area: listing.area.name,
-          title: listing.title,
-        })
-        .then((result) => {
-          if (!result) return;
-          return this.prisma.listingNotificationLog.create({
-            data: {
-              listingId: listing.id,
-              kind: 'posted',
-              channel: result.channel,
-              providerMessageId: result.messageId ?? null,
-            },
-          });
-        })
-        .catch(() => undefined);
+    if (!pendingCheckout) {
+      await this.runPostLiveSideEffects(listing, owner, trackingAuthorized, ownerId, isBulkImportOwner);
     }
 
     await this.logEdit(listing.id, isBulkImportOwner ? 'system' : 'owner', ownerId, 'created', null);
@@ -1954,6 +2004,7 @@ export class ListingsService {
       by: ['category', 'transactionType', 'cityId'],
       where: {
         status: 'active',
+        publishState: 'live',
         moderationState: 'approved',
         expiresAt: { gt: new Date() },
         ...(cityId ? { cityId } : {}),
@@ -1985,6 +2036,7 @@ export class ListingsService {
     const listings = await this.prisma.listing.findMany({
       where: {
         status: 'active',
+        publishState: 'live',
         moderationState: 'approved',
         expiresAt: { gt: new Date() },
       },
@@ -2526,6 +2578,8 @@ export class ListingsService {
       priceUnit: listing.priceUnit as AreaUnit | null,
       description: listing.description,
       status: listing.status,
+      publishState: listing.publishState,
+      publishedAt: listing.publishedAt?.toISOString() ?? null,
       moderationState: listing.moderationState,
       adminReviewed: listing.adminReviewed,
       moderatedAt: listing.moderatedAt?.toISOString() ?? null,

@@ -6,8 +6,10 @@ import type {
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
   CreateInstantAlertsOrderResponseDto,
+  CreateListingPublishOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
 } from '@bhavano/types';
+import { CreateListingPublishOrderDto } from './dto/create-listing-publish-order.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
@@ -79,6 +81,24 @@ export class PaymentsController {
       dto.tier,
       dto.months,
       dto.agentProUnits,
+      dto.discountCode,
+      purchaseContext(tracking, client),
+    );
+  }
+
+  @Post('listing-publish-order')
+  @UseGuards(AuthGuard)
+  createListingPublishOrder(
+    @Body() dto: CreateListingPublishOrderDto,
+    @CurrentUser() user: RequestUser,
+    @Headers('x-tracking-authorized') tracking?: string,
+    @Headers('x-client') client?: string,
+  ): Promise<CreateListingPublishOrderResponseDto> {
+    return this.paymentsService.createListingPublishOrder(
+      user.id,
+      dto.listingId,
+      dto.boostDays,
+      dto.includeInstantAlerts,
       dto.discountCode,
       purchaseContext(tracking, client),
     );
