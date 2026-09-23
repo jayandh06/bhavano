@@ -24,6 +24,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:seed:cities": "tsx prisma/seedCities.ts",
+    "prisma:seed:known-cities": "tsx prisma/seedKnownCities.ts",
+    "remap:known-cities": "tsx prisma/remapToKnownCities.ts",
     "prisma:seed:demo-listings": "tsx prisma/seedDemoListings.ts",
     "prisma:seed:bulk-import-owner": "tsx prisma/seedBulkImportOwner.ts",
     "backfill:visit-geoip": "tsx prisma/backfillVisitGeoIp.ts",

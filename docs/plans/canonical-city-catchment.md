@@ -27,6 +27,21 @@ Outside every catchment, `cityId` stays unset and nothing is created. Web and mo
 
 Seeded aliases: Delhi, New Delhi, Gurugram, Gurgaon, Noida, Greater Noida, Faridabad, Ghaziabad → Delhi NCR; Bangalore → Bengaluru; Bombay → Mumbai; Calcutta → Kolkata; Madras → Chennai; Trivandrum → Thiruvananthapuram; Calicut → Kozhikode; Baroda → Vadodara.
 
+## Known cities beyond the original 37
+
+[apps/bff/prisma/data/knownCities.json](../../apps/bff/prisma/data/knownCities.json) is the Census class-I list (population over 1,00,000, 482 names after dropping duplicates). [apps/bff/prisma/seedKnownCities.ts](../../apps/bff/prisma/seedKnownCities.ts) inserts each as `source: 'curated'`, `isPopular: false`, `catchmentKm: 25`. It does not change lat/lng or catchment on a city that already exists.
+
+Delhi, New Delhi, Gurgaon, Gurugram, Noida, Greater Noida, Faridabad, and Ghaziabad are not in that file. They stay areas of Delhi NCR via `LocalityAlias`. A census place whose coordinates already fall inside an existing city's catchment is skipped (Gandhinagar under Ahmedabad, Pimpri-Chinchwad under Pune, Panchkula and Mohali under Chandigarh, Sonipat and Bahadurgarh under Delhi NCR, and the other suburbs in that circle). Hosur, Tiruchirappalli, Salem, Erode, Agra, and Varanasi sit outside those circles and are added.
+
+When two census rows share a URL slug, the higher population is kept (Aurangabad, Maharashtra over the Bihar town of the same name). Spelling aliases added with this list: Trichy and Tiruchi → Tiruchirappalli; Hubballi → Hubli; Belagavi → Belgaum; Prayagraj → Allahabad; Thoothukudi → Tuticorin; Chhatrapati Sambhajinagar and Sambhajinagar → Aurangabad.
+
+[apps/bff/prisma/remapToKnownCities.ts](../../apps/bff/prisma/remapToKnownCities.ts) runs after that seed. A listing, area, or outreach contact moves only when its pin is outside the catchment of the city it is filed under and inside a different curated city. A pin that is still inside its current city stays, so a south-Bengaluru locality such as Sarjapura is not pulled onto Hosur where the circles overlap. A pin outside every catchment stays on its current city. Rows with no coordinates — users, saved searches, requirements, search events — stay on the parent from the first cleanup. `CitySlugRedirect` rows whose slug is now a live city are removed, so `/hosur` and `/tiruchirappalli` are those cities. The sitemap still lists only cities that have listings.
+
+```
+pnpm --filter bff exec tsx prisma/remapToKnownCities.ts
+REMAP_APPLY=1 pnpm --filter bff exec tsx prisma/remapToKnownCities.ts
+```
+
 ## Existing auto-created cities
 
 [apps/bff/prisma/reparentStrayCities.ts](../../apps/bff/prisma/reparentStrayCities.ts) runs after this resolver is deployed:
