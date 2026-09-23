@@ -28,6 +28,29 @@ interface GoogleGeocodeResponse {
   error_message?: string;
 }
 
+/** True for an undefined/empty name, or one containing only ASCII — the range every English
+ * place name Google returns actually falls in, punctuation and digits included. Deliberately not
+ * a narrower "letters only" check: legitimate names contain "-", "'", "." (Rajaji Nagar,
+ * D'Souza Circle, St. Marks Road), and this only needs to catch a name in a different script,
+ * not validate its shape. See reverseGeocodeGoogle's own comment for the incident this closes. */
+function isLatinText(name: string | undefined): name is string {
+  return !!name && /^[\x00-\x7F]*$/.test(name);
+}
+
+/** Google's `formatted_address` is one pre-composed, comma-delimited string, so unlike the
+ * address_components above there's no separate translated alternative to fall back to — the
+ * fields feeding it just get built from the individual segments untranslated when Google has
+ * never registered an English name for that specific feature. Confirmed live: `language=en`
+ * still returned "...off ಬನ್ನೇರುಘಟ್ಟ ಮುಖ್ಯ ರಸ್ತೆ..." — a road name — inside an otherwise-English
+ * address for a Bengaluru pin. Dropping the offending segment (rather than the whole address)
+ * keeps the building/landmark/locality/city/state/country segments that did translate correctly,
+ * which is everything a seller's address actually needs. Falls back to the untouched original if
+ * every segment were non-Latin, so a real but fully-local-script result never renders as "". */
+function stripNonLatinSegments(formattedAddress: string): string {
+  const kept = formattedAddress.split(', ').filter(isLatinText);
+  return kept.length > 0 ? kept.join(', ') : formattedAddress;
+}
+
 interface GooglePlacesAutocompleteResponse {
   status: string;
   predictions: { place_id: string; description: string }[];
@@ -237,7 +260,18 @@ export class LocationsService {
       (c) => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'),
     );
     const state = result.address_components.find((c) => c.types.includes('administrative_area_level_1'));
-    const resolvedLocality = sublocality?.long_name ?? locality?.long_name ?? '';
+    // `language=en` on the request (above) isn't a hard guarantee — Google still answers a
+    // hyperlocal component (a hamlet/neighborhood name) in its local script when it has never
+    // registered an English name for that specific place, even though the same response's
+    // locality/state fields come back correctly translated. ensureArea's slugify() guard below
+    // only catches a name that's *entirely* non-Latin (collapses to ""); it does nothing for one
+    // that's non-Latin mixed with otherwise-English text, which is what actually reached the
+    // screen as visible Kannada. Coarsen to the next reliable option instead of surfacing it.
+    const resolvedLocality = isLatinText(sublocality?.long_name)
+      ? sublocality!.long_name
+      : isLatinText(locality?.long_name)
+        ? locality!.long_name
+        : '';
     // A distinct sublocality means a real neighborhood inside a real city (Koramangala,
     // Bengaluru) — the normal case below. No sublocality, or one identical to the locality
     // itself, means Google has nothing finer-grained than the town name: creating a city named
@@ -267,7 +301,7 @@ export class LocationsService {
     return {
       cityId: city?.id,
       areaId: area?.id,
-      formattedAddress: result.formatted_address,
+      formattedAddress: stripNonLatinSegments(result.formatted_address),
       resolvedLocality,
       cityName: city?.name,
       isNewCity,
@@ -300,7 +334,11 @@ export class LocationsService {
       return [];
     }
 
-    return data.predictions.map((p) => ({ placeId: p.place_id, description: p.description }));
+    // Same untranslated-segment issue as reverseGeocodeGoogle's formatted_address — Autocomplete's
+    // `description` is Google's own separate dataset, so `language=en` on this request doesn't
+    // guarantee it either. This is the field actually shown in the search dropdown, so it's the
+    // one users see the Kannada road-name problem on in practice.
+    return data.predictions.map((p) => ({ placeId: p.place_id, description: stripNonLatinSegments(p.description) }));
   }
 
   /** Resolves a `placeId` from `placeAutocomplete` into coordinates (Place Details), then runs
