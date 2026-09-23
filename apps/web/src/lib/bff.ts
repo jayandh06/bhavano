@@ -37,6 +37,7 @@ import type {
   ProfileNudgeDto,
   PropertyTypeFilter,
   RevealContactResponseDto,
+  SellerAttentionDto,
   OwnerRequirementMatchDto,
   RequirementDto,
   ReverseGeocodeResultDto,
@@ -345,6 +346,10 @@ export function createListing(input: CreateListingInput, accessToken?: string): 
 
 export function fetchMyListings(accessToken: string): Promise<ListingDetailDto[]> {
   return authedBffFetch(accessToken, "/users/me/listings", { cache: "no-store" });
+}
+
+export function fetchSellerAttention(accessToken: string): Promise<SellerAttentionDto> {
+  return authedBffFetch(accessToken, "/users/me/seller-attention", { cache: "no-store" });
 }
 
 export function fetchMyListing(accessToken: string, listingId: string): Promise<ListingDetailDto> {

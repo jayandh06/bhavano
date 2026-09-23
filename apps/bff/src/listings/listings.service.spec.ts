@@ -25,7 +25,7 @@ const past = (hours = 1) => new Date(Date.now() - hours * HOUR_MS);
 function makeService() {
   const prisma = {
     favourite: { findUnique: jest.fn(), create: jest.fn(), delete: jest.fn() },
-    listing: { update: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+    listing: { update: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), count: jest.fn(), findFirst: jest.fn() },
     listingRenewal: { create: jest.fn() },
     listingEditLog: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
     user: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn() },
@@ -1525,5 +1525,49 @@ describe('ListingsService.claimListing — re-clicking an already-claimed link',
     await expect(service.claimListing('l1', 'someone-else')).rejects.toThrow(ConflictException);
     await expect(service.claimListing('l1', 'someone-else')).rejects.toThrow(/already been claimed by someone else/);
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('ListingsService.getSellerAttention', () => {
+  it('returns pending checkout, active, and renew-window counts', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.count as jest.Mock)
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(5)
+      .mockResolvedValueOnce(1);
+
+    (prisma.listing.findFirst as jest.Mock) = jest.fn();
+
+    await expect(service.getSellerAttention('user-1')).resolves.toEqual({
+      pendingCheckoutCount: 2,
+      pendingCheckoutListingId: null,
+      activeListingCount: 5,
+      expiringWithinDaysCount: 1,
+    });
+
+    expect(prisma.listing.count).toHaveBeenCalledTimes(3);
+    expect(prisma.listing.findFirst).not.toHaveBeenCalled();
+    expect(prisma.listing.count).toHaveBeenNthCalledWith(1, {
+      where: { ownerId: 'user-1', publishState: 'pending_checkout' },
+    });
+    expect(prisma.listing.count).toHaveBeenNthCalledWith(2, {
+      where: { ownerId: 'user-1', status: 'active' },
+    });
+  });
+
+  it('returns pendingCheckoutListingId when exactly one pending listing', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.count as jest.Mock)
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(0);
+    (prisma.listing.findFirst as jest.Mock).mockResolvedValue({ id: 'listing-pending' });
+
+    await expect(service.getSellerAttention('user-1')).resolves.toEqual({
+      pendingCheckoutCount: 1,
+      pendingCheckoutListingId: 'listing-pending',
+      activeListingCount: 1,
+      expiringWithinDaysCount: 0,
+    });
   });
 });

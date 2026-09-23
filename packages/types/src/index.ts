@@ -532,6 +532,15 @@ export interface UnreadCountDto {
   count: number;
 }
 
+/** Lightweight seller signals for post-login routing and future home banners — `GET /users/me/seller-attention`. */
+export interface SellerAttentionDto {
+  pendingCheckoutCount: number;
+  /** Most recent pending listing when `pendingCheckoutCount === 1` — for `?openPublishCheckout=` deep links. */
+  pendingCheckoutListingId: string | null;
+  activeListingCount: number;
+  expiringWithinDaysCount: number;
+}
+
 /** Pushed to the per-user socket room (`user:<id>`) whenever the caller's unread total changes —
  * a new message arrived, or they read one (possibly on another device). `unreadCount` is the
  * fresh total, so a client sets the badge to it directly rather than re-fetching. */

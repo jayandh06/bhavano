@@ -27,11 +27,13 @@ import type {
   ListingStatus,
   ListingVideoDto,
   ListingsPage,
+  SellerAttentionDto,
   PopularSearchDto,
   PropertyTypeFilter,
   TransactionType,
   UserRole,
 } from '@bhavano/types';
+import { LISTING_RENEW_ATTENTION_WINDOW_DAYS } from '@bhavano/types/listingLimits';
 import { categoryImagePlaceholder } from '@bhavano/types/tokens';
 import { slugify } from '@bhavano/types/slugify';
 import { deriveTag } from '@bhavano/types/listingTag';
@@ -1676,6 +1678,49 @@ export class ListingsService {
     return listings.map((listing) =>
       this.toDetailDto(listing, undefined, true, true),
     );
+  }
+
+  /** Counts for post-login routing (pending publish checkout) and future seller banners. */
+  async getSellerAttention(userId: string): Promise<SellerAttentionDto> {
+    const now = new Date();
+    const renewAttentionBy = new Date(
+      now.getTime() + LISTING_RENEW_ATTENTION_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+    );
+    const ownerWhere = { ownerId: userId };
+
+    const [pendingCheckoutCount, activeListingCount, expiringWithinDaysCount] =
+      await Promise.all([
+        this.prisma.listing.count({
+          where: { ...ownerWhere, publishState: 'pending_checkout' },
+        }),
+        this.prisma.listing.count({
+          where: { ...ownerWhere, status: 'active' },
+        }),
+        this.prisma.listing.count({
+          where: {
+            ...ownerWhere,
+            status: 'active',
+            expiresAt: { lte: renewAttentionBy },
+          },
+        }),
+      ]);
+
+    let pendingCheckoutListingId: string | null = null;
+    if (pendingCheckoutCount === 1) {
+      const pending = await this.prisma.listing.findFirst({
+        where: { ...ownerWhere, publishState: 'pending_checkout' },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true },
+      });
+      pendingCheckoutListingId = pending?.id ?? null;
+    }
+
+    return {
+      pendingCheckoutCount,
+      pendingCheckoutListingId,
+      activeListingCount,
+      expiringWithinDaysCount,
+    };
   }
 
   async getMine(userId: string, id: string): Promise<ListingDetailDto> {

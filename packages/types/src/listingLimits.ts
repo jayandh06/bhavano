@@ -13,6 +13,9 @@ import type { TransactionType } from "./index";
  * the whole thing stays readable without truncation. */
 export const TITLE_MAX_LENGTH = 150;
 
+/** Days before expiry when renew affordance appears on My listings — shared with seller-attention counts. */
+export const LISTING_RENEW_ATTENTION_WINDOW_DAYS = 7;
+
 /** ₹20 crore. */
 export const MAX_PRICE_SALE = 200_000_000;
 

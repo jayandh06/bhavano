@@ -19,6 +19,7 @@ import type {
   ListingDetailDto,
   PaymentHistoryPage,
   ProfileNudgeDto,
+  SellerAttentionDto,
   UserProfileDto,
 } from '@bhavano/types';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -69,6 +70,11 @@ export class UsersController {
   @Get('profile-nudge')
   profileNudge(@CurrentUser() user: RequestUser): Promise<ProfileNudgeDto> {
     return this.usersService.getProfileNudge(user.id);
+  }
+
+  @Get('seller-attention')
+  sellerAttention(@CurrentUser() user: RequestUser): Promise<SellerAttentionDto> {
+    return this.listingsService.getSellerAttention(user.id);
   }
 
   @Post('profile-nudge/snooze')

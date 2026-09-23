@@ -8,11 +8,13 @@ import {
   deleteAccount,
   fetchProfile,
   fetchProfileNudge,
+  fetchSellerAttention,
   requestEmailCode,
   snoozeProfileNudge,
   updateProfile,
   verifyEmail,
 } from "@/lib/bff";
+import { isAccessTokenValid } from "@/lib/session";
 
 export type ProfileActionResult = { requiresLogin: true } | { requiresLogin: false; profile: UserProfileDto };
 
@@ -137,5 +139,22 @@ export async function deleteAccountAction(
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Couldn't delete the account" };
+  }
+}
+
+/** After a generic login (no `redirectTo` / `onSuccess`), send sellers with unpaid publish checkout to My listings. */
+export async function resolvePostLoginRedirectAction(): Promise<string | null> {
+  const session = await auth();
+  if (!isAccessTokenValid(session?.accessToken)) return null;
+  try {
+    const attention = await fetchSellerAttention(session.accessToken);
+    if (attention.pendingCheckoutCount === 0) return null;
+    if (attention.pendingCheckoutListingId) {
+      return `/my-listings?openPublishCheckout=${encodeURIComponent(attention.pendingCheckoutListingId)}`;
+    }
+    return "/my-listings";
+  } catch (error) {
+    if (error instanceof BffAuthError) return null;
+    throw error;
   }
 }

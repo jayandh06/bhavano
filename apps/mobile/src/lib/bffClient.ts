@@ -30,6 +30,7 @@ import type {
   ReverseGeocodeResultDto,
   LinkIdentifierResult,
   SendFirstMessageResponseDto,
+  SellerAttentionDto,
   SubscriptionTier,
   UpdateListingInput,
   UpdateProfileInput,
@@ -446,6 +447,10 @@ export function updateProfile(accessToken: string, input: UpdateProfileInput): P
  * owns, any status, for the read-only My Listings screen. */
 export function fetchMyListings(accessToken: string): Promise<ListingDetailDto[]> {
   return authedBffFetch(accessToken, "/users/me/listings");
+}
+
+export function fetchSellerAttention(accessToken: string): Promise<SellerAttentionDto> {
+  return authedBffFetch(accessToken, "/users/me/seller-attention");
 }
 
 /** Mirrors the website's identical call — a single owned listing, for the edit screen's initial

@@ -10,7 +10,7 @@ import {
   signInWithGoogleAction,
   verifyOtpAction,
 } from "@/app/actions/auth";
-import { requestEmailCodeAction, verifyEmailAction } from "@/app/actions/users";
+import { requestEmailCodeAction, resolvePostLoginRedirectAction, verifyEmailAction } from "@/app/actions/users";
 import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
 import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 import { GOOGLE_SIGNUP_TRACKED_KEY } from "./SignupConversionTracker";
@@ -99,16 +99,21 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     // push's own render wins — the exact "flashes the destination, then reverts" bug this order
     // fixes. Running refresh() last means it always applies to whatever the current route
     // actually is by the time it fires.
-    if (resume) resume();
-    else if (redirectTo) router.push(redirectTo);
+    if (resume) {
+      resume();
+      router.refresh();
+      return;
+    }
+    if (redirectTo) {
+      router.push(redirectTo);
+      router.refresh();
+      return;
+    }
 
-    // The header's logged-in state is a server-resolved `userName` prop (see Header ->
-    // HeaderAuthButtons), so signing in server-side is not enough on its own: without this the
-    // client keeps the RSC payload it rendered while logged out and the header still says
-    // "Login" until the next navigation. Google sign-in avoids this only because it is a
-    // full-page redirect. Needed whether or not we navigated above — it just applies to
-    // whichever route is current now.
-    router.refresh();
+    void resolvePostLoginRedirectAction().then((path) => {
+      if (path) router.push(path);
+      router.refresh();
+    });
   }
 
   async function handleSendOtp() {

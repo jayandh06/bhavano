@@ -20,12 +20,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
 import * as AppleAuthentication from "expo-apple-authentication";
+import { useRouter } from "expo-router";
 import type { City, UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../theme/ThemeContext";
 import {
   BffError,
   fetchCities,
   fetchProfile,
+  fetchSellerAttention,
   loginWithApple,
   loginWithGoogle,
   logout as bffLogout,
@@ -96,6 +98,7 @@ export function HomeSheetsProvider({
   popularCities: City[];
 }) {
   const { colors } = useAppTheme();
+  const router = useRouter();
   const locationSheetRef = useRef<BottomSheetModal>(null);
   const loginSheetRef = useRef<BottomSheetModal>(null);
 
@@ -329,7 +332,21 @@ export function HomeSheetsProvider({
     // card) — same "onSuccess" pattern as web's AuthGateProvider.
     const resume = onSuccessRef.current;
     onSuccessRef.current = undefined;
-    resume?.();
+    if (resume) {
+      resume();
+      return;
+    }
+    try {
+      const attention = await fetchSellerAttention(accessToken);
+      if (attention.pendingCheckoutCount === 0) return;
+      if (attention.pendingCheckoutListingId) {
+        router.push(`/my-listings?openPublishCheckout=${encodeURIComponent(attention.pendingCheckoutListingId)}`);
+      } else {
+        router.push("/my-listings");
+      }
+    } catch {
+      // Best-effort routing — a failed attention fetch must not block login.
+    }
   }
 
   /** Signs the user out on this device. The BFF call is best-effort and deliberately not awaited

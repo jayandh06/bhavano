@@ -10,6 +10,8 @@ import type { TransactionType } from "./index";
 /** Titles render as one line on a listing card. 150 is generous for that and short enough that
  * the whole thing stays readable without truncation. */
 export declare const TITLE_MAX_LENGTH = 150;
+/** Days before expiry when renew affordance appears on My listings — shared with seller-attention counts. */
+export declare const LISTING_RENEW_ATTENTION_WINDOW_DAYS = 7;
 /** ₹20 crore. */
 export declare const MAX_PRICE_SALE = 200000000;
 /** ₹10 lakh — a monthly figure, not a total. */

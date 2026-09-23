@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
@@ -13,6 +14,11 @@ import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { BoostButton } from "@/components/home/BoostButton";
 import { InstantAlertsButton } from "@/components/home/InstantAlertsButton";
 import { AutoOpenPurchaseModal } from "@/components/home/AutoOpenPurchaseModal";
+import {
+  AutoOpenPublishCheckout,
+  CompletePublishPaymentButton,
+  PublishCheckoutRecoveryProvider,
+} from "@/components/home/PublishCheckoutRecovery";
 import { RenewButton } from "@/components/home/RenewButton";
 import { VideoManager } from "@/components/home/VideoManager";
 import { daysUntil } from "@/lib/listingExpiry";
@@ -63,6 +69,9 @@ export default async function MyListingsPage({
             accessToken={session.accessToken}
             cityName={city?.name}
             openBoostId={typeof sp.openBoost === "string" ? sp.openBoost : undefined}
+            openPublishCheckoutId={
+              typeof sp.openPublishCheckout === "string" ? sp.openPublishCheckout : undefined
+            }
           />
         )}
       </div>
@@ -81,6 +90,7 @@ async function MyListingsGrid({
   /** `?openBoost=<id>` — set when the visitor arrived from a Boost link in an email or WhatsApp
    * message, which is the case that needs its price resolved here rather than in the browser. */
   openBoostId?: string;
+  openPublishCheckoutId?: string;
 }) {
   let listings;
   let profile;
@@ -138,7 +148,10 @@ async function MyListingsGrid({
     : undefined;
 
   return (
-    <div className="flex flex-col gap-3">
+    <PublishCheckoutRecoveryProvider>
+      <Suspense fallback={null}>
+        <AutoOpenPublishCheckout listings={listings} />
+      </Suspense>
       <AutoOpenPurchaseModal
         listings={listings.map((l) => ({ id: l.id, category: l.category }))}
         initialPricing={openBoostPricing}
@@ -158,11 +171,12 @@ async function MyListingsGrid({
           ))}
         </>
       )}
-    </div>
+    </PublishCheckoutRecoveryProvider>
   );
 }
 
 function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessToken: string }) {
+  const isPendingPublish = item.publishState === "pending_checkout";
   const daysLeft = daysUntil(item.expiresAt);
   // A negative value still satisfies <= 7, so this covers both the pre-expiry window and any
   // time after it lapsed — a listing never becomes un-renewable just by sitting expired.
@@ -174,12 +188,18 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
       <div className="min-w-0">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="font-bold text-[15px]">{item.title}</span>
-          <span
-            className="text-[11px] font-bold rounded-md px-2 py-0.5 border"
-            style={{ color: STATUS_COLORS[item.status], borderColor: STATUS_COLORS[item.status] }}
-          >
-            {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
-          </span>
+          {isPendingPublish ? (
+            <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-[#b3413a] text-[#b3413a]">
+              Payment incomplete
+            </span>
+          ) : (
+            <span
+              className="text-[11px] font-bold rounded-md px-2 py-0.5 border"
+              style={{ color: STATUS_COLORS[item.status], borderColor: STATUS_COLORS[item.status] }}
+            >
+              {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
+            </span>
+          )}
           {item.isBoosted && (
             <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-gold text-gold inline-flex items-center gap-1"><Icon name="featured" filled /> Featured</span>
           )}
@@ -187,6 +207,9 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
         <div className="text-[13px] text-muted mt-1">
           {item.price} {item.priceQualifier} · {item.area}, {item.cityName}
         </div>
+        {isPendingPublish && (
+          <p className="text-[12.5px] text-[#b3413a] m-0 mt-1.5">Not visible to buyers until you complete payment.</p>
+        )}
         <div className="flex gap-3 text-[11.5px] text-muted mt-1.5">
           <span className="flex items-center gap-1"><Icon name="eye" /> {item.viewCount}</span>
           <span className="flex items-center gap-1"><Icon name="heart" /> {item.likeCount}</span>
@@ -208,21 +231,27 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
         * `flex-wrap` actually gets to do its job: buttons wrap onto a second line inside the
         * card instead of running off it. */}
       <div className="flex flex-wrap items-center gap-2.5">
-        {canRenew && <RenewButton listingId={item.id} />}
-        {item.status === "active" && !item.isExpired && !item.isBoosted && (
-          <BoostButton listingId={item.id} category={item.category} />
+        {isPendingPublish ? (
+          <CompletePublishPaymentButton listing={item} />
+        ) : (
+          <>
+            {canRenew && <RenewButton listingId={item.id} />}
+            {item.status === "active" && !item.isExpired && !item.isBoosted && (
+              <BoostButton listingId={item.id} category={item.category} />
+            )}
+            {item.status === "active" && !item.isExpired && !item.hasInstantAlerts && (
+              <InstantAlertsButton listingId={item.id} />
+            )}
+            <Link
+              href={buildListingPath(item)}
+              aria-label="View listing"
+              title="View listing"
+              className="text-[15px] font-bold text-green border-[1.5px] border-green rounded-lg px-2.5 py-2 inline-flex items-center cursor-pointer bg-transparent"
+            >
+              <Icon name="eye" />
+            </Link>
+          </>
         )}
-        {item.status === "active" && !item.isExpired && !item.hasInstantAlerts && (
-          <InstantAlertsButton listingId={item.id} />
-        )}
-        <Link
-          href={buildListingPath(item)}
-          aria-label="View listing"
-          title="View listing"
-          className="text-[15px] font-bold text-green border-[1.5px] border-green rounded-lg px-2.5 py-2 inline-flex items-center cursor-pointer bg-transparent"
-        >
-          <Icon name="eye" />
-        </Link>
         <Link
           href={`/my-listings/${item.id}/edit`}
           aria-label="Edit listing"
@@ -232,7 +261,7 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
           <Icon name="edit" />
         </Link>
       </div>
-      {item.status === "active" && !item.isExpired && (
+      {item.status === "active" && !item.isExpired && !isPendingPublish && (
         <div className="basis-full border-t border-border pt-3 mt-1">
           <VideoManager listing={item} accessToken={accessToken} />
         </div>

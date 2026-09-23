@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MAX_PRICE_RENTAL = exports.MAX_PRICE_SALE = exports.TITLE_MAX_LENGTH = void 0;
+exports.MAX_PRICE_RENTAL = exports.MAX_PRICE_SALE = exports.LISTING_RENEW_ATTENTION_WINDOW_DAYS = exports.TITLE_MAX_LENGTH = void 0;
 exports.maxPriceFor = maxPriceFor;
 exports.clampPrice = clampPrice;
 exports.clampDigits = clampDigits;
@@ -15,6 +15,8 @@ exports.clampDigits = clampDigits;
 /** Titles render as one line on a listing card. 150 is generous for that and short enough that
  * the whole thing stays readable without truncation. */
 exports.TITLE_MAX_LENGTH = 150;
+/** Days before expiry when renew affordance appears on My listings — shared with seller-attention counts. */
+exports.LISTING_RENEW_ATTENTION_WINDOW_DAYS = 7;
 /** ₹20 crore. */
 exports.MAX_PRICE_SALE = 200_000_000;
 /** ₹10 lakh — a monthly figure, not a total. */

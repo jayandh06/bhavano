@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
@@ -10,6 +11,7 @@ import { BoostButton } from "../../src/components/home/BoostButton";
 import { InstantAlertsButton } from "../../src/components/home/InstantAlertsButton";
 import { Icon } from "../../src/components/Icon";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
+import { appWebUrl } from "../../src/lib/appWebUrl";
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
   active: "Active",
@@ -39,10 +41,25 @@ const renewedAtFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", mo
 export default function MyListingsScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const { openPublishCheckout } = useLocalSearchParams<{ openPublishCheckout?: string }>();
   const { accessToken } = useHomeSheets();
   const { data: listings, isLoading, refetch, isRefetching } = useMyListingsQuery(accessToken);
   const [renewingId, setRenewingId] = useState<string | null>(null);
   const [renewError, setRenewError] = useState<{ id: string; message: string } | null>(null);
+  const autoOpenPublishRef = useRef(false);
+
+  useEffect(() => {
+    if (autoOpenPublishRef.current || !openPublishCheckout || !accessToken || !listings?.length) return;
+    const pending = listings.find((l) => l.id === openPublishCheckout && l.publishState === "pending_checkout");
+    if (!pending) return;
+    autoOpenPublishRef.current = true;
+    void WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openPublishCheckout=${pending.id}`));
+    router.replace("/my-listings");
+  }, [openPublishCheckout, accessToken, listings, router]);
+
+  function openPublishCheckoutOnWeb(listingId: string) {
+    void WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openPublishCheckout=${listingId}`));
+  }
 
   async function onRenew(id: string) {
     if (!accessToken) return;
@@ -88,6 +105,7 @@ export default function MyListingsScreen() {
             const canRenew = item.status === "active" && daysLeft <= RENEW_WINDOW_DAYS;
             const lastRenewedAt = item.renewalHistory?.[0]?.renewedAt;
             const renewing = renewingId === item.id;
+            const isPendingPublish = item.publishState === "pending_checkout";
 
             return (
               <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -97,11 +115,17 @@ export default function MyListingsScreen() {
                   </Text>
                 </View>
                 <View style={styles.badgeRow}>
-                  <View style={[styles.badge, { borderColor: statusColor(item.status, colors) }]}>
-                    <Text style={{ fontSize: 11, fontWeight: "700", color: statusColor(item.status, colors) }}>
-                      {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
-                    </Text>
-                  </View>
+                  {isPendingPublish ? (
+                    <View style={[styles.badge, { borderColor: "#b3413a" }]}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#b3413a" }}>Payment incomplete</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.badge, { borderColor: statusColor(item.status, colors) }]}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: statusColor(item.status, colors) }}>
+                        {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
+                      </Text>
+                    </View>
+                  )}
                   {item.isBoosted && (
                     <View style={[styles.badge, { borderColor: colors.gold, flexDirection: "row", alignItems: "center", gap: 3 }]}>
                       <Icon name="featured" size={11} color={colors.gold} filled />
@@ -113,6 +137,11 @@ export default function MyListingsScreen() {
                 <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6 }}>
                   {item.price} {item.priceQualifier} · {item.area}, {item.cityName}
                 </Text>
+                {isPendingPublish && (
+                  <Text style={{ fontSize: 12.5, color: "#b3413a", marginTop: 6 }}>
+                    Not visible to buyers until you complete payment on the website.
+                  </Text>
+                )}
 
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
@@ -141,7 +170,17 @@ export default function MyListingsScreen() {
                       Boost, Instant Alerts, and whatever's added later), they wrap on their own
                       line and never push the two core nav icons below out of bounds. */}
                   <View style={styles.actionsRow}>
-                    {canRenew && (
+                    {isPendingPublish && (
+                      <Pressable
+                        onPress={() => openPublishCheckoutOnWeb(item.id)}
+                        style={[styles.outlineButton, { borderColor: colors.green, backgroundColor: colors.green }]}
+                      >
+                        <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12.5 }}>
+                          {Platform.OS === "ios" ? "Complete payment on website" : "Complete payment to publish"}
+                        </Text>
+                      </Pressable>
+                    )}
+                    {!isPendingPublish && canRenew && (
                       <Pressable
                         onPress={() => onRenew(item.id)}
                         disabled={renewing}
@@ -152,20 +191,22 @@ export default function MyListingsScreen() {
                         </Text>
                       </Pressable>
                     )}
-                    {item.status === "active" && !item.isExpired && !item.isBoosted && accessToken && (
+                    {!isPendingPublish && item.status === "active" && !item.isExpired && !item.isBoosted && accessToken && (
                       <BoostButton listingId={item.id} category={item.category} accessToken={accessToken} />
                     )}
-                    {item.status === "active" && !item.isExpired && !item.hasInstantAlerts && accessToken && (
+                    {!isPendingPublish && item.status === "active" && !item.isExpired && !item.hasInstantAlerts && accessToken && (
                       <InstantAlertsButton listingId={item.id} accessToken={accessToken} />
                     )}
                   </View>
                   <View style={styles.navRow}>
-                    <Pressable
-                      onPress={() => router.push(`/listing/${item.id}`)}
-                      style={[styles.iconButton, { borderColor: colors.green }]}
-                    >
-                      <Icon name="eye" size={15} color={colors.green} />
-                    </Pressable>
+                    {!isPendingPublish && (
+                      <Pressable
+                        onPress={() => router.push(`/listing/${item.id}`)}
+                        style={[styles.iconButton, { borderColor: colors.green }]}
+                      >
+                        <Icon name="eye" size={15} color={colors.green} />
+                      </Pressable>
+                    )}
                     <Pressable
                       onPress={() => router.push(`/my-listings/${item.id}/edit`)}
                       style={[styles.iconButton, { backgroundColor: colors.green, borderColor: colors.green }]}
