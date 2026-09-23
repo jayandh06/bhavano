@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Stack, useRouter } from "expo-router";
 import type { MessageDeletedEvent, MessageDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -118,11 +109,14 @@ export function ConversationThread({
     ]);
   }
 
+  // react-native-keyboard-controller's KeyboardAvoidingView, not RN's own — this app's Android
+  // keyboard-avoidance (KeyboardAvoidingView + the manifest's windowSoftInputMode="pan") turned
+  // out unreliable under SDK 54's mandatory edge-to-edge, a known ecosystem-wide conflict; this
+  // library tracks the real keyboard frame via its own native module instead of depending on
+  // window resize/pan, so "padding" is now unconditional rather than iOS-only. See
+  // app/_layout.tsx's KeyboardProvider for the required root wrapper.
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader
         title="Conversation"

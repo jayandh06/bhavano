@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import type { City, UserProfileDto } from "@bhavano/types";
@@ -297,10 +298,18 @@ function ProfileFields({
     }
   }
 
+  // react-native-keyboard-controller's KeyboardAwareScrollView, not a KeyboardAvoidingView
+  // wrapping a plain ScrollView — that combination only *shrinks* the available space; it never
+  // scrolls a newly-focused field into it. Phone (and the OTP/email-code fields near it) sit
+  // several conditional sections down this form, deep enough that neither RN's own implicit
+  // "scroll focused input into view" nor a bare shrink reliably reached them. This component does
+  // both in one piece, identically on iOS and Android — replacing the previous iOS-only
+  // automaticallyAdjustKeyboardInsets + Android's now-unreliable manifest pan mode with a single
+  // mechanism that doesn't depend on either. See app/_layout.tsx's KeyboardProvider.
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScreenHeader title="Account" onBack={onBack} />
-      <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Profile</Text>
 
       <Text style={[styles.label, { color: colors.muted }]}>Name</Text>
@@ -639,8 +648,16 @@ function ProfileFields({
             No reveals left. Buy a credit pack from any listing&rsquo;s &ldquo;View Contact&rdquo; button.
           </Text>
         )}
-        <Pressable onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/premium#contact-reveal-credits`)} style={{ marginTop: 8 }}>
-          <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>See pricing →</Text>
+        <Pressable
+          onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/premium#contact-reveal-credits`)}
+          style={{ marginTop: 8, flexDirection: "row", alignItems: "center", gap: 3 }}
+        >
+          {/* A vector icon, not a "→" text glyph — the glyph's rendering depends on the device's
+              own font having it, which isn't guaranteed on every Android font/OS version (it
+              showed up as a stray "'n" on real devices). Same fix as BoostPlanSelector/
+              BoostBundleCard's price arrows and PostAdWizard's step arrows. */}
+          <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>See pricing</Text>
+          <Icon name="chevronRight" size={11} color={colors.green} />
         </Pressable>
       </View>
 
@@ -667,7 +684,7 @@ function ProfileFields({
       </Pressable>
 
       <LegalFooter />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
@@ -76,17 +77,25 @@ function AppNavigation() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AppThemeProvider>
-            <BottomSheetModalProvider>
-              {/* Always light: the status-bar strip is `chrome` (dark) in both themes. */}
-              <StatusBar style="light" />
-              <AppNavigation />
-            </BottomSheetModalProvider>
-          </AppThemeProvider>
-        </QueryClientProvider>
-      </SafeAreaProvider>
+      {/* Enables the native keyboard-tracking every KeyboardAvoidingView from
+          react-native-keyboard-controller (not RN's own) depends on — see that import's own
+          comment in each screen for why the switch happened. Independent of @gorhom/bottom-sheet's
+          own keyboard handling (its sheets read nothing from this), so it doesn't affect or
+          conflict with the login/filter/option sheets already working correctly on both platforms.
+          Wrapped as high as the tree allows so every screen can use it. */}
+      <KeyboardProvider>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <AppThemeProvider>
+              <BottomSheetModalProvider>
+                {/* Always light: the status-bar strip is `chrome` (dark) in both themes. */}
+                <StatusBar style="light" />
+                <AppNavigation />
+              </BottomSheetModalProvider>
+            </AppThemeProvider>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

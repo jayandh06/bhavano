@@ -15,6 +15,7 @@ import {
   BottomSheetTextInput,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
@@ -552,6 +553,21 @@ export function HomeSheetsProvider({
         android_keyboardInputMode="adjustResize"
       >
         <BottomSheetView style={styles.sheetContent}>
+        {/* KeyboardAvoidingView, not gorhom's own android_keyboardInputMode="adjustResize" alone
+            (still set above, harmless to leave) — that prop depends on Android's window actually
+            resizing in response to the keyboard, which SDK 54's mandatory edge-to-edge breaks, the
+            same root cause already fixed for the long-form screens (see PostAdWizard.tsx/
+            account.tsx's identical comment). Android-only: iOS's keyboardBehavior="interactive"
+            already works correctly here (gorhom handles it natively there), and wrapping iOS in
+            this too risks the two mechanisms fighting over the same space. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "android" ? "padding" : undefined}
+          // Without this, "padding" still applies but computes against the wrong reference point —
+          // by default this assumes it sits flush against the true top of the screen, which a
+          // BottomSheetModal's content never does (it's offset by wherever the sheet's snap point
+          // puts it). This is the specific case the prop's own doc comment names ("modals").
+          automaticOffset
+        >
           {loginStep === "choose" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Log in to continue</Text>
@@ -665,6 +681,7 @@ export function HomeSheetsProvider({
               </Pressable>
             </>
           )}
+        </KeyboardAvoidingView>
         </BottomSheetView>
       </BottomSheetModal>
 

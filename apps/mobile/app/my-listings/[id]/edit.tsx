@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
@@ -224,18 +224,12 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
     }
   }
 
-  // react-native-keyboard-controller's KeyboardAvoidingView, not RN's own — see
-  // ProfileFields'/ConversationThread's identical comment for why "padding" is now unconditional
-  // rather than iOS-only.
+  // react-native-keyboard-controller's KeyboardAwareScrollView — see ProfileFields' identical
+  // comment for why this replaces a KeyboardAvoidingView+ScrollView pair: that combination only
+  // shrinks the available space, it never scrolls a newly-focused field (this form's fields nest
+  // several conditional levels deep) into the space it shrunk.
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-    <ScrollView
-      contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
-      // Same reasoning as PostAdWizard/ProfileFields: a long form with conditionally-nested
-      // fields, where KeyboardAvoidingView's padding alone did not reliably scroll a
-      // newly-focused one into view.
-      automaticallyAdjustKeyboardInsets
-    >
+    <KeyboardAwareScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}>
       <Text style={[styles.label, { color: colors.textSoft }]}>Category / transaction</Text>
       <View style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
         <Text style={{ color: colors.textSoft, fontSize: 14 }}>
@@ -477,8 +471,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
       >
         {saving ? <ActivityIndicator color={colors.onGreen} /> : <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Save changes</Text>}
       </Pressable>
-    </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
 
