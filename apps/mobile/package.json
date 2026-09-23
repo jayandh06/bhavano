@@ -6,6 +6,7 @@
     "@bhavano/types": "workspace:*",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-google-signin/google-signin": "^16.1.5",
     "@tanstack/react-query": "^5.101.2",
     "expo": "~57.0.4",
     "expo-apple-authentication": "~57.0.2",
@@ -27,6 +28,7 @@
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
     "react-native-gesture-handler": "~2.32.0",
+    "react-native-keyboard-controller": "1.21.9",
     "react-native-maps": "1.27.2",
     "react-native-razorpay": "^3.0.0",
     "react-native-reanimated": "~4.5.0",
@@ -58,11 +60,21 @@
   },
   "private": true,
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts", "tsx"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts",
+      "tsx"
+    ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "<rootDir>/../tsconfig.jest.json" }]
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "tsconfig": "<rootDir>/../tsconfig.jest.json"
+        }
+      ]
     },
     "testEnvironment": "node"
   }

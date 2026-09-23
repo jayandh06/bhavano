@@ -11,12 +11,19 @@ module.exports = {
     // refuses to build. The EAS project is "bhavano" under the finfolia-technologies-llp account.
     slug: "bhavano",
     owner: "finfolia-technologies-llp",
-    // "bhavano" is the app's own deep-link scheme. The second entry is the reversed form of the
-    // iOS Google OAuth client ID: Google redirects there after sign-in, and iOS only hands the
-    // callback to this app if the scheme is declared here. It is a public identifier, not a
-    // secret — it ships inside every iOS app that uses Google sign-in. Changing the OAuth client
-    // means changing this string and rebuilding, since it lands in Info.plist at build time.
-    scheme: ["bhavano", "com.googleusercontent.apps.336986668125-vs9rfncotlefvtc9e7rsl15r5lhmjfht"],
+    // "bhavano" is the app's own deep-link scheme. The other two are the reversed form of the
+    // iOS and Android Google OAuth client IDs: Google redirects there after sign-in, and iOS/
+    // Android only hand the callback to this app if its own scheme is declared here — an app
+    // built with only the iOS one present (as this briefly was) has nowhere to route the Android
+    // client's callback at all, regardless of what the JS side sends as the request's client_id.
+    // Public identifiers, not secrets — they ship inside every app that uses Google sign-in.
+    // Changing either OAuth client means changing its string here and rebuilding, since both land
+    // in native config (Info.plist / AndroidManifest.xml) at build time.
+    scheme: [
+      "bhavano",
+      "com.googleusercontent.apps.336986668125-vs9rfncotlefvtc9e7rsl15r5lhmjfht",
+      "com.googleusercontent.apps.336986668125-gujm24as4oq0lqktsn8it63hgg2pm9hi",
+    ],
     version: "1.0.0",
     // EAS Update, added by `eas update:configure` (which can only print these for a dynamic
     // config, not write them). The "appVersion" policy ties an update to the `version` above, so
@@ -56,6 +63,16 @@ module.exports = {
       },
     },
     android: {
+      // Without this, the whole window neither pans nor resizes when the keyboard opens, so it
+      // simply draws on top of whatever was focused — the login sheet's phone/OTP fields, the
+      // filter sheet's price fields, and (with no sheet at all involved) the posting form's price
+      // field in its own plain ScrollView. This used to be Android's implicit default, but SDK
+      // 57's edge-to-edge broke that. `android_keyboardInputMode="adjustResize"` on the two
+      // BottomSheetModals (HomeSheetsProvider's login sheet, FilterSheet) is gorhom's per-sheet
+      // half of the same fix — it only takes effect paired with this manifest-level "pan", per
+      // https://docs.expo.dev/guides/keyboard-handling/. Native-level (AndroidManifest
+      // windowSoftInputMode), so this needs a new Android build, not just a JS reload.
+      softwareKeyboardLayoutMode: "pan",
       adaptiveIcon: {
         backgroundColor: "#11523C",
         foregroundImage: "./assets/android-icon-foreground.png",
@@ -108,6 +125,23 @@ module.exports = {
         "react-native-maps",
         {
           androidGoogleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY,
+        },
+      ],
+      // Android-only in practice: Google deprecated custom-URI-scheme OAuth redirects for Android
+      // apps ("Error 400: invalid_request — Custom URI scheme is not enabled for your Android
+      // client"), which is what googleSignIn.ts's browser-redirect flow depends on — iOS has no
+      // such restriction and keeps using that flow untouched. This plugin's native module is what
+      // lets Android call Play Services' own account picker directly instead, with no redirect at
+      // all. `iosUrlScheme` is mandatory for this plugin regardless of platform (it throws without
+      // it) — reusing the iOS client's already-registered scheme from `scheme` above rather than
+      // registering a second, functionally-identical one; the plugin's own de-dupe check
+      // (IOSConfig.Scheme.hasScheme) is what keeps this a no-op on iOS's Info.plist. Passing this
+      // option is also what avoids the alternative "Firebase" mode, which needs a
+      // google-services.json this repo has never had any reason to set up.
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          iosUrlScheme: "com.googleusercontent.apps.336986668125-vs9rfncotlefvtc9e7rsl15r5lhmjfht",
         },
       ],
     ],
