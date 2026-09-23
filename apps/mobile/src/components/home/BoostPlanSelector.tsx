@@ -42,9 +42,19 @@ export function BoostPlanSelector({
         : "boost15";
   const option = pricing[optionKey];
 
-  function priceText(opt: BoostPricingPreviewDto["boost7"]): string {
-    if (opt.free) return "Free";
-    return opt.discountApplied ? `₹${opt.originalAmount} → ₹${opt.amount}` : `₹${opt.amount}`;
+  // Was a single string with a "→" glyph — reported on Android as rendering as a stray "'n"
+  // instead of an arrow (see BoostBundleCard's identical PriceText for the likely cause: this
+  // app's custom fonts have no glyph for U+2192). Both places this renders here sit on a plain
+  // surface, so colors.muted always reads fine — no need for BoostBundleCard's strikeColor prop.
+  function PriceText({ opt }: { opt: BoostPricingPreviewDto["boost7"] }) {
+    if (opt.free) return <>Free</>;
+    if (!opt.discountApplied) return <>₹{opt.amount}</>;
+    return (
+      <>
+        <Text style={{ textDecorationLine: "line-through", color: colors.muted }}>₹{opt.originalAmount}</Text>{" "}
+        ₹{opt.amount}
+      </>
+    );
   }
 
   return (
@@ -79,7 +89,7 @@ export function BoostPlanSelector({
             >
               <Text style={{ flex: 1, fontWeight: "700", fontSize: 14, color: colors.text }}>Boost {days} days</Text>
               <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>
-                {priceText(days === 7 ? pricing.boost7 : pricing.boost15)}
+                <PriceText opt={days === 7 ? pricing.boost7 : pricing.boost15} />
               </Text>
             </Pressable>
           );
@@ -100,7 +110,13 @@ export function BoostPlanSelector({
       </View>
 
       <Text style={{ fontWeight: "700", fontSize: 13, color: colors.green, marginTop: 12 }}>
-        {value ? `Total: ${priceText(option)}` : "Not boosting this ad"}
+        {value ? (
+          <>
+            Total: <PriceText opt={option} />
+          </>
+        ) : (
+          "Not boosting this ad"
+        )}
       </Text>
 
       <Pressable onPress={() => onChange(value ? null : effective)} style={{ marginTop: 10 }}>

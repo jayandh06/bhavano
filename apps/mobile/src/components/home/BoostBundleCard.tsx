@@ -90,10 +90,26 @@ export function BoostBundleCard({
     // "cancelled" — same as before, no error shown, just re-enable the button.
   }
 
-  function priceText(opt: BoostPricingPreviewDto["boost7"] | undefined): string {
-    if (!opt) return "…";
-    if (opt.free) return "Free";
-    return opt.discountApplied ? `₹${opt.originalAmount} → ₹${opt.amount}` : `₹${opt.amount}`;
+  // Was a single string with a "→" (U+2192) glyph between old and new price — reported on
+  // Android as rendering as a stray "'n" instead of an arrow, almost certainly this app's custom
+  // fonts (Lora/Manrope) having no glyph for that character and Android's fallback substitution
+  // going wrong rather than just showing empty/tofu. Rebuilt as real nested <Text> — a
+  // strikethrough old price plus the new one — which needs no font to contain an arrow at all,
+  // and reads as a clearer "was → now" than embedding a special character ever did.
+  // `strikeColor` is a prop rather than fixed to one color: this renders both on a plain
+  // surface row (colors.muted reads fine there) and inside the solid-green Pay button
+  // (colors.muted would be low-contrast against green — colors.onGreenMuted is the pair
+  // that exists specifically for a muted element on that background).
+  function PriceText({ opt, strikeColor }: { opt: BoostPricingPreviewDto["boost7"] | undefined; strikeColor: string }) {
+    if (!opt) return <>…</>;
+    if (opt.free) return <>Free</>;
+    if (!opt.discountApplied) return <>₹{opt.amount}</>;
+    return (
+      <>
+        <Text style={{ textDecorationLine: "line-through", color: strikeColor }}>₹{opt.originalAmount}</Text>{" "}
+        ₹{opt.amount}
+      </>
+    );
   }
 
   // Admin has moved this offer onto the ad-preview step instead — see
@@ -132,7 +148,7 @@ export function BoostBundleCard({
           >
             <Text style={{ flex: 1, fontWeight: "700", fontSize: 14, color: colors.text }}>Boost {days} days</Text>
             <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>
-              {priceText(days === 7 ? pricing?.boost7 : pricing?.boost15)}
+              <PriceText opt={days === 7 ? pricing?.boost7 : pricing?.boost15} strikeColor={colors.muted} />
             </Text>
           </Pressable>
         ))}
@@ -157,7 +173,13 @@ export function BoostBundleCard({
         style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16, opacity: pending || !option ? 0.6 : 1 }]}
       >
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>
-          {option?.free ? "Activate for free" : `Pay ${priceText(option)}`}
+          {option?.free ? (
+            "Activate for free"
+          ) : (
+            <>
+              Pay <PriceText opt={option} strikeColor={colors.onGreenMuted} />
+            </>
+          )}
         </Text>
       </Pressable>
     </View>
