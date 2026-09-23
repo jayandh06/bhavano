@@ -28,10 +28,11 @@ export default async function PlansSettingsPage() {
         </Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>Plans</h1>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 24px" }}>
-          Boost prices, Instant Alerts pricing, and subscription tiers (Bhavano Plus, Agent/Broker
-          Pro, Seller slot pack) including listing-slot counts. Changes take effect immediately —
-          the boost picker, the Instant Alerts modal, the Bhavano Plus subscribe button, and the
-          plan comparison page all read these live, and checkout charges exactly what's saved here.
+          Platform fee, boost prices, Instant Alerts pricing, and subscription tiers (Bhavano Plus,
+          Agent/Broker Pro, Seller slot pack) including listing-slot counts. Changes take effect
+          immediately — post-ad checkout, the boost picker, the Instant Alerts modal, the Bhavano
+          Plus subscribe button, and the plan comparison page all read these live, and checkout
+          charges exactly what&apos;s saved here.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 32, maxWidth: 720 }}>

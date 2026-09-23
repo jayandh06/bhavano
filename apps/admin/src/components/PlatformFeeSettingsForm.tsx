@@ -16,9 +16,9 @@ export function PlatformFeeSettingsForm({ initial }: { initial: PlatformFeeSetti
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const parsed: PlatformFeeSettings = {
-    propertyListingFee: Number(propertyListingFee),
-    coworkingPgStorageListingFee: Number(coworkingPgStorageListingFee),
-    furnitureInteriorsListingFee: Number(furnitureInteriorsListingFee),
+    propertyListingFee: Number(propertyListingFee || "0"),
+    coworkingPgStorageListingFee: Number(coworkingPgStorageListingFee || "0"),
+    furnitureInteriorsListingFee: Number(furnitureInteriorsListingFee || "0"),
   };
   const valid = Object.values(parsed).every((n) => Number.isInteger(n) && n >= 0);
 
@@ -34,29 +34,87 @@ export function PlatformFeeSettingsForm({ initial }: { initial: PlatformFeeSetti
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-        Mandatory fee when posting an ad (per category tier). Set a tier to <strong>₹0</strong> to turn off the
-        platform fee for that group. Boost and Instant Alerts stay optional add-ons at checkout.
-      </p>
-      <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-        Property listings (₹)
-        <input value={propertyListingFee} onChange={(e) => setPropertyListingFee(e.target.value)} />
-      </label>
-      <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-        PG / coworking / storage (₹)
-        <input value={coworkingPgStorageListingFee} onChange={(e) => setCoworkingPgStorageListingFee(e.target.value)} />
-      </label>
-      <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
-        Furniture / interiors (₹)
-        <input
-          value={furnitureInteriorsListingFee}
-          onChange={(e) => setFurnitureInteriorsListingFee(e.target.value)}
-        />
-      </label>
-      <button type="button" disabled={!valid || saving} onClick={() => void onSave()} style={{ alignSelf: "flex-start" }}>
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>House / Apartment / Villa / Plot / Commercial</div>
+        <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 12px" }}>
+          Mandatory at publish checkout when greater than ₹0. Set to ₹0 to hide the fee for this tier.
+        </p>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Field label="Platform fee (₹)" value={propertyListingFee} onChange={setPropertyListingFee} />
+        </div>
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Coworking / PG / Storage</div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Field
+            label="Platform fee (₹)"
+            value={coworkingPgStorageListingFee}
+            onChange={setCoworkingPgStorageListingFee}
+          />
+        </div>
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Furniture / Interiors</div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Field
+            label="Platform fee (₹)"
+            value={furnitureInteriorsListingFee}
+            onChange={setFurnitureInteriorsListingFee}
+          />
+        </div>
+      </div>
+
+      {message && (
+        <p style={{ fontSize: 13, color: message.type === "success" ? "var(--green)" : "var(--danger)", margin: 0 }}>
+          {message.text}
+        </p>
+      )}
+
+      <button
+        onClick={onSave}
+        disabled={saving || !valid}
+        style={{
+          background: "var(--green)",
+          color: "var(--on-green)",
+          border: "none",
+          borderRadius: 8,
+          padding: 13,
+          fontSize: 14,
+          fontWeight: 700,
+          cursor: "pointer",
+          opacity: saving || !valid ? 0.6 : 1,
+        }}
+      >
         {saving ? "Saving…" : "Save platform fee"}
       </button>
-      {message && <p style={{ fontSize: 13, color: message.type === "success" ? "var(--green)" : "#b3413a" }}>{message.text}</p>}
+    </div>
+  );
+}
+
+function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <label style={{ display: "block", fontSize: 11.5, color: "var(--muted)", marginBottom: 6, fontWeight: 700 }}>
+        {label}
+      </label>
+      <input
+        type="number"
+        min={0}
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ""))}
+        style={{
+          width: "100%",
+          border: "1px solid var(--border)",
+          borderRadius: 9,
+          padding: "10px 12px",
+          fontSize: 14,
+          outline: "none",
+          background: "var(--surface)",
+          color: "var(--text)",
+        }}
+      />
     </div>
   );
 }
