@@ -978,7 +978,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
     },
     {
       key: "plotDimensions",
-      label: "Dimensions (optional)",
+      label: "Dimensions",
       type: "text",
       compact: true,
       section: "plotDetails",

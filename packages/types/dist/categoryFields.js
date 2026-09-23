@@ -891,7 +891,7 @@ exports.CATEGORY_FIELD_CONFIG = {
         },
         {
             key: "plotDimensions",
-            label: "Dimensions (optional)",
+            label: "Dimensions",
             type: "text",
             compact: true,
             section: "plotDetails",

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { Fragment, useRef, useState, type ReactNode } from "react";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import type { FieldDef, FieldOption, FieldSection } from "@bhavano/types/categoryFields";
 import {
@@ -139,46 +139,24 @@ function CategoryFieldInput({
   field,
   value,
   onChange,
-  unitValue,
-  onUnitChange,
 }: {
   field: FieldDef;
   value: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
-  /** `type: "area"` only — the sibling `${field.key}Unit` attribute's current value. */
-  unitValue?: string;
-  onUnitChange?: (unit: string) => void;
 }) {
   if (field.type === "area") {
-    const units = field.units ?? ["sqft"];
-    const unit = (unitValue as AreaUnit | undefined) ?? "sqft";
+    // The unit picker (when there is more than one) renders as its own adjacent grid cell —
+    // see FieldRunBlock — not paired inline here, so this is just a plain number input.
     return (
-      <div className="flex gap-2">
-        <input
-          type="number"
-          inputMode="decimal"
-          min={field.min ?? 0}
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(sanitizeNonNegative(e.target.value))}
-          placeholder={field.placeholder}
-          className={fieldClass}
-        />
-        {/* Only Plot/Commercial ever have more than one unit — every other area field renders a
-          * plain number input, visually identical to before this field type existed. */}
-        {units.length > 1 && (
-          <SelectField
-            value={unit}
-            onChange={(e) => onUnitChange?.(e.target.value)}
-            className="w-[130px] shrink-0"
-          >
-            {units.map((u) => (
-              <option key={u} value={u}>
-                {AREA_UNIT_LABELS[u]}
-              </option>
-            ))}
-          </SelectField>
-        )}
-      </div>
+      <input
+        type="number"
+        inputMode="decimal"
+        min={field.min ?? 0}
+        value={typeof value === "string" ? value : ""}
+        onChange={(e) => onChange(sanitizeNonNegative(e.target.value))}
+        placeholder={field.placeholder}
+        className={fieldClass}
+      />
     );
   }
 
@@ -347,17 +325,26 @@ function groupFieldsByChain(fields: FieldDef[]): FieldRun[] {
  * trailing amount field stay adjacent while still getting the same compact grid treatment. */
 function FieldRunBlock({
   run,
+  section,
   attributes,
   onChange,
   onUnitChange,
 }: {
   run: FieldRun;
+  section: FieldSection | "other";
   attributes: Record<string, string | string[]>;
   onChange: (field: FieldDef, value: string | string[]) => void;
   onUnitChange: (field: FieldDef, unit: string) => void;
 }) {
   const toggleFields = run.fields.filter(isYesNoField);
   const otherFields = run.fields.filter((field) => !isYesNoField(field));
+  // Plot details is short enough — Area, its Unit, Dimensions, Facing — to fill an entire row
+  // itself at a fixed 25% each, on every viewport including a narrow phone browser, rather than
+  // the general responsive 2/3/4-column grid every other section uses.
+  const otherFieldsGridClass =
+    section === "plotDetails"
+      ? "grid grid-cols-4 gap-x-2 gap-y-4"
+      : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-4";
   return (
     <div className="flex flex-col gap-3">
       {toggleFields.length > 0 && (
@@ -368,32 +355,41 @@ function FieldRunBlock({
               field={field}
               value={attributes[field.key]}
               onChange={(value) => onChange(field, value)}
-              unitValue={typeof attributes[`${field.key}Unit`] === "string" ? (attributes[`${field.key}Unit`] as string) : undefined}
-              onUnitChange={(unit) => onUnitChange(field, unit)}
             />
           ))}
         </div>
       )}
       {otherFields.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-4">
-          {otherFields.map((field) => (
-            <div
-              key={field.key}
-              className={
-                field.type === "multi-select" || (field.type === "text" && !field.compact)
-                  ? "col-span-full"
-                  : undefined
-              }
-            >
-              <CategoryField
-                field={field}
-                value={attributes[field.key]}
-                onChange={(value) => onChange(field, value)}
-                unitValue={typeof attributes[`${field.key}Unit`] === "string" ? (attributes[`${field.key}Unit`] as string) : undefined}
-                onUnitChange={(unit) => onUnitChange(field, unit)}
-              />
-            </div>
-          ))}
+        <div className={otherFieldsGridClass}>
+          {otherFields.map((field) => {
+            // The unit dropdown (Plot/Commercial's Area field only) gets its own adjacent grid
+            // cell — see AreaUnitField — instead of being paired inline inside this one.
+            const isMultiUnitArea = field.type === "area" && (field.units?.length ?? 1) > 1;
+            return (
+              <Fragment key={field.key}>
+                <div
+                  className={
+                    field.type === "multi-select" || (field.type === "text" && !field.compact)
+                      ? "col-span-full"
+                      : undefined
+                  }
+                >
+                  <CategoryField
+                    field={field}
+                    value={attributes[field.key]}
+                    onChange={(value) => onChange(field, value)}
+                  />
+                </div>
+                {isMultiUnitArea && (
+                  <AreaUnitField
+                    field={field}
+                    unit={(attributes[`${field.key}Unit`] as AreaUnit | undefined) ?? "sqft"}
+                    onChange={(unit) => onUnitChange(field, unit)}
+                  />
+                )}
+              </Fragment>
+            );
+          })}
         </div>
       )}
     </div>
@@ -408,14 +404,10 @@ function CategoryField({
   field,
   value,
   onChange,
-  unitValue,
-  onUnitChange,
 }: {
   field: FieldDef;
   value: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
-  unitValue?: string;
-  onUnitChange?: (unit: string) => void;
 }) {
   const labelText = (
     <>
@@ -444,7 +436,37 @@ function CategoryField({
       <label className={`${labelClass} truncate`} title={field.label}>
         {labelText}
       </label>
-      <CategoryFieldInput field={field} value={value} onChange={onChange} unitValue={unitValue} onUnitChange={onUnitChange} />
+      <CategoryFieldInput field={field} value={value} onChange={onChange} />
+    </div>
+  );
+}
+
+/** The unit dropdown for an `type: "area"` field with more than one allowed unit — rendered as
+ * its own grid cell right beside the field it belongs to (see FieldRunBlock), not paired inline
+ * with the number input, so it can take an equal share of the row's width instead of a fixed
+ * 130px slice of whatever the number input didn't use. */
+function AreaUnitField({
+  field,
+  unit,
+  onChange,
+}: {
+  field: FieldDef;
+  unit: AreaUnit;
+  onChange: (unit: string) => void;
+}) {
+  const units = field.units ?? ["sqft"];
+  return (
+    <div>
+      <label className={`${labelClass} truncate`} title="Unit">
+        Unit
+      </label>
+      <SelectField value={unit} onChange={(e) => onChange(e.target.value)}>
+        {units.map((u) => (
+          <option key={u} value={u}>
+            {AREA_UNIT_LABELS[u]}
+          </option>
+        ))}
+      </SelectField>
     </div>
   );
 }
@@ -538,6 +560,7 @@ export function CategoryFieldsAccordion({
                   <FieldRunBlock
                     key={run.fields[0].key}
                     run={run}
+                    section={section}
                     attributes={attributes}
                     onChange={setFieldValue}
                     onUnitChange={setFieldUnit}
