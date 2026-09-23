@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
@@ -26,6 +26,8 @@ import {
   groupFieldsBySection,
   pruneHiddenAttributes,
   SECTION_LABELS,
+  SECTION_ORDER,
+  type FieldSection,
 } from "@bhavano/types/categoryFields";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
@@ -218,7 +220,7 @@ export function PostAdWizard({
     const raf = requestAnimationFrame(() => setDetailsReady(true));
     return () => cancelAnimationFrame(raf);
   }, [step]);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
   // Mirrors the web wizard's StepTracker scroll reset (apps/web/src/components/home/
   // PostAdWizard.tsx) — without it, a step reached after scrolling down on the previous one
   // rendered wherever that old offset landed, often off-screen on a phone.
@@ -742,13 +744,23 @@ export function PostAdWizard({
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
 
-  // Pulled out of the main section loop below and rendered inside the hardcoded Price/Price-per-
-  // unit block instead — that block used to sit above "Pricing & fees" with no heading of its own
-  // while a category's own pricing fields (brokerage, maintenance) rendered in a second "Pricing &
-  // fees" box further down; the seller landed on that second box looking for the price toggle and
-  // didn't find it there. One box now, same as the website's `sectionExtras.pricing`.
-  const pricingFields = visibleFields.filter((field) => field.section === "pricing");
-  const otherVisibleFields = visibleFields.filter((field) => field.section !== "pricing");
+  // Same merge CategoryFieldsForm.tsx's `sectionExtras` does for the edit screen — the
+  // Price/Price-per-unit/qualifier block below is folded into whichever position SECTION_ORDER
+  // puts "pricing" at, category by category, rather than pinned above every other section
+  // regardless of order. That fixed pin is what used to put "Pricing & fees" ahead of "Plot
+  // details" here even after the website was reordered to put Plot details first — the price
+  // toggle depends on the area/unit chosen there, so pricing has to render after it, not before.
+  // `extraOnlySections` guarantees a "pricing" box exists even for a category with none of its
+  // own pricing-section fields (pg/coworking has neither brokerage nor maintenance fee), since
+  // the Price/qualifier inputs below must always show somewhere.
+  const fieldSections = groupFieldsBySection(visibleFields);
+  const orderIndex = (section: FieldSection | "other") =>
+    section === "other" ? SECTION_ORDER.length : SECTION_ORDER.indexOf(section);
+  const sections = fieldSections.some((s) => s.section === "pricing")
+    ? fieldSections
+    : [...fieldSections, { section: "pricing" as const, label: SECTION_LABELS.pricing, fields: [] as FieldConfig[] }].sort(
+        (a, b) => orderIndex(a.section) - orderIndex(b.section),
+      );
 
   // Only currently-visible required fields block submission — one hidden behind an unmet gate
   // can't be filled in anyway.
@@ -868,24 +880,20 @@ export function PostAdWizard({
   }
   const prevStep = previousStep();
 
-  // react-native-keyboard-controller's KeyboardAvoidingView, not RN's own — see ProfileFields'
-  // identical comment for why "padding" is now unconditional. Wraps only the header+ScrollView,
-  // not the BottomSheetModal below (the option-picker sheet) — that already has its own keyboard
-  // handling via gorhom's props, unrelated to this library, and nesting it inside this would fight
-  // that rather than help it.
+  // react-native-keyboard-controller's KeyboardAwareScrollView — see ProfileFields' identical
+  // comment for why this replaces a KeyboardAvoidingView+ScrollView pair: that combination only
+  // shrinks the available space, it never scrolls a newly-focused field (this form's fields nest
+  // inside several conditional sections — category, step, field type) into the space it shrunk.
+  // Not wrapping the BottomSheetModal below (the option-picker sheet) — that already has its own
+  // keyboard handling via gorhom's props, unrelated to this library.
   return (
     <>
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+    <View style={{ flex: 1 }}>
     <ScreenHeader title="Post an Ad" onBack={prevStep ? () => setStep(prevStep) : undefined} />
-    <ScrollView
+    <KeyboardAwareScrollView
       ref={scrollRef}
       style={{ flex: 1 }}
       contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
-      // See ProfileFields' identical prop in app/(tabs)/account.tsx for why: this form is long
-      // and its fields nest inside several conditional sections (category, step, field type),
-      // deep enough that KeyboardAvoidingView's padding alone does not reliably scroll a newly
-      // -focused one into view.
-      automaticallyAdjustKeyboardInsets
     >
       {step !== "success" && (
         // A vector icon, not a "→" text glyph, between steps — a Unicode arrow's rendering
@@ -950,68 +958,6 @@ export function PostAdWizard({
 
       {step === "details" && category && transactionType && detailsReady && (
         <View style={{ gap: 4 }}>
-          {/* One "Pricing & fees" box for the price/toggle/qualifier below plus the category's
-            * own pricing fields (brokerage, maintenance) — see pricingFields' own comment for why
-            * those are pulled out of the main section loop rather than left to render in a
-            * second, separate "Pricing & fees" box further down the form. */}
-          <Text
-            style={[
-              styles.sectionHeading,
-              { color: colors.green, backgroundColor: colors.surfaceAlt, borderLeftColor: colors.green },
-            ]}
-          >
-            {SECTION_LABELS.pricing}
-          </Text>
-          {priceUnitAreaField && (
-            <View style={[styles.chipRow, { marginBottom: 4 }]}>
-              <Pressable
-                onPress={() => setPriceMode("total")}
-                style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "total" ? colors.surfaceAlt : "transparent" }]}
-              >
-                <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Total price</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setPriceMode("perUnit")}
-                style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "perUnit" ? colors.surfaceAlt : "transparent" }]}
-              >
-                <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>
-                  Price per {areaUnitShortLabel(currentAreaUnit, 1)}
-                </Text>
-              </Pressable>
-            </View>
-          )}
-          <Text style={[styles.label, { color: colors.textSoft }]}>
-            {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹) *` : "Price (₹) *"}
-          </Text>
-          <TextInput
-            value={price}
-            onChangeText={(v) => setPrice(clampPrice(v, transactionType))}
-            keyboardType="number-pad"
-            placeholder="e.g. 25000"
-            placeholderTextColor={colors.muted}
-            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-          />
-          {price.length > 0 && !priceIsValid(price, category) && (
-            <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
-          )}
-
-          <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier *</Text>
-          <View style={styles.chipRow}>
-            {getPriceQualifierOptions(category, transactionType).map((opt) => (
-              <Pressable
-                key={opt.value}
-                onPress={() => setPriceQualifier(opt.value)}
-                style={[styles.chip, { borderColor: colors.border, backgroundColor: priceQualifier === opt.value ? colors.surfaceAlt : "transparent" }]}
-              >
-                <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{opt.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {pricingFields.length > 0 && (
-            <View style={[styles.attrGrid, { marginTop: 4 }]}>{pricingFields.flatMap(renderFieldCells)}</View>
-          )}
-
           <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
             <Text style={[styles.label, { color: colors.textSoft }]}>Title</Text>
             {/* Counts up rather than down, so it reads as progress instead of a warning, and
@@ -1126,24 +1072,72 @@ export function PostAdWizard({
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
               {POST_CATEGORIES.find((c) => c.value === category)?.label} details
             </Text>
-            {/* Grouped into the config's own sections (basics, preferences, …) in SECTION_ORDER,
-                the same helper the desktop wizard uses — one flat run of twenty-odd controls gave
-                the seller no sense of where they were or how much was left. "pricing" is excluded
-                here — see pricingFields' own comment — since it already rendered above, folded
-                into the Price/Price-per-unit block. */}
-            {groupFieldsBySection(otherVisibleFields).map((group) => (
-            <View key={group.section}>
+            {/* Grouped into the config's own sections (pricing, basics, preferences, …) in
+                SECTION_ORDER, the same helper the desktop wizard uses and the same order it now
+                renders in — Plot's "plotDetails" section comes before "pricing" there since the
+                price toggle depends on the area/unit chosen in it, and `sections` (see its own
+                comment above) puts them in that same order here. */}
+            {sections.map(({ section, label, fields }) => (
+            <View key={section}>
             <Text
               style={[
                 styles.sectionHeading,
                 { color: colors.green, backgroundColor: colors.surfaceAlt, borderLeftColor: colors.green },
               ]}
             >
-              {group.label}
+              {label}
             </Text>
+            {section === "pricing" && (
+              <View style={{ gap: 4, marginBottom: 4 }}>
+                {priceUnitAreaField && (
+                  <View style={styles.chipRow}>
+                    <Pressable
+                      onPress={() => setPriceMode("total")}
+                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "total" ? colors.surfaceAlt : "transparent" }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>Total price</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setPriceMode("perUnit")}
+                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceMode === "perUnit" ? colors.surfaceAlt : "transparent" }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>
+                        Price per {areaUnitShortLabel(currentAreaUnit, 1)}
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
+                <Text style={[styles.label, { color: colors.textSoft }]}>
+                  {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹) *` : "Price (₹) *"}
+                </Text>
+                <TextInput
+                  value={price}
+                  onChangeText={(v) => setPrice(clampPrice(v, transactionType))}
+                  keyboardType="number-pad"
+                  placeholder="e.g. 25000"
+                  placeholderTextColor={colors.muted}
+                  style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                />
+                {price.length > 0 && !priceIsValid(price, category) && (
+                  <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
+                )}
+                <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier *</Text>
+                <View style={styles.chipRow}>
+                  {getPriceQualifierOptions(category, transactionType).map((opt) => (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => setPriceQualifier(opt.value)}
+                      style={[styles.chip, { borderColor: colors.border, backgroundColor: priceQualifier === opt.value ? colors.surfaceAlt : "transparent" }]}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700" }}>{opt.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
             {/* Two per row: these are mostly one-word labels over a small control, so a full-width
                 row wasted most of its width and made the section three screens long. */}
-            <View style={styles.attrGrid}>{group.fields.flatMap(renderFieldCells)}</View>
+            {fields.length > 0 && <View style={styles.attrGrid}>{fields.flatMap(renderFieldCells)}</View>}
             </View>
             ))}
           </View>
@@ -1406,8 +1400,8 @@ export function PostAdWizard({
 
         </View>
       )}
-    </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
+    </View>
 
     {/* One sheet reused by every collapsed select, driven by `openField` — a modal per field would
         mount a dozen sheets for a form the user mostly scrolls past. Sits outside the ScrollView
