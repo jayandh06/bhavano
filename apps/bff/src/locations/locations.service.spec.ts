@@ -14,11 +14,32 @@ function makeService(overrides: Record<string, unknown> = {}) {
       findFirst: jest.fn().mockResolvedValue(null),
       create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'new-area', ...data })),
     },
+    localityAlias: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     ...overrides,
   } as unknown as PrismaService;
 
-  const service = new LocationsService(prisma, {} as ConfigService);
-  return { service, prisma };
+  const config = { get: jest.fn().mockReturnValue('test-google-maps-key') } as unknown as ConfigService;
+  const service = new LocationsService(prisma, config);
+  return { service, prisma, config };
+}
+
+/** A minimal Google Geocoding API response carrying just the address_components
+ * `reverseGeocodeGoogle` reads — real responses carry many more fields it never looks at. */
+function mockGeocodeFetch(components: { types: string[]; long_name: string }[]): void {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      status: 'OK',
+      results: [
+        {
+          formatted_address: components.map((c) => c.long_name).join(', '),
+          address_components: components.map((c) => ({ ...c, short_name: c.long_name })),
+        },
+      ],
+    }),
+  }) as unknown as typeof fetch;
 }
 
 describe('LocationsService.ensureCity — refuses a name that would produce an unreachable URL', () => {
@@ -77,5 +98,103 @@ describe('LocationsService.ensureArea — refuses a name that would produce an u
 
     await expect(service.ensureArea('city1', 'आणंद नगर')).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.area.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('LocationsService.reverseGeocodeGoogle — city-resolution priority chain', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  // Real-world shape: a pin inside a Coimbatore ward Google tags with its own locality name,
+  // but whose district (administrative_area_level_2) is still "Coimbatore" — see
+  // docs/plans/fix-wrong-city-geocoding-locality-alias.md.
+  const wardComponents = [
+    { types: ['sublocality', 'sublocality_level_1'], long_name: 'New Siddhapudur' },
+    { types: ['locality'], long_name: 'New Siddhapudur' },
+    { types: ['administrative_area_level_2'], long_name: 'Coimbatore' },
+    { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu' },
+  ];
+
+  it('an admin-patched LocalityAlias wins over district/locality matching', async () => {
+    const coimbatore = { id: 'coimbatore-1', name: 'Coimbatore', state: 'Tamil Nadu', source: 'curated' };
+    const { service, prisma } = makeService({
+      localityAlias: { findFirst: jest.fn().mockResolvedValue({ city: coimbatore }) },
+    });
+    mockGeocodeFetch(wardComponents);
+
+    const result = await service.reverseGeocodeGoogle(11.03, 76.96);
+
+    expect(result.cityId).toBe('coimbatore-1');
+    expect(result.isNewCity).toBeFalsy();
+    // Alias resolved it — the district/locality lookups below it in the chain should never run.
+    expect(prisma.city.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a district match against a curated city when no alias exists', async () => {
+    const coimbatore = { id: 'coimbatore-1', name: 'Coimbatore', state: 'Tamil Nadu', source: 'curated' };
+    const { service, prisma } = makeService({
+      city: {
+        findFirst: jest.fn().mockResolvedValueOnce(coimbatore),
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn(),
+      },
+    });
+    mockGeocodeFetch(wardComponents);
+
+    const result = await service.reverseGeocodeGoogle(11.03, 76.96);
+
+    expect(result.cityId).toBe('coimbatore-1');
+    expect(result.isNewCity).toBeFalsy();
+    // Matched on the district, curated-only — never fell through to auto-create a "New
+    // Siddhapudur" city, which is the exact bug this fix closes.
+    expect(prisma.city.create).not.toHaveBeenCalled();
+    expect(prisma.city.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          source: 'curated',
+          name: { equals: 'Coimbatore', mode: 'insensitive' },
+        }),
+      }),
+    );
+  });
+
+  it('strips a trailing "Urban"/"Rural"/"District" qualifier before matching the district', async () => {
+    const bengaluru = { id: 'blr-1', name: 'Bengaluru', state: 'Karnataka', source: 'curated' };
+    const { service, prisma } = makeService({
+      city: {
+        findFirst: jest.fn().mockResolvedValueOnce(bengaluru),
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn(),
+      },
+    });
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Koramangala' },
+      { types: ['locality'], long_name: 'Bengaluru' },
+      { types: ['administrative_area_level_2'], long_name: 'Bengaluru Urban' },
+      { types: ['administrative_area_level_1'], long_name: 'Karnataka' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(12.93, 77.62);
+
+    expect(result.cityId).toBe('blr-1');
+    expect(prisma.city.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ name: { equals: 'Bengaluru', mode: 'insensitive' } }),
+      }),
+    );
+  });
+
+  it('still auto-creates a new city when no alias, district, or locality match exists (unchanged behavior)', async () => {
+    const { service, prisma } = makeService();
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Some New Ward' },
+      { types: ['locality'], long_name: 'Some Uncovered Town' },
+      { types: ['administrative_area_level_2'], long_name: 'Some Uncovered District' },
+      { types: ['administrative_area_level_1'], long_name: 'Some State' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(20, 80);
+
+    expect(result.isNewCity).toBe(true);
+    expect(prisma.city.create).toHaveBeenCalled();
   });
 });

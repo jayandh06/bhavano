@@ -122,7 +122,12 @@ export function LocationMapPicker({
         });
 
         if (searchInputRef.current) {
-          const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current);
+          // country: "in" — Bhavano is India-only; the BFF's own placeAutocomplete (mobile's
+          // search box) already restricts the same way (locations.service.ts's
+          // `components=country:in`) — this client-side SDK call had no restriction at all.
+          const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current, {
+            componentRestrictions: { country: "in" },
+          });
           autocomplete.addListener("place_changed", () => {
             const place = autocomplete.getPlace();
             const location = place.geometry?.location;

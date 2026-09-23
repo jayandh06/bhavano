@@ -260,6 +260,13 @@ export class LocationsService {
       (c) => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'),
     );
     const state = result.address_components.find((c) => c.types.includes('administrative_area_level_1'));
+    // The district — for most Indian metros this is literally the city name Bhavano already has
+    // seeded ("Coimbatore", "Chennai", "Bengaluru Urban"), even when Google's `locality` for this
+    // specific pin is a ward/village name nested inside it ("New Siddhapudur"). Never read before
+    // this fix — see the priority chain below and docs/plans/fix-wrong-city-geocoding-locality-alias.md.
+    const district = result.address_components.find((c) => c.types.includes('administrative_area_level_2'));
+    // Metro districts commonly carry a trailing qualifier the city's own curated name never does.
+    const normalizedDistrict = district?.long_name.replace(/\s+(Urban|Rural|District)$/i, '').trim();
     // `language=en` on the request (above) isn't a hard guarantee — Google still answers a
     // hyperlocal component (a hamlet/neighborhood name) in its local script when it has never
     // registered an English name for that specific place, even though the same response's
@@ -278,11 +285,40 @@ export class LocationsService {
     // after that same string is exactly what produced "Porvorim, Porvorim".
     const noDistinctSublocality = !sublocality || sublocality.long_name === locality?.long_name;
 
-    let city = locality
-      ? await this.prisma.city.findFirst({ where: { name: { equals: locality.long_name, mode: 'insensitive' } } })
+    // Priority chain — each step only runs if the one above it missed. Steps 3-4 are the
+    // original (pre-fix) logic, byte-for-byte, so a genuinely new/uncovered city still gets
+    // created exactly as before; steps 1-2 are what's new, and both are checked against data
+    // Bhavano already has (an admin-patched alias, or an already-curated city's own name) rather
+    // than inventing a fuzzier match. See docs/plans/fix-wrong-city-geocoding-locality-alias.md.
+    // 1. Admin-patched alias — see LocalityAlias's own doc comment.
+    const aliasKey = resolvedLocality || locality?.long_name;
+    const alias = aliasKey
+      ? await this.prisma.localityAlias.findFirst({
+          where: { name: { equals: aliasKey, mode: 'insensitive' } },
+          include: { city: true },
+        })
       : null;
+    let city = alias?.city ?? null;
+
+    // 2. District match, curated cities only — the fix for the reported Coimbatore/Chennai-ward
+    // class. Curated-only (not every user-submitted city) so a previously-wrong auto-created city
+    // can never become the "district match" for the next pin dropped near it.
+    if (!city && normalizedDistrict) {
+      city = await this.prisma.city.findFirst({
+        where: { source: 'curated', name: { equals: normalizedDistrict, mode: 'insensitive' } },
+      });
+    }
+
+    // 3. Original locality match, against every city (curated or previously auto-created) — kept
+    // so a locality already correctly resolved before this fix keeps matching the same way.
+    if (!city && locality) {
+      city = await this.prisma.city.findFirst({ where: { name: { equals: locality.long_name, mode: 'insensitive' } } });
+    }
+
     let isNewCity = false;
 
+    // 4/5. Unchanged from before this fix — reached only when 1-3 all missed, i.e. a genuinely
+    // unrecognized place.
     if (!city && locality && state) {
       if (noDistinctSublocality) {
         // Small-town case: don't mint a new self-named city. Attach it as an area under the

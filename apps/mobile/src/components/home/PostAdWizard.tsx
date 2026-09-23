@@ -253,6 +253,10 @@ export function PostAdWizard({
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [specs, setSpecs] = useState("");
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
+  // Set instead of silently switching city when a pin resolves to a DIFFERENT city than the one
+  // already selected — see onPinChange's own comment and
+  // docs/plans/fix-wrong-city-geocoding-locality-alias.md.
+  const [pinCityMismatch, setPinCityMismatch] = useState<ReverseGeocodeResultDto | null>(null);
   // string[] for multi-select fields (preferredTenantTypes); the attributes column is JSONB and
   // typed Record<string, unknown> on the wire, so an array round-trips as-is.
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>({});
@@ -688,14 +692,23 @@ export function PostAdWizard({
   }
 
   /** Google's City/Area resolution is a suggestion, never auto-locked — the user can still
-   * change the City chip / Area field manually after the map pre-fills them. */
+   * change the City chip / Area field manually after the map pre-fills them.
+   *
+   * A resolved city that DIFFERS from the one already selected is no longer applied silently —
+   * geocoding can still get this wrong (a ward inside a real city mistaken for its own city; see
+   * docs/plans/fix-wrong-city-geocoding-locality-alias.md for the backend half of this fix), and
+   * silently switching away from a city the seller may have deliberately chosen risked posting
+   * under the wrong one. `pinCityMismatch` holds the suggestion until they confirm via
+   * `applyPinCityMismatch`; Area is held back too, since it belongs to the suggested city, not
+   * the one still selected. */
   function onPinChange(nextPin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) {
     setPin(nextPin);
-    if (!suggestion) return;
-    if (suggestion.cityId) {
-      // The pin can resolve a city outside the `cities` prop (it holds popular cities only), in
-      // which case selecting its id used to leave nothing selected in the picker and a blank city
-      // on the review step. Carry it alongside, as the web wizard does with its own city list.
+    if (!suggestion) {
+      setPinCityMismatch(null);
+      return;
+    }
+
+    if (suggestion.cityId && suggestion.cityId !== cityId) {
       if (!cities.some((c) => c.id === suggestion.cityId)) {
         setPinResolvedCities((prev) =>
           prev.some((c) => c.id === suggestion.cityId)
@@ -713,8 +726,12 @@ export function PostAdWizard({
               ],
         );
       }
-      onCityChange(suggestion.cityId);
+      setPinCityMismatch(suggestion);
+      return;
     }
+
+    setPinCityMismatch(null);
+    if (suggestion.cityId) onCityChange(suggestion.cityId);
     // `resolvedLocality` always comes back; `areaId` only when Google's locality matched an
     // existing Bhavano Area. Filling the text either way is the point of the pin — gating both on
     // areaId left the field blank for every locality we don't have a row for yet, which reads as
@@ -725,6 +742,19 @@ export function PostAdWizard({
       setAreaQuery(suggestion.resolvedLocality);
       setAreaSuggestions([]);
     }
+  }
+
+  /** "Use {suggested city}" from the mismatch note — applies City and Area together, exactly the
+   * pair `onPinChange` would have applied directly if it had matched the selected city already. */
+  function applyPinCityMismatch() {
+    if (!pinCityMismatch?.cityId) return;
+    onCityChange(pinCityMismatch.cityId);
+    if (pinCityMismatch.resolvedLocality) {
+      setAreaId(pinCityMismatch.areaId ?? null);
+      setAreaQuery(pinCityMismatch.resolvedLocality);
+      setAreaSuggestions([]);
+    }
+    setPinCityMismatch(null);
   }
 
   /** Mirrors the desktop wizard: a field appears only when it applies to this transaction type
@@ -1003,6 +1033,33 @@ export function PostAdWizard({
               onPinChange={onPinChange}
             />
           </ErrorBoundary>
+
+          {pinCityMismatch?.cityId && (
+            <View style={{ gap: 6, marginTop: 6 }}>
+              <Text style={{ fontSize: 12, color: colors.muted }}>
+                Your pin looks like it&rsquo;s in {pinCityMismatch.cityName ?? "a different city"}, not{" "}
+                {cityOptions.find((c) => c.id === cityId)?.name ?? "the selected city"}.
+              </Text>
+              <View style={styles.chipRow}>
+                <Pressable
+                  onPress={applyPinCityMismatch}
+                  style={[styles.chip, { borderColor: colors.green, backgroundColor: colors.surfaceAlt }]}
+                >
+                  <Text style={{ color: colors.text, fontSize: 12, fontWeight: "700" }}>
+                    Use {pinCityMismatch.cityName ?? "this city"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setPinCityMismatch(null)}
+                  style={[styles.chip, { borderColor: colors.border }]}
+                >
+                  <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>
+                    Keep {cityOptions.find((c) => c.id === cityId)?.name ?? "current city"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
 
           <Text style={[styles.label, { color: colors.textSoft }]}>City</Text>
           {/* Collapsed by default. Rendering a chip for every city pushed the rest of the form off

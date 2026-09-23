@@ -199,8 +199,23 @@ model City {
   searchEvents SearchEvent[]
   outreachContacts OutreachContact[]
   placesFetchLogs PlacesFetchLog[]
+  localityAliases LocalityAlias[]
 
   @@unique([name, state])
+}
+
+/// Admin-patchable override for a Google locality/sublocality name that reverse-geocodes to the
+/// wrong city — e.g. Google tags a ward inside Coimbatore as its own locality ("New Siddhapudur"),
+/// so without this it becomes a brand-new top-level City instead of an Area under Coimbatore. See
+/// docs/plans/fix-wrong-city-geocoding-locality-alias.md. Checked first, before the district/
+/// locality matching in LocationsService.reverseGeocodeGoogle — a known-bad case is fixed by
+/// adding a row (apps/bff/prisma/addLocalityAlias.ts), not a code change.
+model LocalityAlias {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id])
+  createdAt DateTime @default(now())
 }
 
 model Area {
