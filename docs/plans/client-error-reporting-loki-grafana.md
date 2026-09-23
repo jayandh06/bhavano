@@ -1,8 +1,9 @@
 # Report client (web/mobile/admin) UI errors to Loki/Grafana
 
-**Status: implemented.** Web, admin, mobile, and the BFF endpoint are all done and verified
-locally; see "Implementation notes" at the end for the few details that were decided during
-implementation rather than fixed in advance by this doc.
+**Status: implemented and deployed.** Web, admin, mobile, and the BFF endpoint are all live. One
+part of the original approach — globally activating every pre-existing `@Throttle()` decorator via
+`APP_GUARD` — caused a real production outage on first deploy and was reverted; see
+"Implementation notes" at the end for what happened and what actually shipped instead.
 
 ## Context
 
@@ -27,19 +28,23 @@ that (and every existing `@Throttle`) work.
 
 ## Approach
 
-### BFF: fix the dead throttle guard, then add the endpoint
+### BFF: the endpoint, and a throttle-guard attempt that had to be walked back
 
-1. **`apps/bff/src/app.module.ts`** — bind `{ provide: APP_GUARD, useClass: ThrottlerGuard }`
-   alongside the existing `ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }])`. This alone
-   activates every pre-existing `@Throttle()` decorator in the codebase, not just the new one.
-   Verified locally: 5 rapid `POST /auth/otp/send` requests now get throttled at the 4th (`429`)
-   where they previously all succeeded.
+1. **`apps/bff/src/app.module.ts`** — originally bound `{ provide: APP_GUARD, useClass:
+   ThrottlerGuard }` globally, intending to activate every pre-existing `@Throttle()` decorator
+   in the codebase at once. **This caused a production outage** (bhavano.com showing "Something
+   went wrong" on nearly every page) and was reverted — see "Implementation notes" below for what
+   actually happened and what shipped instead. `ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20
+   }])` is still registered for its config/storage, but nothing binds the guard globally.
 
 2. **New module `apps/bff/src/client-errors/`** — `POST /client-errors`, mirroring
    `analytics.controller.ts`'s `POST /analytics/visit` (public, unauthenticated, `@IsOptional()`/
    `@MaxLength(...)` DTO fields, relying on the global `ValidationPipe({ whitelist: true,
    transform: true })` already set in `main.ts`). `@Throttle({ default: { limit: 10, ttl: 60_000
-   } })` — an IP can report at most 10 crashes/minute.
+   } })` — an IP can report at most 10 crashes/minute, enforced via `@UseGuards(ThrottlerGuard)`
+   at the method level (not global — see "Implementation notes"). Its failure mode if ever
+   throttled is just dropped log volume, not broken functionality — deliberately the one route
+   this shipped with the guard actually active on.
 
    DTO (`CreateClientErrorDto`): `app: 'web' | 'admin' | 'mobile'` (`@IsIn`, required),
    `message` (`@IsString`, `@MaxLength(500)`), `stack?` (`@MaxLength(8000)`), `componentStack?`
@@ -119,9 +124,9 @@ that (and every existing `@Throttle`) work.
 
 ## Critical files
 
-- `apps/bff/src/app.module.ts` — binds `ThrottlerGuard` via `APP_GUARD` (fixes existing dead
-  limits too); `LoggingModule`'s import statement moved to be the last one in the file (see
-  "Implementation notes").
+- `apps/bff/src/app.module.ts` — `LoggingModule`'s import statement moved to be the last one in
+  the file (see "Implementation notes"). Does **not** bind `ThrottlerGuard` globally — that was
+  tried and reverted after it took production down.
 - `apps/bff/src/client-errors/` — controller, DTO, module.
 - `apps/bff/src/logging/clientErrorLogger.ts` — logging helper, sibling to
   `thirdPartyCallLogger.ts`.
@@ -144,10 +149,14 @@ that (and every existing `@Throttle`) work.
 3. Local `nest start` smoke test (not just typecheck/build/unit-tests, none of which exercise
    Nest's real DI container): `POST /client-errors` with a valid body returns `204` and produces
    a correctly-shaped `client_error` pino log line; 12 rapid requests get throttled at the 10th
-   (`429`); 5 rapid `POST /auth/otp/send` requests get throttled at the 4th (`429`), confirming
-   the previously-inert OTP throttle is now active.
+   (`429`). Note: this smoke test was run *before* the `APP_GUARD` global binding was reverted, so
+   it also showed OTP-send throttling working — that observation no longer reflects deployed
+   behavior; see "Implementation notes".
 4. Deploy (bff + alloy restart). In Grafana Explore, `{service="bff", app="web"} | json` after
    triggering a real web crash should show the line with a readable stack trace.
+5. After any future change to `app.module.ts` guard/provider bindings, load a few real pages
+   (not just `/health`) before considering the deploy done — `/health` alone did not catch the
+   outage this shipped with the first time (see "Implementation notes").
 
 ## Implementation notes (decided while building, not fixed in advance by this doc)
 
@@ -169,3 +178,23 @@ that (and every existing `@Throttle`) work.
   Tailwind utility classes web's `error.tsx` uses — admin has no `@theme inline` token mapping.
 - Mobile's top-level error boundary lives inside `HomeSheetsProvider` (via the small
   `AppCrashBoundary` wrapper) specifically so it can attach `userId` to a report.
+- **Binding `ThrottlerGuard` globally via `APP_GUARD` caused a real production outage and was
+  reverted.** `ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }])` sets a *default* limit that
+  `APP_GUARD` applies to every route with no `@Throttle()`/`@SkipThrottle()` of its own — not just
+  the pre-existing decorated ones. Within minutes of deploying it, bhavano.com showed "Something
+  went wrong" on nearly every page: web's SSR data fetches (`/listings`, `/locations/cities`,
+  `/plans/pricing`, `generateMetadata`, etc.) all proxy through Server Actions, so every one of
+  them reaches the BFF from the **web container's own IP**, not the visitor's — exactly the same
+  problem `ClientErrorInput.ip` was built to work around for the new endpoint. Every web visitor's
+  traffic collectively shared one 20-requests-per-60-seconds bucket and exhausted it almost
+  immediately, throwing `ThrottlerException` on nearly every server-rendered page.
+  Fixed by removing the `APP_GUARD` binding entirely and instead adding
+  `@UseGuards(ThrottlerGuard)` at the **method level**, only on `POST /client-errors` — the one
+  route new to this change, where dropping some log volume under load is an acceptable failure
+  mode. The pre-existing `@Throttle()` decorators on `auth.controller.ts` (OTP send/verify/link),
+  `users.controller.ts`, `requirements.controller.ts`, `analytics.controller.ts`, and
+  `support.controller.ts` were **left exactly as inert as they were before this session** — same
+  status quo as pre-change, not reactivated. Reactivating those needs its own design first (e.g.
+  throttling on a real visitor IP forwarded explicitly by web/admin's Server Actions, the way
+  `/client-errors` already does, rather than on `req.ip`), and doing it correctly is a separate
+  follow-up, not something to attempt again casually.
