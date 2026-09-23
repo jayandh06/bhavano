@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
@@ -34,7 +34,7 @@ export default function ListingDetailScreen() {
   // was not handled by any navigator" in that case rather than silently doing nothing, so this
   // falls back to Home instead of leaving the header's arrow broken.
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
-  const { data: listing, isLoading } = useListingQuery(id, accessToken);
+  const { data: listing, isLoading, refetch, isRefetching } = useListingQuery(id, accessToken);
   const [isFavourited, setIsFavourited] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [contactRevealed, setContactRevealed] = useState(false);
@@ -130,7 +130,20 @@ export default function ListingDetailScreen() {
           arrow), same reasoning as the message thread's header. */}
       <ScreenHeader title="Listing" onBack={goBack} />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+        refreshControl={<RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            // tintColor is iOS-only and `colors` is the Android equivalent — set both, or the
+            // Android spinner falls back to its stock blue. progressBackgroundColor keeps the
+            // circle it sits in from staying light against a dark theme.
+            tintColor={colors.green}
+            colors={[colors.green]}
+            progressBackgroundColor={colors.surface}
+          />}
+      >
       <ListingMediaGallery
         photosFull={listing.photosFull}
         videos={listing.videos}

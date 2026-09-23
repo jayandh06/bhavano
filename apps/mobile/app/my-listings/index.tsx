@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
@@ -40,7 +40,7 @@ export default function MyListingsScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { accessToken } = useHomeSheets();
-  const { data: listings, isLoading, refetch } = useMyListingsQuery(accessToken);
+  const { data: listings, isLoading, refetch, isRefetching } = useMyListingsQuery(accessToken);
   const [renewingId, setRenewingId] = useState<string | null>(null);
   const [renewError, setRenewError] = useState<{ id: string; message: string } | null>(null);
 
@@ -70,6 +70,16 @@ export default function MyListingsScreen() {
       ) : (
         <FlatList
           style={{ flex: 1 }}
+          refreshControl={<RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            // tintColor is iOS-only and `colors` is the Android equivalent — set both, or the
+            // Android spinner falls back to its stock blue. progressBackgroundColor keeps the
+            // circle it sits in from staying light against a dark theme.
+            tintColor={colors.green}
+            colors={[colors.green]}
+            progressBackgroundColor={colors.surface}
+          />}
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
           data={listings}
           keyExtractor={(item) => item.id}

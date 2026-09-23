@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { formatUnreadCount } from "@bhavano/types/unreadCount";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
@@ -25,7 +25,7 @@ export default function MessagesScreen() {
   const { colors } = useAppTheme();
   const { requireLogin, isLoggedIn, accessToken } = useHomeSheets();
   const router = useRouter();
-  const { data: conversations, isLoading, refetch } = useConversationsQuery(accessToken);
+  const { data: conversations, isLoading, refetch, isRefetching } = useConversationsQuery(accessToken);
 
   // Defensive fallback only — BottomTabBar (app/_layout.tsx) already intercepts a logged-out
   // tap before it ever navigates here, prompting login in place instead.
@@ -61,6 +61,16 @@ export default function MessagesScreen() {
       ) : (
         <FlatList
           contentContainerStyle={{ padding: 16 }}
+          refreshControl={<RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            // tintColor is iOS-only and `colors` is the Android equivalent — set both, or the
+            // Android spinner falls back to its stock blue. progressBackgroundColor keeps the
+            // circle it sits in from staying light against a dark theme.
+            tintColor={colors.green}
+            colors={[colors.green]}
+            progressBackgroundColor={colors.surface}
+          />}
           data={conversations ?? []}
           keyExtractor={(item) => item.id}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}

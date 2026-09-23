@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import type { PaymentHistoryItemDto, PaymentPurpose, PaymentStatus } from "@bhavano/types";
 import { useAppTheme } from "../src/theme/ThemeContext";
@@ -46,7 +46,7 @@ export default function PurchasesScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { accessToken } = useHomeSheets();
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfinitePaymentHistoryQuery(accessToken);
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch, isRefetching } = useInfinitePaymentHistoryQuery(accessToken);
   const items = data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
@@ -61,6 +61,16 @@ export default function PurchasesScreen() {
       ) : (
         <FlatList
           contentContainerStyle={{ padding: 16 }}
+          refreshControl={<RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            // tintColor is iOS-only and `colors` is the Android equivalent — set both, or the
+            // Android spinner falls back to its stock blue. progressBackgroundColor keeps the
+            // circle it sits in from staying light against a dark theme.
+            tintColor={colors.green}
+            colors={[colors.green]}
+            progressBackgroundColor={colors.surface}
+          />}
           data={items}
           keyExtractor={(item) => item.id}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}

@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, Text, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { useHomeSheets } from "../src/context/HomeSheetsProvider";
@@ -12,7 +12,7 @@ export default function SavedScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { accessToken } = useHomeSheets();
-  const { data: favourites, isLoading } = useFavouritesQuery(accessToken);
+  const { data: favourites, isLoading, refetch, isRefetching } = useFavouritesQuery(accessToken);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -26,6 +26,16 @@ export default function SavedScreen() {
       ) : (
         <FlatList
           style={{ flex: 1 }}
+          refreshControl={<RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            // tintColor is iOS-only and `colors` is the Android equivalent — set both, or the
+            // Android spinner falls back to its stock blue. progressBackgroundColor keeps the
+            // circle it sits in from staying light against a dark theme.
+            tintColor={colors.green}
+            colors={[colors.green]}
+            progressBackgroundColor={colors.surface}
+          />}
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
           data={favourites}
           keyExtractor={(item) => item.id}

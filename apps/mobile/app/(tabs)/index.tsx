@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, RefreshControl, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../src/theme/ThemeContext";
@@ -58,7 +58,7 @@ export default function HomeScreen() {
   const COLLAPSE_THRESHOLD = 80;
 
   const { data: cityAreas = [] } = useAreasQuery(city?.id);
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteListingsQuery(
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch, isRefetching } = useInfiniteListingsQuery(
     {
       homeCategory: category === "all" ? undefined : category,
       propertyType,
@@ -132,6 +132,16 @@ export default function HomeScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <FlatList
         ref={listRef}
+        refreshControl={<RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            // tintColor is iOS-only and `colors` is the Android equivalent — set both, or the
+            // Android spinner falls back to its stock blue. progressBackgroundColor keeps the
+            // circle it sits in from staying light against a dark theme.
+            tintColor={colors.green}
+            colors={[colors.green]}
+            progressBackgroundColor={colors.surface}
+          />}
         onScroll={(e) => {
           const y = e.nativeEvent.contentOffset.y;
           if (y > COLLAPSE_THRESHOLD && !headerCollapsed) setHeaderCollapsed(true);
@@ -295,7 +305,12 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.sectionHeading}>
-              <Text style={{ fontFamily: "serif", fontSize: 17, fontWeight: "600", color: colors.text }}>
+              {/* No fontFamily: "serif" here (unlike the brand wordmark above, or the boost/
+                  subscription modals) — Android has no equivalent of iOS's serif system font, so
+                  it falls back to Noto Serif, which reads as a jarringly different typeface next
+                  to every other sans-serif label on this same screen ("All"/"Buy"/"Rent & Lease"
+                  etc.). The system default font matches the rest of the listing feed instead. */}
+              <Text style={{ fontSize: 17, fontWeight: "600", color: colors.text }}>
                 {categoryLabel}
               </Text>
               <Text style={{ fontSize: 11.5, color: colors.muted, fontWeight: "600" }}>{total} results</Text>
