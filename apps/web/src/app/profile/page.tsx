@@ -49,6 +49,12 @@ export default async function ProfilePage({
                   View and edit your listings
                 </Link>
                 <Link
+                  href="/my-requirements"
+                  className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 text-center whitespace-nowrap cursor-pointer bg-transparent"
+                >
+                  View your requirements
+                </Link>
+                <Link
                   href="/purchases"
                   className="text-[13px] font-bold text-green border-[1.5px] border-green rounded-lg px-3.5 py-2 text-center whitespace-nowrap cursor-pointer bg-transparent"
                 >

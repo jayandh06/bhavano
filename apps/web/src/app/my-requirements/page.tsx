@@ -8,7 +8,7 @@ import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { MyRequirementCard } from "@/components/home/MyRequirementCard";
 
 export const metadata = {
-  title: "What you're looking for",
+  title: "Your requirements",
   description: "The property requirements you've told Bhavano about, and how they're doing.",
   // Personal, logged-in content — nothing here should ever be indexed.
   robots: { index: false, follow: false },
@@ -30,14 +30,11 @@ export default async function MyRequirementsPage({
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader cityName={city?.name} />
-      <div className="flex-1 w-full max-w-[880px] mx-auto px-4 sm:px-8 pt-6 pb-20">
+      <div className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-6 pb-20">
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
-        <h1 className="font-lora text-2xl font-semibold m-0 mb-1.5">What you&apos;re looking for</h1>
-        <p className="text-muted text-[13.5px] m-0 mb-6">
-          Searches that came up empty, which we&apos;re keeping an eye on for you.
-        </p>
+        <h1 className="font-lora text-2xl font-semibold m-0 mb-5">Your requirements</h1>
 
         {!session?.accessToken ? (
           <RequireLoginPrompt

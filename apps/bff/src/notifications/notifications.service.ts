@@ -211,7 +211,14 @@ export class NotificationsService {
     const linkPath = hasAlert ? '/my-requirements' : '/premium';
     const { subject, text, html } = this.renderPurchaseEmail(template, vars, linkPath);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
+    // BCC support@ so the ops queue sees every captured ask (same pattern as purchase confirmations),
+    // including when the seeker only has a phone and we fall through to WhatsApp + support copy.
+    return this.dispatchEmailPreferWhatsapp(user, {
+      subject,
+      text,
+      html,
+      bcc: 'support@bhavano.com',
+    });
   }
 
   /** Daily digest of unmet demand to whoever runs the site — see RequirementDigestJob.
