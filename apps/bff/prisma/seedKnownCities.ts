@@ -1,5 +1,6 @@
-// Census class-I cities (population over 1,00,000) as curated cities.
-// Existing rows are left alone: lat/lng and the wider metro catchmentKm stay as seeded.
+// Census cities of 50,000 and above, including urban agglomerations such as Karur.
+// A name already in the database is skipped, so Bengaluru is not inserted again as
+// Bruhat Bangalore. Existing rows keep their lat/lng and catchmentKm.
 // A census place whose coordinates already sit inside one of those catchments is skipped,
 // so a Delhi neighbourhood or Pimpri-Chinchwad does not become a second city.
 // Delhi, New Delhi, Gurgaon, Noida, Greater Noida, Faridabad, and Ghaziabad are absent
@@ -46,6 +47,18 @@ const SPELLING_ALIASES: { name: string; cityName: string }[] = [
   { name: 'Thoothukudi', cityName: 'Tuticorin' },
   { name: 'Chhatrapati Sambhajinagar', cityName: 'Aurangabad' },
   { name: 'Sambhajinagar', cityName: 'Aurangabad' },
+  { name: 'Udhagamandalam', cityName: 'Ooty' },
+  { name: 'Tiruppur', cityName: 'Tirupur' },
+  { name: 'Kancheepuram', cityName: 'Kanchipuram' },
+  { name: 'Hardwar', cityName: 'Haridwar' },
+  { name: 'Baleshwar', cityName: 'Balasore' },
+  { name: 'Bid', cityName: 'Beed' },
+  { name: 'Ranibennur', cityName: 'Ranebennuru' },
+  { name: 'Nippani', cityName: 'Nipani' },
+  { name: 'Ropar', cityName: 'Rupnagar' },
+  { name: 'Arni', cityName: 'Arani' },
+  { name: 'Tirumangalam', cityName: 'Thirumangalam' },
+  { name: 'Pilkhua', cityName: 'Pilkhuwa' },
 ];
 
 function loadKnownCities(): KnownCity[] {

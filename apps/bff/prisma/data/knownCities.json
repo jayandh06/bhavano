@@ -3372,5 +3372,2840 @@
     "lat": 26.7083818,
     "lng": 88.4268741,
     "population": 701489
+  },
+  {
+    "name": "Amalapuram",
+    "state": "Andhra Pradesh",
+    "lat": 16.57868,
+    "lng": 82.00609,
+    "population": 53231
+  },
+  {
+    "name": "Anakapalle",
+    "state": "Andhra Pradesh",
+    "lat": 17.69134,
+    "lng": 83.00395,
+    "population": 86519
+  },
+  {
+    "name": "Badvel",
+    "state": "Andhra Pradesh",
+    "lat": 14.7451,
+    "lng": 79.06288,
+    "population": 70626
+  },
+  {
+    "name": "Bapatla",
+    "state": "Andhra Pradesh",
+    "lat": 15.90422,
+    "lng": 80.46743,
+    "population": 70777
+  },
+  {
+    "name": "Bobbili",
+    "state": "Andhra Pradesh",
+    "lat": 18.57366,
+    "lng": 83.35925,
+    "population": 56819
+  },
+  {
+    "name": "Chirala",
+    "state": "Andhra Pradesh",
+    "lat": 15.82385,
+    "lng": 80.35219,
+    "population": 162471
+  },
+  {
+    "name": "Dhone",
+    "state": "Andhra Pradesh",
+    "lat": 15.3952,
+    "lng": 77.8715,
+    "population": 59272
+  },
+  {
+    "name": "Gudur",
+    "state": "Andhra Pradesh",
+    "lat": 14.15093,
+    "lng": 79.8521,
+    "population": 74037
+  },
+  {
+    "name": "Jaggaiahpet",
+    "state": "Andhra Pradesh",
+    "lat": 16.89155,
+    "lng": 80.09551,
+    "population": 53530
+  },
+  {
+    "name": "Jammalamadugu",
+    "state": "Andhra Pradesh",
+    "lat": 14.84677,
+    "lng": 78.38314,
+    "population": 61218
+  },
+  {
+    "name": "Kadiri",
+    "state": "Andhra Pradesh",
+    "lat": 14.11168,
+    "lng": 78.15982,
+    "population": 89429
+  },
+  {
+    "name": "Kandukur",
+    "state": "Andhra Pradesh",
+    "lat": 15.21542,
+    "lng": 79.9039,
+    "population": 57246
+  },
+  {
+    "name": "Kavali",
+    "state": "Andhra Pradesh",
+    "lat": 14.9163,
+    "lng": 79.99449,
+    "population": 90099
+  },
+  {
+    "name": "Macherla",
+    "state": "Andhra Pradesh",
+    "lat": 16.47635,
+    "lng": 79.43533,
+    "population": 57290
+  },
+  {
+    "name": "Mandapeta",
+    "state": "Andhra Pradesh",
+    "lat": 16.86254,
+    "lng": 81.92921,
+    "population": 56063
+  },
+  {
+    "name": "Markapur",
+    "state": "Andhra Pradesh",
+    "lat": 15.73534,
+    "lng": 79.26848,
+    "population": 71092
+  },
+  {
+    "name": "Nagari",
+    "state": "Andhra Pradesh",
+    "lat": 13.32139,
+    "lng": 79.58557,
+    "population": 62253
+  },
+  {
+    "name": "Narasapur",
+    "state": "Andhra Pradesh",
+    "lat": 16.43425,
+    "lng": 81.69845,
+    "population": 58770
+  },
+  {
+    "name": "Nuzvid",
+    "state": "Andhra Pradesh",
+    "lat": 16.78854,
+    "lng": 80.84593,
+    "population": 58590
+  },
+  {
+    "name": "Palmaner",
+    "state": "Andhra Pradesh",
+    "lat": 13.2,
+    "lng": 78.74725,
+    "population": 54035
+  },
+  {
+    "name": "Parvathipuram",
+    "state": "Andhra Pradesh",
+    "lat": 15.60046,
+    "lng": 79.63292,
+    "population": 53844
+  },
+  {
+    "name": "patnam",
+    "state": "Andhra Pradesh",
+    "lat": 14.23453,
+    "lng": 78.09523,
+    "population": 55082
+  },
+  {
+    "name": "Piduguralla",
+    "state": "Andhra Pradesh",
+    "lat": 16.47926,
+    "lng": 79.88632,
+    "population": 63103
+  },
+  {
+    "name": "Pithapuram",
+    "state": "Andhra Pradesh",
+    "lat": 17.1168,
+    "lng": 82.25284,
+    "population": 54859
+  },
+  {
+    "name": "Ponnur",
+    "state": "Andhra Pradesh",
+    "lat": 16.07114,
+    "lng": 80.54944,
+    "population": 59913
+  },
+  {
+    "name": "Pulivendla",
+    "state": "Andhra Pradesh",
+    "lat": 14.42139,
+    "lng": 78.22502,
+    "population": 65706
+  },
+  {
+    "name": "Puttur",
+    "state": "Andhra Pradesh",
+    "lat": 13.44189,
+    "lng": 79.55314,
+    "population": 54092
+  },
+  {
+    "name": "Rajahmundry",
+    "state": "Andhra Pradesh",
+    "lat": 17.18144,
+    "lng": 81.36903,
+    "population": 476873
+  },
+  {
+    "name": "Rayachoti",
+    "state": "Andhra Pradesh",
+    "lat": 14.05723,
+    "lng": 78.75056,
+    "population": 98299
+  },
+  {
+    "name": "Repalle",
+    "state": "Andhra Pradesh",
+    "lat": 16.0184,
+    "lng": 80.82958,
+    "population": 50866
+  },
+  {
+    "name": "Samalkot",
+    "state": "Andhra Pradesh",
+    "lat": 17.05675,
+    "lng": 82.17639,
+    "population": 56864
+  },
+  {
+    "name": "Sattenapalle",
+    "state": "Andhra Pradesh",
+    "lat": 16.39381,
+    "lng": 80.15221,
+    "population": 56721
+  },
+  {
+    "name": "Srikalahasti",
+    "state": "Andhra Pradesh",
+    "lat": 13.75514,
+    "lng": 79.70143,
+    "population": 80056
+  },
+  {
+    "name": "Tadpatri",
+    "state": "Andhra Pradesh",
+    "lat": 14.90832,
+    "lng": 78.01031,
+    "population": 108171
+  },
+  {
+    "name": "Tanuku",
+    "state": "Andhra Pradesh",
+    "lat": 16.75438,
+    "lng": 81.68143,
+    "population": 77962
+  },
+  {
+    "name": "Tuni",
+    "state": "Andhra Pradesh",
+    "lat": 17.35905,
+    "lng": 82.54607,
+    "population": 53425
+  },
+  {
+    "name": "Venkatagiri",
+    "state": "Andhra Pradesh",
+    "lat": 13.96005,
+    "lng": 79.58032,
+    "population": 52688
+  },
+  {
+    "name": "Vinukonda",
+    "state": "Andhra Pradesh",
+    "lat": 16.0531,
+    "lng": 79.73964,
+    "population": 62550
+  },
+  {
+    "name": "Diphu",
+    "state": "Assam",
+    "lat": 25.84341,
+    "lng": 93.43116,
+    "population": 61797
+  },
+  {
+    "name": "Goalpara",
+    "state": "Assam",
+    "lat": 26.17668,
+    "lng": 90.62634,
+    "population": 53430
+  },
+  {
+    "name": "Karimganj",
+    "state": "Assam",
+    "lat": 24.86919,
+    "lng": 92.35543,
+    "population": 71213
+  },
+  {
+    "name": "North Lakhimpur",
+    "state": "Assam",
+    "lat": 27.23517,
+    "lng": 94.10357,
+    "population": 59814
+  },
+  {
+    "name": "Araria",
+    "state": "Bihar",
+    "lat": 26.14934,
+    "lng": 87.51323,
+    "population": 79021
+  },
+  {
+    "name": "Arwal",
+    "state": "Bihar",
+    "lat": 25.24281,
+    "lng": 84.66571,
+    "population": 51849
+  },
+  {
+    "name": "Barauni",
+    "state": "Bihar",
+    "lat": 25.4709,
+    "lng": 85.976,
+    "population": 71660
+  },
+  {
+    "name": "Barh",
+    "state": "Bihar",
+    "lat": 25.48339,
+    "lng": 85.70928,
+    "population": 61470
+  },
+  {
+    "name": "Benipur",
+    "state": "Bihar",
+    "lat": 26.05509,
+    "lng": 86.14557,
+    "population": 75317
+  },
+  {
+    "name": "Biharsharif",
+    "state": "Bihar",
+    "lat": 25.20084,
+    "lng": 85.52389,
+    "population": 297268
+  },
+  {
+    "name": "Bihat",
+    "state": "Bihar",
+    "lat": 25.42534,
+    "lng": 86.02083,
+    "population": 67952
+  },
+  {
+    "name": "Chapra",
+    "state": "Bihar",
+    "lat": 25.78031,
+    "lng": 84.74709,
+    "population": 213714
+  },
+  {
+    "name": "Daudnagar",
+    "state": "Bihar",
+    "lat": 25.03473,
+    "lng": 84.40095,
+    "population": 52364
+  },
+  {
+    "name": "Dumraon",
+    "state": "Bihar",
+    "lat": 25.55265,
+    "lng": 84.15149,
+    "population": 53618
+  },
+  {
+    "name": "Forbesganj",
+    "state": "Bihar",
+    "lat": 26.30253,
+    "lng": 87.26556,
+    "population": 50475
+  },
+  {
+    "name": "Gopalganj",
+    "state": "Bihar",
+    "lat": 26.46734,
+    "lng": 84.44041,
+    "population": 67339
+  },
+  {
+    "name": "Hilsa",
+    "state": "Bihar",
+    "lat": 25.31642,
+    "lng": 85.28234,
+    "population": 51052
+  },
+  {
+    "name": "Jamui",
+    "state": "Bihar",
+    "lat": 24.92606,
+    "lng": 86.22531,
+    "population": 87357
+  },
+  {
+    "name": "Madhepura",
+    "state": "Bihar",
+    "lat": 25.92127,
+    "lng": 86.79271,
+    "population": 54472
+  },
+  {
+    "name": "Madhubani",
+    "state": "Bihar",
+    "lat": 26.35367,
+    "lng": 86.07169,
+    "population": 82806
+  },
+  {
+    "name": "Masaurhi",
+    "state": "Bihar",
+    "lat": 25.31439,
+    "lng": 84.82184,
+    "population": 59803
+  },
+  {
+    "name": "Mokameh",
+    "state": "Bihar",
+    "lat": 25.39662,
+    "lng": 85.9219,
+    "population": 60678
+  },
+  {
+    "name": "Samastipur",
+    "state": "Bihar",
+    "lat": 25.86222,
+    "lng": 85.77953,
+    "population": 73216
+  },
+  {
+    "name": "Sheikhpura",
+    "state": "Bihar",
+    "lat": 25.13994,
+    "lng": 85.84096,
+    "population": 62927
+  },
+  {
+    "name": "Sultanganj",
+    "state": "Bihar",
+    "lat": 25.23831,
+    "lng": 86.73559,
+    "population": 52892
+  },
+  {
+    "name": "Supaul",
+    "state": "Bihar",
+    "lat": 26.11527,
+    "lng": 86.59509,
+    "population": 65437
+  },
+  {
+    "name": "Teghra",
+    "state": "Bihar",
+    "lat": 25.49043,
+    "lng": 85.94001,
+    "population": 56234
+  },
+  {
+    "name": "Bhatapara",
+    "state": "Chhattisgarh",
+    "lat": 21.735,
+    "lng": 81.94711,
+    "population": 57537
+  },
+  {
+    "name": "Dalli-Rajhara",
+    "state": "Chhattisgarh",
+    "lat": 20.58573,
+    "lng": 81.07501,
+    "population": 50523
+  },
+  {
+    "name": "Durg-Bhilainagar",
+    "state": "Chhattisgarh",
+    "lat": 21.20919,
+    "lng": 81.4285,
+    "population": 1064222
+  },
+  {
+    "name": "Anjar",
+    "state": "Gujarat",
+    "lat": 23.11316,
+    "lng": 70.02671,
+    "population": 87183
+  },
+  {
+    "name": "Anklesvar",
+    "state": "Gujarat",
+    "lat": 21.63236,
+    "lng": 72.99001,
+    "population": 139578
+  },
+  {
+    "name": "Bardoli",
+    "state": "Gujarat",
+    "lat": 21.12297,
+    "lng": 73.11151,
+    "population": 60821
+  },
+  {
+    "name": "Bilimora",
+    "state": "Gujarat",
+    "lat": 20.76957,
+    "lng": 72.96134,
+    "population": 60391
+  },
+  {
+    "name": "Borsad",
+    "state": "Gujarat",
+    "lat": 22.40788,
+    "lng": 72.89817,
+    "population": 63377
+  },
+  {
+    "name": "Dabhoi",
+    "state": "Gujarat",
+    "lat": 22.18333,
+    "lng": 73.43333,
+    "population": 51240
+  },
+  {
+    "name": "Dholka",
+    "state": "Gujarat",
+    "lat": 22.72732,
+    "lng": 72.44128,
+    "population": 80945
+  },
+  {
+    "name": "Dhoraji",
+    "state": "Gujarat",
+    "lat": 21.73359,
+    "lng": 70.45004,
+    "population": 84545
+  },
+  {
+    "name": "Dhrangadhra",
+    "state": "Gujarat",
+    "lat": 22.99167,
+    "lng": 71.46793,
+    "population": 75133
+  },
+  {
+    "name": "Dohad",
+    "state": "Gujarat",
+    "lat": 22.83283,
+    "lng": 74.25986,
+    "population": 130503
+  },
+  {
+    "name": "Halol",
+    "state": "Gujarat",
+    "lat": 22.50321,
+    "lng": 73.47242,
+    "population": 64265
+  },
+  {
+    "name": "Himatnagar",
+    "state": "Gujarat",
+    "lat": 23.59893,
+    "lng": 72.96602,
+    "population": 81137
+  },
+  {
+    "name": "Kadi",
+    "state": "Gujarat",
+    "lat": 23.29908,
+    "lng": 72.33362,
+    "population": 81404
+  },
+  {
+    "name": "Keshod",
+    "state": "Gujarat",
+    "lat": 21.30328,
+    "lng": 70.24861,
+    "population": 76193
+  },
+  {
+    "name": "Mahesana",
+    "state": "Gujarat",
+    "lat": 23.59864,
+    "lng": 72.38472,
+    "population": 190753
+  },
+  {
+    "name": "Mandvi",
+    "state": "Gujarat",
+    "lat": 22.83282,
+    "lng": 69.35237,
+    "population": 51376
+  },
+  {
+    "name": "Mangrol",
+    "state": "Gujarat",
+    "lat": 21.12268,
+    "lng": 70.11484,
+    "population": 69779
+  },
+  {
+    "name": "Modasa",
+    "state": "Gujarat",
+    "lat": 23.46253,
+    "lng": 73.29857,
+    "population": 67648
+  },
+  {
+    "name": "Morvi",
+    "state": "Gujarat",
+    "lat": 22.81731,
+    "lng": 70.8377,
+    "population": 251859
+  },
+  {
+    "name": "Okha",
+    "state": "Gujarat",
+    "lat": 22.46756,
+    "lng": 69.07002,
+    "population": 62052
+  },
+  {
+    "name": "Palitana",
+    "state": "Gujarat",
+    "lat": 21.52519,
+    "lng": 71.82309,
+    "population": 64497
+  },
+  {
+    "name": "Petlad",
+    "state": "Gujarat",
+    "lat": 22.47681,
+    "lng": 72.79995,
+    "population": 55330
+  },
+  {
+    "name": "Ranavav",
+    "state": "Gujarat",
+    "lat": 21.68734,
+    "lng": 69.74485,
+    "population": 51890
+  },
+  {
+    "name": "Savarkundla",
+    "state": "Gujarat",
+    "lat": 21.33726,
+    "lng": 71.3035,
+    "population": 78354
+  },
+  {
+    "name": "Sihor",
+    "state": "Gujarat",
+    "lat": 21.71134,
+    "lng": 71.96179,
+    "population": 54547
+  },
+  {
+    "name": "Una",
+    "state": "Gujarat",
+    "lat": 20.82318,
+    "lng": 71.03795,
+    "population": 58528
+  },
+  {
+    "name": "Unjha",
+    "state": "Gujarat",
+    "lat": 23.80366,
+    "lng": 72.39101,
+    "population": 57108
+  },
+  {
+    "name": "Upleta",
+    "state": "Gujarat",
+    "lat": 21.74015,
+    "lng": 70.28256,
+    "population": 58775
+  },
+  {
+    "name": "Viramgam",
+    "state": "Gujarat",
+    "lat": 23.12564,
+    "lng": 72.05014,
+    "population": 55821
+  },
+  {
+    "name": "Visnagar",
+    "state": "Gujarat",
+    "lat": 23.69855,
+    "lng": 72.5521,
+    "population": 76753
+  },
+  {
+    "name": "Charkhi Dadri",
+    "state": "Haryana",
+    "lat": 28.59166,
+    "lng": 76.27161,
+    "population": 56337
+  },
+  {
+    "name": "Fatehabad",
+    "state": "Haryana",
+    "lat": 29.51525,
+    "lng": 75.45554,
+    "population": 70777
+  },
+  {
+    "name": "Gohana",
+    "state": "Haryana",
+    "lat": 29.13777,
+    "lng": 76.70247,
+    "population": 65708
+  },
+  {
+    "name": "Hansi",
+    "state": "Haryana",
+    "lat": 29.10239,
+    "lng": 75.96253,
+    "population": 86770
+  },
+  {
+    "name": "Hodal",
+    "state": "Haryana",
+    "lat": 27.89196,
+    "lng": 77.36744,
+    "population": 50143
+  },
+  {
+    "name": "Mandi Dabwali",
+    "state": "Haryana",
+    "lat": 29.96633,
+    "lng": 74.70025,
+    "population": 52873
+  },
+  {
+    "name": "Narnaul",
+    "state": "Haryana",
+    "lat": 28.04444,
+    "lng": 76.10833,
+    "population": 74581
+  },
+  {
+    "name": "Narwana",
+    "state": "Haryana",
+    "lat": 29.59903,
+    "lng": 76.11927,
+    "population": 62090
+  },
+  {
+    "name": "Tohana",
+    "state": "Haryana",
+    "lat": 29.71332,
+    "lng": 75.90441,
+    "population": 63871
+  },
+  {
+    "name": "Baramula",
+    "state": "Jammu and Kashmir",
+    "lat": 34.209,
+    "lng": 74.34285,
+    "population": 71434
+  },
+  {
+    "name": "Kathua",
+    "state": "Jammu and Kashmir",
+    "lat": 32.36941,
+    "lng": 75.52539,
+    "population": 59866
+  },
+  {
+    "name": "Udhampur",
+    "state": "Jammu and Kashmir",
+    "lat": 32.92431,
+    "lng": 75.13573,
+    "population": 91366
+  },
+  {
+    "name": "Chaibasa",
+    "state": "Jharkhand",
+    "lat": 22.55038,
+    "lng": 85.80249,
+    "population": 69565
+  },
+  {
+    "name": "Chakradharpur",
+    "state": "Jharkhand",
+    "lat": 22.67611,
+    "lng": 85.62892,
+    "population": 56531
+  },
+  {
+    "name": "Gumla",
+    "state": "Jharkhand",
+    "lat": 23.04268,
+    "lng": 84.54429,
+    "population": 51264
+  },
+  {
+    "name": "Hazaribag",
+    "state": "Jharkhand",
+    "lat": 23.99241,
+    "lng": 85.36162,
+    "population": 153595
+  },
+  {
+    "name": "Lohardaga",
+    "state": "Jharkhand",
+    "lat": 23.43305,
+    "lng": 84.67992,
+    "population": 57411
+  },
+  {
+    "name": "Madhupur",
+    "state": "Jharkhand",
+    "lat": 24.27419,
+    "lng": 86.63929,
+    "population": 55238
+  },
+  {
+    "name": "Saunda",
+    "state": "Jharkhand",
+    "lat": 23.66453,
+    "lng": 85.32694,
+    "population": 81915
+  },
+  {
+    "name": "Arsikere",
+    "state": "Karnataka",
+    "lat": 13.31446,
+    "lng": 76.25704,
+    "population": 53216
+  },
+  {
+    "name": "Basavakalyan",
+    "state": "Karnataka",
+    "lat": 17.87445,
+    "lng": 76.94972,
+    "population": 69717
+  },
+  {
+    "name": "Belagavi",
+    "state": "Karnataka",
+    "lat": 15.85212,
+    "lng": 74.50447,
+    "population": 610350
+  },
+  {
+    "name": "Challakere",
+    "state": "Karnataka",
+    "lat": 14.318,
+    "lng": 76.65165,
+    "population": 55194
+  },
+  {
+    "name": "Channapatna",
+    "state": "Karnataka",
+    "lat": 12.65143,
+    "lng": 77.20672,
+    "population": 71942
+  },
+  {
+    "name": "Chik Ballapur",
+    "state": "Karnataka",
+    "lat": 13.43512,
+    "lng": 77.72787,
+    "population": 63652
+  },
+  {
+    "name": "Chintamani",
+    "state": "Karnataka",
+    "lat": 13.40051,
+    "lng": 78.05172,
+    "population": 76068
+  },
+  {
+    "name": "Dandeli",
+    "state": "Karnataka",
+    "lat": 15.26667,
+    "lng": 74.61667,
+    "population": 52069
+  },
+  {
+    "name": "Davanagere",
+    "state": "Karnataka",
+    "lat": 14.46693,
+    "lng": 75.92694,
+    "population": 434971
+  },
+  {
+    "name": "Gokak",
+    "state": "Karnataka",
+    "lat": 16.16901,
+    "lng": 74.82393,
+    "population": 79121
+  },
+  {
+    "name": "Haveri",
+    "state": "Karnataka",
+    "lat": 14.79354,
+    "lng": 75.40448,
+    "population": 67102
+  },
+  {
+    "name": "Hiriyur",
+    "state": "Karnataka",
+    "lat": 13.94455,
+    "lng": 76.61723,
+    "population": 56416
+  },
+  {
+    "name": "Hosakote",
+    "state": "Karnataka",
+    "lat": 14.27603,
+    "lng": 77.16827,
+    "population": 56980
+  },
+  {
+    "name": "Hubli-Dharwad",
+    "state": "Karnataka",
+    "lat": 15.45,
+    "lng": 75,
+    "population": 943788
+  },
+  {
+    "name": "Hunsur",
+    "state": "Karnataka",
+    "lat": 12.30359,
+    "lng": 76.29275,
+    "population": 50865
+  },
+  {
+    "name": "Ilkal",
+    "state": "Karnataka",
+    "lat": 15.95923,
+    "lng": 76.11351,
+    "population": 60242
+  },
+  {
+    "name": "Jamkhandi",
+    "state": "Karnataka",
+    "lat": 16.50461,
+    "lng": 75.29146,
+    "population": 68938
+  },
+  {
+    "name": "Kanakapura",
+    "state": "Karnataka",
+    "lat": 12.54654,
+    "lng": 77.42005,
+    "population": 54014
+  },
+  {
+    "name": "Karwar",
+    "state": "Karnataka",
+    "lat": 14.81361,
+    "lng": 74.12972,
+    "population": 77139
+  },
+  {
+    "name": "Kollegal",
+    "state": "Karnataka",
+    "lat": 12.15449,
+    "lng": 77.11051,
+    "population": 57149
+  },
+  {
+    "name": "Koppal",
+    "state": "Karnataka",
+    "lat": 15.34522,
+    "lng": 76.15478,
+    "population": 70698
+  },
+  {
+    "name": "Mudhol",
+    "state": "Karnataka",
+    "lat": 16.33354,
+    "lng": 75.28305,
+    "population": 52199
+  },
+  {
+    "name": "Mulbagal",
+    "state": "Karnataka",
+    "lat": 13.16352,
+    "lng": 78.39346,
+    "population": 57276
+  },
+  {
+    "name": "Nanjangud",
+    "state": "Karnataka",
+    "lat": 12.11764,
+    "lng": 76.68397,
+    "population": 50598
+  },
+  {
+    "name": "Nipani",
+    "state": "Karnataka",
+    "lat": 16.399,
+    "lng": 74.38285,
+    "population": 62865
+  },
+  {
+    "name": "Rabkavi-Banhatti",
+    "state": "Karnataka",
+    "lat": 16.47,
+    "lng": 75.12,
+    "population": 77004
+  },
+  {
+    "name": "Robertson Pet",
+    "state": "Karnataka",
+    "lat": 12.95629,
+    "lng": 78.27539,
+    "population": 162230
+  },
+  {
+    "name": "Shahpur",
+    "state": "Karnataka",
+    "lat": 16.69605,
+    "lng": 76.8422,
+    "population": 53366
+  },
+  {
+    "name": "Shorapur",
+    "state": "Karnataka",
+    "lat": 16.521,
+    "lng": 76.75738,
+    "population": 51398
+  },
+  {
+    "name": "Sidlaghatta",
+    "state": "Karnataka",
+    "lat": 13.38896,
+    "lng": 77.86444,
+    "population": 51159
+  },
+  {
+    "name": "Sindhnur",
+    "state": "Karnataka",
+    "lat": 15.76983,
+    "lng": 76.75581,
+    "population": 75837
+  },
+  {
+    "name": "Sira",
+    "state": "Karnataka",
+    "lat": 13.74155,
+    "lng": 76.9043,
+    "population": 57554
+  },
+  {
+    "name": "Sirsi",
+    "state": "Karnataka",
+    "lat": 14.62072,
+    "lng": 74.83554,
+    "population": 62882
+  },
+  {
+    "name": "Siruguppa",
+    "state": "Karnataka",
+    "lat": 15.63,
+    "lng": 76.89217,
+    "population": 52492
+  },
+  {
+    "name": "Tiptur",
+    "state": "Karnataka",
+    "lat": 13.2563,
+    "lng": 76.47768,
+    "population": 59543
+  },
+  {
+    "name": "Yadgir",
+    "state": "Karnataka",
+    "lat": 16.77007,
+    "lng": 77.13755,
+    "population": 74294
+  },
+  {
+    "name": "Changanassery",
+    "state": "Kerala",
+    "lat": 9.44203,
+    "lng": 76.53604,
+    "population": 127987
+  },
+  {
+    "name": "Cherthala",
+    "state": "Kerala",
+    "lat": 9.68444,
+    "lng": 76.33558,
+    "population": 455722
+  },
+  {
+    "name": "Kanhangad",
+    "state": "Kerala",
+    "lat": 12.30814,
+    "lng": 75.10632,
+    "population": 229168
+  },
+  {
+    "name": "Kayamkulam",
+    "state": "Kerala",
+    "lat": 9.18173,
+    "lng": 76.50093,
+    "population": 427967
+  },
+  {
+    "name": "Ottappalam",
+    "state": "Kerala",
+    "lat": 10.7735,
+    "lng": 76.37758,
+    "population": 237970
+  },
+  {
+    "name": "Thodupuzha",
+    "state": "Kerala",
+    "lat": 9.89394,
+    "lng": 76.72216,
+    "population": 52045
+  },
+  {
+    "name": "Ashoknagar",
+    "state": "Madhya Pradesh",
+    "lat": 24.57578,
+    "lng": 77.73123,
+    "population": 81828
+  },
+  {
+    "name": "Ashta",
+    "state": "Madhya Pradesh",
+    "lat": 23.01754,
+    "lng": 76.72208,
+    "population": 53184
+  },
+  {
+    "name": "Barwani",
+    "state": "Madhya Pradesh",
+    "lat": 22.03232,
+    "lng": 74.89982,
+    "population": 55504
+  },
+  {
+    "name": "Basoda",
+    "state": "Madhya Pradesh",
+    "lat": 23.85153,
+    "lng": 77.93652,
+    "population": 78289
+  },
+  {
+    "name": "Dabra",
+    "state": "Madhya Pradesh",
+    "lat": 25.88572,
+    "lng": 78.33221,
+    "population": 61277
+  },
+  {
+    "name": "Gohad",
+    "state": "Madhya Pradesh",
+    "lat": 26.43278,
+    "lng": 78.44205,
+    "population": 58939
+  },
+  {
+    "name": "Harda",
+    "state": "Madhya Pradesh",
+    "lat": 22.34414,
+    "lng": 77.09536,
+    "population": 74268
+  },
+  {
+    "name": "Jaora",
+    "state": "Madhya Pradesh",
+    "lat": 23.63783,
+    "lng": 75.12711,
+    "population": 74907
+  },
+  {
+    "name": "Khurai",
+    "state": "Madhya Pradesh",
+    "lat": 24.04372,
+    "lng": 78.33014,
+    "population": 51108
+  },
+  {
+    "name": "Mandideep",
+    "state": "Madhya Pradesh",
+    "lat": 23.08166,
+    "lng": 77.53328,
+    "population": 59654
+  },
+  {
+    "name": "Mandla",
+    "state": "Madhya Pradesh",
+    "lat": 22.59879,
+    "lng": 80.37115,
+    "population": 71579
+  },
+  {
+    "name": "Mhow Cantt",
+    "state": "Madhya Pradesh",
+    "lat": 22.5589,
+    "lng": 75.76543,
+    "population": 81702
+  },
+  {
+    "name": "Murwara",
+    "state": "Madhya Pradesh",
+    "lat": 23.83776,
+    "lng": 80.39405,
+    "population": 221883
+  },
+  {
+    "name": "Narsimhapur",
+    "state": "Madhya Pradesh",
+    "lat": 22.94936,
+    "lng": 79.18357,
+    "population": 66736
+  },
+  {
+    "name": "Panna",
+    "state": "Madhya Pradesh",
+    "lat": 24.72094,
+    "lng": 80.18772,
+    "population": 59091
+  },
+  {
+    "name": "Sarni",
+    "state": "Madhya Pradesh",
+    "lat": 22.10317,
+    "lng": 78.17159,
+    "population": 86141
+  },
+  {
+    "name": "Sendhwa",
+    "state": "Madhya Pradesh",
+    "lat": 21.68562,
+    "lng": 75.09622,
+    "population": 56485
+  },
+  {
+    "name": "Shahdol",
+    "state": "Madhya Pradesh",
+    "lat": 23.29356,
+    "lng": 81.3619,
+    "population": 86681
+  },
+  {
+    "name": "Shajapur",
+    "state": "Madhya Pradesh",
+    "lat": 23.42637,
+    "lng": 76.27775,
+    "population": 69263
+  },
+  {
+    "name": "Sheopur",
+    "state": "Madhya Pradesh",
+    "lat": 25.66472,
+    "lng": 76.69616,
+    "population": 71951
+  },
+  {
+    "name": "Shujalpur",
+    "state": "Madhya Pradesh",
+    "lat": 23.40673,
+    "lng": 76.7098,
+    "population": 51225
+  },
+  {
+    "name": "Sidhi",
+    "state": "Madhya Pradesh",
+    "lat": 24.4038,
+    "lng": 81.87954,
+    "population": 54331
+  },
+  {
+    "name": "Sironj",
+    "state": "Madhya Pradesh",
+    "lat": 24.10313,
+    "lng": 77.69055,
+    "population": 52460
+  },
+  {
+    "name": "Tikamgarh",
+    "state": "Madhya Pradesh",
+    "lat": 24.74327,
+    "lng": 78.83061,
+    "population": 79106
+  },
+  {
+    "name": "Vijaypur",
+    "state": "Madhya Pradesh",
+    "lat": 24.73056,
+    "lng": 79.57882,
+    "population": 62163
+  },
+  {
+    "name": "Anjangaon",
+    "state": "Maharashtra",
+    "lat": 21.16516,
+    "lng": 77.3091,
+    "population": 56380
+  },
+  {
+    "name": "Ballarpur",
+    "state": "Maharashtra",
+    "lat": 20.46815,
+    "lng": 78.97289,
+    "population": 89452
+  },
+  {
+    "name": "Baramati",
+    "state": "Maharashtra",
+    "lat": 18.15174,
+    "lng": 74.57767,
+    "population": 54415
+  },
+  {
+    "name": "Buldana",
+    "state": "Maharashtra",
+    "lat": 20.52933,
+    "lng": 76.18457,
+    "population": 67431
+  },
+  {
+    "name": "Chikhli",
+    "state": "Maharashtra",
+    "lat": 20.35046,
+    "lng": 76.25774,
+    "population": 57889
+  },
+  {
+    "name": "Chiplun",
+    "state": "Maharashtra",
+    "lat": 17.53339,
+    "lng": 73.50935,
+    "population": 55139
+  },
+  {
+    "name": "Chopda",
+    "state": "Maharashtra",
+    "lat": 21.24578,
+    "lng": 75.29946,
+    "population": 72783
+  },
+  {
+    "name": "Dahanu",
+    "state": "Maharashtra",
+    "lat": 19.96778,
+    "lng": 72.71263,
+    "population": 50287
+  },
+  {
+    "name": "Deglur",
+    "state": "Maharashtra",
+    "lat": 18.54829,
+    "lng": 77.57695,
+    "population": 54493
+  },
+  {
+    "name": "Gondiya",
+    "state": "Maharashtra",
+    "lat": 21.46026,
+    "lng": 80.19205,
+    "population": 132813
+  },
+  {
+    "name": "Hingoli",
+    "state": "Maharashtra",
+    "lat": 19.71464,
+    "lng": 77.14238,
+    "population": 85103
+  },
+  {
+    "name": "Karad",
+    "state": "Maharashtra",
+    "lat": 17.28937,
+    "lng": 74.18183,
+    "population": 53879
+  },
+  {
+    "name": "Karanja",
+    "state": "Maharashtra",
+    "lat": 20.48273,
+    "lng": 77.48857,
+    "population": 67907
+  },
+  {
+    "name": "Kharghar",
+    "state": "Maharashtra",
+    "lat": 19.04979,
+    "lng": 73.07024,
+    "population": 80612
+  },
+  {
+    "name": "Khopoli",
+    "state": "Maharashtra",
+    "lat": 18.78562,
+    "lng": 73.34589,
+    "population": 71141
+  },
+  {
+    "name": "Kopargaon",
+    "state": "Maharashtra",
+    "lat": 19.88239,
+    "lng": 74.47605,
+    "population": 65273
+  },
+  {
+    "name": "Malkapur",
+    "state": "Maharashtra",
+    "lat": 20.88555,
+    "lng": 76.19932,
+    "population": 67740
+  },
+  {
+    "name": "Manmad",
+    "state": "Maharashtra",
+    "lat": 20.25334,
+    "lng": 74.43755,
+    "population": 80058
+  },
+  {
+    "name": "Nanded-Waghala",
+    "state": "Maharashtra",
+    "lat": 19.16023,
+    "lng": 77.31497,
+    "population": 550439
+  },
+  {
+    "name": "Navi Mumbai",
+    "state": "Maharashtra",
+    "lat": 19.03681,
+    "lng": 73.01582,
+    "population": 195373
+  },
+  {
+    "name": "Ozar",
+    "state": "Maharashtra",
+    "lat": 20.09473,
+    "lng": 73.92816,
+    "population": 51297
+  },
+  {
+    "name": "Pachora",
+    "state": "Maharashtra",
+    "lat": 20.66727,
+    "lng": 75.35305,
+    "population": 59609
+  },
+  {
+    "name": "Palghar",
+    "state": "Maharashtra",
+    "lat": 19.69693,
+    "lng": 72.76543,
+    "population": 68930
+  },
+  {
+    "name": "Panvel",
+    "state": "Maharashtra",
+    "lat": 18.98878,
+    "lng": 73.11013,
+    "population": 180020
+  },
+  {
+    "name": "Phaltan",
+    "state": "Maharashtra",
+    "lat": 17.99113,
+    "lng": 74.43177,
+    "population": 52118
+  },
+  {
+    "name": "Pusad",
+    "state": "Maharashtra",
+    "lat": 19.91274,
+    "lng": 77.57838,
+    "population": 73046
+  },
+  {
+    "name": "Ratnagiri",
+    "state": "Maharashtra",
+    "lat": 16.99154,
+    "lng": 73.31022,
+    "population": 76229
+  },
+  {
+    "name": "Sangamner",
+    "state": "Maharashtra",
+    "lat": 19.56784,
+    "lng": 74.21154,
+    "population": 65804
+  },
+  {
+    "name": "Sangli",
+    "state": "Maharashtra",
+    "lat": 16.85438,
+    "lng": 74.56417,
+    "population": 513961
+  },
+  {
+    "name": "Shegaon",
+    "state": "Maharashtra",
+    "lat": 20.7932,
+    "lng": 76.69921,
+    "population": 59672
+  },
+  {
+    "name": "Shrirampur",
+    "state": "Maharashtra",
+    "lat": 19.62201,
+    "lng": 74.65699,
+    "population": 89282
+  },
+  {
+    "name": "Sillod",
+    "state": "Maharashtra",
+    "lat": 20.30303,
+    "lng": 75.65284,
+    "population": 58230
+  },
+  {
+    "name": "Sinnar",
+    "state": "Maharashtra",
+    "lat": 19.84505,
+    "lng": 73.99866,
+    "population": 65299
+  },
+  {
+    "name": "Talegaon-Dabhade",
+    "state": "Maharashtra",
+    "lat": 18.73502,
+    "lng": 73.67561,
+    "population": 56435
+  },
+  {
+    "name": "Umred",
+    "state": "Maharashtra",
+    "lat": 20.85396,
+    "lng": 79.32466,
+    "population": 53971
+  },
+  {
+    "name": "Vasai-Virar City",
+    "state": "Maharashtra",
+    "lat": 19.36071,
+    "lng": 72.79558,
+    "population": 1222390
+  },
+  {
+    "name": "Wadgaon Kolhati",
+    "state": "Maharashtra",
+    "lat": 19.84307,
+    "lng": 75.236,
+    "population": 65620
+  },
+  {
+    "name": "Wani",
+    "state": "Maharashtra",
+    "lat": 20.05507,
+    "lng": 78.95313,
+    "population": 58840
+  },
+  {
+    "name": "Washim",
+    "state": "Maharashtra",
+    "lat": 20.11128,
+    "lng": 77.133,
+    "population": 78387
+  },
+  {
+    "name": "Tura",
+    "state": "Meghalaya",
+    "lat": 25.51421,
+    "lng": 90.20239,
+    "population": 74858
+  },
+  {
+    "name": "Lunglei",
+    "state": "Mizoram",
+    "lat": 22.89247,
+    "lng": 92.74218,
+    "population": 57011
+  },
+  {
+    "name": "Barbil",
+    "state": "Odisha",
+    "lat": 22.10194,
+    "lng": 85.37752,
+    "population": 66540
+  },
+  {
+    "name": "Bargarh",
+    "state": "Odisha",
+    "lat": 21.33348,
+    "lng": 83.61905,
+    "population": 80625
+  },
+  {
+    "name": "Bhawanipatna",
+    "state": "Odisha",
+    "lat": 19.90717,
+    "lng": 83.16697,
+    "population": 69045
+  },
+  {
+    "name": "Brahmapur",
+    "state": "Odisha",
+    "lat": 19.31151,
+    "lng": 84.7929,
+    "population": 356598
+  },
+  {
+    "name": "Brajarajnagar",
+    "state": "Odisha",
+    "lat": 21.81667,
+    "lng": 83.91667,
+    "population": 80403
+  },
+  {
+    "name": "Byasanagar",
+    "state": "Odisha",
+    "lat": 20.95569,
+    "lng": 86.12643,
+    "population": 56946
+  },
+  {
+    "name": "Dhenkanal",
+    "state": "Odisha",
+    "lat": 20.65744,
+    "lng": 85.59693,
+    "population": 67414
+  },
+  {
+    "name": "Jatani",
+    "state": "Odisha",
+    "lat": 20.15975,
+    "lng": 85.70742,
+    "population": 63697
+  },
+  {
+    "name": "Rayagada",
+    "state": "Odisha",
+    "lat": 19.17132,
+    "lng": 83.41428,
+    "population": 71208
+  },
+  {
+    "name": "Sunabeda",
+    "state": "Odisha",
+    "lat": 18.7284,
+    "lng": 82.82932,
+    "population": 50394
+  },
+  {
+    "name": "Dhuri",
+    "state": "Punjab",
+    "lat": 30.36846,
+    "lng": 75.86791,
+    "population": 55225
+  },
+  {
+    "name": "Faridkot",
+    "state": "Punjab",
+    "lat": 30.67399,
+    "lng": 74.75579,
+    "population": 87695
+  },
+  {
+    "name": "Fazilka",
+    "state": "Punjab",
+    "lat": 30.40207,
+    "lng": 74.02836,
+    "population": 76492
+  },
+  {
+    "name": "Gobindgarh",
+    "state": "Punjab",
+    "lat": 30.67089,
+    "lng": 76.30192,
+    "population": 82266
+  },
+  {
+    "name": "Gurdaspur",
+    "state": "Punjab",
+    "lat": 32.03933,
+    "lng": 75.40318,
+    "population": 81448
+  },
+  {
+    "name": "Jagraon",
+    "state": "Punjab",
+    "lat": 30.78783,
+    "lng": 75.47391,
+    "population": 65240
+  },
+  {
+    "name": "Kharar",
+    "state": "Punjab",
+    "lat": 30.74632,
+    "lng": 76.64689,
+    "population": 74460
+  },
+  {
+    "name": "Kotkapura",
+    "state": "Punjab",
+    "lat": 30.58061,
+    "lng": 74.82609,
+    "population": 91979
+  },
+  {
+    "name": "Malout",
+    "state": "Punjab",
+    "lat": 30.21121,
+    "lng": 74.4818,
+    "population": 81406
+  },
+  {
+    "name": "Mansa",
+    "state": "Punjab",
+    "lat": 29.98844,
+    "lng": 75.40167,
+    "population": 82956
+  },
+  {
+    "name": "Muktsar",
+    "state": "Punjab",
+    "lat": 30.47426,
+    "lng": 74.5166,
+    "population": 116747
+  },
+  {
+    "name": "Nabha",
+    "state": "Punjab",
+    "lat": 30.37577,
+    "lng": 76.15292,
+    "population": 67972
+  },
+  {
+    "name": "Naya Gaon",
+    "state": "Punjab",
+    "lat": 30.77515,
+    "lng": 76.79308,
+    "population": 50869
+  },
+  {
+    "name": "Rampura Phul",
+    "state": "Punjab",
+    "lat": 30.27563,
+    "lng": 75.24253,
+    "population": 51023
+  },
+  {
+    "name": "Rupnagar",
+    "state": "Punjab",
+    "lat": 30.96896,
+    "lng": 76.52695,
+    "population": 56038
+  },
+  {
+    "name": "Samana",
+    "state": "Punjab",
+    "lat": 30.15395,
+    "lng": 76.19851,
+    "population": 54072
+  },
+  {
+    "name": "Sangrur",
+    "state": "Punjab",
+    "lat": 30.24506,
+    "lng": 75.84488,
+    "population": 88043
+  },
+  {
+    "name": "Tarn Taran",
+    "state": "Punjab",
+    "lat": 31.45191,
+    "lng": 74.92777,
+    "population": 66847
+  },
+  {
+    "name": "Abu Road",
+    "state": "Rajasthan",
+    "lat": 24.48012,
+    "lng": 72.78186,
+    "population": 64785
+  },
+  {
+    "name": "Balotra",
+    "state": "Rajasthan",
+    "lat": 25.83242,
+    "lng": 72.24,
+    "population": 74496
+  },
+  {
+    "name": "Bari",
+    "state": "Rajasthan",
+    "lat": 26.64661,
+    "lng": 77.61634,
+    "population": 62721
+  },
+  {
+    "name": "Chittaurgarh",
+    "state": "Rajasthan",
+    "lat": 24.88963,
+    "lng": 74.62403,
+    "population": 116406
+  },
+  {
+    "name": "Chomu",
+    "state": "Rajasthan",
+    "lat": 27.39913,
+    "lng": 76.70749,
+    "population": 64417
+  },
+  {
+    "name": "Dhaulpur",
+    "state": "Rajasthan",
+    "lat": 26.69286,
+    "lng": 77.87968,
+    "population": 133075
+  },
+  {
+    "name": "Didwana",
+    "state": "Rajasthan",
+    "lat": 27.40096,
+    "lng": 74.57537,
+    "population": 53749
+  },
+  {
+    "name": "Gangapur City",
+    "state": "Rajasthan",
+    "lat": 26.47249,
+    "lng": 76.71744,
+    "population": 130061
+  },
+  {
+    "name": "Jaisalmer",
+    "state": "Rajasthan",
+    "lat": 26.91763,
+    "lng": 70.90387,
+    "population": 65471
+  },
+  {
+    "name": "Jalor",
+    "state": "Rajasthan",
+    "lat": 25.34558,
+    "lng": 72.61559,
+    "population": 54081
+  },
+  {
+    "name": "Jhalawar",
+    "state": "Rajasthan",
+    "lat": 24.59633,
+    "lng": 76.16499,
+    "population": 66919
+  },
+  {
+    "name": "Jhunjhunun",
+    "state": "Rajasthan",
+    "lat": 28.12559,
+    "lng": 75.39797,
+    "population": 118473
+  },
+  {
+    "name": "Lachhmangarh",
+    "state": "Rajasthan",
+    "lat": 27.3659,
+    "lng": 76.85992,
+    "population": 53392
+  },
+  {
+    "name": "Nasirabad",
+    "state": "Rajasthan",
+    "lat": 26.30473,
+    "lng": 74.73364,
+    "population": 50804
+  },
+  {
+    "name": "Nawalgarh",
+    "state": "Rajasthan",
+    "lat": 27.85161,
+    "lng": 75.27384,
+    "population": 63948
+  },
+  {
+    "name": "Nimbahera",
+    "state": "Rajasthan",
+    "lat": 24.62166,
+    "lng": 74.67999,
+    "population": 61949
+  },
+  {
+    "name": "Nokha",
+    "state": "Rajasthan",
+    "lat": 27.56155,
+    "lng": 73.47141,
+    "population": 62699
+  },
+  {
+    "name": "Rajgarh",
+    "state": "Rajasthan",
+    "lat": 28.64201,
+    "lng": 75.38612,
+    "population": 59193
+  },
+  {
+    "name": "Rajsamand",
+    "state": "Rajasthan",
+    "lat": 25.07145,
+    "lng": 73.8798,
+    "population": 72556
+  },
+  {
+    "name": "Ramganj Mandi",
+    "state": "Rajasthan",
+    "lat": 24.64648,
+    "lng": 75.94325,
+    "population": 53321
+  },
+  {
+    "name": "Ratangarh",
+    "state": "Rajasthan",
+    "lat": 28.08137,
+    "lng": 74.61854,
+    "population": 71124
+  },
+  {
+    "name": "Suratgarh",
+    "state": "Rajasthan",
+    "lat": 29.3215,
+    "lng": 73.89979,
+    "population": 70536
+  },
+  {
+    "name": "Arani",
+    "state": "Tamil Nadu",
+    "lat": 12.66771,
+    "lng": 79.28529,
+    "population": 63671
+  },
+  {
+    "name": "Aruppukkottai",
+    "state": "Tamil Nadu",
+    "lat": 9.5096,
+    "lng": 78.09588,
+    "population": 87722
+  },
+  {
+    "name": "Attur",
+    "state": "Tamil Nadu",
+    "lat": 11.59414,
+    "lng": 78.60143,
+    "population": 61793
+  },
+  {
+    "name": "Bodinayakanur",
+    "state": "Tamil Nadu",
+    "lat": 10.01171,
+    "lng": 77.34976,
+    "population": 75675
+  },
+  {
+    "name": "Chengalpattu",
+    "state": "Tamil Nadu",
+    "lat": 12.69184,
+    "lng": 79.97661,
+    "population": 62579
+  },
+  {
+    "name": "Chidambaram",
+    "state": "Tamil Nadu",
+    "lat": 11.39933,
+    "lng": 79.69144,
+    "population": 62153
+  },
+  {
+    "name": "Devakottai",
+    "state": "Tamil Nadu",
+    "lat": 9.94704,
+    "lng": 78.8233,
+    "population": 51865
+  },
+  {
+    "name": "Dharapuram",
+    "state": "Tamil Nadu",
+    "lat": 10.73828,
+    "lng": 77.53223,
+    "population": 56007
+  },
+  {
+    "name": "Dharmapuri",
+    "state": "Tamil Nadu",
+    "lat": 12.1277,
+    "lng": 78.15794,
+    "population": 68619
+  },
+  {
+    "name": "Edappadi",
+    "state": "Tamil Nadu",
+    "lat": 11.43589,
+    "lng": 78.657,
+    "population": 54823
+  },
+  {
+    "name": "Gobichettipalayam",
+    "state": "Tamil Nadu",
+    "lat": 11.45496,
+    "lng": 77.4422,
+    "population": 59523
+  },
+  {
+    "name": "Karaikkudi",
+    "state": "Tamil Nadu",
+    "lat": 10.06615,
+    "lng": 78.76784,
+    "population": 181851
+  },
+  {
+    "name": "Karur",
+    "state": "Tamil Nadu",
+    "lat": 10.95771,
+    "lng": 78.08095,
+    "population": 234191
+  },
+  {
+    "name": "Krishnagiri",
+    "state": "Tamil Nadu",
+    "lat": 12.51921,
+    "lng": 78.21382,
+    "population": 71323
+  },
+  {
+    "name": "Kumarapalayam",
+    "state": "Tamil Nadu",
+    "lat": 11.44495,
+    "lng": 77.71102,
+    "population": 195071
+  },
+  {
+    "name": "Mannargudi",
+    "state": "Tamil Nadu",
+    "lat": 10.66626,
+    "lng": 79.45064,
+    "population": 66999
+  },
+  {
+    "name": "Mayiladuthurai",
+    "state": "Tamil Nadu",
+    "lat": 11.10354,
+    "lng": 79.655,
+    "population": 85632
+  },
+  {
+    "name": "Mettupalayam",
+    "state": "Tamil Nadu",
+    "lat": 11.29971,
+    "lng": 76.93485,
+    "population": 69213
+  },
+  {
+    "name": "Mettur",
+    "state": "Tamil Nadu",
+    "lat": 11.78796,
+    "lng": 77.8008,
+    "population": 52813
+  },
+  {
+    "name": "Namakkal",
+    "state": "Tamil Nadu",
+    "lat": 11.22126,
+    "lng": 78.16524,
+    "population": 55145
+  },
+  {
+    "name": "Palani",
+    "state": "Tamil Nadu",
+    "lat": 10.45034,
+    "lng": 77.5209,
+    "population": 70467
+  },
+  {
+    "name": "Panruti",
+    "state": "Tamil Nadu",
+    "lat": 11.77662,
+    "lng": 79.55269,
+    "population": 60323
+  },
+  {
+    "name": "Pattukkottai",
+    "state": "Tamil Nadu",
+    "lat": 10.42358,
+    "lng": 79.31949,
+    "population": 73135
+  },
+  {
+    "name": "Ramanathapuram",
+    "state": "Tamil Nadu",
+    "lat": 9.37158,
+    "lng": 78.83077,
+    "population": 61440
+  },
+  {
+    "name": "Ranipet",
+    "state": "Tamil Nadu",
+    "lat": 12.92471,
+    "lng": 79.33331,
+    "population": 264330
+  },
+  {
+    "name": "Rasipuram",
+    "state": "Tamil Nadu",
+    "lat": 11.46009,
+    "lng": 78.18635,
+    "population": 50244
+  },
+  {
+    "name": "Sivakasi",
+    "state": "Tamil Nadu",
+    "lat": 9.44999,
+    "lng": 77.79797,
+    "population": 234704
+  },
+  {
+    "name": "Srivilliputhur",
+    "state": "Tamil Nadu",
+    "lat": 9.51272,
+    "lng": 77.63369,
+    "population": 75396
+  },
+  {
+    "name": "Tenkasi",
+    "state": "Tamil Nadu",
+    "lat": 8.96003,
+    "lng": 77.31525,
+    "population": 70545
+  },
+  {
+    "name": "Thirumangalam",
+    "state": "Tamil Nadu",
+    "lat": 9.82307,
+    "lng": 77.98381,
+    "population": 51194
+  },
+  {
+    "name": "Thiruvarur",
+    "state": "Tamil Nadu",
+    "lat": 10.77269,
+    "lng": 79.6368,
+    "population": 58301
+  },
+  {
+    "name": "Tindivanam",
+    "state": "Tamil Nadu",
+    "lat": 12.234,
+    "lng": 79.65551,
+    "population": 72796
+  },
+  {
+    "name": "Valparai",
+    "state": "Tamil Nadu",
+    "lat": 10.32691,
+    "lng": 76.95116,
+    "population": 70859
+  },
+  {
+    "name": "Villupuram",
+    "state": "Tamil Nadu",
+    "lat": 11.93975,
+    "lng": 79.49244,
+    "population": 96253
+  },
+  {
+    "name": "Virudhachalam",
+    "state": "Tamil Nadu",
+    "lat": 11.51497,
+    "lng": 79.32824,
+    "population": 73585
+  },
+  {
+    "name": "Bhadrachalam",
+    "state": "Telangana",
+    "lat": 17.66846,
+    "lng": 80.88887,
+    "population": 50087
+  },
+  {
+    "name": "Bhongir",
+    "state": "Telangana",
+    "lat": 17.51544,
+    "lng": 78.88563,
+    "population": 53339
+  },
+  {
+    "name": "Bodhan",
+    "state": "Telangana",
+    "lat": 18.66208,
+    "lng": 77.88581,
+    "population": 77573
+  },
+  {
+    "name": "Gadwal",
+    "state": "Telangana",
+    "lat": 16.23504,
+    "lng": 77.79556,
+    "population": 63177
+  },
+  {
+    "name": "Jangaon",
+    "state": "Telangana",
+    "lat": 17.72602,
+    "lng": 79.15236,
+    "population": 52394
+  },
+  {
+    "name": "Kagaznagar",
+    "state": "Telangana",
+    "lat": 19.33159,
+    "lng": 79.46605,
+    "population": 57583
+  },
+  {
+    "name": "Koratla",
+    "state": "Telangana",
+    "lat": 18.82154,
+    "lng": 78.71186,
+    "population": 66504
+  },
+  {
+    "name": "Mandamarri",
+    "state": "Telangana",
+    "lat": 18.96506,
+    "lng": 79.47475,
+    "population": 84737
+  },
+  {
+    "name": "Metpalle",
+    "state": "Telangana",
+    "lat": 18.84724,
+    "lng": 78.62563,
+    "population": 50902
+  },
+  {
+    "name": "Nirmal",
+    "state": "Telangana",
+    "lat": 19.09685,
+    "lng": 78.34407,
+    "population": 88433
+  },
+  {
+    "name": "Palwancha",
+    "state": "Telangana",
+    "lat": 17.58152,
+    "lng": 80.67651,
+    "population": 80199
+  },
+  {
+    "name": "Rajampet",
+    "state": "Telangana",
+    "lat": 17.61833,
+    "lng": 78.07722,
+    "population": 54050
+  },
+  {
+    "name": "Sangareddy",
+    "state": "Telangana",
+    "lat": 17.62477,
+    "lng": 78.08669,
+    "population": 83858
+  },
+  {
+    "name": "Sircilla",
+    "state": "Telangana",
+    "lat": 18.38865,
+    "lng": 78.81048,
+    "population": 83186
+  },
+  {
+    "name": "Tandur",
+    "state": "Telangana",
+    "lat": 17.24849,
+    "lng": 77.57698,
+    "population": 65115
+  },
+  {
+    "name": "Zahirabad",
+    "state": "Telangana",
+    "lat": 17.68138,
+    "lng": 77.60743,
+    "population": 82442
+  },
+  {
+    "name": "Aonla",
+    "state": "Uttar Pradesh",
+    "lat": 28.27402,
+    "lng": 79.16521,
+    "population": 55629
+  },
+  {
+    "name": "Atrauli",
+    "state": "Uttar Pradesh",
+    "lat": 28.02964,
+    "lng": 78.28571,
+    "population": 50412
+  },
+  {
+    "name": "Baghpat",
+    "state": "Uttar Pradesh",
+    "lat": 28.94485,
+    "lng": 77.21865,
+    "population": 50310
+  },
+  {
+    "name": "Baheri",
+    "state": "Uttar Pradesh",
+    "lat": 28.77416,
+    "lng": 79.4974,
+    "population": 68413
+  },
+  {
+    "name": "Balrampur",
+    "state": "Uttar Pradesh",
+    "lat": 27.42949,
+    "lng": 82.18545,
+    "population": 86790
+  },
+  {
+    "name": "Bilari",
+    "state": "Uttar Pradesh",
+    "lat": 28.62146,
+    "lng": 78.80361,
+    "population": 56244
+  },
+  {
+    "name": "Bisalpur",
+    "state": "Uttar Pradesh",
+    "lat": 28.29253,
+    "lng": 79.80472,
+    "population": 73551
+  },
+  {
+    "name": "Biswan",
+    "state": "Uttar Pradesh",
+    "lat": 27.49581,
+    "lng": 80.99618,
+    "population": 55780
+  },
+  {
+    "name": "Budhana",
+    "state": "Uttar Pradesh",
+    "lat": 29.28805,
+    "lng": 77.47534,
+    "population": 53722
+  },
+  {
+    "name": "Bulandshahar",
+    "state": "Uttar Pradesh",
+    "lat": 28.40392,
+    "lng": 77.85773,
+    "population": 234945
+  },
+  {
+    "name": "Chandpur",
+    "state": "Uttar Pradesh",
+    "lat": 29.13489,
+    "lng": 78.27187,
+    "population": 83441
+  },
+  {
+    "name": "Chhibramau",
+    "state": "Uttar Pradesh",
+    "lat": 27.14872,
+    "lng": 79.50078,
+    "population": 60986
+  },
+  {
+    "name": "Chitrakoot Dham",
+    "state": "Uttar Pradesh",
+    "lat": 25.21473,
+    "lng": 80.91645,
+    "population": 66426
+  },
+  {
+    "name": "Dhampur",
+    "state": "Uttar Pradesh",
+    "lat": 29.30883,
+    "lng": 78.51083,
+    "population": 66813
+  },
+  {
+    "name": "Faridpur",
+    "state": "Uttar Pradesh",
+    "lat": 28.20997,
+    "lng": 79.54149,
+    "population": 78249
+  },
+  {
+    "name": "Farrukhabad-cum-Fatehgarh",
+    "state": "Uttar Pradesh",
+    "lat": 27.39134,
+    "lng": 79.5793,
+    "population": 291374
+  },
+  {
+    "name": "Fatehgarh",
+    "state": "Uttar Pradesh",
+    "lat": 27.36409,
+    "lng": 79.63111,
+    "population": 276581
+  },
+  {
+    "name": "Gajraula",
+    "state": "Uttar Pradesh",
+    "lat": 28.8457,
+    "lng": 78.2396,
+    "population": 55048
+  },
+  {
+    "name": "Gangoh",
+    "state": "Uttar Pradesh",
+    "lat": 29.78004,
+    "lng": 77.26346,
+    "population": 59279
+  },
+  {
+    "name": "Ganj Dundwara",
+    "state": "Uttar Pradesh",
+    "lat": 27.73308,
+    "lng": 78.94119,
+    "population": 55220
+  },
+  {
+    "name": "Gola Gokarannath",
+    "state": "Uttar Pradesh",
+    "lat": 28.07837,
+    "lng": 80.47054,
+    "population": 70956
+  },
+  {
+    "name": "Gulaothi",
+    "state": "Uttar Pradesh",
+    "lat": 28.58938,
+    "lng": 77.79318,
+    "population": 50823
+  },
+  {
+    "name": "Hasanpur",
+    "state": "Uttar Pradesh",
+    "lat": 28.72249,
+    "lng": 78.28436,
+    "population": 61243
+  },
+  {
+    "name": "Jahangirabad",
+    "state": "Uttar Pradesh",
+    "lat": 28.40549,
+    "lng": 78.10588,
+    "population": 59858
+  },
+  {
+    "name": "Jalaun",
+    "state": "Uttar Pradesh",
+    "lat": 26.1451,
+    "lng": 79.3366,
+    "population": 56909
+  },
+  {
+    "name": "Kairana",
+    "state": "Uttar Pradesh",
+    "lat": 29.39541,
+    "lng": 77.2054,
+    "population": 89000
+  },
+  {
+    "name": "Kalpi",
+    "state": "Uttar Pradesh",
+    "lat": 26.11667,
+    "lng": 79.73333,
+    "population": 51670
+  },
+  {
+    "name": "Kannauj",
+    "state": "Uttar Pradesh",
+    "lat": 27.05524,
+    "lng": 79.9188,
+    "population": 84862
+  },
+  {
+    "name": "Kiratpur",
+    "state": "Uttar Pradesh",
+    "lat": 29.50671,
+    "lng": 78.20613,
+    "population": 61946
+  },
+  {
+    "name": "Konch",
+    "state": "Uttar Pradesh",
+    "lat": 25.99451,
+    "lng": 79.15127,
+    "population": 53412
+  },
+  {
+    "name": "Laharpur",
+    "state": "Uttar Pradesh",
+    "lat": 27.70827,
+    "lng": 80.90256,
+    "population": 61990
+  },
+  {
+    "name": "Mahmudabad",
+    "state": "Uttar Pradesh",
+    "lat": 27.29191,
+    "lng": 81.11775,
+    "population": 50777
+  },
+  {
+    "name": "Maunath Bhanjan",
+    "state": "Uttar Pradesh",
+    "lat": 25.94167,
+    "lng": 83.56111,
+    "population": 278745
+  },
+  {
+    "name": "Mauranipur",
+    "state": "Uttar Pradesh",
+    "lat": 25.24415,
+    "lng": 79.13276,
+    "population": 61449
+  },
+  {
+    "name": "Mawana",
+    "state": "Uttar Pradesh",
+    "lat": 29.10288,
+    "lng": 77.92199,
+    "population": 81443
+  },
+  {
+    "name": "Mirzapur-cum-Vindhyachal",
+    "state": "Uttar Pradesh",
+    "lat": 25.1449,
+    "lng": 82.56534,
+    "population": 246920
+  },
+  {
+    "name": "Obra",
+    "state": "Uttar Pradesh",
+    "lat": 24.41863,
+    "lng": 82.98797,
+    "population": 67656
+  },
+  {
+    "name": "Pilkhuwa",
+    "state": "Uttar Pradesh",
+    "lat": 28.71271,
+    "lng": 77.656,
+    "population": 83736
+  },
+  {
+    "name": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "lat": 25.44478,
+    "lng": 81.84322,
+    "population": 1212395
+  },
+  {
+    "name": "Rae Bareli",
+    "state": "Uttar Pradesh",
+    "lat": 26.2309,
+    "lng": 81.23315,
+    "population": 191316
+  },
+  {
+    "name": "Rath",
+    "state": "Uttar Pradesh",
+    "lat": 25.59474,
+    "lng": 79.5666,
+    "population": 65056
+  },
+  {
+    "name": "Sandila",
+    "state": "Uttar Pradesh",
+    "lat": 27.06989,
+    "lng": 80.51497,
+    "population": 58346
+  },
+  {
+    "name": "Sardhana",
+    "state": "Uttar Pradesh",
+    "lat": 29.14551,
+    "lng": 77.61433,
+    "population": 58252
+  },
+  {
+    "name": "Seohara",
+    "state": "Uttar Pradesh",
+    "lat": 29.20904,
+    "lng": 78.58837,
+    "population": 53296
+  },
+  {
+    "name": "Shahabad",
+    "state": "Uttar Pradesh",
+    "lat": 27.6431,
+    "lng": 79.9402,
+    "population": 80226
+  },
+  {
+    "name": "Sherkot",
+    "state": "Uttar Pradesh",
+    "lat": 29.32704,
+    "lng": 78.57429,
+    "population": 62226
+  },
+  {
+    "name": "Sikandrabad",
+    "state": "Uttar Pradesh",
+    "lat": 27.69301,
+    "lng": 78.70695,
+    "population": 81028
+  },
+  {
+    "name": "Tilhar",
+    "state": "Uttar Pradesh",
+    "lat": 27.96282,
+    "lng": 79.73827,
+    "population": 61444
+  },
+  {
+    "name": "Tundla",
+    "state": "Uttar Pradesh",
+    "lat": 27.2146,
+    "lng": 78.23683,
+    "population": 64906
+  },
+  {
+    "name": "Vrindavan",
+    "state": "Uttar Pradesh",
+    "lat": 27.58105,
+    "lng": 77.69662,
+    "population": 71688
+  },
+  {
+    "name": "Jaspur",
+    "state": "Uttarakhand",
+    "lat": 29.27919,
+    "lng": 78.82798,
+    "population": 50523
+  },
+  {
+    "name": "Kathgodam",
+    "state": "Uttarakhand",
+    "lat": 29.26785,
+    "lng": 79.5441,
+    "population": 232095
+  },
+  {
+    "name": "Kichha",
+    "state": "Uttarakhand",
+    "lat": 28.91154,
+    "lng": 79.52009,
+    "population": 53357
+  },
+  {
+    "name": "Manglaur",
+    "state": "Uttarakhand",
+    "lat": 29.79094,
+    "lng": 77.87836,
+    "population": 52971
+  },
+  {
+    "name": "Pithoragarh",
+    "state": "Uttarakhand",
+    "lat": 29.58349,
+    "lng": 80.20947,
+    "population": 56044
+  },
+  {
+    "name": "Ramnagar",
+    "state": "Uttarakhand",
+    "lat": 29.3925,
+    "lng": 79.1283,
+    "population": 54787
+  },
+  {
+    "name": "Baduria",
+    "state": "West Bengal",
+    "lat": 22.74431,
+    "lng": 88.78655,
+    "population": 52493
+  },
+  {
+    "name": "Barddhaman",
+    "state": "West Bengal",
+    "lat": 23.25572,
+    "lng": 87.85691,
+    "population": 346639
+  },
+  {
+    "name": "Baruipur",
+    "state": "West Bengal",
+    "lat": 22.36544,
+    "lng": 88.4325,
+    "population": 87009
+  },
+  {
+    "name": "Bishnupur",
+    "state": "West Bengal",
+    "lat": 23.0738,
+    "lng": 87.31991,
+    "population": 67783
+  },
+  {
+    "name": "Contai",
+    "state": "West Bengal",
+    "lat": 21.77985,
+    "lng": 87.74892,
+    "population": 92226
+  },
+  {
+    "name": "Darjiling",
+    "state": "West Bengal",
+    "lat": 27.03333,
+    "lng": 88.26667,
+    "population": 130399
+  },
+  {
+    "name": "English Bazar",
+    "state": "West Bengal",
+    "lat": 25.00447,
+    "lng": 88.14573,
+    "population": 313681
+  },
+  {
+    "name": "Gangarampur",
+    "state": "West Bengal",
+    "lat": 25.40138,
+    "lng": 88.52978,
+    "population": 56217
+  },
+  {
+    "name": "Ghatal",
+    "state": "West Bengal",
+    "lat": 22.66244,
+    "lng": 87.73399,
+    "population": 54591
+  },
+  {
+    "name": "Gobardanga",
+    "state": "West Bengal",
+    "lat": 22.8774,
+    "lng": 88.75479,
+    "population": 81081
+  },
+  {
+    "name": "Islampur",
+    "state": "West Bengal",
+    "lat": 26.26541,
+    "lng": 88.18982,
+    "population": 54340
+  },
+  {
+    "name": "Jhargram",
+    "state": "West Bengal",
+    "lat": 22.45384,
+    "lng": 86.99497,
+    "population": 61712
+  },
+  {
+    "name": "Kalimpong",
+    "state": "West Bengal",
+    "lat": 27.05623,
+    "lng": 88.46207,
+    "population": 56192
+  },
+  {
+    "name": "Kalna",
+    "state": "West Bengal",
+    "lat": 23.21944,
+    "lng": 88.36295,
+    "population": 56722
+  },
+  {
+    "name": "Kandi",
+    "state": "West Bengal",
+    "lat": 23.95946,
+    "lng": 88.04018,
+    "population": 55632
+  },
+  {
+    "name": "Koch Bihar",
+    "state": "West Bengal",
+    "lat": 26.32539,
+    "lng": 89.44508,
+    "population": 106843
+  },
+  {
+    "name": "Medinipur",
+    "state": "West Bengal",
+    "lat": 22.42114,
+    "lng": 87.32257,
+    "population": 169264
+  },
+  {
+    "name": "Puruliya",
+    "state": "West Bengal",
+    "lat": 23.33062,
+    "lng": 86.36303,
+    "population": 126815
+  },
+  {
+    "name": "Raghunathpur",
+    "state": "West Bengal",
+    "lat": 23.53878,
+    "lng": 86.6735,
+    "population": 61789
+  },
+  {
+    "name": "Rampurhat",
+    "state": "West Bengal",
+    "lat": 24.17737,
+    "lng": 87.78275,
+    "population": 57833
+  },
+  {
+    "name": "Santipur",
+    "state": "West Bengal",
+    "lat": 23.25,
+    "lng": 88.43333,
+    "population": 290345
+  },
+  {
+    "name": "Tamluk",
+    "state": "West Bengal",
+    "lat": 22.30083,
+    "lng": 87.92593,
+    "population": 65306
+  },
+  {
+    "name": "Ranibennur",
+    "state": "Karnataka",
+    "lat": 14.62239,
+    "lng": 75.62951,
+    "population": 106406
   }
 ]
