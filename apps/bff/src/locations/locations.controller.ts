@@ -23,6 +23,14 @@ export class LocationsController {
     return this.locationsService.searchAreas(cityId, q, all === 'true');
   }
 
+  /** Old city slug → the curated city its listings were moved onto. Null when the slug is live
+   * or unknown. The web app 308s; this does not itself redirect. */
+  @Get('slug-redirect')
+  slugRedirect(@Query('slug') slug?: string): Promise<City | null> {
+    if (!slug?.trim()) return Promise.resolve(null);
+    return this.locationsService.resolveSlugRedirect(slug.trim());
+  }
+
   /** Real Google-backed reverse geocoding — used by the posting flow's map pin-picker and by
    * "Auto-detect my current location" on the homepage/app. The only reverse-geocoding path left:
    * see docs/plans/remove-automatic-ip-city-detection.md for why the plain haversine

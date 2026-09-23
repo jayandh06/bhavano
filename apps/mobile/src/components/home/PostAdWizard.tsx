@@ -242,6 +242,7 @@ export function PostAdWizard({
   /** Cities the map pin resolved that aren't in the `cities` prop. Kept separate rather than
    * copying the prop into state, so a later prop update can't be silently shadowed. */
   const [pinResolvedCities, setPinResolvedCities] = useState<City[]>([]);
+  const [pinLookupNote, setPinLookupNote] = useState<string | null>(null);
   const cityOptions = useMemo(
     () => [...cities, ...pinResolvedCities.filter((p) => !cities.some((c) => c.id === p.id))],
     [cities, pinResolvedCities],
@@ -747,11 +748,9 @@ export function PostAdWizard({
   /** Google's City/Area resolution is a suggestion, never auto-locked — the user can still
    * change the City chip / Area field manually after the map pre-fills them.
    *
-   * Applied directly, no confirmation step — the BFF's own resolution
-   * (docs/plans/fix-wrong-city-geocoding-locality-alias.md) is what makes a resolved city
-   * trustworthy enough to set automatically; a village/ward inside an already-curated city no
-   * longer resolves to itself there, so there's nothing left here worth double-checking with the
-   * seller before applying. */
+   * Applied directly when the pin resolves to a city. A pin outside every curated catchment does
+   * not create a city — the area name is filled in and the seller picks the city. See
+   * docs/plans/canonical-city-catchment.md. */
   function onPinChange(nextPin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) {
     setPin(nextPin);
     if (!suggestion) return;
@@ -777,6 +776,13 @@ export function PostAdWizard({
         );
       }
       onCityChange(suggestion.cityId);
+      setPinLookupNote(null);
+    } else {
+      setPinLookupNote(
+        suggestion.resolvedLocality
+          ? `This place isn't inside a city we list. Pick the city, and we'll save ${suggestion.resolvedLocality} as the area.`
+          : "Couldn't confidently match a city here — please pick City and Area below.",
+      );
     }
     // `resolvedLocality` always comes back; `areaId` only when Google's locality matched an
     // existing Bhavano Area. Filling the text either way is the point of the pin — gating both on
@@ -1080,6 +1086,9 @@ export function PostAdWizard({
               onPinChange={onPinChange}
             />
           </ErrorBoundary>
+          {pinLookupNote ? (
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{pinLookupNote}</Text>
+          ) : null}
 
           <Text style={[styles.label, { color: colors.textSoft }]}>City</Text>
           {/* Collapsed by default. Rendering a chip for every city pushed the rest of the form off

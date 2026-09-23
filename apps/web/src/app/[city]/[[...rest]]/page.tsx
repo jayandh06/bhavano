@@ -5,9 +5,9 @@ import { slugify } from "@bhavano/types/slugify";
 import { AMENITY_KEYS } from "@bhavano/types/categoryFields";
 import type { AreaUnit } from "@bhavano/types/areaUnit";
 import { auth } from "@/auth";
-import { fetchAreas, fetchCities, fetchListingById, fetchListingMeta, fetchListings } from "@/lib/bff";
+import { fetchAreas, fetchCities, fetchCitySlugRedirect, fetchListingById, fetchListingMeta, fetchListings } from "@/lib/bff";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
-import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity } from "@/lib/browseRoute";
+import { CATEGORY_LABELS, isListingCategory, isTransactionType, resolveArea, resolveCity, formerCityRedirectPath } from "@/lib/browseRoute";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import {
   buildFacetSlug,
@@ -53,7 +53,7 @@ async function legacyRedirect(transaction: string, rest: string[]): Promise<neve
     permanentRedirect(buildListingPath(listing));
   }
 
-  const cityRow = await resolveCity(citySlug);
+  const cityRow = (await resolveCity(citySlug)) ?? (await fetchCitySlugRedirect(citySlug).catch(() => null));
   if (!cityRow) notFound();
   const areaRow = locality ? await resolveArea(cityRow.id, locality) : null;
   if (locality && !areaRow) notFound();
@@ -432,7 +432,11 @@ export async function generateMetadata({
 
   if (isTransactionType(city)) return {};
   const cityRow = await resolveCity(city);
-  if (!cityRow) return {};
+  if (!cityRow) {
+    const next = await formerCityRedirectPath(city, rest);
+    if (next) permanentRedirect(next);
+    return {};
+  }
   const parsed = parseSegments(rest);
   if (!parsed) return {};
 
@@ -515,7 +519,11 @@ export default async function CityBrowsePage({
   if (isTransactionType(city)) await legacyRedirect(city, rest);
 
   const cityRow = await resolveCity(city);
-  if (!cityRow) notFound();
+  if (!cityRow) {
+    const next = await formerCityRedirectPath(city, rest);
+    if (next) permanentRedirect(next);
+    notFound();
+  }
 
   const parsed = parseSegments(rest);
   if (!parsed) notFound();

@@ -553,16 +553,12 @@ export function PostAdWizard({
   }
 
   /** Google's City/Area resolution is a suggestion, never auto-locked — the user can still
-   * change the City select / Area field manually after the map pre-fills them. A city/area with
-   * no existing match gets created on the fly (see LocationsService.ensureCity/ensureArea in the
-   * BFF) rather than silently left unresolved — this list only needs to grow to *display* one
-   * that's not in the initially-fetched set, since it already exists in the DB by this point.
+   * change the City select / Area field manually after the map pre-fills them. The local place
+   * is saved as an area under the resolved city. A pin never creates a city.
    *
-   * Applied directly, no confirmation step — the BFF's own resolution
-   * (docs/plans/fix-wrong-city-geocoding-locality-alias.md) is what makes a resolved city
-   * trustworthy enough to set automatically; a village/ward inside an already-curated city no
-   * longer resolves to itself there, so there's nothing left here worth double-checking with the
-   * seller before applying. */
+   * Applied directly when the pin resolves to a city. A pin outside every curated catchment does
+   * not create a city — the area name is filled in and the seller picks the city. See
+   * docs/plans/canonical-city-catchment.md. */
   function onPinChange(
     nextPin: { lat: number; lng: number },
     suggestion: ReverseGeocodeResultDto | null,
@@ -594,12 +590,14 @@ export function PostAdWizard({
       );
     } else {
       setPinLookupNote(
-        "Couldn't confidently match a city here — please pick City/Area manually below.",
+        suggestion.resolvedLocality
+          ? `This place isn't inside a city we list. Pick the city, and we'll save ${suggestion.resolvedLocality} as the area.`
+          : "Couldn't confidently match a city here — please pick City and Area below.",
       );
     }
 
-    if (suggestion.areaId && suggestion.resolvedLocality) {
-      setAreaId(suggestion.areaId);
+    if (suggestion.resolvedLocality) {
+      setAreaId(suggestion.areaId ?? null);
       setAreaQuery(suggestion.resolvedLocality);
       setAreaSuggestions([]);
     }

@@ -13,6 +13,7 @@ function makeService(overrides: Record<string, unknown> = {}) {
     },
     area: {
       findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'new-area', ...data })),
     },
     localityAlias: {
@@ -105,90 +106,134 @@ describe('LocationsService.ensureArea — refuses a name that would produce an u
   });
 });
 
-describe('LocationsService.reverseGeocodeGoogle — city-resolution priority chain', () => {
+describe('LocationsService.reverseGeocodeGoogle — city stays the curated market', () => {
   afterEach(() => jest.restoreAllMocks());
 
-  // Real-world shape: a pin inside a Coimbatore ward Google tags with its own locality name,
-  // but whose district (administrative_area_level_2) is still "Coimbatore" — see
-  // docs/plans/fix-wrong-city-geocoding-locality-alias.md.
-  const wardComponents = [
-    { types: ['sublocality', 'sublocality_level_1'], long_name: 'New Siddhapudur' },
-    { types: ['locality'], long_name: 'New Siddhapudur' },
-    { types: ['administrative_area_level_2'], long_name: 'Coimbatore' },
-    { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu' },
-  ];
+  const coimbatore = {
+    id: 'coimbatore-1',
+    name: 'Coimbatore',
+    state: 'Tamil Nadu',
+    source: 'curated',
+    lat: 11.0168,
+    lng: 76.9558,
+    catchmentKm: 25,
+  };
 
-  it('an admin-patched LocalityAlias wins over district/locality matching', async () => {
-    const coimbatore = { id: 'coimbatore-1', name: 'Coimbatore', state: 'Tamil Nadu', source: 'curated' };
+  const delhiNcr = {
+    id: 'delhi-ncr',
+    name: 'Delhi NCR',
+    state: 'Delhi',
+    source: 'curated',
+    lat: 28.7041,
+    lng: 77.1025,
+    catchmentKm: 50,
+  };
+
+  function serviceWithCurated(cities: object[]) {
+    return makeService({
+      city: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue(cities),
+        create: jest.fn(),
+      },
+    });
+  }
+
+  it('an admin-patched LocalityAlias wins and does not look up cities', async () => {
     const { service, prisma } = makeService({
       localityAlias: { findFirst: jest.fn().mockResolvedValue({ city: coimbatore }) },
     });
-    mockGeocodeFetch(wardComponents);
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'New Siddhapudur' },
+      { types: ['locality'], long_name: 'New Siddhapudur' },
+      { types: ['administrative_area_level_2'], long_name: 'Coimbatore' },
+      { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu' },
+    ]);
 
     const result = await service.reverseGeocodeGoogle(11.03, 76.96);
 
     expect(result.cityId).toBe('coimbatore-1');
-    expect(result.isNewCity).toBeFalsy();
-    // Alias resolved it — the district/locality lookups below it in the chain should never run.
+    expect(result.isNewCity).toBe(false);
+    expect(prisma.city.findMany).not.toHaveBeenCalled();
+    expect(prisma.city.create).not.toHaveBeenCalled();
+  });
+
+  it('matches a curated city when the district is named on a later geocode result', async () => {
+    const { service, prisma } = serviceWithCurated([coimbatore]);
+    const body = JSON.stringify({
+      status: 'OK',
+      results: [
+        {
+          formatted_address: 'New Siddhapudur, Tamil Nadu',
+          address_components: [
+            { types: ['sublocality', 'sublocality_level_1'], long_name: 'New Siddhapudur', short_name: 'New Siddhapudur' },
+            { types: ['locality'], long_name: 'New Siddhapudur', short_name: 'New Siddhapudur' },
+            { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu', short_name: 'TN' },
+          ],
+        },
+        {
+          formatted_address: 'Coimbatore, Tamil Nadu',
+          address_components: [
+            { types: ['locality'], long_name: 'Coimbatore', short_name: 'Coimbatore' },
+            { types: ['administrative_area_level_2'], long_name: 'Coimbatore', short_name: 'Coimbatore' },
+            { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu', short_name: 'TN' },
+          ],
+        },
+      ],
+    });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(body),
+    }) as unknown as typeof fetch;
+
+    const result = await service.reverseGeocodeGoogle(11.03, 76.96);
+
+    expect(result.cityId).toBe('coimbatore-1');
+    expect(result.resolvedLocality).toBe('New Siddhapudur');
+    expect(prisma.city.create).not.toHaveBeenCalled();
+    expect(prisma.area.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'New Siddhapudur', cityId: 'coimbatore-1' }) }),
+    );
+  });
+
+  it('strips a trailing direction or Urban qualifier before matching the district', async () => {
+    const { service, prisma } = serviceWithCurated([
+      { ...coimbatore, lat: 0, lng: 0 },
+    ]);
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'New Siddhapudur' },
+      { types: ['locality'], long_name: 'New Siddhapudur' },
+      { types: ['administrative_area_level_2'], long_name: 'Coimbatore North' },
+      { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(11.03, 76.96);
+
+    expect(result.cityId).toBe('coimbatore-1');
+    expect(result.isNewCity).toBe(false);
+    expect(prisma.city.create).not.toHaveBeenCalled();
+  });
+
+  it('keeps a ward inside the catchment on the curated city even when Google never names that city', async () => {
+    const { service, prisma } = serviceWithCurated([coimbatore]);
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Saravanampatti' },
+      { types: ['locality'], long_name: 'Saravanampatti' },
+      { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(11.08, 77.0);
+
+    expect(result.cityId).toBe('coimbatore-1');
+    expect(result.cityName).toBe('Coimbatore');
+    expect(result.resolvedLocality).toBe('Saravanampatti');
+    expect(prisma.city.create).not.toHaveBeenCalled();
     expect(prisma.city.findFirst).not.toHaveBeenCalled();
   });
 
-  it('falls back to a district match against a curated city when no alias exists', async () => {
-    const coimbatore = { id: 'coimbatore-1', name: 'Coimbatore', state: 'Tamil Nadu', source: 'curated' };
-    const { service, prisma } = makeService({
-      city: {
-        findFirst: jest.fn().mockResolvedValueOnce(coimbatore),
-        findMany: jest.fn().mockResolvedValue([]),
-        create: jest.fn(),
-      },
-    });
-    mockGeocodeFetch(wardComponents);
-
-    const result = await service.reverseGeocodeGoogle(11.03, 76.96);
-
-    expect(result.cityId).toBe('coimbatore-1');
-    expect(result.isNewCity).toBeFalsy();
-    // Matched on the district, curated-only — never fell through to auto-create a "New
-    // Siddhapudur" city, which is the exact bug this fix closes.
-    expect(prisma.city.create).not.toHaveBeenCalled();
-    expect(prisma.city.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          source: 'curated',
-          name: { equals: 'Coimbatore', mode: 'insensitive' },
-        }),
-      }),
-    );
-  });
-
-  it('strips a trailing "Urban"/"Rural"/"District" qualifier before matching the district', async () => {
-    const bengaluru = { id: 'blr-1', name: 'Bengaluru', state: 'Karnataka', source: 'curated' };
-    const { service, prisma } = makeService({
-      city: {
-        findFirst: jest.fn().mockResolvedValueOnce(bengaluru),
-        findMany: jest.fn().mockResolvedValue([]),
-        create: jest.fn(),
-      },
-    });
-    mockGeocodeFetch([
-      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Koramangala' },
-      { types: ['locality'], long_name: 'Bengaluru' },
-      { types: ['administrative_area_level_2'], long_name: 'Bengaluru Urban' },
-      { types: ['administrative_area_level_1'], long_name: 'Karnataka' },
-    ]);
-
-    const result = await service.reverseGeocodeGoogle(12.93, 77.62);
-
-    expect(result.cityId).toBe('blr-1');
-    expect(prisma.city.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ name: { equals: 'Bengaluru', mode: 'insensitive' } }),
-      }),
-    );
-  });
-
-  it('still auto-creates a new city when no alias, district, or locality match exists (unchanged behavior)', async () => {
-    const { service, prisma } = makeService();
+  it('does not create a city when the pin is outside every catchment', async () => {
+    const { service, prisma } = serviceWithCurated([coimbatore]);
     mockGeocodeFetch([
       { types: ['sublocality', 'sublocality_level_1'], long_name: 'Some New Ward' },
       { types: ['locality'], long_name: 'Some Uncovered Town' },
@@ -198,7 +243,26 @@ describe('LocationsService.reverseGeocodeGoogle — city-resolution priority cha
 
     const result = await service.reverseGeocodeGoogle(20, 80);
 
-    expect(result.isNewCity).toBe(true);
-    expect(prisma.city.create).toHaveBeenCalled();
+    expect(result.cityId).toBeUndefined();
+    expect(result.isNewCity).toBe(false);
+    expect(result.resolvedLocality).toBe('Some New Ward');
+    expect(prisma.city.create).not.toHaveBeenCalled();
+    expect(prisma.area.create).not.toHaveBeenCalled();
+  });
+
+  it('files a Noida pin under Delhi NCR because the pin is inside that catchment', async () => {
+    const { service, prisma } = serviceWithCurated([delhiNcr, coimbatore]);
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Sector 62' },
+      { types: ['locality'], long_name: 'Noida' },
+      { types: ['administrative_area_level_2'], long_name: 'Gautam Buddha Nagar' },
+      { types: ['administrative_area_level_1'], long_name: 'Uttar Pradesh' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(28.6139, 77.3728);
+
+    expect(result.cityId).toBe('delhi-ncr');
+    expect(result.resolvedLocality).toBe('Sector 62');
+    expect(prisma.city.create).not.toHaveBeenCalled();
   });
 });

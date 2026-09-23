@@ -470,6 +470,14 @@ const areasByCity: Record<string, { name: string; lat: number; lng: number }[]> 
   ],
 };
 
+/** 25 km covers a city the size of Coimbatore. The listed metros are wider because their seeded
+ * areas sit past 25 km from the centroid (Noida is ~28 km from the Delhi NCR point). */
+function catchmentKmFor(name: string): number {
+  if (name === 'Delhi NCR') return 50;
+  if (['Bengaluru', 'Mumbai', 'Chennai', 'Hyderabad', 'Kolkata', 'Pune', 'Ahmedabad'].includes(name)) return 35;
+  return 25;
+}
+
 /** Upserts every city and its curated areas — safe to run repeatedly anywhere, including
  * production, since every write here is keyed on a real unique constraint (`name_state` for
  * cities, `name_cityId` for areas). Returns id lookups by name so a caller seeding listings on
@@ -480,12 +488,42 @@ export async function seedCities(prisma: PrismaClient): Promise<{
 }> {
   const cityRecords = new Map<string, string>();
   for (const c of cities) {
+    const data = { ...c, catchmentKm: catchmentKmFor(c.name) };
     const city = await prisma.city.upsert({
       where: { name_state: { name: c.name, state: c.state } },
-      update: c,
-      create: c,
+      update: data,
+      create: data,
     });
     cityRecords.set(c.name, city.id);
+  }
+
+  // Names Google uses as their own city that Bhavano already models under a parent, plus the
+  // common English spelling of a seeded city. Wards don't need a row — catchmentKm covers them.
+  const localityAliases: { name: string; cityName: string }[] = [
+    { name: 'Delhi', cityName: 'Delhi NCR' },
+    { name: 'New Delhi', cityName: 'Delhi NCR' },
+    { name: 'Gurugram', cityName: 'Delhi NCR' },
+    { name: 'Gurgaon', cityName: 'Delhi NCR' },
+    { name: 'Noida', cityName: 'Delhi NCR' },
+    { name: 'Greater Noida', cityName: 'Delhi NCR' },
+    { name: 'Faridabad', cityName: 'Delhi NCR' },
+    { name: 'Ghaziabad', cityName: 'Delhi NCR' },
+    { name: 'Bangalore', cityName: 'Bengaluru' },
+    { name: 'Bombay', cityName: 'Mumbai' },
+    { name: 'Calcutta', cityName: 'Kolkata' },
+    { name: 'Madras', cityName: 'Chennai' },
+    { name: 'Trivandrum', cityName: 'Thiruvananthapuram' },
+    { name: 'Calicut', cityName: 'Kozhikode' },
+    { name: 'Baroda', cityName: 'Vadodara' },
+  ];
+  for (const alias of localityAliases) {
+    const cityId = cityRecords.get(alias.cityName);
+    if (!cityId) continue;
+    await prisma.localityAlias.upsert({
+      where: { name: alias.name },
+      update: { cityId },
+      create: { name: alias.name, cityId },
+    });
   }
 
   const areaRecords = new Map<string, string>();

@@ -214,6 +214,11 @@ export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
   return bffFetch<City[]>(`/locations/cities?${params.toString()}`, { cache: "no-store" });
 }
 
+/** City a deleted auto-created city slug now points at. Null when the slug is a live city or unknown. */
+export function fetchCitySlugRedirect(slug: string): Promise<City | null> {
+  return bffFetch<City | null>(`/locations/slug-redirect?slug=${encodeURIComponent(slug)}`, { cache: "no-store" });
+}
+
 /** Real Google-backed reverse geocoding — used both by the posting flow's map pin-picker and
  * by "Auto-detect my current location" in the homepage's city picker. The plain haversine
  * nearest-city version this replaced for the latter, and the automatic IP-based guess built on

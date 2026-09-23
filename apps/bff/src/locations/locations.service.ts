@@ -53,6 +53,51 @@ function stripNonLatinSegments(formattedAddress: string): string {
   return kept.length > 0 ? kept.join(', ') : formattedAddress;
 }
 
+/** Google components that can name the market city. Sublocality is the area, not a candidate. */
+const CITY_COMPONENT_TYPES = ['locality', 'postal_town', 'administrative_area_level_2', 'administrative_area_level_3'];
+
+const ADMIN_NAME_SUFFIX = /\s+(Urban|Rural|District|Taluk|Tehsil|Tahsil|North|South|East|West|Central)$/i;
+
+/** "Coimbatore North" → "Coimbatore", "Bengaluru Urban" → "Bengaluru". Trailing qualifiers only,
+ * applied until none remain. Does not turn "South Delhi" into "Delhi" (the qualifier is leading)
+ * and does not fuzzy-match "Delhi" to "Delhi NCR". */
+function normalizeAdminName(name: string): string {
+  let current = name.trim();
+  let next = current.replace(ADMIN_NAME_SUFFIX, '').trim();
+  while (next.length > 0 && next !== current) {
+    current = next;
+    next = current.replace(ADMIN_NAME_SUFFIX, '').trim();
+  }
+  return current;
+}
+
+function distanceKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** A known area's own coordinates count as that area only this close to the pin. */
+const AREA_PIN_MATCH_KM = 5;
+
+function uniqueNames(names: (string | undefined)[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const name of names) {
+    const trimmed = name?.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(trimmed);
+  }
+  return out;
+}
+
 interface GooglePlacesAutocompleteResponse {
   status: string;
   predictions: { place_id: string; description: string }[];
@@ -130,6 +175,16 @@ export class LocationsService {
     return matches.map(toAreaDto);
   }
 
+  /** Former city slug left behind when a user-submitted city was merged onto a curated one.
+   * The web catch-all 308s `/{slug}/...` to this city. */
+  async resolveSlugRedirect(slug: string): Promise<CityDto | null> {
+    const redirect = await this.prisma.citySlugRedirect.findUnique({
+      where: { slug },
+      include: { city: true },
+    });
+    return redirect ? toDto(redirect.city) : null;
+  }
+
   /** Case-insensitive match against existing areas in the city first, so casing/whitespace
    * variants of an already-known area ("koramangala" vs "Koramangala") don't create a duplicate.
    * Shared by ListingsService (posting a new ad) and SavedSearchesService (saving a search with
@@ -154,31 +209,45 @@ export class LocationsService {
     return this.prisma.area.create({ data: { name: trimmed, cityId, source: 'user-submitted' } });
   }
 
-  /** Haversine nearest curated city — scoped to a single use: `reverseGeocodeGoogle`'s small-town
-   * case, where Google has no distinct sublocality and the old logic created a new city whose name
-   * duplicated its own area name (e.g. "Porvorim, Porvorim"). Not the IP-based automatic-guess
-   * nearest-city lookup removed in docs/plans/remove-automatic-ip-city-detection.md — this only
-   * runs for a pin the user explicitly dropped, and only ever considers curated (seeded) cities so
-   * a bad user-submitted city can never become the "nearest" answer for the next pin dropped near it. */
-  private async findNearestCuratedCity(lat: number, lng: number): Promise<City | null> {
-    const curated = await this.prisma.city.findMany({ where: { source: 'curated' } });
-    if (curated.length === 0) return null;
+  /** Curated city whose catchment contains this pin, choosing the nearest centroid when more than
+   * one circle overlaps. Null when the pin is outside every curated city. User-submitted cities
+   * are never candidates — a ward that was previously auto-created as its own city must not win
+   * the next pin dropped near it. See docs/plans/canonical-city-catchment.md. */
+  private cityWithinCatchment(curated: City[], lat: number, lng: number): City | null {
+    let best: { city: City; distance: number } | null = null;
+    for (const candidate of curated) {
+      const distance = distanceKm(lat, lng, candidate.lat, candidate.lng);
+      const radius = candidate.catchmentKm > 0 ? candidate.catchmentKm : 25;
+      if (distance <= radius && (!best || distance < best.distance)) {
+        best = { city: candidate, distance };
+      }
+    }
+    return best?.city ?? null;
+  }
 
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const distanceKm = (aLat: number, aLng: number, bLat: number, bLng: number) => {
-      const R = 6371;
-      const dLat = toRad(bLat - aLat);
-      const dLng = toRad(bLng - aLng);
-      const a =
-        Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    };
-
-    return curated.reduce((nearest, candidate) => {
-      const candidateDist = distanceKm(lat, lng, candidate.lat, candidate.lng);
-      const nearestDist = distanceKm(lat, lng, nearest.lat, nearest.lng);
-      return candidateDist < nearestDist ? candidate : nearest;
-    });
+  /** When several curated areas share a name, prefer the one whose own pin is within
+   * AREA_PIN_MATCH_KM, else the single candidate whose city catchment contains the pin. */
+  private cityFromKnownAreas(
+    areas: (Area & { city: City })[],
+    lat: number,
+    lng: number,
+  ): City | null {
+    if (areas.length === 0) return null;
+    const nearPin = areas.filter(
+      (area) =>
+        area.lat != null && area.lng != null && distanceKm(lat, lng, area.lat, area.lng) <= AREA_PIN_MATCH_KM,
+    );
+    if (nearPin.length === 1) return nearPin[0].city;
+    if (nearPin.length > 1) {
+      return nearPin.reduce((nearest, area) =>
+        distanceKm(lat, lng, area.lat!, area.lng!) < distanceKm(lat, lng, nearest.lat!, nearest.lng!) ? area : nearest,
+      ).city;
+    }
+    const inCatchment = areas.filter(
+      (area) => distanceKm(lat, lng, area.city.lat, area.city.lng) <= (area.city.catchmentKm > 0 ? area.city.catchmentKm : 25),
+    );
+    if (inCatchment.length === 1) return inCatchment[0].city;
+    return null;
   }
 
   /** Case-insensitive match on (name, state) first, so casing variants of an already-known city
@@ -186,8 +255,8 @@ export class LocationsService {
    * come back `null`: a same-slug collision with an existing city in a *different* state would be
    * permanently unreachable via `resolveCity` (apps/web/src/lib/browseRoute.ts matches purely on
    * slugify(name), no state disambiguation in the URL) — the caller treats `null` the same as an
-   * unmatched location today, rather than creating an unroutable duplicate. Only called from
-   * `reverseGeocodeGoogle` for now; City is otherwise still a curated/seed-only set. */
+   * unmatched location today, rather than creating an unroutable duplicate. No longer called from
+   * `reverseGeocodeGoogle` — a pin never mints a city. See docs/plans/canonical-city-catchment.md. */
   async ensureCity(name: string, state: string, lat: number, lng: number): Promise<City | null> {
     const trimmedName = name.trim();
     const trimmedState = state.trim();
@@ -222,14 +291,12 @@ export class LocationsService {
    * server-side, IP-restricted API key — never call Google's Geocoding API directly from a
    * browser/app with this key.
    *
-   * City is matched against the existing table first, then auto-created via `ensureCity` (using
-   * the dropped pin's own coordinates as the new city's lat/lng — the best approximation available
-   * without a second API call) if Google resolved a locality+state that doesn't match one yet, the
-   * same match-or-create semantics `ensureArea` already established for Area. `cityId` only stays
-   * undefined for the residual cases `ensureCity` itself declines (no state component in Google's
-   * response, or a same-slug collision with an existing city in another state) — the client treats
-   * that the same as "couldn't confidently place this pin". See
-   * docs/plans/support-uncovered-city-area-map-picker.md. */
+   * City is a curated market, never a Google locality string. Resolution order (first hit wins):
+   * a LocalityAlias, a curated city name read from every geocode result (after stripping a
+   * trailing district/taluk/direction qualifier), an existing Area's parent city, then the
+   * nearest curated city whose catchmentKm contains the pin. Outside every catchment, `cityId`
+   * stays unset and nothing is created — the seller picks a city, and the local place is saved
+   * as an area under it. See docs/plans/canonical-city-catchment.md. */
   async reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseGeocodeResultDto> {
     const apiKey = this.config.get<string>('GOOGLE_MAPS_SERVER_KEY');
     if (!apiKey) {
@@ -284,14 +351,6 @@ export class LocationsService {
     const sublocality = result.address_components.find(
       (c) => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'),
     );
-    const state = result.address_components.find((c) => c.types.includes('administrative_area_level_1'));
-    // The district — for most Indian metros this is literally the city name Bhavano already has
-    // seeded ("Coimbatore", "Chennai", "Bengaluru Urban"), even when Google's `locality` for this
-    // specific pin is a ward/village name nested inside it ("New Siddhapudur"). Never read before
-    // this fix — see the priority chain below and docs/plans/fix-wrong-city-geocoding-locality-alias.md.
-    const district = result.address_components.find((c) => c.types.includes('administrative_area_level_2'));
-    // Metro districts commonly carry a trailing qualifier the city's own curated name never does.
-    const normalizedDistrict = district?.long_name.replace(/\s+(Urban|Rural|District)$/i, '').trim();
     // `language=en` on the request (above) isn't a hard guarantee — Google still answers a
     // hyperlocal component (a hamlet/neighborhood name) in its local script when it has never
     // registered an English name for that specific place, even though the same response's
@@ -304,60 +363,56 @@ export class LocationsService {
       : isLatinText(locality?.long_name)
         ? locality!.long_name
         : '';
-    // A distinct sublocality means a real neighborhood inside a real city (Koramangala,
-    // Bengaluru) — the normal case below. No sublocality, or one identical to the locality
-    // itself, means Google has nothing finer-grained than the town name: creating a city named
-    // after that same string is exactly what produced "Porvorim, Porvorim".
-    const noDistinctSublocality = !sublocality || sublocality.long_name === locality?.long_name;
 
-    // Priority chain — each step only runs if the one above it missed. Steps 3-4 are the
-    // original (pre-fix) logic, byte-for-byte, so a genuinely new/uncovered city still gets
-    // created exactly as before; steps 1-2 are what's new, and both are checked against data
-    // Bhavano already has (an admin-patched alias, or an already-curated city's own name) rather
-    // than inventing a fuzzier match. See docs/plans/fix-wrong-city-geocoding-locality-alias.md.
-    // 1. Admin-patched alias — see LocalityAlias's own doc comment.
-    const aliasKey = resolvedLocality || locality?.long_name;
-    const alias = aliasKey
-      ? await this.prisma.localityAlias.findFirst({
-          where: { name: { equals: aliasKey, mode: 'insensitive' } },
-          include: { city: true },
-        })
-      : null;
-    let city = alias?.city ?? null;
+    const componentNames = data.results.flatMap((geocodeResult) =>
+      geocodeResult.address_components
+        .filter((component) => CITY_COMPONENT_TYPES.some((type) => component.types.includes(type)))
+        .map((component) => component.long_name),
+    );
+    const aliasNames = uniqueNames([resolvedLocality, locality?.long_name, ...componentNames]);
 
-    // 2. District match, curated cities only — the fix for the reported Coimbatore/Chennai-ward
-    // class. Curated-only (not every user-submitted city) so a previously-wrong auto-created city
-    // can never become the "district match" for the next pin dropped near it.
-    if (!city && normalizedDistrict) {
-      city = await this.prisma.city.findFirst({
-        where: { source: 'curated', name: { equals: normalizedDistrict, mode: 'insensitive' } },
-      });
-    }
+    // 1. Admin-patched alias, including spelling pairs and Delhi NCR child names.
+    const alias =
+      aliasNames.length > 0
+        ? await this.prisma.localityAlias.findFirst({
+            where: { OR: aliasNames.map((name) => ({ name: { equals: name, mode: 'insensitive' as const } })) },
+            include: { city: true },
+          })
+        : null;
+    let city: City | null = alias?.city ?? null;
 
-    // 3. Original locality match, against every city (curated or previously auto-created) — kept
-    // so a locality already correctly resolved before this fix keeps matching the same way.
-    if (!city && locality) {
-      city = await this.prisma.city.findFirst({ where: { name: { equals: locality.long_name, mode: 'insensitive' } } });
-    }
+    const curated = city ? [] : await this.prisma.city.findMany({ where: { source: 'curated' } });
 
-    let isNewCity = false;
-
-    // 4/5. Unchanged from before this fix — reached only when 1-3 all missed, i.e. a genuinely
-    // unrecognized place.
-    if (!city && locality && state) {
-      if (noDistinctSublocality) {
-        // Small-town case: don't mint a new self-named city. Attach it as an area under the
-        // nearest curated city instead — ensureArea's own existing-match check means an area
-        // that's already correctly curated there (e.g. Porvorim under Panaji) gets reused
-        // rather than duplicated.
-        city = await this.findNearestCuratedCity(lat, lng);
-      } else {
-        city = await this.ensureCity(locality.long_name, state.long_name, lat, lng);
-        isNewCity = city !== null;
+    // 2. Curated city name, from every result — "Coimbatore North" matches Coimbatore. A
+    // user-submitted city with the ward's name is not in this list, so it cannot keep the pin.
+    if (!city) {
+      for (const raw of componentNames) {
+        const normalized = normalizeAdminName(raw);
+        city =
+          curated.find((candidate) => candidate.name.toLowerCase() === raw.trim().toLowerCase()) ??
+          curated.find((candidate) => candidate.name.toLowerCase() === normalized.toLowerCase()) ??
+          null;
+        if (city) break;
       }
     }
 
-    const area = city && resolvedLocality ? await this.ensureArea(city.id, resolvedLocality) : null;
+    // 3. A place name that is already an Area under a curated city inherits that city.
+    if (!city && resolvedLocality) {
+      const knownAreas = await this.prisma.area.findMany({
+        where: { name: { equals: resolvedLocality, mode: 'insensitive' }, city: { source: 'curated' } },
+        include: { city: true },
+      });
+      city = this.cityFromKnownAreas(knownAreas, lat, lng);
+    }
+
+    // 4. Pin inside a curated city's catchment. The local place stays the area.
+    if (!city) city = this.cityWithinCatchment(curated, lat, lng);
+
+    const areaName =
+      city && resolvedLocality && resolvedLocality.trim().toLowerCase() !== city.name.trim().toLowerCase()
+        ? resolvedLocality
+        : '';
+    const area = areaName && city ? await this.ensureArea(city.id, areaName) : null;
 
     logThirdPartyCall({
       logger: this.callLogger,
@@ -376,7 +431,7 @@ export class LocationsService {
       formattedAddress: stripNonLatinSegments(result.formatted_address),
       resolvedLocality,
       cityName: city?.name,
-      isNewCity,
+      isNewCity: false,
     };
   }
 

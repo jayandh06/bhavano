@@ -197,6 +197,11 @@ model City {
   lng       Float
   isPopular Boolean   @default(false)
   source    String    @default("curated")
+  /// How far from this city's centroid a dropped pin still counts as this city, in kilometres.
+  /// A ward Google labels as its own locality stays an area of this city when the pin is inside
+  /// the circle. Wider for metros whose seeded areas sit well past 25 km. See
+  /// docs/plans/canonical-city-catchment.md.
+  catchmentKm Int     @default(25)
   listings  Listing[]
   areas     Area[]
   users     User[]
@@ -206,16 +211,26 @@ model City {
   outreachContacts OutreachContact[]
   placesFetchLogs PlacesFetchLog[]
   localityAliases LocalityAlias[]
+  slugRedirects CitySlugRedirect[]
 
   @@unique([name, state])
 }
 
-/// Admin-patchable override for a Google locality/sublocality name that reverse-geocodes to the
-/// wrong city — e.g. Google tags a ward inside Coimbatore as its own locality ("New Siddhapudur"),
-/// so without this it becomes a brand-new top-level City instead of an Area under Coimbatore. See
-/// docs/plans/fix-wrong-city-geocoding-locality-alias.md. Checked first, before the district/
-/// locality matching in LocationsService.reverseGeocodeGoogle — a known-bad case is fixed by
-/// adding a row (apps/bff/prisma/addLocalityAlias.ts), not a code change.
+/// Old browse/listing URL slug for a city that was deleted after its listings moved onto a
+/// curated city. `/{slug}/...` 308s to the parent city. See
+/// docs/plans/canonical-city-catchment.md.
+model CitySlugRedirect {
+  slug      String   @id
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+/// Admin-patchable override for a Google place name that should resolve to a specific city —
+/// spelling pairs (Bangalore → Bengaluru) and names Google treats as their own city that Bhavano
+/// already models as areas of a parent (Gurugram → Delhi NCR). Checked first in
+/// LocationsService.reverseGeocodeGoogle. A ward inside a curated city does not need a row: the
+/// city's catchmentKm covers it. See docs/plans/canonical-city-catchment.md.
 model LocalityAlias {
   id        String   @id @default(cuid())
   name      String   @unique

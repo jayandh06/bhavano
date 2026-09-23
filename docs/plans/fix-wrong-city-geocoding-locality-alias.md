@@ -1,5 +1,7 @@
 # Fix wrong-city geocoding (village/ward mistaken for its own city)
 
+> **Superseded for new pins.** Reverse geocoding no longer calls `ensureCity`. A pin inside a curated city's catchment stays that city, and the local place is an area. Existing auto-created cities are reassigned from lat/lng and deleted. See [canonical-city-catchment.md](canonical-city-catchment.md).
+
 ## Context
 
 When a seller drops a map pin, Google's Geocoding API sometimes tags a ward/suburb *inside* an

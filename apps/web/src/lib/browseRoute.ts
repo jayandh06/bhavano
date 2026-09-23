@@ -1,6 +1,6 @@
 import type { City, Area } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
-import { fetchAreas, fetchCities } from "@/lib/bff";
+import { fetchAreas, fetchCities, fetchCitySlugRedirect } from "@/lib/bff";
 
 // The pure type guards/label maps live in seoRoute.ts (which must stay free of any server-only
 // dependency, since it's reachable from client components) — re-exported here so existing
@@ -26,6 +26,14 @@ export {
 export async function resolveCity(citySlug: string): Promise<City | null> {
   const candidates = await fetchCities(undefined, true);
   return candidates.find((c) => slugify(c.name) === citySlug) ?? null;
+}
+
+/** Path to 308 to when `citySlug` is a deleted auto-created city. Null when it isn't. */
+export async function formerCityRedirectPath(citySlug: string, rest: string[] = []): Promise<string | null> {
+  const target = await fetchCitySlugRedirect(citySlug).catch(() => null);
+  if (!target) return null;
+  const suffix = rest.length > 0 ? `/${rest.join("/")}` : "";
+  return `/${slugify(target.name)}${suffix}`;
 }
 
 /** Same reasoning as resolveCity above — some real area names contain a hyphen ("Phase - III",
