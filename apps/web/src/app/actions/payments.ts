@@ -5,18 +5,21 @@ import type {
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
   CreateInstantAlertsOrderResponseDto,
+  CreateListingPublishOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
   ListingCategory,
   SubscriptionTier,
 } from "@bhavano/types";
 import type { BoostDurationDays, BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
+import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { auth } from "@/auth";
 import {
   createBoostOrder,
   createContactRevealCreditsOrder,
   createInstantAlertsOrder,
+  createListingPublishOrder,
   createSubscriptionOrder,
   fetchPlanPricing,
   previewBoostPricing,
@@ -48,6 +51,16 @@ export async function fetchInstantAlertsPricingAction(): Promise<InstantAlertsPr
 export async function fetchActiveBoostDiscountPercentAction(): Promise<number | null> {
   const { activeDiscountPercent } = await fetchPlanPricing();
   return activeDiscountPercent;
+}
+
+export async function fetchPostAdPlanPricingAction(): Promise<{
+  boost: BoostPriceSettings;
+  instantAlerts: InstantAlertsPriceSettings;
+  platformFee: PlatformFeeSettings;
+  activeDiscountPercent: number | null;
+}> {
+  const { boost, instantAlerts, platformFee, activeDiscountPercent } = await fetchPlanPricing();
+  return { boost, instantAlerts, platformFee, activeDiscountPercent };
 }
 
 export type CreateBoostOrderResult = { success: true; order: CreateBoostOrderResponseDto } | { success: false; error: string };
@@ -97,6 +110,32 @@ export async function createBoostBundleOrderAction(
   includeInstantAlerts: boolean,
 ): Promise<CreateBoostOrderResult> {
   return createBoostOrderAction(listingId, boostDays, ACTIVE_PROMO_CODE, includeInstantAlerts);
+}
+
+export type CreateListingPublishOrderResult =
+  | { success: true; order: CreateListingPublishOrderResponseDto }
+  | { success: false; error: string };
+
+export async function createListingPublishOrderAction(
+  listingId: string,
+  boostDays?: BoostDurationDays,
+  includeInstantAlerts?: boolean,
+): Promise<CreateListingPublishOrderResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const order = await createListingPublishOrder(
+      session.accessToken,
+      listingId,
+      boostDays,
+      includeInstantAlerts,
+      ACTIVE_PROMO_CODE,
+    );
+    return { success: true, order };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to start checkout" };
+  }
 }
 
 export type CreateSubscriptionOrderResult =

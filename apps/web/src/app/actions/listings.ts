@@ -14,6 +14,7 @@ import {
   deleteListingVideo,
   deleteOwnListingPhoto,
   fetchMyListings,
+  fetchMyListing,
   recordView,
   renewListing,
   revealContact,
@@ -144,6 +145,16 @@ export async function fetchMyListingsAction(): Promise<ListingDetailDto[]> {
   } catch (error) {
     if (error instanceof BffAuthError) return [];
     throw error;
+  }
+}
+
+export async function fetchMyListingAction(listingId: string): Promise<ListingDetailDto | null> {
+  const session = await auth();
+  if (!session?.accessToken) return null;
+  try {
+    return await fetchMyListing(session.accessToken, listingId);
+  } catch {
+    return null;
   }
 }
 

@@ -2,6 +2,8 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
+import type { CreateListingPublishOrderResponseDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type {
@@ -300,6 +302,7 @@ export function fetchPlanPricing(): Promise<{
   boost: BoostPriceSettings;
   subscription: SubscriptionPlanSettings;
   instantAlerts: InstantAlertsPriceSettings;
+  platformFee: PlatformFeeSettings;
   activeDiscountPercent: number | null;
 }> {
   return bffFetch("/plans/pricing", { cache: "no-store" });
@@ -596,6 +599,19 @@ export function createBoostOrder(
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
     body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts }),
+  });
+}
+
+export function createListingPublishOrder(
+  accessToken: string,
+  listingId: string,
+  boostDays?: BoostDurationDays,
+  includeInstantAlerts?: boolean,
+  discountCode?: string,
+): Promise<CreateListingPublishOrderResponseDto> {
+  return authedBffFetch(accessToken, "/payments/listing-publish-order", {
+    method: "POST",
+    body: JSON.stringify({ listingId, boostDays, includeInstantAlerts, discountCode }),
   });
 }
 

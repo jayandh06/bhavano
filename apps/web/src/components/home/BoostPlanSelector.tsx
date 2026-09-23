@@ -1,7 +1,10 @@
 "use client";
 
-import type { BoostPlanSelection, BoostPricingPreviewDto } from "@bhavano/types";
+import type { BoostPlanSelection, BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { listingPublishCheckoutTotalRupees } from "@bhavano/types/listingPublishPricing";
+import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
+import { platformFeeFor } from "@bhavano/types/platformFeePricing";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import { Icon } from "./Icon";
 
@@ -24,11 +27,22 @@ export function BoostPlanSelector({
   pricing,
   value,
   onChange,
+  category,
+  platformFeeSettings,
+  showBoostOptions = true,
 }: {
   pricing: BoostPricingPreviewDto;
   value: BoostPlanSelection | null;
   onChange: (value: BoostPlanSelection | null) => void;
+  category: ListingCategory;
+  platformFeeSettings?: PlatformFeeSettings;
+  /** When false, only the mandatory platform fee row is shown (fee-only publish). */
+  showBoostOptions?: boolean;
 }) {
+  const platformFeeRupees =
+    platformFeeSettings && platformFeeFor(category, platformFeeSettings) > 0
+      ? platformFeeFor(category, platformFeeSettings)
+      : 0;
   const effective: BoostPlanSelection = value ?? { duration: 15, includeInstantAlerts: true };
 
   const optionKey =
@@ -46,14 +60,28 @@ export function BoostPlanSelector({
     return opt.discountApplied ? `₹${opt.originalAmount} → ₹${opt.amount}` : `₹${opt.amount}`;
   }
 
+  const dueToday =
+    platformFeeRupees > 0 || value
+      ? listingPublishCheckoutTotalRupees(category, platformFeeSettings ?? { propertyListingFee: 0, coworkingPgStorageListingFee: 0, furnitureInteriorsListingFee: 0 }, pricing, value)
+      : platformFeeRupees;
+
   return (
     <div
-      className={`w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5 ${value ? "" : "opacity-60"}`}
+      className={`w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5 ${showBoostOptions && !value ? "opacity-60" : ""}`}
     >
+      {platformFeeRupees > 0 && (
+        <div className="flex justify-between items-center border-[1.5px] border-green bg-green/10 rounded-[10px] px-4 py-3 text-sm font-bold text-text mb-3">
+          <span>Platform fee (required)</span>
+          <span className="text-green">₹{platformFeeRupees}</span>
+        </div>
+      )}
+
+      {showBoostOptions && (
+        <>
       <div className="flex items-center gap-2 mb-3">
         <Icon name="boost" className="text-[color:var(--gold)] text-lg" />
         <span className="font-lora font-bold text-[15px] text-text">
-          Boost this ad
+          Boost this ad (optional)
           {/* Computed from the option's own amount/originalAmount rather than hardcoded — the
             * real percent lives on an admin-edited DiscountCode row, so this can't go stale. */}
           {option.discountApplied && (
@@ -92,7 +120,7 @@ export function BoostPlanSelector({
         </label>
       </div>
 
-      <p className="text-[13px] font-bold text-green mt-3 mb-0">{value ? `Total: ${priceText(option)}` : "Not boosting this ad"}</p>
+      <p className="text-[13px] font-bold text-green mt-3 mb-0">{value ? `Boost add-on: ${priceText(option)}` : "Not boosting this ad"}</p>
 
       <button
         type="button"
@@ -101,6 +129,12 @@ export function BoostPlanSelector({
       >
         {value ? "Skip — post without boosting" : "Add it back"}
       </button>
+        </>
+      )}
+
+      {(platformFeeRupees > 0 || value) && (
+        <p className="text-[13px] font-bold text-green mt-3 mb-0">Due today: ₹{dueToday}</p>
+      )}
     </div>
   );
 }

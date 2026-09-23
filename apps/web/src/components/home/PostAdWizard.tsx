@@ -25,12 +25,14 @@ import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
-import { createListingAction, uploadPhotoAction } from "@/app/actions/listings";
+import { createListingAction, fetchMyListingAction, uploadPhotoAction } from "@/app/actions/listings";
+import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPricing";
+import { platformFeeApplies } from "@bhavano/types/platformFeePricing";
+import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
+import { startListingPublishCheckout } from "@/lib/listingPublishCheckout";
 import { NEEDS_LOGIN_ERROR } from "@/lib/postAdErrors";
 import {
-  fetchActiveBoostDiscountPercentAction,
-  fetchBoostPricingAction,
-  fetchInstantAlertsPricingAction,
+  fetchPostAdPlanPricingAction,
 } from "@/app/actions/payments";
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { useAuthGate } from "./AuthGateProvider";
@@ -242,8 +244,10 @@ export function PostAdWizard({
   const [planPricingSettings, setPlanPricingSettings] = useState<{
     boost: BoostPriceSettings;
     instantAlerts: InstantAlertsPriceSettings;
+    platformFee: PlatformFeeSettings;
     activeDiscountPercent: number | null;
   } | null>(null);
+  const [publishCheckoutError, setPublishCheckoutError] = useState<string | null>(null);
   // A boost/instant-alerts choice made ahead of time on the review step — null means the
   // advertiser explicitly skipped it (see selectCategory's pre-fill and BoostPlanSelector's own
   // "Skip" affordance). Only ever read/acted on when previewBoostDisplay?.showSelectorOnPreview.
@@ -255,9 +259,9 @@ export function PostAdWizard({
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchBoostPricingAction(), fetchInstantAlertsPricingAction(), fetchActiveBoostDiscountPercentAction()])
-      .then(([boost, instantAlerts, activeDiscountPercent]) => {
-        if (!cancelled) setPlanPricingSettings({ boost, instantAlerts, activeDiscountPercent });
+    fetchPostAdPlanPricingAction()
+      .then((settings) => {
+        if (!cancelled) setPlanPricingSettings(settings);
       })
       .catch(() => undefined);
     return () => {
@@ -278,6 +282,50 @@ export function PostAdWizard({
     [category, planPricingSettings],
   );
 
+  const showPublishPanelOnReview = !!(
+    category &&
+    planPricingSettings &&
+    (platformFeeApplies(category, planPricingSettings.platformFee) || previewBoostDisplay?.showSelectorOnPreview)
+  );
+
+  const showBoostOnReview =
+    !!previewBoostDisplay?.showSelectorOnPreview ||
+    !!(category && planPricingSettings && platformFeeApplies(category, planPricingSettings.platformFee));
+
+  async function waitForListingLive(listingId: string): Promise<boolean> {
+    for (let i = 0; i < 20; i++) {
+      const listing = await fetchMyListingAction(listingId);
+      if (listing?.publishState === "live") return true;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    return false;
+  }
+
+  async function finishPublishCheckout(listing: ListingDetailDto): Promise<boolean> {
+    setPublishCheckoutError(null);
+    const checkout = await startListingPublishCheckout({
+      listingId: listing.id,
+      category: listing.category,
+      boostSelection: selectedBoostPlan,
+    });
+    if (checkout.outcome === "cancelled") {
+      setPublishCheckoutError("Payment was cancelled — your ad is not live yet.");
+      return false;
+    }
+    if (checkout.outcome === "error") {
+      setPublishCheckoutError(checkout.message);
+      return false;
+    }
+    if (checkout.outcome === "paid") {
+      const live = await waitForListingLive(listing.id);
+      if (!live) {
+        setPublishCheckoutError("Payment received — still confirming publish. Please retry in a moment.");
+        return false;
+      }
+    }
+    return true;
+  }
+
   // Derived, not its own state: true from the moment the listing exists (with a plan selected)
   // until a checkout attempt resolves one way or the other. Keeping this derived rather than a
   // separately-set boolean avoids a synchronous setState at the top of the effect below, which
@@ -291,10 +339,13 @@ export function PostAdWizard({
 
   // Fires once, right after the listing actually exists, using whatever was chosen on the review
   // step — the real in-app/embedded Razorpay checkout (web has no iOS-style App Store constraint).
+  // Legacy post-success boost checkout only — preview-step / publish-checkout listings go live via
+  // `finishPublishCheckout` in `onSubmit`, not this effect.
   useEffect(() => {
     if (boostAutoFiredRef.current) return;
     if (!createdListing || !category || !selectedBoostPlan) return;
     if (!previewBoostDisplay?.showSelectorOnPreview) return;
+    if (createdListing.publishState === "pending_checkout") return;
     boostAutoFiredRef.current = true;
 
     startBoostCheckout({
@@ -681,6 +732,11 @@ export function PostAdWizard({
       }
     }
 
+    const needsCheckout =
+      category &&
+      planPricingSettings &&
+      listingPublishRequiresCheckout(category, planPricingSettings.platformFee, selectedBoostPlan);
+
     const result = await createListingAction({
       id: listingId,
       category,
@@ -698,10 +754,20 @@ export function PostAdWizard({
       attributes,
       lat: pin?.lat,
       lng: pin?.lng,
+      ...(needsCheckout
+        ? {
+            checkoutIntent: selectedBoostPlan
+              ? {
+                  boostDays: selectedBoostPlan.duration,
+                  includeInstantAlerts: selectedBoostPlan.includeInstantAlerts,
+                }
+              : undefined,
+          }
+        : {}),
     });
 
-    setPending(false);
     if (!result.success) {
+      setPending(false);
       if (result.error === NEEDS_LOGIN_ERROR) {
         requireLogin({ onSuccess: () => void onSubmit() });
         return;
@@ -711,13 +777,18 @@ export function PostAdWizard({
       return;
     }
     setSlotCap(null);
-    // `user_data` (raw email / E.164 phone) rides along for Google Ads Enhanced Conversions —
-    // GTM hashes it client-side. Best-effort: a failed lookup just omits it. The poster is
-    // always logged in by this point, so at least one identifier is normally present.
+    setCreatedListing(result.listing);
+
+    if (result.listing.publishState === "pending_checkout") {
+      const published = await finishPublishCheckout(result.listing);
+      setPending(false);
+      if (!published) return;
+    } else {
+      setPending(false);
+    }
+
     const contact = await getUserContactAction();
     const phoneE164 = toE164IN(contact.phone);
-    // Fired here (not on the listing page) so it's guaranteed to happen exactly once, even if
-    // the user boosts, skips, or closes the tab without ever navigating to their new listing.
     pushDataLayerEvent("post_ad_success", {
       listingId: result.listing.id,
       user_data: {
@@ -725,7 +796,6 @@ export function PostAdWizard({
         ...(phoneE164 ? { phone_number: phoneE164 } : {}),
       },
     });
-    setCreatedListing(result.listing);
     setStep("success");
   }
 
@@ -1118,10 +1188,10 @@ export function PostAdWizard({
         // right of the card instead of sitting at its right edge. Widened, and laid out as a row,
         // only once there's a second thing (the boost selector) to sit beside the card — see
         // docs/plans/boost-instant-alerts-preview-selector.md.
-        <div className={`mx-auto ${previewBoostDisplay?.showSelectorOnPreview ? "max-w-[680px]" : "max-w-[340px]"}`}>
+        <div className={`mx-auto ${showPublishPanelOnReview ? "max-w-[680px]" : "max-w-[340px]"}`}>
           <div
             className={
-              previewBoostDisplay?.showSelectorOnPreview
+              showPublishPanelOnReview
                 ? "flex flex-col sm:flex-row gap-5 sm:items-start"
                 : "flex flex-col gap-3"
             }
@@ -1145,9 +1215,16 @@ export function PostAdWizard({
               />
             </div>
 
-            {previewBoostDisplay?.showSelectorOnPreview && (
+            {showPublishPanelOnReview && previewBoostDisplay && category && planPricingSettings && (
               <div className="w-full sm:flex-1">
-                <BoostPlanSelector pricing={previewBoostDisplay} value={selectedBoostPlan} onChange={setSelectedBoostPlan} />
+                <BoostPlanSelector
+                  pricing={previewBoostDisplay}
+                  value={selectedBoostPlan}
+                  onChange={setSelectedBoostPlan}
+                  category={category}
+                  platformFeeSettings={planPricingSettings.platformFee}
+                  showBoostOptions={showBoostOnReview}
+                />
               </div>
             )}
           </div>
@@ -1157,6 +1234,19 @@ export function PostAdWizard({
             <ListingSlotCapPrompt slotCap={slotCap} />
           ) : error ? (
             <p className="text-[#b3413a] text-[13px]">{error}</p>
+          ) : publishCheckoutError ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-[#b3413a] text-[13px] m-0">{publishCheckoutError}</p>
+              {createdListing?.publishState === "pending_checkout" && (
+                <button
+                  type="button"
+                  className={primaryButtonClass}
+                  onClick={() => void finishPublishCheckout(createdListing).then((ok) => ok && setStep("success"))}
+                >
+                  Retry payment
+                </button>
+              )}
+            </div>
           ) : null}
 
           <p className="m-0 text-[12px] text-muted">
