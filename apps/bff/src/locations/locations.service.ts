@@ -8,7 +8,9 @@ import type {
   ReverseGeocodeResultDto,
 } from '@bhavano/types';
 import { slugify } from '@bhavano/types/slugify';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../prisma/prisma.service';
+import { logThirdPartyCall, maskUrlParam } from '../logging/thirdPartyCallLogger';
 import type { Area, City } from '@prisma/client';
 
 interface GoogleGeocodeAddressComponent {
@@ -85,6 +87,7 @@ export class LocationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @InjectPinoLogger(LocationsService.name) private readonly callLogger: PinoLogger,
   ) {}
 
   async searchCities(q?: string, all?: boolean): Promise<CityDto[]> {
@@ -240,18 +243,40 @@ export class LocationsService {
     // anything else — see ensureCity/ensureArea's own guards against that, added after this was
     // exactly what let one such city through.
     const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=en`;
+    const maskedUrl = maskUrlParam(url, 'key');
     const res = await fetch(url);
+    const responseText = await res.text();
     if (!res.ok) {
       this.logger.warn(`Google Geocoding API request failed: ${res.status}`);
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'google-maps',
+        method: 'reverseGeocode',
+        url: maskedUrl,
+        request: { lat, lng },
+        status: res.status,
+        responseText,
+        ok: false,
+      });
       throw new ServiceUnavailableException('Failed to look up that location');
     }
 
-    const data = (await res.json()) as GoogleGeocodeResponse;
+    const data = JSON.parse(responseText) as GoogleGeocodeResponse;
     const result = data.results[0];
     if (data.status !== 'OK' || !result) {
       this.logger.warn(
         `Google Geocoding API returned ${data.status} for ${lat},${lng}${data.error_message ? `: ${data.error_message}` : ''}`,
       );
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'google-maps',
+        method: 'reverseGeocode',
+        url: maskedUrl,
+        request: { lat, lng },
+        status: res.status,
+        responseText,
+        ok: false,
+      });
       return { formattedAddress: '', resolvedLocality: '' };
     }
 
@@ -334,6 +359,17 @@ export class LocationsService {
 
     const area = city && resolvedLocality ? await this.ensureArea(city.id, resolvedLocality) : null;
 
+    logThirdPartyCall({
+      logger: this.callLogger,
+      provider: 'google-maps',
+      method: 'reverseGeocode',
+      url: maskedUrl,
+      request: { lat, lng },
+      status: res.status,
+      responseText,
+      ok: true,
+    });
+
     return {
       cityId: city?.id,
       areaId: area?.id,
@@ -356,13 +392,35 @@ export class LocationsService {
     }
 
     const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&components=country:in&language=en&key=${apiKey}`;
+    const maskedUrl = maskUrlParam(url, 'key');
     const res = await fetch(url);
+    const responseText = await res.text();
     if (!res.ok) {
       this.logger.warn(`Google Places Autocomplete API request failed: ${res.status}`);
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'google-maps',
+        method: 'placeAutocomplete',
+        url: maskedUrl,
+        request: { query },
+        status: res.status,
+        responseText,
+        ok: false,
+      });
       throw new ServiceUnavailableException('Failed to search for that location');
     }
 
-    const data = (await res.json()) as GooglePlacesAutocompleteResponse;
+    const data = JSON.parse(responseText) as GooglePlacesAutocompleteResponse;
+    logThirdPartyCall({
+      logger: this.callLogger,
+      provider: 'google-maps',
+      method: 'placeAutocomplete',
+      url: maskedUrl,
+      request: { query },
+      status: res.status,
+      responseText,
+      ok: data.status === 'OK' || data.status === 'ZERO_RESULTS',
+    });
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
       this.logger.warn(
         `Google Places Autocomplete API returned ${data.status} for "${query}"${data.error_message ? `: ${data.error_message}` : ''}`,
@@ -389,14 +447,36 @@ export class LocationsService {
     }
 
     const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=geometry&key=${apiKey}`;
+    const maskedUrl = maskUrlParam(url, 'key');
     const res = await fetch(url);
+    const responseText = await res.text();
     if (!res.ok) {
       this.logger.warn(`Google Place Details API request failed: ${res.status}`);
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'google-maps',
+        method: 'placeDetails',
+        url: maskedUrl,
+        request: { placeId },
+        status: res.status,
+        responseText,
+        ok: false,
+      });
       throw new ServiceUnavailableException('Failed to look up that place');
     }
 
-    const data = (await res.json()) as GooglePlaceDetailsResponse;
+    const data = JSON.parse(responseText) as GooglePlaceDetailsResponse;
     const location = data.result?.geometry?.location;
+    logThirdPartyCall({
+      logger: this.callLogger,
+      provider: 'google-maps',
+      method: 'placeDetails',
+      url: maskedUrl,
+      request: { placeId },
+      status: res.status,
+      responseText,
+      ok: data.status === 'OK' && !!location,
+    });
     if (data.status !== 'OK' || !location) {
       this.logger.warn(
         `Google Place Details API returned ${data.status} for ${placeId}${data.error_message ? `: ${data.error_message}` : ''}`,

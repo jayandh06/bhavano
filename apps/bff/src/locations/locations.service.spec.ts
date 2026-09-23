@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { ConfigService } from '@nestjs/config';
+import type { PinoLogger } from 'nestjs-pino';
 
 function makeService(overrides: Record<string, unknown> = {}) {
   const prisma = {
@@ -21,24 +22,27 @@ function makeService(overrides: Record<string, unknown> = {}) {
   } as unknown as PrismaService;
 
   const config = { get: jest.fn().mockReturnValue('test-google-maps-key') } as unknown as ConfigService;
-  const service = new LocationsService(prisma, config);
-  return { service, prisma, config };
+  const callLogger = { info: jest.fn(), error: jest.fn() } as unknown as PinoLogger;
+  const service = new LocationsService(prisma, config, callLogger);
+  return { service, prisma, config, callLogger };
 }
 
 /** A minimal Google Geocoding API response carrying just the address_components
  * `reverseGeocodeGoogle` reads — real responses carry many more fields it never looks at. */
 function mockGeocodeFetch(components: { types: string[]; long_name: string }[]): void {
+  const body = JSON.stringify({
+    status: 'OK',
+    results: [
+      {
+        formatted_address: components.map((c) => c.long_name).join(', '),
+        address_components: components.map((c) => ({ ...c, short_name: c.long_name })),
+      },
+    ],
+  });
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
-    json: async () => ({
-      status: 'OK',
-      results: [
-        {
-          formatted_address: components.map((c) => c.long_name).join(', '),
-          address_components: components.map((c) => ({ ...c, short_name: c.long_name })),
-        },
-      ],
-    }),
+    status: 200,
+    text: () => Promise.resolve(body),
   }) as unknown as typeof fetch;
 }
 

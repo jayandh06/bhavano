@@ -1,5 +1,6 @@
 import { Msg91Provider } from './msg91.provider';
 import type { ConfigService } from '@nestjs/config';
+import type { PinoLogger } from 'nestjs-pino';
 
 /**
  * The payload shape is the whole point of these tests.
@@ -22,7 +23,8 @@ function makeProvider(env: Record<string, string | undefined> = {}) {
         ...env,
       })[key],
   } as unknown as ConfigService;
-  return new Msg91Provider(config);
+  const callLogger = { info: jest.fn(), error: jest.fn() } as unknown as PinoLogger;
+  return new Msg91Provider(config, callLogger);
 }
 
 const OK_BODY = '{"status":"success","hasError":false,"request_id":"req-1"}';

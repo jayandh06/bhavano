@@ -24,8 +24,11 @@ volume, parse JSON, push to Loki), just with Alloy's own config language and ima
   concentrates there. Revisit later if needed.
 - **Grafana: public**, its own subdomain behind Caddy (matching how `web`/`bff`/`admin` already get
   one each), with Grafana's own login hardened (no anonymous access, no self-signup).
-- **Metadata only** — method, path, status, duration, userId, ip, user-agent, error. **Never**
-  request/response bodies, so there's no redaction rule to get wrong or forget.
+- **Metadata only, for the BFF's own inbound API** — method, path, status, duration, userId, ip,
+  user-agent, error. **Never** request/response bodies, so there's no redaction rule to get wrong
+  or forget. Amended by `docs/plans/third-party-api-call-audit-logging.md`, which adds a scoped,
+  masked exception for *outbound* calls to third parties (Google Maps, WhatsApp, MSG91, Google
+  Ads) — this line's original policy still fully governs every inbound BFF request untouched.
 - **All timestamps this feature touches are IST (`Asia/Kolkata`), not UTC** — pino's own log
   timestamps, and Grafana's display timezone (both detailed in sections 1/2/4 below). This plan
   only covers what's newly built here; auditing *every* existing timestamp elsewhere in the app

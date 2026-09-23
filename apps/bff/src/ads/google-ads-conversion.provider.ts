@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 import { createHash } from 'crypto';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { logThirdPartyCall } from '../logging/thirdPartyCallLogger';
 import { toE164India } from '../outreach/phone';
 
 /** Fixed, permanent conversion action ids for this account's two UPLOAD_CLICKS actions —
@@ -96,7 +98,10 @@ export class GoogleAdsConversionProvider {
   private readonly logger = new Logger(GoogleAdsConversionProvider.name);
   private readonly client: OAuth2Client;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @InjectPinoLogger(GoogleAdsConversionProvider.name) private readonly callLogger: PinoLogger,
+  ) {
     this.client = new OAuth2Client(
       this.config.get<string>('GOOGLE_ADS_CLIENT_ID'),
       this.config.get<string>('GOOGLE_ADS_CLIENT_SECRET'),
@@ -158,8 +163,32 @@ export class GoogleAdsConversionProvider {
         },
         body: JSON.stringify(body),
       });
+      const responseText = await res.text();
+      // No PII to redact here — email/phone are already SHA256-hashed before this point (see
+      // buildUserIdentifiers), so the request summary below is the real shape of what was sent,
+      // not a scrubbed approximation of it.
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'google-ads',
+        method: 'uploadClickConversion',
+        url: INGEST_URL,
+        request: {
+          conversionActionId: input.conversionActionId,
+          hasGclid: !!input.gclid,
+          hasUserIdentifiers: !!userIdentifiers,
+          eventSource: input.eventSource ?? 'WEB',
+        },
+        status: res.status,
+        responseText,
+        ok: res.ok,
+      });
       if (!res.ok) {
-        const json = await res.json().catch(() => ({}) as Record<string, unknown>);
+        let json: Record<string, unknown> = {};
+        try {
+          json = JSON.parse(responseText) as Record<string, unknown>;
+        } catch {
+          // Fall through with the empty object — logOutcome still runs on an unparseable body.
+        }
         this.logOutcome(json);
       }
     } catch (e) {

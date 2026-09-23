@@ -22,17 +22,27 @@ loki.process "bff" {
   // Only promote low-cardinality fields to real Loki labels — userId/ip/url/reqId stay in the
   // JSON body, queried with `| json | field="value"` in Grafana. A label per user would blow up
   // Loki's index; this is the one rule that matters most for it to stay fast and cheap.
+  //
+  // `provider` is the one addition beyond the original design (see
+  // docs/plans/third-party-api-call-audit-logging.md) — a handful of fixed values
+  // ("google-maps", "whatsapp-meta", "msg91", "google-ads"), stamped only on the structured
+  // third-party-call log lines `thirdPartyCallLogger.ts` emits, absent from every other log line
+  // (which is fine — an absent label just doesn't match a `{provider="..."}` selector). Cheap to
+  // index for the same reason `level`/`service` are, and it's the fast first filter for "show me
+  // every MSG91 call" before narrowing further with `| json`.
   stage.json {
     expressions = {
-      level   = "level",
-      service = "service",
+      level    = "level",
+      service  = "service",
+      provider = "provider",
     }
   }
 
   stage.labels {
     values = {
-      level   = "",
-      service = "",
+      level    = "",
+      service  = "",
+      provider = "",
     }
   }
 }

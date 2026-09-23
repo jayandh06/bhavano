@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { logThirdPartyCall, maskPhone } from '../../logging/thirdPartyCallLogger';
 
 /** Graph API version pinned rather than floating: Meta deprecates versions on a schedule, and a
  * silently-shifting default is how a working integration breaks on a date nobody wrote down. */
@@ -26,7 +28,10 @@ const DEFAULT_TEMPLATE_LANGUAGE = 'en';
 export class WhatsappProvider {
   private readonly logger = new Logger(WhatsappProvider.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @InjectPinoLogger(WhatsappProvider.name) private readonly callLogger: PinoLogger,
+  ) {}
 
   get configured(): boolean {
     return Boolean(
@@ -151,12 +156,23 @@ export class WhatsappProvider {
         },
       );
 
+      const responseText = await res.text();
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'whatsapp-meta',
+        method: 'sendTemplate',
+        url: `https://graph.facebook.com/${version}/${phoneNumberId}/messages`,
+        request: { templateName, to: maskPhone(to), paramCount: parameters.length, hasButton: buttonUrlSuffix !== undefined },
+        status: res.status,
+        responseText,
+        ok: res.ok,
+      });
+
       if (!res.ok) {
         // Meta's error body names the actual cause (expired token, unapproved template, wrong
         // id, number not on WhatsApp) and is far more useful than the status alone.
-        const body = await res.text();
         this.logger.error(
-          `WhatsApp send failed (${res.status}) for "${templateName}" to ${phone}: ${body}`,
+          `WhatsApp send failed (${res.status}) for "${templateName}" to ${phone}: ${responseText}`,
         );
         return false;
       }

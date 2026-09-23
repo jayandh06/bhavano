@@ -4,6 +4,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { logThirdPartyCall, maskPhone } from '../../logging/thirdPartyCallLogger';
 
 /**
  * MSG91 SMS delivery. Requires MSG91_AUTH_KEY (plus MSG91_SENDER_ID / MSG91_DLT_TEMPLATE_ID)
@@ -24,7 +26,10 @@ import { ConfigService } from '@nestjs/config';
 export class Msg91Provider {
   private readonly logger = new Logger(Msg91Provider.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @InjectPinoLogger(Msg91Provider.name) private readonly callLogger: PinoLogger,
+  ) {}
 
   async sendOtp(phone: string, code: string): Promise<void> {
     const authKey = this.config.get<string>('MSG91_AUTH_KEY');
@@ -39,7 +44,8 @@ export class Msg91Provider {
     // Key on the recipient must match the template's placeholder — ##otp## -> "otp".
     const otpVarName = this.config.get<string>('MSG91_OTP_VAR_NAME') ?? 'otp';
 
-    const res = await fetch('https://control.msg91.com/api/v5/flow/', {
+    const url = 'https://control.msg91.com/api/v5/flow/';
+    const res = await fetch(url, {
       method: 'POST',
       headers: { authkey: authKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -55,10 +61,21 @@ export class Msg91Provider {
     // still not the *delivery* outcome: an unwhitelisted IP also returns 200/success here and
     // is only visible in MSG91's own SMS logs.
     const body = await res.text();
-    if (!res.ok || body.includes('"error"')) {
-      throw new InternalServerErrorException(
-        `MSG91 send failed (${res.status}): ${body}`,
-      );
+    const ok = res.ok && !body.includes('"error"');
+    // The OTP code is never included here, masked or not — it's a live authentication
+    // credential, same treatment as never logging a Google/Apple sign-in token.
+    logThirdPartyCall({
+      logger: this.callLogger,
+      provider: 'msg91',
+      method: 'sendOtp',
+      url,
+      request: { templateId, senderId, phone: maskPhone(phone) },
+      status: res.status,
+      responseText: body,
+      ok,
+    });
+    if (!ok) {
+      throw new InternalServerErrorException(`MSG91 send failed (${res.status})`);
     }
   }
 
@@ -82,8 +99,9 @@ export class Msg91Provider {
       return;
     }
 
+    const url = 'https://control.msg91.com/api/v5/flow/';
     try {
-      const res = await fetch('https://control.msg91.com/api/v5/flow/', {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { authkey: authKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -92,11 +110,21 @@ export class Msg91Provider {
           recipients: [{ mobiles: `91${phone}`, VAR1: body }],
         }),
       });
+      const responseText = await res.text();
+      // The message body itself isn't included — it's a specific moderator's free-text note to
+      // a specific user, not something to include even in an internal audit log by default.
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'msg91',
+        method: 'sendTransactionalSms',
+        url,
+        request: { templateId, phone: maskPhone(phone), bodyLength: body.length },
+        status: res.status,
+        responseText,
+        ok: res.ok,
+      });
       if (!res.ok) {
-        const responseBody = await res.text();
-        this.logger.error(
-          `MSG91 transactional SMS failed (${res.status}): ${responseBody}`,
-        );
+        this.logger.error(`MSG91 transactional SMS failed (${res.status})`);
       }
     } catch (error) {
       this.logger.error(
@@ -146,44 +174,51 @@ export class Msg91Provider {
       return false;
     }
 
+    const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(
-        'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
-        {
-          method: 'POST',
-          headers: { authkey: authKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            integrated_number: integratedNumber,
-            content_type: 'template',
-            payload: {
-              messaging_product: 'whatsapp',
-              type: 'template',
-              template: {
-                name: template,
-                language: { code: 'en', policy: 'deterministic' },
-                namespace,
-                to_and_components: [
-                  {
-                    to: [`91${phone}`],
-                    components: {
-                      body_name: {
-                        type: 'text',
-                        value: name,
-                        parameter_name: 'name',
-                      },
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { authkey: authKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          integrated_number: integratedNumber,
+          content_type: 'template',
+          payload: {
+            messaging_product: 'whatsapp',
+            type: 'template',
+            template: {
+              name: template,
+              language: { code: 'en', policy: 'deterministic' },
+              namespace,
+              to_and_components: [
+                {
+                  to: [`91${phone}`],
+                  components: {
+                    body_name: {
+                      type: 'text',
+                      value: name,
+                      parameter_name: 'name',
                     },
                   },
-                ],
-              },
+                },
+              ],
             },
-          }),
-        },
-      );
+          },
+        }),
+      });
       const responseBody = await res.text();
-      if (!res.ok || responseBody.includes('"error"')) {
-        this.logger.error(
-          `MSG91 WhatsApp send failed (${res.status}): ${responseBody}`,
-        );
+      const ok = res.ok && !responseBody.includes('"error"');
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'msg91',
+        method: 'sendWhatsappTemplate',
+        url,
+        request: { template, namespace, phone: maskPhone(phone) },
+        status: res.status,
+        responseText: responseBody,
+        ok,
+      });
+      if (!ok) {
+        this.logger.error(`MSG91 WhatsApp send failed (${res.status})`);
         return false;
       }
       return true;
@@ -241,70 +276,78 @@ export class Msg91Provider {
       return { sent: false, messageId: null };
     }
 
+    const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(
-        'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
-        {
-          method: 'POST',
-          headers: { authkey: authKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            integrated_number: integratedNumber,
-            content_type: 'template',
-            payload: {
-              messaging_product: 'whatsapp',
-              type: 'template',
-              template: {
-                name: template,
-                language: { code: 'en', policy: 'deterministic' },
-                namespace,
-                to_and_components: [
-                  {
-                    to: [`91${phone}`],
-                    components: {
-                      body_name: {
-                        type: 'text',
-                        value: vars.name,
-                        parameter_name: 'name',
-                      },
-                      body_title: {
-                        type: 'text',
-                        value: vars.title,
-                        parameter_name: 'title',
-                      },
-                      body_title2: {
-                        type: 'text',
-                        value: vars.title2,
-                        parameter_name: 'title2',
-                      },
-                      body_location: {
-                        type: 'text',
-                        value: vars.location,
-                        parameter_name: 'location',
-                      },
-                      button_1: {
-                        subtype: 'url',
-                        type: 'text',
-                        value: buttonUrlSuffix,
-                      },
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { authkey: authKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          integrated_number: integratedNumber,
+          content_type: 'template',
+          payload: {
+            messaging_product: 'whatsapp',
+            type: 'template',
+            template: {
+              name: template,
+              language: { code: 'en', policy: 'deterministic' },
+              namespace,
+              to_and_components: [
+                {
+                  to: [`91${phone}`],
+                  components: {
+                    body_name: {
+                      type: 'text',
+                      value: vars.name,
+                      parameter_name: 'name',
+                    },
+                    body_title: {
+                      type: 'text',
+                      value: vars.title,
+                      parameter_name: 'title',
+                    },
+                    body_title2: {
+                      type: 'text',
+                      value: vars.title2,
+                      parameter_name: 'title2',
+                    },
+                    body_location: {
+                      type: 'text',
+                      value: vars.location,
+                      parameter_name: 'location',
+                    },
+                    button_1: {
+                      subtype: 'url',
+                      type: 'text',
+                      value: buttonUrlSuffix,
                     },
                   },
-                ],
-              },
+                },
+              ],
             },
-          }),
-        },
-      );
+          },
+        }),
+      });
       const responseBody = await res.text();
-      if (!res.ok || responseBody.includes('"error"')) {
-        this.logger.error(
-          `MSG91 WhatsApp ad-posted send failed (${res.status}): ${responseBody}`,
-        );
+      const ok = res.ok && !responseBody.includes('"error"');
+      // Logged via the shared, scrubbed helper — this is the one real response this codebase has
+      // on hand so far for extractMessageId (and WhatsappWebhookController's own status-shape
+      // guess) to be checked against and corrected from, so the message id itself has to survive
+      // logThirdPartyCall's scrubbing untouched — see scrubResponseText's own comment on why it
+      // deliberately doesn't mask long token-looking strings.
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'msg91',
+        method: 'sendAdPostedConfirmation',
+        url,
+        request: { template, namespace, phone: maskPhone(phone), varNames: Object.keys(vars) },
+        status: res.status,
+        responseText: responseBody,
+        ok,
+      });
+      if (!ok) {
+        this.logger.error(`MSG91 WhatsApp ad-posted send failed (${res.status})`);
         return { sent: false, messageId: null };
       }
-      // Logged at info level deliberately, not debug — this is the one real response this
-      // codebase has on hand so far for extractMessageId (and WhatsappWebhookController's own
-      // status-shape guess) to be checked against and corrected from.
-      this.logger.log(`MSG91 WhatsApp ad-posted send response: ${responseBody}`);
       return { sent: true, messageId: this.extractMessageId(responseBody) };
     } catch (error) {
       this.logger.error(
@@ -369,51 +412,57 @@ export class Msg91Provider {
       return { sent: false, messageId: null };
     }
 
+    const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(
-        'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
-        {
-          method: 'POST',
-          headers: { authkey: authKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            integrated_number: integratedNumber,
-            content_type: 'template',
-            payload: {
-              messaging_product: 'whatsapp',
-              type: 'template',
-              template: {
-                name: template,
-                language: { code: 'en', policy: 'deterministic' },
-                namespace,
-                to_and_components: [
-                  {
-                    to: [`91${phone}`],
-                    components: {
-                      body_1: { type: 'text', value: vars.name },
-                      body_2: { type: 'text', value: vars.title },
-                      // Date first, then locality. Established by sending real samples and being
-                      // told what came out wrong — twice — not by reading the template, which this
-                      // code cannot see. Do not reorder without another sample.
-                      body_3: { type: 'text', value: vars.offerEnds },
-                      body_4: { type: 'text', value: vars.location },
-                      button_1: { subtype: 'url', type: 'text', value: buttons.boostSuffix },
-                      button_2: { subtype: 'url', type: 'text', value: buttons.bundleSuffix },
-                    },
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { authkey: authKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          integrated_number: integratedNumber,
+          content_type: 'template',
+          payload: {
+            messaging_product: 'whatsapp',
+            type: 'template',
+            template: {
+              name: template,
+              language: { code: 'en', policy: 'deterministic' },
+              namespace,
+              to_and_components: [
+                {
+                  to: [`91${phone}`],
+                  components: {
+                    body_1: { type: 'text', value: vars.name },
+                    body_2: { type: 'text', value: vars.title },
+                    // Date first, then locality. Established by sending real samples and being
+                    // told what came out wrong — twice — not by reading the template, which this
+                    // code cannot see. Do not reorder without another sample.
+                    body_3: { type: 'text', value: vars.offerEnds },
+                    body_4: { type: 'text', value: vars.location },
+                    button_1: { subtype: 'url', type: 'text', value: buttons.boostSuffix },
+                    button_2: { subtype: 'url', type: 'text', value: buttons.bundleSuffix },
                   },
-                ],
-              },
+                },
+              ],
             },
-          }),
-        },
-      );
+          },
+        }),
+      });
       const responseBody = await res.text();
-      if (!res.ok || responseBody.includes('"error"')) {
-        this.logger.error(
-          `MSG91 WhatsApp boost-promotion send failed (${res.status}): ${responseBody}`,
-        );
+      const ok = res.ok && !responseBody.includes('"error"');
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'msg91',
+        method: 'sendBoostPromotion',
+        url,
+        request: { template, namespace, phone: maskPhone(phone), varNames: Object.keys(vars) },
+        status: res.status,
+        responseText: responseBody,
+        ok,
+      });
+      if (!ok) {
+        this.logger.error(`MSG91 WhatsApp boost-promotion send failed (${res.status})`);
         return { sent: false, messageId: null };
       }
-      this.logger.log(`MSG91 WhatsApp boost-promotion send response: ${responseBody}`);
       return { sent: true, messageId: this.extractMessageId(responseBody) };
     } catch (error) {
       this.logger.error(
@@ -467,52 +516,58 @@ export class Msg91Provider {
     // `?? null` is only a fallback for an environment that hasn't set it, not the expected value.
     const namespace = this.config.get<string>('MSG91_WHATSAPP_CLAIM_NAMESPACE') ?? null;
 
+    const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
     try {
-      const res = await fetch(
-        'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
-        {
-          method: 'POST',
-          headers: { authkey: authKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            integrated_number: integratedNumber,
-            content_type: 'template',
-            payload: {
-              messaging_product: 'whatsapp',
-              type: 'template',
-              template: {
-                name: template,
-                language: { code: 'en', policy: 'deterministic' },
-                namespace,
-                to_and_components: [
-                  {
-                    to: [`91${phone}`],
-                    components: {
-                      body_1: { type: 'text', value: vars.businessName },
-                      body_2: { type: 'text', value: vars.area },
-                      body_3: { type: 'text', value: vars.city },
-                      body_4: { type: 'text', value: vars.phone },
-                      body_5: { type: 'text', value: vars.claimLink },
-                      button_1: {
-                        subtype: 'url',
-                        type: 'text',
-                        value: buttonUrlSuffix,
-                      },
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { authkey: authKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          integrated_number: integratedNumber,
+          content_type: 'template',
+          payload: {
+            messaging_product: 'whatsapp',
+            type: 'template',
+            template: {
+              name: template,
+              language: { code: 'en', policy: 'deterministic' },
+              namespace,
+              to_and_components: [
+                {
+                  to: [`91${phone}`],
+                  components: {
+                    body_1: { type: 'text', value: vars.businessName },
+                    body_2: { type: 'text', value: vars.area },
+                    body_3: { type: 'text', value: vars.city },
+                    body_4: { type: 'text', value: vars.phone },
+                    body_5: { type: 'text', value: vars.claimLink },
+                    button_1: {
+                      subtype: 'url',
+                      type: 'text',
+                      value: buttonUrlSuffix,
                     },
                   },
-                ],
-              },
+                },
+              ],
             },
-          }),
-        },
-      );
+          },
+        }),
+      });
       const responseBody = await res.text();
-      if (!res.ok || responseBody.includes('"error"')) {
-        this.logger.error(
-          `MSG91 WhatsApp claim-verification send failed (${res.status}): ${responseBody}`,
-        );
+      const ok = res.ok && !responseBody.includes('"error"');
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'msg91',
+        method: 'sendListingVerificationRequest',
+        url,
+        request: { template, namespace, phone: maskPhone(phone), varNames: Object.keys(vars) },
+        status: res.status,
+        responseText: responseBody,
+        ok,
+      });
+      if (!ok) {
+        this.logger.error(`MSG91 WhatsApp claim-verification send failed (${res.status})`);
         return { sent: false, messageId: null };
       }
-      this.logger.log(`MSG91 WhatsApp claim-verification send response: ${responseBody}`);
       return { sent: true, messageId: this.extractMessageId(responseBody) };
     } catch (error) {
       this.logger.error(
