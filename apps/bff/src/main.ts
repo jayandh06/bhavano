@@ -10,9 +10,14 @@ async function bootstrap() {
   // byte-for-byte match what Razorpay signed.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true, rawBody: true });
   app.useLogger(app.get(Logger));
-  // Behind Caddy in production — without this, req.ip resolves to Caddy's own container IP
-  // instead of the real client IP carried in X-Forwarded-For.
-  app.set('trust proxy', true);
+  // Behind exactly one reverse proxy in production (Caddy — no CDN sits in front of it; the
+  // Cloudflare config elsewhere in this app is only for R2 photo storage, not request proxying).
+  // The numeric form trusts exactly that many hops and resolves req.ip to the address that hop
+  // added, i.e. the one Caddy itself appends — NOT `true`, which trusts every hop and takes the
+  // leftmost entry in X-Forwarded-For, fully spoofable by whoever sent the request. See
+  // middleware.ts's own clientIp() (web), which works around the same problem by hand for
+  // exactly this reason, and docs/plans/safely-reactivate-bff-throttling.md.
+  app.set('trust proxy', 1);
   app.enableCors({ origin: true, credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.listen(process.env.PORT ?? 4000);

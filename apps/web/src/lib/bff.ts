@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import type { CreateListingPublishOrderResponseDto } from "@bhavano/types";
@@ -89,10 +89,28 @@ export class ListingAlreadyClaimedError extends Error {
   }
 }
 
+/** The visitor's IP as Caddy saw it, same last-hop convention as middleware.ts's own clientIp()
+ * (see that function's comment for why last, not first). Needed here because every call from
+ * this file reaches the BFF over BFF_INTERNAL_URL — a direct container-to-container call that
+ * never passes through Caddy — so without this, the BFF would see this app's own container IP
+ * for every visitor's request, not the real one. See
+ * docs/plans/safely-reactivate-bff-throttling.md. */
+async function clientIp(): Promise<string | undefined> {
+  const forwarded = (await headers()).get("x-forwarded-for");
+  if (!forwarded) return undefined;
+  const hops = forwarded.split(",").map((v) => v.trim()).filter(Boolean);
+  return hops[hops.length - 1];
+}
+
 async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const ip = await clientIp();
   const res = await fetch(`${BFF_URL}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(ip ? { "X-Forwarded-For": ip } : undefined),
+      ...init?.headers,
+    },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
