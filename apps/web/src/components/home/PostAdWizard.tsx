@@ -829,7 +829,7 @@ export function PostAdWizard({
             </div>
           </div>
 
-          <div>
+          <div className="max-w-[720px]">
             <label className={labelClass}>
               Pin your exact location (optional — helps buyers find you, and
               auto-fills City/Area below)
@@ -979,7 +979,7 @@ export function PostAdWizard({
             />
           </div>
 
-          <div>
+          <div className="max-w-[720px]">
             <RequiredLabel text={`Photos (up to ${MAX_PHOTOS})`} />
             {photos.length < MAX_PHOTOS && (
               // A styled label wrapping a hidden input rather than a bare <input type="file">.
@@ -1037,7 +1037,7 @@ export function PostAdWizard({
             )}
           </div>
 
-          <div>
+          <div className="max-w-[720px]">
             <label className={labelClass}>
               Video (optional, up to {videoEntitlement.maxVideos})
             </label>

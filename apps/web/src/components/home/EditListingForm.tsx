@@ -238,19 +238,21 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
         * Renders even at zero photos — EditListingPhotos' own "+ Add" control is how a listing
         * with none gets its first post-creation photo; the caller must not gate this on
         * photosFull.length. */}
-      <EditListingPhotos
-        listingId={listing.id}
-        title={listing.title}
-        photos={listing.photosFull.map((url, i) => ({
-          url,
-          photoNo: listing.photoNos[i],
-          updatedAt: listing.photoUpdatedAts[i],
-        }))}
-      />
+      <div className="max-w-[720px]">
+        <EditListingPhotos
+          listingId={listing.id}
+          title={listing.title}
+          photos={listing.photosFull.map((url, i) => ({
+            url,
+            photoNo: listing.photoNos[i],
+            updatedAt: listing.photoUpdatedAts[i],
+          }))}
+        />
+      </div>
 
       {/* Video add/delete — was previously only reachable from the /my-listings row, not this
         * page. `expanded` matches it to EditListingPhotos' UploadZone-style add control above. */}
-      <div>
+      <div className="max-w-[720px]">
         <label className={labelClass}>Videos</label>
         <VideoManager listing={listing} accessToken={accessToken} expanded />
       </div>
