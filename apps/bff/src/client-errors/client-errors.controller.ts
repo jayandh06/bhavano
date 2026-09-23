@@ -1,5 +1,12 @@
-import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { ClientErrorsService } from './client-errors.service';
 import { CreateClientErrorDto } from './dto/create-client-error.dto';
@@ -13,6 +20,7 @@ export class ClientErrorsController {
    * visitor is still generous at 10/min, and there's no legitimate reason for one IP to report
    * more than that. See docs/plans/client-error-reporting-loki-grafana.md for why this needed
    * ThrottlerGuard actually bound (app.module.ts) to mean anything at all. */
+  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post()
   @HttpCode(204)

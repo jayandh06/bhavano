@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -66,14 +65,14 @@ import { LoggingModule } from './logging/logging.module';
     ClientErrorsModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    // Activates every @Throttle() decorator in the codebase — ThrottlerModule.forRoot() only
-    // registers the default limit/storage, it does not bind the guard that actually enforces it.
-    // Confirmed missing entirely before this: no APP_GUARD, no per-route @UseGuards(ThrottlerGuard),
-    // so every existing @Throttle() (auth OTP send/verify, analytics, requirements, support, users)
-    // was decorative only. See docs/plans/client-error-reporting-loki-grafana.md.
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-  ],
+  // NOT bound globally via APP_GUARD: that applies ThrottlerModule.forRoot()'s default limit
+  // (20/60s) to *every* route with no @Throttle()/@SkipThrottle() of its own, including plain
+  // reads like /listings, /locations/cities, /plans/pricing — hit within seconds by web/admin's
+  // own SSR traffic, since every Server-Action-proxied call to this BFF shares one source IP (the
+  // web/admin container's), not the real visitor's. Caused a real production outage the first
+  // time this was tried (see docs/plans/client-error-reporting-loki-grafana.md's "Implementation
+  // notes"). Instead, `@UseGuards(ThrottlerGuard)` is added on exactly the methods that already
+  // carry `@Throttle(...)`, so only those opted-in routes are ever guarded — never made global.
+  providers: [AppService],
 })
 export class AppModule {}
