@@ -4,6 +4,8 @@ import type { AreaUnit } from "./areaUnit";
 export type ListingCategory = "house" | "apartment" | "villa" | "pg" | "storage" | "coworking" | "furniture" | "interiors" | "plot" | "commercial";
 export type TransactionType = "buy" | "sell" | "rent" | "lease";
 export type ListingStatus = "active" | "sold" | "rented" | "deactivated";
+/** Whether a newly created listing is visible in browse and has fired post-live side effects. */
+export type ListingPublishState = "live" | "pending_checkout";
 export type ListingCondition = "new" | "used";
 /** How the ad itself was created. "direct" (the owner posted it through the wizard) is the
  * only path that exists today and the default for every row; "manual"/"google_api" are for
@@ -29,7 +31,7 @@ export type RequirementStatus = "open" | "working" | "closed";
 export type RequirementClosedReason = "fulfilled" | "withdrawn" | "expired" | "dismissed";
 export type ListingSlotUpsell = import("./listingSlots").ListingSlotUpsell;
 export type { ListingSlotCapErrorBody } from "./listingSlots";
-export type PaymentPurpose = "listing_boost" | "buyer_premium" | "agent_pro" | "seller_slot_pack" | "contact_reveal_credits" | "instant_alerts";
+export type PaymentPurpose = "listing_boost" | "listing_publish" | "buyer_premium" | "agent_pro" | "seller_slot_pack" | "contact_reveal_credits" | "instant_alerts";
 export type PaymentStatus = "created" | "paid" | "failed" | "refunded";
 /** buyerPremium = Bhavano Plus; agentPro = broker slots + storefront; sellerSlotPack = +5 slots (10 total). */
 export type SubscriptionTier = "buyerPremium" | "agentPro" | "sellerSlotPack";
@@ -150,6 +152,10 @@ export interface ListingDetailDto extends ListingCardDto {
      * `price` string back into a number for editing. */
     priceUnit: AreaUnit | null;
     status: ListingStatus;
+    /** `pending_checkout` listings are owner-visible only until publish payment completes. */
+    publishState: ListingPublishState;
+    /** When the ad actually went live — null while `publishState` is `pending_checkout`. */
+    publishedAt: string | null;
     moderationState: ModerationState;
     adminReviewed: boolean;
     moderatedAt: string | null;
@@ -365,6 +371,11 @@ export interface CreateListingInput {
     /** Links this listing to the OutreachContact it was bulk-imported from — bulk_upload_listings.py
      * only, never set by the normal posting wizard. See ListingsService.claimListing. */
     claimContactId?: string;
+    /** When set, the BFF may hold the listing in `pending_checkout` until publish payment succeeds. */
+    checkoutIntent?: {
+        boostDays?: BoostDurationDays;
+        includeInstantAlerts?: boolean;
+    };
 }
 /** Response from reverse-geocoding a dropped map pin — a suggestion the poster can accept or
  * override, never an auto-locked value (Google's locality boundaries won't line up perfectly
@@ -891,6 +902,15 @@ export interface BoostPlanSelection {
     duration: BoostDurationDays;
     includeInstantAlerts: boolean;
 }
+/** Combined platform fee + optional boost/IA checkout when publishing a listing. */
+export interface CreateListingPublishOrderInput {
+    listingId: string;
+    boostDays?: BoostDurationDays;
+    includeInstantAlerts?: boolean;
+    discountCode?: string;
+}
+/** Same Razorpay envelope as boost orders — `activated` when total is ₹0 (e.g. Pro boost credit). */
+export type CreateListingPublishOrderResponseDto = CreateBoostOrderResponseDto;
 /** One field's before/after value in a ListingEditLogEntryDto's `changes` — values are
  * `unknown` because different actions touch completely different field types (a number for
  * price, a string for status, an object for attributes). */

@@ -57,6 +57,14 @@
       "types": "./dist/boostPricing.d.ts",
       "default": "./dist/boostPricing.js"
     },
+    "./platformFeePricing": {
+      "types": "./dist/platformFeePricing.d.ts",
+      "default": "./dist/platformFeePricing.js"
+    },
+    "./listingPublishPricing": {
+      "types": "./dist/listingPublishPricing.d.ts",
+      "default": "./dist/listingPublishPricing.js"
+    },
     "./promoCode": {
       "types": "./dist/promoCode.d.ts",
       "default": "./dist/promoCode.js"
