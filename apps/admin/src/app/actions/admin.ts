@@ -28,6 +28,7 @@ import {
   fetchThread,
   fetchUserLoginHistory,
   flagListing,
+  forcePublishListing,
   revokeBoost,
   rotateListingPhoto,
   sendMessage,
@@ -95,6 +96,22 @@ export async function approveListingAction(listingId: string): Promise<ActionRes
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to approve listing" };
+  }
+}
+
+/** Waives publish checkout — makes a `pending_checkout` ad buyer-visible without Razorpay. */
+export async function forcePublishListingAction(listingId: string): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await forcePublishListing(accessToken, listingId);
+    revalidatePath("/");
+    revalidatePath(`/listings/${listingId}`);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to publish listing",
+    };
   }
 }
 

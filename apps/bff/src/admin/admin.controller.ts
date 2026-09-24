@@ -141,6 +141,17 @@ export class AdminController {
     return this.adminService.approveListing(id, user.id);
   }
 
+  /** Support override: flip `pending_checkout` → `live` without a successful Razorpay payment
+   * (waived fee, manual settlement, etc.). Reuses ListingsService.completePendingPublish so
+   * posted notifications / conversions still run. */
+  @Post('listings/:id/force-publish')
+  forcePublishListing(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<ListingDetailDto> {
+    return this.adminService.forcePublishListing(id, user.id);
+  }
+
   /** Permanent hard-delete with full R2 + DB cleanup. For spam/junk/duplicates — the softer
    * "flag & message owner" is the tool for a fixable listing. */
   @Delete('listings/:id')

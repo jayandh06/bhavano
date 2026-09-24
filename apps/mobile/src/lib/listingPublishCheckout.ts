@@ -2,6 +2,7 @@ import RazorpayCheckout from "react-native-razorpay";
 import type { BoostPlanSelection } from "@bhavano/types";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { createListingPublishOrder } from "./bffClient";
+import { isRazorpayUserCancel, razorpayFailureMessage } from "./razorpayNative";
 
 export type ListingPublishCheckoutResult =
   | { outcome: "activated" }
@@ -44,8 +45,7 @@ export async function startListingPublishCheckout({
 
     return { outcome: "paid" };
   } catch (e) {
-    const err = e as { description?: string };
-    const isCancel = err.description?.toLowerCase().includes("cancel");
-    return isCancel ? { outcome: "cancelled" } : { outcome: "error", message: err.description || "Payment failed — please try again." };
+    if (isRazorpayUserCancel(e)) return { outcome: "cancelled" };
+    return { outcome: "error", message: razorpayFailureMessage(e) };
   }
 }

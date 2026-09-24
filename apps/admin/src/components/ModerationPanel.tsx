@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ListingStatus, MessageDto, ModerationState } from "@bhavano/types";
+import type { ListingPublishState, ListingStatus, MessageDto, ModerationState } from "@bhavano/types";
 import {
   approveListingAction,
   deleteListingAction,
   flagListingAction,
+  forcePublishListingAction,
   sendThreadMessageAction,
   setListingStatusAction,
   setReviewedAction,
@@ -20,6 +21,7 @@ export function ModerationPanel({
   status,
   moderationState,
   adminReviewed,
+  publishState,
   messages,
   currentUserId,
 }: {
@@ -27,6 +29,8 @@ export function ModerationPanel({
   status: ListingStatus;
   moderationState: ModerationState;
   adminReviewed: boolean;
+  /** When `pending_checkout`, show the force-publish override (waive payment / settle offline). */
+  publishState: ListingPublishState;
   messages: MessageDto[];
   currentUserId: string;
 }) {
@@ -35,6 +39,7 @@ export function ModerationPanel({
   const [showFlagBox, setShowFlagBox] = useState(false);
   const [showDeleteBox, setShowDeleteBox] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [showForcePublishBox, setShowForcePublishBox] = useState(false);
   const [reply, setReply] = useState("");
   const [statusChoice, setStatusChoice] = useState<ListingStatus>(status);
   const [pending, setPending] = useState(false);
@@ -77,6 +82,15 @@ export function ModerationPanel({
     const result = await approveListingAction(listingId);
     setPending(false);
     if (!result.success) setError(result.error);
+  }
+
+  async function onForcePublish() {
+    setPending(true);
+    setError(null);
+    const result = await forcePublishListingAction(listingId);
+    setPending(false);
+    if (result.success) setShowForcePublishBox(false);
+    else setError(result.error);
   }
 
   async function onSetStatus() {
@@ -156,6 +170,45 @@ export function ModerationPanel({
           Delete permanently
         </button>
       </div>
+
+      {publishState === "pending_checkout" && (
+        <div
+          style={{
+            border: "1.5px solid var(--danger)",
+            borderRadius: 10,
+            padding: 14,
+            background: "var(--surface)",
+          }}
+        >
+          <p style={{ fontSize: 13, color: "var(--text-soft)", margin: "0 0 10px" }}>
+            This ad is <strong>not live</strong> — publish payment is still pending. Override only
+            when the fee was waived or settled offline; the owner will see a note in the
+            moderation thread.
+          </p>
+          {!showForcePublishBox ? (
+            <button
+              onClick={() => setShowForcePublishBox(true)}
+              disabled={pending}
+              style={primaryButtonStyle}
+            >
+              Publish without payment
+            </button>
+          ) : (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={onForcePublish} disabled={pending} style={primaryButtonStyle}>
+                {pending ? "Publishing…" : "Confirm — make live now"}
+              </button>
+              <button
+                onClick={() => setShowForcePublishBox(false)}
+                disabled={pending}
+                style={outlineButtonStyle}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {showDeleteBox && (
         <div style={{ border: "1.5px solid var(--danger)", borderRadius: 10, padding: 14, background: "var(--surface)" }}>

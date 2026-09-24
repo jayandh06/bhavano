@@ -278,6 +278,11 @@ export function approveListing(accessToken: string, id: string): Promise<Listing
   return authedBffFetch(accessToken, `/admin/listings/${id}/approve`, { method: "POST" });
 }
 
+/** Admin override: publish a `pending_checkout` listing without Razorpay confirmation. */
+export function forcePublishListing(accessToken: string, id: string): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/admin/listings/${id}/force-publish`, { method: "POST" });
+}
+
 /** Permanent hard-delete with full R2 + DB cleanup — see BFF ListingsService.deleteCompletely. */
 export function deleteListing(accessToken: string, id: string): Promise<void> {
   return authedBffFetch(accessToken, `/admin/listings/${id}`, { method: "DELETE" });

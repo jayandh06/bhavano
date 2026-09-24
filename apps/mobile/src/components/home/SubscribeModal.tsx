@@ -5,6 +5,7 @@ import type { SubscriptionTier } from "@bhavano/types";
 import { subscriptionPriceFor, type SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createSubscriptionOrder } from "../../lib/bffClient";
+import { isRazorpayUserCancel, razorpayFailureMessage } from "../../lib/razorpayNative";
 
 /** Same per-tier durations the website's SubscribeButton offers — only Bhavano Plus has terms
  * longer than a month. */
@@ -87,10 +88,7 @@ export function SubscribeModal({
       onActivating();
       onClose();
     } catch (e) {
-      // Same dismiss-looks-like-a-rejection caveat as BoostModal — see its own comment.
-      const err = e as { code?: number; description?: string };
-      const isCancel = err.description?.toLowerCase().includes("cancel");
-      if (!isCancel) setError(err.description || "Payment failed — please try again.");
+      if (!isRazorpayUserCancel(e)) setError(razorpayFailureMessage(e));
     } finally {
       setPending(false);
     }

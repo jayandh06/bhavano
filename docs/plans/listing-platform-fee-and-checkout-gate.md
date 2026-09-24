@@ -335,6 +335,11 @@ Rename/evolve the selector conceptually to **“Publish options”** (implementa
 | **2** | Post-success upsell path: boost/IA pay failure also blocks go-live (may require pending state when user initiates boost from success screen) |
 | **3** | Draft TTL cleanup job + owner “Abandon draft” + admin metrics on abandoned checkouts |
 
+**Admin force-publish (2026-09-24).** Support can override `pending_checkout` → `live` without
+Razorpay via `POST /admin/listings/:id/force-publish` (admin listing detail → “Publish without
+payment”). Reuses `ListingsService.completePendingPublish` so post-live side effects still run,
+and posts a moderation-thread note. Does **not** mark a Payment row paid.
+
 Phase 1 matches the user ask for Preview + post screens **when fee applies for the category**
 (review-step fee UI) and fixes the documented Preview auto-checkout failure mode.
 

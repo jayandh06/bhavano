@@ -254,6 +254,7 @@ export default async function ListingModerationPage({
           status={listing.status}
           moderationState={listing.moderationState}
           adminReviewed={listing.adminReviewed}
+          publishState={listing.publishState}
           messages={messages}
           currentUserId={userId}
         />

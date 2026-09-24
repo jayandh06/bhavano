@@ -10,6 +10,7 @@ import {
 } from "@bhavano/types/boostPricing";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createBoostOrder, fetchPlanPricing } from "../../lib/bffClient";
+import { isRazorpayUserCancel, razorpayFailureMessage } from "../../lib/razorpayNative";
 
 const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 
@@ -93,12 +94,8 @@ export function BoostModal({
       onActivating();
       onClose();
     } catch (e) {
-      // The native SDK reports a plain dismiss (no card entered, sheet closed) as a rejection
-      // too, with no distinct "cancelled" pathway the way web's checkout.js modal.ondismiss is —
-      // this is the only signal available to tell that apart from a real failure.
-      const err = e as { code?: number; description?: string };
-      const isCancel = err.description?.toLowerCase().includes("cancel");
-      if (!isCancel) setError(err.description || "Payment failed — please try again.");
+      // Native SDK reports dismiss / mid-auth exit as a rejection — see razorpayNative.ts.
+      if (!isRazorpayUserCancel(e)) setError(razorpayFailureMessage(e));
     } finally {
       setPending(false);
     }

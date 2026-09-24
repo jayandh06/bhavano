@@ -1,6 +1,7 @@
 import RazorpayCheckout from "react-native-razorpay";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
 import { createBoostOrder } from "./bffClient";
+import { isRazorpayUserCancel, razorpayFailureMessage } from "./razorpayNative";
 
 export type BoostCheckoutResult =
   | { outcome: "activated" }
@@ -48,10 +49,8 @@ export async function startBoostCheckout({
 
     return { outcome: "paid" };
   } catch (e) {
-    // Same "no distinct cancel signal" gotcha the original onPay documented — the native SDK
-    // reports a plain dismiss as a rejection too.
-    const err = e as { code?: number; description?: string };
-    const isCancel = err.description?.toLowerCase().includes("cancel");
-    return isCancel ? { outcome: "cancelled" } : { outcome: "error", message: err.description || "Payment failed — please try again." };
+    // Native SDK reports dismiss / mid-auth exit as a rejection — see razorpayNative.ts.
+    if (isRazorpayUserCancel(e)) return { outcome: "cancelled" };
+    return { outcome: "error", message: razorpayFailureMessage(e) };
   }
 }

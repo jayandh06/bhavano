@@ -381,6 +381,31 @@ export class AdminService {
     return listing;
   }
 
+  /** Waives the publish-checkout gate — support cases where payment was settled offline, fee
+   * waived, or Razorpay never confirmed. Never silent: a moderation-thread note records who
+   * overrode. Idempotent when already live. */
+  async forcePublishListing(id: string, adminId: string): Promise<ListingDetailDto> {
+    const existing = await this.prisma.listing.findUnique({
+      where: { id },
+      select: { id: true, publishState: true },
+    });
+    if (!existing) throw new NotFoundException(`Listing ${id} not found`);
+
+    const wasPending = existing.publishState === 'pending_checkout';
+    await this.listingsService.completePendingPublish(id);
+
+    if (wasPending) {
+      const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
+      await this.messagingService.sendMessage(
+        thread.id,
+        adminId,
+        'An admin published this ad without payment (fee waived / settled offline).',
+      );
+    }
+
+    return this.listingsService.findOne(id, { id: adminId, role: 'admin' });
+  }
+
   /** Admin override of a listing's status (active/sold/rented/deactivated) — see
    * ListingsService.setStatusAsAdmin's doc comment for why this exists. Same transparency
    * principle as flag/approve above: never silent, always a message in the moderation thread the

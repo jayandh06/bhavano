@@ -4,6 +4,7 @@ import RazorpayCheckout from "react-native-razorpay";
 import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS, type InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createInstantAlertsOrder, fetchPlanPricing } from "../../lib/bffClient";
+import { isRazorpayUserCancel, razorpayFailureMessage } from "../../lib/razorpayNative";
 
 /**
  * Native equivalent of the website's `InstantAlertsProvider` modal — flat fee, no duration
@@ -70,10 +71,7 @@ export function InstantAlertsModal({
       onActivating();
       onClose();
     } catch (e) {
-      // Same "no distinct cancel signal" caveat as BoostModal's identical catch block.
-      const err = e as { code?: number; description?: string };
-      const isCancel = err.description?.toLowerCase().includes("cancel");
-      if (!isCancel) setError(err.description || "Payment failed — please try again.");
+      if (!isRazorpayUserCancel(e)) setError(razorpayFailureMessage(e));
     } finally {
       setPending(false);
     }
