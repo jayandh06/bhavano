@@ -18,6 +18,9 @@ import {
   recordView,
   renewListing,
   revealContact,
+  recordListingInterest,
+  fetchListingInterests,
+  openInterestConversation,
   rotateOwnListingPhoto,
   setOwnListingCoverPhoto,
   toggleFavourite,
@@ -78,6 +81,56 @@ export async function toggleFavouriteAction(listingId: string): Promise<ToggleFa
 
   const result = await toggleFavourite(session.accessToken, listingId);
   return { requiresLogin: false, ...result };
+}
+
+export type RecordInterestResult =
+  | { requiresLogin: true }
+  | { requiresLogin: false; success: true; notified: boolean }
+  | { requiresLogin: false; success: false; error: string };
+
+export async function recordInterestAction(listingId: string): Promise<RecordInterestResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { requiresLogin: true };
+
+  try {
+    const result = await recordListingInterest(session.accessToken, listingId);
+    return { requiresLogin: false, success: true, notified: result.notified };
+  } catch (error) {
+    if (error instanceof BffAuthError) return { requiresLogin: true };
+    return {
+      requiresLogin: false,
+      success: false,
+      error: error instanceof Error ? error.message : "Couldn't save your interest",
+    };
+  }
+}
+
+export async function fetchListingInterestsAction(listingId: string) {
+  const session = await auth();
+  if (!session?.accessToken) return null;
+  try {
+    return await fetchListingInterests(session.accessToken, listingId);
+  } catch {
+    return null;
+  }
+}
+
+export async function openInterestConversationAction(
+  listingId: string,
+  userId: string,
+): Promise<{ requiresLogin: true } | { requiresLogin: false; conversationId?: string; error?: string }> {
+  const session = await auth();
+  if (!session?.accessToken) return { requiresLogin: true };
+  try {
+    const { conversationId } = await openInterestConversation(session.accessToken, listingId, userId);
+    return { requiresLogin: false, conversationId };
+  } catch (error) {
+    if (error instanceof BffAuthError) return { requiresLogin: true };
+    return {
+      requiresLogin: false,
+      error: error instanceof Error ? error.message : "Couldn't open the conversation",
+    };
+  }
 }
 
 export type RevealContactResult =

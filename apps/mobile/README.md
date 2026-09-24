@@ -51,6 +51,7 @@ cp .env.example .env      # then fill in the values below
 |---|---|
 | `EXPO_PUBLIC_BFF_URL` | `http://localhost:4000` for the simulator; your Mac's **LAN IP** (`http://192.168.x.x:4000`) for a physical device |
 | `EXPO_PUBLIC_SITE_URL` | `https://bhavano.com` (used only for legal links) |
+| `EXPO_PUBLIC_USE_RN_FETCH` | `1` — required on SDK 57 so photo/video uploads work (avoids "Unsupported FormDataPart implementation") |
 | `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` | leave blank unless testing Google sign-in |
 | `EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY` | leave blank; the Android map pin-picker just won't render |
 

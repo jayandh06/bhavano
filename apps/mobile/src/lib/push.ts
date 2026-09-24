@@ -122,29 +122,44 @@ export async function setAppBadgeCount(count: number): Promise<void> {
 }
 
 /**
- * Runs `cb(conversationId)` for a tapped "new message" notification — both the tap that
- * cold-started the app and any received while this is mounted. Returns a cleanup function.
- * No-op (returns a no-op cleanup) without the native module.
+ * Runs `cb` for a tapped notification — messages deep-link to a conversation; listing interest /
+ * favourite deep-link to My listings. Returns a cleanup function. No-op without the native module.
  */
-export function onMessageNotificationTap(cb: (conversationId: string) => void): () => void {
+export function onNotificationTap(
+  cb: (target: { conversationId?: string; path?: string }) => void,
+): () => void {
   // On web the module imports fine but the response APIs throw `UnavailabilityError` — there are
   // no OS notifications to have tapped. Native-only feature; degrade to a no-op elsewhere.
   if (Platform.OS === "web") return () => {};
   const N = notifications();
   if (!N) return () => {};
 
-  const conversationIdOf = (response: ExpoNotifications.NotificationResponse | null): string | undefined => {
-    const data = response?.notification.request.content.data as { conversationId?: string } | undefined;
-    return typeof data?.conversationId === "string" ? data.conversationId : undefined;
+  const targetOf = (
+    response: ExpoNotifications.NotificationResponse | null,
+  ): { conversationId?: string; path?: string } | null => {
+    const data = response?.notification.request.content.data as
+      | { conversationId?: string; path?: string }
+      | undefined;
+    if (!data) return null;
+    if (typeof data.conversationId === "string") return { conversationId: data.conversationId };
+    if (typeof data.path === "string") return { path: data.path };
+    return null;
   };
 
   void N.getLastNotificationResponseAsync().then((response) => {
-    const id = conversationIdOf(response);
-    if (id) cb(id);
+    const target = targetOf(response);
+    if (target) cb(target);
   });
   const sub = N.addNotificationResponseReceivedListener((response) => {
-    const id = conversationIdOf(response);
-    if (id) cb(id);
+    const target = targetOf(response);
+    if (target) cb(target);
   });
   return () => sub.remove();
+}
+
+/** @deprecated Prefer onNotificationTap — kept for any call sites still keyed on conversation only. */
+export function onMessageNotificationTap(cb: (conversationId: string) => void): () => void {
+  return onNotificationTap((target) => {
+    if (target.conversationId) cb(target.conversationId);
+  });
 }

@@ -324,6 +324,7 @@ model User {
   contactReveals        ContactReveal[]
   discountCodeRedemptions DiscountCodeRedemption[]
   listingEditLogs       ListingEditLog[]
+  listingInterests      ListingInterest[]
   /** First-touch attribution: the UTM source/medium/campaign of the link the user first landed
    * on, or the external Referer hostname with medium "referral" if untagged, or source "direct"
    * if neither was present. Captured by apps/web's middleware.ts on the user's very first visit
@@ -469,6 +470,7 @@ model Listing {
   listingRenewals  ListingRenewal[]
   contactReveals   ContactReveal[]
   editLogs         ListingEditLog[]
+  interests        ListingInterest[]
 
   @@index([cityId, category])
   @@index([cityId, transactionType])
@@ -495,6 +497,26 @@ model ListingView {
 
   @@index([listingId, viewerKey])
   @@index([viewerKey])
+}
+
+/** Identified buyer interest on a listing — one row per (listing, user). Created by the
+ * "I'm interested" CTA or the first Message; drives owner My listings "who's interested" and
+ * Instant Alerts / push (see docs/plans/login-gated-listing-interest-owner-notify.md). Distinct
+ * from ListingView (raw visits, including anonymous). */
+model ListingInterest {
+  id             String    @id @default(cuid())
+  listingId      String
+  listing        Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  /// Last time we fired push / Instant Alerts for this pair — gates the 24h re-notify window.
+  lastNotifiedAt DateTime?
+
+  @@unique([listingId, userId])
+  @@index([listingId, lastSeenAt])
+  @@index([userId, createdAt])
 }
 
 model Favourite {
@@ -797,11 +819,11 @@ model Visit {
   /** "desktop" / "mobile" / "tablet" / "mobile_app", derived once at write time from the
    * request's User-Agent header (see `deviceTypeFromUserAgent` in analytics.service.ts) — only
    * the coarse label is kept, not the raw header, same "derive once, discard the raw input"
-   * precedent as ipCity/ipRegion/ipCountry above. "mobile_app" isn't a UA distinction at all: the
-   * mobile app's system-browser opens (Boost/Instant Alerts checkout, Terms/Privacy, etc. — see
-   * apps/mobile/src/lib/appWebUrl.ts) tag themselves with an `app=1` query param that overrides
-   * whatever the UA would otherwise imply, since general in-app usage never reaches this table to
-   * begin with (it talks to the BFF directly, no page navigation involved). */
+   * precedent as ipCity/ipRegion/ipCountry above. "mobile_app" isn't a UA distinction at all:
+   * the native app posts `/analytics/visit` + `/analytics/pageview` with `fromApp: true` (see
+   * apps/mobile SoftNavAppPageViews), and system-browser opens from the app (Boost checkout,
+   * Terms/Privacy — see apps/mobile/src/lib/appWebUrl.ts) tag themselves with `app=1` that
+   * middleware turns into the same flag. */
   deviceType  String?
   createdAt   DateTime @default(now())
 
@@ -811,10 +833,10 @@ model Visit {
 
 /** One row per real (non-prefetch) page navigation within a browsing session — the full trail
  * behind `Visit.landingPath`, which only ever captures the first page. Written by web's
- * middleware.ts on every matching request, independent of the acquisition/city cookie logic
- * there (which short-circuits once a session is already established — this write does not).
- * `sessionId` deliberately isn't a Prisma relation to `Visit`: both are written fire-and-forget
- * from the same middleware tick with no ordering guarantee, so a strict FK could race against a
+ * middleware.ts on every matching request (and SoftNavPageViews for client-side navigations),
+ * and by the mobile app's SoftNavAppPageViews / PostAdWizard for in-app routes (including the
+ * synthetic `/post/preview` path). `sessionId` deliberately isn't a Prisma relation to `Visit`:
+ * both are written fire-and-forget with no ordering guarantee, so a strict FK could race against a
  * `Visit` row that hasn't been created yet. Not pruned — same non-cleanup precedent as
  * `RateLimitHit` below — and, being one row per page view rather than per session, grows faster
  * than `Visit`; worth a retention job if volume ever becomes a concern.

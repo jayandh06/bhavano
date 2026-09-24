@@ -250,6 +250,29 @@ export interface ListingDetailDto extends ListingCardDto {
      * admin claim-rate-by-channel breakdown. Undefined for a never-claimed listing; same
      * admin-moderation-queue-only precedent as source above. */
     claimSource?: ClaimSource | null;
+    /** Count of identified interested buyers — only populated for the owner on `listMine`. */
+    interestCount?: number;
+}
+/** One row in the owner's "who's interested" list — Level 1 (Message only), no seeker phone/email.
+ * See docs/plans/login-gated-listing-interest-owner-notify.md. */
+export interface ListingInterestDto {
+    id: string;
+    userId: string;
+    /** Display name, or null when the seeker never set one — UI falls back to "Interested buyer". */
+    userName: string | null;
+    createdAt: string;
+    lastSeenAt: string;
+    /** Existing inquiry conversation with this user, if any — owner Message deep-links here. */
+    conversationId: string | null;
+}
+export interface ListingInterestPage {
+    items: ListingInterestDto[];
+    total: number;
+}
+export interface RecordListingInterestResponseDto {
+    interested: true;
+    /** True when we fired a push / Instant Alerts notify on this call (first interest or past 24h). */
+    notified: boolean;
 }
 export interface ListingRenewalDto {
     from: string;

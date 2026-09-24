@@ -7,6 +7,7 @@ import type {
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ListingsService } from '../listings/listings.service';
 import type { Conversation, Message, Prisma } from '@prisma/client';
 
 function toMessageDto(message: Message, opts: { revealDeletedBody?: boolean } = {}): MessageDto {
@@ -29,6 +30,7 @@ export class MessagingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly listingsService: ListingsService,
   ) {}
 
   /** Starting a conversation and sending its first message are one atomic step — there is no
@@ -80,6 +82,10 @@ export class MessagingService {
       conversationId: result.conversationId,
       wasUnread: result.wasUnread,
     });
+
+    // Record identified interest for the owner's My listings panel — notify:false so Instant
+    // Alerts / push from the message path aren't doubled by the interest notify.
+    void this.listingsService.recordInterest(listingId, senderId, 'message').catch(() => undefined);
 
     return {
       conversationId: result.conversationId,

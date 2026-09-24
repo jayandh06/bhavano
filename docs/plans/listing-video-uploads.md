@@ -421,10 +421,11 @@ instance* (Caddy/web/admin included, not just video) — fine at launch, worth a
   implementation" — Expo SDK 57 installs `expo/fetch` as the global `fetch`, and its `FormData`
   handling only accepts `string | Blob` parts, rejecting the classic RN `{uri, name, type}`
   file-upload shape `uploadPhoto`/`uploadVideo` both use. Fixed with `EXPO_PUBLIC_USE_RN_FETCH=1`
-  (`.env`/`.env.example`) — keeps React Native's own `fetch` as the global, which does support
-  that shape, rather than rewriting both functions against `expo-file-system`'s newer `File`
-  class (SDK 54+, implements `Blob`). No code change; this env var is required until that rewrite
-  happens, if it ever does — see https://docs.expo.dev/versions/latest/sdk/expo/#expofetch-api.
+  in `.env` / `.env.example` / every `eas.json` build profile — keeps React Native's own `fetch`
+  as the global, which does support that shape. (A rewrite against `expo-file-system`'s `File`
+  was tried; its types currently blow the TypeScript checker with a stack overflow, so the env
+  flag remains the supported fix.) See
+  https://docs.expo.dev/versions/latest/sdk/expo/#expofetch-api.
 
 ## Admin
 

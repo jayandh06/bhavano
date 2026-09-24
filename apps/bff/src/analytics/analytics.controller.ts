@@ -1,5 +1,6 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import type { Request } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { RecordVisitDto } from './dto/record-visit.dto';
 import { RecordPageViewDto } from './dto/record-pageview.dto';
@@ -12,11 +13,20 @@ export class AnalyticsController {
 
   /** Public, unauthenticated — called for every anonymous visitor's first request of a browser
    * session, before any login has happened. Protected only by the app-wide default throttle
-   * (20 req/60s/IP, see ThrottlerModule.forRoot in app.module.ts). */
+   * (20 req/60s/IP, see ThrottlerModule.forRoot in app.module.ts).
+   *
+   * Mobile hits this directly (no web middleware hop). When the body omits `ip` / `userAgent`,
+   * fill them from the request so GeoIP + deviceType still work — never trust a client-supplied
+   * IP over `req.ip` when both are present; body wins only because web's middleware already
+   * resolved X-Forwarded-For carefully and forwards that as `ip`. */
   @Post('visit')
   @HttpCode(200)
-  async recordVisit(@Body() dto: RecordVisitDto): Promise<{ success: true }> {
-    await this.analyticsService.recordVisit(dto);
+  async recordVisit(@Body() dto: RecordVisitDto, @Req() req: Request): Promise<{ success: true }> {
+    await this.analyticsService.recordVisit({
+      ...dto,
+      ip: dto.ip ?? req.ip,
+      userAgent: dto.userAgent ?? req.headers['user-agent'],
+    });
     return { success: true };
   }
 
@@ -28,8 +38,15 @@ export class AnalyticsController {
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Post('pageview')
   @HttpCode(200)
-  async recordPageView(@Body() dto: RecordPageViewDto): Promise<{ success: true }> {
-    await this.analyticsService.recordPageView(dto);
+  async recordPageView(
+    @Body() dto: RecordPageViewDto,
+    @Req() req: Request,
+  ): Promise<{ success: true }> {
+    await this.analyticsService.recordPageView({
+      ...dto,
+      ip: dto.ip ?? req.ip,
+      userAgent: dto.userAgent ?? req.headers['user-agent'],
+    });
     return { success: true };
   }
 

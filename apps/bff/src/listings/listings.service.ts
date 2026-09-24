@@ -22,11 +22,14 @@ import type {
   ListingEditLogPage,
   ListingEngagementPage,
   ListingEngagementRowDto,
+  ListingInterestDto,
+  ListingInterestPage,
   ListingMetaDto,
   ListingSitemapEntry,
   ListingStatus,
   ListingVideoDto,
   ListingsPage,
+  RecordListingInterestResponseDto,
   SellerAttentionDto,
   PopularSearchDto,
   PropertyTypeFilter,
@@ -48,6 +51,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { toE164India } from '../outreach/phone';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../push/push.service';
 import { Prisma } from '@prisma/client';
 import type {
   Area,
@@ -388,6 +392,7 @@ export class ListingsService {
     private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
     private readonly contactRevealService: ContactRevealService,
     private readonly platformFeeSettingsService: PlatformFeeSettingsService,
+    private readonly pushService: PushService,
   ) {}
 
   async list(
@@ -1684,9 +1689,21 @@ export class ListingsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return listings.map((listing) =>
-      this.toDetailDto(listing, undefined, true, true),
-    );
+    const interestCounts =
+      listings.length === 0
+        ? []
+        : await this.prisma.listingInterest.groupBy({
+            by: ['listingId'],
+            where: { listingId: { in: listings.map((l) => l.id) } },
+            _count: { _all: true },
+          });
+    const interestByListing = new Map(interestCounts.map((r) => [r.listingId, r._count._all]));
+
+    return listings.map((listing) => {
+      const dto = this.toDetailDto(listing, undefined, true, true);
+      dto.interestCount = interestByListing.get(listing.id) ?? 0;
+      return dto;
+    });
   }
 
   /** Counts for post-login routing (pending publish checkout) and future seller banners. */
@@ -2178,18 +2195,13 @@ export class ListingsService {
       },
     });
 
-    // Fire-and-forget — a slow/failed notification should never add latency to (or break)
-    // the favouriter's own click. Boost-only (see NotificationsService.notifyListingLiked):
-    // an unboosted listing can rack up many low-intent likes, a boosted one is a smaller,
-    // more engaged set where this is a meaningful signal instead of notification noise.
+    // Push for every favourite of someone else's ad (mobile advertiser signal). Email/WhatsApp
+    // stays boost-only inside notifyOwnerOfLike — unboosted likes as email would be noisy.
     const isBoosted = (listing.boostedUntil?.getTime() ?? 0) > Date.now();
-    if (isBoosted && listing.ownerId !== userId) {
-      this.notifyOwnerOfLike(
-        listingId,
-        listing.ownerId,
-        userId,
-        listing.title,
-      ).catch(() => undefined);
+    if (listing.ownerId !== userId) {
+      void this.notifyOwnerOfLike(listingId, listing.ownerId, userId, listing.title, isBoosted).catch(
+        () => undefined,
+      );
     }
 
     return { favourited: true, likeCount: listing.likeCount };
@@ -2200,6 +2212,7 @@ export class ListingsService {
     ownerId: string,
     likerId: string,
     listingTitle: string,
+    isBoosted: boolean,
   ): Promise<void> {
     const [owner, liker] = await Promise.all([
       this.prisma.user.findUnique({
@@ -2212,11 +2225,21 @@ export class ListingsService {
       }),
     ]);
     if (!owner) return;
-    const channel = await this.notificationsService.notifyListingLiked(
-      owner,
-      listingTitle,
-      liker?.name ?? 'Someone',
-    );
+
+    const likerName = liker?.name?.trim() || 'Someone';
+
+    void this.pushService
+      .notifyListingFavourite(ownerId, {
+        listingId,
+        listingTitle,
+        likerName,
+      })
+      .catch(() => undefined);
+
+    // Email/WhatsApp only while boosted — same gate as before.
+    if (!isBoosted) return;
+
+    const channel = await this.notificationsService.notifyListingLiked(owner, listingTitle, likerName);
     // Deliberately not gated on "has this listing ever logged a 'liked' row before" — unlike
     // the one-shot kinds, this one is meant to accumulate: one row per person who likes it,
     // for as long as it stays boosted. See ListingNotificationLog's own comment on why it isn't
@@ -2226,6 +2249,207 @@ export class ListingsService {
         data: { listingId, kind: 'liked', channel },
       });
     }
+  }
+
+  /** 24h between interest push / Instant Alerts for the same (listing, user) — see
+   * docs/plans/login-gated-listing-interest-owner-notify.md. */
+  private static readonly INTEREST_RENOTIFY_MS = 24 * 60 * 60 * 1000;
+
+  /**
+   * Upsert identified interest. `mode: 'view'` may notify the owner (push always; email/WhatsApp
+   * when Instant Alerts is active) — fired on authenticated detail open (99acres-style).
+   * `mode: 'message'` only records the row and stamps `lastNotifiedAt` so a later view doesn't
+   * double-ping within 24h — message Instant Alerts / push already covers the notify.
+   */
+  async recordInterest(
+    listingId: string,
+    userId: string,
+    mode: 'view' | 'message' = 'view',
+  ): Promise<RecordListingInterestResponseDto> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: {
+        id: true,
+        title: true,
+        ownerId: true,
+        instantAlertsUntil: true,
+        publishState: true,
+      },
+    });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.ownerId === userId) {
+      throw new BadRequestException("You can't register interest in your own listing");
+    }
+    if (listing.publishState !== 'live') {
+      throw new BadRequestException('This listing is not available yet');
+    }
+
+    const now = new Date();
+    const existing = await this.prisma.listingInterest.findUnique({
+      where: { listingId_userId: { listingId, userId } },
+    });
+
+    const withinWindow =
+      existing?.lastNotifiedAt != null &&
+      now.getTime() - existing.lastNotifiedAt.getTime() < ListingsService.INTEREST_RENOTIFY_MS;
+
+    // Message path: never send the interest-specific notify (message path already does).
+    // Still stamp lastNotifiedAt so a follow-up view within 24h doesn't email twice.
+    const shouldNotifyInterest = mode === 'view' && !withinWindow;
+    const stampNotified = shouldNotifyInterest || mode === 'message';
+
+    await this.prisma.listingInterest.upsert({
+      where: { listingId_userId: { listingId, userId } },
+      create: {
+        listingId,
+        userId,
+        lastNotifiedAt: stampNotified ? now : null,
+      },
+      update: {
+        lastSeenAt: now,
+        ...(stampNotified ? { lastNotifiedAt: now } : {}),
+      },
+    });
+
+    if (shouldNotifyInterest) {
+      void this.notifyOwnerOfInterest(listingId, listing.ownerId, userId, listing.title, listing.instantAlertsUntil).catch(
+        (err: unknown) =>
+          this.logger.error(`Failed to notify owner of interest on listing ${listingId}`, err),
+      );
+    }
+
+    return { interested: true, notified: shouldNotifyInterest };
+  }
+
+  private async notifyOwnerOfInterest(
+    listingId: string,
+    ownerId: string,
+    interestedUserId: string,
+    listingTitle: string,
+    instantAlertsUntil: Date | null,
+  ): Promise<void> {
+    const [owner, interested] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: ownerId },
+        select: { email: true, phone: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: interestedUserId },
+        select: { name: true },
+      }),
+    ]);
+    if (!owner) return;
+
+    const interestedName = interested?.name?.trim() || 'Someone';
+
+    // Push always (best-effort) — Instant Alerts only adds email/WhatsApp.
+    void this.pushService
+      .notifyListingInterest(ownerId, {
+        listingId,
+        listingTitle,
+        interestedName,
+      })
+      .catch(() => undefined);
+
+    if ((instantAlertsUntil?.getTime() ?? 0) <= Date.now()) return;
+
+    const channel = await this.notificationsService.notifyListingInterest(owner, {
+      interestedName,
+      listingTitle,
+    });
+    if (channel) {
+      await this.prisma.listingNotificationLog.create({
+        data: { listingId, kind: 'listing_interest', channel },
+      });
+    }
+  }
+
+  /** Owner-only list of identified interested buyers for one listing. */
+  async listInterests(
+    listingId: string,
+    ownerId: string,
+    offset = 0,
+    limit = 50,
+  ): Promise<ListingInterestPage> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { ownerId: true },
+    });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.ownerId !== ownerId) throw new ForbiddenException('Not your listing');
+
+    const [rows, total] = await Promise.all([
+      this.prisma.listingInterest.findMany({
+        where: { listingId },
+        orderBy: { lastSeenAt: 'desc' },
+        skip: offset,
+        take: limit,
+        include: { user: { select: { id: true, name: true } } },
+      }),
+      this.prisma.listingInterest.count({ where: { listingId } }),
+    ]);
+
+    const userIds = rows.map((r) => r.userId);
+    const conversations =
+      userIds.length === 0
+        ? []
+        : await this.prisma.conversation.findMany({
+            where: {
+              listingId,
+              type: 'inquiry',
+              inquirerId: { in: userIds },
+            },
+            select: { id: true, inquirerId: true },
+          });
+    const conversationByInquirer = new Map(conversations.map((c) => [c.inquirerId, c.id]));
+
+    const items: ListingInterestDto[] = rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      userName: r.user.name,
+      createdAt: r.createdAt.toISOString(),
+      lastSeenAt: r.lastSeenAt.toISOString(),
+      conversationId: conversationByInquirer.get(r.userId) ?? null,
+    }));
+
+    return { items, total };
+  }
+
+  /**
+   * Owner starts or reopens an inquiry thread with an interested buyer so they can Message them
+   * from My listings without waiting for the buyer to write first.
+   */
+  async openInterestConversation(
+    listingId: string,
+    ownerId: string,
+    inquirerId: string,
+  ): Promise<{ conversationId: string }> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { ownerId: true },
+    });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.ownerId !== ownerId) throw new ForbiddenException('Not your listing');
+
+    const interest = await this.prisma.listingInterest.findUnique({
+      where: { listingId_userId: { listingId, userId: inquirerId } },
+    });
+    if (!interest) throw new NotFoundException('No interest recorded for this buyer');
+
+    const conversation = await this.prisma.conversation.upsert({
+      where: {
+        listingId_inquirerId_type: { listingId, inquirerId, type: 'inquiry' },
+      },
+      update: {},
+      create: {
+        listingId,
+        inquirerId,
+        posterId: ownerId,
+        type: 'inquiry',
+      },
+    });
+
+    return { conversationId: conversation.id };
   }
 
   async listFavourites(userId: string): Promise<ListingCardDto[]> {

@@ -159,7 +159,7 @@ export function BoostBundlePicker({
         {(
           [
             ["featured", "A gold Featured badge, ranked above regular listings"],
-            ["bell", "Add Instant Alerts to get emailed the moment someone messages you"],
+            ["bell", "Add Instant Alerts to get emailed when someone messages or shows interest"],
           ] as const
         ).map(([icon, text]) => (
           <li key={text} className="flex items-start gap-2 text-[13px] text-text-soft">

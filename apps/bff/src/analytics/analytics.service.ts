@@ -198,7 +198,7 @@ export class AnalyticsService {
         -- Per-request facts, unlike attribution: this visitor's IP/device on a later navigation
         -- is legitimately still theirs, so these stay accurate.
         ${dto.ip ?? null}, ${geo?.city ?? null}, ${geo?.region ?? null}, ${geo?.country ?? null},
-        ${dto.userAgent ? deviceTypeFromUserAgent(dto.userAgent, false) : null},
+        ${deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false)},
         ${dto.userAgent ? isBotUserAgent(dto.userAgent) : null}
       )
       ON CONFLICT ("sessionId") DO NOTHING

@@ -450,10 +450,11 @@ export class AuthService {
       );
   }
 
-  /** `sessionId` is the browser session this login happened in (undefined for mobile, which has
-   * no session cookie). Recorded per login rather than only on the Visit row, because a Visit
-   * holds one userId and a session can see several logins — see LoginEvent.sessionId's own
-   * schema comment. */
+  /** `sessionId` is the analytics session this login happened in (web's `bhavano_sid`, or the
+   * mobile app's in-process id from SoftNavAppPageViews). Undefined when the client didn't send
+   * one (cookies blocked, very old client). Recorded per login rather than only on the Visit row,
+   * because a Visit holds one userId and a session can see several logins — see
+   * LoginEvent.sessionId's own schema comment. */
   private recordLogin(
     userId: string,
     method: 'otp' | 'google' | 'apple',

@@ -17,15 +17,25 @@ interface ExpoTicket {
   details?: { error?: string };
 }
 
+interface ExpoPushMessage {
+  to: string;
+  title: string;
+  body: string;
+  sound: 'default';
+  channelId: string;
+  data: Record<string, string>;
+}
+
 /**
- * "New message" push to a user's mobile devices, via Expo's push service.
+ * Expo push to a user's mobile devices for advertiser engagement (messages, listing views /
+ * interest, favourites).
  *
  * Called directly over HTTP (no `expo-server-sdk` dependency) for the same reason
  * `whatsapp.provider.ts` calls the Graph API directly — one less package between us and the
  * upstream, and the payload is a single well-documented shape.
  *
  * Best-effort exactly like the notification providers: unconfigured logs and skips, a failed
- * send logs and returns. Nothing here may throw into the send-message request path.
+ * send logs and returns. Nothing here may throw into the request path that triggered it.
  */
 @Injectable()
 export class PushService {
@@ -66,6 +76,48 @@ export class PushService {
     message: MessageDto,
     senderName: string,
   ): Promise<void> {
+    // Always a freshly-sent message here (see sendMessage/sendFirstMessage), never a deleted
+    // one, so body is never actually null despite MessageDto's general shape.
+    const rawBody = message.body!;
+    const body =
+      rawBody.length > BODY_PREVIEW_CHARS ? `${rawBody.slice(0, BODY_PREVIEW_CHARS - 1)}…` : rawBody;
+
+    await this.sendToUser(recipientId, {
+      title: senderName,
+      body,
+      data: { conversationId: message.conversationId },
+    });
+  }
+
+  /** Owner push when a logged-in seeker opens their listing (interest / view). */
+  async notifyListingInterest(
+    recipientId: string,
+    params: { listingId: string; listingTitle: string; interestedName: string },
+  ): Promise<void> {
+    await this.sendToUser(recipientId, {
+      title: params.interestedName,
+      body: `Viewed your ad "${params.listingTitle}"`,
+      data: { path: '/my-listings', listingId: params.listingId, kind: 'listing_interest' },
+    });
+  }
+
+  /** Owner push when someone favourites their listing — all ads, not only boosted (email/WhatsApp
+   * for likes stays boost-gated). */
+  async notifyListingFavourite(
+    recipientId: string,
+    params: { listingId: string; listingTitle: string; likerName: string },
+  ): Promise<void> {
+    await this.sendToUser(recipientId, {
+      title: params.likerName,
+      body: `Favourited your ad "${params.listingTitle}"`,
+      data: { path: '/my-listings', listingId: params.listingId, kind: 'listing_favourite' },
+    });
+  }
+
+  private async sendToUser(
+    recipientId: string,
+    content: { title: string; body: string; data: Record<string, string> },
+  ): Promise<void> {
     if (!this.enabled) return;
 
     try {
@@ -75,22 +127,16 @@ export class PushService {
       });
       if (tokens.length === 0) return;
 
-      // Always a freshly-sent message here (see sendMessage/sendFirstMessage), never a deleted
-      // one, so body is never actually null despite MessageDto's general shape.
-      const rawBody = message.body!;
-      const body =
-        rawBody.length > BODY_PREVIEW_CHARS ? `${rawBody.slice(0, BODY_PREVIEW_CHARS - 1)}…` : rawBody;
-
       const stale = new Set<string>();
       for (let i = 0; i < tokens.length; i += CHUNK_SIZE) {
         const chunk = tokens.slice(i, i + CHUNK_SIZE);
-        const payload = chunk.map(({ token }) => ({
+        const payload: ExpoPushMessage[] = chunk.map(({ token }) => ({
           to: token,
-          title: senderName,
-          body,
+          title: content.title,
+          body: content.body,
           sound: 'default',
           channelId: 'messages',
-          data: { conversationId: message.conversationId },
+          data: content.data,
         }));
 
         const res = await fetch(EXPO_PUSH_URL, {
@@ -112,8 +158,6 @@ export class PushService {
         const parsed = (await res.json()) as { data?: ExpoTicket[] };
         (parsed.data ?? []).forEach((ticket, idx) => {
           if (ticket.status === 'error') {
-            // The only ticket error worth acting on: the token is dead (app uninstalled, or
-            // the OS rotated it). Anything else (rate limit, transient) we just log.
             if (ticket.details?.error === 'DeviceNotRegistered') {
               stale.add(chunk[idx].token);
             } else {

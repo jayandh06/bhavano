@@ -39,6 +39,7 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
 import { createListing, fetchAreas, fetchPlanPricing, previewBoostPricing, uploadPhoto, uploadVideo } from "../../lib/bffClient";
+import { recordAppPageView } from "../../lib/analyticsSession";
 import { startBoostCheckout } from "../../lib/boostCheckout";
 import { startListingPublishCheckout } from "../../lib/listingPublishCheckout";
 import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPricing";
@@ -226,11 +227,12 @@ export function PostAdWizard({
     return () => cancelAnimationFrame(raf);
   }, [step]);
   const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
-  // Mirrors the web wizard's StepTracker scroll reset (apps/web/src/components/home/
-  // PostAdWizard.tsx) — without it, a step reached after scrolling down on the previous one
-  // rendered wherever that old offset landed, often off-screen on a phone.
+  // Mirrors the web wizard's StepTracker — scroll reset + PageView for the review step.
+  // Preview is in-wizard only (route stays /post), so SoftNavAppPageViews never sees it;
+  // synthetic `/post/preview` matches web's StepTracker pageview.
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
+    if (step === "review") void recordAppPageView("/post/preview");
   }, [step]);
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
@@ -1418,7 +1420,7 @@ export function PostAdWizard({
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                   <Icon name="bell" size={17} color={colors.gold} />
                   <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-                    Get notified the instant someone messages you
+                    Get notified when someone messages or shows interest
                   </Text>
                 </View>
                 <View style={{ gap: 8 }}>

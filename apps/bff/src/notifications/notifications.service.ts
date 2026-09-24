@@ -75,6 +75,23 @@ export class NotificationsService {
     return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
   }
 
+  /** Instant Alerts (and only Instant Alerts) email/WhatsApp when a seeker taps "I'm interested".
+   * Push is separate (PushService.notifyListingInterest). See
+   * docs/plans/login-gated-listing-interest-owner-notify.md. */
+  async notifyListingInterest(
+    user: NotifiableUser,
+    params: { interestedName: string; listingTitle: string },
+  ): Promise<'email' | 'whatsapp' | null> {
+    const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const link = `${site}/my-listings`;
+    const subject = `${params.interestedName} is interested in "${params.listingTitle}"`;
+    const body =
+      `${params.interestedName} showed interest in your listing "${params.listingTitle}" on Bhavano.\n\n` +
+      `Open My listings to message them: ${link}`;
+
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+  }
+
   /** Boost purchase confirmation — see PaymentsService.handleWebhook's `listing_boost` branch.
    * No WhatsApp template exists yet — see `notifyListingFlagged`'s comment; a phone-only owner
    * gets nothing until one is built. Branded HTML (see emailLayout.ts) rather than a plain-text

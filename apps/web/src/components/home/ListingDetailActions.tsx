@@ -14,6 +14,7 @@ export function ListingDetailActions({
   initialIsFavourited,
   initialLikeCount,
   isOwner,
+  isLoggedIn,
   initialContactRevealed,
   initialOwnerPhone,
   initialOwnerEmail,
@@ -28,6 +29,8 @@ export function ListingDetailActions({
    * and offering it reads as the page not knowing whose ad it is. Favourite stays: an owner
    * bookmarking their own listing is harmless and the like count is part of how the page reads. */
   isOwner: boolean;
+  /** Logged-in non-owners get a short disclosure that viewing notifies the advertiser. */
+  isLoggedIn: boolean;
   initialContactRevealed: boolean;
   initialOwnerPhone: string | null;
   initialOwnerEmail: string | null;
@@ -148,6 +151,12 @@ export function ListingDetailActions({
       </div>
 
       {revealError && <p className="text-[#b3413a] text-[13px] mt-2">{revealError}</p>}
+
+      {!isOwner && isLoggedIn && (
+        <p className="m-0 mt-3 text-[12px] text-muted">
+          The owner may be notified that you viewed this ad and can message you on Bhavano.
+        </p>
+      )}
 
       {!isOwner && contactRevealed && (ownerPhone || ownerEmail) && (
         <div className="mt-2 border-[1.5px] border-border rounded-lg p-3 flex flex-col gap-1.5">

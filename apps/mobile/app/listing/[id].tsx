@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
-import { BffError, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
+import { BffError, recordListingInterest, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
 import { getOrCreateViewerKey } from "../../src/lib/viewerKey";
 import { Icon } from "../../src/components/Icon";
 import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
@@ -60,6 +60,14 @@ export default function ListingDetailScreen() {
     // Only track once per screen mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // 99acres-style: logged-in non-owner open registers interest + may notify the advertiser.
+  useEffect(() => {
+    if (!id || !accessToken || !listing || listing.isOwner) return;
+    void recordListingInterest(accessToken, id).catch(() => undefined);
+    // Once per listing+session mount — not on every refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, accessToken, listing?.isOwner]);
 
   async function onToggleFavourite() {
     if (!accessToken) {
@@ -262,6 +270,11 @@ export default function ListingDetailScreen() {
               </>
             )}
           </View>
+          {!listing.isOwner && !!accessToken && (
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 12 }}>
+              The owner may be notified that you viewed this ad and can message you on Bhavano.
+            </Text>
+          )}
           {revealError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{revealError}</Text>}
           {insufficientCredits && (
             <Text style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>

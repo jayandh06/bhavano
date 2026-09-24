@@ -9,6 +9,7 @@ import { useMyListingsQuery } from "../../src/lib/queries";
 import { renewListing } from "../../src/lib/bffClient";
 import { BoostButton } from "../../src/components/home/BoostButton";
 import { InstantAlertsButton } from "../../src/components/home/InstantAlertsButton";
+import { ListingInterestsPanel } from "../../src/components/home/ListingInterestsPanel";
 import { Icon } from "../../src/components/Icon";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { appWebUrl } from "../../src/lib/appWebUrl";
@@ -153,6 +154,11 @@ export default function MyListingsScreen() {
                     <Icon name="heart" size={12} filled color={colors.muted} />
                     <Text style={{ fontSize: 11.5, color: colors.muted }}>{item.likeCount}</Text>
                   </View>
+                  {(item.interestCount ?? 0) > 0 && (
+                    <Text style={{ fontSize: 11.5, fontWeight: "700", color: colors.green }}>
+                      {item.interestCount} interested
+                    </Text>
+                  )}
                   {canRenew && (
                     <Text style={{ fontSize: 11.5, color: colors.muted }}>
                       {item.isExpired ? "Expired" : `Expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
@@ -164,6 +170,13 @@ export default function MyListingsScreen() {
                     Renewed {item.renewCount} time{item.renewCount === 1 ? "" : "s"}
                     {lastRenewedAt && ` · last on ${renewedAtFormatter.format(new Date(lastRenewedAt))}`}
                   </Text>
+                )}
+                {accessToken && (
+                  <ListingInterestsPanel
+                    listingId={item.id}
+                    interestCount={item.interestCount ?? 0}
+                    accessToken={accessToken}
+                  />
                 )}
 
                 <View style={styles.actionsWrapper}>

@@ -14,7 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { ContactRevealSettingsDto, ListingDetailDto, ListingMetaDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RevealContactResponseDto } from '@bhavano/types';
+import type { ContactRevealSettingsDto, ListingDetailDto, ListingInterestPage, ListingMetaDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RecordListingInterestResponseDto, RevealContactResponseDto } from '@bhavano/types';
 import { VIDEO_LIMITS } from '@bhavano/types/videoLimits';
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -138,6 +138,44 @@ export class ListingsController {
     // Logged-in viewers dedupe by their real user id (consistent across devices);
     // anonymous viewers dedupe by the client-persisted key they send.
     return this.listingsService.recordView(id, user ? `user:${user.id}` : `anon:${dto.viewerKey}`);
+  }
+
+  /** Identified interest — Option B soft gate. See docs/plans/login-gated-listing-interest-owner-notify.md. */
+  @Post(':id/interest')
+  @UseGuards(AuthGuard)
+  recordInterest(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<RecordListingInterestResponseDto> {
+    return this.listingsService.recordInterest(id, user.id, 'view');
+  }
+
+  /** Owner-only: who's interested in this listing. */
+  @Get(':id/interests')
+  @UseGuards(AuthGuard)
+  listInterests(
+    @Param('id') id: string,
+    @CurrentUser() user: RequestUser,
+    @Query('offset') offset?: string,
+    @Query('limit') limit?: string,
+  ): Promise<ListingInterestPage> {
+    return this.listingsService.listInterests(
+      id,
+      user.id,
+      offset ? Number(offset) : 0,
+      limit ? Math.min(Number(limit), 100) : 50,
+    );
+  }
+
+  /** Owner opens (or reuses) an inquiry thread with an interested buyer. */
+  @Post(':id/interests/:userId/conversation')
+  @UseGuards(AuthGuard)
+  openInterestConversation(
+    @Param('id') id: string,
+    @Param('userId') interestedUserId: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<{ conversationId: string }> {
+    return this.listingsService.openInterestConversation(id, user.id, interestedUserId);
   }
 
   @Post(':id/favourite')

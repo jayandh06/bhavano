@@ -28,11 +28,15 @@ function makeService() {
     listing: { update: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), count: jest.fn(), findFirst: jest.fn() },
     listingRenewal: { create: jest.fn() },
     listingEditLog: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+    listingInterest: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), count: jest.fn(), groupBy: jest.fn() },
+    listingNotificationLog: { create: jest.fn() },
+    conversation: { findMany: jest.fn(), upsert: jest.fn() },
     user: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn() },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
   const notificationsService = {
     notifyListingLiked: jest.fn(),
+    notifyListingInterest: jest.fn(),
   } as unknown as NotificationsService;
   const listingSlotsService = {
     assertCanRenew: jest.fn(),
@@ -57,6 +61,7 @@ function makeService() {
         furnitureInteriorsListingFee: 0,
       }),
     } as unknown as PlatformFeeSettingsService,
+    { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
   );
   return { service, prisma, notificationsService, listingSlotsService };
 }
@@ -97,6 +102,7 @@ describe('ListingsService.list — word match + fuzzy title search', () => {
           furnitureInteriorsListingFee: 0,
         }),
       } as unknown as PlatformFeeSettingsService,
+      { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, findMany, count, queryRaw };
   }
@@ -177,6 +183,7 @@ describe('ListingsService.list — amenity filter', () => {
           furnitureInteriorsListingFee: 0,
         }),
       } as unknown as PlatformFeeSettingsService,
+      { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, count };
   }
@@ -369,6 +376,7 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
           furnitureInteriorsListingFee: 0,
         }),
       } as unknown as PlatformFeeSettingsService,
+      { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, findMany };
   }
@@ -503,6 +511,7 @@ describe('ListingsService.listEngagement', () => {
           furnitureInteriorsListingFee: 0,
         }),
       } as unknown as PlatformFeeSettingsService,
+      { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, prisma };
   }
@@ -1028,6 +1037,7 @@ describe('ListingsService', () => {
             furnitureInteriorsListingFee: 0,
           }),
         } as unknown as PlatformFeeSettingsService,
+        { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
       );
       // getMine's own plumbing (toDetailDto etc.) isn't what these tests are about — stubbed so
       // a resolved add/delete just needs to not throw, not exercise the whole DTO pipeline.
@@ -1250,7 +1260,7 @@ describe('ListingsService', () => {
       expect(notificationsService.notifyListingLiked).toHaveBeenCalled();
     });
 
-    it('does not notify when the listing is not currently boosted', async () => {
+    it('does not email when the listing is not currently boosted (push still attempted)', async () => {
       const { service, prisma, notificationsService } = makeService();
       (prisma.favourite.findUnique as jest.Mock).mockResolvedValue(null);
       (prisma.favourite.create as jest.Mock).mockResolvedValue({});
@@ -1259,6 +1269,11 @@ describe('ListingsService', () => {
         title: 'An unboosted listing',
         ownerId: 'owner1',
         boostedUntil: null,
+      });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'owner@example.com',
+        phone: null,
+        name: 'Buyer',
       });
 
       await service.toggleFavourite('listing1', 'liker1');
@@ -1282,6 +1297,71 @@ describe('ListingsService', () => {
       await new Promise((r) => setImmediate(r));
 
       expect(notificationsService.notifyListingLiked).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('recordInterest', () => {
+    function stubListing(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'listing1',
+        title: 'Nice flat',
+        ownerId: 'owner1',
+        instantAlertsUntil: future(48),
+        publishState: 'live',
+        ...overrides,
+      };
+    }
+
+    it('upserts interest and notifies on authenticated view when Instant Alerts is active', async () => {
+      const { service, prisma, notificationsService } = makeService();
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
+      (prisma.listingInterest.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.listingInterest.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce({ email: 'owner@example.com', phone: null })
+        .mockResolvedValueOnce({ name: 'Riya' });
+      (notificationsService.notifyListingInterest as jest.Mock).mockResolvedValue('email');
+      (prisma.listingNotificationLog.create as jest.Mock).mockResolvedValue({});
+
+      const result = await service.recordInterest('listing1', 'buyer1', 'view');
+      expect(result).toEqual({ interested: true, notified: true });
+      expect(prisma.listingInterest.upsert).toHaveBeenCalled();
+      await new Promise((r) => setImmediate(r));
+      expect(notificationsService.notifyListingInterest).toHaveBeenCalled();
+    });
+
+    it('does not send interest notify on message mode (message path covers notify)', async () => {
+      const { service, prisma, notificationsService } = makeService();
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
+      (prisma.listingInterest.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.listingInterest.upsert as jest.Mock).mockResolvedValue({});
+
+      const result = await service.recordInterest('listing1', 'buyer1', 'message');
+      expect(result).toEqual({ interested: true, notified: false });
+      await new Promise((r) => setImmediate(r));
+      expect(notificationsService.notifyListingInterest).not.toHaveBeenCalled();
+    });
+
+    it('skips view re-notify inside the 24h window', async () => {
+      const { service, prisma, notificationsService } = makeService();
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
+      (prisma.listingInterest.findUnique as jest.Mock).mockResolvedValue({
+        lastNotifiedAt: new Date(),
+      });
+      (prisma.listingInterest.upsert as jest.Mock).mockResolvedValue({});
+
+      const result = await service.recordInterest('listing1', 'buyer1', 'view');
+      expect(result.notified).toBe(false);
+      await new Promise((r) => setImmediate(r));
+      expect(notificationsService.notifyListingInterest).not.toHaveBeenCalled();
+    });
+
+    it('rejects the owner registering interest in their own listing', async () => {
+      const { service, prisma } = makeService();
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
+      await expect(service.recordInterest('listing1', 'owner1', 'view')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
   });
 });

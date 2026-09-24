@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsIP, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class RecordPageViewDto {
   @IsString()
@@ -22,4 +22,12 @@ export class RecordPageViewDto {
   @IsString()
   @MaxLength(500)
   userAgent?: string;
+
+  /** True when this request came from the mobile app (see apps/mobile SoftNavAppPageViews) —
+   * same meaning as RecordVisitDto.fromApp. Needed on pageview because backfillMissingVisit may
+   * create the Visit row before /analytics/visit lands; without this, that recovered row would
+   * be classified from the RN User-Agent as plain "mobile" instead of "mobile_app". */
+  @IsOptional()
+  @IsBoolean()
+  fromApp?: boolean;
 }

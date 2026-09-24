@@ -12,9 +12,10 @@ import { StorageModule } from '../storage/storage.module';
 import { AdsModule } from '../ads/ads.module';
 import { ContactRevealModule } from '../contact-reveal/contact-reveal.module';
 import { PlansModule } from '../plans/plans.module';
+import { PushModule } from '../push/push.module';
 
 @Module({
-  imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule, AdsModule, ContactRevealModule, PlansModule],
+  imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule, AdsModule, ContactRevealModule, PlansModule, PushModule],
   controllers: [ListingsController],
   providers: [ListingsService, ListingPhotosService],
   exports: [ListingsService, ListingPhotosService],

@@ -137,7 +137,7 @@ export function InstantAlertsProvider({ children }: { children: ReactNode }) {
           >
             <div className="font-lora font-bold text-[17px] text-text mb-1">Get Instant Alerts</div>
             <p className="text-[13px] text-muted mb-4 m-0">
-              We&rsquo;ll email you (or WhatsApp you) the moment a buyer messages you about this ad — no need to keep
+              We&rsquo;ll email you (or WhatsApp you) the moment a buyer messages you or shows interest in this ad — no need to keep
               checking the app. Valid until this ad expires.
             </p>
             <label className="block text-[11.5px] font-bold text-muted mb-1.5">Discount code (optional)</label>

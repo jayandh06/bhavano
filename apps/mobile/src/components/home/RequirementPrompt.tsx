@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import type { CreateRequirementInput } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
@@ -28,6 +29,7 @@ export function RequirementPrompt({
   label: string;
 }) {
   const { colors } = useAppTheme();
+  const router = useRouter();
   const { requireLogin, accessToken } = useHomeSheets();
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
   const [hasAlert, setHasAlert] = useState(false);
@@ -72,6 +74,13 @@ export function RequirementPrompt({
             ? "Owners and agents with a matching property can get in touch with you directly."
             : "Only Bhavano will contact you — your number stays with us."}
         </Text>
+        {/* Offered *after* the save, never before it — same as web. The one-tap capture works
+            because it is not a form; detail is a follow-on for whoever wants to give it. */}
+        <Pressable onPress={() => router.push("/my-requirements")} style={{ marginTop: 10 }}>
+          <Text style={{ color: colors.muted, fontSize: 12.5, textAlign: "center", textDecorationLine: "underline" }}>
+            Add a budget or timeline →
+          </Text>
+        </Pressable>
       </View>
     );
   }

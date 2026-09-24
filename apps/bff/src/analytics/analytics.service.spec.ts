@@ -216,5 +216,19 @@ describe('AnalyticsService', () => {
       expect(pageViewCreate).toHaveBeenCalled();
       expect(paramsOf(executeRaw)).not.toContain(undefined);
     });
+
+    it('classifies a fromApp pageview backfill as mobile_app', async () => {
+      const { prisma, executeRaw } = makePrisma();
+      await new AnalyticsService(prisma, geoIp).recordPageView({
+        sessionId: 's-app',
+        path: '/post/preview',
+        userAgent: 'okhttp/4.x',
+        fromApp: true,
+      });
+
+      expect(paramsOf(executeRaw)).toEqual(
+        expect.arrayContaining(['s-app', '/post/preview', 'mobile_app']),
+      );
+    });
   });
 });

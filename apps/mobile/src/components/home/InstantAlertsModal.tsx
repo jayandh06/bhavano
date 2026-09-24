@@ -93,7 +93,7 @@ export function InstantAlertsModal({
             Get Instant Alerts
           </Text>
           <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>
-            We&apos;ll email you (or WhatsApp you) the moment a buyer messages you about this ad — no need to keep
+            We&apos;ll email you (or WhatsApp you) the moment a buyer messages you or shows interest in this ad — no need to keep
             checking the app. Valid until this ad expires.
           </Text>
           <Pressable

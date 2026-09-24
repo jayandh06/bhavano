@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { trackViewAction } from "@/app/actions/listings";
+import { recordInterestAction, trackViewAction } from "@/app/actions/listings";
 
 const STORAGE_KEY = "bhavano.viewerKey";
 // Mirrors the localStorage value into a cookie of the same name (see lib/bff.ts's
@@ -25,11 +25,25 @@ function getOrCreateViewerKey(): string {
   return key;
 }
 
-/** Fires once per mount to record a (deduped) view of this listing. Renders nothing. */
-export function ViewTracker({ listingId }: { listingId: string }) {
+/**
+ * Fires once per mount: always records a ListingView; when the viewer is logged in and not the
+ * owner, also upserts ListingInterest (99acres-style auto intent notify).
+ * See docs/plans/login-gated-listing-interest-owner-notify.md.
+ */
+export function ViewTracker({
+  listingId,
+  recordInterest = false,
+}: {
+  listingId: string;
+  /** True when the page was rendered for a logged-in non-owner. */
+  recordInterest?: boolean;
+}) {
   useEffect(() => {
-    trackViewAction(listingId, getOrCreateViewerKey());
-    // Only track once per page load, regardless of listingId identity changes.
+    void trackViewAction(listingId, getOrCreateViewerKey());
+    if (recordInterest) {
+      void recordInterestAction(listingId);
+    }
+    // Only track once per page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

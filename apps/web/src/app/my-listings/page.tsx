@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { BoostButton } from "@/components/home/BoostButton";
 import { InstantAlertsButton } from "@/components/home/InstantAlertsButton";
+import { ListingInterestsPanel } from "@/components/home/ListingInterestsPanel";
 import { AutoOpenPurchaseModal } from "@/components/home/AutoOpenPurchaseModal";
 import {
   AutoOpenPublishCheckout,
@@ -212,6 +213,11 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
         <div className="flex gap-3 text-[11.5px] text-muted mt-1.5">
           <span className="flex items-center gap-1"><Icon name="eye" /> {item.viewCount}</span>
           <span className="flex items-center gap-1"><Icon name="heart" /> {item.likeCount}</span>
+          {(item.interestCount ?? 0) > 0 && (
+            <span className="flex items-center gap-1 text-green font-bold">
+              {item.interestCount} interested
+            </span>
+          )}
           {canRenew && <span>{item.isExpired ? "Expired" : `Expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}</span>}
         </div>
         {item.renewCount > 0 && (
@@ -220,6 +226,7 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
             {lastRenewedAt && ` · last on ${renewedAtFormatter.format(new Date(lastRenewedAt))}`}
           </div>
         )}
+        <ListingInterestsPanel listingId={item.id} interestCount={item.interestCount ?? 0} />
       </div>
       {/* No `shrink-0` here on purpose — it disabled this group's own `flex-wrap`. Once the
         * outer row (above) wraps this group onto its own line at a narrow width, `shrink-0` kept

@@ -1,6 +1,11 @@
 # Instant Alerts — paid real-time email/WhatsApp notification on new messages
 
-## Context
+## Status: shipped (2026-09-15) — scope extended 2026-09-24
+
+Instant Alerts also fires email/WhatsApp on **identified listing interest** (“I’m interested”
+CTA), not only new messages — see
+[`login-gated-listing-interest-owner-notify.md`](login-gated-listing-interest-owner-notify.md).
+Message Instant Alerts behaviour below is unchanged.
 
 Today, when a buyer messages an owner about a listing, the owner learns about it only if:
 they have the mobile app installed with an open push subscription (`PushService.notifyNewMessage`,

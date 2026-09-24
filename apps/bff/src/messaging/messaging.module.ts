@@ -5,9 +5,10 @@ import { MessagingService } from './messaging.service';
 import { MessagingGateway } from './messaging.gateway';
 import { PushModule } from '../push/push.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ListingsModule } from '../listings/listings.module';
 
 @Module({
-  imports: [PushModule, NotificationsModule],
+  imports: [PushModule, NotificationsModule, ListingsModule],
   controllers: [MessagingController, MessagesController],
   providers: [MessagingService, MessagingGateway],
   exports: [MessagingService],

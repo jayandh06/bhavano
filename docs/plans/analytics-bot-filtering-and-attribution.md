@@ -316,6 +316,30 @@ store (165k rows).
 
 Soft-nav page views (former rung 3) shipped via `SoftNavPageViews` + `/api/analytics/pageview`.
 
+**Post-ad Preview step (2026-09-24).** Hitting "Preview Ad" only changes wizard state
+(`step === "review"`); the URL stays `/post`, so SoftNav/middleware never write a PageView.
+`PostAdWizard`'s `StepTracker` now POSTs `/api/analytics/pageview` with path `/post/preview` when
+that step opens — synthetic path, same hop + dedupe as soft-nav — so admin Page visits show who
+reached the card preview. GTM already had `post_step_view` with `step: "review"`; this only fills
+the PageView trail.
+
+**Mobile app Page visits (2026-09-24).** In-app usage previously never reached `Visit` /
+`PageView` (schema used to say so). The app now mirrors SoftNav:
+
+- `apps/mobile/src/lib/analyticsSession.ts` — one `sessionId` per JS process (like a browser
+  session cookie; not durable per install), `POST /analytics/visit` with `fromApp: true` +
+  `source: direct` once, `POST /analytics/confirm`, then `POST /analytics/pageview` with
+  `fromApp: true` so backfill classifies as `mobile_app`.
+- `SoftNavAppPageViews` in the root layout — records every expo-router pathname (including cold
+  open; there is no middleware to have logged it already).
+- Mobile `PostAdWizard` also logs `/post/preview` on the review step, same synthetic path as web.
+- Login (OTP / Google / Apple) sends `sessionId` so `AuthService.linkVisitToUser` attaches the
+  Visit to the account.
+- BFF analytics controller fills `ip` / `userAgent` from `req` when the body omits them (mobile
+  has no middleware hop); `RecordPageViewDto.fromApp` feeds backfill deviceType.
+
+Filter admin Page visits by Device = Mobile app to read these sessions.
+
 **A free sanity check available today:** GA4 already collects JS-verified sessions through GTM.
 Comparing its session count against the Page visits screen measures the remaining bot share with no
 code at all.

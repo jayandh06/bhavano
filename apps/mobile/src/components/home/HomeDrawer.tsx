@@ -21,11 +21,11 @@ const DRAWER_WIDTH = 300;
  *  - No internal "Bhavano + ✕" header row — web's drawer doesn't have one either (its own
  *    hamburger button already toggles to a ✕ to close), and neither does the collapsed bar this
  *    opens from.
- *  - Web's account block (Profile/Favourites/Messages/My listings/Saved searches/Logout) maps
- *    onto whatever native actually has a screen for: Profile → the Account tab, Favourites →
- *    `/saved`, Messages → its own tab, My listings → `/my-listings` (read-only — no native
- *    editor yet), Purchase history → `/purchases`. Saved searches has no native screen yet, so
- *    it's left out rather than linking somewhere that doesn't exist.
+ *  - Web's account block (Profile/Favourites/Messages/My listings/My requirements/Saved
+ *    searches/Logout) maps onto whatever native actually has a screen for: Profile → the Account
+ *    tab, Favourites → `/saved`, Messages → its own tab, My listings → `/my-listings`, My
+ *    requirements → `/my-requirements`, Purchase history → `/purchases`. Saved searches has no
+ *    native screen yet, so it's left out rather than linking somewhere that doesn't exist.
  * Tools and Plans still open bhavano.com in an in-app browser (a calculator hub and a live
  * purchase flow, neither of which is static content worth duplicating). Help is now a real
  * native page (StaticPageLayout), same as the Legal links in LegalFooter.
@@ -206,6 +206,10 @@ export function HomeDrawer({
               <Pressable onPress={() => go("/my-listings")} style={styles.navRow}>
                 <Icon name="building" size={17} color={colors.text} />
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>My listings</Text>
+              </Pressable>
+              <Pressable onPress={() => go("/my-requirements")} style={styles.navRow}>
+                <Icon name="search" size={17} color={colors.text} />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>My requirements</Text>
               </Pressable>
               <Pressable onPress={() => go("/messages")} style={styles.navRow}>
                 <Icon name="message" size={17} color={colors.text} />

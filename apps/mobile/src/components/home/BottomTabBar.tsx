@@ -22,7 +22,7 @@ const TABS: TabDef[] = [
   { key: "index", path: "/", label: "Home", icon: "home", alsoActiveOn: ["/listing"] },
   { key: "messages", path: "/messages", label: "Messages", icon: "message", authRequired: true },
   { key: "post", path: "/post", label: "Post Ad", icon: "plus" },
-  { key: "account", path: "/account", label: "Account", icon: "user", authRequired: true, alsoActiveOn: ["/saved", "/purchases"] },
+  { key: "account", path: "/account", label: "Account", icon: "user", authRequired: true, alsoActiveOn: ["/saved", "/purchases", "/my-listings", "/my-requirements"] },
 ];
 
 function isActive(pathname: string, tab: TabDef): boolean {

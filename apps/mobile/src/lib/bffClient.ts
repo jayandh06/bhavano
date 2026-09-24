@@ -33,6 +33,7 @@ import type {
   SellerAttentionDto,
   SubscriptionTier,
   UpdateListingInput,
+  UpdateMyRequirementInput,
   UpdateProfileInput,
   UserProfileDto,
 } from "@bhavano/types";
@@ -229,6 +230,30 @@ export function toggleFavourite(
   return authedBffFetch(accessToken, `/listings/${listingId}/favourite`, { method: "POST" });
 }
 
+export function recordListingInterest(
+  accessToken: string,
+  listingId: string,
+): Promise<import("@bhavano/types").RecordListingInterestResponseDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/interest`, { method: "POST" });
+}
+
+export function fetchListingInterests(
+  accessToken: string,
+  listingId: string,
+): Promise<import("@bhavano/types").ListingInterestPage> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/interests`);
+}
+
+export function openInterestConversation(
+  accessToken: string,
+  listingId: string,
+  userId: string,
+): Promise<{ conversationId: string }> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/interests/${userId}/conversation`, {
+    method: "POST",
+  });
+}
+
 export function fetchFavourites(accessToken: string): Promise<ListingCardDto[]> {
   return authedBffFetch(accessToken, "/users/me/favourites");
 }
@@ -336,7 +361,8 @@ export async function uploadPhoto(
   const filename = fileUri.split("/").pop() ?? "photo.jpg";
   const ext = filename.split(".").pop()?.toLowerCase();
   const mimeType = (ext && MIME_BY_EXT[ext]) ?? "image/jpeg";
-  // React Native's fetch accepts this { uri, name, type } shape for multipart file fields.
+  // RN multipart file field. Requires EXPO_PUBLIC_USE_RN_FETCH=1 so global fetch is RN's
+  // (expo/fetch rejects this shape with "Unsupported FormDataPart implementation").
   formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
   formData.append("listingId", listingId);
   formData.append("photoNo", String(photoNo));
@@ -396,20 +422,22 @@ export function verifyOtp(
   phone: string,
   code: string,
   viewerKey?: string,
+  sessionId?: string,
 ): Promise<{ user: { id: string; phone?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/otp/verify", {
     method: "POST",
-    body: JSON.stringify({ phone, code, viewerKey }),
+    body: JSON.stringify({ phone, code, viewerKey, sessionId }),
   });
 }
 
 export function loginWithGoogle(
   idToken: string,
   viewerKey?: string,
+  sessionId?: string,
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/google", {
     method: "POST",
-    body: JSON.stringify({ idToken, viewerKey }),
+    body: JSON.stringify({ idToken, viewerKey, sessionId }),
   });
 }
 
@@ -420,10 +448,11 @@ export function loginWithApple(
   identityToken: string,
   fullName?: string,
   viewerKey?: string,
+  sessionId?: string,
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/apple", {
     method: "POST",
-    body: JSON.stringify({ identityToken, fullName, viewerKey }),
+    body: JSON.stringify({ identityToken, fullName, viewerKey, sessionId }),
   });
 }
 
@@ -542,6 +571,33 @@ export function deleteListingVideo(accessToken: string, listingId: string, video
  * searched for and could not find. See docs/plans/property-requirements-demand-side.md. */
 export function createRequirement(accessToken: string, input: CreateRequirementInput): Promise<RequirementDto> {
   return authedBffFetch(accessToken, "/requirements", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function fetchMyRequirements(accessToken: string): Promise<RequirementDto[]> {
+  return authedBffFetch(accessToken, "/requirements/mine");
+}
+
+export function updateMyRequirement(
+  accessToken: string,
+  id: string,
+  input: UpdateMyRequirementInput,
+): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, `/requirements/mine/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function renewMyRequirement(accessToken: string, id: string): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, `/requirements/mine/${id}/renew`, { method: "POST" });
+}
+
+/** `fulfilled` and `withdrawn` are separate endpoints, not one "close" — which of the two
+ * happened is the only measure of whether the feature works. */
+export function closeMyRequirement(
+  accessToken: string,
+  id: string,
+  reason: "fulfilled" | "withdrawn",
+): Promise<RequirementDto> {
+  const path = reason === "fulfilled" ? "fulfilled" : "withdraw";
+  return authedBffFetch(accessToken, `/requirements/mine/${id}/${path}`, { method: "POST" });
 }
 
 /** Mirrors the website's identical call (bff.ts's createBoostOrder) — activation happens via the

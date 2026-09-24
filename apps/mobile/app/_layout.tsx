@@ -11,10 +11,11 @@ import { StatusBar } from "expo-status-bar";
 import { AppThemeProvider, useAppTheme } from "../src/theme/ThemeContext";
 import { HomeSheetsProvider, useHomeSheets } from "../src/context/HomeSheetsProvider";
 import { useCitiesQuery, useUnreadCountSync } from "../src/lib/queries";
-import { configureNotificationHandler, onMessageNotificationTap } from "../src/lib/push";
+import { configureNotificationHandler, onNotificationTap } from "../src/lib/push";
 import { requestTrackingConsent } from "../src/lib/trackingConsent";
 import { BottomTabBar } from "../src/components/home/BottomTabBar";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
+import { SoftNavAppPageViews } from "../src/components/home/SoftNavAppPageViews";
 import { reportClientError } from "../src/lib/bffClient";
 
 const queryClient = new QueryClient();
@@ -55,7 +56,16 @@ function PushBridge() {
   useUnreadCountSync(accessToken);
 
   useEffect(
-    () => onMessageNotificationTap((conversationId) => router.push(`/messages/${conversationId}`)),
+    () =>
+      onNotificationTap((target) => {
+        if (target.conversationId) {
+          router.push(`/messages/${target.conversationId}`);
+          return;
+        }
+        if (target.path) {
+          router.push(target.path as never);
+        }
+      }),
     [router],
   );
 
@@ -93,6 +103,7 @@ function AppNavigation() {
     <HomeSheetsProvider popularCities={popularCities ?? []}>
       <AppCrashBoundary>
         <PushBridge />
+        <SoftNavAppPageViews />
         {/* Every screen runs headerShown:false and draws its own header, so nothing was reserving
             the status-bar area — content rendered under the clock, Dynamic Island and Wi-Fi icons
             on notched devices. SafeAreaProvider alone doesn't fix this: it supplies inset values,

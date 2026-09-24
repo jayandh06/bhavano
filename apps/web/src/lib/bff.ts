@@ -723,6 +723,30 @@ export function toggleFavourite(
   return authedBffFetch(accessToken, `/listings/${listingId}/favourite`, { method: "POST" });
 }
 
+export function recordListingInterest(
+  accessToken: string,
+  listingId: string,
+): Promise<import("@bhavano/types").RecordListingInterestResponseDto> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/interest`, { method: "POST" });
+}
+
+export function fetchListingInterests(
+  accessToken: string,
+  listingId: string,
+): Promise<import("@bhavano/types").ListingInterestPage> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/interests`, { cache: "no-store" });
+}
+
+export function openInterestConversation(
+  accessToken: string,
+  listingId: string,
+  userId: string,
+): Promise<{ conversationId: string }> {
+  return authedBffFetch(accessToken, `/listings/${listingId}/interests/${userId}/conversation`, {
+    method: "POST",
+  });
+}
+
 export function fetchFavourites(accessToken: string): Promise<ListingCardDto[]> {
   return authedBffFetch(accessToken, "/users/me/favourites", { cache: "no-store" });
 }

@@ -258,8 +258,9 @@ one card and a notification.
    push module already do exactly this for listing inquiries.
 3. **`/my-requirements` in the account area**, immediately after "My Listings" in the web dropdown
    (currently Profile / Favourites / Messages / My Listings / Premium / Saved searches / Help) and
-   inside the mobile **Account** tab. Mirrors `/my-listings`: status badge (active / expired /
-   fulfilled), response count, renew, withdraw.
+   inside the mobile **Account** tab plus the hamburger Account block. Native screen at
+   `apps/mobile/app/my-requirements.tsx` mirrors `/my-listings`: status badge (active / expired /
+   fulfilled), renew, withdraw, optional note/timeline.
 
 **No separate top-level tab**, for either meaning of "tab":
 

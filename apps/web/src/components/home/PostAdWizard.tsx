@@ -139,11 +139,25 @@ type Step = "category" | "transactionType" | "details" | "review" | "success";
  * `post_ad_success` — so a drop-off was visible in aggregate but never locatable. Fired on
  * arrival at a step rather than on the button that leaves the previous one, so a step reached by
  * the Back button counts the same as one reached going forward.
+ *
+ * Preview is an in-wizard step (URL stays `/post`), so SoftNavPageViews / middleware never see it.
+ * When the review step opens, also write a synthetic PageView at `/post/preview` so admin Page
+ * visits show who reached the card preview — same hop SoftNav uses, same 2s same-path dedupe.
  */
 function StepTracker({ step }: { step: Step }) {
   useEffect(() => {
     window.scrollTo(0, 0);
     pushDataLayerEvent("post_step_view", { step });
+
+    if (step !== "review") return;
+    void fetch("/api/analytics/pageview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: "/post/preview" }),
+      keepalive: true,
+    }).catch(() => {
+      // Offline or navigated away mid-flight — same stance as SoftNavPageViews.
+    });
   }, [step]);
   return null;
 }

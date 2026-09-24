@@ -101,7 +101,7 @@ export async function ListingDetailView({
         accessToken={accessToken}
         areaName={listing.area}
       />
-      <ViewTracker listingId={listing.id} />
+      <ViewTracker listingId={listing.id} recordInterest={!!accessToken && !listing.isOwner} />
       {/* 1280px, the same container as the header above it and every browse page — this was the
         * one page at 880, which read as the content being indented relative to its own header.
         *
@@ -262,6 +262,7 @@ export async function ListingDetailView({
                 initialIsFavourited={listing.isFavourited}
                 initialLikeCount={listing.likeCount}
                 isOwner={listing.isOwner}
+                isLoggedIn={!!accessToken}
                 initialContactRevealed={listing.contactRevealed}
                 initialOwnerPhone={listing.ownerPhone}
                 initialOwnerEmail={listing.ownerEmail}
