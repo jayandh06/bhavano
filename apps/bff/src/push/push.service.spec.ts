@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 function makeService(opts: {
   enabled?: boolean;
+  accessToken?: string;
   tokens?: { token: string }[];
   fetchImpl?: jest.Mock;
 }) {
@@ -14,8 +15,11 @@ function makeService(opts: {
     pushToken: { upsert, deleteMany, findMany },
   } as unknown as PrismaService;
   const config = {
-    get: (key: string) =>
-      key === 'EXPO_PUSH_ENABLED' && opts.enabled ? 'true' : undefined,
+    get: (key: string) => {
+      if (key === 'EXPO_PUSH_ENABLED' && opts.enabled) return 'true';
+      if (key === 'EXPO_ACCESS_TOKEN') return opts.accessToken;
+      return undefined;
+    },
   } as unknown as ConfigService;
   const fetchMock = opts.fetchImpl ?? jest.fn();
   global.fetch = fetchMock;
@@ -104,6 +108,28 @@ describe('PushService', () => {
       expect.objectContaining({
         where: { token: 'ExpoTok[x]' },
         create: { userId: 'u1', token: 'ExpoTok[x]', platform: 'ios' },
+      }),
+    );
+  });
+
+  it('sends Authorization Bearer when EXPO_ACCESS_TOKEN is set', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [{ status: 'ok', id: 'r1' }] }),
+    });
+    const { service } = makeService({
+      enabled: true,
+      accessToken: 'expo_pat_test',
+      tokens: [{ token: 'ExpoTok[a]' }],
+      fetchImpl,
+    });
+    await service.notifyNewMessage('u1', message, 'Asha');
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer expo_pat_test',
+        }),
       }),
     );
   });

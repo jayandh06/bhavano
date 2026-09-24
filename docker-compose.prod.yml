@@ -78,6 +78,9 @@ services:
       # "New message" push to the mobile apps via Expo's push service (PushService.notifyNewMessage)
       # — see .env.production.example's own comment on this var.
       EXPO_PUSH_ENABLED: ${EXPO_PUSH_ENABLED}
+      # Expo personal access token — required when the EAS project has push security enabled
+      # (anonymous POST → 403 UNAUTHORIZED). Create at expo.dev → Account → Access tokens.
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN}
       # WhatsApp Business via Meta's Cloud API, direct rather than through MSG91 — the default
       # path for every WhatsApp send except the mobile welcome above. Unset disables WhatsApp
       # entirely (sends log and skip) — see .env.production.example for which id goes in

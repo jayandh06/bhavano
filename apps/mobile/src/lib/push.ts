@@ -89,14 +89,27 @@ export async function registerForPushAsync(accessToken: string): Promise<string 
       const asked = await N.requestPermissionsAsync();
       granted = asked.granted;
     }
-    if (!granted) return null;
+    if (!granted) {
+      if (__DEV__) {
+        console.warn(
+          "[push] notification permission not granted — OS Settings → Bhavano → Notifications",
+        );
+      }
+      return null;
+    }
 
-    const { data: token } = await N.getExpoPushTokenAsync({ projectId: projectId() });
+    const pid = projectId();
+    if (!pid && __DEV__) {
+      console.warn("[push] missing extra.eas.projectId — getExpoPushTokenAsync may fail");
+    }
+    const { data: token } = await N.getExpoPushTokenAsync({ projectId: pid });
     await registerPushToken(accessToken, token, Platform.OS === "ios" ? "ios" : "android");
+    if (__DEV__) console.log(`[push] registered ${Platform.OS} token with BFF`);
     return token;
-  } catch {
+  } catch (err) {
     // Best-effort: a device with no push support, or a transient network failure here, must not
-    // break login.
+    // break login — but in dev we need to see *why* nothing registers.
+    console.warn("[push] registerForPushAsync failed:", err);
     return null;
   }
 }

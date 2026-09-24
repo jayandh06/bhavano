@@ -211,6 +211,45 @@ redirect, or JSON-LD change. The count is login-gated and non-crawlable. Net SEO
 - Android FCM v1 needs a service-account JSON uploaded to EAS credentials for production push —
   an ops step, not code.
 
+## Ops: why no OS push arrives (checklist)
+
+Push is **off by default**. Zero notifications on every device almost always means one of:
+
+1. **BFF gate** — production `.env` must have `EXPO_PUSH_ENABLED=true` (exact string), then
+   restart BFF:
+   ```bash
+   # on the app host, in ~/bhavano (or wherever compose lives)
+   grep EXPO_PUSH_ENABLED .env
+   # if missing/empty: add EXPO_PUSH_ENABLED=true
+   docker compose -f docker-compose.prod.yml --env-file .env up -d bff
+   docker compose -f docker-compose.prod.yml logs bff | grep -i 'Expo push'
+   # expect: "Expo push enabled (EXPO_PUSH_ENABLED=true)"
+   ```
+1b. **Expo access token** — `@finfolia-technologies-llp/bhavano` has push security enabled.
+   Anonymous `POST https://exp.host/--/api/v2/push/send` returns `403 UNAUTHORIZED` /
+   "Insufficient permissions…". Set `EXPO_ACCESS_TOKEN` to a personal access token from
+   [expo.dev access tokens](https://expo.dev/settings/access-tokens) (account that can manage
+   that project), wire it through `docker-compose.prod.yml`, rebuild/restart BFF. The BFF sends
+   `Authorization: Bearer <token>` on every Expo push request.
+2. **Device token row** — after login + granting notification permission, a `PushToken` row must
+   exist for that user. Confirm with:
+   ```bash
+   docker compose -f docker-compose.prod.yml exec bff npx prisma db execute \
+     --stdin <<< 'SELECT "userId", platform, LEFT(token,24) AS tok, "lastSeenAt" FROM "PushToken" ORDER BY "lastSeenAt" DESC LIMIT 20;'
+   ```
+   Or from Metro while logged in: look for `[push] registered ios|android token with BFF`.
+   Permission denied / missing native module / failed `POST /users/me/push-tokens` all leave
+   this table empty → sends no-op even when the flag is on.
+3. **EAS push credentials** — Expo relays to APNs/FCM. Without them, Expo accepts the send but
+   devices never ring:
+   - iOS: APNs key on the Expo project (EAS Credentials).
+   - Android: FCM v1 service-account JSON uploaded to EAS Credentials for the Android package.
+4. **App must be a real native build** (dev client / preview / production) — Expo Go does not
+   get a project push token for this app id.
+
+Like / view / message pushes share this same path (`PushService.sendToUser`); there is no
+separate like toggle.
+
 ## Verification
 
 1. `pnpm --filter @bhavano/bff prisma:migrate` (PushToken); `pnpm -w typecheck`.

@@ -40,16 +40,39 @@ interface ExpoPushMessage {
 @Injectable()
 export class PushService {
   private readonly logger = new Logger(PushService.name);
+  /** Avoid spamming logs on every like/message while the flag is off. */
+  private loggedDisabledSkip = false;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-  ) {}
+  ) {
+    if (this.enabled) {
+      if (this.accessToken) {
+        this.logger.log('Expo push enabled (EXPO_PUSH_ENABLED=true, EXPO_ACCESS_TOKEN set)');
+      } else {
+        this.logger.warn(
+          'Expo push enabled but EXPO_ACCESS_TOKEN is unset — Expo will 403 if the project has push security on (@finfolia-technologies-llp/bhavano)',
+        );
+      }
+    } else {
+      this.logger.warn(
+        'Expo push disabled — set EXPO_PUSH_ENABLED=true on this BFF and restart to deliver OS notifications',
+      );
+    }
+  }
 
   /** Off by default — a dev machine has no Expo project set up and should not be firing real
    * pushes. Set EXPO_PUSH_ENABLED=true in the deployed BFF. */
   get enabled(): boolean {
     return this.config.get<string>('EXPO_PUSH_ENABLED') === 'true';
+  }
+
+  /** Personal access token from expo.dev → Access tokens. Required when the EAS project has
+   * "Enhanced security for push notifications" enabled (anonymous send → 403 UNAUTHORIZED). */
+  private get accessToken(): string | undefined {
+    const raw = this.config.get<string>('EXPO_ACCESS_TOKEN')?.trim();
+    return raw || undefined;
   }
 
   /** Upsert on the token, not on (userId, platform): the same physical device logging into a
@@ -118,14 +141,27 @@ export class PushService {
     recipientId: string,
     content: { title: string; body: string; data: Record<string, string> },
   ): Promise<void> {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      if (!this.loggedDisabledSkip) {
+        this.loggedDisabledSkip = true;
+        this.logger.warn(
+          `Skipping push for user ${recipientId} (and further recipients) — EXPO_PUSH_ENABLED is not "true"`,
+        );
+      }
+      return;
+    }
 
     try {
       const tokens = await this.prisma.pushToken.findMany({
         where: { userId: recipientId },
         select: { token: true },
       });
-      if (tokens.length === 0) return;
+      if (tokens.length === 0) {
+        this.logger.debug(
+          `No PushToken rows for user ${recipientId}; nothing to send for "${content.title}"`,
+        );
+        return;
+      }
 
       const stale = new Set<string>();
       for (let i = 0; i < tokens.length; i += CHUNK_SIZE) {
@@ -139,12 +175,17 @@ export class PushService {
           data: content.data,
         }));
 
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        };
+        if (this.accessToken) {
+          headers.Authorization = `Bearer ${this.accessToken}`;
+        }
+
         const res = await fetch(EXPO_PUSH_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
+          headers,
           body: JSON.stringify(payload),
         });
 
