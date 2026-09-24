@@ -17,6 +17,13 @@ here rather than left for the plan to silently disagree with the code:
 - **`DateRangeFilter` takes `currentFrom`/`currentTo` as explicit props**, not derived from `sp`
   internally — needed so a preset (e.g. "1 day") highlights correctly on a fresh visit where the
   URL carries no `from`/`to` at all but the page has already defaulted them.
+- **When a preset is active, `DateRangeFilter` emits hidden `from`/`to` inputs** so "Apply
+  filters" keeps the chosen range. Without that, the custom date fields are unmounted and Apply
+  dropped the params — the page silently fell back to the 1-day default, so "7 days" looked
+  broken as soon as any other filter was applied.
+- **Listings uses one filter form** (same shape as logins): top bar + column-header inputs share
+  a single "Apply filters" submit. The table's separate "Go" button was removed — two forms were
+  fighting each other via incomplete hidden carries.
 - **Recent Logins' row click is the expand toggle itself** (no separate button), unlike
   Listings/Page visits — there was no competing whole-row navigation to avoid here (only the
   user-name link, which stops propagation), so the simpler ConversationsTable shape fit directly.
@@ -86,6 +93,9 @@ active) the existing native `<input type="date">` pair each page already has. Pr
   "Apply" click needed.
 - "Custom" doesn't navigate on click — it just reveals the two native date inputs already in each
   page's filter `<form>`, submitted via the existing "Apply filters" button.
+- When a preset is highlighted (custom fields hidden), the component still submits the active
+  range via hidden `fromParam`/`toParam` inputs — otherwise Apply would drop the dates and the
+  page's silent 1-day default would take over.
 - Highlight whichever preset's computed range matches the current `from`/`to` exactly; if
   `from`/`to` are present but match no preset, highlight "Custom" instead.
 - Used by all three pages with different `fromParam`/`toParam` (Listings uses `createdFrom`/

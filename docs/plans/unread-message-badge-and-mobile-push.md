@@ -18,8 +18,9 @@ Decisions already taken with the user:
 - **Badge the existing Messages icon** — no separate "bell"/notification-centre. A dedicated bell
   implies aggregating listing-approved / saved-search / like events too, which is out of scope.
 - **Count = total unread messages** (sum across all threads), matching the per-thread badges.
-- **Mobile app**: a Messages icon **with a count badge** added as a visible entry point
-  (Home-screen header + the Account-tab button), not a new bottom tab.
+- **Mobile app**: a Messages icon **with a count badge** on the bottom tab bar (Messages became
+  its own tab after this plan was written — the earlier Home-header + Account-button placement
+  was removed; the synced unread total still drives the OS app-icon badge and now the tab badge).
 - **Push scope = new chat messages only.** `NotificationsService` (email/WhatsApp for listing
   lifecycle, saved-search matches, likes) is **not** touched — chat gets in-app realtime + push,
   never email/WhatsApp.
@@ -166,12 +167,10 @@ redirect, or JSON-LD change. The count is login-gated and non-crawlable. Net SEO
   `getSocket(accessToken).on("unread_update", e => queryClient.setQueryData(["unread", accessToken], e.unreadCount))`
   and refetching on `AppState` → `"active"`.
 - `src/lib/bffClient.ts`: `fetchUnreadCount(accessToken)`.
-- **Home screen** `app/(tabs)/index.tsx` — in the `headerTop` right-side `brandRow` (next to the
-  theme toggle), add a Messages icon `Pressable` (`onPress={() => router.push("/messages")}`)
-  with a count badge, shown only when `isLoggedIn`. Reuse the green `styles.badge` pattern
-  already used by the Filters pill in the same file.
-- **Account tab** `app/(tabs)/account.tsx` — badge the existing "Messages" button
-  (`onOpenMessages`) with the same count.
+- **Home screen** `app/(tabs)/index.tsx` — originally added a Messages icon with badge in the
+  header; removed once Messages became a bottom tab. Unread badge now lives on
+  `BottomTabBar`'s Messages tab (reads `useUnreadCountQuery`).
+- **Account tab** — no longer the primary Messages entry; badge is on the tab bar instead.
 - `app/messages/index.tsx` / `[id].tsx` — invalidate `["unread"]` on focus / after send; the
   BFF `markRead` `unread_update` emit makes this mostly automatic.
 - App-icon badge: `Notifications.setBadgeCountAsync(count)` wherever the count updates (one line).

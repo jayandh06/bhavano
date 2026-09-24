@@ -124,77 +124,74 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           ))}
         </div>
 
-        <form
-          method="get"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 12,
-            alignItems: "flex-end",
-            marginBottom: 20,
-            padding: 16,
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            background: "var(--surface)",
-          }}
-        >
-          <input type="hidden" name="tab" value={tab} />
-
-          {/* Title/Status/Category/Transaction/City/Area now filter from the table's own column
-            * headers — only the filters with no single column of their own are left here. Their
-            * values ride along as hidden inputs below so submitting this bar can't drop them. */}
-          <Field label="User">
-            <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
-          </Field>
-
-          <Field label="Created (date range)">
-            <DateRangeFilter basePath="/" sp={sp} currentFrom={createdFrom} currentTo={createdTo} fromParam="createdFrom" toParam="createdTo">
-              <Field label="Created from">
-                <input type="date" name="createdFrom" defaultValue={createdFrom} style={dateInputStyle} />
-              </Field>
-              <Field label="Created to">
-                <input type="date" name="createdTo" defaultValue={createdTo} style={dateInputStyle} />
-              </Field>
-            </DateRangeFilter>
-          </Field>
-          <Field label="Modified from">
-            <input type="date" name="updatedFrom" defaultValue={updatedFrom} style={dateInputStyle} />
-          </Field>
-          <Field label="Modified to">
-            <input type="date" name="updatedTo" defaultValue={updatedTo} style={dateInputStyle} />
-          </Field>
-
-          {/* Not filter fields themselves — a plain GET form only submits its own named inputs,
-            * so without these, using this bar would silently drop the active column sort, the
-            * chosen columns, and every filter that now lives in a column header. */}
-          {sort && <input type="hidden" name="sort" value={sort} />}
-          {str(sp.cols) && <input type="hidden" name="cols" value={str(sp.cols)} />}
-          {search && <input type="hidden" name="search" value={search} />}
-          {status && <input type="hidden" name="status" value={status} />}
-          {category && <input type="hidden" name="category" value={category} />}
-          {transactionType && <input type="hidden" name="transactionType" value={transactionType} />}
-          {cityId && <input type="hidden" name="cityId" value={cityId} />}
-          {areaId && <input type="hidden" name="areaId" value={areaId} />}
-
-          <button type="submit" style={applyButtonStyle}>
-            Apply filters
-          </button>
-          {/* CLEAR_FILTERS_PARAM + prefetch={false} — see logins/page.tsx's comment on the same
-            * link shape, and rememberedFilters.ts's decideFilterAction for the full reasoning. */}
-          <Link
-            href={`/?${CLEAR_FILTERS_PARAM}=1`}
-            prefetch={false}
-            style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}
+        {/* One form for the whole screen (same shape as logins/page.tsx): top-bar fields and
+          * column-header filters submit together via the single "Apply filters" button. A second
+          * "Go" submit in the table used to fight this — changing a column filter and then hitting
+          * Apply would drop whatever the other form owned, and vice versa. */}
+        <form method="get">
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 12,
+              alignItems: "flex-end",
+              marginBottom: 20,
+              padding: 16,
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              background: "var(--surface)",
+            }}
           >
-            Reset
-          </Link>
+            <input type="hidden" name="tab" value={tab} />
+
+            {/* Title/Status/Category/Transaction/City/Area filter from the table column headers
+              * below (same form). Only filters with no single column of their own live here. */}
+            <Field label="User">
+              <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
+            </Field>
+
+            <Field label="Created (date range)">
+              <DateRangeFilter basePath="/" sp={sp} currentFrom={createdFrom} currentTo={createdTo} fromParam="createdFrom" toParam="createdTo">
+                <Field label="Created from">
+                  <input type="date" name="createdFrom" defaultValue={createdFrom} style={dateInputStyle} />
+                </Field>
+                <Field label="Created to">
+                  <input type="date" name="createdTo" defaultValue={createdTo} style={dateInputStyle} />
+                </Field>
+              </DateRangeFilter>
+            </Field>
+            <Field label="Modified from">
+              <input type="date" name="updatedFrom" defaultValue={updatedFrom} style={dateInputStyle} />
+            </Field>
+            <Field label="Modified to">
+              <input type="date" name="updatedTo" defaultValue={updatedTo} style={dateInputStyle} />
+            </Field>
+
+            {/* Sort / columns / page size are link-driven, not inputs — carry them so Apply
+              * doesn't silently drop them. Column filter values come from the table header. */}
+            {sort && <input type="hidden" name="sort" value={sort} />}
+            {str(sp.cols) && <input type="hidden" name="cols" value={str(sp.cols)} />}
+            {str(sp.limit) && <input type="hidden" name="limit" value={str(sp.limit)} />}
+
+            <button type="submit" style={applyButtonStyle}>
+              Apply filters
+            </button>
+            {/* CLEAR_FILTERS_PARAM + prefetch={false} — see logins/page.tsx's comment on the same
+              * link shape, and rememberedFilters.ts's decideFilterAction for the full reasoning. */}
+            <Link
+              href={`/?${CLEAR_FILTERS_PARAM}=1`}
+              prefetch={false}
+              style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}
+            >
+              Reset
+            </Link>
+          </div>
+
+          {/* Rendered even with no results — its header carries the column filters, so replacing
+              it with a "nothing here" paragraph would take away the controls needed to widen
+              whichever filter just emptied the table. The empty state is a row inside it. */}
+          <AdminListingsTable items={result.items} sp={sp} cities={cities} areas={areas} />
         </form>
-
-        {/* Rendered even with no results — its header carries the column filters, so replacing
-            it with a "nothing here" paragraph would take away the controls needed to widen
-            whichever filter just emptied the table. The empty state is a row inside it. */}
-        <AdminListingsTable items={result.items} sp={sp} cities={cities} areas={areas} />
-
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}

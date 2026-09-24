@@ -1,4 +1,6 @@
+import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useCitiesQuery } from "../../src/lib/queries";
@@ -11,6 +13,18 @@ export default function PostScreen() {
   // `all=true` — not just the popular subset — so the currently-selected city stays a real
   // option in the wizard's dropdown even if it's a tier-2 city.
   const { data: cities, isLoading } = useCitiesQuery(undefined, true);
+
+  // The tab navigator keeps this screen mounted across tab switches. Without remounting, a
+  // category (and the rest of the draft) picked on an earlier visit stays highlighted when the
+  // user opens Post Ad again — unlike the website, where navigating to /post always mounts a
+  // fresh wizard. Bump on blur so the next visit starts clean; staying on the Post tab (e.g.
+  // opening the city picker / option sheets) does not.
+  const [visitKey, setVisitKey] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      return () => setVisitKey((k) => k + 1);
+    }, []),
+  );
 
   // No login gate here, matching the website: the whole form is usable logged out (nothing
   // touches the server until Submit — photos are held in memory, not uploaded, until then), and
@@ -28,15 +42,19 @@ export default function PostScreen() {
     );
   }
 
-  // Keyed on the selected city: the tab navigator keeps this screen mounted across tab
-  // switches, so without a key change, React would reuse the wizard instance and its stale
-  // `useState(defaultCityId)` init instead of picking up a city switch made on the Home tab.
+  // Keyed on city + visit: city so a Home-tab city switch isn't ignored by a stale
+  // `useState(defaultCityId)` init; visit so leaving the Post tab clears the previous draft.
   //
   // PostAdWizard renders its own ScreenHeader (not repeated here) — its back arrow needs to
   // step backward through the wizard's own steps, which only the wizard's internal state knows.
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <PostAdWizard key={city?.id ?? "none"} cities={cities} defaultCityId={city?.id} accessToken={accessToken ?? undefined} />
+      <PostAdWizard
+        key={`${city?.id ?? "none"}-${visitKey}`}
+        cities={cities}
+        defaultCityId={city?.id}
+        accessToken={accessToken ?? undefined}
+      />
     </View>
   );
 }

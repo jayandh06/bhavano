@@ -28,6 +28,11 @@ const PRESETS = [
  * "Apply filters" button. This component doesn't own those inputs itself: each page keeps its own
  * field labels/styling and just passes them in, so this stays a thin wrapper rather than a second
  * source of truth for the date fields.
+ *
+ * When a preset is active the date inputs are unmounted (Custom isn't showing). Without a
+ * stand-in, "Apply filters" would omit `from`/`to` entirely and the page's silent 1-day default
+ * would take over — so picking "7 days" then changing any other filter looked like the date
+ * preset "didn't stick". Hidden inputs keep the active range in the form submit.
  */
 export function DateRangeFilter({
   basePath,
@@ -90,8 +95,13 @@ export function DateRangeFilter({
           Custom
         </button>
       </div>
-      {showCustomFields && (
+      {showCustomFields ? (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>{children}</div>
+      ) : (
+        <>
+          <input type="hidden" name={fromParam} value={currentFrom} />
+          <input type="hidden" name={toParam} value={currentTo} />
+        </>
       )}
     </div>
   );

@@ -229,11 +229,11 @@ export function AdminListingsTable({
     {
       key: "city",
       label: "City",
-      // Searchable rather than a plain <select>, and auto-submitting: it binds to whichever form
-      // contains it, which is this table's, and the Area field is on that same form. Without the
-      // `areaId` reset, picking a new city would resubmit the old city's area and filter to
-      // nothing. Area *must* auto-submit here too — its option list is fetched server-side for
-      // the chosen city (see page.tsx), so the reload is what populates it.
+      // Searchable rather than a plain <select>, and auto-submitting: it binds to the page's
+      // ancestor filter form (see page.tsx). Without the `areaId` reset, picking a new city would
+      // resubmit the old city's area and filter to nothing. Area *must* auto-submit here too —
+      // its option list is fetched server-side for the chosen city, so the reload is what
+      // populates it.
       filter: (
         <SearchableSelect
           name="cityId"
@@ -418,13 +418,20 @@ export function AdminListingsTable({
           }}
         >
           <span style={{ fontSize: 13, fontWeight: 700 }}>{selected.size} selected</span>
-          <button onClick={() => void onSend(sendPostedNotificationAction)} disabled={pending} style={actionButtonStyle}>
+          <button
+            type="button"
+            onClick={() => void onSend(sendPostedNotificationAction)}
+            disabled={pending}
+            style={actionButtonStyle}
+          >
             {pending ? "Sending…" : "Send posted notification"}
           </button>
           {/* Boost/Instant Alerts promotion to the owners of the selected live ads. Secondary
             * styling because it is the marketing one of the two: reaching for it should be a
-            * decision, not the thing your cursor lands on. */}
+            * decision, not the thing your cursor lands on. type="button" so these don't submit
+            * the surrounding filter form. */}
           <button
+            type="button"
             onClick={() => void onSend(sendBoostPromotionAction)}
             disabled={pending}
             style={secondaryActionButtonStyle}
@@ -460,113 +467,130 @@ export function AdminListingsTable({
         </p>
       )}
 
-      {/* The table lives inside the filter form so the header inputs submit — a <form> can't be a
-          child of <table>, but inputs inside cells bind to an ancestor form. The non-column
-          filters (owner, date ranges) stay in the page's own bar, and both forms carry each
-          other's values as hidden inputs so submitting either keeps the other's. */}
-      <form method="get">
-        <CarriedParams sp={sp} omit={["page", ...visible.filter((c) => c.filter).map((c) => filterNameFor(c))]} />
-        <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
-            <thead>
-              <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
-                <th style={thStyle}>
-                  {items.length > 0 && <input type="checkbox" checked={allSelected} onChange={toggleAll} />}
+      {/* Header inputs bind to the page's ancestor <form> (see page.tsx) — one "Apply filters"
+          submit for bar + columns. CarriedParams only keeps filters whose column is currently
+          hidden (hiding a column must not silently widen the result set); everything the bar and
+          visible headers already own is omitted so we don't double-submit the same name. */}
+      <CarriedParams
+        sp={sp}
+        omit={[
+          "page",
+          ...LISTINGS_FORM_OWNED_PARAMS,
+          ...visible.filter((c) => c.filter).map((c) => filterNameFor(c)),
+        ]}
+      />
+      <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+          <thead>
+            <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
+              <th style={thStyle}>
+                {items.length > 0 && <input type="checkbox" checked={allSelected} onChange={toggleAll} />}
+              </th>
+              {visible.map((c) => (
+                <th key={c.key} style={thStyle}>
+                  {c.sortField ? (
+                    <SortableHeader
+                      label={c.label}
+                      href={buildSuffixSortHref("/", sp, c.sortField, "createdAt_desc")}
+                      direction={suffixSortDirectionFor(sp, c.sortField, "createdAt_desc")}
+                    />
+                  ) : (
+                    c.label
+                  )}
                 </th>
+              ))}
+            </tr>
+            {hasAnyFilter && (
+              <tr style={{ background: "var(--surface-alt)" }}>
+                {/* Empty corner cell — Apply lives in the page bar, not a second "Go" here. */}
+                <th style={filterThStyle} />
                 {visible.map((c) => (
-                  <th key={c.key} style={thStyle}>
-                    {c.sortField ? (
-                      <SortableHeader
-                        label={c.label}
-                        href={buildSuffixSortHref("/", sp, c.sortField, "createdAt_desc")}
-                        direction={suffixSortDirectionFor(sp, c.sortField, "createdAt_desc")}
-                      />
-                    ) : (
-                      c.label
-                    )}
+                  <th key={c.key} style={filterThStyle}>
+                    {c.filter ?? null}
                   </th>
                 ))}
               </tr>
-              {hasAnyFilter && (
-                <tr style={{ background: "var(--surface-alt)" }}>
-                  <th style={filterThStyle}>
-                    <button type="submit" style={filterSubmitStyle} title="Apply column filters">
-                      Go
-                    </button>
-                  </th>
-                  {visible.map((c) => (
-                    <th key={c.key} style={filterThStyle}>
-                      {c.filter ?? null}
-                    </th>
-                  ))}
-                </tr>
-              )}
-            </thead>
-            <tbody>
-              {items.map((item) => {
-                const isOpen = expandedIds.has(item.id);
-                return (
-                  <Fragment key={item.id}>
-                    <tr
-                      className="admin-table-row"
-                      onClick={() => router.push(`/listings/${item.id}`)}
-                      style={{ borderTop: "1px solid var(--border)" }}
-                    >
-                      <td style={{ ...tdStyle, whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <button
-                            type="button"
-                            onClick={() => onToggleExpand(item.id)}
-                            aria-label={isOpen ? "Collapse details" : "Expand details"}
-                            style={expandButtonStyle}
-                          >
-                            {isOpen ? "▾" : "▸"}
-                          </button>
-                          <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
-                        </div>
-                      </td>
-                      {visible.map((c) => (
-                        <td
-                          key={c.key}
-                          style={{
-                            ...tdStyle,
-                            ...(c.nowrap ? { whiteSpace: "nowrap" as const } : {}),
-                            ...(c.key === "title" ? { fontWeight: 700, maxWidth: 260 } : {}),
-                          }}
-                        >
-                          {c.render(item)}
-                        </td>
-                      ))}
-                    </tr>
-                    {isOpen && (
-                      <tr>
-                        <td colSpan={visible.length + 1} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
-                          <ListingRowDetail state={details[item.id]} />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-              {items.length === 0 && (
-                <tr style={{ borderTop: "1px solid var(--border)" }}>
-                  {/* Inside the table, so the header filters stay reachable — filtering down to
-                      nothing must not remove the controls needed to widen the filter again. */}
-                  <td
-                    colSpan={visible.length + 1}
-                    style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}
+            )}
+          </thead>
+          <tbody>
+            {items.map((item) => {
+              const isOpen = expandedIds.has(item.id);
+              return (
+                <Fragment key={item.id}>
+                  <tr
+                    className="admin-table-row"
+                    onClick={() => router.push(`/listings/${item.id}`)}
+                    style={{ borderTop: "1px solid var(--border)" }}
                   >
-                    Nothing matches these filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </form>
+                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => onToggleExpand(item.id)}
+                          aria-label={isOpen ? "Collapse details" : "Expand details"}
+                          style={expandButtonStyle}
+                        >
+                          {isOpen ? "▾" : "▸"}
+                        </button>
+                        <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleOne(item.id)} />
+                      </div>
+                    </td>
+                    {visible.map((c) => (
+                      <td
+                        key={c.key}
+                        style={{
+                          ...tdStyle,
+                          ...(c.nowrap ? { whiteSpace: "nowrap" as const } : {}),
+                          ...(c.key === "title" ? { fontWeight: 700, maxWidth: 260 } : {}),
+                        }}
+                      >
+                        {c.render(item)}
+                      </td>
+                    ))}
+                  </tr>
+                  {isOpen && (
+                    <tr>
+                      <td colSpan={visible.length + 1} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
+                        <ListingRowDetail state={details[item.id]} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+            {items.length === 0 && (
+              <tr style={{ borderTop: "1px solid var(--border)" }}>
+                {/* Inside the table, so the header filters stay reachable — filtering down to
+                    nothing must not remove the controls needed to widen the filter again. */}
+                <td
+                  colSpan={visible.length + 1}
+                  style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}
+                >
+                  Nothing matches these filters.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
+
+/** Query params owned by the listings page filter bar / link controls — CarriedParams must not
+ * re-emit them as hidden inputs when the table sits inside that same form (would double-submit). */
+const LISTINGS_FORM_OWNED_PARAMS = [
+  "tab",
+  "userId",
+  "userLabel",
+  "createdFrom",
+  "createdTo",
+  "updatedFrom",
+  "updatedTo",
+  "sort",
+  "cols",
+  "limit",
+] as const;
 
 /** The query-param name a column's filter input uses — needed so `CarriedParams` doesn't emit a
  * hidden duplicate of a value the visible header input is already submitting. */
@@ -588,11 +612,10 @@ function describeFilterValue(column: ListingColumn, sp: SearchParams, cities: Ci
   return raw;
 }
 
-/** Keeps every current query param alive through a submit of *this* form — a plain GET form only
- * sends its own named inputs, so without this, filtering by a header input would silently drop
- * the active sort, the chosen columns, the tab, the owner and the date ranges. `omit` covers the
- * params this form already has real inputs for (and `page`, since changing a filter should land
- * back on page 1). */
+/** Keeps filters whose inputs aren't currently on the page alive through Apply — typically a
+ * column filter whose column is hidden. `omit` covers `page` (filter changes reset to page 1),
+ * every field the page bar / visible headers already submit, and anything else that would
+ * otherwise double-submit. */
 function CarriedParams({ sp, omit }: { sp: SearchParams; omit: string[] }) {
   const skip = new Set(omit);
   return (
@@ -913,17 +936,6 @@ const headerInputStyle: React.CSSProperties = {
 };
 
 const headerSelectStyle: React.CSSProperties = { ...headerInputStyle, width: 116 };
-
-const filterSubmitStyle: React.CSSProperties = {
-  background: "var(--green)",
-  color: "var(--on-green)",
-  border: "none",
-  borderRadius: 6,
-  padding: "4px 8px",
-  fontSize: 11,
-  fontWeight: 700,
-  cursor: "pointer",
-};
 
 const secondaryActionButtonStyle: React.CSSProperties = {
   background: "none",

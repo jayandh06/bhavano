@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import type { ConversationDetailDto } from "@bhavano/types";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
@@ -17,8 +17,16 @@ export default function ConversationScreen() {
   const { colors } = useAppTheme();
   const { accessToken, userId } = useHomeSheets();
   const router = useRouter();
-  const { data: initialMessages, isLoading } = useMessagesQuery(accessToken, id);
+  const { data: initialMessages, isLoading, refetch } = useMessagesQuery(accessToken, id);
   const [conversation, setConversation] = useState<ConversationDetailDto | null>(null);
+
+  // Same reason the list refetches on focus: this screen stays mounted under the tab stack, and
+  // iOS socket reconnects can miss `new_message` while the thread is open — HTTP refetch heals it.
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
 
   // Which listing this thread is about, for the header/listing bar. Best-effort: a failure
   // costs those, not the conversation itself, which is the part the user came for.

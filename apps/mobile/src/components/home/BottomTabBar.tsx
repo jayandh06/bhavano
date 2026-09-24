@@ -1,8 +1,10 @@
 import { Pressable, Text, View } from "react-native";
 import { usePathname, useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { formatUnreadCount } from "@bhavano/types/unreadCount";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
+import { useUnreadCountQuery } from "../../lib/queries";
 import { Icon, type IconName } from "../Icon";
 
 interface TabDef {
@@ -46,13 +48,19 @@ function isActive(pathname: string, tab: TabDef): boolean {
  * screens reachable from exactly one tab — see the Messages thread's own fix) hid the bar
  * everywhere else. This bar being a permanent part of the frame, not owned by any one
  * navigator, is what makes it visible on literally every screen instead.
+ *
+ * The Messages tab reads the shared `["unread"]` query (kept live by `useUnreadCountSync` in
+ * `app/_layout.tsx`) and paints a count badge on the icon — same total the OS app-icon badge
+ * uses. When Messages moved from a Home-header button into this bar, the header badge was
+ * removed but this one was never wired; without it the synced count had nowhere visible to go.
  */
 export function BottomTabBar() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { isLoggedIn, requireLogin } = useHomeSheets();
+  const { isLoggedIn, requireLogin, accessToken } = useHomeSheets();
+  const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
 
   return (
     <View
@@ -68,11 +76,14 @@ export function BottomTabBar() {
       {TABS.map((tab) => {
         const active = isActive(pathname, tab);
         const color = active ? colors.onGreen : colors.onGreenMuted;
+        const showUnread = tab.key === "messages" && isLoggedIn && unreadCount > 0;
         return (
           <Pressable
             key={tab.key}
             accessibilityRole="button"
-            accessibilityLabel={tab.label}
+            accessibilityLabel={
+              showUnread ? `${tab.label}, ${formatUnreadCount(unreadCount)} unread` : tab.label
+            }
             onPress={() => {
               if (tab.authRequired && !isLoggedIn) {
                 requireLogin();
@@ -82,7 +93,32 @@ export function BottomTabBar() {
             }}
             style={{ flex: 1, alignItems: "center", gap: 2, paddingVertical: 2 }}
           >
-            <Icon name={tab.icon} size={20} color={color} />
+            <View style={{ position: "relative" }}>
+              <Icon name={tab.icon} size={20} color={color} />
+              {showUnread && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -6,
+                    // Nudge further left when capped at "99+" so the wider pill doesn't clip.
+                    right: unreadCount > 99 ? -14 : -10,
+                    minWidth: unreadCount > 99 ? 22 : 16,
+                    height: 16,
+                    borderRadius: 8,
+                    paddingHorizontal: 4,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    // Contrast against the green tab chrome — same "attention pill" role as the
+                    // web header badge, just inverted so it stays readable on brand green.
+                    backgroundColor: colors.onGreen,
+                  }}
+                >
+                  <Text style={{ fontSize: 9, fontWeight: "700", color: colors.green, lineHeight: 11 }}>
+                    {formatUnreadCount(unreadCount)}
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text style={{ fontSize: 10, fontWeight: "700", color }}>{tab.label}</Text>
           </Pressable>
         );

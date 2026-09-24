@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { KeyboardStickyView } from "react-native-keyboard-controller";
 import { Stack, useRouter } from "expo-router";
 import type { MessageDeletedEvent, MessageDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -45,14 +45,24 @@ export function ConversationThread({
     setMessages(initialMessages);
   }, [initialMessages]);
 
+  function appendMessage(msg: MessageDto) {
+    setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+  }
+
   useEffect(() => {
     if (!accessToken || !conversationId) return;
     const socket = getSocket(accessToken);
-    socket.emit("join_conversation", { conversationId });
+    function join() {
+      socket.emit("join_conversation", { conversationId });
+    }
+    join();
+    // iOS often reconnects after backgrounding without re-joining the room — without this the
+    // thread stays open but never receives `new_message` until the screen remounts.
+    socket.on("connect", join);
 
     function onNewMessage(msg: MessageDto) {
       if (msg.conversationId !== conversationId) return;
-      setMessages((prev) => [...prev, msg]);
+      appendMessage(msg);
       // The thread is open in front of the user — clear it straight away so the unread badge
       // doesn't tick up for a message they're already looking at.
       if (msg.senderId !== userId) markConversationRead(accessToken!, conversationId).catch(() => undefined);
@@ -66,6 +76,7 @@ export function ConversationThread({
     socket.on("new_message", onNewMessage);
     socket.on("message_deleted", onMessageDeleted);
     return () => {
+      socket.off("connect", join);
       socket.off("new_message", onNewMessage);
       socket.off("message_deleted", onMessageDeleted);
     };
@@ -92,7 +103,11 @@ export function ConversationThread({
       router.replace(`/messages/${result.conversationId}`);
       return;
     }
-    await sendMessage(accessToken, conversationId, body);
+    // Append from the HTTP response — don't wait on the socket echo. iOS often drops that event
+    // (stale join / reconnect), which left "Send" looking like a no-op until leave/return
+    // remounted and refetched. Dedupe by id when the socket also delivers the same message.
+    const sent = await sendMessage(accessToken, conversationId, body);
+    appendMessage(sent);
   }
 
   function onDelete(messageId: string) {
@@ -109,14 +124,11 @@ export function ConversationThread({
     ]);
   }
 
-  // react-native-keyboard-controller's KeyboardAvoidingView, not RN's own — this app's Android
-  // keyboard-avoidance (KeyboardAvoidingView + the manifest's windowSoftInputMode="pan") turned
-  // out unreliable under SDK 54's mandatory edge-to-edge, a known ecosystem-wide conflict; this
-  // library tracks the real keyboard frame via its own native module instead of depending on
-  // window resize/pan, so "padding" is now unconditional rather than iOS-only. See
-  // app/_layout.tsx's KeyboardProvider for the required root wrapper.
+  // KeyboardStickyView (not KeyboardAvoidingView): the composer must pin above the keyboard while
+  // the FlatList shrinks above it. KAV + a non-flex FlatList left the input at the content bottom
+  // (often under the keyboard / below the tab bar). See app/_layout.tsx's KeyboardProvider.
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader
         title="Conversation"
@@ -140,9 +152,11 @@ export function ConversationThread({
       )}
       <FlatList
         ref={listRef}
-        contentContainerStyle={{ padding: 16, gap: 10 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, gap: 10, flexGrow: 1, justifyContent: "flex-end" }}
         data={messages}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const isMine = item.senderId === userId;
           const isDeleted = item.deletedAt != null;
@@ -169,20 +183,22 @@ export function ConversationThread({
           return <Pressable onLongPress={() => onDelete(item.id)}>{bubble}</Pressable>;
         }}
       />
-      <View style={[styles.inputRow, { borderColor: colors.border }]}>
-        <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          placeholder="Type a message…"
-          placeholderTextColor={colors.muted}
-          multiline
-          style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-        />
-        <Pressable onPress={onSend} style={[styles.sendButton, { backgroundColor: colors.green }]}>
-          <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send</Text>
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+      <KeyboardStickyView>
+        <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.bg }]}>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="Type a message…"
+            placeholderTextColor={colors.muted}
+            multiline
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+          />
+          <Pressable onPress={onSend} style={[styles.sendButton, { backgroundColor: colors.green }]}>
+            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send</Text>
+          </Pressable>
+        </View>
+      </KeyboardStickyView>
+    </View>
   );
 }
 
