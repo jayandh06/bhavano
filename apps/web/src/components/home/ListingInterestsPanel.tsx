@@ -59,7 +59,11 @@ export function ListingInterestsPanel({
     setMessagingUserId(userId);
     const result = await openInterestConversationAction(listingId, userId);
     setMessagingUserId(null);
-    if (result.requiresLogin || !result.conversationId) {
+    if (result.requiresLogin) {
+      setError("Sign in to message this buyer");
+      return;
+    }
+    if (!result.conversationId) {
       setError(result.error ?? "Couldn't open the conversation");
       return;
     }
