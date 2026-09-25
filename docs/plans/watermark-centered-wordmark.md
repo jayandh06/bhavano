@@ -15,7 +15,7 @@ Videos have no watermark at all: `transcodeAndExtractPoster` in
 `apps/bff/src/video-processing/ffmpeg.ts` only scales and re-encodes, and the poster frame is
 un-marked too.
 
-Decisions from the user: a **large, centered "Bhavano" text** at about **40% opacity**, with the
+Decisions from the user: a **large, centered "Bhavano" text** at about **22% opacity (lightened from 40% on 2026-09-25 as too prominent; logo 60%)**, with the
 **small logo kept in the bottom-right**, on photos, videos and video posters. **Existing photos are
 redone; videos only from now on** (video originals are deleted after 7 days by an R2 lifecycle rule,
 so old videos can't be re-made cleanly).

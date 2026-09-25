@@ -3,7 +3,8 @@ import { WORDMARK_BOX, WORDMARK_PATH } from './watermark-wordmark';
 
 /** Share of the image width the centered "Bhavano" text spans. */
 const TEXT_WIDTH_RATIO = 0.46;
-const TEXT_OPACITY = 0.4;
+const TEXT_OPACITY = 0.22;
+const LOGO_OPACITY = 0.6;
 
 /** Full-canvas transparent SVG carrying the Bhavano mark: a large centered wordmark plus the small
  * logo in the bottom-right corner. Everything scales off the actual output size, so the mark reads
@@ -18,7 +19,7 @@ export function buildWatermarkSvg(width: number, height: number): Buffer {
   const tx = (width - (x2 - x1) * scale) / 2 - x1 * scale;
   const ty = (height - textHeight) / 2 - y1 * scale;
   // Stroke is set in path units, so divide the wanted pixel width by the scale.
-  const strokeWidth = Math.max(1, width * 0.007) / scale;
+  const strokeWidth = Math.max(1, width * 0.004) / scale;
 
   const margin = Math.round(width * 0.03);
   const logoSize = Math.round(width * 0.11);
@@ -30,7 +31,7 @@ export function buildWatermarkSvg(width: number, height: number): Buffer {
       <path d="${WORDMARK_PATH}" fill="#000000" stroke="#000000" stroke-width="${strokeWidth.toFixed(2)}" stroke-linejoin="round"/>
       <path d="${WORDMARK_PATH}" fill="#ffffff"/>
     </g>
-    <image opacity="0.82" href="data:image/png;base64,${BHAVANO_LOGO_PNG_BASE64}"
+    <image opacity="${LOGO_OPACITY}" href="data:image/png;base64,${BHAVANO_LOGO_PNG_BASE64}"
            x="${logoX}" y="${logoY}" width="${logoSize}" height="${logoSize}" />
   </svg>`;
 
