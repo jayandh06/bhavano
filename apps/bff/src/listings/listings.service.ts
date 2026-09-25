@@ -1244,8 +1244,10 @@ export class ListingsService {
     if (input.checkoutIntent?.includeInstantAlerts && !wantsBoost) {
       throw new BadRequestException('Instant Alerts requires a Boost selection at publish time');
     }
+    // Admin kill-switch: go live even when fee/boost would normally hold the ad in pending_checkout.
     const pendingCheckout =
-      platformFeeApplies(input.category, platformFeeSettings) || wantsBoost;
+      !platformFeeSettings.allowLivePublishWithPendingPayment &&
+      (platformFeeApplies(input.category, platformFeeSettings) || wantsBoost);
     const now = new Date();
 
     // Full mobiles in free text bypass contact-reveal — mask before persist so the stored

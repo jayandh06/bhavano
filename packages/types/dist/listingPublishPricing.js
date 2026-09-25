@@ -21,5 +21,7 @@ function listingPublishCheckoutTotalRupees(category, platformFeeSettings, boostP
     return total;
 }
 function listingPublishRequiresCheckout(category, platformFeeSettings, boostSelection) {
+    if (platformFeeSettings.allowLivePublishWithPendingPayment)
+        return false;
     return (0, platformFeePricing_1.platformFeeFor)(category, platformFeeSettings) > 0 || boostSelection !== null;
 }

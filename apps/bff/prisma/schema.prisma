@@ -906,11 +906,13 @@ model InstantAlertsPriceSetting {
 /** Singleton — mandatory listing platform fee per category tier when > 0. See
  * docs/plans/listing-platform-fee-and-checkout-gate.md. */
 model PlatformFeeSetting {
-  id                           String   @id
-  propertyListingFee           Int      @default(0)
-  coworkingPgStorageListingFee Int      @default(0)
-  furnitureInteriorsListingFee Int      @default(0)
-  updatedAt                    DateTime @updatedAt
+  id                                  String   @id
+  propertyListingFee                  Int      @default(0)
+  coworkingPgStorageListingFee        Int      @default(0)
+  furnitureInteriorsListingFee        Int      @default(0)
+  /// When true, create() skips pending_checkout even if fee > 0 or boost is selected.
+  allowLivePublishWithPendingPayment  Boolean  @default(false)
+  updatedAt                           DateTime @updatedAt
 }
 
 /** Singleton row (fixed id "singleton", upserted) — admin-editable subscription tier prices and

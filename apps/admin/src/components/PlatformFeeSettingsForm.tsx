@@ -12,6 +12,9 @@ export function PlatformFeeSettingsForm({ initial }: { initial: PlatformFeeSetti
   const [furnitureInteriorsListingFee, setFurnitureInteriorsListingFee] = useState(
     String(initial.furnitureInteriorsListingFee),
   );
+  const [allowLivePublishWithPendingPayment, setAllowLivePublishWithPendingPayment] = useState(
+    initial.allowLivePublishWithPendingPayment ?? false,
+  );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -19,8 +22,11 @@ export function PlatformFeeSettingsForm({ initial }: { initial: PlatformFeeSetti
     propertyListingFee: Number(propertyListingFee || "0"),
     coworkingPgStorageListingFee: Number(coworkingPgStorageListingFee || "0"),
     furnitureInteriorsListingFee: Number(furnitureInteriorsListingFee || "0"),
+    allowLivePublishWithPendingPayment,
   };
-  const valid = Object.values(parsed).every((n) => Number.isInteger(n) && n >= 0);
+  const feeAmountsValid = [parsed.propertyListingFee, parsed.coworkingPgStorageListingFee, parsed.furnitureInteriorsListingFee].every(
+    (n) => Number.isInteger(n) && n >= 0,
+  );
 
   async function onSave() {
     setSaving(true);
@@ -66,6 +72,28 @@ export function PlatformFeeSettingsForm({ initial }: { initial: PlatformFeeSetti
         </div>
       </div>
 
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={allowLivePublishWithPendingPayment}
+            onChange={(e) => setAllowLivePublishWithPendingPayment(e.target.checked)}
+            style={{ marginTop: 3 }}
+          />
+          <span>
+            <span style={{ fontWeight: 700, fontSize: 14, display: "block" }}>
+              Allow live publish even when payment is pending
+            </span>
+            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+              When checked, new ads go live immediately even if a platform fee is set or the
+              advertiser selected Boost / Instant Alerts — the checkout gate is skipped. Existing
+              unpaid drafts stay in pending checkout (use force-publish per listing, or collect
+              payment as usual). Turn off to restore mandatory pay-before-live.
+            </span>
+          </span>
+        </label>
+      </div>
+
       {message && (
         <p style={{ fontSize: 13, color: message.type === "success" ? "var(--green)" : "var(--danger)", margin: 0 }}>
           {message.text}
@@ -74,7 +102,7 @@ export function PlatformFeeSettingsForm({ initial }: { initial: PlatformFeeSetti
 
       <button
         onClick={onSave}
-        disabled={saving || !valid}
+        disabled={saving || !feeAmountsValid}
         style={{
           background: "var(--green)",
           color: "var(--on-green)",
@@ -84,7 +112,7 @@ export function PlatformFeeSettingsForm({ initial }: { initial: PlatformFeeSetti
           fontSize: 14,
           fontWeight: 700,
           cursor: "pointer",
-          opacity: saving || !valid ? 0.6 : 1,
+          opacity: saving || !feeAmountsValid ? 0.6 : 1,
         }}
       >
         {saving ? "Saving…" : "Save platform fee"}

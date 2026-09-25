@@ -1,4 +1,4 @@
-import { IsInt, Min } from 'class-validator';
+import { IsBoolean, IsInt, Min } from 'class-validator';
 
 export class UpdatePlatformFeeDto {
   @IsInt()
@@ -12,4 +12,7 @@ export class UpdatePlatformFeeDto {
   @IsInt()
   @Min(0)
   furnitureInteriorsListingFee!: number;
+
+  @IsBoolean()
+  allowLivePublishWithPendingPayment!: boolean;
 }

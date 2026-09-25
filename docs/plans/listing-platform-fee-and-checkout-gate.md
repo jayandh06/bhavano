@@ -160,18 +160,20 @@ model PlatformFeeSetting {
   propertyListingFee            Int @default(0)
   coworkingPgStorageListingFee  Int @default(0)
   furnitureInteriorsListingFee  Int @default(0)
+  /// Global kill-switch: when true, create() goes live even if fee > 0 or boost selected.
+  allowLivePublishWithPendingPayment Boolean @default(false)
   updatedAt DateTime @updatedAt
 }
 ```
 
 - `PlatformFeeSettingsService` — `getSettings` / `updateSettings` (mirror
   `boost-pricing-settings.service.ts`).
-- `packages/types/src/platformFeePricing.ts` — `PlatformFeeSettings`, defaults (all **0** until
-  admin sets prices), `platformFeeFor(category, settings)`, and
+- `packages/types/src/platformFeePricing.ts` — `PlatformFeeSettings`, defaults (all fees **0**,
+  `allowLivePublishWithPendingPayment: false` until admin sets them), `platformFeeFor(category, settings)`, and
   `platformFeeApplies(category, settings)` → `platformFeeFor(...) > 0`.
-- Admin: new form (e.g. `PlatformFeeSettingsForm.tsx`) on the existing plans/pricing admin page —
-  three non-negative integer fields; help text: **set a tier to ₹0 to turn off the platform fee for
-  that category group** (no separate on/off toggle).
+- Admin: form on the plans/pricing page — three non-negative integer fee fields plus the live-with-pending
+  checkbox; help text: **set a tier to ₹0 to turn off the platform fee for that category group**
+  (no separate on/off toggle for fees).
 - Public read: extend `GET /plans/pricing` with `platformFee: PlatformFeeSettings` (display only;
   checkout re-reads server-side).
 
@@ -310,9 +312,11 @@ Rename/evolve the selector conceptually to **“Publish options”** (implementa
 
 ## Admin app
 
-- New section on plans/pricing page: **Platform fee** — enable toggle + three tier amounts.
-- Copy clarifying: non-zero fee per tier is mandatory for listings in that tier; set **₹0** to
-  disable the fee for that group; boost and boost+IA stay optional add-ons.
+- Admin: form on plans/pricing — three fee tiers + **Allow live publish even when payment is
+  pending** checkbox (`allowLivePublishWithPendingPayment`).
+- Copy clarifying: non-zero fee per tier is mandatory for listings in that tier (unless the live
+  toggle is on); set **₹0** to disable the fee for that group; boost and boost+IA stay optional
+  add-ons.
 - No change to boost placement checkbox except help text cross-linking fee behavior.
 
 ---
@@ -339,6 +343,14 @@ Rename/evolve the selector conceptually to **“Publish options”** (implementa
 Razorpay via `POST /admin/listings/:id/force-publish` (admin listing detail → “Publish without
 payment”). Reuses `ListingsService.completePendingPublish` so post-live side effects still run,
 and posts a moderation-thread note. Does **not** mark a Payment row paid.
+
+**Allow live with pending payment (2026-09-25).** Global admin toggle on `PlatformFeeSetting`:
+`allowLivePublishWithPendingPayment` (default `false`). When **true**, `ListingsService.create()`
+skips `pending_checkout` even if a platform fee applies or Boost/IA was selected — ads go live
+immediately. Web/mobile `listingPublishRequiresCheckout` also returns false so wizards do not open
+Razorpay. Fee amounts stay configured (for when the toggle is off again). Existing
+`pending_checkout` rows are **not** auto-published; use force-publish or collect payment. Toggle
+lives on Admin → Plans → Platform fee.
 
 Phase 1 matches the user ask for Preview + post screens **when fee applies for the category**
 (review-step fee UI) and fixes the documented Preview auto-checkout failure mode.

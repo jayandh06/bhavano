@@ -10,18 +10,13 @@ export class PlatformFeeSettingsService {
   async getSettings(): Promise<PlatformFeeSettings> {
     const existing = await this.prisma.platformFeeSetting.findUnique({ where: { id: PLATFORM_FEE_SETTINGS_ID } });
     if (existing) {
-      const { propertyListingFee, coworkingPgStorageListingFee, furnitureInteriorsListingFee } = existing;
-      return { propertyListingFee, coworkingPgStorageListingFee, furnitureInteriorsListingFee };
+      return this.toSettings(existing);
     }
 
     const created = await this.prisma.platformFeeSetting.create({
       data: { id: PLATFORM_FEE_SETTINGS_ID, ...DEFAULT_PLATFORM_FEE_SETTINGS },
     });
-    return {
-      propertyListingFee: created.propertyListingFee,
-      coworkingPgStorageListingFee: created.coworkingPgStorageListingFee,
-      furnitureInteriorsListingFee: created.furnitureInteriorsListingFee,
-    };
+    return this.toSettings(created);
   }
 
   async updateSettings(input: PlatformFeeSettings): Promise<PlatformFeeSettings> {
@@ -30,10 +25,20 @@ export class PlatformFeeSettingsService {
       update: input,
       create: { id: PLATFORM_FEE_SETTINGS_ID, ...input },
     });
+    return this.toSettings(row);
+  }
+
+  private toSettings(row: {
+    propertyListingFee: number;
+    coworkingPgStorageListingFee: number;
+    furnitureInteriorsListingFee: number;
+    allowLivePublishWithPendingPayment: boolean;
+  }): PlatformFeeSettings {
     return {
       propertyListingFee: row.propertyListingFee,
       coworkingPgStorageListingFee: row.coworkingPgStorageListingFee,
       furnitureInteriorsListingFee: row.furnitureInteriorsListingFee,
+      allowLivePublishWithPendingPayment: row.allowLivePublishWithPendingPayment,
     };
   }
 }

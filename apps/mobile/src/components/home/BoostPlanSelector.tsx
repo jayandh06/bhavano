@@ -41,14 +41,21 @@ export function BoostPlanSelector({
   const { colors } = useAppTheme();
   const effective: BoostPlanSelection = value ?? { duration: 15, includeInstantAlerts: true };
   const platformFeeRupees =
-    platformFeeSettings && platformFeeFor(category, platformFeeSettings) > 0
+    platformFeeSettings &&
+    !platformFeeSettings.allowLivePublishWithPendingPayment &&
+    platformFeeFor(category, platformFeeSettings) > 0
       ? platformFeeFor(category, platformFeeSettings)
       : 0;
   const dueToday =
     platformFeeRupees > 0 || value
       ? listingPublishCheckoutTotalRupees(
           category,
-          platformFeeSettings ?? { propertyListingFee: 0, coworkingPgStorageListingFee: 0, furnitureInteriorsListingFee: 0 },
+          platformFeeSettings ?? {
+            propertyListingFee: 0,
+            coworkingPgStorageListingFee: 0,
+            furnitureInteriorsListingFee: 0,
+            allowLivePublishWithPendingPayment: false,
+          },
           pricing,
           value,
         )

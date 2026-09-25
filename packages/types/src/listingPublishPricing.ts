@@ -31,5 +31,6 @@ export function listingPublishRequiresCheckout(
   platformFeeSettings: PlatformFeeSettings,
   boostSelection: BoostPlanSelection | null,
 ): boolean {
+  if (platformFeeSettings.allowLivePublishWithPendingPayment) return false;
   return platformFeeFor(category, platformFeeSettings) > 0 || boostSelection !== null;
 }

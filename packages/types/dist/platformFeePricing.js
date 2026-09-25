@@ -7,6 +7,7 @@ exports.DEFAULT_PLATFORM_FEE_SETTINGS = {
     propertyListingFee: 0,
     coworkingPgStorageListingFee: 0,
     furnitureInteriorsListingFee: 0,
+    allowLivePublishWithPendingPayment: false,
 };
 const PROPERTY_CATEGORIES = new Set(["house", "apartment", "villa", "plot", "commercial"]);
 const MID_VALUE_CATEGORIES = new Set(["coworking", "pg", "storage"]);

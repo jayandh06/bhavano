@@ -68,7 +68,7 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
     boostPricingSettingsService,
     {} as SubscriptionPlanSettingsService,
     instantAlertsPricingSettingsService,
-    { getSettings: jest.fn().mockResolvedValue({ propertyListingFee: 0, coworkingPgStorageListingFee: 0, furnitureInteriorsListingFee: 0 }) } as unknown as import('../plans/platform-fee-settings.service').PlatformFeeSettingsService,
+    { getSettings: jest.fn().mockResolvedValue({ propertyListingFee: 0, coworkingPgStorageListingFee: 0, furnitureInteriorsListingFee: 0, allowLivePublishWithPendingPayment: false }) } as unknown as import('../plans/platform-fee-settings.service').PlatformFeeSettingsService,
     {} as AccountDeletionService,
     {} as SavedSearchesService,
   );
