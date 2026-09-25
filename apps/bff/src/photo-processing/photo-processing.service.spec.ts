@@ -121,6 +121,29 @@ describe('PhotoProcessingService', () => {
     expect(doneCall?.where).toMatchObject({ id: job.id, status: 'processing' });
   });
 
+  it('takes the newest pending jobs first, so a fresh upload never waits behind a large requeue', async () => {
+    const findMany = jest.fn().mockResolvedValueOnce([]);
+    const prisma = {
+      photoVariantJob: { findMany },
+    } as unknown as PrismaService;
+    const storage = {} as unknown as R2StorageService;
+
+    const service = new PhotoProcessingService(
+      prisma,
+      storage,
+      fakeCdnPurge(),
+      fakeConfig(),
+    );
+    await service.processPending();
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: 'pending' },
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+  });
+
   it('marks a job done normally when nothing reset it mid-flight', async () => {
     const job = makeJob({ status: 'processing' });
     const { fn: updateMany, calls } = trackedUpdateMany('processing');

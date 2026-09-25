@@ -33,6 +33,12 @@ export class PhotoProcessingService {
     try {
       const jobs = await this.prisma.photoVariantJob.findMany({
         where: { status: 'pending' },
+        // Newest first. Without an order Postgres hands back rows in whatever order they happen to
+        // be stored, so a large requeue (e.g. re-making every photo for a new watermark) made a
+        // photo uploaded during it wait behind the whole backlog — a new listing showed no photos
+        // for hours. Requeued jobs keep their original createdAt, so a fresh upload always sorts
+        // ahead of them.
+        orderBy: { createdAt: 'desc' },
         take: BATCH_SIZE,
       });
 
