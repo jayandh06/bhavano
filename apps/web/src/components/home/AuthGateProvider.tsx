@@ -10,15 +10,22 @@ import {
   signInWithGoogleAction,
   verifyOtpAction,
 } from "@/app/actions/auth";
-import { requestEmailCodeAction, resolvePostLoginRedirectAction, verifyEmailAction } from "@/app/actions/users";
+import {
+  fetchProfileAction,
+  requestEmailCodeAction,
+  resolvePostLoginRedirectAction,
+  verifyEmailAction,
+} from "@/app/actions/users";
 import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
 import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 import { GOOGLE_SIGNUP_TRACKED_KEY } from "./SignupConversionTracker";
 import { GoogleIcon } from "./GoogleIcon";
 import { Icon } from "./Icon";
+import { ProfileBasicsCloseButton, ProfileBasicsStep, type ProfileBasicsValues } from "./ProfileBasicsStep";
 
-/** `email` and `emailCode` only ever follow a brand-new phone signup — see handleVerifyOtp. */
-type LoginStep = "choose" | "phone" | "otp" | "email" | "emailCode";
+/** `basics` = name (required) + preferred city (optional) after login — see
+ * docs/plans/post-login-name-and-city.md. `email`/`emailCode` are legacy unused steps. */
+type LoginStep = "choose" | "phone" | "otp" | "email" | "emailCode" | "basics";
 
 interface AuthGateContextValue {
   /** `redirectTo` sends the user back to a specific path once logged in, instead of wherever the
@@ -59,6 +66,11 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [emailCode, setEmailCode] = useState("");
   const [redirectTo, setRedirectTo] = useState<string | undefined>(undefined);
   const [phoneOnly, setPhoneOnly] = useState(false);
+  const [basicsInitial, setBasicsInitial] = useState<ProfileBasicsValues>({
+    name: "",
+    cityId: null,
+    cityName: null,
+  });
   const onSuccessRef = useRef<(() => void) | undefined>(undefined);
 
   const router = useRouter();
@@ -79,7 +91,36 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   }
 
   function closeModal() {
+    // Name is mandatory on the basics step — backdrop / X must not abandon a phone signup
+    // without one. Skip is fine once a provider already gave us a name.
+    if (loginStep === "basics" && !basicsInitial.name.trim()) return;
     setShowLoginModal(false);
+  }
+
+  /** After OTP/Google succeeds: ask for name (required) and preferred city (optional) when
+   * either is missing — docs/plans/post-login-name-and-city.md. */
+  async function finishAuthOrPromptBasics() {
+    const profileResult = await fetchProfileAction();
+    if (profileResult.requiresLogin) {
+      onLoginSuccess();
+      return;
+    }
+    const profile = profileResult.profile;
+    const needsName = !profile.name?.trim();
+    const needsCity = !profile.cityId;
+    if (needsName || needsCity) {
+      setBasicsInitial({
+        name: profile.name?.trim() ?? "",
+        cityId: profile.cityId,
+        cityName: profile.cityName,
+      });
+      setError(null);
+      setPending(false);
+      setLoginStep("basics");
+      setShowLoginModal(true);
+      return;
+    }
+    onLoginSuccess();
   }
 
   function onLoginSuccess() {
@@ -132,8 +173,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     setPending(true);
     setError(null);
     const result = await verifyOtpAction(phone, otp);
-    setPending(false);
     if (!result.success) {
+      setPending(false);
       setError(result.error ?? "Incorrect OTP");
       return;
     }
@@ -145,13 +186,9 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
         method: "phone",
         ...(phoneE164 ? { user_data: { phone_number: phoneE164 } } : {}),
       });
-      // The missing-email ask no longer happens here — the first session is left alone. It's
-      // raised on a later login by ProfileCompletionDialog (docs/plans/profile-completion-dialog.md).
-      // The "email"/"emailCode" step markup below is now unreachable but left in place: it's
-      // inert, and the dialog may fold the same in-sheet email step back here later.
     }
 
-    onLoginSuccess();
+    await finishAuthOrPromptBasics();
   }
 
   /**
@@ -257,8 +294,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
         setError("Sign-in was not completed.");
         return;
       }
-      onLoginSuccess();
       void trackGoogleSignup();
+      void finishAuthOrPromptBasics();
     }
 
     // A closed window is not proof of failure — the message is the normal path, not a
@@ -269,8 +306,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
       cleanup();
       void hasSessionAction().then((signedIn) => {
         if (signedIn) {
-          onLoginSuccess();
           void trackGoogleSignup();
+          void finishAuthOrPromptBasics();
           return;
         }
         // Closed the window without finishing — put the choices back, on the step they left.
@@ -301,10 +338,18 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 {loginStep === "otp" && "Enter the OTP"}
                 {loginStep === "email" && "Add your email"}
                 {loginStep === "emailCode" && "Confirm your email"}
+                {loginStep === "basics" && "Complete your profile"}
               </div>
-              <button onClick={closeModal} className="bg-transparent border-0 text-xl cursor-pointer text-muted">
-                <Icon name="close" />
-              </button>
+              {loginStep === "basics" ? (
+                <ProfileBasicsCloseButton
+                  canDismiss={basicsInitial.name.trim().length > 0}
+                  onClose={closeModal}
+                />
+              ) : (
+                <button onClick={closeModal} className="bg-transparent border-0 text-xl cursor-pointer text-muted">
+                  <Icon name="close" />
+                </button>
+              )}
             </div>
 
             {loginStep === "choose" && (
@@ -439,6 +484,18 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                   ← Back
                 </button>
               </>
+            )}
+
+            {loginStep === "basics" && (
+              <ProfileBasicsStep
+                initial={basicsInitial}
+                pending={pending}
+                error={error}
+                onError={setError}
+                onPending={setPending}
+                onSaved={() => onLoginSuccess()}
+                onSkip={() => onLoginSuccess()}
+              />
             )}
           </div>
         </div>

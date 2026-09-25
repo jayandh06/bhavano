@@ -41,6 +41,7 @@ import { getAnalyticsSessionId } from "../lib/analyticsSession";
 import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
 import { Icon } from "../components/Icon";
 import { GoogleIcon } from "../components/GoogleIcon";
+import { ProfileBasicsStep, type ProfileBasicsValues } from "../components/home/ProfileBasicsStep";
 import { appWebUrl } from "../lib/appWebUrl";
 
 // Exported so PostAdWizard can re-read the just-written token directly after a login it
@@ -89,7 +90,7 @@ export function useHomeSheets(): HomeSheetsContextValue {
   return ctx;
 }
 
-type LoginStep = "choose" | "phone" | "otp";
+type LoginStep = "choose" | "phone" | "otp" | "basics";
 
 export function HomeSheetsProvider({
   children,
@@ -127,6 +128,11 @@ export function HomeSheetsProvider({
   const [otp, setOtp] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [basicsInitial, setBasicsInitial] = useState<ProfileBasicsValues>({
+    name: "",
+    cityId: null,
+    cityName: null,
+  });
 
   const googleSignIn = useGoogleSignIn();
 
@@ -322,13 +328,41 @@ export function HomeSheetsProvider({
     if (Platform.OS !== "web") await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
     setIsLoggedIn(true);
     setAccessToken(accessToken);
-    loginSheetRef.current?.dismiss();
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2200);
     // Register this device for "new message" pushes now that we have a user to attach it to.
     registerForPushAsync(accessToken).then((t) => {
       if (t) pushTokenRef.current = t;
     });
+
+    // Name (required) + preferred city (optional) when either is missing — see
+    // docs/plans/post-login-name-and-city.md. Keep the login sheet open for this step.
+    try {
+      const nextProfile = await fetchProfile(accessToken);
+      setProfile(nextProfile);
+      const needsName = !nextProfile.name?.trim();
+      const needsCity = !nextProfile.cityId;
+      if (needsName || needsCity) {
+        setBasicsInitial({
+          name: nextProfile.name?.trim() ?? "",
+          cityId: nextProfile.cityId,
+          cityName: nextProfile.cityName,
+        });
+        setError(null);
+        setPending(false);
+        setLoginStep("basics");
+        loginSheetRef.current?.present();
+        return;
+      }
+    } catch {
+      // Profile fetch failed — don't block login on the basics prompt.
+    }
+
+    finishLoginSuccess(accessToken);
+  }
+
+  function finishLoginSuccess(token: string | null = accessToken) {
+    loginSheetRef.current?.dismiss();
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2200);
     // Resumes whatever action opened the login sheet (e.g. Message/View Contact on a listing
     // card) — same "onSuccess" pattern as web's AuthGateProvider.
     const resume = onSuccessRef.current;
@@ -337,17 +371,26 @@ export function HomeSheetsProvider({
       resume();
       return;
     }
-    try {
-      const attention = await fetchSellerAttention(accessToken);
-      if (attention.pendingCheckoutCount === 0) return;
-      if (attention.pendingCheckoutListingId) {
-        router.push(`/my-listings?openPublishCheckout=${encodeURIComponent(attention.pendingCheckoutListingId)}`);
-      } else {
-        router.push("/my-listings");
+    if (!token) return;
+    void (async () => {
+      try {
+        const attention = await fetchSellerAttention(token);
+        if (attention.pendingCheckoutCount === 0) return;
+        if (attention.pendingCheckoutListingId) {
+          router.push(`/my-listings?openPublishCheckout=${encodeURIComponent(attention.pendingCheckoutListingId)}`);
+        } else {
+          router.push("/my-listings");
+        }
+      } catch {
+        // Best-effort routing — a failed attention fetch must not block login.
       }
-    } catch {
-      // Best-effort routing — a failed attention fetch must not block login.
-    }
+    })();
+  }
+
+  function onBasicsSaved(saved: ProfileBasicsValues & { city: City | null }) {
+    if (saved.city) setCity(saved.city);
+    void refreshProfile();
+    finishLoginSuccess();
   }
 
   /** Signs the user out on this device. The BFF call is best-effort and deliberately not awaited
@@ -574,7 +617,9 @@ export function HomeSheetsProvider({
         * gorhom handles automatically, Android needs the window's own resize mode set). */}
       <BottomSheetModal
         ref={loginSheetRef}
-        snapPoints={["55%"]}
+        snapPoints={loginStep === "basics" ? ["72%"] : ["55%"]}
+        // Name is mandatory — don't let a phone signup swipe the sheet away without one.
+        enablePanDownToClose={loginStep !== "basics" || basicsInitial.name.trim().length > 0}
         backgroundStyle={{ backgroundColor: colors.surface }}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
@@ -708,6 +753,15 @@ export function HomeSheetsProvider({
                 <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
               </Pressable>
             </>
+          )}
+
+          {loginStep === "basics" && accessToken && (
+            <ProfileBasicsStep
+              accessToken={accessToken}
+              initial={basicsInitial}
+              onSaved={onBasicsSaved}
+              onSkip={() => finishLoginSuccess()}
+            />
           )}
         </KeyboardAvoidingView>
         </BottomSheetView>
