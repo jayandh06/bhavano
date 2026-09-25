@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useIsFocused, useRouter } from "expo-router";
 import type { MessageDeletedEvent, MessageDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { deleteMessage, markConversationRead, sendFirstMessage, sendMessage } from "../../lib/bffClient";
@@ -37,6 +37,12 @@ export function ConversationThread({
 }) {
   const { colors } = useAppTheme();
   const router = useRouter();
+  // The Messages tab stack keeps this screen mounted after you leave a thread (or switch to
+  // Home), so socket handlers would still run and auto-mark the conversation read — which made
+  // the bottom-tab unread badge flash to 1 then immediately clear. Only mark read while focused.
+  const isFocused = useIsFocused();
+  const isFocusedRef = useRef(isFocused);
+  isFocusedRef.current = isFocused;
   const [messages, setMessages] = useState<MessageDto[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const listRef = useRef<FlatList>(null);
@@ -63,9 +69,10 @@ export function ConversationThread({
     function onNewMessage(msg: MessageDto) {
       if (msg.conversationId !== conversationId) return;
       appendMessage(msg);
-      // The thread is open in front of the user — clear it straight away so the unread badge
-      // doesn't tick up for a message they're already looking at.
-      if (msg.senderId !== userId) markConversationRead(accessToken!, conversationId).catch(() => undefined);
+      // Only clear unread while this thread is actually on screen — see isFocused note above.
+      if (msg.senderId !== userId && isFocusedRef.current) {
+        markConversationRead(accessToken!, conversationId).catch(() => undefined);
+      }
     }
     function onMessageDeleted(payload: MessageDeletedEvent) {
       if (payload.conversationId !== conversationId) return;
@@ -83,8 +90,10 @@ export function ConversationThread({
   }, [conversationId, accessToken, userId]);
 
   useEffect(() => {
-    if (accessToken && conversationId) markConversationRead(accessToken, conversationId).catch(() => undefined);
-  }, [conversationId, accessToken]);
+    if (accessToken && conversationId && isFocused) {
+      markConversationRead(accessToken, conversationId).catch(() => undefined);
+    }
+  }, [conversationId, accessToken, isFocused]);
 
   useEffect(() => {
     listRef.current?.scrollToEnd({ animated: true });
