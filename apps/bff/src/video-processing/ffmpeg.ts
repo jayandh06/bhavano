@@ -60,6 +60,12 @@ function run(bin: string, args: string[], timeoutMs: number): Promise<SpawnResul
 interface FfprobeStream {
   codec_type: string;
   duration?: string;
+  width?: number;
+  height?: number;
+  /** Older ffmpeg reports a phone's portrait tag here... */
+  tags?: { rotate?: string };
+  /** ...newer ffmpeg reports it as a Display Matrix side-data entry. */
+  side_data_list?: { rotation?: number }[];
 }
 interface FfprobeOutput {
   format?: { duration?: string };
@@ -68,6 +74,31 @@ interface FfprobeOutput {
 
 export interface ProbeResult {
   durationSec: number;
+  /** As the video is *displayed* — already swapped for a 90°/270° rotation tag, since ffmpeg
+   * auto-rotates on decode and every later filter sees the rotated frame. */
+  width: number;
+  height: number;
+}
+
+/** True when the stream is tagged as rotated a quarter turn, i.e. stored landscape but shown
+ * portrait (or the reverse) — how phones record portrait video. */
+function isQuarterTurned(stream: FfprobeStream): boolean {
+  const rotations = [
+    Number(stream.tags?.rotate ?? NaN),
+    ...(stream.side_data_list ?? []).map((d) => Number(d.rotation ?? NaN)),
+  ];
+  return rotations.some((r) => Number.isFinite(r) && Math.abs(Math.round(r / 90)) % 2 === 1);
+}
+
+/** Frame size after the transcode's own `scale=w=maxLongEdge:h=maxLongEdge:
+ * force_original_aspect_ratio=decrease:force_divisible_by=2` filter — computed here so the
+ * watermark image can be rendered at exactly that size before ffmpeg runs. Note that filter fits
+ * the frame *inside* the box in both directions, so a small video is scaled up, not left alone. */
+export function transcodeOutputSize(width: number, height: number): { width: number; height: number } {
+  const box = VIDEO_TRANSCODE.maxLongEdge;
+  const factor = Math.min(box / width, box / height);
+  const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
+  return { width: even(width * factor), height: even(height * factor) };
 }
 
 /** Server-side duration verification — the tier-enforcement mechanism, so a client-reported
@@ -101,14 +132,26 @@ export async function probeVideo(filePath: string): Promise<ProbeResult> {
     throw new VideoProbeError(`Video is longer than the maximum allowed ${ABSOLUTE_MAX_DURATION_SEC}s`);
   }
 
-  return { durationSec };
+  const rawWidth = Number(videoStream.width ?? NaN);
+  const rawHeight = Number(videoStream.height ?? NaN);
+  if (!Number.isFinite(rawWidth) || !Number.isFinite(rawHeight) || rawWidth <= 0 || rawHeight <= 0) {
+    throw new VideoProbeError('Could not determine video dimensions');
+  }
+  const turned = isQuarterTurned(videoStream);
+
+  return { durationSec, width: turned ? rawHeight : rawWidth, height: turned ? rawWidth : rawHeight };
 }
 
 /** One ffmpeg invocation producing both the normalized playback file and a poster frame — a
  * single decode pass over the (potentially large) original rather than two, since both derive
- * from the same source. See docs/plans/listing-video-uploads.md for why each flag is there. */
+ * from the same source. See docs/plans/listing-video-uploads.md for why each flag is there.
+ *
+ * `watermarkPngPath` is a transparent PNG already sized to the transcode's output frame (see
+ * transcodeOutputSize) and is overlaid on every frame; the poster is split off *after* the overlay,
+ * so it carries the mark too. See docs/plans/watermark-centered-wordmark.md. */
 export async function transcodeAndExtractPoster(
   inputPath: string,
+  watermarkPngPath: string,
   outputVideoPath: string,
   outputPosterPath: string,
   durationSec: number,
@@ -127,16 +170,19 @@ export async function transcodeAndExtractPoster(
         '-nostats',
         '-i',
         inputPath,
+        '-i',
+        watermarkPngPath,
         // Hard cap regardless of what ffprobe reported — belt-and-suspenders against a container
         // whose metadata disagrees with its actual stream length.
         '-t',
         String(ABSOLUTE_MAX_DURATION_SEC + 10),
+        '-filter_complex',
+        `[0:v:0]scale=w=${maxLongEdge}:h=${maxLongEdge}:force_original_aspect_ratio=decrease:force_divisible_by=2[scaled];` +
+          `[scaled][1:v]overlay=0:0:format=auto,split=2[vout][pout]`,
         '-map',
-        '0:v:0',
+        '[vout]',
         '-map',
         '0:a:0?', // '?' makes audio optional — silent walkthrough videos are common
-        '-vf',
-        `scale=w=${maxLongEdge}:h=${maxLongEdge}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
         '-c:v',
         'libx264',
         '-preset',
@@ -167,6 +213,8 @@ export async function transcodeAndExtractPoster(
         '-threads',
         '1',
         outputVideoPath,
+        '-map',
+        '[pout]',
         '-ss',
         String(posterTimestamp),
         '-frames:v',

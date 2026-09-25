@@ -280,6 +280,14 @@ Then, mirroring the existing `listingPhoto.createMany`/`photoVariantJob.createMa
   `listingVideos: { where: { status: 'done' }, select: { id: true }, take: 1 }` on every call site
   that lists cards (`list()`, `listMine()`, etc.) — the type system will flag any that's missed.
 
+> **Update (2026-09-25): transcoded videos and posters are watermarked.** The single ffmpeg pass
+> now takes a second input (a transparent PNG of the Bhavano mark, rendered by sharp at the exact
+> output frame size) and uses `-filter_complex` (`scale` → `overlay=0:0` → `split` into the video
+> and the poster) instead of `-vf`, so the poster carries the mark too. The worker re-probes the
+> original for its displayed size (rotation-aware) because only the duration is stored. See
+> `docs/plans/watermark-centered-wordmark.md`. Videos uploaded before this are not re-made (their
+> originals expire after 7 days).
+
 ## Async worker — `apps/bff/src/video-processing/` (new module, mirrors `photo-processing/`)
 
 `VideoProcessingService`, `@Interval(10_000)` (photos poll every 3s; transcoding is far more

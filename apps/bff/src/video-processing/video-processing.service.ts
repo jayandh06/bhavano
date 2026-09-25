@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { unlink } from 'node:fs/promises';
+import { unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
@@ -8,7 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { R2StorageService } from '../storage/r2-storage.service';
 import { videoOriginalKey, videoPosterKey, videoTranscodedKey, POSTER_QUALITY, POSTER_WIDTH } from '../uploads/video-keys';
 import { videoTmpDir } from '../uploads/video-upload.guard-rails';
-import { transcodeAndExtractPoster } from './ffmpeg';
+import { buildWatermarkSvg } from '../photo-processing/watermark';
+import { probeVideo, transcodeAndExtractPoster, transcodeOutputSize } from './ffmpeg';
 
 // Photos poll every 3s; transcoding is far more CPU-expensive on this box's 2 vCPUs, so this is
 // deliberately slower and serialized (batch of 1) rather than photo-processing's batch of 5.
@@ -53,10 +54,18 @@ export class VideoProcessingService {
     const originalPath = join(tmpDir, `${randomUUID()}_original.${job.ext}`);
     const transcodedPath = join(tmpDir, `${randomUUID()}_transcoded.mp4`);
     const posterPath = join(tmpDir, `${randomUUID()}_poster.png`);
+    const watermarkPath = join(tmpDir, `${randomUUID()}_watermark.png`);
 
     try {
       await this.storage.getObjectToFile(videoOriginalKey(job.listingId, job.storageId, job.ext), originalPath);
-      await transcodeAndExtractPoster(originalPath, transcodedPath, posterPath, job.durationSec);
+
+      // The overlay has to match the output frame exactly, and the original's size isn't stored
+      // anywhere (only its duration is), so read it again here — cheap next to the transcode.
+      const source = await probeVideo(originalPath);
+      const { width, height } = transcodeOutputSize(source.width, source.height);
+      await writeFile(watermarkPath, await sharp(buildWatermarkSvg(width, height)).png().toBuffer());
+
+      await transcodeAndExtractPoster(originalPath, watermarkPath, transcodedPath, posterPath, job.durationSec);
 
       // Reuse the already-used `sharp` for the poster's final WebP encode, same as photo variants
       // — avoids needing a webp encoder path in ffmpeg itself.
@@ -82,6 +91,7 @@ export class VideoProcessingService {
         unlink(originalPath).catch(() => undefined),
         unlink(transcodedPath).catch(() => undefined),
         unlink(posterPath).catch(() => undefined),
+        unlink(watermarkPath).catch(() => undefined),
       ]);
     }
   }
