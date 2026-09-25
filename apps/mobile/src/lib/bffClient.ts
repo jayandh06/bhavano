@@ -77,7 +77,11 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const body = await res.text().catch(() => "");
     throw new BffError(res.status, path, body);
   }
-  return res.json() as Promise<T>;
+  // 204 (and any other empty success body) has nothing to parse — `res.json()` throws "JSON Parse
+  // error: Unexpected end of input" on it, which made push-token registration report failure even
+  // though the BFF had already stored the token. Callers of void endpoints get `undefined`.
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 function authedBffFetch<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
