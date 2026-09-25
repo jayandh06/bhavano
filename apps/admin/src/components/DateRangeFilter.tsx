@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { str, type SearchParams } from "@/lib/searchParams";
 import { daysAgoIST, todayIST } from "@/lib/dateRangeDefaults";
 
@@ -78,13 +78,8 @@ export function DateRangeFilter({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
         {PRESETS.map((p) => (
-          <Link
-            key={p.label}
-            href={hrefForPreset(p.days)}
-            prefetch={false}
-            style={pillStyle(!showCustomFields && matchedPreset?.label === p.label)}
-          >
-            {p.label}
+          <Link key={p.label} href={hrefForPreset(p.days)} prefetch={false} style={{ textDecoration: "none" }}>
+            <PresetPill label={p.label} active={!showCustomFields && matchedPreset?.label === p.label} />
           </Link>
         ))}
         <button
@@ -104,6 +99,22 @@ export function DateRangeFilter({
         </>
       )}
     </div>
+  );
+}
+
+/** Lives inside the <Link> so `useLinkStatus` can see that link's navigation. A preset re-renders
+ * the whole screen on the server (the listings query can take seconds on a cold start), and until
+ * that answers nothing on the page changes — no URL, no highlight, no spinner — so a click read as
+ * "didn't work" and the natural reaction was to click again. Showing the pill as selected the
+ * instant it's pressed (with an ellipsis until the new range arrives) answers "did it register?"
+ * immediately. */
+function PresetPill({ label, active }: { label: string; active: boolean }) {
+  const { pending } = useLinkStatus();
+  return (
+    <span style={{ ...pillStyle(active || pending), display: "inline-block", opacity: pending ? 0.75 : 1 }}>
+      {label}
+      {pending ? "…" : ""}
+    </span>
   );
 }
 

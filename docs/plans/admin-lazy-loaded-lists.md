@@ -21,6 +21,11 @@ here rather than left for the plan to silently disagree with the code:
   filters" keeps the chosen range. Without that, the custom date fields are unmounted and Apply
   dropped the params — the page silently fell back to the 1-day default, so "7 days" looked
   broken as soon as any other filter was applied.
+- **Preset pills show a pending state (2026-09-25).** A preset click re-renders the whole screen
+  server-side, and the listings query can take seconds on a cold start; until it answered, the URL,
+  highlight and table were all unchanged, so a click read as "didn't work" (reproduced locally with
+  a 3s-delay mock backend). Each pill now renders inside its `<Link>` and uses `useLinkStatus()` to
+  show itself selected with a trailing "…" the moment it's pressed.
 - **Listings uses one filter form** (same shape as logins): top bar + column-header inputs share
   a single "Apply filters" submit. The table's separate "Go" button was removed — two forms were
   fighting each other via incomplete hidden carries.
