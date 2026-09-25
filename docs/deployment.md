@@ -239,9 +239,341 @@ curl -I https://<admin-domain>/login
 If step 10's `migrate deploy` succeeded, app→DB connectivity across the two instances is already
 proven — no separate check needed.
 
-Future app deploys: `git pull && docker compose -f docker-compose.prod.yml --env-file .env up -d
---build` on the app instance. New migrations: re-run step 10 after deploying. See the two sections
-below for updating just the schema, or just one service, without redoing everything.
+Future app deploys (pick one):
+
+- **Build on the app EC2** (existing default): `git pull && docker compose -f docker-compose.prod.yml --env-file .env up -d --build` — see also "Building and deploying an individual service" below.
+- **Build on your laptop, copy images to EC2** (shorter downtime on the app box — no compile there): see **"Local build → copy images to app EC2"** below.
+- New migrations: re-run step 10 after deploying. See the sections below for schema-only updates or single-service deploys.
+
+## Local build → copy images to app EC2
+
+Build `web` / `bff` / `admin` on your machine, ship the images as a tarball, load them on the app
+instance, then recreate containers **without** `--build`. The app EC2 only pulls/restarts — no
+`next build` / Nest compile on the live box.
+
+### Why this exists
+
+- Step 9 / `up -d --build` compiles on the **same** 2 vCPUs that serve production traffic.
+- Shipping pre-built images keeps that CPU free and keeps the cutover window to roughly
+  `docker load` (ahead of time) + container recreate (seconds).
+
+### Hard requirement: match the app instance architecture
+
+Prod app EC2 is **`t4g.medium` = `linux/arm64`**. Images built for `amd64` (most Windows PCs,
+Intel Macs) will **not** run there.
+
+| Your machine | What to do |
+|---|---|
+| Apple Silicon Mac (`arm64`) | Native `docker compose build` is fine |
+| Windows / Intel Mac (`amd64`) | Build with `--platform linux/arm64` (Buildx; slower under emulation) — see **Windows (amd64 → arm64)** below |
+| Unsure | `uname -m` on EC2 (`aarch64`) and locally — they must match, or use `--platform linux/arm64` |
+
+### Automated script (recommended)
+
+From the repo root, after creating `.env.prod.build` and setting SSH details:
+
+**Windows (PowerShell):**
+
+```powershell
+$env:BHAVANO_EC2_HOST = "YOUR_APP_ELASTIC_IP"
+$env:BHAVANO_EC2_SSH_KEY = "$env:USERPROFILE\.ssh\bhavano-app.pem"
+# Optional: $env:BHAVANO_ENV_FILE = ".env.prod.build"
+
+.\scripts\deploy-local-to-ec2.ps1                  # web + bff + admin
+.\scripts\deploy-local-to-ec2.ps1 -Services bff    # one service
+.\scripts\deploy-local-to-ec2.ps1 -BuildOnly       # build/verify arch only
+.\scripts\deploy-local-to-ec2.ps1 -SkipPull        # use current checkout
+.\scripts\deploy-local-to-ec2.ps1 -SkipMigrate
+```
+
+**macOS / Linux / WSL:**
+
+```bash
+chmod +x scripts/deploy-local-to-ec2.sh
+export BHAVANO_EC2_HOST=YOUR_APP_ELASTIC_IP
+export BHAVANO_EC2_SSH_KEY=~/.ssh/bhavano-app.pem
+
+./scripts/deploy-local-to-ec2.sh
+./scripts/deploy-local-to-ec2.sh bff
+./scripts/deploy-local-to-ec2.sh --build-only
+```
+
+The script: `git pull` → Buildx `linux/arm64` compose build → verify architecture →
+`docker save` → `scp` → on EC2 `git pull` + `docker load` + `compose up -d --no-build` →
+`prisma migrate deploy` (when `bff` is included).
+
+Manual steps below remain if you prefer to run each command yourself.
+
+### Windows (amd64 → `linux/arm64`)
+
+Windows PCs almost always build **amd64** images by default. Prod is **arm64**, so you must
+cross-build. Docker Desktop does this via Buildx + QEMU (emulation) — expect **slower** builds
+than on an Apple Silicon Mac or on the EC2 itself.
+
+#### One-time setup
+
+1. Install **Docker Desktop for Windows** and enable the **WSL 2** backend (Settings → General).
+2. Settings → **Builders** / Features: ensure containerd / Buildx are available (current Desktop
+   includes `docker buildx` by default).
+3. In PowerShell:
+
+```powershell
+docker version
+docker buildx version
+
+# Create a builder that can emit arm64 (once)
+docker buildx create --name armbuilder --driver docker-container --use
+docker buildx inspect --bootstrap
+
+# Confirm arm64 is listed under "Platforms"
+docker buildx ls
+```
+
+You should see `linux/arm64` (among others) for `armbuilder`.
+
+4. From the repo root, prepare build env (same as macOS — `NEXT_PUBLIC_*` must match prod):
+
+```powershell
+cd D:\Repo\bhavano
+copy .env.production.example .env.prod.build
+# Edit .env.prod.build — set NEXT_PUBLIC_BFF_URL, NEXT_PUBLIC_SITE_URL,
+# NEXT_PUBLIC_GTM_ID, NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY to production values
+```
+
+#### Build (PowerShell)
+
+```powershell
+cd D:\Repo\bhavano
+$TAG = Get-Date -Format "yyyyMMddHHmmss"
+# or: $TAG = (git rev-parse --short HEAD)
+
+$env:DOCKER_DEFAULT_PLATFORM = "linux/arm64"
+docker buildx use armbuilder
+
+docker compose -f docker-compose.prod.yml --env-file .env.prod.build build web bff admin
+
+Remove-Item Env:DOCKER_DEFAULT_PLATFORM
+```
+
+If Compose still produces amd64 (check with the inspect command below), build each image
+explicitly with Buildx `--load` (loads into local Docker so `docker save` works):
+
+```powershell
+# Example for bff (no NEXT_PUBLIC args). Repeat pattern for web/admin with --build-arg flags
+# matching docker-compose.prod.yml web.build.args / admin.build.args.
+
+docker buildx build --platform linux/arm64 `
+  -f apps/bff/Dockerfile `
+  -t bhavano-bff:$TAG `
+  --load .
+
+docker buildx build --platform linux/arm64 `
+  -f apps/web/Dockerfile `
+  --build-arg NEXT_PUBLIC_BFF_URL=$env:NEXT_PUBLIC_BFF_URL `
+  --build-arg NEXT_PUBLIC_SITE_URL=$env:NEXT_PUBLIC_SITE_URL `
+  --build-arg NEXT_PUBLIC_GTM_ID=$env:NEXT_PUBLIC_GTM_ID `
+  --build-arg NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY=$env:NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY `
+  -t bhavano-web:$TAG `
+  --load .
+# (load those values from .env.prod.build first, or pass literals)
+
+docker buildx build --platform linux/arm64 `
+  -f apps/admin/Dockerfile `
+  --build-arg NEXT_PUBLIC_BFF_URL=$env:NEXT_PUBLIC_BFF_URL `
+  --build-arg NEXT_PUBLIC_SITE_URL=$env:NEXT_PUBLIC_SITE_URL `
+  --build-arg NEXT_PUBLIC_GTM_ID=$env:NEXT_PUBLIC_GTM_ID `
+  -t bhavano-admin:$TAG `
+  --load .
+```
+
+After a Compose build, retag whatever names Desktop created:
+
+```powershell
+docker images
+docker tag bhavano-web:latest  bhavano-web:$TAG
+docker tag bhavano-bff:latest  bhavano-bff:$TAG
+docker tag bhavano-admin:latest bhavano-admin:$TAG
+```
+
+#### Verify the image is really arm64 (do this before scp)
+
+```powershell
+docker image inspect bhavano-bff:$TAG --format "{{.Os}}/{{.Architecture}}"
+# Expect: linux/arm64
+# If you see linux/amd64, do not deploy — rebuild with --platform linux/arm64
+```
+
+#### Save and copy from Windows
+
+Use OpenSSH client (Windows optional feature) or WSL:
+
+```powershell
+docker save bhavano-web:$TAG bhavano-bff:$TAG bhavano-admin:$TAG -o bhavano-images-$TAG.tar
+# gzip if you have it; otherwise scp the .tar (larger)
+# with tar+gzip via WSL:
+wsl gzip -c bhavano-images-$TAG.tar > bhavano-images-$TAG.tar.gz
+
+scp bhavano-images-$TAG.tar.gz ubuntu@APP_EC2_HOST`:~/
+```
+
+Then continue from **§3 On the app EC2: load before cutting over** below (same as macOS).
+
+#### Windows gotchas
+
+- **Emulation is slow** — first full `web`+`admin` arm64 build can take a long time. Prefer
+  building on the app EC2 or an arm64 machine if this becomes painful.
+- **`--load` only supports one platform** — never omit `--platform linux/arm64` when using
+  `buildx build --load`.
+- **WSL path vs `D:\Repo`** — if builds fail oddly under Desktop, run the same commands inside
+  **WSL2 Ubuntu** from `/mnt/d/Repo/bhavano` (often more reliable for Buildx).
+- **Do not use Hyper-V-only / old Desktop without WSL2** for this — stick to WSL2 backend.
+
+### 0. One-time: local Docker + prod build args
+
+You need Docker Desktop (or Engine) and a checkout of this repo. For **`web` / `admin`**,
+`NEXT_PUBLIC_*` values are baked in at **image build** (same rule as in "SEO / GTM" above). Use a
+local env file that matches production for those args (never commit secrets):
+
+```bash
+# From the repo root on your laptop
+cp .env.production.example .env.prod.build   # or scp the real .env from the app EC2 and redact
+# Fill at least: NEXT_PUBLIC_* used by web/admin build args in docker-compose.prod.yml
+```
+
+Confirm Buildx can target arm64 (needed on amd64 hosts):
+
+```bash
+docker buildx version
+docker buildx create --name armbuilder --use   # once, if you don't already have a builder
+docker buildx inspect --bootstrap
+```
+
+### 1. Build on your laptop
+
+Pick a tag you can recognize later (date or short git SHA):
+
+```bash
+TAG=$(date -u +%Y%m%d%H%M%S)   # or: TAG=$(git rev-parse --short HEAD)
+export COMPOSE_DOCKER_CLI_BUILD=1
+
+# Apple Silicon Mac (native arm64) — matches t4g:
+docker compose -f docker-compose.prod.yml --env-file .env.prod.build build web bff admin
+
+# Windows / Intel Mac — force arm64 so the image runs on t4g (see Windows section above for PowerShell):
+export DOCKER_DEFAULT_PLATFORM=linux/arm64
+docker compose -f docker-compose.prod.yml --env-file .env.prod.build build web bff admin
+unset DOCKER_DEFAULT_PLATFORM
+```
+
+Compose tags images from the project directory name by default, typically:
+
+- `bhavano-web` (or `bhavano_web`)
+- `bhavano-bff`
+- `bhavano-admin`
+
+Check with `docker images | grep bhavano`, then retag to a versioned name:
+
+```bash
+# Adjust names if `docker images` shows underscores instead of hyphens
+docker tag bhavano-web:latest  bhavano-web:$TAG
+docker tag bhavano-bff:latest  bhavano-bff:$TAG
+docker tag bhavano-admin:latest bhavano-admin:$TAG
+```
+
+On Windows / Intel hosts, use the **Windows (amd64 → linux/arm64)** section above (PowerShell +
+`docker buildx build --platform linux/arm64 --load`) and always verify
+`docker image inspect … --format "{{.Os}}/{{.Architecture}}"` shows `linux/arm64` before `scp`.
+
+### 2. Save and copy to the app EC2
+
+```bash
+docker save bhavano-web:$TAG bhavano-bff:$TAG bhavano-admin:$TAG | gzip > bhavano-images-$TAG.tar.gz
+
+# Replace with your app Elastic IP / SSH user
+scp bhavano-images-$TAG.tar.gz ubuntu@APP_EC2_HOST:~/
+```
+
+Large first transfer is normal (full images). Later deploys are similar unless you use a registry
+(ECR/Hub) for layer reuse — this path always sends a full tarball.
+
+### 3. On the app EC2: load **before** cutting over
+
+SSH in, load while the old containers are still serving traffic:
+
+```bash
+cd ~/bhavano
+gunzip -c ~/bhavano-images-$TAG.tar.gz | docker load
+docker images | grep bhavano
+```
+
+Retag to the names Compose expects for this checkout (must match `docker images` naming on this
+host after a normal compose build — usually `<folder>-<service>`):
+
+```bash
+# Example — confirm with `docker images` after a previous compose build on this host
+docker tag bhavano-web:$TAG   bhavano-web:latest
+docker tag bhavano-bff:$TAG   bhavano-bff:latest
+docker tag bhavano-admin:$TAG bhavano-admin:latest
+```
+
+Also keep the repo checkout in sync (migrations, `Caddyfile`, compose file) even when images are
+pre-built:
+
+```bash
+git pull
+```
+
+### 4. Recreate containers without rebuilding
+
+`--no-build` is the important flag — otherwise Compose will compile on the EC2 again:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build web bff admin
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f --tail=100 bff
+```
+
+If Compose still tries to build (image name mismatch), either retag to the exact local image name
+Compose uses, or temporarily set `image: bhavano-web:latest` (etc.) on those services in
+`docker-compose.prod.yml` so `up` binds to the loaded tags. Prefer matching Compose’s default
+image names so the file stays unchanged.
+
+### 5. Migrations (if this release needs them)
+
+Same as step 10 — **after** the new `bff` container is up:
+
+```bash
+docker compose -f docker-compose.prod.yml exec bff npx prisma migrate deploy
+```
+
+### 6. Verify + clean up
+
+```bash
+curl -I https://www.bhavano.com
+curl -I https://api.bhavano.com/health
+# optional: remove the tarball and old dangling images when disk is tight
+rm ~/bhavano-images-$TAG.tar.gz
+docker image prune -f
+```
+
+### Partial deploys
+
+Same idea for one service only — save/load a single image, then:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build bff
+```
+
+### Compared to other options in this doc
+
+| Method | Where CPU builds | Downtime / impact |
+|---|---|---|
+| `up -d --build` on app EC2 | App instance | Longer; shares CPU with live traffic |
+| Remote Buildx on DB instance (section below) | DB instance | App only restarts; DB CPU spikes during build |
+| **Local build + `scp` (this section)** | Your laptop | App only `load` + recreate; transfer cost is bandwidth |
+
+Do **not** run the production app containers on the DB instance. Postgres stays on the DB host;
+only pre-built app images land on the app host.
 
 ## Updating the database schema (Prisma migrations)
 
@@ -656,11 +988,288 @@ the BFF only — `web`/`admin` have no equivalent request logging.
   Grafana — confirms Alloy is actually tailing/shipping (no scrape/parse errors).
 - All timestamps — pino's own log lines and Grafana's display — are IST (`Asia/Kolkata`), not UTC.
 
+## Postgres backups (nightly dump → Finfolia EC2)
+
+Self-hosted Postgres on the Bhavano DB EC2 has **no** RDS-style automated backups. Production
+uses a **full** nightly `pg_dump -Fc` (not incremental) copied off-box to the Finfolia EC2, with
+a 3-day retention. Optional second layer: daily **EBS snapshots** of the DB volume in AWS (not
+yet required for the dump path to work). Design notes: `docs/plans/postgres-backup-finfolia.md`.
+
+**Do not** install Postgres on Finfolia or run a hot standby there — only store dump **files**.
+
+### Topology (as deployed)
+
+| Role | Host | Notes |
+|---|---|---|
+| Bhavano DB (runs dump) | private `172.31.18.137` (jump via app `13.205.0.54`) | arm64; Postgres 16 |
+| Finfolia (stores dumps) | `13.127.83.62` / private `172.31.10.110` | amd64; files only |
+| App | `13.205.0.54` / `172.31.17.141` | not involved in dumps |
+
+| Path | Where | Purpose |
+|---|---|---|
+| `/var/backups/bhavano/` | **Finfolia** | Off-box dumps (last **3** nights). Mode `700`, owner `bhavano-backup` — use `sudo ls` |
+| `/var/backups/bhavano-local/` | **Bhavano DB** | Staging; keeps newest dump only after upload |
+| `/root/.ssh/finfolia_backup` | **Bhavano DB** | Private key used by the dump script to `scp` |
+| Laptop copy (optional) | `~/.ssh/bhavano-db-finfolia_backup` | Recovery copy of that private key |
+
+SSH for dumps uses the **private** IP `bhavano-backup@172.31.10.110` (Finfolia SG must allow SSH
+from the Bhavano DB security group / private IP).
+
+RPO ≈ 24 hours. RTO = time to restore a dump (or an EBS snapshot).
+
+### Users and SSH permissions
+
+#### Linux users
+
+| Host | User | Purpose | Login / privileges |
+|---|---|---|---|
+| Finfolia | `ubuntu` | Human admin (your AWS key pair) | SSH with `Jay_AWS_KeyPair_Mumbai.pem` (or whatever key is on the instance). Has `sudo`. **Cannot** read `/var/backups/bhavano` without `sudo` (dir is `700` / `bhavano-backup`). |
+| Finfolia | `bhavano-backup` | Machine account that owns dump files | **No password** (`--disabled-password`). SSH only via the dedicated pubkey in `~/.ssh/authorized_keys`. **No sudo.** Home: `/home/bhavano-backup`. Owns `/var/backups/bhavano`. |
+| Bhavano DB | `ubuntu` | Human admin (same AWS key; usually via app jump host) | SSH + `sudo`. Runs setup; the dump **timer** runs as root via systemd. |
+| Bhavano DB | `postgres` | OS user for peer-auth dumps | Used only as `sudo -u postgres pg_dump …`. Not used for SSH to Finfolia. |
+| Bhavano DB | `root` | Owns dump script, SSH private key, staging dir | systemd `bhavano-pg-dump.service` runs as root; `scp`/`ssh` use `/root/.ssh/finfolia_backup`. |
+
+Check users on a host:
+
+```bash
+getent passwd | awk -F: '$3 >= 1000 { print $1, $3, $6 }'
+id bhavano-backup    # Finfolia
+id ubuntu
+```
+
+#### SSH keypair (DB → Finfolia only)
+
+| File | Location | Mode | Who uses it |
+|---|---|---|---|
+| `/root/.ssh/finfolia_backup` | Bhavano DB | `600`, root | Private key — dump script / `scp` to Finfolia |
+| `/root/.ssh/finfolia_backup.pub` | Bhavano DB | `644` | Public key — copied into Finfolia `authorized_keys` |
+| `/home/bhavano-backup/.ssh/authorized_keys` | Finfolia | `600`, owner `bhavano-backup` | Must contain **only** that pubkey (comment `bhavano-db-to-finfolia-backup`) |
+| `/home/bhavano-backup/.ssh/` | Finfolia | `700`, owner `bhavano-backup` | SSH dir for the backup user |
+| `~/.ssh/bhavano-db-finfolia_backup` (+ `.pub`) | Operator laptop (optional) | private key readable only by you | Recovery copy of the same private key — **not** used by the nightly job |
+
+This key is **separate** from:
+
+- Your AWS instance `.pem` (`ubuntu@…` admin login)
+- The app instance GitHub deploy key (`~/.ssh/id_ed25519` on the app box)
+
+Do **not** reuse those for Finfolia backup SSH. If the private key is ever exposed, rotate: regenerate on the DB, replace Finfolia `authorized_keys`, update the laptop copy.
+
+Test (from Bhavano DB as root):
+
+```bash
+sudo ssh -i /root/.ssh/finfolia_backup -o IdentitiesOnly=yes -o BatchMode=yes \
+  bhavano-backup@172.31.10.110 'whoami; ls -la /var/backups/bhavano'
+# expect: whoami → bhavano-backup
+```
+
+From laptop with the recovery copy:
+
+```bash
+ssh -i ~/.ssh/bhavano-db-finfolia_backup -o IdentitiesOnly=yes \
+  bhavano-backup@13.127.83.62 'ls -la /var/backups/bhavano'
+```
+
+#### Filesystem permissions (why `ubuntu` “sees nothing”)
+
+| Path | Owner | Mode | Effect |
+|---|---|---|---|
+| `/var/backups/bhavano` (Finfolia) | `bhavano-backup:bhavano-backup` | `700` | Only that user (or root via `sudo`) can list/read dumps |
+| Files `bhavano_YYYYMMDD.dump` | `bhavano-backup` | `600` | Same — not world-readable |
+| `/var/backups/bhavano-local` (DB) | `root:root` | `700` | Staging for root/`scp` only; `postgres` cannot write here (script dumps to `/tmp` then `mv`) |
+| Dump script | `root` | `700` | `/usr/local/bin/bhavano-pg-dump-to-finfolia.sh` |
+
+On Finfolia as `ubuntu`:
+
+```bash
+ls /var/backups/bhavano          # Permission denied — expected
+sudo ls -lah /var/backups/bhavano   # works
+sudo -u bhavano-backup ls -lah /var/backups/bhavano
+```
+
+#### Network / security group
+
+| Source | Dest | Port | Why |
+|---|---|---|---|
+| Bhavano DB private IP / SG | Finfolia SG | TCP 22 | Nightly `scp`/`ssh` as `bhavano-backup` |
+| Your IP | Finfolia SG | TCP 22 | Admin as `ubuntu` |
+| Your IP | App SG | TCP 22 | Jump to DB as `ubuntu` |
+| App SG | Bhavano DB SG | TCP 22 | Jump host path for DB admin |
+
+`bhavano-backup` has **no** sudo on Finfolia and should not be in the `docker` or `sudo` groups — dump upload only.
+
+#### Optional hardening (not applied yet)
+
+Restrict the backup pubkey in Finfolia `authorized_keys` so it can only write to the dump dir, e.g. `command="rrsync -wo /var/backups/bhavano",no-agent-forwarding,no-port-forwarding,no-pty …` plus the key. Until then, that key can open a normal shell as `bhavano-backup` (still no sudo).
+
+### One-time setup — Finfolia
+
+```bash
+sudo adduser --disabled-password --gecos "" bhavano-backup
+sudo mkdir -p /var/backups/bhavano /home/bhavano-backup/.ssh
+sudo chown -R bhavano-backup:bhavano-backup /var/backups/bhavano /home/bhavano-backup/.ssh
+sudo chmod 700 /var/backups/bhavano /home/bhavano-backup/.ssh
+# After creating the key on the DB (next section), install the pubkey:
+#   sudo tee /home/bhavano-backup/.ssh/authorized_keys  # paste .pub line
+sudo chown bhavano-backup:bhavano-backup /home/bhavano-backup/.ssh/authorized_keys
+sudo chmod 600 /home/bhavano-backup/.ssh/authorized_keys
+```
+
+List dumps (must use sudo — `ubuntu` cannot read the directory):
+
+```bash
+sudo ls -lah /var/backups/bhavano
+```
+
+### One-time setup — Bhavano DB (key + script + timer)
+
+```bash
+sudo mkdir -p /var/backups/bhavano-local /root/.ssh
+sudo ssh-keygen -t ed25519 -f /root/.ssh/finfolia_backup -N "" -C "bhavano-db-to-finfolia-backup"
+sudo cat /root/.ssh/finfolia_backup.pub
+# → paste into Finfolia authorized_keys as above
+
+sudo ssh -i /root/.ssh/finfolia_backup -o StrictHostKeyChecking=accept-new \
+  bhavano-backup@172.31.10.110 'ls -la /var/backups/bhavano'
+```
+
+Install `/usr/local/bin/bhavano-pg-dump-to-finfolia.sh` (peer auth via `sudo -u postgres` — no
+password in the script):
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+STAMP=$(date -u +%Y%m%d)
+LOCAL_DIR=/var/backups/bhavano-local
+REMOTE=bhavano-backup@172.31.10.110
+REMOTE_DIR=/var/backups/bhavano
+KEY=/root/.ssh/finfolia_backup
+DUMP="$LOCAL_DIR/bhavano_${STAMP}.dump"
+TMP_DUMP="/tmp/bhavano_${STAMP}.dump"
+SSH=(ssh -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes)
+SCP=(scp -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes)
+
+mkdir -p "$LOCAL_DIR"
+chmod 700 "$LOCAL_DIR"
+
+echo "[$(date -Is)] dumping bhavano -> $TMP_DUMP"
+sudo -u postgres pg_dump -Fc -d bhavano -f "$TMP_DUMP"
+mv "$TMP_DUMP" "$DUMP"
+chown root:root "$DUMP"
+chmod 600 "$DUMP"
+ls -lh "$DUMP"
+
+echo "[$(date -Is)] uploading to $REMOTE:$REMOTE_DIR/"
+"${SCP[@]}" "$DUMP" "${REMOTE}:${REMOTE_DIR}/"
+
+echo "[$(date -Is)] pruning remote to last 3 dumps"
+"${SSH[@]}" "$REMOTE" "cd '$REMOTE_DIR' && ls -1t bhavano_*.dump 2>/dev/null | tail -n +4 | xargs -r rm -f && ls -lh"
+
+echo "[$(date -Is)] pruning local to newest dump only"
+ls -1t "$LOCAL_DIR"/bhavano_*.dump 2>/dev/null | tail -n +2 | xargs -r rm -f
+
+echo "[$(date -Is)] done"
+```
+
+```bash
+sudo chmod 700 /usr/local/bin/bhavano-pg-dump-to-finfolia.sh
+```
+
+`/etc/systemd/system/bhavano-pg-dump.service`:
+
+```ini
+[Unit]
+Description=Bhavano Postgres dump to Finfolia
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/bhavano-pg-dump-to-finfolia.sh
+Nice=10
+```
+
+`/etc/systemd/system/bhavano-pg-dump.timer` (21:00 UTC ≈ **02:30 IST**):
+
+```ini
+[Unit]
+Description=Nightly Bhavano pg_dump to Finfolia
+
+[Timer]
+OnCalendar=*-*-* 21:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now bhavano-pg-dump.timer
+sudo systemctl start bhavano-pg-dump.service    # run once now
+sudo journalctl -u bhavano-pg-dump.service -n 50 --no-pager
+systemctl list-timers bhavano-pg-dump.timer --no-pager
+```
+
+### Day-to-day ops
+
+```bash
+# On Bhavano DB — next scheduled run / last result
+systemctl list-timers bhavano-pg-dump.timer --no-pager
+sudo journalctl -u bhavano-pg-dump.service -n 50 --no-pager
+sudo ls -lah /var/backups/bhavano-local/
+
+# On Finfolia — off-box copies (sudo required)
+sudo ls -lah /var/backups/bhavano/
+```
+
+Manual dump anytime: `sudo systemctl start bhavano-pg-dump.service`.
+
+### Restore dump to a new / repaired DB host
+
+1. Copy a dump from Finfolia (`sudo scp` / download `bhavano_YYYYMMDD.dump`).
+2. On a Postgres **16** host with an empty database and role (same pattern as step 3 earlier in
+   this doc — `CREATE USER` / `CREATE DATABASE`):
+
+```bash
+pg_restore -d bhavano --no-owner --role=bhavano -j 4 bhavano_YYYYMMDD.dump
+```
+
+3. Point the app instance `.env` `DATABASE_URL` at the restored host and recreate/restart `bff`
+   (and run `prisma migrate deploy` if the dump is older than current migrations — prefer a dump
+   taken after the last successful migrate).
+
+### Restore dump to local Postgres (dev copy of prod)
+
+Same major as prod (**16** — `postgis/postgis:16-3.4` in root `docker-compose.yml`). Treat the
+file as **production PII** — do not commit it.
+
+```bash
+# from laptop, after scp'ing the dump from Finfolia
+dropdb bhavano_prod_copy 2>/dev/null || true
+createdb bhavano_prod_copy
+pg_restore -d bhavano_prod_copy --no-owner -j 4 bhavano_YYYYMMDD.dump
+# point local .env DATABASE_URL at this database
+```
+
+### EBS snapshots of the DB volume (recommended second layer)
+
+Independent of Finfolia: AWS Console → EC2 → **Lifecycle Manager** (or Snapshots) → policy on the
+Bhavano DB root/data volume, daily, retain ~7–14 days. Restore path: create volume from snapshot →
+attach to a new/replaced instance → start Postgres. Use this if Finfolia is also unavailable.
+
+### What this is not
+
+- Not incremental / WAL PITR (no point-in-time between dumps)
+- Not a live replica on Finfolia
+- Not a substitute for eventually moving to RDS if you need managed backups/failover
+
 ## Self-hosted Postgres vs RDS — the tradeoff being made here
 
 Choosing to self-host on EC2 instead of RDS trades away:
 
-- Automated backups / point-in-time recovery (need to script `pg_dump` or WAL archiving to S3)
+- Automated backups / point-in-time recovery (partially mitigated by the **Postgres backups**
+  section above — nightly `pg_dump` to Finfolia + optional EBS snapshots; still not RDS PITR)
 - Minor-version patching (manual `apt upgrade`)
 - Multi-AZ failover
 - Online storage/instance resizing without a maintenance script
