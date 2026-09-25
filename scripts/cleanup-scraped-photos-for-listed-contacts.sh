@@ -73,8 +73,15 @@ echo "==> Listing googlePlaceIds with a Listing (category=$CATEGORY)"
 PLACE_IDS="$(
   "${COMPOSE[@]}" exec -T -e CLEANUP_CATEGORY="$CATEGORY" bff node <<'NODE'
 const { PrismaClient } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
 const category = process.env.CLEANUP_CATEGORY || 'pg';
-const prisma = new PrismaClient();
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL is not set in the bff container');
+  process.exit(1);
+}
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+});
 (async () => {
   const where = {
     googlePlaceId: { not: null },
