@@ -8,6 +8,7 @@ import { UsersTable } from "@/components/UsersTable";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
 
+import { FullPageLink } from "@/components/FullPageLink";
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "user", label: "User" },
   { value: "admin", label: "Admin" },
@@ -52,9 +53,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
-        <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+        <FullPageLink href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
           ← Back to dashboard
-        </Link>
+        </FullPageLink>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>Users</h1>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 20px" }}>
           {result.total.toLocaleString()} match the current filters. "Welcomed" reflects an actual

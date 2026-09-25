@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOutAction } from "@/app/actions/auth";
@@ -24,15 +23,16 @@ const NAV_LINKS: { href: string; label: string }[] = [
 
 const SCROLL_STEP = 160;
 
-/** Every link below is `prefetch={false}`, deliberately. Next's automatic viewport prefetch fires
- * a real request to every link's href, including whichever nav item points at the page currently
- * on screen — and middleware.ts reads that request's Referer to tell a genuine same-screen
- * "cleared my filters" navigation apart from a fresh arrival elsewhere restoring them. A prefetch
- * of the current page's own nav link carries that same page as its Referer too, which is
- * indistinguishable from a real click and was silently wiping the just-applied filter every time
- * the nav (present on every page) simply rendered. There's no request header that tells a
- * background prefetch apart from an actual click-driven navigation on this Next version — see
- * middleware.ts's own comment — so the fix is to stop the phantom request from firing at all. */
+/** Every tab is a plain `<a>` — a full page load — not a `<Link>`, deliberately. A bare-path
+ * navigation (`/`, `/logins`, ...) is what middleware.ts answers with a redirect to the remembered
+ * filter, and when that redirect answers a *client-side* navigation, Next's router lands on the
+ * filtered page but is then left unable to act on the next <Link> click there: a date-range
+ * preset, a tab or a sort header flashes its pending state and snaps back without sending any
+ * request (reproduced by entering Listings from another admin page with a saved filter; a real
+ * page load was never affected, and neither was pressing Apply, which is one). A document request
+ * takes the same redirect and lands in a healthy state. It also means there is no background
+ * prefetch of these hrefs to worry about, which used to wipe the just-applied filter (the phantom
+ * request looked like a real click to middleware.ts). See docs/plans/admin-remembered-filters.md. */
 
 /** `/` only matches itself — every other link matches its own path and anything nested under it
  * (e.g. `/users/[id]`, reached from the users list or the logins list, highlights "Users"). */
@@ -200,10 +200,9 @@ export function AdminNav() {
             {NAV_LINKS.map((link) => {
               const active = isActive(pathname, link.href);
               return (
-                <Link
+                <a
                   key={link.href}
                   href={link.href}
-                  prefetch={false}
                   className="admin-nav-link"
                   onClick={() => setMenuOpen(false)}
                   style={{
@@ -216,7 +215,7 @@ export function AdminNav() {
                   }}
                 >
                   {link.label}
-                </Link>
+                </a>
               );
             })}
           </div>
@@ -253,10 +252,9 @@ export function AdminNav() {
           {NAV_LINKS.map((link) => {
             const active = isActive(pathname, link.href);
             return (
-              <Link
+              <a
                 key={link.href}
                 href={link.href}
-                prefetch={false}
                 className="admin-nav-link"
                 style={{
                   fontSize: 13,
@@ -272,7 +270,7 @@ export function AdminNav() {
                 }}
               >
                 {link.label}
-              </Link>
+              </a>
             );
           })}
         </nav>

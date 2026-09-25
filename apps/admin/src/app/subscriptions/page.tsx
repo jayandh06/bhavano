@@ -19,6 +19,7 @@ import { SelectField } from "@/components/SelectField";
 import { SortableHeader } from "@/components/SortableHeader";
 import { RevokeBoostButton } from "@/components/RevokeBoostButton";
 
+import { FullPageLink } from "@/components/FullPageLink";
 /** What the BFF falls back to with no `?sort=` — named here so the Date column's header still
  * shows its ▼ before anything has been clicked. */
 const DEFAULT_SORT: AdminPaymentSort = "createdAt_desc";
@@ -107,9 +108,9 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
-        <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+        <FullPageLink href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
           ← Back to dashboard
-        </Link>
+        </FullPageLink>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>Subscriptions</h1>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 20px" }}>
           Every purchase — Boost, Bhavano Plus, Agent/Broker Pro, Seller Slot Pack, Contact Reveal Credits, and

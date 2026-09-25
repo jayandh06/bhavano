@@ -18,6 +18,7 @@ import { ConversationsTable } from "@/components/ConversationsTable";
 import { Pagination } from "@/components/Pagination";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 
+import { FullPageLink } from "@/components/FullPageLink";
 const LIKED_PARAM_NAMES = { page: "likedPage", limit: "likedLimit" };
 const MSG_PARAM_NAMES = { page: "msgPage", limit: "msgLimit" };
 const HISTORY_PARAM_NAMES = { page: "historyPage", limit: "historyLimit" };
@@ -151,9 +152,9 @@ export default async function ListingModerationPage({
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
-        <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+        <FullPageLink href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
           ← Back to queue
-        </Link>
+        </FullPageLink>
 
         <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 20, background: "var(--surface)" }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>{listing.title}</h1>

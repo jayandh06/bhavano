@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchSavedSearchSettings } from "@/lib/bff";
 import { SavedSearchSettingsForm } from "@/components/SavedSearchSettingsForm";
 
+import { FullPageLink } from "@/components/FullPageLink";
 export default async function AlertSettingsPage() {
   const { accessToken } = await requireAdmin();
   const settings = await fetchSavedSearchSettings(accessToken);
@@ -10,9 +10,9 @@ export default async function AlertSettingsPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
-        <Link href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+        <FullPageLink href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
           ← Back to dashboard
-        </Link>
+        </FullPageLink>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>Search alerts</h1>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 24px", maxWidth: 680 }}>
           How many saved-search alerts a user gets without a Bhavano Plus subscription. Alerts were
