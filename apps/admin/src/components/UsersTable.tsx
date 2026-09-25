@@ -100,8 +100,8 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
               <th style={thStyle}>
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} />
               </th>
-              {["Created", "Name", "Phone", "Email", "Role", "City", "Notification status"].map((h) => (
-                <th key={h} style={thStyle}>
+              {["Created", "Name", "Phone", "Email", "Role", "City", "Notification status", ""].map((h) => (
+                <th key={h || "actions"} style={thStyle}>
                   {h}
                 </th>
               ))}
@@ -133,6 +133,18 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
                     </span>
                   ) : (
                     <span style={{ color: "var(--danger)", fontWeight: 700 }}>Not welcomed</span>
+                  )}
+                </td>
+                <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                  {u.role === "admin" ? (
+                    dash
+                  ) : (
+                    <Link
+                      href={`/users/${u.id}#delete`}
+                      style={{ color: "var(--danger)", fontWeight: 700, fontSize: 12 }}
+                    >
+                      Delete
+                    </Link>
                   )}
                 </td>
               </tr>

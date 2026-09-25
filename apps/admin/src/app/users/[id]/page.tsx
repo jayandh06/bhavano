@@ -47,8 +47,8 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
-        <Link href="/logins" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
-          ← Back to logins
+        <Link href="/users" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
+          ← Back to users
         </Link>
 
         <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 20, background: "var(--surface)" }}>
@@ -68,7 +68,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
           </div>
         </div>
 
-        <DeleteUserPanel userId={id} />
+        <DeleteUserPanel userId={id} canDelete={user.role !== "admin"} />
 
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 12px" }}>Recent activity</h2>
         {events.length === 0 ? (

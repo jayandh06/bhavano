@@ -1,19 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteUserAction } from "@/app/actions/users";
 
 /** Permanent-removal control on the admin user page. Deletes every listing the user owns (with
  * photo/video storage cleanup) and anonymises the account. Two-step: expand, then type DELETE. */
-export function DeleteUserPanel({ userId }: { userId: string }) {
+export function DeleteUserPanel({
+  userId,
+  canDelete = true,
+}: {
+  userId: string;
+  /** False for admin accounts — BFF refuses those anyway. */
+  canDelete?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Deep-link from the Users list (`/users/[id]#delete`) opens the confirm panel immediately.
+  useEffect(() => {
+    if (!canDelete) return;
+    if (typeof window !== "undefined" && window.location.hash === "#delete") {
+      setOpen(true);
+    }
+  }, [canDelete]);
+
   const armed = confirm.trim().toUpperCase() === "DELETE";
+
+  if (!canDelete) {
+    return (
+      <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 20px" }}>
+        Admin accounts cannot be deleted from here.
+      </p>
+    );
+  }
 
   async function onDelete() {
     if (!armed) return;
@@ -29,7 +52,7 @@ export function DeleteUserPanel({ userId }: { userId: string }) {
   }
 
   return (
-    <div style={{ marginBottom: 20 }}>
+    <div id="delete" style={{ marginBottom: 20 }}>
       {!open ? (
         <button onClick={() => setOpen(true)} style={dangerButtonStyle}>
           Delete user permanently
@@ -48,6 +71,7 @@ export function DeleteUserPanel({ userId }: { userId: string }) {
             onChange={(e) => setConfirm(e.target.value)}
             placeholder="Type DELETE to confirm"
             style={inputStyle}
+            autoFocus
           />
           <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
             <button

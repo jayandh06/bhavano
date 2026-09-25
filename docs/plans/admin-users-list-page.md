@@ -143,6 +143,9 @@ was "filters and sorts on table" rather than the card-list style `logins/page.ts
 - Table columns: Created, Name, Phone, Email, Role, City, Notification status — "✓ whatsapp — Sep
   3" style when welcomed, `var(--danger)`-colored "Not welcomed" otherwise.
 - Each row's name links to `/users/[id]`.
+- Each non-admin row has a **Delete** link to `/users/[id]#delete`, which opens the confirm panel
+  on the detail page (`DeleteUserPanel` — type `DELETE` to confirm). BFF
+  `DELETE /admin/users/:id` hard-deletes their listings/media and anonymises the account.
 - Cursor "Load more" preserving all active filters/sort in the query string.
 
 ## 7. Nav link
