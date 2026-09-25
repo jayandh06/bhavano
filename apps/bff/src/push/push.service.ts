@@ -10,6 +10,19 @@ const CHUNK_SIZE = 100;
  * dump a whole paragraph into a notification. */
 const BODY_PREVIEW_CHARS = 140;
 
+/** Android channels the mobile app creates in `apps/mobile/src/lib/push.ts` — must match
+ * exactly or Expo drops the notification when the channel is missing. */
+export const PUSH_CHANNEL_MESSAGES = 'messages';
+export const PUSH_CHANNEL_LISTING_ACTIVITY = 'listing_activity';
+
+/**
+ * Android status-bar / tray small icon — drawable name produced by the `expo-notifications`
+ * config plugin from `app.config.js`'s `icon: "./assets/android-icon-monochrome.png"`.
+ * Omitted payloads fall back to the same default; setting it explicitly keeps kinds consistent
+ * if a future channel ever overrides the plugin default.
+ */
+const ANDROID_NOTIFICATION_ICON = 'notification_icon';
+
 interface ExpoTicket {
   status: 'ok' | 'error';
   id?: string;
@@ -17,6 +30,8 @@ interface ExpoTicket {
   details?: { error?: string };
 }
 
+/** Subset of Expo Push Message fields we actually send — see
+ * https://docs.expo.dev/push-notifications/sending-notifications/ */
 interface ExpoPushMessage {
   to: string;
   title: string;
@@ -24,6 +39,36 @@ interface ExpoPushMessage {
   sound: 'default';
   channelId: string;
   data: Record<string, string>;
+  priority: 'default' | 'normal' | 'high';
+  icon: string;
+  subtitle?: string;
+  badge?: number;
+  collapseId?: string;
+  tag?: string;
+  threadId?: string;
+  interruptionLevel?: 'active' | 'critical' | 'passive' | 'timeSensitive';
+  richContent?: { image: string };
+}
+
+interface PushContent {
+  title: string;
+  body: string;
+  data: Record<string, string>;
+  channelId: string;
+  /** iOS — shown under the title. */
+  subtitle?: string;
+  /** iOS app-icon badge. */
+  badge?: number;
+  /** Coalesce in-transit + (on iOS) replace displayed. */
+  collapseId?: string;
+  /** Android — replace an already-shown notification with the same tag. */
+  tag?: string;
+  /** iOS — visually group related notifications. */
+  threadId?: string;
+  priority?: 'default' | 'normal' | 'high';
+  interruptionLevel?: 'active' | 'critical' | 'passive' | 'timeSensitive';
+  /** Large image in the expanded notification (Android out of the box; iOS needs an NSE). */
+  imageUrl?: string;
 }
 
 /**
@@ -98,29 +143,61 @@ export class PushService {
     recipientId: string,
     message: MessageDto,
     senderName: string,
+    opts: { unreadCount?: number; listingTitle?: string } = {},
   ): Promise<void> {
     // Always a freshly-sent message here (see sendMessage/sendFirstMessage), never a deleted
     // one, so body is never actually null despite MessageDto's general shape.
     const rawBody = message.body!;
     const body =
       rawBody.length > BODY_PREVIEW_CHARS ? `${rawBody.slice(0, BODY_PREVIEW_CHARS - 1)}…` : rawBody;
+    const listingTitle = opts.listingTitle?.trim();
 
     await this.sendToUser(recipientId, {
-      title: senderName,
-      body,
-      data: { conversationId: message.conversationId },
+      // Listing title leads, sender is a prefix on the message — the group-chat convention. Not
+      // Expo's `subtitle` for the sender: that field is iOS-only, so on Android the sender would
+      // vanish entirely. Falls back to the sender as title when the ad's title is unknown.
+      title: listingTitle || senderName,
+      body: listingTitle ? `${senderName}: ${body}` : body,
+      badge: opts.unreadCount,
+      channelId: PUSH_CHANNEL_MESSAGES,
+      priority: 'high',
+      interruptionLevel: 'timeSensitive',
+      collapseId: message.conversationId,
+      tag: `msg:${message.conversationId}`,
+      threadId: message.conversationId,
+      data: {
+        kind: 'message',
+        conversationId: message.conversationId,
+        ...(listingTitle ? { listingTitle } : {}),
+      },
     });
   }
 
   /** Owner push when a logged-in seeker opens their listing (interest / view). */
   async notifyListingInterest(
     recipientId: string,
-    params: { listingId: string; listingTitle: string; interestedName: string },
+    params: {
+      listingId: string;
+      listingTitle: string;
+      interestedName: string;
+      imageUrl?: string;
+    },
   ): Promise<void> {
     await this.sendToUser(recipientId, {
-      title: params.interestedName,
-      body: `Viewed your ad "${params.listingTitle}"`,
-      data: { path: '/my-listings', listingId: params.listingId, kind: 'listing_interest' },
+      title: params.listingTitle,
+      body: `👀 ${params.interestedName} viewed your ad`,
+      channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
+      priority: 'high',
+      interruptionLevel: 'active',
+      collapseId: `interest:${params.listingId}`,
+      tag: `interest:${params.listingId}`,
+      threadId: params.listingId,
+      imageUrl: params.imageUrl,
+      data: {
+        kind: 'listing_interest',
+        path: '/my-listings',
+        listingId: params.listingId,
+      },
     });
   }
 
@@ -128,19 +205,32 @@ export class PushService {
    * for likes stays boost-gated). */
   async notifyListingFavourite(
     recipientId: string,
-    params: { listingId: string; listingTitle: string; likerName: string },
+    params: {
+      listingId: string;
+      listingTitle: string;
+      likerName: string;
+      imageUrl?: string;
+    },
   ): Promise<void> {
     await this.sendToUser(recipientId, {
-      title: params.likerName,
-      body: `Favourited your ad "${params.listingTitle}"`,
-      data: { path: '/my-listings', listingId: params.listingId, kind: 'listing_favourite' },
+      title: params.listingTitle,
+      body: `❤️ ${params.likerName} favourited your ad`,
+      channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
+      priority: 'high',
+      interruptionLevel: 'active',
+      collapseId: `favourite:${params.listingId}`,
+      tag: `favourite:${params.listingId}`,
+      threadId: params.listingId,
+      imageUrl: params.imageUrl,
+      data: {
+        kind: 'listing_favourite',
+        path: '/my-listings',
+        listingId: params.listingId,
+      },
     });
   }
 
-  private async sendToUser(
-    recipientId: string,
-    content: { title: string; body: string; data: Record<string, string> },
-  ): Promise<void> {
+  private async sendToUser(recipientId: string, content: PushContent): Promise<void> {
     if (!this.enabled) {
       if (!this.loggedDisabledSkip) {
         this.loggedDisabledSkip = true;
@@ -166,14 +256,26 @@ export class PushService {
       const stale = new Set<string>();
       for (let i = 0; i < tokens.length; i += CHUNK_SIZE) {
         const chunk = tokens.slice(i, i + CHUNK_SIZE);
-        const payload: ExpoPushMessage[] = chunk.map(({ token }) => ({
-          to: token,
-          title: content.title,
-          body: content.body,
-          sound: 'default',
-          channelId: 'messages',
-          data: content.data,
-        }));
+        const payload: ExpoPushMessage[] = chunk.map(({ token }) => {
+          const msg: ExpoPushMessage = {
+            to: token,
+            title: content.title,
+            body: content.body,
+            sound: 'default',
+            channelId: content.channelId,
+            data: content.data,
+            priority: content.priority ?? 'high',
+            icon: ANDROID_NOTIFICATION_ICON,
+          };
+          if (content.subtitle) msg.subtitle = content.subtitle;
+          if (content.badge !== undefined) msg.badge = content.badge;
+          if (content.collapseId) msg.collapseId = content.collapseId;
+          if (content.tag) msg.tag = content.tag;
+          if (content.threadId) msg.threadId = content.threadId;
+          if (content.interruptionLevel) msg.interruptionLevel = content.interruptionLevel;
+          if (content.imageUrl) msg.richContent = { image: content.imageUrl };
+          return msg;
+        });
 
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',

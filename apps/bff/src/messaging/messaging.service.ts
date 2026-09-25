@@ -41,7 +41,13 @@ export class MessagingService {
     listingId: string,
     senderId: string,
     body: string,
-  ): Promise<{ conversationId: string; message: MessageDto; recipientId: string; senderName: string }> {
+  ): Promise<{
+    conversationId: string;
+    message: MessageDto;
+    recipientId: string;
+    senderName: string;
+    listingTitle: string;
+  }> {
     const result = await this.prisma.$transaction(async (tx) => {
       const listing = await tx.listing.findUnique({ where: { id: listingId } });
       if (!listing) throw new NotFoundException('Listing not found');
@@ -68,6 +74,7 @@ export class MessagingService {
         message: toMessageDto(message),
         recipientId: listing.ownerId,
         senderName: sender?.name ?? 'Buyer',
+        listingTitle: listing.title,
         wasUnread,
       };
     });
@@ -92,6 +99,7 @@ export class MessagingService {
       message: result.message,
       recipientId: result.recipientId,
       senderName: result.senderName,
+      listingTitle: result.listingTitle,
     };
   }
 
@@ -332,14 +340,19 @@ export class MessagingService {
     return { message: toMessageDto(updated), conversationId: updated.conversationId };
   }
 
-  /** Also returns the other participant's id and the sender's display name — the caller pushes a
-   * realtime unread update and a mobile notification (titled with the sender's name) to the
-   * recipient, and would otherwise have to re-load the conversation and the user to get either. */
+  /** Also returns the other participant's id, the sender's display name, and the listing title —
+   * the caller pushes a realtime unread update and a mobile notification (titled with the
+   * ad, body prefixed with the sender's name) to the recipient. */
   async sendMessage(
     conversationId: string,
     senderId: string,
     body: string,
-  ): Promise<{ message: MessageDto; recipientId: string; senderName: string }> {
+  ): Promise<{
+    message: MessageDto;
+    recipientId: string;
+    senderName: string;
+    listingTitle: string;
+  }> {
     const conversation = await this.assertParticipant(conversationId, senderId);
     // Before creating the message — same reasoning as sendFirstMessage's identical check.
     const recipientId =
@@ -347,9 +360,13 @@ export class MessagingService {
     const wasUnread = await this.prisma.message.count({
       where: { conversationId, senderId: { not: senderId }, readAt: null, deletedAt: null },
     });
-    const [message, sender] = await Promise.all([
+    const [message, sender, listing] = await Promise.all([
       this.prisma.message.create({ data: { conversationId, senderId, body } }),
       this.prisma.user.findUnique({ where: { id: senderId }, select: { name: true, phone: true } }),
+      this.prisma.listing.findUnique({
+        where: { id: conversation.listingId },
+        select: { title: true },
+      }),
     ]);
     // Never the raw phone number — this titles a push notification, which can sit on a locked
     // screen for anyone nearby to read. Same fix/reasoning as listConversations/getConversation.
@@ -369,7 +386,12 @@ export class MessagingService {
       });
     }
 
-    return { message: toMessageDto(message), recipientId, senderName };
+    return {
+      message: toMessageDto(message),
+      recipientId,
+      senderName,
+      listingTitle: listing?.title ?? '',
+    };
   }
 
   async markRead(conversationId: string, userId: string): Promise<void> {

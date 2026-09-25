@@ -133,4 +133,84 @@ describe('PushService', () => {
       }),
     );
   });
+
+  it('includes Expo attributes: priority, icon, badge, collapse/tag/thread, channel', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [{ status: 'ok', id: 'r1' }] }),
+    });
+    const { service } = makeService({
+      enabled: true,
+      tokens: [{ token: 'ExpoTok[a]' }],
+      fetchImpl,
+    });
+    await service.notifyNewMessage('u1', message, 'Asha', {
+      unreadCount: 3,
+      listingTitle: '2 BHK in Koramangala',
+    });
+    const body = JSON.parse((fetchImpl.mock.calls[0][1] as { body: string }).body) as Array<
+      Record<string, unknown>
+    >;
+    expect(body[0]).toMatchObject({
+      to: 'ExpoTok[a]',
+      title: '2 BHK in Koramangala',
+      body: 'Asha: hello',
+      badge: 3,
+      sound: 'default',
+      channelId: 'messages',
+      priority: 'high',
+      icon: 'notification_icon',
+      collapseId: 'c1',
+      tag: 'msg:c1',
+      threadId: 'c1',
+      interruptionLevel: 'timeSensitive',
+      data: { kind: 'message', conversationId: 'c1', listingTitle: '2 BHK in Koramangala' },
+    });
+  });
+
+  it('falls back to the sender as title, with no prefix, when the listing title is unknown', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [{ status: 'ok', id: 'r1' }] }),
+    });
+    const { service } = makeService({
+      enabled: true,
+      tokens: [{ token: 'ExpoTok[a]' }],
+      fetchImpl,
+    });
+    await service.notifyNewMessage('u1', message, 'Asha');
+    const body = JSON.parse((fetchImpl.mock.calls[0][1] as { body: string }).body) as Array<
+      Record<string, unknown>
+    >;
+    expect(body[0]).toMatchObject({ title: 'Asha', body: 'hello' });
+  });
+
+  it('sends listing-activity pushes with listing title, listing channel, and optional image', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [{ status: 'ok', id: 'r1' }] }),
+    });
+    const { service } = makeService({
+      enabled: true,
+      tokens: [{ token: 'ExpoTok[a]' }],
+      fetchImpl,
+    });
+    await service.notifyListingInterest('u1', {
+      listingId: 'l1',
+      listingTitle: 'PG in Indiranagar',
+      interestedName: 'Ravi',
+      imageUrl: 'https://cdn.example/preview.jpg',
+    });
+    const body = JSON.parse((fetchImpl.mock.calls[0][1] as { body: string }).body) as Array<
+      Record<string, unknown>
+    >;
+    expect(body[0]).toMatchObject({
+      title: 'PG in Indiranagar',
+      body: '👀 Ravi viewed your ad',
+      channelId: 'listing_activity',
+      icon: 'notification_icon',
+      richContent: { image: 'https://cdn.example/preview.jpg' },
+      data: { kind: 'listing_interest', path: '/my-listings', listingId: 'l1' },
+    });
+  });
 });
