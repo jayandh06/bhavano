@@ -144,3 +144,14 @@ whole set drains on its own without extra load. Run by hand on the host after de
   the API down for about 3.5 minutes until it was started by hand. Never kill `docker compose`
   mid-recreate. Structural fixes still to do: enlarge the disk, and cap the `bff_logs` volume and
   container-log sizes.
+- **Lightened 2026-09-25 (deployed 15:08 UTC):** the 40% centered text was judged too prominent, so
+  text opacity is now 22% with a thinner outline and the corner logo is 60%. Photos already rebuilt
+  with the heavier mark were requeued with `--before=2026-09-25T15:08:45Z` (1,930 jobs / 967 photos,
+  on top of about 1,090 still pending), so the full backlog takes roughly two more hours. A restart
+  strands any job that is in `processing` at that moment (the worker only picks up `pending`), so
+  after redeploying `bff` during a backfill, reset `processing` rows older than a couple of minutes
+  back to `pending`.
+- A deploy gotcha found on the way: `git pull --ff-only` on the host fails if a tracked script there
+  has local edits that the incoming commit also touches, and `docker compose up --build` then quietly
+  builds the *old* checkout. Always confirm the host HEAD (or grep the built file) before trusting a
+  deploy; the local edits were preserved with `git stash` / `git stash pop`.
