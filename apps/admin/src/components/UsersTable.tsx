@@ -116,11 +116,27 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
                 <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDateTime(u.createdAt)}</td>
                 <td style={tdStyle}>
                   <Link href={`/users/${u.id}`} style={{ color: "var(--green)", fontWeight: 700 }}>
-                    {u.name ?? dash}
+                    {u.name ?? u.phone ?? u.email ?? "View user"}
                   </Link>
                 </td>
-                <td style={tdStyle}>{u.phone ?? dash}</td>
-                <td style={tdStyle}>{u.email ?? dash}</td>
+                <td style={tdStyle}>
+                  {u.phone ? (
+                    <Link href={`/users/${u.id}`} style={{ color: "var(--green)", fontWeight: 700 }}>
+                      {u.phone}
+                    </Link>
+                  ) : (
+                    dash
+                  )}
+                </td>
+                <td style={tdStyle}>
+                  {u.email ? (
+                    <Link href={`/users/${u.id}`} style={{ color: "var(--green)", fontWeight: 700 }}>
+                      {u.email}
+                    </Link>
+                  ) : (
+                    dash
+                  )}
+                </td>
                 <td style={tdStyle}>{u.role}</td>
                 <td style={tdStyle}>{u.cityName ?? dash}</td>
                 <td style={tdStyle}>
