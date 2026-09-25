@@ -128,3 +128,19 @@ whole set drains on its own without extra load. Run by hand on the host after de
 - Local `nest build` initially failed only because the locally generated Prisma client was stale
   (another change added `allowLivePublishWithPendingPayment`); regenerating it fixed that. Unrelated
   to this work.
+- **Deployed 2026-09-25 14:03 UTC** (`bff` only). Verified live: rebuilt photos on the CDN show the
+  centered wordmark and corner logo. The photo backfill was run with
+  `--before=2026-09-25T14:03:00Z` (3,034 jobs / 1,518 photos); the worker drains it at roughly 20
+  jobs per minute, so it takes a couple of hours. The video path was verified with real ffmpeg in a
+  throwaway container from the production image but **not yet with a real upload through the app**:
+  the first new video uploaded after this deploy is the real end-to-end test.
+- **Deploy incident (disk full).** The production host's root disk is only 29 GB and was 96% full
+  (12 GB Docker build cache that can't be pruned because it's shared with the running images, plus
+  4 GB of rotated bff logs and a 1.1 GB Loki container log). The first two `docker compose up
+  --build bff` attempts failed at the image-unpack step with "no space left on device". Freed space
+  by emptying Loki's container log and deleting bff log files older than 14 days (both approved).
+  Separately, a guard I added that killed the compose process when free space got low did so
+  *after* compose had stopped the old `bff` container and *before* it started the new one, leaving
+  the API down for about 3.5 minutes until it was started by hand. Never kill `docker compose`
+  mid-recreate. Structural fixes still to do: enlarge the disk, and cap the `bff_logs` volume and
+  container-log sizes.
