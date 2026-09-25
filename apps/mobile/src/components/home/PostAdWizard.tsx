@@ -227,12 +227,13 @@ export function PostAdWizard({
     return () => cancelAnimationFrame(raf);
   }, [step]);
   const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
-  // Mirrors the web wizard's StepTracker — scroll reset + PageView for the review step.
-  // Preview is in-wizard only (route stays /post), so SoftNavAppPageViews never sees it;
-  // synthetic `/post/preview` matches web's StepTracker pageview.
+  // Mirrors the web wizard's StepTracker — scroll reset + PageViews for in-wizard steps.
+  // Preview/success keep the route at /post, so SoftNavAppPageViews never sees them;
+  // synthetic `/post/preview` and `/post/success` match web's StepTracker pageviews.
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
     if (step === "review") void recordAppPageView("/post/preview");
+    else if (step === "success") void recordAppPageView("/post/success");
   }, [step]);
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);

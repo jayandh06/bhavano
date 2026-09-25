@@ -323,6 +323,12 @@ that step opens — synthetic path, same hop + dedupe as soft-nav — so admin P
 reached the card preview. GTM already had `post_step_view` with `step: "review"`; this only fills
 the PageView trail.
 
+**Post-ad Success step (2026-09-25).** After publish, the wizard sets `step === "success"` but
+still stays on `/post` (no `/post/success` route). Without a synthetic PageView, admin trails
+stopped at `/post/preview` even when the ad went live. `StepTracker` (web) and the mobile
+wizard now also POST `/post/success` when that step opens — same hop as preview. GTM already
+fires `post_ad_success`; this only fills the PageView trail.
+
 **Mobile app Page visits (2026-09-24).** In-app usage previously never reached `Visit` /
 `PageView` (schema used to say so). The app now mirrors SoftNav:
 
@@ -332,7 +338,8 @@ the PageView trail.
   `fromApp: true` so backfill classifies as `mobile_app`.
 - `SoftNavAppPageViews` in the root layout — records every expo-router pathname (including cold
   open; there is no middleware to have logged it already).
-- Mobile `PostAdWizard` also logs `/post/preview` on the review step, same synthetic path as web.
+- Mobile `PostAdWizard` also logs `/post/preview` on review and `/post/success` on success, same
+  synthetic paths as web.
 - Login (OTP / Google / Apple) sends `sessionId` so `AuthService.linkVisitToUser` attaches the
   Visit to the account.
 - BFF analytics controller fills `ip` / `userAgent` from `req` when the body omits them (mobile

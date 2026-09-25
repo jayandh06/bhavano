@@ -65,7 +65,8 @@ async function ensureVisit(landingPath: string): Promise<string> {
   return id;
 }
 
-/** One PageView for a path (route change or synthetic wizard step like `/post/preview`).
+/** One PageView for a path (route change or synthetic wizard step like `/post/preview` /
+ * `/post/success`).
  * Fire-and-forget from callers; swallows errors so analytics never blocks UI. */
 export async function recordAppPageView(path: string): Promise<void> {
   if (!path.startsWith("/")) return;
