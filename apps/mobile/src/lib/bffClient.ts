@@ -702,6 +702,18 @@ export function linkPhone(
   return authedBffFetch(accessToken, "/auth/otp/link", { method: "POST", body: JSON.stringify({ phone, code }) });
 }
 
+/** Executes a merge the user approved. `code` is the same one proven when the server answered
+ * `confirm` — that request deliberately left the challenge valid. */
+export function confirmAccountMerge(
+  accessToken: string,
+  identifier: { phone?: string; email?: string; code: string },
+): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/users/me/merge/confirm", {
+    method: "POST",
+    body: JSON.stringify(identifier),
+  });
+}
+
 /** Mirrors the website's identical call (bff.ts's deleteAccount) — gated behind a freshly-sent
  * code (sendOtp for a phone-holding account, requestEmailCode otherwise) since it's
  * irreversible. Required in-app by App Store guideline 5.1.1(v) and the DPDP Act regardless of

@@ -1,47 +1,58 @@
-# Post-login name (required) + preferred city (optional)
+# Post-login name + verified secondary identifier (+ optional city)
 
-Status: **implemented** (2026-09-25)
+Status: **implemented** (2026-09-25; secondary verification added same day)
 
 ## Goal
 
-After phone / Google / Apple login, ask once for profile basics when either **name** or
-**preferred city** is missing:
+After phone / Google / Apple login, require profile basics before the session is treated as
+complete:
 
-- **Name** — single display field, **mandatory** to leave the step. Phone OTP starts empty;
-  Google/Apple prefill when the provider returned a name (editable).
-- **Preferred city** — optional. Type-ahead only: no full list by default; search after the
-  user types **≥ 2 characters**. Skip leaves city unset.
+| Login method | Required before continue | Optional |
+| --- | --- | --- |
+| Phone OTP | Name + **verified email** (email code) | Preferred city |
+| Google / Apple | Name + **verified phone** (OTP via `linkPhone`) | Preferred city |
 
-Does **not** replace the deferred email/phone nudge
-([profile-completion-dialog.md](profile-completion-dialog.md)) — that remains for linking the
-other identifier later.
+- **Name** — single display field, mandatory. Phone OTP starts empty; Google/Apple prefill when
+  the provider returned a name (editable).
+- **Secondary identifier** — mandatory and **must be verified**. Typed-but-unverified email/phone
+  is never enough (`emailVerifiedAt` / `phoneVerifiedAt` only). Uses existing
+  `requestEmailCode`/`verifyEmail` and `sendOtp`/`linkPhone` (plus account-merge confirm when the
+  identifier already belongs to another account). See
+  [account-linking-phone-and-email.md](account-linking-phone-and-email.md).
+- **Preferred city** — optional. Type-ahead only after **≥ 2 characters**. Skip leaves city unset,
+  but only after name + verified secondary are done.
+
+First-session linking of the other channel is therefore **in the login sheet**, not deferred.
+The skippable return-visit nudge ([profile-completion-dialog.md](profile-completion-dialog.md))
+and the banner remain for **legacy** users who completed login before this gate existed.
 
 ## When it shows
 
 After a successful login (web `AuthGateProvider`, mobile `HomeSheetsProvider`), fetch
-`UserProfileDto`. Open the basics step iff `!name?.trim()` **or** `!cityId`.
+`UserProfileDto`. Open the basics step iff any of:
 
-- Missing name → Continue requires a non-empty name; no Skip / no dismiss without saving name.
-- Name present, city missing → Skip / dismiss allowed (city stays unset).
-- Both present → proceed to normal post-login success (toast, redirect, resume).
+- `!name?.trim()`
+- missing secondary: `!phone` (Google/Apple) **or** `!email || !emailVerified` (phone)
+- `!cityId` (city still shown; skippable once name + secondary are satisfied)
 
-Legacy phone users without a name see this on their **next** login.
+Cannot dismiss / Skip until **name** and **verified secondary** are present. City-only gap allows
+Skip.
 
 ## Surfaces
 
 | Surface | Where |
 | --- | --- |
-| Web desktop + mobile browser | New `basics` step inside the existing auth modal (`AuthGateProvider`) |
-| Native mobile | New `basics` step inside the login bottom sheet (`HomeSheetsProvider`) |
+| Web desktop + mobile browser | `basics` step inside the auth modal (`AuthGateProvider` → `ProfileBasicsStep`) |
+| Native mobile | `basics` step inside the login bottom sheet (`HomeSheetsProvider` → `ProfileBasicsStep`) |
 
-City search reuses `searchCitiesAction` / `fetchCities(q)` — same APIs as profile / location
-pickers. Saving uses existing `updateProfile` / `updateProfileAction` (`name`, `cityId`).
+City search reuses `searchCitiesAction` / `fetchCities(q)`. Name/city save uses `updateProfile`.
+Secondary linking never goes through `updateProfile` (email/phone are write-blocked there).
 
-On mobile, saving a city also updates the in-app home city (`setCity`) so browse matches the
-choice immediately.
+On mobile, saving a city also updates the in-app home city (`setCity`).
 
 ## Out of scope
 
 - Splitting first/last name
 - Blocking login before OTP/Google completes
 - Showing popular cities as a default list in this step (deliberate empty until 2 chars)
+- Re-verifying Google/Apple email (already verified by the provider)

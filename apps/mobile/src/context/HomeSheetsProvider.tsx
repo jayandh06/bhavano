@@ -41,7 +41,7 @@ import { getAnalyticsSessionId } from "../lib/analyticsSession";
 import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
 import { Icon } from "../components/Icon";
 import { GoogleIcon } from "../components/GoogleIcon";
-import { ProfileBasicsStep, type ProfileBasicsValues } from "../components/home/ProfileBasicsStep";
+import { ProfileBasicsStep, basicsFromProfile, canDismissBasics, profileNeedsBasics, type ProfileBasicsValues } from "../components/home/ProfileBasicsStep";
 import { appWebUrl } from "../lib/appWebUrl";
 
 // Exported so PostAdWizard can re-read the just-written token directly after a login it
@@ -132,6 +132,10 @@ export function HomeSheetsProvider({
     name: "",
     cityId: null,
     cityName: null,
+    phone: null,
+    email: null,
+    emailVerified: false,
+    needSecondary: "email",
   });
 
   const googleSignIn = useGoogleSignIn();
@@ -333,19 +337,13 @@ export function HomeSheetsProvider({
       if (t) pushTokenRef.current = t;
     });
 
-    // Name (required) + preferred city (optional) when either is missing — see
+    // Name + verified secondary required; city optional — see
     // docs/plans/post-login-name-and-city.md. Keep the login sheet open for this step.
     try {
       const nextProfile = await fetchProfile(accessToken);
       setProfile(nextProfile);
-      const needsName = !nextProfile.name?.trim();
-      const needsCity = !nextProfile.cityId;
-      if (needsName || needsCity) {
-        setBasicsInitial({
-          name: nextProfile.name?.trim() ?? "",
-          cityId: nextProfile.cityId,
-          cityName: nextProfile.cityName,
-        });
+      if (profileNeedsBasics(nextProfile)) {
+        setBasicsInitial(basicsFromProfile(nextProfile));
         setError(null);
         setPending(false);
         setLoginStep("basics");
@@ -617,9 +615,10 @@ export function HomeSheetsProvider({
         * gorhom handles automatically, Android needs the window's own resize mode set). */}
       <BottomSheetModal
         ref={loginSheetRef}
-        snapPoints={loginStep === "basics" ? ["72%"] : ["55%"]}
-        // Name is mandatory — don't let a phone signup swipe the sheet away without one.
-        enablePanDownToClose={loginStep !== "basics" || basicsInitial.name.trim().length > 0}
+        snapPoints={loginStep === "basics" ? ["85%"] : ["55%"]}
+        // Name + verified secondary are mandatory — don't swipe away an incomplete profile.
+        // City-only gaps may dismiss (canDismissBasics).
+        enablePanDownToClose={loginStep !== "basics" || canDismissBasics(basicsInitial)}
         backgroundStyle={{ backgroundColor: colors.surface }}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
@@ -761,6 +760,10 @@ export function HomeSheetsProvider({
               initial={basicsInitial}
               onSaved={onBasicsSaved}
               onSkip={() => finishLoginSuccess()}
+              onReauthRequired={() => {
+                loginSheetRef.current?.dismiss();
+                void logout();
+              }}
             />
           )}
         </KeyboardAvoidingView>

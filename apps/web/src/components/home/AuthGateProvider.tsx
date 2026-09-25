@@ -8,24 +8,27 @@ import {
   hasSessionAction,
   sendOtpAction,
   signInWithGoogleAction,
+  signOutAction,
   verifyOtpAction,
 } from "@/app/actions/auth";
-import {
-  fetchProfileAction,
-  requestEmailCodeAction,
-  resolvePostLoginRedirectAction,
-  verifyEmailAction,
-} from "@/app/actions/users";
+import { fetchProfileAction, resolvePostLoginRedirectAction } from "@/app/actions/users";
 import { pushDataLayerEvent, toE164IN } from "@/lib/gtm";
 import { AUTH_POPUP_MESSAGE } from "./AuthPopupComplete";
 import { GOOGLE_SIGNUP_TRACKED_KEY } from "./SignupConversionTracker";
 import { GoogleIcon } from "./GoogleIcon";
 import { Icon } from "./Icon";
-import { ProfileBasicsCloseButton, ProfileBasicsStep, type ProfileBasicsValues } from "./ProfileBasicsStep";
+import {
+  ProfileBasicsCloseButton,
+  ProfileBasicsStep,
+  basicsFromProfile,
+  canDismissBasics,
+  profileNeedsBasics,
+  type ProfileBasicsValues,
+} from "./ProfileBasicsStep";
 
-/** `basics` = name (required) + preferred city (optional) after login — see
- * docs/plans/post-login-name-and-city.md. `email`/`emailCode` are legacy unused steps. */
-type LoginStep = "choose" | "phone" | "otp" | "email" | "emailCode" | "basics";
+/** `basics` = name + verified secondary + optional city after login — see
+ * docs/plans/post-login-name-and-city.md. */
+type LoginStep = "choose" | "phone" | "otp" | "basics";
 
 interface AuthGateContextValue {
   /** `redirectTo` sends the user back to a specific path once logged in, instead of wherever the
@@ -62,14 +65,16 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [email, setEmail] = useState("");
-  const [emailCode, setEmailCode] = useState("");
   const [redirectTo, setRedirectTo] = useState<string | undefined>(undefined);
   const [phoneOnly, setPhoneOnly] = useState(false);
   const [basicsInitial, setBasicsInitial] = useState<ProfileBasicsValues>({
     name: "",
     cityId: null,
     cityName: null,
+    phone: null,
+    email: null,
+    emailVerified: false,
+    needSecondary: "email",
   });
   const onSuccessRef = useRef<(() => void) | undefined>(undefined);
 
@@ -84,21 +89,19 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     setLoginStep("choose");
     setPhone("");
     setOtp("");
-    setEmail("");
-    setEmailCode("");
     setError(null);
     setShowLoginModal(true);
   }
 
   function closeModal() {
-    // Name is mandatory on the basics step — backdrop / X must not abandon a phone signup
-    // without one. Skip is fine once a provider already gave us a name.
-    if (loginStep === "basics" && !basicsInitial.name.trim()) return;
+    // Name + verified secondary are mandatory — backdrop / X must not abandon an incomplete
+    // profile. City-only gaps may dismiss (canDismissBasics).
+    if (loginStep === "basics" && !canDismissBasics(basicsInitial)) return;
     setShowLoginModal(false);
   }
 
-  /** After OTP/Google succeeds: ask for name (required) and preferred city (optional) when
-   * either is missing — docs/plans/post-login-name-and-city.md. */
+  /** After OTP/Google succeeds: name + verified secondary required; city optional —
+   * docs/plans/post-login-name-and-city.md. */
   async function finishAuthOrPromptBasics() {
     const profileResult = await fetchProfileAction();
     if (profileResult.requiresLogin) {
@@ -106,14 +109,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
       return;
     }
     const profile = profileResult.profile;
-    const needsName = !profile.name?.trim();
-    const needsCity = !profile.cityId;
-    if (needsName || needsCity) {
-      setBasicsInitial({
-        name: profile.name?.trim() ?? "",
-        cityId: profile.cityId,
-        cityName: profile.cityName,
-      });
+    if (profileNeedsBasics(profile)) {
+      setBasicsInitial(basicsFromProfile(profile));
       setError(null);
       setPending(false);
       setLoginStep("basics");
@@ -209,31 +206,6 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
       });
       sessionStorage.setItem(GOOGLE_SIGNUP_TRACKED_KEY, "1");
     }
-  }
-
-  async function handleSendEmailCode() {
-    setPending(true);
-    setError(null);
-    const result = await requestEmailCodeAction(email.trim());
-    setPending(false);
-    if (result.success) setLoginStep("emailCode");
-    else setError(result.error ?? "Couldn't send the code");
-  }
-
-  async function handleVerifyEmailCode() {
-    setPending(true);
-    setError(null);
-    const result = await verifyEmailAction(email.trim(), emailCode);
-    setPending(false);
-
-    if (!result.success) {
-      setError(result.error);
-      return;
-    }
-    // A brand-new phone account has nothing in it, so any account already holding this address
-    // merges automatically — the user never sees a prompt, which is the point of doing this at
-    // signup rather than later.
-    onLoginSuccess();
   }
 
   /**
@@ -336,13 +308,11 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 {loginStep === "choose" && "Log in to continue"}
                 {loginStep === "phone" && "Enter your phone number"}
                 {loginStep === "otp" && "Enter the OTP"}
-                {loginStep === "email" && "Add your email"}
-                {loginStep === "emailCode" && "Confirm your email"}
                 {loginStep === "basics" && "Complete your profile"}
               </div>
               {loginStep === "basics" ? (
                 <ProfileBasicsCloseButton
-                  canDismiss={basicsInitial.name.trim().length > 0}
+                  canDismiss={canDismissBasics(basicsInitial)}
                   onClose={closeModal}
                 />
               ) : (
@@ -434,58 +404,6 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
               </>
             )}
 
-            {loginStep === "email" && (
-              <>
-                <p className="text-[13px] text-muted m-0 mb-3">
-                  So we can reach you about your ads — and so signing in with Google later brings
-                  you back to this same account.
-                </p>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className={`${inputClass} mb-3.5`}
-                />
-                {error && <p className={errorClass}>{error}</p>}
-                <button
-                  onClick={handleSendEmailCode}
-                  disabled={pending || !email.includes("@")}
-                  className={`${primaryButtonClass} ${email.includes("@") ? "opacity-100" : "opacity-50"}`}
-                >
-                  {pending ? "Sending…" : "Send code"}
-                </button>
-                <button onClick={onLoginSuccess} className={backButtonClass}>
-                  Skip for now
-                </button>
-              </>
-            )}
-
-            {loginStep === "emailCode" && (
-              <>
-                <p className="text-[13px] text-muted m-0 mb-3">
-                  We sent a 6-digit code to {email}.
-                </p>
-                <input
-                  value={emailCode}
-                  onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="······"
-                  className={`${inputClass} text-center tracking-[0.4em] mb-3.5`}
-                />
-                {error && <p className={errorClass}>{error}</p>}
-                <button
-                  onClick={handleVerifyEmailCode}
-                  disabled={emailCode.length !== 6 || pending}
-                  className={`${primaryButtonClass} ${emailCode.length === 6 ? "opacity-100" : "opacity-50"}`}
-                >
-                  {pending ? "Verifying…" : "Verify & continue"}
-                </button>
-                <button onClick={() => setLoginStep("email")} className={backButtonClass}>
-                  ← Back
-                </button>
-              </>
-            )}
-
             {loginStep === "basics" && (
               <ProfileBasicsStep
                 initial={basicsInitial}
@@ -495,6 +413,10 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 onPending={setPending}
                 onSaved={() => onLoginSuccess()}
                 onSkip={() => onLoginSuccess()}
+                onReauthRequired={() => {
+                  setShowLoginModal(false);
+                  void signOutAction();
+                }}
               />
             )}
           </div>
