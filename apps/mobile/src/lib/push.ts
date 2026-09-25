@@ -3,8 +3,10 @@ import Constants from "expo-constants";
 import type * as ExpoNotifications from "expo-notifications";
 import { deletePushToken, registerPushToken } from "./bffClient";
 
-/** Matches the `channelId` the BFF sets on every "new message" push (PushService). */
+/** Matches the `channelId` values `PushService` sets — create every channel the BFF may target
+ * before the first push arrives, or Android silently drops notifications for missing channels. */
 export const MESSAGES_CHANNEL_ID = "messages";
+export const LISTING_ACTIVITY_CHANNEL_ID = "listing_activity";
 
 /**
  * `expo-notifications` is a native module, and importing it throws *synchronously* on a binary
@@ -51,14 +53,23 @@ export function configureNotificationHandler(): void {
   });
 }
 
-async function ensureAndroidChannel(N: typeof ExpoNotifications): Promise<void> {
+async function ensureAndroidChannels(N: typeof ExpoNotifications): Promise<void> {
   if (Platform.OS !== "android") return;
-  await N.setNotificationChannelAsync(MESSAGES_CHANNEL_ID, {
-    name: "Messages",
-    importance: N.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: "#11523C",
-  });
+  await Promise.all([
+    N.setNotificationChannelAsync(MESSAGES_CHANNEL_ID, {
+      name: "Messages",
+      importance: N.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#11523C",
+    }),
+    N.setNotificationChannelAsync(LISTING_ACTIVITY_CHANNEL_ID, {
+      name: "Listing activity",
+      description: "Views and favourites on your ads",
+      importance: N.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#11523C",
+    }),
+  ]);
 }
 
 function projectId(): string | undefined {
@@ -81,7 +92,7 @@ export async function registerForPushAsync(accessToken: string): Promise<string 
   if (!N) return null;
 
   try {
-    await ensureAndroidChannel(N);
+    await ensureAndroidChannels(N);
 
     const existing = await N.getPermissionsAsync();
     let granted = existing.granted;
