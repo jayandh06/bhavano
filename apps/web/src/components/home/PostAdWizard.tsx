@@ -653,12 +653,34 @@ export function PostAdWizard({
     requiredAttributesFilled;
 
   /**
-   * Publish — and the one place this form needs an account.
+   * "Preview Ad" — where the account is first asked for.
    *
    * The login used to be a wall on arrival: a modal over an empty page, before the visitor had
-   * seen that the form is short and free. Nothing here touches the server until this function
-   * runs — photos are File objects held in memory and uploaded below — so there was never a
-   * technical reason to ask first, only a habit of asking.
+   * seen that the form is short and free. It now waits until the details are filled in and the
+   * visitor asks to preview, so the preview (and its boost/checkout options) is only ever shown
+   * to someone who can actually publish it. `onSuccess` moves straight on to the preview rather
+   * than leaving the visitor on the form to press the button again.
+   *
+   * Same server-side token check as onSubmit below, for the same reason: `token` is seeded from a
+   * server-rendered prop and does not update just because a client-side login happened.
+   */
+  async function onPreview() {
+    let activeToken = token;
+    if (!activeToken) {
+      activeToken = await getAccessTokenAction();
+      setToken(activeToken);
+    }
+    if (!activeToken) {
+      pushDataLayerEvent("post_login_required", { step });
+      requireLogin({ onSuccess: () => setStep("review") });
+      return;
+    }
+    setStep("review");
+  }
+
+  /**
+   * Publish. Still checks for an account itself: onPreview asked for one, but a session can lapse
+   * between previewing and publishing, and a stale preview is not a reason to fail the post.
    *
    * `onSuccess` resumes this same call rather than returning the user to a form with a button to
    * press again, which would read as the first press having failed. It is safe because Google
@@ -1182,7 +1204,7 @@ export function PostAdWizard({
               ← Back
             </button>
             <button
-              onClick={() => setStep("review")}
+              onClick={() => void onPreview()}
               disabled={!detailsValid}
               className={`ml-auto ${primaryButtonClass}`}
             >

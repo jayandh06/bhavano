@@ -854,9 +854,26 @@ export function PostAdWizard({
     requiredAttributesFilled;
 
   /**
-   * Nothing in this form touches the server before this runs — photos are local URIs, not
-   * uploaded, until Submit — so there's no technical reason to ask for an account any earlier
-   * than here, matching the website's own PostAdWizard.
+   * "Preview Ad" — where the account is first asked for, matching the website's own
+   * PostAdWizard. Nothing in this form touches the server before Submit, so the login waits until
+   * the details are filled in and the user asks to preview, and `onSuccess` continues straight
+   * to the preview. Re-reads SecureStore for the same stale-closure reason as onSubmit below.
+   */
+  async function onPreview() {
+    let activeToken = accessToken;
+    if (!activeToken) {
+      activeToken = (await SecureStore.getItemAsync(TOKEN_KEY)) ?? undefined;
+    }
+    if (!activeToken) {
+      requireLogin({ onSuccess: () => setStep("review") });
+      return;
+    }
+    setStep("review");
+  }
+
+  /**
+   * Submit. Still checks for an account itself: onPreview asked for one, but a session can lapse
+   * between previewing and submitting.
    *
    * `accessToken` may still be the `undefined` this component mounted with even once logged in:
    * `requireLogin`'s `onSuccess` (below) fires synchronously right after the login sheet writes
@@ -1310,7 +1327,7 @@ export function PostAdWizard({
 
           <View style={styles.navRow}>
             <Pressable
-              onPress={() => setStep("review")}
+              onPress={() => void onPreview()}
               disabled={!detailsValid}
               style={[styles.reviewButton, { backgroundColor: colors.green, opacity: detailsValid ? 1 : 0.5 }]}
             >

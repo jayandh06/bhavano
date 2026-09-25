@@ -2,6 +2,14 @@
 
 ## Status: implemented (2026-09-22)
 
+**Superseded in part (2026-09-25):** the wizard's "only ask for an account at Post ad" point below
+is no longer true. Both web and mobile `PostAdWizard`s now ask for login when the user presses
+**Preview Ad** (`onPreview()`), and continue straight to the Preview step on success. `onSubmit`
+keeps its own login check as a fallback for a session that lapses between preview and publish.
+Item 1's reasoning still stands for pricing: the selector still reads the public
+`GET /plans/pricing`, which is fine — the login now happens before the Preview renders, not because
+of what it calls.
+
 Four things worth recording that diverged from — or weren't decided by — the plan below:
 
 1. **Pricing source for the Preview-step selector had to change.** `PaymentsService.
