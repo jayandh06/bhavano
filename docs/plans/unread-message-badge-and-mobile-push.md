@@ -36,12 +36,15 @@ Decisions already taken with the user:
 
 ### 1. Aggregate unread endpoint — `src/messaging/`
 
-- `MessagingService.getUnreadTotal(userId): Promise<number>` — one query, both roles:
+- `MessagingService.getUnreadTotal(userId): Promise<number>` — one query, both roles, across
+  **inquiry and moderation** threads (unified Messages inbox; empty moderation rows have no
+  messages so they don't affect the count):
   ```ts
   this.prisma.message.count({
     where: {
       senderId: { not: userId },
       readAt: null,
+      deletedAt: null,
       conversation: { OR: [{ posterId: userId }, { inquirerId: userId }] },
     },
   })

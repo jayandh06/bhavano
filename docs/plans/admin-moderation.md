@@ -11,6 +11,10 @@ This is a large, multi-part feature. It's phased below so it can be built and ve
 - **Admin bootstrapping**: no admin signup flow exists or is being built. An `ADMIN_PHONES`/`ADMIN_EMAILS` env-var allowlist is checked at login time (both OTP and Google) — matching phone/email gets `role=admin` upserted automatically. This avoids needing a manual DB edit or a separate invite system to create the first admin.
 - **"Soft delete" = "flag"**: reading the request closely, "soft delete the posting" and "message user about discrepancy" are the same admin action, not two separate features — flagging takes the listing offline (soft-delete) *and* is how the discrepancy gets communicated. One admin action does both.
 - **Admin↔user messaging reuses the existing Conversation/Message system** (same `/messages` inbox the user already has for buyer/seller chat) rather than a separate admin inbox — this directly satisfies "messages is one to one between users or user and admin." Requires a small schema change (see below) so a moderation thread can't collide with a real buyer inquiry.
+  **Shipped behaviour:** `listConversations` / `getUnreadTotal` include both `inquiry` and
+  `moderation`, but only threads with at least one non-deleted message (so empty rows created when
+  an admin merely opens a listing stay out of the consumer inbox). Moderation rows are labeled
+  **Bhavano Admin** / UI badge **From Bhavano**.
 - **Email + SMS notifications are net-new infrastructure** — zero email-sending capability exists anywhere in the repo today, and the only SMS integration (MSG91) is hardwired to OTP delivery, not free-form transactional messages. This is flagged clearly in Phase 4 below since it needs an external account (Resend, or SES since deployment is already on AWS) and, for SMS in India, DLT template registration — neither of which I can provision myself.
 
 ---

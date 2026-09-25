@@ -95,10 +95,30 @@ export default function MessagesScreen() {
                   {/* The other participant's name/phone never renders here — this app makes its
                       money on a *paid* contact reveal, so a free-to-read messages list can't be
                       the place that hands out who someone is. The listing is what the thread is
-                      about either way. */}
-                  <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }} numberOfLines={1}>
-                    {item.listingTitle}
-                  </Text>
+                      about either way. Moderation threads get a "From Bhavano" cue so staff
+                      notes aren't mistaken for a buyer inquiry. */}
+                  <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                    <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }} numberOfLines={1}>
+                      {item.listingTitle}
+                    </Text>
+                    {item.type === "moderation" && (
+                      <Text
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: "700",
+                          color: colors.muted,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                          borderRadius: 6,
+                          paddingHorizontal: 6,
+                          paddingVertical: 1,
+                          overflow: "hidden",
+                        }}
+                      >
+                        From Bhavano
+                      </Text>
+                    )}
+                  </View>
                   {/* Where and when, on one line — mirrors the web app's identical row. */}
                   <Text style={{ fontSize: 11.5, color: colors.muted, marginTop: 2 }} numberOfLines={1}>
                     {item.listingArea}, {item.listingCityName}

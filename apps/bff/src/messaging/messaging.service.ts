@@ -116,11 +116,11 @@ export class MessagingService {
     });
   }
 
-  /** The buyer/seller inbox only — `moderation` threads (admin↔owner, auto-created just by an
-   * admin opening a listing in the separate admin app, see getOrCreateModerationThread) are a
-   * different surface entirely and must never leak into here. An admin who also messages
-   * listings as a buyer would otherwise see a phantom "empty conversation" for every listing
-   * they'd merely opened in the admin panel, alongside their real inquiry for the same listing. */
+  /** Unified owner/buyer inbox — buyer inquiries **and** admin↔owner moderation threads that
+   * already have at least one non-deleted message. Empty moderation rows (created when an admin
+   * merely opens a listing via `getOrCreateModerationThread`) stay out because of the
+   * `messages: { some: { deletedAt: null } }` filter, so admins who also use the consumer app
+   * don't see a phantom empty thread for every listing they browsed in admin. */
   async listConversations(userId: string): Promise<ConversationSummaryDto[]> {
     const conversations = await this.prisma.conversation.findMany({
       // `some: { deletedAt: null }`, not just `some: {}` — a conversation whose only messages
@@ -130,7 +130,6 @@ export class MessagingService {
       // what's listed here. sendFirstMessage's upsert still finds and reuses the same row if
       // either side messages again, so nothing is lost or duplicated.
       where: {
-        type: 'inquiry',
         OR: [{ posterId: userId }, { inquirerId: userId }],
         messages: { some: { deletedAt: null } },
       },
@@ -150,10 +149,12 @@ export class MessagingService {
         const unreadCount = await this.prisma.message.count({
           where: { conversationId: c.id, senderId: { not: userId }, readAt: null, deletedAt: null },
         });
-        // Only the poster (seller) sees this — the badge is about the *inquirer* being a
-        // premium buyer, so it never makes sense on the seller's own side of the thread.
+        // Only sellers see this, and only on buyer inquiries — never on a moderation thread
+        // (the "other party" there is staff, not a premium seeker).
         const otherPartyIsVerifiedBuyer =
-          viewerIsPoster && (c.inquirer.premiumUntil?.getTime() ?? 0) > Date.now();
+          c.type === 'inquiry' &&
+          viewerIsPoster &&
+          (c.inquirer.premiumUntil?.getTime() ?? 0) > Date.now();
         return {
           id: c.id,
           listingId: c.listingId,
@@ -164,10 +165,12 @@ export class MessagingService {
           otherPartyId: otherParty.id,
           // Never the raw phone number — a caller with no display name previously fell through
           // to `otherParty.phone`, handing out contact info the paid reveal flow exists to gate
-          // (see contact-reveal.service.ts). A role label costs nothing here: `viewerIsPoster`
-          // already tells us which side of the inquiry the other party is on.
+          // (see contact-reveal.service.ts). Moderation always reads as "Bhavano Admin" so an
+          // individual admin's personal name never looks like a buyer in the unified inbox.
           otherPartyName:
-            otherParty.name ?? (c.type === 'moderation' ? 'Bhavano Admin' : viewerIsPoster ? 'Buyer' : 'Seller'),
+            c.type === 'moderation'
+              ? 'Bhavano Admin'
+              : (otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller')),
           otherPartyIsVerifiedBuyer,
           lastMessage: c.messages[0] ? toMessageDto(c.messages[0]) : null,
           unreadCount,
@@ -211,10 +214,12 @@ export class MessagingService {
     return {
       id: conversation.id,
       type: conversation.type,
-      // See listConversations' identical fix — never the raw phone number.
+      // See listConversations' identical fix — never the raw phone number; moderation is always
+      // labeled as staff, not the acting admin's personal display name.
       otherPartyName:
-        otherParty.name ??
-        (conversation.type === 'moderation' ? 'Bhavano Admin' : viewerIsPoster ? 'Buyer' : 'Seller'),
+        conversation.type === 'moderation'
+          ? 'Bhavano Admin'
+          : (otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller')),
       listing: {
         id: conversation.listing.id,
         title: conversation.listing.title,
@@ -227,11 +232,10 @@ export class MessagingService {
     };
   }
 
-  /** Total unread messages across every conversation this user is in, in either role — the number
-   * behind the count badge on the Messages entry point. One query: the per-conversation
-   * `unreadCount` that `listConversations` computes is the same count sliced by thread. Excludes
-   * deleted messages — otherwise an unread message deleted before it was ever read would leave a
-   * phantom badge count pointing at a conversation that may no longer even be in the inbox. */
+  /** Total unread messages across every conversation this user is in (inquiry **and**
+   * moderation), in either role — matches the unified Messages inbox. Empty moderation
+   * threads contribute nothing (no messages). Excludes deleted messages so a soft-deleted
+   * unread cannot leave a phantom badge. */
   async getUnreadTotal(userId: string): Promise<number> {
     return this.prisma.message.count({
       where: {
@@ -370,9 +374,12 @@ export class MessagingService {
     ]);
     // Never the raw phone number — this titles a push notification, which can sit on a locked
     // screen for anyone nearby to read. Same fix/reasoning as listConversations/getConversation.
+    // Moderation always titles as staff, not the acting admin's personal name.
     const senderIsPoster = conversation.posterId === senderId;
     const senderName =
-      sender?.name ?? (conversation.type === 'moderation' ? 'Bhavano Admin' : senderIsPoster ? 'Seller' : 'Buyer');
+      conversation.type === 'moderation'
+        ? 'Bhavano Admin'
+        : (sender?.name ?? (senderIsPoster ? 'Seller' : 'Buyer'));
 
     // Instant Alerts is bought by and for the advertiser (the poster) — never fires for the
     // inquirer's own messages, and never for the admin↔owner moderation thread.

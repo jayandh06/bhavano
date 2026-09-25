@@ -57,20 +57,31 @@ describe('MessagingService.listConversations — Verified Buyer badge (premiumUn
   });
 });
 
-describe('MessagingService.listConversations — excludes moderation threads', () => {
-  it('queries only type: inquiry, so an admin\'s own moderation threads never appear in their inbox', async () => {
+describe('MessagingService.listConversations — unified inquiry + moderation inbox', () => {
+  it('lists every conversation the user is in (no type filter); empty threads stay out via messages.some', async () => {
     const { service, prisma } = makeService([]);
     await service.listConversations('poster1');
     expect(prisma.conversation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ type: 'inquiry' }),
+        where: {
+          OR: [{ posterId: 'poster1' }, { inquirerId: 'poster1' }],
+          messages: { some: { deletedAt: null } },
+        },
       }),
     );
+  });
+
+  it('labels moderation threads as Bhavano Admin and never shows Verified Buyer on them', async () => {
+    const { service } = makeService([conversation('owner1', 'admin1', future(), 'moderation')]);
+    const [result] = await service.listConversations('owner1');
+    expect(result.type).toBe('moderation');
+    expect(result.otherPartyName).toBe('Bhavano Admin');
+    expect(result.otherPartyIsVerifiedBuyer).toBe(false);
   });
 });
 
 describe('MessagingService.getUnreadTotal', () => {
-  it('counts unread messages from others across every conversation the user is a participant in', async () => {
+  it('counts unread across inquiry and moderation threads the user participates in', async () => {
     const count = jest.fn().mockResolvedValue(4);
     const prisma = { message: { count } } as unknown as PrismaService;
     const service = new MessagingService(prisma, notNotified, { recordInterest: jest.fn().mockResolvedValue({ interested: true, notified: false }) } as never);
