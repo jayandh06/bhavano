@@ -127,10 +127,28 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
 
   /** After OTP/Google succeeds: name + verified secondary required; city optional —
    * docs/plans/post-login-name-and-city.md. */
-  async function finishAuthOrPromptBasics() {
-    const profileResult = await fetchProfileAction();
-    if (profileResult.requiresLogin) {
+  async function finishAuthOrPromptBasics(profileHint?: Parameters<typeof basicsFromProfile>[0]) {
+    if (profileHint) {
+      if (profileNeedsBasics(profileHint)) {
+        openBasics(profileHint, false);
+        return;
+      }
       onLoginSuccess();
+      return;
+    }
+
+    // After phone OTP, the next server action can briefly miss the new session cookie — retry
+    // before treating the user as done without a basics prompt.
+    let profileResult = await fetchProfileAction();
+    for (let attempt = 0; attempt < 3 && profileResult.requiresLogin; attempt++) {
+      await new Promise((r) => setTimeout(r, 120 * (attempt + 1)));
+      profileResult = await fetchProfileAction();
+    }
+    if (profileResult.requiresLogin) {
+      // Soft navigations keep AuthGate mounted — allow a quiet recheck once the cookie lands.
+      sessionBasicsCheckedRef.current = false;
+      const opened = await promptMandatoryBasicsIfNeeded();
+      if (!opened) onLoginSuccess();
       return;
     }
     const profile = profileResult.profile;
@@ -141,6 +159,26 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     onLoginSuccess();
   }
 
+  /** @returns true when the basics sheet was opened. */
+  async function promptMandatoryBasicsIfNeeded(): Promise<boolean> {
+    // Brief retries — cookie from OTP signIn may not be visible on the first attempt.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 120 * attempt));
+      const signedIn = await hasSessionAction();
+      if (!signedIn) continue;
+      const profileResult = await fetchProfileAction();
+      if (profileResult.requiresLogin) continue;
+      if (!profileNeedsMandatoryBasics(profileResult.profile)) {
+        sessionBasicsCheckedRef.current = true;
+        return false;
+      }
+      sessionBasicsCheckedRef.current = true;
+      openBasics(profileResult.profile, true);
+      return true;
+    }
+    return false;
+  }
+
   /** Existing session / full-page Google return: force name + verified secondary if missing.
    * City-only gaps are not forced on every load (still optional). */
   useEffect(() => {
@@ -149,9 +187,16 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       const signedIn = await hasSessionAction();
-      if (cancelled || !signedIn) return;
+      if (cancelled || !signedIn) {
+        // Stay eligible to re-check after a same-session OTP login (layout does not remount).
+        sessionBasicsCheckedRef.current = false;
+        return;
+      }
       const profileResult = await fetchProfileAction();
-      if (cancelled || profileResult.requiresLogin) return;
+      if (cancelled || profileResult.requiresLogin) {
+        sessionBasicsCheckedRef.current = false;
+        return;
+      }
       if (!profileNeedsMandatoryBasics(profileResult.profile)) return;
       openBasics(profileResult.profile, true);
     })();
@@ -225,7 +270,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    await finishAuthOrPromptBasics();
+    await finishAuthOrPromptBasics(result.profile);
   }
 
   /**

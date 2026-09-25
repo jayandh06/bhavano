@@ -1,8 +1,8 @@
 "use server";
 
 import { signIn, signOut } from "@/auth";
-import type { LinkIdentifierResult } from "@bhavano/types";
-import { linkPhone, logout, sendOtp } from "@/lib/bff";
+import type { LinkIdentifierResult, UserProfileDto } from "@bhavano/types";
+import { fetchProfile, linkPhone, logout, sendOtp } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 import { auth } from "@/auth";
 
@@ -18,13 +18,23 @@ export async function sendOtpAction(phone: string): Promise<{ success: boolean; 
 export async function verifyOtpAction(
   phone: string,
   code: string,
-): Promise<{ success: boolean; error?: string; isNewUser?: boolean }> {
+): Promise<{ success: boolean; error?: string; isNewUser?: boolean; profile?: UserProfileDto }> {
   try {
     await signIn("phone-otp", { phone, code, redirect: false });
     // isNewUser only reflects this login (see the Session type's isNewUser doc comment) — read
     // it now, right after signing in, rather than expecting callers to trust it on future reads.
     const session = await auth();
-    return { success: true, isNewUser: session?.isNewUser };
+    // Fetch profile in *this* request — the next client server-action often races the Set-Cookie
+    // from signIn and briefly looks logged-out, which used to skip the post-login basics sheet.
+    let profile: UserProfileDto | undefined;
+    if (isAccessTokenValid(session?.accessToken)) {
+      try {
+        profile = await fetchProfile(session.accessToken);
+      } catch {
+        /* caller retries via finishAuthOrPromptBasics */
+      }
+    }
+    return { success: true, isNewUser: session?.isNewUser, profile };
   } catch {
     return { success: false, error: "Incorrect OTP" };
   }

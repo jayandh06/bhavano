@@ -51,6 +51,13 @@ returns therefore pick up the phone requirement on the next page load.
 
 City-only gaps are still not forced on every visit.
 
+**Phone OTP cookie race (2026-09-25):** right after `verifyOtpAction` / NextAuth `signIn`, a
+follow-up `fetchProfileAction` could briefly see no session (Set-Cookie not yet on the next
+server-action request). That path used to call `onLoginSuccess()` and skip basics — and because
+`AuthGateProvider` lives in the root layout, a soft navigation never remounted to re-check.
+`verifyOtpAction` now returns the profile from the same request as `signIn`, and the client
+retries profile fetch before giving up.
+
 ## Surfaces
 
 | Surface | Where |
