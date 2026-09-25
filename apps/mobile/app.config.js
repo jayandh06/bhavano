@@ -86,6 +86,12 @@ module.exports = {
         "android.permission.RECORD_AUDIO",
       ],
       package: "com.finfolia.bhavano",
+      // Firebase project's client config — required for Android push: expo-notifications'
+      // getExpoPushTokenAsync registers with FCM through it and fails without it. Public client
+      // identifiers, safe to commit; the FCM V1 service-account *private key* Expo uses to send
+      // is a separate secret, uploaded to EAS Credentials rather than kept in this repo. See
+      // docs/plans/unread-message-badge-and-mobile-push.md.
+      googleServicesFile: "./google-services.json",
     },
     web: {
       favicon: "./assets/favicon.png",

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "6542522926",
+    "project_id": "finfolia",
+    "storage_bucket": "finfolia.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:6542522926:android:dbd17a888a43a51debbdbf",
+        "android_client_info": {
+          "package_name": "com.finfolia.bhavano"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "6542522926-v86een7n4k9b80p68h2v3veb9v7gd99q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5aCWW763RetpG0X8mq2IPHUTEUfskBWk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "6542522926-h9v3c0b35e47560uns6evqt0bs552r50.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
