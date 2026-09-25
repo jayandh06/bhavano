@@ -38,6 +38,19 @@ After a successful login (web `AuthGateProvider`, mobile `HomeSheetsProvider`), 
 Cannot dismiss / Skip until **name** and **verified secondary** are present. City-only gap allows
 Skip.
 
+### Session restore / full-page Google return
+
+The gate used to run **only** at the end of an AuthGate login. Existing Google users who already
+had a session cookie (or finished Google as a full-page redirect to `/`) never saw the phone
+prompt.
+
+**Fix (2026-09-25):** on AuthGate / HomeSheets mount, if the browser/app already has a valid
+session and `profileNeedsMandatoryBasics` (missing name **or** verified secondary — not city
+alone), open the same basics sheet quietly (no “Logged in successfully” toast). Full-page Google
+returns therefore pick up the phone requirement on the next page load.
+
+City-only gaps are still not forced on every visit.
+
 ## Surfaces
 
 | Surface | Where |

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -23,6 +23,7 @@ import {
   basicsFromProfile,
   canDismissBasics,
   profileNeedsBasics,
+  profileNeedsMandatoryBasics,
   type ProfileBasicsValues,
 } from "./ProfileBasicsStep";
 
@@ -77,6 +78,10 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     needSecondary: "email",
   });
   const onSuccessRef = useRef<(() => void) | undefined>(undefined);
+  /** True when basics was opened for an already-signed-in session (or full-page Google return),
+   * not a fresh AuthGate login — complete without toast / post-login redirect. */
+  const quietBasicsRef = useRef(false);
+  const sessionBasicsCheckedRef = useRef(false);
 
   const router = useRouter();
 
@@ -86,6 +91,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     // A ref, not state: this fires once from inside onLoginSuccess and must not cause a render
     // of its own on the way in.
     onSuccessRef.current = options?.onSuccess;
+    quietBasicsRef.current = false;
     setLoginStep("choose");
     setPhone("");
     setOtp("");
@@ -100,6 +106,25 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     setShowLoginModal(false);
   }
 
+  function openBasics(profile: Parameters<typeof basicsFromProfile>[0], quiet: boolean) {
+    quietBasicsRef.current = quiet;
+    setBasicsInitial(basicsFromProfile(profile));
+    setError(null);
+    setPending(false);
+    setLoginStep("basics");
+    setShowLoginModal(true);
+  }
+
+  function onBasicsComplete() {
+    if (quietBasicsRef.current) {
+      quietBasicsRef.current = false;
+      setShowLoginModal(false);
+      router.refresh();
+      return;
+    }
+    onLoginSuccess();
+  }
+
   /** After OTP/Google succeeds: name + verified secondary required; city optional —
    * docs/plans/post-login-name-and-city.md. */
   async function finishAuthOrPromptBasics() {
@@ -110,15 +135,30 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     }
     const profile = profileResult.profile;
     if (profileNeedsBasics(profile)) {
-      setBasicsInitial(basicsFromProfile(profile));
-      setError(null);
-      setPending(false);
-      setLoginStep("basics");
-      setShowLoginModal(true);
+      openBasics(profile, false);
       return;
     }
     onLoginSuccess();
   }
+
+  /** Existing session / full-page Google return: force name + verified secondary if missing.
+   * City-only gaps are not forced on every load (still optional). */
+  useEffect(() => {
+    if (sessionBasicsCheckedRef.current) return;
+    sessionBasicsCheckedRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      const signedIn = await hasSessionAction();
+      if (cancelled || !signedIn) return;
+      const profileResult = await fetchProfileAction();
+      if (cancelled || profileResult.requiresLogin) return;
+      if (!profileNeedsMandatoryBasics(profileResult.profile)) return;
+      openBasics(profileResult.profile, true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function onLoginSuccess() {
     setShowLoginModal(false);
@@ -224,7 +264,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
    *
    * Falls back to the old full-page flow when there is no usable popup — a blocker, or a browser
    * that refuses the window. That path still works; it is simply the experience everyone had
-   * before this.
+   * before this. AuthGate's mount check then opens basics if phone/name are still missing.
    */
   async function handleGoogle() {
     setPending(true);
@@ -411,8 +451,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 error={error}
                 onError={setError}
                 onPending={setPending}
-                onSaved={() => onLoginSuccess()}
-                onSkip={() => onLoginSuccess()}
+                onSaved={onBasicsComplete}
+                onSkip={onBasicsComplete}
                 onReauthRequired={() => {
                   setShowLoginModal(false);
                   void signOutAction();

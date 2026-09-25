@@ -42,6 +42,16 @@ export function profileNeedsBasics(profile: {
   );
 }
 
+/** Mandatory only (name + verified secondary) — session restore / cold start. */
+export function profileNeedsMandatoryBasics(profile: {
+  name: string | null;
+  phone?: string | null;
+  email?: string | null;
+  emailVerified: boolean;
+}): boolean {
+  return !profile.name?.trim() || secondaryNeedFromProfile(profile) !== null;
+}
+
 export function secondaryNeedFromProfile(profile: {
   phone?: string | null;
   email?: string | null;

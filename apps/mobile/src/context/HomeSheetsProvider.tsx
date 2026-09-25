@@ -41,7 +41,7 @@ import { getAnalyticsSessionId } from "../lib/analyticsSession";
 import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
 import { Icon } from "../components/Icon";
 import { GoogleIcon } from "../components/GoogleIcon";
-import { ProfileBasicsStep, basicsFromProfile, canDismissBasics, profileNeedsBasics, type ProfileBasicsValues } from "../components/home/ProfileBasicsStep";
+import { ProfileBasicsStep, basicsFromProfile, canDismissBasics, profileNeedsBasics, profileNeedsMandatoryBasics, type ProfileBasicsValues } from "../components/home/ProfileBasicsStep";
 import { appWebUrl } from "../lib/appWebUrl";
 
 // Exported so PostAdWizard can re-read the just-written token directly after a login it
@@ -265,16 +265,38 @@ export function HomeSheetsProvider({
   }, [refreshProfile]);
 
   const onSuccessRef = useRef<(() => void) | undefined>(undefined);
+  /** True when basics was opened for an already-signed-in cold start, not a fresh login. */
+  const quietBasicsRef = useRef(false);
+  const sessionBasicsCheckedRef = useRef(false);
 
   const requireLogin = useCallback((options?: { onSuccess?: () => void }) => {
     if (isLoggedIn) return;
     onSuccessRef.current = options?.onSuccess;
+    quietBasicsRef.current = false;
     setLoginStep("choose");
     setPhone("");
     setOtp("");
     setError(null);
     loginSheetRef.current?.present();
   }, [isLoggedIn]);
+
+  /** Cold start / already-logged-in: force name + verified secondary if missing. */
+  useEffect(() => {
+    if (!accessToken || !profile || sessionBasicsCheckedRef.current) return;
+    if (!profileNeedsMandatoryBasics(profile)) {
+      sessionBasicsCheckedRef.current = true;
+      return;
+    }
+    sessionBasicsCheckedRef.current = true;
+    // Fresh login already opened basics via onLoginSuccess — don't flip to quiet mode.
+    if (loginStep === "basics") return;
+    quietBasicsRef.current = true;
+    setBasicsInitial(basicsFromProfile(profile));
+    setError(null);
+    setPending(false);
+    setLoginStep("basics");
+    loginSheetRef.current?.present();
+  }, [accessToken, profile, loginStep]);
 
   async function onLocationQueryChange(value: string) {
     setLocationQuery(value);
@@ -388,6 +410,11 @@ export function HomeSheetsProvider({
   function onBasicsSaved(saved: ProfileBasicsValues & { city: City | null }) {
     if (saved.city) setCity(saved.city);
     void refreshProfile();
+    if (quietBasicsRef.current) {
+      quietBasicsRef.current = false;
+      loginSheetRef.current?.dismiss();
+      return;
+    }
     finishLoginSuccess();
   }
 
@@ -759,7 +786,14 @@ export function HomeSheetsProvider({
               accessToken={accessToken}
               initial={basicsInitial}
               onSaved={onBasicsSaved}
-              onSkip={() => finishLoginSuccess()}
+              onSkip={() => {
+                if (quietBasicsRef.current) {
+                  quietBasicsRef.current = false;
+                  loginSheetRef.current?.dismiss();
+                  return;
+                }
+                finishLoginSuccess();
+              }}
               onReauthRequired={() => {
                 loginSheetRef.current?.dismiss();
                 void logout();

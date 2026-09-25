@@ -42,6 +42,17 @@ export function profileNeedsBasics(profile: {
   );
 }
 
+/** Mandatory only (name + verified secondary). Used on session restore / full-page Google return
+ * so we don't nag city-only gaps every page load — city stays optional. */
+export function profileNeedsMandatoryBasics(profile: {
+  name: string | null;
+  phone?: string | null;
+  email?: string | null;
+  emailVerified: boolean;
+}): boolean {
+  return !profile.name?.trim() || secondaryNeedFromProfile(profile) !== null;
+}
+
 export function secondaryNeedFromProfile(profile: {
   phone?: string | null;
   email?: string | null;
