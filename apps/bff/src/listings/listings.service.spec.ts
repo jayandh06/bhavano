@@ -30,6 +30,8 @@ function makeService() {
     listingEditLog: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
     listingInterest: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), count: jest.fn(), groupBy: jest.fn() },
     listingNotificationLog: { create: jest.fn() },
+    // First-photo lookup for the like/view push's preview image — null = no image.
+    listingPhoto: { findFirst: jest.fn().mockResolvedValue(null) },
     conversation: { findMany: jest.fn(), upsert: jest.fn() },
     user: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn() },
     $transaction: jest.fn(),

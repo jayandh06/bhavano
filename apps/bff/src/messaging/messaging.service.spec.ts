@@ -198,24 +198,26 @@ describe('MessagingService.sendMessage', () => {
       conversation: { findUnique: jest.fn().mockResolvedValue(conversationRow) },
       message: { create: jest.fn().mockResolvedValue(created), count: jest.fn().mockResolvedValue(0) },
       user: { findUnique: jest.fn().mockResolvedValue(sender) },
+      listing: { findUnique: jest.fn().mockResolvedValue({ title: '2 BHK for rent' }) },
     } as unknown as PrismaService;
     return new MessagingService(prisma, notNotified, { recordInterest: jest.fn().mockResolvedValue({ interested: true, notified: false }) } as never);
   }
 
   it('returns the other participant as recipient and the sender\'s name', async () => {
     const service = makeSendService(
-      { id: 'c1', posterId: 'poster1', inquirerId: 'buyer1' },
+      { id: 'c1', posterId: 'poster1', inquirerId: 'buyer1', listingId: 'l1', type: 'inquiry' },
       { name: 'Asha', phone: null },
     );
     const result = await service.sendMessage('c1', 'poster1', 'hi');
     expect(result.recipientId).toBe('buyer1');
     expect(result.senderName).toBe('Asha');
     expect(result.message.id).toBe('m1');
+    expect(result.listingTitle).toBe('2 BHK for rent');
   });
 
   it('falls back to a role label, never the sender\'s phone, when there is no name', async () => {
     const withPhone = makeSendService(
-      { id: 'c1', posterId: 'p', inquirerId: 'b' },
+      { id: 'c1', posterId: 'p', inquirerId: 'b', listingId: 'l1', type: 'inquiry' },
       { name: null, phone: '9990001111' },
     );
     await expect(withPhone.sendMessage('c1', 'b', 'hi')).resolves.toMatchObject({
@@ -223,7 +225,10 @@ describe('MessagingService.sendMessage', () => {
       senderName: 'Buyer',
     });
 
-    const anon = makeSendService({ id: 'c1', posterId: 'p', inquirerId: 'b' }, null);
+    const anon = makeSendService(
+      { id: 'c1', posterId: 'p', inquirerId: 'b', listingId: 'l1', type: 'inquiry' },
+      null,
+    );
     await expect(anon.sendMessage('c1', 'b', 'hi')).resolves.toMatchObject({
       senderName: 'Buyer',
     });

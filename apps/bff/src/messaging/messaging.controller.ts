@@ -33,20 +33,22 @@ export class MessagingController {
     @Body() dto: SendFirstMessageDto,
     @CurrentUser() user: RequestUser,
   ): Promise<SendFirstMessageResponseDto> {
-    const { conversationId, message, recipientId, senderName } = await this.messagingService.sendFirstMessage(
-      dto.listingId,
-      user.id,
-      dto.body,
-    );
+    const { conversationId, message, recipientId, senderName, listingTitle } =
+      await this.messagingService.sendFirstMessage(dto.listingId, user.id, dto.body);
     this.gateway.broadcastMessage(conversationId, message);
 
+    // Realtime badge + mobile push share one unread fetch so the iOS badge on the push matches
+    // the in-app count the socket also delivers.
     void this.messagingService
       .getUnreadTotal(recipientId)
-      .then((unreadCount) =>
-        this.gateway.notifyUnread(recipientId, { conversationId, unreadCount }),
-      )
+      .then((unreadCount) => {
+        this.gateway.notifyUnread(recipientId, { conversationId, unreadCount });
+        return this.push.notifyNewMessage(recipientId, message, senderName, {
+          unreadCount,
+          listingTitle,
+        });
+      })
       .catch(() => undefined);
-    void this.push.notifyNewMessage(recipientId, message, senderName).catch(() => undefined);
 
     return { conversationId, message };
   }
@@ -84,7 +86,7 @@ export class MessagingController {
     @Body() dto: SendMessageDto,
     @CurrentUser() user: RequestUser,
   ): Promise<MessageDto> {
-    const { message, recipientId, senderName } = await this.messagingService.sendMessage(
+    const { message, recipientId, senderName, listingTitle } = await this.messagingService.sendMessage(
       id,
       user.id,
       dto.body,
@@ -93,13 +95,17 @@ export class MessagingController {
 
     // Realtime badge for the recipient's open clients, and a mobile push for the ones that
     // aren't. Both best-effort: a failure here must not fail the send the user just made.
+    // One unread fetch feeds both so the push's iOS `badge` matches the socket update.
     void this.messagingService
       .getUnreadTotal(recipientId)
-      .then((unreadCount) =>
-        this.gateway.notifyUnread(recipientId, { conversationId: id, unreadCount }),
-      )
+      .then((unreadCount) => {
+        this.gateway.notifyUnread(recipientId, { conversationId: id, unreadCount });
+        return this.push.notifyNewMessage(recipientId, message, senderName, {
+          unreadCount,
+          listingTitle,
+        });
+      })
       .catch(() => undefined);
-    void this.push.notifyNewMessage(recipientId, message, senderName).catch(() => undefined);
 
     return message;
   }

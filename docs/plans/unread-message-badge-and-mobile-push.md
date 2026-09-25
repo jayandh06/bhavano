@@ -21,6 +21,13 @@ Decisions already taken with the user:
 - **Mobile app**: a Messages icon **with a count badge** on the bottom tab bar (Messages became
   its own tab after this plan was written — the earlier Home-header + Account-button placement
   was removed; the synced unread total still drives the OS app-icon badge and now the tab badge).
+- **Push payload enrichment (2026-09-25):** messages and listing-activity pushes now set the
+  Expo fields that were previously omitted — `priority`, `badge` (messages),
+  `icon` (Android `notification_icon` from the config plugin), `collapseId`/`tag`/`threadId`,
+  `interruptionLevel`, separate `listing_activity` channel, listing-title-led text for all three,
+  and `richContent.image` when a listing preview URL is available. Still not used: notification
+  categories/actions, `contentAvailable` background wake, iOS Notification Service Extension
+  (needed for rich images on iOS).
 - **Push scope = new chat messages only.** `NotificationsService` (email/WhatsApp for listing
   lifecycle, saved-search matches, likes) is **not** touched — chat gets in-app realtime + push,
   never email/WhatsApp.
@@ -64,14 +71,16 @@ Decisions already taken with the user:
   - `registerToken(userId, token, platform)` — `upsert` on `token` (re-points a device token that
     moved between accounts); bumps `lastSeenAt`.
   - `removeToken(token)`.
-  - `notifyNewMessage(recipientId, message: MessageDto, senderName: string)` — load the user's
-    tokens, POST to `https://exp.host/--/api/v2/push/send` via `fetch` in chunks of ≤100:
-    `{ to, title: senderName, body: <message.body, truncated ~140 chars>, data: { conversationId }, channelId: 'messages' }`.
-    Parse the response; on a `DeviceNotRegistered` ticket, delete that token. Wrap everything so it
-    never throws into the request path; log via the existing pino logger. Raw `fetch` — no new
-    dependency — mirrors `whatsapp.provider.ts` / `msg91.provider.ts` calling their HTTP APIs
-    directly. Gate on a config flag (`EXPO_PUSH_ENABLED`); no-op when unset, like the other
-    providers degrade.
+  - `notifyNewMessage(recipientId, message, senderName, { unreadCount?, listingTitle? })` —
+    Expo payload includes `title` (listing title; sender when unknown), `body` (`Sender: message`,
+    message truncated — no `subtitle`, which is iOS-only and dropped the context on Android),
+    `badge` (iOS unread total), `priority: high`, `interruptionLevel:
+    timeSensitive`, `channelId: messages`, `icon: notification_icon` (Android drawable from
+    the expo-notifications config plugin), `collapseId`/`tag`/`threadId` = conversationId,
+    `data: { kind, conversationId, listingTitle? }`.
+  - `notifyListingInterest` / `notifyListingFavourite` — title is the listing title, body is
+    `👀 Name viewed your ad` / `❤️ Name favourited your ad`, `channelId: listing_activity`, optional `richContent.image` (listing preview URL),
+    collapse/tag/thread by listing. Mobile creates both Android channels on register.
   - Optional (note only, default off): `if (gateway.isUserOnline(recipientId)) skip push` — v1
     always pushes; the in-app socket path already covers the foreground case idempotently.
 - `PushController` (`@UseGuards(AuthGuard)`): `POST /users/me/push-tokens { token, platform }`,
@@ -246,6 +255,46 @@ Push is **off by default**. Zero notifications on every device almost always mea
    - Android: FCM v1 service-account JSON uploaded to EAS Credentials for the Android package.
 4. **App must be a real native build** (dev client / preview / production) — Expo Go does not
    get a project push token for this app id.
+
+### Android FCM setup (one-time ops)
+
+Package id: `com.finfolia.bhavano`. End users never touch Firebase — they only install a build
+that embeds `google-services.json` and grant notification permission on login.
+
+1. **Firebase Console** → [console.firebase.google.com](https://console.firebase.google.com)
+   - Create a project (or reuse an existing Finfolia one).
+   - Add an **Android** app with package name exactly `com.finfolia.bhavano`.
+   - Download **`google-services.json`**.
+2. **Repo** — put the file at `apps/mobile/google-services.json` and set in `app.config.js`:
+   ```js
+   android: {
+     package: "com.finfolia.bhavano",
+     googleServicesFile: "./google-services.json",
+     // ...
+   }
+   ```
+   `google-services.json` is safe to commit (public client ids). Do **not** commit the
+   service-account private key from step 3.
+3. **FCM send credential (secret)** — Firebase → Project settings → Service accounts →
+   **Generate new private key** (JSON). Then either:
+   - Expo dashboard → project **bhavano** → Credentials → Android `com.finfolia.bhavano` →
+     FCM V1 service account key → upload that JSON, **or**
+   - From `apps/mobile`: `eas credentials` → Android → production (and development if you use
+     it) → Google Service Account → FCM V1 → upload.
+4. **Rebuild Android** — native config changed, so JS-only reload is not enough:
+   ```bash
+   cd apps/mobile
+   eas build --profile development --platform android   # or production
+   ```
+   Install the new build on the phone.
+5. **Verify** — log in on Android, allow notifications. Metro / device logs should show
+   `[push] registered android token with BFF`. Prod DB should gain an `android` `PushToken`
+   row. Optional: same Expo test-push script as iOS, filtered to `platform: "android"`.
+
+If `getExpoPushTokenAsync` fails with Firebase Installations `403`, the API key inside
+`google-services.json` is restricted too tightly — allow FCM Registration + Firebase
+Installations, or leave unrestricted for debug builds; for Play builds use the **App signing**
+SHA-1, not the upload key.
 
 Like / view / message pushes share this same path (`PushService.sendToUser`); there is no
 separate like toggle.

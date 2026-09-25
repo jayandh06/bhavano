@@ -2214,7 +2214,7 @@ export class ListingsService {
     listingTitle: string,
     isBoosted: boolean,
   ): Promise<void> {
-    const [owner, liker] = await Promise.all([
+    const [owner, liker, firstPhoto] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: ownerId },
         select: { email: true, phone: true },
@@ -2223,16 +2223,25 @@ export class ListingsService {
         where: { id: likerId },
         select: { name: true },
       }),
+      this.prisma.listingPhoto.findFirst({
+        where: { listingId },
+        orderBy: [{ displayOrder: 'asc' }, { photoNo: 'asc' }],
+        select: { photoNo: true, updatedAt: true },
+      }),
     ]);
     if (!owner) return;
 
     const likerName = liker?.name?.trim() || 'Someone';
+    const imageUrl = firstPhoto
+      ? publicVariantUrl(this.cdnBase(), listingId, firstPhoto.photoNo, 'preview', firstPhoto.updatedAt)
+      : undefined;
 
     void this.pushService
       .notifyListingFavourite(ownerId, {
         listingId,
         listingTitle,
         likerName,
+        imageUrl,
       })
       .catch(() => undefined);
 
@@ -2328,7 +2337,7 @@ export class ListingsService {
     listingTitle: string,
     instantAlertsUntil: Date | null,
   ): Promise<void> {
-    const [owner, interested] = await Promise.all([
+    const [owner, interested, firstPhoto] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: ownerId },
         select: { email: true, phone: true },
@@ -2337,10 +2346,18 @@ export class ListingsService {
         where: { id: interestedUserId },
         select: { name: true },
       }),
+      this.prisma.listingPhoto.findFirst({
+        where: { listingId },
+        orderBy: [{ displayOrder: 'asc' }, { photoNo: 'asc' }],
+        select: { photoNo: true, updatedAt: true },
+      }),
     ]);
     if (!owner) return;
 
     const interestedName = interested?.name?.trim() || 'Someone';
+    const imageUrl = firstPhoto
+      ? publicVariantUrl(this.cdnBase(), listingId, firstPhoto.photoNo, 'preview', firstPhoto.updatedAt)
+      : undefined;
 
     // Push always (best-effort) — Instant Alerts only adds email/WhatsApp.
     void this.pushService
@@ -2348,6 +2365,7 @@ export class ListingsService {
         listingId,
         listingTitle,
         interestedName,
+        imageUrl,
       })
       .catch(() => undefined);
 
