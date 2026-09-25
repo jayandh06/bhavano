@@ -673,6 +673,19 @@ into the `bff` container at `SCRAPED_PHOTOS_DIR` (`/app/leads_output/photos`). N
 configure beyond that mount already being in place; a contact with no matching local files simply
 isn't offered the "Create listing" action, same as any other missing-required-data case.
 
+**Cleanup after listings exist:** once `createListingFromContact` has uploaded photos to R2, the
+local JPGs for that `googlePlaceId` are unused. From `~/bhavano` on the app instance:
+
+```bash
+chmod +x scripts/cleanup-scraped-photos-for-listed-contacts.sh
+./scripts/cleanup-scraped-photos-for-listed-contacts.sh                 # dry-run, PG only
+./scripts/cleanup-scraped-photos-for-listed-contacts.sh --execute     # delete
+# optional: --category coworking | all
+```
+
+Only contacts that already have a `Listing` (`claimContactId`) are considered; contacts still
+waiting for "Create listing" keep their files.
+
 **Python deps — no `requirements.txt` in this repo, so a one-time local venv on the app instance
 is the setup** (the base AMI ships with no system `pip` at all, so `pip install` alone fails until
 the venv module itself is installed):
