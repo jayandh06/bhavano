@@ -2837,6 +2837,20 @@ export class ListingsService {
     }
   }
 
+
+  /** First photo's preview URL, for the picture on a push notification — undefined when the
+   * listing has no photo. Same lookup and variant the favourite/interest pushes use. */
+  async getPushImageUrl(listingId: string): Promise<string | undefined> {
+    const firstPhoto = await this.prisma.listingPhoto.findFirst({
+      where: { listingId },
+      orderBy: [{ displayOrder: 'asc' }, { photoNo: 'asc' }],
+      select: { photoNo: true, updatedAt: true },
+    });
+    return firstPhoto
+      ? publicVariantUrl(this.cdnBase(), listingId, firstPhoto.photoNo, 'preview', firstPhoto.updatedAt)
+      : undefined;
+  }
+
   private cdnBase(): string {
     return this.config.get<string>('CDN_BASE_URL') ?? '';
   }

@@ -143,7 +143,7 @@ export class PushService {
     recipientId: string,
     message: MessageDto,
     senderName: string,
-    opts: { unreadCount?: number; listingTitle?: string } = {},
+    opts: { unreadCount?: number; listingTitle?: string; imageUrl?: string } = {},
   ): Promise<void> {
     // Always a freshly-sent message here (see sendMessage/sendFirstMessage), never a deleted
     // one, so body is never actually null despite MessageDto's general shape.
@@ -157,7 +157,9 @@ export class PushService {
       // Expo's `subtitle` for the sender: that field is iOS-only, so on Android the sender would
       // vanish entirely. Falls back to the sender as title when the ad's title is unknown.
       title: listingTitle || senderName,
-      body: listingTitle ? `${senderName}: ${body}` : body,
+      // Leading 💬, like the ❤️ / 👀 on the listing-activity pushes — it marks this as a message
+      // at a glance and is the one icon that renders identically on iOS and Android.
+      body: `💬 ${listingTitle ? `${senderName}: ${body}` : body}`,
       badge: opts.unreadCount,
       channelId: PUSH_CHANNEL_MESSAGES,
       priority: 'high',
@@ -165,6 +167,7 @@ export class PushService {
       collapseId: message.conversationId,
       tag: `msg:${message.conversationId}`,
       threadId: message.conversationId,
+      imageUrl: opts.imageUrl,
       data: {
         kind: 'message',
         conversationId: message.conversationId,

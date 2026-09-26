@@ -215,6 +215,24 @@ redirect, or JSON-LD change. The count is login-gated and non-crawlable. Net SEO
 - `expo-notifications ~57.0.15` + `expo-constants ~57.0.16` added to `apps/mobile`; run
   `npx expo install --check` if the pins need reconciling for a build.
 
+### Fixes found in production (2026-09-26)
+
+- **Message pushes were never delivered.** The BFF sent `interruptionLevel: 'timeSensitive'`; Expo's
+  push API only accepts `'time-sensitive'` and answers the whole request with `400
+  VALIDATION_ERROR`, so every new-message push failed on iOS and Android (13 rejected in 36 hours in
+  the logs). The like/interest pushes use `'active'`, which is valid, which is why those did reach
+  an iPhone. Fixed in `push.service.ts`; a test now pins the value.
+- **Message pushes now lead with 💬 and carry the listing's first photo,** matching the ❤️ / 👀 on
+  the listing-activity pushes. The photo is `richContent.image` (the `preview` variant, looked up by
+  `ListingsService.getPushImageUrl`, fetched inside the fire-and-forget push chain so it never slows
+  the send). Whether the image actually renders is up to the device: Android shows it as an expanded
+  picture; iOS needs a notification service extension in the app build to show `richContent`.
+- **Android small icon** comes from the `expo-notifications` config plugin in `app.config.js` (a
+  native drawable baked into the build, not part of the push payload), so changing it needs a new
+  Android build.
+- **Like / view pushes on Android** use the `listing_activity` channel, which the app only creates
+  from the 2026-09-25 11:15 build onward; an older Android build silently drops them.
+
 ## Known limitations (v1, acceptable)
 
 - Web `getSocket` is a singleton created once with the first token; a tab open past the 1h token

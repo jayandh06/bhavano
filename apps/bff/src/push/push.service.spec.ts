@@ -154,7 +154,7 @@ describe('PushService', () => {
     expect(body[0]).toMatchObject({
       to: 'ExpoTok[a]',
       title: '2 BHK in Koramangala',
-      body: 'Asha: hello',
+      body: '💬 Asha: hello',
       badge: 3,
       sound: 'default',
       channelId: 'messages',
@@ -182,7 +182,29 @@ describe('PushService', () => {
     const body = JSON.parse((fetchImpl.mock.calls[0][1] as { body: string }).body) as Array<
       Record<string, unknown>
     >;
-    expect(body[0]).toMatchObject({ title: 'Asha', body: 'hello' });
+    expect(body[0]).toMatchObject({ title: 'Asha', body: '💬 hello' });
+  });
+
+  it('attaches the listing photo to a message push when one is supplied', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [{ status: 'ok', id: 'r1' }] }),
+    });
+    const { service } = makeService({
+      enabled: true,
+      tokens: [{ token: 'ExpoTok[a]' }],
+      fetchImpl,
+    });
+    await service.notifyNewMessage('u1', message, 'Asha', {
+      listingTitle: '2 BHK',
+      imageUrl: 'https://cdn.example/photos/l1_1_preview.webp?t=1',
+    });
+    const body = JSON.parse((fetchImpl.mock.calls[0][1] as { body: string }).body) as Array<
+      Record<string, unknown>
+    >;
+    expect(body[0]).toMatchObject({
+      richContent: { image: 'https://cdn.example/photos/l1_1_preview.webp?t=1' },
+    });
   });
 
   it('sends listing-activity pushes with listing title, listing channel, and optional image', async () => {

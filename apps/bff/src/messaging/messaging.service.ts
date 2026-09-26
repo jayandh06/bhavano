@@ -47,6 +47,7 @@ export class MessagingService {
     recipientId: string;
     senderName: string;
     listingTitle: string;
+    listingId: string;
   }> {
     const result = await this.prisma.$transaction(async (tx) => {
       const listing = await tx.listing.findUnique({ where: { id: listingId } });
@@ -100,6 +101,7 @@ export class MessagingService {
       recipientId: result.recipientId,
       senderName: result.senderName,
       listingTitle: result.listingTitle,
+      listingId,
     };
   }
 
@@ -356,6 +358,7 @@ export class MessagingService {
     recipientId: string;
     senderName: string;
     listingTitle: string;
+    listingId: string;
   }> {
     const conversation = await this.assertParticipant(conversationId, senderId);
     // Before creating the message — same reasoning as sendFirstMessage's identical check.
@@ -398,7 +401,13 @@ export class MessagingService {
       recipientId,
       senderName,
       listingTitle: listing?.title ?? '',
+      listingId: conversation.listingId,
     };
+  }
+
+  /** Picture for a new-message push — the listing's first photo. Best-effort by the caller. */
+  getListingPushImageUrl(listingId: string): Promise<string | undefined> {
+    return this.listingsService.getPushImageUrl(listingId);
   }
 
   async markRead(conversationId: string, userId: string): Promise<void> {

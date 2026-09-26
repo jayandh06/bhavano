@@ -44,7 +44,7 @@ export class MessagingController {
     @Body() dto: SendFirstMessageDto,
     @CurrentUser() user: RequestUser,
   ): Promise<SendFirstMessageResponseDto> {
-    const { conversationId, message, recipientId, senderName, listingTitle } =
+    const { conversationId, message, recipientId, senderName, listingTitle, listingId } =
       await this.messagingService.sendFirstMessage(dto.listingId, user.id, dto.body);
     this.gateway.broadcastMessage(conversationId, message);
 
@@ -52,11 +52,15 @@ export class MessagingController {
     // the in-app count the socket also delivers.
     void this.messagingService
       .getUnreadTotal(recipientId)
-      .then((unreadCount) => {
+      .then(async (unreadCount) => {
         this.gateway.notifyUnread(recipientId, { conversationId, unreadCount });
+        const imageUrl = await this.messagingService
+          .getListingPushImageUrl(listingId)
+          .catch(() => undefined);
         return this.push.notifyNewMessage(recipientId, message, senderName, {
           unreadCount,
           listingTitle,
+          imageUrl,
         });
       })
       .catch((error) => this.logPushSideEffectFailure(error));
@@ -97,7 +101,7 @@ export class MessagingController {
     @Body() dto: SendMessageDto,
     @CurrentUser() user: RequestUser,
   ): Promise<MessageDto> {
-    const { message, recipientId, senderName, listingTitle } = await this.messagingService.sendMessage(
+    const { message, recipientId, senderName, listingTitle, listingId } = await this.messagingService.sendMessage(
       id,
       user.id,
       dto.body,
@@ -109,11 +113,15 @@ export class MessagingController {
     // One unread fetch feeds both so the push's iOS `badge` matches the socket update.
     void this.messagingService
       .getUnreadTotal(recipientId)
-      .then((unreadCount) => {
+      .then(async (unreadCount) => {
         this.gateway.notifyUnread(recipientId, { conversationId: id, unreadCount });
+        const imageUrl = await this.messagingService
+          .getListingPushImageUrl(listingId)
+          .catch(() => undefined);
         return this.push.notifyNewMessage(recipientId, message, senderName, {
           unreadCount,
           listingTitle,
+          imageUrl,
         });
       })
       .catch((error) => this.logPushSideEffectFailure(error));
