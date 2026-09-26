@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type TextInput } from "react-native";
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import type { AccountMergeSummary, City, LinkIdentifierResult } from "@bhavano/types";
 import {
@@ -16,6 +16,15 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 
 const MIN_CITY_QUERY = 2;
+
+/** Focuses an input a beat after it mounts instead of via `autoFocus`. This step lives in a
+ * bottom sheet that re-snaps (55% -> 85%) as it swaps in; `autoFocus` opened the keyboard in the
+ * middle of that animation, so the sheet's own keyboard handling and the sheet's movement kept
+ * re-adjusting each other and the whole screen jumped up and down on Android. Module-level so the
+ * callback ref's identity is stable — an inline one would re-run (and refocus) on every render. */
+const focusAfterSheetSettles = (node: TextInput | null | undefined) => {
+  if (node) setTimeout(() => node.focus(), 450);
+};
 
 export type SecondaryNeed = "phone" | "email" | null;
 
@@ -385,7 +394,7 @@ export function ProfileBasicsStep({
             placeholder="10-digit mobile number"
             placeholderTextColor={colors.muted}
             keyboardType="number-pad"
-            autoFocus
+            ref={focusAfterSheetSettles}
             style={[styles.input, { flex: 1, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
         </View>
@@ -429,7 +438,7 @@ export function ProfileBasicsStep({
           placeholder="······"
           placeholderTextColor={colors.muted}
           keyboardType="number-pad"
-          autoFocus
+          ref={focusAfterSheetSettles}
           style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface, textAlign: "center", letterSpacing: 8 }]}
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -469,7 +478,7 @@ export function ProfileBasicsStep({
           placeholderTextColor={colors.muted}
           keyboardType="email-address"
           autoCapitalize="none"
-          autoFocus
+          ref={focusAfterSheetSettles}
           style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -512,7 +521,7 @@ export function ProfileBasicsStep({
           placeholder="······"
           placeholderTextColor={colors.muted}
           keyboardType="number-pad"
-          autoFocus
+          ref={focusAfterSheetSettles}
           style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface, textAlign: "center", letterSpacing: 8 }]}
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -561,7 +570,7 @@ export function ProfileBasicsStep({
         onChangeText={setName}
         placeholder="Your name"
         placeholderTextColor={colors.muted}
-        autoFocus={!initial.name.trim()}
+        ref={initial.name.trim() ? undefined : focusAfterSheetSettles}
         maxLength={80}
         style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
       />
