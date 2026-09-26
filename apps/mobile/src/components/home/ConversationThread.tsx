@@ -50,12 +50,19 @@ export function ConversationThread({
   const [messages, setMessages] = useState<MessageDto[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const listRef = useRef<FlatList>(null);
+  // Whether the reader is at (or near) the bottom. A new message only pulls the list down when they
+  // are — someone scrolled up to reread an older message shouldn't be yanked away from it.
+  const nearBottomRef = useRef(true);
+  // Set when the user's own message is added, so their send always lands in view.
+  const forceScrollRef = useRef(false);
+  const contentMeasuredRef = useRef(false);
 
   useEffect(() => {
     setMessages(initialMessages);
   }, [initialMessages]);
 
   function appendMessage(msg: MessageDto) {
+    if (msg.senderId === userId) forceScrollRef.current = true;
     setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
   }
 
@@ -99,9 +106,17 @@ export function ConversationThread({
     }
   }, [conversationId, accessToken, isFocused]);
 
+  // Scrolling is driven by the list's own size callbacks (onContentSizeChange / onLayout below), not
+  // by an effect on `messages`. That effect ran right after the state change, before FlatList had
+  // laid out the new bubbles — their heights are unknown until then — so scrollToEnd scrolled to the
+  // *old* bottom and stopped short of the newest message, both on opening a thread and when a
+  // message arrived. Coming back to a thread that stayed mounted needs one explicit jump.
   useEffect(() => {
-    listRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+    if (isFocused) {
+      nearBottomRef.current = true;
+      listRef.current?.scrollToEnd({ animated: false });
+    }
+  }, [isFocused]);
 
   async function onSend() {
     const body = draft.trim();
@@ -170,6 +185,29 @@ export function ConversationThread({
         data={messages}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={100}
+        onScroll={({ nativeEvent }) => {
+          const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+          nearBottomRef.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) < 120;
+        }}
+        onContentSizeChange={() => {
+          // First measurement: jump without animating (opening the thread should just be at the
+          // bottom). Afterwards, follow new content only if the reader was already there, or it's
+          // their own message.
+          // "First" means the first measurement with messages in it — the list can measure once
+          // while still empty, before the thread's history has arrived.
+          const first = !contentMeasuredRef.current && messages.length > 0;
+          if (messages.length > 0) contentMeasuredRef.current = true;
+          if (first || nearBottomRef.current || forceScrollRef.current) {
+            forceScrollRef.current = false;
+            listRef.current?.scrollToEnd({ animated: !first });
+          }
+        }}
+        // The keyboard opening or closing changes the visible height without changing the content,
+        // which would leave the newest message hidden behind it.
+        onLayout={() => {
+          if (nearBottomRef.current) listRef.current?.scrollToEnd({ animated: false });
+        }}
         renderItem={({ item }) => {
           const isMine = item.senderId === userId;
           const isDeleted = item.deletedAt != null;
