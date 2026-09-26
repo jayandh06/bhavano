@@ -247,13 +247,17 @@ export class PushService {
         select: { token: true },
       });
       if (tokens.length === 0) {
-        this.logger.debug(
+        // Not debug: "the recipient has no registered device" is the most common reason a push
+        // never shows up, and it has to be visible at the default log level to diagnose.
+        this.logger.log(
           `No PushToken rows for user ${recipientId}; nothing to send for "${content.title}"`,
         );
         return;
       }
 
       const stale = new Set<string>();
+      let accepted = 0;
+      let rejected = 0;
       for (let i = 0; i < tokens.length; i += CHUNK_SIZE) {
         const chunk = tokens.slice(i, i + CHUNK_SIZE);
         const payload: ExpoPushMessage[] = chunk.map(({ token }) => {
@@ -300,6 +304,8 @@ export class PushService {
 
         const parsed = (await res.json()) as { data?: ExpoTicket[] };
         (parsed.data ?? []).forEach((ticket, idx) => {
+          if (ticket.status === 'ok') accepted += 1;
+          else rejected += 1;
           if (ticket.status === 'error') {
             if (ticket.details?.error === 'DeviceNotRegistered') {
               stale.add(chunk[idx].token);
@@ -312,7 +318,14 @@ export class PushService {
         });
       }
 
+      this.logger.log(
+        `Push to user ${recipientId} ("${content.title}"): ${tokens.length} device(s), ${accepted} accepted by Expo, ${rejected} rejected`,
+      );
+
       if (stale.size > 0) {
+        this.logger.warn(
+          `Removing ${stale.size} unregistered push token(s) for user ${recipientId} (Expo: DeviceNotRegistered) — the device re-registers on its next login or cold start`,
+        );
         await this.prisma.pushToken.deleteMany({
           where: { token: { in: [...stale] } },
         });

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Param, Post, UseGuards } from '@nestjs/common';
 import type {
   ConversationDetailDto,
   ConversationSummaryDto,
@@ -18,11 +18,22 @@ import { SendMessageDto } from './dto/send-message.dto';
 @Controller('conversations')
 @UseGuards(AuthGuard)
 export class MessagingController {
+  private readonly logger = new Logger(MessagingController.name);
+
   constructor(
     private readonly messagingService: MessagingService,
     private readonly gateway: MessagingGateway,
     private readonly push: PushService,
   ) {}
+
+  /** The unread badge and push are best-effort side effects of a send that already succeeded, so
+   * they must not fail it — but swallowing the error silently is how a push that never went out
+   * left no trace anywhere. */
+  private logPushSideEffectFailure(error: unknown): void {
+    this.logger.warn(
+      `Post-send unread/push step failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 
   /** Starts a conversation and sends its first message atomically — see
    * MessagingService.sendFirstMessage's own doc for why this replaced a separate "create
@@ -48,7 +59,7 @@ export class MessagingController {
           listingTitle,
         });
       })
-      .catch(() => undefined);
+      .catch((error) => this.logPushSideEffectFailure(error));
 
     return { conversationId, message };
   }
@@ -105,7 +116,7 @@ export class MessagingController {
           listingTitle,
         });
       })
-      .catch(() => undefined);
+      .catch((error) => this.logPushSideEffectFailure(error));
 
     return message;
   }
