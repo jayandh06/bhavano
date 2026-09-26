@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
 import { Stack, useIsFocused, useRouter } from "expo-router";
@@ -50,19 +50,17 @@ export function ConversationThread({
   const [messages, setMessages] = useState<MessageDto[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const listRef = useRef<FlatList>(null);
-  // Whether the reader is at (or near) the bottom. A new message only pulls the list down when they
-  // are — someone scrolled up to reread an older message shouldn't be yanked away from it.
-  const nearBottomRef = useRef(true);
-  // Set when the user's own message is added, so their send always lands in view.
-  const forceScrollRef = useRef(false);
-  const contentMeasuredRef = useRef(false);
-
   useEffect(() => {
     setMessages(initialMessages);
   }, [initialMessages]);
 
+  // The list is inverted (newest at index 0, drawn at the bottom), so opening a thread — from a push
+  // tap, a cached copy, a fresh fetch — always starts on the newest message with nothing to scroll.
+  // A normal list draws lazily from the *top*, so "scroll to end" only reached the end of what had
+  // been drawn so far and long threads stopped midway.
+  const inverted = useMemo(() => [...messages].reverse(), [messages]);
+
   function appendMessage(msg: MessageDto) {
-    if (msg.senderId === userId) forceScrollRef.current = true;
     setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
   }
 
@@ -106,16 +104,9 @@ export function ConversationThread({
     }
   }, [conversationId, accessToken, isFocused]);
 
-  // Scrolling is driven by the list's own size callbacks (onContentSizeChange / onLayout below), not
-  // by an effect on `messages`. That effect ran right after the state change, before FlatList had
-  // laid out the new bubbles — their heights are unknown until then — so scrollToEnd scrolled to the
-  // *old* bottom and stopped short of the newest message, both on opening a thread and when a
-  // message arrived. Coming back to a thread that stayed mounted needs one explicit jump.
+  // Coming back to a thread that stayed mounted under the tab stack: show the newest message.
   useEffect(() => {
-    if (isFocused) {
-      nearBottomRef.current = true;
-      listRef.current?.scrollToEnd({ animated: false });
-    }
+    if (isFocused) listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [isFocused]);
 
   async function onSend() {
@@ -136,6 +127,7 @@ export function ConversationThread({
     // remounted and refetched. Dedupe by id when the socket also delivers the same message.
     const sent = await sendMessage(accessToken, conversationId, body);
     appendMessage(sent);
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
   }
 
   function onDelete(messageId: string) {
@@ -181,33 +173,16 @@ export function ConversationThread({
       <FlatList
         ref={listRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, gap: 10, flexGrow: 1, justifyContent: "flex-end" }}
-        data={messages}
+        // Inverted: index 0 (the newest) sits at the bottom, so few messages hug the bottom without
+        // the old `justifyContent: "flex-end"`, which points the other way in an inverted list.
+        contentContainerStyle={{ padding: 16, gap: 10, flexGrow: 1 }}
+        inverted
+        data={inverted}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
-        scrollEventThrottle={100}
-        onScroll={({ nativeEvent }) => {
-          const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
-          nearBottomRef.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) < 120;
-        }}
-        onContentSizeChange={() => {
-          // First measurement: jump without animating (opening the thread should just be at the
-          // bottom). Afterwards, follow new content only if the reader was already there, or it's
-          // their own message.
-          // "First" means the first measurement with messages in it — the list can measure once
-          // while still empty, before the thread's history has arrived.
-          const first = !contentMeasuredRef.current && messages.length > 0;
-          if (messages.length > 0) contentMeasuredRef.current = true;
-          if (first || nearBottomRef.current || forceScrollRef.current) {
-            forceScrollRef.current = false;
-            listRef.current?.scrollToEnd({ animated: !first });
-          }
-        }}
-        // The keyboard opening or closing changes the visible height without changing the content,
-        // which would leave the newest message hidden behind it.
-        onLayout={() => {
-          if (nearBottomRef.current) listRef.current?.scrollToEnd({ animated: false });
-        }}
+        // A message arriving while you're within ~80px of the bottom scrolls into view; one arriving
+        // while you're reading further up leaves your place alone.
+        maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 80 }}
         renderItem={({ item }) => {
           const isMine = item.senderId === userId;
           const isDeleted = item.deletedAt != null;

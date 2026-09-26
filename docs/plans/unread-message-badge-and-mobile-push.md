@@ -233,6 +233,15 @@ redirect, or JSON-LD change. The count is login-gated and non-crawlable. Net SEO
 - **Like / view pushes on Android** use the `listing_activity` channel, which the app only creates
   from the 2026-09-25 11:15 build onward; an older Android build silently drops them.
 
+- **Conversation screen scroll (2026-09-26).** Opening a thread from a push tap stayed midway: the
+  list was a normal FlatList, which draws lazily from the top, so `scrollToEnd` only reached the end
+  of the rows drawn so far and the rest appeared below it. The list is now `inverted` (newest at
+  index 0, at the bottom), so a thread always opens on the newest message, with
+  `maintainVisibleContentPosition` (`autoscrollToTopThreshold: 80`) following new messages only
+  when the reader is near the bottom, and an explicit `scrollToOffset(0)` after the user's own send
+  and when the screen regains focus. This replaced the earlier `onContentSizeChange`/`onLayout`
+  approach, which had the same flaw for long threads.
+
 ## Known limitations (v1, acceptable)
 
 - Web `getSocket` is a singleton created once with the first token; a tab open past the 1h token
