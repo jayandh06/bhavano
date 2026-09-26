@@ -666,10 +666,10 @@ export function HomeSheetsProvider({
             already works correctly here (gorhom handles it natively there), and wrapping iOS in
             this too risks the two mechanisms fighting over the same space. */}
         <KeyboardAvoidingView
-          // Off for the taller (85%) profile-basics step: its fields sit high enough to clear the
-          // keyboard on their own, and leaving this on there made it and the sheet's own keyboard
-          // handling re-adjust each other continuously (the screen jumped up and down).
-          enabled={loginStep !== "basics"}
+          // Stays on for the profile-basics step too. It was briefly disabled there to stop the
+          // screen jumping, but that only let the keyboard cover the fields — the jumping's real
+          // trigger was the inputs auto-focusing mid-way through the sheet's 55% -> 85% re-snap
+          // (now delayed, see ProfileBasicsStep's focusAfterSheetSettles), not this component.
           behavior={Platform.OS === "android" ? "padding" : undefined}
           // Without this, "padding" still applies but computes against the wrong reference point —
           // by default this assumes it sits flush against the true top of the screen, which a
