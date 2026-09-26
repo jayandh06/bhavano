@@ -107,3 +107,18 @@ new response data, not a new filter/query param.
    new columns without erroring.
 3. Spot-check one ID intentionally not in the map (temporarily) to confirm the raw-ID fallback
    renders instead of a blank cell or a crash.
+
+## Update 2026-09-26 — why some rows showed numbers
+
+The maps had not been regenerated since 2026-09-06. In the meantime the account gained four
+"Other-Metro-…" campaigns (with 14 new ad groups, e.g. "Ad Group 2.5 - Rent out Furniture") and the
+original campaigns were renamed with a "Metro-" prefix, so every new id showed as a bare number.
+Regenerated from the Ads API (10 campaigns, 27 ad groups, 1 asset group).
+
+Two ids seen in real visits (campaign `12135962218`, ad group `493144636151`, 3 visits on
+2026-09-26) are not in this account at all — not even as removed items — so they cannot be named
+from it; they most likely come from a different Google Ads account sending traffic to the site.
+
+The static approach means this will recur whenever a campaign or ad group is added or renamed:
+re-run the GAQL in `campaign-names.ts`'s header comment. A scheduled sync from the API would
+remove that chore if it becomes frequent.
