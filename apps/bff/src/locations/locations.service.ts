@@ -54,7 +54,13 @@ function stripNonLatinSegments(formattedAddress: string): string {
 }
 
 /** Google components that can name the market city. Sublocality is the area, not a candidate. */
-const CITY_COMPONENT_TYPES = ['locality', 'postal_town', 'administrative_area_level_2', 'administrative_area_level_3'];
+/** A named town/city. Trusted as the market city on its own. */
+const TOWN_COMPONENT_TYPES = ['locality', 'postal_town'];
+/** A district or taluk. Covers a huge area (often 50+ km across), and Google's boundaries lag
+ * reality — Pallavaram/Tambaram are still labelled with the pre-2019 "Kancheepuram" district
+ * though they are part of Chennai's metro — so it is only a fallback for a pin no curated city's
+ * catchment contains. See docs/plans/district-name-vs-catchment-city.md. */
+const DISTRICT_COMPONENT_TYPES = ['administrative_area_level_2', 'administrative_area_level_3'];
 
 const ADMIN_NAME_SUFFIX = /\s+(Urban|Rural|District|Taluk|Tehsil|Tahsil|North|South|East|West|Central)$/i;
 
@@ -364,35 +370,52 @@ export class LocationsService {
         ? locality!.long_name
         : '';
 
-    const componentNames = data.results.flatMap((geocodeResult) =>
-      geocodeResult.address_components
-        .filter((component) => CITY_COMPONENT_TYPES.some((type) => component.types.includes(type)))
-        .map((component) => component.long_name),
-    );
-    const aliasNames = uniqueNames([resolvedLocality, locality?.long_name, ...componentNames]);
+    const namesOfTypes = (types: string[]): string[] =>
+      data.results.flatMap((geocodeResult) =>
+        geocodeResult.address_components
+          .filter((component) => types.some((type) => component.types.includes(type)))
+          .map((component) => component.long_name),
+      );
+    const townNames = uniqueNames([resolvedLocality, locality?.long_name, ...namesOfTypes(TOWN_COMPONENT_TYPES)]);
+    const districtNames = uniqueNames(namesOfTypes(DISTRICT_COMPONENT_TYPES));
 
-    // 1. Admin-patched alias, including spelling pairs and Delhi NCR child names.
-    const alias =
-      aliasNames.length > 0
-        ? await this.prisma.localityAlias.findFirst({
-            where: { OR: aliasNames.map((name) => ({ name: { equals: name, mode: 'insensitive' as const } })) },
+    const findAlias = (names: string[]) =>
+      names.length > 0
+        ? this.prisma.localityAlias.findFirst({
+            where: { OR: names.map((name) => ({ name: { equals: name, mode: 'insensitive' as const } })) },
             include: { city: true },
           })
-        : null;
-    let city: City | null = alias?.city ?? null;
-
-    const curated = city ? [] : await this.prisma.city.findMany({ where: { source: 'curated' } });
-
-    // 2. Curated city name, from every result — "Coimbatore North" matches Coimbatore. A
-    // user-submitted city with the ward's name is not in this list, so it cannot keep the pin.
-    if (!city) {
-      for (const raw of componentNames) {
+        : Promise.resolve(null);
+    const matchCuratedName = (curatedCities: City[], names: string[]): City | null => {
+      for (const raw of names) {
         const normalized = normalizeAdminName(raw);
-        city =
-          curated.find((candidate) => candidate.name.toLowerCase() === raw.trim().toLowerCase()) ??
-          curated.find((candidate) => candidate.name.toLowerCase() === normalized.toLowerCase()) ??
+        const hit =
+          curatedCities.find((candidate) => candidate.name.toLowerCase() === raw.trim().toLowerCase()) ??
+          curatedCities.find((candidate) => candidate.name.toLowerCase() === normalized.toLowerCase()) ??
           null;
-        if (city) break;
+        if (hit) return hit;
+      }
+      return null;
+    };
+
+    // 1. Admin-patched alias for the town/locality names, including spelling pairs and Delhi NCR
+    // child names.
+    let city: City | null = (await findAlias(townNames))?.city ?? null;
+
+    let curated: City[] = [];
+    if (!city) {
+      curated = await this.prisma.city.findMany({ where: { source: 'curated' } });
+
+      // 2. Curated city name from a town-level component — "Coimbatore North" matches Coimbatore.
+      // A user-submitted city with the ward's name is not in this list, so it cannot keep the pin.
+      city = matchCuratedName(curated, townNames);
+
+      // 2b. Only when no curated city's catchment contains the pin may a *district* label choose
+      // the city (alias first, then curated name). A district is too coarse to override geography:
+      // Google still calls Pallavaram/Tambaram — inside Chennai's catchment — "Kancheepuram", and
+      // an alias for that district's spelling then sent the pin to Kanchipuram, 50 km away.
+      if (!city && !this.cityWithinCatchment(curated, lat, lng)) {
+        city = (await findAlias(districtNames))?.city ?? matchCuratedName(curated, districtNames);
       }
     }
 

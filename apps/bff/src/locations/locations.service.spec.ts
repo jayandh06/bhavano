@@ -266,3 +266,105 @@ describe('LocationsService.reverseGeocodeGoogle — city stays the curated marke
     expect(prisma.city.create).not.toHaveBeenCalled();
   });
 });
+
+describe('LocationsService.reverseGeocodeGoogle — a district label must not override the catchment', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  const chennai = {
+    id: 'chennai',
+    name: 'Chennai',
+    state: 'Tamil Nadu',
+    source: 'curated',
+    lat: 13.0827,
+    lng: 80.2707,
+    catchmentKm: 35,
+  };
+  const kanchipuram = {
+    id: 'kanchipuram',
+    name: 'Kanchipuram',
+    state: 'Tamil Nadu',
+    source: 'curated',
+    lat: 12.8341735,
+    lng: 79.7036402,
+    catchmentKm: 25,
+  };
+  const chengalpattu = {
+    id: 'chengalpattu',
+    name: 'Chengalpattu',
+    state: 'Tamil Nadu',
+    source: 'curated',
+    lat: 12.69184,
+    lng: 79.97661,
+    catchmentKm: 25,
+  };
+
+  /** The admin's real alias: Google's old spelling of the district, mapped to the Kanchipuram
+   * market — matched only when the query names "Kancheepuram". */
+  function serviceWithKancheepuramAlias() {
+    const aliasFindFirst = jest.fn().mockImplementation(({ where }: { where: { OR: { name: { equals: string } }[] } }) =>
+      Promise.resolve(
+        where.OR.some((clause) => clause.name.equals.toLowerCase() === 'kancheepuram') ? { city: kanchipuram } : null,
+      ),
+    );
+    const made = makeService({
+      city: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([chennai, kanchipuram, chengalpattu]),
+        create: jest.fn(),
+      },
+      localityAlias: { findFirst: aliasFindFirst },
+    });
+    return { ...made, aliasFindFirst };
+  }
+
+  const pallavaramComponents = [
+    { types: ['sublocality', 'sublocality_level_1'], long_name: 'Latheef Colony' },
+    { types: ['locality'], long_name: 'Tambaram' },
+    { types: ['administrative_area_level_2'], long_name: 'Kancheepuram' },
+    { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu' },
+  ];
+
+  it('files Bolt.Earth, Latheef Colony, Pallavaram under Chennai, not the Kancheepuram district', async () => {
+    const { service, prisma } = serviceWithKancheepuramAlias();
+    mockGeocodeFetch(pallavaramComponents);
+
+    // The exact pin the place search returned for "Bolt.Earth, 4b, Bharathi Nagar 3rd St, Latheef
+    // Colony, Dargah Colony, Pallavaram, Tambaram, Tamil Nadu 600043": ~18 km from Chennai's
+    // centre, ~51 km from Kanchipuram's.
+    const result = await service.reverseGeocodeGoogle(12.9643304, 80.1598017);
+
+    expect(result.cityId).toBe('chennai');
+    expect(result.cityName).toBe('Chennai');
+    expect(result.resolvedLocality).toBe('Latheef Colony');
+    expect(prisma.area.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'Latheef Colony', cityId: 'chennai' }) }),
+    );
+  });
+
+  it('still uses the district label for a village outside every catchment', async () => {
+    const { service } = serviceWithKancheepuramAlias();
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Uthiramerur' },
+      { types: ['administrative_area_level_2'], long_name: 'Kancheepuram' },
+      { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu' },
+    ]);
+
+    // Outside Kanchipuram's (26 km vs 25), Chengalpattu's and Chennai's catchments.
+    const result = await service.reverseGeocodeGoogle(12.6, 79.73);
+
+    expect(result.cityId).toBe('kanchipuram');
+  });
+
+  it('keeps trusting a town-level name even if its city is far from the pin', async () => {
+    const { service } = serviceWithKancheepuramAlias();
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Some Ward' },
+      { types: ['locality'], long_name: 'Kancheepuram' },
+      { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(12.9643304, 80.1598017);
+
+    expect(result.cityId).toBe('kanchipuram');
+  });
+});
