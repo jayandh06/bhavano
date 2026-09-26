@@ -6,6 +6,10 @@ import { RecordVisitDto } from './dto/record-visit.dto';
 import { RecordPageViewDto } from './dto/record-pageview.dto';
 import { ConfirmJsDto } from './dto/confirm-js.dto';
 import { RecordSearchDto } from './dto/record-search.dto';
+import { LinkSessionDto } from './dto/link-session.dto';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import type { RequestUser } from '../auth/guards/auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -76,6 +80,25 @@ export class AnalyticsController {
   @HttpCode(200)
   async confirmJs(@Body() dto: ConfirmJsDto): Promise<{ success: true }> {
     await this.analyticsService.confirmJsExecution(dto.sessionId);
+    return { success: true };
+  }
+
+  /** Attaches the logged-in caller to this device's analytics session.
+   *
+   * A visit is otherwise linked to a user only at the moment of an explicit login (AuthService
+   * passes the session id then). The mobile app mints a fresh session id on every cold start, and
+   * a returning, already-logged-in user never goes through login again, so every launch after the
+   * first one stayed "anonymous" in the admin Page visits list even though the person was signed
+   * in. The app calls this once per launch when a session is present. Safe to call before the
+   * Visit row exists (linkVisitToUser upserts) and to repeat (it only fills an empty userId). */
+  @Post('link-session')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  async linkSession(
+    @Body() dto: LinkSessionDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<{ success: true }> {
+    await this.analyticsService.linkVisitToUser(dto.sessionId, user.id);
     return { success: true };
   }
 }

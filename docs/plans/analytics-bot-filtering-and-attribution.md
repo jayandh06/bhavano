@@ -342,6 +342,17 @@ fires `post_ad_success`; this only fills the PageView trail.
   synthetic paths as web.
 - Login (OTP / Google / Apple) sends `sessionId` so `AuthService.linkVisitToUser` attaches the
   Visit to the account.
+- **Already-logged-in launches (2026-09-26).** Login alone left every later launch anonymous: the
+  session id is new per process, and a returning user restores a stored token without logging in
+  again, so nothing linked the new Visit to them (reported as "my test app visits show as
+  anonymous even though I'm logged in"). The app now calls `POST /analytics/link-session`
+  (`AuthGuard`, body `{ sessionId }`) once per launch whenever a session is present
+  (`linkAnalyticsSessionToUser`, called from `HomeSheetsProvider`), which runs the same
+  `linkVisitToUser` — an upsert that only fills an empty `userId`, so it is safe before the Visit
+  row exists and safe to repeat. Visits recorded before this shipped stay anonymous (their session
+  ids were never stored anywhere that could be matched to a user). Web has the same shape: its
+  `bhavano_sid` cookie dies with the browser while the NextAuth session lasts 30 days, so a
+  returning logged-in web visitor is likely anonymous too — not changed here.
 - BFF analytics controller fills `ip` / `userAgent` from `req` when the body omits them (mobile
   has no middleware hop); `RecordPageViewDto.fromApp` feeds backfill deviceType.
 

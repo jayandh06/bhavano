@@ -25,6 +25,29 @@ export function getAnalyticsSessionId(): string {
   return sessionId;
 }
 
+let linkedForToken: string | null = null;
+
+/** Tells the BFF which user this launch's analytics session belongs to.
+ *
+ * Login links the session to the user only at that instant. The session id is new on every cold
+ * start, so a user who is still logged in from last time never passes through login again — and
+ * every visit after the first launch showed as anonymous in the admin Page visits list. Call this
+ * whenever a session is present (restored from storage or just created). Once per process per
+ * token; a failure retries on the next call. */
+export async function linkAnalyticsSessionToUser(accessToken: string): Promise<void> {
+  if (linkedForToken === accessToken) return;
+  try {
+    const res = await fetch(`${BFF_URL}/analytics/link-session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Client": "app", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ sessionId: getAnalyticsSessionId() }),
+    });
+    if (res.ok) linkedForToken = accessToken;
+  } catch {
+    // Offline — analytics must never surface an error; retried on the next call.
+  }
+}
+
 async function postJson(path: string, body: Record<string, unknown>): Promise<void> {
   const res = await fetch(`${BFF_URL}${path}`, {
     method: "POST",

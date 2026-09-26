@@ -39,7 +39,7 @@ import {
 } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
 import { getOrCreateViewerKey } from "../lib/viewerKey";
-import { getAnalyticsSessionId } from "../lib/analyticsSession";
+import { getAnalyticsSessionId, linkAnalyticsSessionToUser } from "../lib/analyticsSession";
 import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
 import { Icon } from "../components/Icon";
 import { GoogleIcon } from "../components/GoogleIcon";
@@ -256,6 +256,12 @@ export function HomeSheetsProvider({
     setAllCities(await fetchCities(undefined, true));
     setLoadingAllCities(false);
   }
+
+  // Tie this launch's analytics session to the signed-in user. Login only does that at the moment
+  // of login; a restored session (the normal case after the first launch) never passed through it.
+  useEffect(() => {
+    if (accessToken) void linkAnalyticsSessionToUser(accessToken);
+  }, [accessToken]);
 
   const refreshProfile = useCallback(async () => {
     if (!accessToken) {
