@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, RefreshControl, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, RefreshControl, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../src/theme/ThemeContext";
@@ -18,6 +18,7 @@ import { FilterSheet, EMPTY_FILTERS, activeFilterCount, type AppliedFilters } fr
 import { SortSheet, SORT_OPTIONS, type SortValue } from "../../src/components/home/SortSheet";
 import { HOME_TABS, type HomeTabValue } from "../../src/components/home/categories";
 
+import { HeaderSearchInput } from "../../src/components/home/HeaderSearchInput";
 /** Below this width, `FlatList` renders one column; at/above it, two — comfortably below every
  * iPad's portrait width (744pt+) and above every phone's, including large phones in portrait. */
 const WIDE_SCREEN_BREAKPOINT = 700;
@@ -245,14 +246,7 @@ export default function HomeScreen() {
               <View style={styles.searchBar}>
                 <View style={[styles.searchInputWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Icon name="search" size={15} color={colors.muted} />
-                  <TextInput
-                    value={query}
-                    onChangeText={setQuery}
-                    autoFocus
-                    placeholder="2BHK in Koramangala, sofa set…"
-                    placeholderTextColor={colors.muted}
-                    style={{ flex: 1, paddingVertical: 11, paddingHorizontal: 8, fontSize: 13.5, color: colors.text }}
-                  />
+                  <HeaderSearchInput value={query} onChangeText={setQuery} paddingVertical={11} />
                 </View>
                 <Pressable
                   onPress={() => {

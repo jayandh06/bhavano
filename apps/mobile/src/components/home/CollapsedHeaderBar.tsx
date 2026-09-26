@@ -1,7 +1,8 @@
-import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 
+import { HeaderSearchInput } from "./HeaderSearchInput";
 /** The bar's own height (its one row only — the search-reveal row is a separate, optional
  * extension, and the two are mutually exclusive with the drawer this bar's hamburger opens, so
  * the drawer only ever needs to sit below this base height). `HomeDrawer` positions itself right
@@ -62,14 +63,7 @@ export function CollapsedHeaderBar({
         <View style={styles.searchRow}>
           <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Icon name="search" size={15} color={colors.muted} />
-            <TextInput
-              value={query}
-              onChangeText={onChangeQuery}
-              autoFocus
-              placeholder="2BHK in Koramangala, sofa set…"
-              placeholderTextColor={colors.muted}
-              style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 13.5, color: colors.text }}
-            />
+            <HeaderSearchInput value={query} onChangeText={onChangeQuery} paddingVertical={10} />
           </View>
         </View>
       )}
