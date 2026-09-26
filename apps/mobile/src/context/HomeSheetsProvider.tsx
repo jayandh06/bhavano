@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Keyboard, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   BottomSheetModal,
   BottomSheetScrollView,
@@ -106,6 +106,18 @@ export function HomeSheetsProvider({
   // navigation bar, so a fixed bottom padding leaves the last row (Back, primary buttons) sitting
   // beneath it. Adds the real inset on top of the sheet's own padding.
   const insets = useSafeAreaInsets();
+  // Android only: tracked so the profile-basics step can pad its scroll view by the keyboard's
+  // height (see that sheet below). iOS's own sheet keyboard handling already copes there.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const show = Keyboard.addListener("keyboardDidShow", (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   const sheetContentStyle = [styles.sheetContent, { paddingBottom: styles.sheetContent.paddingBottom + insets.bottom }];
   const locationSheetRef = useRef<BottomSheetModal>(null);
   const loginSheetRef = useRef<BottomSheetModal>(null);
@@ -657,6 +669,38 @@ export function HomeSheetsProvider({
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
       >
+        {loginStep === "basics" ? (
+          // Its own scroll view, and no KeyboardAvoidingView. The step re-snaps the sheet 55% ->
+          // 85% as it swaps in, and a KeyboardAvoidingView re-measuring its offset against the
+          // moving sheet made the screen jump up and down; with it off, the keyboard just covered
+          // the fields. Here the keyboard's height is plain bottom padding inside a scroll view
+          // sized by the sheet, so nothing feeds back into the sheet's own position and the
+          // buttons below the keyboard can always be scrolled into reach.
+          <BottomSheetScrollView
+            contentContainerStyle={[sheetContentStyle, { paddingBottom: sheetContentStyle[1].paddingBottom + keyboardHeight }]}
+            keyboardShouldPersistTaps="handled"
+          >
+          {accessToken && (
+            <ProfileBasicsStep
+              accessToken={accessToken}
+              initial={basicsInitial}
+              onSaved={onBasicsSaved}
+              onSkip={() => {
+                if (quietBasicsRef.current) {
+                  quietBasicsRef.current = false;
+                  loginSheetRef.current?.dismiss();
+                  return;
+                }
+                finishLoginSuccess();
+              }}
+              onReauthRequired={() => {
+                loginSheetRef.current?.dismiss();
+                void logout();
+              }}
+            />
+          )}
+          </BottomSheetScrollView>
+        ) : (
         <BottomSheetView style={sheetContentStyle}>
         {/* KeyboardAvoidingView, not gorhom's own android_keyboardInputMode="adjustResize" alone
             (still set above, harmless to leave) — that prop depends on Android's window actually
@@ -790,28 +834,9 @@ export function HomeSheetsProvider({
               </Pressable>
             </>
           )}
-
-          {loginStep === "basics" && accessToken && (
-            <ProfileBasicsStep
-              accessToken={accessToken}
-              initial={basicsInitial}
-              onSaved={onBasicsSaved}
-              onSkip={() => {
-                if (quietBasicsRef.current) {
-                  quietBasicsRef.current = false;
-                  loginSheetRef.current?.dismiss();
-                  return;
-                }
-                finishLoginSuccess();
-              }}
-              onReauthRequired={() => {
-                loginSheetRef.current?.dismiss();
-                void logout();
-              }}
-            />
-          )}
         </KeyboardAvoidingView>
         </BottomSheetView>
+        )}
       </BottomSheetModal>
 
       {showToast && (
