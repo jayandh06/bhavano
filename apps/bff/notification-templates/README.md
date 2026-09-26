@@ -10,6 +10,8 @@ email/welcome/                          the first-login welcome email
 email/listing-posted/                   the "your ad is live" email
 email/listing-expiry-reminder/          the "your ad expires soon" email
 email/claim-listing/                    the "verify your bulk-imported listing" email
+email/verify-email/                     the "verify your email" code email (the 6-digit code itself is
+                                        inserted by the code, not written in these files)
 email/boost-activated/                  Boost purchase confirmation
 email/boost-instant-alerts-activated/   Boost + Instant Alerts bundle purchase confirmation
 email/instant-alerts-activated/         standalone Instant Alerts purchase confirmation

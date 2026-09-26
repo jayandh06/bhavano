@@ -21,6 +21,10 @@ export interface EmailLayoutInput {
   /** Paragraphs, in order. Plain text — escaped, so a listing title with an ampersand or a quote
    * in it cannot break the markup or inject anything. */
   paragraphs: string[];
+  /** A one-time code shown large and boxed, after the paragraphs and before any button — for the
+   * verification email, where the code is the entire point of the message and must be readable
+   * at a glance and easy to copy. Escaped like everything else. */
+  code?: string;
   /** One button, or several stacked — the first is the primary (filled), the rest outlined. More
    * than one exists for the Boost promotion, which offers Boost and Boost + Instant Alerts as two
    * separate destinations rather than a link buried in a sentence. */
@@ -61,7 +65,7 @@ function siteUrl(): string {
  * that prefer text.
  */
 export function renderEmail(input: EmailLayoutInput): string {
-  const { heading, paragraphs, button, preheader } = input;
+  const { heading, paragraphs, button, preheader, code } = input;
   const site = siteUrl();
 
   const body = paragraphs
@@ -70,6 +74,18 @@ export function renderEmail(input: EmailLayoutInput): string {
         `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${TEXT};">${esc(p)}</p>`,
     )
     .join('');
+
+  // The code sits in a single-cell table for the same reason the buttons do: a bare styled <div>
+  // loses its background and padding in Outlook. Monospace with wide letter-spacing so the six
+  // digits read as separate characters (and 0/O, 1/l are never confused).
+  const codeBlock =
+    code === undefined
+      ? ''
+      : `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;">
+         <tr>
+           <td align="center" bgcolor="${PAGE_BG}" style="background-color:${PAGE_BG};border:1px solid ${BORDER};border-radius:10px;padding:16px 28px 16px 36px;font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:bold;letter-spacing:8px;color:${GREEN};">${esc(code)}</td>
+         </tr>
+       </table>`;
 
   // A "bulletproof" button: a table cell with a background colour and a link filling it. A styled
   // <a> alone loses its background in Outlook and collapses to bare underlined text.
@@ -120,6 +136,7 @@ export function renderEmail(input: EmailLayoutInput): string {
           <td style="padding:28px 32px 8px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
             <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:600;color:${TEXT};">${esc(heading)}</h1>
             ${body}
+            ${codeBlock}
             ${cta}
           </td>
         </tr>

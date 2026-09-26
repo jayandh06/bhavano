@@ -4,6 +4,8 @@ import type { LinkIdentifierResult } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountMergeService } from './account-merge.service';
 import { EmailProvider } from '../notifications/providers/email.provider';
+import { renderEmail } from '../notifications/emailLayout';
+import { loadTemplate } from '../notifications/templateLoader';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -53,11 +55,15 @@ export class EmailVerificationService {
     // Unlike moderation notifications, this one is the action rather than a side effect of it —
     // a user waiting on a code that was never sent has no way to proceed, so a failed send is
     // surfaced instead of logged and swallowed.
-    const sent = await this.email.send(
-      email,
-      'Verify your email for Bhavano',
-      `Your Bhavano verification code is ${code}.\n\nIt is valid for 10 minutes. If you didn't ask for this, you can ignore this email.`,
-    );
+    const tpl = loadTemplate('email/verify-email');
+    const html = renderEmail({
+      heading: tpl.heading,
+      preheader: tpl.preheader,
+      paragraphs: tpl.paragraphs,
+      code,
+    });
+    const text = `Your Bhavano verification code is ${code}.\n\n${tpl.paragraphs.join('\n\n')}`;
+    const sent = await this.email.send(email, tpl.subject, text, { html });
     if (!sent) {
       throw new BadRequestException(
         "Couldn't send the verification email — please try again.",
