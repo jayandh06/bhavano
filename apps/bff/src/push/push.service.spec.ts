@@ -163,7 +163,7 @@ describe('PushService', () => {
       collapseId: 'c1',
       tag: 'msg:c1',
       threadId: 'c1',
-      interruptionLevel: 'timeSensitive',
+      interruptionLevel: 'time-sensitive',
       data: { kind: 'message', conversationId: 'c1', listingTitle: '2 BHK in Koramangala' },
     });
   });

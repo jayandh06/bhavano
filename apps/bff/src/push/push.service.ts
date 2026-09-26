@@ -46,7 +46,7 @@ interface ExpoPushMessage {
   collapseId?: string;
   tag?: string;
   threadId?: string;
-  interruptionLevel?: 'active' | 'critical' | 'passive' | 'timeSensitive';
+  interruptionLevel?: 'active' | 'critical' | 'passive' | 'time-sensitive';
   richContent?: { image: string };
 }
 
@@ -66,7 +66,7 @@ interface PushContent {
   /** iOS — visually group related notifications. */
   threadId?: string;
   priority?: 'default' | 'normal' | 'high';
-  interruptionLevel?: 'active' | 'critical' | 'passive' | 'timeSensitive';
+  interruptionLevel?: 'active' | 'critical' | 'passive' | 'time-sensitive';
   /** Large image in the expanded notification (Android out of the box; iOS needs an NSE). */
   imageUrl?: string;
 }
@@ -161,7 +161,7 @@ export class PushService {
       badge: opts.unreadCount,
       channelId: PUSH_CHANNEL_MESSAGES,
       priority: 'high',
-      interruptionLevel: 'timeSensitive',
+      interruptionLevel: 'time-sensitive',
       collapseId: message.conversationId,
       tag: `msg:${message.conversationId}`,
       threadId: message.conversationId,
