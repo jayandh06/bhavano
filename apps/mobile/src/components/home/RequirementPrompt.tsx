@@ -5,6 +5,7 @@ import type { CreateRequirementInput } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { createRequirement } from "../../lib/bffClient";
+import { Icon } from "../Icon";
 
 /**
  * Mobile counterpart to the web wizard's `RequirementPrompt` (`apps/web/src/components/home/
@@ -76,10 +77,14 @@ export function RequirementPrompt({
         </Text>
         {/* Offered *after* the save, never before it — same as web. The one-tap capture works
             because it is not a form; detail is a follow-on for whoever wants to give it. */}
-        <Pressable onPress={() => router.push("/my-requirements")} style={{ marginTop: 10 }}>
+        <Pressable
+          onPress={() => router.push("/my-requirements")}
+          style={{ marginTop: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3 }}
+        >
           <Text style={{ color: colors.muted, fontSize: 12.5, textAlign: "center", textDecorationLine: "underline" }}>
-            Add a budget or timeline →
+            Add a budget or timeline
           </Text>
+          <Icon name="chevronRight" size={12} color={colors.muted} />
         </Pressable>
       </View>
     );

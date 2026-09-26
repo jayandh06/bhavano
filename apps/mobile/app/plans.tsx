@@ -155,7 +155,10 @@ export default function PlansScreen() {
             onPress={() => router.push("/post")}
             style={[styles.outlineCta, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
           >
-            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>Post a free ad →</Text>
+            <View style={styles.ctaRow}>
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>Post a free ad</Text>
+              <Icon name="chevronRight" size={13} color={colors.green} />
+            </View>
           </Pressable>
         </View>
 
@@ -231,7 +234,10 @@ export default function PlansScreen() {
             onPress={() => router.push("/account")}
             style={[styles.outlineCta, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
           >
-            <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>See your credits →</Text>
+            <View style={styles.ctaRow}>
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>See your credits</Text>
+              <Icon name="chevronRight" size={13} color={colors.green} />
+            </View>
           </Pressable>
         </View>
       </ScrollView>
@@ -258,5 +264,6 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 16, padding: 16 },
   cardTitleRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
   outlineCta: { borderWidth: 1.5, borderRadius: 10, paddingVertical: 11, alignItems: "center", marginTop: 14 },
+  ctaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   filledCta: { borderRadius: 10, paddingVertical: 12, alignItems: "center", marginTop: 14 },
 });

@@ -16,6 +16,7 @@ import {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import * as Location from "expo-location";
@@ -101,6 +102,11 @@ export function HomeSheetsProvider({
 }) {
   const { colors } = useAppTheme();
   const router = useRouter();
+  // A BottomSheetModal draws over the whole window, including under Android's gesture/3-button
+  // navigation bar, so a fixed bottom padding leaves the last row (Back, primary buttons) sitting
+  // beneath it. Adds the real inset on top of the sheet's own padding.
+  const insets = useSafeAreaInsets();
+  const sheetContentStyle = [styles.sheetContent, { paddingBottom: styles.sheetContent.paddingBottom + insets.bottom }];
   const locationSheetRef = useRef<BottomSheetModal>(null);
   const loginSheetRef = useRef<BottomSheetModal>(null);
 
@@ -547,7 +553,7 @@ export function HomeSheetsProvider({
             overflow is simply unreachable. BottomSheetScrollView (rather than RN's ScrollView)
             coordinates with the sheet's own pan gesture, so dragging the list scrolls it and
             dragging past the top dismisses the sheet, instead of the two fighting each other. */}
-        <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
+        <BottomSheetScrollView contentContainerStyle={sheetContentStyle}>
           <Text style={[styles.sheetTitle, { color: colors.text }]}>Choose your location</Text>
           <Pressable
             onPress={clearCity}
@@ -651,7 +657,7 @@ export function HomeSheetsProvider({
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
       >
-        <BottomSheetView style={styles.sheetContent}>
+        <BottomSheetView style={sheetContentStyle}>
         {/* KeyboardAvoidingView, not gorhom's own android_keyboardInputMode="adjustResize" alone
             (still set above, harmless to leave) — that prop depends on Android's window actually
             resizing in response to the keyboard, which SDK 54's mandatory edge-to-edge breaks, the

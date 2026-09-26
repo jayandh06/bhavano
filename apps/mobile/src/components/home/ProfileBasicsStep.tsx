@@ -13,6 +13,7 @@ import {
   verifyEmail,
 } from "../../lib/bffClient";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { Icon } from "../Icon";
 
 const MIN_CITY_QUERY = 2;
 
@@ -403,8 +404,15 @@ export function ProfileBasicsStep({
             <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send OTP</Text>
           )}
         </Pressable>
-        <Pressable onPress={() => setPhase("details")} disabled={pending} style={{ marginTop: 10, alignItems: "center" }}>
-          <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>← Back</Text>
+        {/* Vector chevron, not a "←" glyph — a Unicode arrow renders as a stray character on
+            Android fonts that lack it (same fix as the login sheet's own Back button). */}
+        <Pressable
+          onPress={() => setPhase("details")}
+          disabled={pending}
+          style={{ marginTop: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}
+        >
+          <Icon name="chevronLeft" size={14} color={colors.muted} />
+          <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
         </Pressable>
       </View>
     );
@@ -479,8 +487,15 @@ export function ProfileBasicsStep({
             <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send code</Text>
           )}
         </Pressable>
-        <Pressable onPress={() => setPhase("details")} disabled={pending} style={{ marginTop: 10, alignItems: "center" }}>
-          <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>← Back</Text>
+        {/* Vector chevron, not a "←" glyph — a Unicode arrow renders as a stray character on
+            Android fonts that lack it (same fix as the login sheet's own Back button). */}
+        <Pressable
+          onPress={() => setPhase("details")}
+          disabled={pending}
+          style={{ marginTop: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}
+        >
+          <Icon name="chevronLeft" size={14} color={colors.muted} />
+          <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
         </Pressable>
       </View>
     );

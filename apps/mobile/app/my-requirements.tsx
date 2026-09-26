@@ -14,6 +14,7 @@ import { useAppTheme } from "../src/theme/ThemeContext";
 import { useHomeSheets } from "../src/context/HomeSheetsProvider";
 import { BffError, fetchMyRequirements } from "../src/lib/bffClient";
 import { ScreenHeader } from "../src/components/home/ScreenHeader";
+import { Icon } from "../src/components/Icon";
 import { MyRequirementCard } from "../src/components/home/MyRequirementCard";
 
 /**
@@ -108,10 +109,14 @@ export default function MyRequirementsScreen() {
                 Nothing here yet. When a search of yours comes up empty, you can ask us to keep looking —
                 we&rsquo;ll tell you the moment something matches.
               </Text>
-              <Pressable onPress={() => router.push("/")}>
+              <Pressable
+                onPress={() => router.push("/")}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}
+              >
                 <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5, textAlign: "center" }}>
-                  Start searching →
+                  Start searching
                 </Text>
+                <Icon name="chevronRight" size={13} color={colors.green} />
               </Pressable>
             </View>
           }
