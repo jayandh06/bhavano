@@ -4,6 +4,7 @@ import { KeyboardStickyView } from "react-native-keyboard-controller";
 import { Stack, useIsFocused, useRouter } from "expo-router";
 import type { MessageDeletedEvent, MessageDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { useTabBarHeight } from "../../lib/tabBarHeight";
 import { deleteMessage, markConversationRead, sendFirstMessage, sendMessage } from "../../lib/bffClient";
 import { getSocket } from "../../lib/socket";
 import { Icon } from "../Icon";
@@ -37,6 +38,9 @@ export function ConversationThread({
 }) {
   const { colors } = useAppTheme();
   const router = useRouter();
+  // See lib/tabBarHeight.ts — the composer sits above the always-mounted tab bar, which the
+  // keyboard covers, so it must lift by the keyboard height *minus* the bar to land flush on it.
+  const tabBarHeight = useTabBarHeight();
   // The Messages tab stack keeps this screen mounted after you leave a thread (or switch to
   // Home), so socket handlers would still run and auto-mark the conversation read — which made
   // the bottom-tab unread badge flash to 1 then immediately clear. Only mark read while focused.
@@ -192,7 +196,7 @@ export function ConversationThread({
           return <Pressable onLongPress={() => onDelete(item.id)}>{bubble}</Pressable>;
         }}
       />
-      <KeyboardStickyView>
+      <KeyboardStickyView offset={{ closed: 0, opened: tabBarHeight }}>
         <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.bg }]}>
           <TextInput
             value={draft}

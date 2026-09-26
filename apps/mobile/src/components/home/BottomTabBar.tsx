@@ -6,6 +6,7 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { useUnreadCountQuery } from "../../lib/queries";
 import { Icon, type IconName } from "../Icon";
+import { setTabBarHeight } from "../../lib/tabBarHeight";
 
 interface TabDef {
   key: string;
@@ -64,6 +65,7 @@ export function BottomTabBar() {
 
   return (
     <View
+      onLayout={(e) => setTabBarHeight(e.nativeEvent.layout.height)}
       style={{
         flexDirection: "row",
         backgroundColor: colors.green,
