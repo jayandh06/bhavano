@@ -5,10 +5,12 @@
 jest.mock("./trackingConsent", () => ({ isTrackingAuthorized: () => null }));
 
 import {
+  BffError,
   createBoostOrder,
   createRequirement,
   fetchCities,
   fetchListings,
+  friendlyErrorMessage,
   previewBoostPricing,
 } from "./bffClient";
 
@@ -137,5 +139,30 @@ describe("createRequirement", () => {
     expect(url).toContain("/requirements");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({ searchLabel: "PG in Bengaluru", cityId: "city1" });
+  });
+});
+
+describe('friendlyErrorMessage', () => {
+  it("returns the server's own message, not the BFF request wrapper", () => {
+    const e = new BffError(400, '/auth/otp/link', JSON.stringify({ message: 'OTP has expired — request a new one', statusCode: 400 }));
+    expect(friendlyErrorMessage(e, 'fallback')).toBe('OTP has expired — request a new one');
+  });
+
+  it('joins validation message arrays', () => {
+    const e = new BffError(400, '/x', JSON.stringify({ message: ['a is required', 'b is invalid'] }));
+    expect(friendlyErrorMessage(e, 'fallback')).toBe('a is required, b is invalid');
+  });
+
+  it('uses generic wording when the body is not JSON', () => {
+    expect(friendlyErrorMessage(new BffError(502, '/x', '<html>bad gateway</html>'), 'f')).toMatch(/our side/);
+    expect(friendlyErrorMessage(new BffError(400, '/x', ''), 'f')).toMatch(/try again/);
+  });
+
+  it('reports a network failure as a connection problem', () => {
+    expect(friendlyErrorMessage(new TypeError('Network request failed'), 'f')).toMatch(/connection/);
+  });
+
+  it('falls back for anything else', () => {
+    expect(friendlyErrorMessage(new Error('boom'), 'fallback')).toBe('fallback');
   });
 });

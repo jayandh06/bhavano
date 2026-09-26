@@ -5,6 +5,7 @@ import type { AccountMergeSummary, City, LinkIdentifierResult } from "@bhavano/t
 import {
   BffError,
   confirmAccountMerge,
+  friendlyErrorMessage,
   fetchCities,
   linkPhone,
   requestEmailCode,
@@ -187,7 +188,7 @@ export function ProfileBasicsStep({
       });
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save");
+      setError(friendlyErrorMessage(e, "Couldn't save"));
       return false;
     }
   }
@@ -246,9 +247,7 @@ export function ProfileBasicsStep({
   }
 
   function errMessage(e: unknown, fallback: string): string {
-    if (e instanceof BffError) return e.message;
-    if (e instanceof Error) return e.message;
-    return fallback;
+    return friendlyErrorMessage(e, fallback);
   }
 
   async function onSendLinkOtp() {

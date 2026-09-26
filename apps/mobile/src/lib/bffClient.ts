@@ -52,6 +52,30 @@ export class BffError extends Error {
     super(`BFF request failed (${status} ${path}): ${body}`);
     this.name = "BffError";
   }
+
+  /** The server's own human-readable `message` (Nest puts it in the JSON body — a string, or an
+   * array for validation errors), without the status/path/JSON wrapper `message` carries. */
+  get userMessage(): string {
+    try {
+      const parsed = JSON.parse(this.body) as { message?: string | string[] };
+      const text = Array.isArray(parsed.message) ? parsed.message.join(", ") : parsed.message;
+      if (typeof text === "string" && text.trim()) return text;
+    } catch {
+      // Body wasn't JSON (proxy error page, empty) — fall through to the generic wording.
+    }
+    return this.status >= 500
+      ? "Something went wrong on our side — please try again."
+      : "That didn't work — please try again.";
+  }
+}
+
+/** Text safe to show a user for any error thrown while calling the BFF. Never the raw
+ * "BFF request failed (400 /path): {json}" string, which is for logs, not people. */
+export function friendlyErrorMessage(e: unknown, fallback: string): string {
+  if (e instanceof BffError) return e.userMessage;
+  // fetch() itself rejecting (offline, DNS, timeout) — a TypeError, not a BffError.
+  if (e instanceof TypeError) return "Couldn't reach Bhavano — check your connection and try again.";
+  return fallback;
 }
 
 async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {

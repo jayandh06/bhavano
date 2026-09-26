@@ -26,6 +26,7 @@ import type { City, UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../theme/ThemeContext";
 import {
   BffError,
+  friendlyErrorMessage,
   fetchCities,
   fetchProfile,
   fetchSellerAttention,
@@ -462,7 +463,7 @@ export function HomeSheetsProvider({
       await sendOtp(phone);
       setLoginStep("otp");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to send OTP");
+      setError(friendlyErrorMessage(e, "Failed to send OTP"));
     } finally {
       setPending(false);
     }
@@ -479,8 +480,10 @@ export function HomeSheetsProvider({
         getAnalyticsSessionId(),
       );
       await onLoginSuccess(session.accessToken);
-    } catch {
-      setError("Incorrect OTP");
+    } catch (e) {
+      // The BFF says which it was — wrong code, expired, or too many attempts — and each needs
+      // different next steps, so show its message rather than always "Incorrect OTP".
+      setError(friendlyErrorMessage(e, "Couldn't verify the OTP"));
     } finally {
       setPending(false);
     }
