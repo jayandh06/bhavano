@@ -32,12 +32,15 @@ Apartment, and Villa:
 | `openParkingCount`         | Open parking spaces         | number                                  | No                         | Integer, minimum 0                                                                               |
 | `closedParkingCount`       | Closed parking spaces       | number                                  | No                         | Integer, minimum 0                                                                               |
 | `entranceFacing`           | Main entrance facing        | select                                  | No                         | North, South, East, West, North-East, North-West, South-East, South-West                         |
+| `bathrooms`                | Bathrooms                   | number                                  | Yes                        | Integer                                                                                          |
+| `floor`                    | Floor                       | select                                  | No                         | Basement / Ground / 1st–50th / Top — sell, rent, and lease; structured for future filters (commercial still uses free-text `floor`) |
+| `totalFloors`              | Total floors in building    | number                                  | No                         | Integer ≥ 1                                                                                      |
 | `carpetAreaSqft`           | Carpet area (sqft)          | number                                  | Yes                        | Positive integer                                                                                 |
 | `gatedCommunity`           | Gated community             | select                                  | No                         | Yes / No                                                                                         |
 | `priceNegotiable`          | Price negotiable            | select                                  | No                         | Yes / No                                                                                         |
 | `leaseType`                | Lease type                  | select                                  | Rent/Lease only, if needed | Use a confirmed controlled option list; do not invent options until product meaning is confirmed |
 | `preferredTenantTypes`     | Preferred tenant type       | multi-select or normalized string array | Rent/Lease only            | Any of Family, Company, Bachelor; at least one when supplied                                     |
-| `fromBroker`               | Posted by broker            | select                                  | No                         | Yes / No                                                                                         |
+| `fromBroker`               | Posted by Broker / Agent    | select                                  | No                         | Yes / No                                                                                         |
 | `brokerageFeeApplicable`   | Brokerage fee               | select                                  | Rent/Lease only            | Yes / No; required when `fromBroker` is Yes if the fee is broker-specific                        |
 | `brokerageFee`             | Brokerage fee amount        | number                                  | Conditional                | Non-negative amount; required when `brokerageFeeApplicable` is Yes                               |
 | `maintenanceFeeApplicable` | Monthly maintenance fee     | select                                  | No                         | Yes / No                                                                                         |
@@ -135,8 +138,8 @@ for new residential ads unless it is explicitly renamed to a different area meas
 - Buy, Sell, Rent, and Lease continue to use the existing transaction model without conflicting
   duplicate fields.
 - New residential ads can collect balcony count, open/closed parking counts, entrance facing,
-  carpet area, gated-community status, negotiability, broker status, gas pipeline, and the agreed
-  lease/tenant/fee fields.
+  floor + total floors in building, carpet area, gated-community status, negotiability, broker
+  status, gas pipeline, and the agreed lease/tenant/fee fields.
 - Conditional brokerage and maintenance amounts cannot be saved without their applicability being
   true, and invalid numeric/select values are rejected by the BFF as well as blocked in the UI.
 - Existing listings remain editable and readable, including rows that only have `attributes.sqft`.

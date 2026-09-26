@@ -192,6 +192,26 @@ export function defaultAttributesFor(category: ListingCategory): Record<string, 
   return out;
 }
 
+/** Floor picker for house / apartment / villa — keep labels human ("2nd") and values stable
+ * (`"2"`) for filters and detail display. Caps at 50; taller towers use Top. */
+function floorOrdinalLabel(n: number): string {
+  const mod100 = n % 100;
+  const mod10 = n % 10;
+  const suffix =
+    mod100 >= 11 && mod100 <= 13 ? "th" : mod10 === 1 ? "st" : mod10 === 2 ? "nd" : mod10 === 3 ? "rd" : "th";
+  return `${n}${suffix}`;
+}
+
+const RESIDENTIAL_FLOOR_OPTIONS: FieldOption[] = [
+  { value: "basement", label: "Basement" },
+  { value: "ground", label: "Ground" },
+  ...Array.from({ length: 50 }, (_, i) => {
+    const n = i + 1;
+    return { value: String(n), label: floorOrdinalLabel(n) };
+  }),
+  { value: "top", label: "Top floor" },
+];
+
 const RESIDENTIAL_FIELDS: FieldDef[] = [
   {
     key: "bedrooms",
@@ -211,6 +231,25 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     maxDigits: 2,
     stepper: true,
     defaultValue: "0",
+    section: "basics",
+  },
+  {
+    // Structured (not free text like commercial `floor`) so browse filters can match later.
+    // Optional — older listings simply omit it. Sell/rent/lease all share this; no
+    // transactionTypes gate. Values: basement / ground / 1…50 / top.
+    key: "floor",
+    label: "Floor",
+    type: "select",
+    section: "basics",
+    options: RESIDENTIAL_FLOOR_OPTIONS,
+  },
+  {
+    key: "totalFloors",
+    label: "Total floors in building",
+    type: "number",
+    min: 1,
+    maxDigits: 2,
+    stepper: true,
     section: "basics",
   },
   {
@@ -315,7 +354,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
   },
   {
     key: "fromBroker",
-    label: "Posted by broker",
+    label: "Posted by Broker / Agent",
     type: "select",
     section: "pricing",
     options: [
@@ -1019,7 +1058,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
     },
     {
       key: "fromBroker",
-      label: "Posted by broker",
+      label: "Posted by Broker / Agent",
       type: "select",
       section: "pricing",
       options: [
@@ -1103,7 +1142,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
     },
     {
       key: "fromBroker",
-      label: "Posted by broker",
+      label: "Posted by Broker / Agent",
       type: "select",
       section: "pricing",
       options: [

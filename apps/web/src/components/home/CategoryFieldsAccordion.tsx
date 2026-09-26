@@ -277,7 +277,7 @@ type FieldRun =
   | { kind: "standalone"; fields: FieldDef[] }
   | { kind: "chain"; fields: FieldDef[] };
 
-/** Splits a section's fields into runs, keeping a `dependsOn` chain (e.g. "Posted by broker" →
+/** Splits a section's fields into runs, keeping a `dependsOn` chain (e.g. "Posted by Broker / Agent" →
  * "Has brokerage fee" → "Brokerage fee") together as one block instead of scattering the toggle
  * into a shared toggle grid and the amount field into a shared number grid elsewhere in the
  * section — a chain is one decision with a follow-up, so it should read as one, not get split
@@ -475,7 +475,7 @@ function AreaUnitField({
 
 /** Groups a category's fields into accordion sections (expanded by default) and hides any
  * field whose Y/N (or other) `dependsOn` condition isn't currently met — e.g. "Brokerage fee"
- * only appears once "Posted by broker" is answered "Yes". Single source of truth for this is
+ * only appears once "Posted by Broker / Agent" is answered "Yes". Single source of truth for this is
  * `CATEGORY_FIELD_CONFIG` in `@bhavano/types/categoryFields`, shared with the edit-listing form
  * and the listing detail page so all three agree on what's visible. */
 export function CategoryFieldsAccordion({

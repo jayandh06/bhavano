@@ -353,7 +353,7 @@ function CategoryField({
 
 type FieldRun = { fields: FieldDef[] };
 
-/** Keeps a `dependsOn` chain (e.g. "Posted by broker" → "Brokerage fee") adjacent in the layout
+/** Keeps a `dependsOn` chain (e.g. "Posted by Broker / Agent" → "Brokerage fee") adjacent in the layout
  * instead of letting the toggle/other-fields split below scatter its parent and child apart — same
  * grouping the web app's CategoryFieldsAccordion does, copied here since it's plain data logic with
  * no Tailwind/React-DOM dependency.
