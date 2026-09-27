@@ -1,0 +1,106 @@
+# Codemagic builds of apps/mobile via `eas build --local`.
+# Version numbers come from the EAS remote counter (apps/mobile/eas.json
+# `appVersionSource: remote`), shared with EAS cloud and GitHub Actions builds —
+# see docs/plans/mobile-ci-github-actions-fastlane.md.
+#
+# Codemagic env group "expo" must contain EXPO_TOKEN (Expo robot token).
+
+definitions:
+  scripts:
+    - &install
+      name: Install dependencies
+      script: |
+        corepack enable
+        pnpm install --frozen-lockfile
+    - &eas_build
+      name: eas build --local
+      script: |
+        mkdir -p "$CM_BUILD_DIR/build-output"
+        cd apps/mobile
+        npx eas-cli@latest build --local --non-interactive \
+          --platform "$PLATFORM" \
+          --profile "$EAS_PROFILE" \
+          --output "$CM_BUILD_DIR/build-output/bhavano-$PLATFORM-$EAS_PROFILE-$BUILD_NUMBER.$EXT"
+    - &eas_submit
+      name: eas submit
+      script: |
+        cd apps/mobile
+        npx eas-cli@latest submit --non-interactive \
+          --platform "$PLATFORM" \
+          --profile production \
+          --path "$CM_BUILD_DIR/build-output/bhavano-$PLATFORM-$EAS_PROFILE-$BUILD_NUMBER.$EXT"
+  artifacts: &artifacts
+    - build-output/*
+
+workflows:
+  android-development:
+    name: Android development (dev client APK)
+    instance_type: linux_x2
+    max_build_duration: 90
+    environment:
+      groups: [expo]
+      node: 22
+      java: 17
+      vars:
+        PLATFORM: android
+        EAS_PROFILE: development
+        EXT: apk
+    scripts:
+      - *install
+      - *eas_build
+    artifacts: *artifacts
+
+  android-production:
+    name: Android production (AAB -> Play internal testing)
+    instance_type: linux_x2
+    max_build_duration: 90
+    environment:
+      groups: [expo]
+      node: 22
+      java: 17
+      vars:
+        PLATFORM: android
+        EAS_PROFILE: production
+        EXT: aab
+    scripts:
+      - *install
+      - *eas_build
+      - *eas_submit
+    artifacts: *artifacts
+
+  ios-development:
+    name: iOS development (dev client, ad hoc IPA)
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    environment:
+      groups: [expo]
+      node: 22
+      xcode: latest
+      cocoapods: default
+      vars:
+        PLATFORM: ios
+        EAS_PROFILE: development
+        EXT: ipa
+    scripts:
+      - *install
+      - *eas_build
+    artifacts: *artifacts
+
+  ios-production:
+    name: iOS production (IPA -> TestFlight)
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    environment:
+      groups: [expo]
+      node: 22
+      xcode: latest
+      cocoapods: default
+      vars:
+        PLATFORM: ios
+        EAS_PROFILE: production
+        EXT: ipa
+    scripts:
+      - *install
+      - *eas_build
+      - *eas_submit
+    artifacts: *artifacts

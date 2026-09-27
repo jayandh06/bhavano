@@ -1,0 +1,80 @@
+# Builds the Expo app with `eas build --local` on GitHub-hosted runners.
+# Version numbers come from the EAS remote counter (apps/mobile/eas.json
+# `appVersionSource: remote`), shared with EAS cloud and Codemagic builds —
+# see docs/plans/mobile-ci-github-actions-fastlane.md.
+name: Mobile build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform
+        type: choice
+        options: [android, ios]
+        default: android
+      profile:
+        description: EAS build profile (apps/mobile/eas.json)
+        type: choice
+        options: [development, preview, production]
+        default: development
+      submit:
+        description: Upload a production build to Play internal testing / TestFlight
+        type: boolean
+        default: false
+
+concurrency:
+  group: mobile-${{ inputs.platform }}-${{ inputs.profile }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-15' || 'ubuntu-latest' }}
+    timeout-minutes: 90
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Artifact path
+        env:
+          EXT: ${{ inputs.platform == 'ios' && 'ipa' || (inputs.profile == 'production' && 'aab' || 'apk') }}
+        run: echo "ARTIFACT=$RUNNER_TEMP/bhavano-${{ inputs.platform }}-${{ inputs.profile }}-${{ github.run_number }}.$EXT" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - if: inputs.platform == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: eas build --local
+        working-directory: apps/mobile
+        run: >
+          npx eas-cli@latest build --local --non-interactive
+          --platform ${{ inputs.platform }}
+          --profile ${{ inputs.profile }}
+          --output "$ARTIFACT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bhavano-${{ inputs.platform }}-${{ inputs.profile }}-${{ github.run_number }}
+          path: ${{ env.ARTIFACT }}
+          retention-days: 14
+
+      - name: eas submit
+        if: inputs.submit && inputs.profile == 'production'
+        working-directory: apps/mobile
+        run: >
+          npx eas-cli@latest submit --non-interactive
+          --platform ${{ inputs.platform }}
+          --profile production
+          --path "$ARTIFACT"
