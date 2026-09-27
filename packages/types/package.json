@@ -53,6 +53,10 @@
       "types": "./dist/areaUnit.d.ts",
       "default": "./dist/areaUnit.js"
     },
+    "./priceWords": {
+      "types": "./dist/priceWords.d.ts",
+      "default": "./dist/priceWords.js"
+    },
     "./boostPricing": {
       "types": "./dist/boostPricing.d.ts",
       "default": "./dist/boostPricing.js"

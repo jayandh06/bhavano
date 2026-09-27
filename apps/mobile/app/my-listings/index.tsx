@@ -137,7 +137,7 @@ export default function MyListingsScreen() {
                 </View>
 
                 <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6 }}>
-                  {item.price} {item.priceQualifier} · {item.area}, {item.cityName}
+                  {item.priceInWords || item.price} {item.priceQualifier} · {item.area}, {item.cityName}
                 </Text>
                 {isPendingPublish && (
                   <Text style={{ fontSize: 12.5, color: "#b3413a", marginTop: 6 }}>

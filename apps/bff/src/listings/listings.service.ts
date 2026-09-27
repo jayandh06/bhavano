@@ -44,6 +44,7 @@ import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, type FieldDef } from '@bha
 import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from '@bhavano/types/priceQualifiers';
 import { areaUnitShortLabel, type AreaUnit } from '@bhavano/types/areaUnit';
+import { formatInrInWords } from '@bhavano/types/priceWords';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { MAX_PHOTOS } from '@bhavano/types/photoLimits';
@@ -2805,6 +2806,14 @@ export class ListingsService {
     return `₹${priceFormatter.format(perUnit)}/${areaUnitShortLabel(listing.priceUnit as AreaUnit, perUnit)}`;
   }
 
+  /** Buyer-facing twin of `formatListingPrice` — "₹35 Lakh" / "₹5 Thousand/cent". */
+  private formatListingPriceInWords(listing: { category: ListingCategory; price: number; priceUnit: string | null; attributes: unknown }): string {
+    if (listing.price === 0) return 'Contact for price';
+    const perUnit = this.perUnitPrice(listing);
+    if (perUnit === null || !listing.priceUnit) return formatInrInWords(listing.price);
+    return `${formatInrInWords(perUnit)}/${areaUnitShortLabel(listing.priceUnit as AreaUnit, 1)}`;
+  }
+
   /** Writes one ListingEditLog row — see that model's own doc comment for the shape. Awaited
    * (not fire-and-forget) since this is meant to be a reliable audit trail, not a best-effort
    * notification like ListingNotificationLog — but a logging failure still must never fail or
@@ -3003,6 +3012,7 @@ export class ListingsService {
       slug: listing.slug,
       tag: listing.tag,
       price: this.formatListingPrice(listing),
+      priceInWords: this.formatListingPriceInWords(listing),
       // A qualifier ("/month") next to "Contact for price" reads oddly, so it's suppressed here
       // rather than at posting time — the stored value (if any) survives for if/when the owner
       // sets a real price.

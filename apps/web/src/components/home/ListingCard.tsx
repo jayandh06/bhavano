@@ -212,7 +212,9 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
         {/* prefetch={false}: see the note on the photo link above — same href, same reasoning. */}
         <Link href={href} prefetch={false} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-2.5 text-inherit">
           <div className="flex justify-between items-start gap-2.5">
-            <div className="font-lora text-xl font-bold text-green">{item.price}</div>
+            <div className="font-lora text-xl font-bold text-green" title={item.priceOnRequest ? undefined : item.price}>
+              {item.priceInWords || item.price}
+            </div>
             {item.priceQualifier && (
               <div className="text-xs font-bold text-muted bg-surface-alt px-2.5 py-1 rounded-md whitespace-nowrap">
                 {item.priceQualifier}

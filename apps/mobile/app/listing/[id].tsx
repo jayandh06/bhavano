@@ -163,7 +163,14 @@ export default function ListingDetailScreen() {
       />
 
       <View style={styles.priceRow}>
-        <Text style={{ fontSize: 22, fontWeight: "700", color: colors.green }}>{listing.price}</Text>
+        <View>
+          <Text style={{ fontSize: 22, fontWeight: "700", color: colors.green }}>
+            {listing.priceInWords || listing.price}
+          </Text>
+          {!listing.priceOnRequest && !!listing.priceInWords && (
+            <Text style={{ fontSize: 12.5, color: colors.muted }}>{listing.price}</Text>
+          )}
+        </View>
         {!!listing.priceQualifier && (
           <View style={[styles.qualifierChip, { backgroundColor: colors.surfaceAlt }]}>
             <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted }}>{listing.priceQualifier}</Text>

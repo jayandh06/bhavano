@@ -105,7 +105,12 @@ export interface ListingCardDto {
    * canonical SEO path (see apps/web/src/lib/listingPath.ts). */
   slug: string;
   tag: string;
+  /** Exact figure — "₹35,00,000" / "₹5,000/cent" / "Contact for price". Edit forms and JSON-LD
+   * strip this back to digits, so it must stay a plain grouped number, never words. */
   price: string;
+  /** What buyers see on cards/detail — "₹35 Lakh" / "₹5 Thousand/cent" / "Contact for price".
+   * Detail views also show the exact `price` beneath it. See docs/plans/listing-price-in-words.md. */
+  priceInWords: string;
   priceQualifier: string;
   /** True when `price` reads "Contact for price" rather than a real ₹ amount — pg/coworking
    * only (see ListingsService.assertValidPrice), for a poster whose plans vary by option and

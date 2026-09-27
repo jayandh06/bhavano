@@ -205,7 +205,7 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
           )}
         </div>
         <div className="text-[13px] text-muted mt-1">
-          {item.price} {item.priceQualifier} · {item.area}, {item.cityName}
+          {item.priceInWords || item.price} {item.priceQualifier} · {item.area}, {item.cityName}
         </div>
         {isPendingPublish && (
           <p className="text-[12.5px] text-[#b3413a] m-0 mt-1.5">Not visible to buyers until you complete payment.</p>

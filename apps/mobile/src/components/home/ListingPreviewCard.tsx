@@ -3,6 +3,7 @@ import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
+import { formatInrInWords } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 
@@ -45,7 +46,7 @@ export function ListingPreviewCard({
   const priceNum = Number(price);
   const priceDisplay =
     priceNum > 0
-      ? `₹${priceNum.toLocaleString("en-IN")}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}`
+      ? `${formatInrInWords(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}`
       : "Contact for price";
   const specs = deriveCardSpecs(category, attributes);
 
