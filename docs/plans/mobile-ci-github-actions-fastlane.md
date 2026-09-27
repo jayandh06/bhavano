@@ -274,9 +274,15 @@ Two workflow files, `.github/workflows/mobile-android.yml` and `mobile-ios.yml`,
 - **Google sign-in `DEVELOPER_ERROR` on Play installs.** Play re-signs every AAB with the Play
   app signing key, so a Play-delivered app has a different SHA-1 from CI/EAS builds (upload key).
   Google Cloud project `336986668125` needs one Android OAuth client per certificate, each with
-  package `com.finfolia.bhavano`: upload-key SHA-1 (dev/sideloaded builds) and Play Console →
-  App signing → **Classical** key SHA-1 (added 2026-09-27). If Play starts serving the
-  post-quantum key, add its SHA-1 as another client.
+  package `com.finfolia.bhavano`. No rebuild is needed after adding one; Google checks at sign-in.
+  - Upload key (EAS keystore; every EAS / `--local` build, dev APKs):
+    `6E:AB:5E:55:AB:35:F6:4F:F8:0E:AA:E7:67:5E:F9:59:BD:7F:75:8D`
+  - Play app signing key (every Play install, incl. internal testing):
+    `CF:2A:EA:98:F5:84:E2:90:34:BF:63:1F:77:31:9F:C2:35:5A:1A:09`
+  Both were read from the binaries themselves (`keytool -printcert -jarfile` on the AAB; the APK
+  Signing Block of Play Console's "Signed, universal APK" for versionCode 11), not copied from
+  console screens. A value copied from Play Console's App signing page once didn't match what Play
+  actually serves, so verify against a downloaded APK when in doubt.
 
 - **Gradle Metaspace in release builds.** The first `production` Android run on GitHub failed in
   `lintVitalAnalyzeRelease` with `java.lang.OutOfMemoryError: Metaspace` (prebuild's default is
