@@ -170,9 +170,12 @@ now for UI parity with web, and so it picks up the real behavior later without a
 ## Non-goals for this pass
 
 - No numbered-page pagination on mobile (infinite scroll only — see decision #1).
-- No `sharingType`/`condition`/`serviceType` filter UI (not a proven pattern on web either — see
-  Scope above); still reachable later the same way web reaches them, if a mobile mega-menu
-  equivalent gets built.
+- ~~No `sharingType`/`condition`/`serviceType` filter UI~~ — **superseded.** These briefly lived in
+  a second chip row under `CategoryChips`; they now sit in `FilterSheet` as the active tab's facet
+  section (Sharing type for PG, Condition for Furniture, Service type for Interiors), exactly like
+  Property type for Buy/Rent & Lease. Staged on `AppliedFilters` and applied on **Apply**; the
+  options still come from `HOME_TABS[].subFilter` (i.e. `CATEGORY_FIELD_CONFIG`), and switching tabs
+  clears them with every other filter.
 - No changes to the BFF — the full param set already exists and is exercised today by web.
 
 ## Implementation notes

@@ -6,7 +6,7 @@ import type { Area, PropertyTypeFilter } from "@bhavano/types";
 import { MAX_BEDROOMS, bedroomLabel } from "@bhavano/types/bedrooms";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { parseAmount } from "../../lib/priceInput";
-import { HOME_TABS, type HomeTabValue } from "./categories";
+import { HOME_TABS, type HomeTabValue, type SubFilterParam } from "./categories";
 
 export interface AppliedFilters {
   /** Empty = no area filter, i.e. the whole city. Note this differs from how the sheet now
@@ -18,10 +18,16 @@ export interface AppliedFilters {
   minPrice?: number;
   maxPrice?: number;
   furnished?: "unfurnished" | "semi" | "furnished";
-  /** Buy/Rent & Lease only — used to live in `CategoryChips`' own scrolling sub-chip row, which
-   * navigated immediately on tap; now staged here like every other filter, so it only takes
-   * effect on Apply along with whatever else changed in the same sheet visit. */
+  /** Each tab's own facet — property type for Buy/Rent & Lease, sharing type for PG, condition
+   * for Furniture, service type for Interiors (see `HomeTab.subFilter` in categories.ts). These
+   * used to live in `CategoryChips`' own scrolling sub-chip row, which navigated immediately on
+   * tap; now staged here like every other filter, so they only take effect on Apply along with
+   * whatever else changed in the same sheet visit. At most one is ever set, since switching tabs
+   * resets the filters. */
   propertyType?: PropertyTypeFilter;
+  sharingType?: string;
+  condition?: string;
+  serviceType?: string;
 }
 
 export const EMPTY_FILTERS: AppliedFilters = { areaIds: [], bedrooms: [] };
@@ -32,9 +38,16 @@ export function activeFilterCount(f: AppliedFilters): number {
     (f.bedrooms.length > 0 ? 1 : 0) +
     (f.minPrice !== undefined || f.maxPrice !== undefined ? 1 : 0) +
     (f.furnished ? 1 : 0) +
-    (f.propertyType ? 1 : 0)
+    (f.propertyType || f.sharingType || f.condition || f.serviceType ? 1 : 0)
   );
 }
+
+const SUB_FILTER_HEADINGS: Record<SubFilterParam, string> = {
+  propertyType: "PROPERTY TYPE",
+  sharingType: "SHARING TYPE",
+  condition: "CONDITION",
+  serviceType: "SERVICE TYPE",
+};
 
 const BEDROOM_BUCKETS = Array.from({ length: MAX_BEDROOMS }, (_, i) => i + 1);
 
@@ -92,14 +105,15 @@ export const FilterSheet = forwardRef<
     setAreasExpanded(false);
   }, [applied, cityAreas]);
 
-  // Buy/Rent & Lease only — every other tab's own category is fixed (PG is always "pg", etc.),
-  // so there's nothing to pick. Reuses HOME_TABS' own option list rather than a second copy, the
-  // same source CategoryChips' now-removed sub-chip row read from for these two tabs.
-  const propertyTypeOptions = HOME_TABS.find((t) => t.value === category)?.subFilter.options ?? [];
-  const offersPropertyType = category === "buy" || category === "rentLease";
+  // Reuses HOME_TABS' own option list rather than a second copy — the same source CategoryChips'
+  // now-removed sub-chip row read from. "All" has no options, so the section doesn't render.
+  const subFilter = HOME_TABS.find((t) => t.value === category)?.subFilter;
+  const subFilterParam = subFilter && subFilter.options.length > 0 ? subFilter.paramKey : undefined;
+  const subFilterValue = subFilterParam ? staged[subFilterParam] : undefined;
 
-  function selectPropertyType(value: string | undefined) {
-    setStaged((prev) => ({ ...prev, propertyType: value as PropertyTypeFilter | undefined }));
+  function selectSubFilter(value: string | undefined) {
+    if (!subFilterParam) return;
+    setStaged((prev) => ({ ...prev, [subFilterParam]: value }) as AppliedFilters);
   }
 
   const showBhkAndFurnished = staged.propertyType === "house" || staged.propertyType === "apartment";
@@ -360,16 +374,16 @@ export const FilterSheet = forwardRef<
           onPress={() => areasExpanded && setAreasExpanded(false)}
           onLayout={(e) => { restSectionY.current = e.nativeEvent.layout.y; }}
         >
-        {offersPropertyType && (
+        {subFilter && subFilterParam && (
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>PROPERTY TYPE</Text>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>{SUB_FILTER_HEADINGS[subFilterParam]}</Text>
             <View style={styles.wrapRow}>
-              <Pressable onPress={() => selectPropertyType(undefined)} style={chipStyle(!staged.propertyType, colors)}>
-                <Text style={{ fontSize: 13, color: !staged.propertyType ? colors.green : colors.text }}>All</Text>
+              <Pressable onPress={() => selectSubFilter(undefined)} style={chipStyle(!subFilterValue, colors)}>
+                <Text style={{ fontSize: 13, color: !subFilterValue ? colors.green : colors.text }}>All</Text>
               </Pressable>
-              {propertyTypeOptions.map((opt) => (
-                <Pressable key={opt.value} onPress={() => selectPropertyType(opt.value)} style={chipStyle(staged.propertyType === opt.value, colors)}>
-                  <Text style={{ fontSize: 13, color: staged.propertyType === opt.value ? colors.green : colors.text }}>{opt.label}</Text>
+              {subFilter.options.map((opt) => (
+                <Pressable key={opt.value} onPress={() => selectSubFilter(opt.value)} style={chipStyle(subFilterValue === opt.value, colors)}>
+                  <Text style={{ fontSize: 13, color: subFilterValue === opt.value ? colors.green : colors.text }}>{opt.label}</Text>
                 </Pressable>
               ))}
             </View>

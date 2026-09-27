@@ -72,23 +72,16 @@ function ScrollableRow({
   );
 }
 
+/** Top-level categories only. Each tab's own facet (property type, sharing type, condition,
+ * service type) is chosen in FilterSheet, not in a second chip row here. */
 export function CategoryChips({
   active,
   onSelect,
-  activeSubFilter,
-  onSelectSubFilter,
 }: {
   active: HomeTabValue;
   onSelect: (value: HomeTabValue) => void;
-  /** Value for the active tab's own sub-filter — a property type for Buy/Rent & Lease, or a
-   * sharing-type/condition/service-type facet value for PG/Furniture/Interiors (see
-   * `HomeTab.subFilter` in categories.ts). Always a string since the BFF param it feeds differs
-   * per tab. */
-  activeSubFilter?: string;
-  onSelectSubFilter: (value: string | undefined) => void;
 }) {
   const { colors } = useAppTheme();
-  const activeTab = HOME_TABS.find((t) => t.value === active) ?? HOME_TABS[0];
 
   return (
     <View>
@@ -120,52 +113,6 @@ export function CategoryChips({
           })}
         </ScrollableRow>
       </View>
-
-      {/* Sharing type/condition/service type for PG/Furniture/Interiors — every non-"All" tab has
-        * one of these sub-filters (see categories.ts), but Buy/Rent & Lease's own (property type)
-        * is deliberately excluded below: it now lives inside FilterSheet instead (see
-        * `(tabs)/index.tsx`'s "Filters" button), the only place a property type could be chosen
-        * from before this row existed, and the same place every other filter already lives.
-        * PG/Furniture/Interiors keep this row for now — the same reasoning likely applies to
-        * them too, but that wasn't what was asked for, so it's left alone rather than assumed. */}
-      {activeTab.subFilter.options.length > 0 && activeTab.subFilter.paramKey !== "propertyType" && (
-        <ScrollableRow colors={colors} contentContainerStyle={[styles.row, { paddingTop: 2 }]}>
-          {/* Same green-fill highlight as the tab above it, gold border instead of gold
-            * underline since this row keeps its oval chip shape rather than going flat/edge-to-edge
-            * the way the main tab strip does. */}
-          <Pressable
-            onPress={() => onSelectSubFilter(undefined)}
-            style={[
-              styles.subChip,
-              {
-                borderColor: !activeSubFilter ? colors.gold : colors.border,
-                backgroundColor: !activeSubFilter ? colors.green : "transparent",
-              },
-            ]}
-          >
-            <Text style={{ color: !activeSubFilter ? colors.onGreen : colors.textSoft, fontWeight: "600", fontSize: 11.5 }}>
-              All
-            </Text>
-          </Pressable>
-          {activeTab.subFilter.options.map((opt) => {
-            const isActive = activeSubFilter === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                onPress={() => onSelectSubFilter(opt.value)}
-                style={[
-                  styles.subChip,
-                  { borderColor: isActive ? colors.gold : colors.border, backgroundColor: isActive ? colors.green : "transparent" },
-                ]}
-              >
-                <Text style={{ color: isActive ? colors.onGreen : colors.textSoft, fontWeight: "600", fontSize: 11.5 }}>
-                  {opt.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollableRow>
-      )}
     </View>
   );
 }
@@ -184,11 +131,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     paddingVertical: 12,
     paddingHorizontal: 14,
-  },
-  subChip: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
   },
 });

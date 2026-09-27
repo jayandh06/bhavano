@@ -31,12 +31,6 @@ export default function HomeScreen() {
   const numColumns = width >= WIDE_SCREEN_BREAKPOINT ? 2 : 1;
 
   const [category, setCategory] = useState<HomeTabValue>("all");
-  // One slot for whichever sub-filter the active tab actually has — a sharing-type/condition/
-  // service-type facet value for PG/Furniture/Interiors (see categories.ts's `HomeTab.subFilter`).
-  // Buy/Rent & Lease no longer use this slot: property type used to live in CategoryChips' own
-  // scrolling sub-chip row (writing here via onSelectSubFilter), but now lives in FilterSheet
-  // instead, staged on `filters` like every other filter — see propertyType below.
-  const [subFilterValue, setSubFilterValue] = useState<string | undefined>(undefined);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
   const propertyType = category === "buy" || category === "rentLease" ? filters.propertyType : undefined;
@@ -63,9 +57,9 @@ export default function HomeScreen() {
     {
       homeCategory: category === "all" ? undefined : category,
       propertyType,
-      sharingType: category === "pg" ? subFilterValue : undefined,
-      condition: category === "furniture" ? subFilterValue : undefined,
-      serviceType: category === "interiors" ? subFilterValue : undefined,
+      sharingType: category === "pg" ? filters.sharingType : undefined,
+      condition: category === "furniture" ? filters.condition : undefined,
+      serviceType: category === "interiors" ? filters.serviceType : undefined,
       cityId: city?.id,
       q: query || undefined,
       areaIds: filters.areaIds,
@@ -104,11 +98,6 @@ export default function HomeScreen() {
   // CategoryTabs already enforces).
   function onSelectCategory(next: HomeTabValue) {
     setCategory(next);
-    setSubFilterValue(undefined);
-    setFilters(EMPTY_FILTERS);
-  }
-  function onSelectSubFilter(next: string | undefined) {
-    setSubFilterValue(next);
     setFilters(EMPTY_FILTERS);
   }
 
@@ -261,12 +250,7 @@ export default function HomeScreen() {
             )}
 
             <View style={{ marginTop: 12 }}>
-              <CategoryChips
-                active={category}
-                onSelect={onSelectCategory}
-                activeSubFilter={subFilterValue}
-                onSelectSubFilter={onSelectSubFilter}
-              />
+              <CategoryChips active={category} onSelect={onSelectCategory} />
             </View>
 
             <View style={styles.filterSortRow}>

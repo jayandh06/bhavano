@@ -10,8 +10,8 @@ import type { IconName } from "../Icon";
  * absence of the filter, not a new value of it. Mirrors the web app's `HomeTabValue`. */
 export type HomeTabValue = HomeCategoryFilter | "all";
 
-/** The BFF query param a tab's sub-chip row writes into — `propertyType` for Buy/Rent & Lease,
- * or one of these category-specific JSONB attribute filters (see list-listings.dto.ts) for
+/** The BFF query param a tab's facet in FilterSheet writes into — `propertyType` for Buy/Rent &
+ * Lease, or one of these category-specific JSONB attribute filters (see list-listings.dto.ts) for
  * PG/Furniture/Interiors, which have no property-type facet at all. */
 export type SubFilterParam = "propertyType" | "sharingType" | "condition" | "serviceType";
 
@@ -19,8 +19,8 @@ export interface HomeTab {
   value: HomeTabValue;
   label: string;
   icon: IconName;
-  /** Sub-filter options nested under this tab's chip row — empty only for "All", which has
-   * nothing narrower to offer. `paramKey` says which BFF query param a selection writes to. */
+  /** This tab's facet options, shown as a section in FilterSheet — empty only for "All", which
+   * has nothing narrower to offer. `paramKey` says which BFF query param a selection writes to. */
   subFilter: { paramKey: SubFilterParam; options: { value: string; label: string }[] };
 }
 
@@ -34,7 +34,7 @@ const INTERIORS_SERVICE_OPTIONS = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.
 export const HOME_TABS: HomeTab[] = [
   // First, and the default — the mixed feed across every category. Matches the web app, where a
   // city root like /bengaluru lands on the "All" tab rather than silently on Buy. Nothing
-  // narrower to offer, so its own sub-chip row never renders (see CategoryChips).
+  // narrower to offer, and the Filters button is hidden on this tab anyway.
   { value: "all", label: "All", icon: "allCities", subFilter: { paramKey: "propertyType", options: [] } },
   {
     value: "buy",
