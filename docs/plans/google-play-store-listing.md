@@ -50,9 +50,9 @@ and attribution). Encrypted in transit: yes. Users can request deletion: yes.
 
 ## Open follow-ups
 
-- `app.config.js` requests `android.permission.RECORD_AUDIO`, but the app only *picks* videos from
-  the library (`PostAdWizard` → `launchImageLibraryAsync`) and never records. Play asks you to
-  justify microphone access. Remove the permission unless a record-in-app flow is planned.
-- Confirm the merged Android manifest has no `com.google.android.gms.permission.AD_ID`, since the
-  policy says the apps don't use the advertising ID. If a transitive dependency adds it, strip it
-  with `tools:node="remove"` or answer the Advertising ID declaration to match.
+- **Done:** `app.config.js` no longer requests `RECORD_AUDIO`, and `blockedPermissions` strips
+  `RECORD_AUDIO`, `CAMERA` and `com.google.android.gms.permission.AD_ID` from the merged manifest
+  (expo-image-picker also has `cameraPermission`/`microphonePermission: false`). The app only
+  *picks* media from the library and never reads the advertising ID, so the Data safety form
+  declares no audio and the Advertising ID declaration is answered "No". Takes effect from the
+  next native build; re-add a permission here if a camera or record-in-app flow is ever added.

@@ -132,9 +132,12 @@ the same OTP/emailed-code-gated flow as web's `ProfileForm`, calling the same en
 `photosPermission` but not `cameraPermission`; the app never calls `launchCameraAsync` or uses
 `expo-camera` anywhere, on either platform — video, like photos, only ever goes through
 `launchImageLibraryAsync` (picking an existing file, not recording one), so there's no live
-camera/microphone flow for `cameraPermission`/`NSMicrophoneUsageDescription` to cover. Android's
-`RECORD_AUDIO` is a picker/media-pipeline requirement for handling a video file that already has
-an audio track, not evidence of live recording. Nothing to add here.
+camera/microphone flow for `cameraPermission`/`NSMicrophoneUsageDescription` to cover. Picking an
+existing video (even one with an audio track) needs no microphone permission — Android's old
+`RECORD_AUDIO` entry was unused, and `app.config.js` now sets `cameraPermission`/
+`microphonePermission: false` and blocks `RECORD_AUDIO`/`CAMERA` (see
+`google-play-store-listing.md`). Nothing to add here; if in-app capture is ever built, re-add both
+permission strings with it.
 
 **`supportsTablet` — already resolved.** `app.config.js` has it `false`, so no iPad screenshots
 are needed and there's no broken-tablet-layout risk to worry about.

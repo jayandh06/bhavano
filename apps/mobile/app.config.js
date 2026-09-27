@@ -83,7 +83,15 @@ module.exports = {
       permissions: [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+      ],
+      // Media only ever comes from the gallery (launchImageLibraryAsync), never the camera or mic,
+      // and nothing reads the advertising ID (expo-tracking-transparency adds AD_ID anyway). The
+      // privacy policy and Play's Data safety form both promise none of these, so they must not
+      // reach the merged manifest. See docs/plans/google-play-store-listing.md.
+      blockedPermissions: [
         "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "com.google.android.gms.permission.AD_ID",
       ],
       package: "com.finfolia.bhavano",
       // Firebase project's client config — required for Android push: expo-notifications'
@@ -121,6 +129,8 @@ module.exports = {
         "expo-image-picker",
         {
           photosPermission: "Bhavano uses your photos to let you add pictures to your ad.",
+          cameraPermission: false,
+          microphonePermission: false,
         },
       ],
       // Android has no built-in default map provider (unlike iOS's Apple Maps), so this key is
