@@ -1,6 +1,7 @@
 # Mobile CI: EAS, GitHub Actions and Codemagic, used interchangeably
 
-Status: **multi-provider setup added (untested until the first CI run).** Files:
+Status: **multi-provider setup added.** GitHub Actions Android `development` verified 2026-09-27
+(run #1, ~20 min). Still untested: Android `production`, iOS, `submit`, Codemagic. Files:
 `.github/workflows/mobile-build.yml`, `codemagic.yaml` (repo root). Builds can run on whichever
 provider still has free quota this month: EAS cloud, GitHub Actions or Codemagic. Every provider
 produces the same binary, and version numbers never collide or go backwards.
