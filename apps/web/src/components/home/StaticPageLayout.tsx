@@ -20,9 +20,9 @@ export async function StaticPageLayout({ title, updated, children }: { title: st
   );
 }
 
-export function PageSection({ heading, children }: { heading: string; children: ReactNode }) {
+export function PageSection({ heading, id, children }: { heading: string; id?: string; children: ReactNode }) {
   return (
-    <section>
+    <section id={id} className={id ? "scroll-mt-24" : undefined}>
       <h2 className="text-[15px] font-bold text-text m-0 mb-2">{heading}</h2>
       {children}
     </section>
