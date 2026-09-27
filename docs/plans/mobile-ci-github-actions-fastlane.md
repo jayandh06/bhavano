@@ -277,12 +277,15 @@ Two workflow files, `.github/workflows/mobile-android.yml` and `mobile-ios.yml`,
   package `com.finfolia.bhavano`. No rebuild is needed after adding one; Google checks at sign-in.
   - Upload key (EAS keystore; every EAS / `--local` build, dev APKs):
     `6E:AB:5E:55:AB:35:F6:4F:F8:0E:AA:E7:67:5E:F9:59:BD:7F:75:8D`
-  - Play app signing key (every Play install, incl. internal testing):
+  - Play deployment key (`deployment_cert.der`; every Play install today, incl. internal testing):
     `CF:2A:EA:98:F5:84:E2:90:34:BF:63:1F:77:31:9F:C2:35:5A:1A:09`
-  Both were read from the binaries themselves (`keytool -printcert -jarfile` on the AAB; the APK
-  Signing Block of Play Console's "Signed, universal APK" for versionCode 11), not copied from
-  console screens. A value copied from Play Console's App signing page once didn't match what Play
-  actually serves, so verify against a downloaded APK when in doubt.
+  - Play "Quantum-ready (beta)" hybrid key, 0% install base as of 2026-09-27, registered ahead
+    of Play switching to it: classical `CF:D6:46:21:15:A9:A4:DB:D7:C5:15:31:33:14:57:EA:29:C6:8E:4A`
+    (`hybrid_classical_cert.der`), PQC `8A:B2:69:49:F9:E1:97:36:95:F1:E0:6C:0C:9F:F9:89:64:4E:19:40`
+    (`hybrid_pqc_cert.der`).
+  The App signing page's "Classical key" card shows the **hybrid** key, not the deployment key;
+  copying it from there caused the `DEVELOPER_ERROR`. Use the certificates zip download (file
+  names above) or read the signature from Play's "Signed, universal APK" (App bundle explorer).
 
 - **Gradle Metaspace in release builds.** The first `production` Android run on GitHub failed in
   `lintVitalAnalyzeRelease` with `java.lang.OutOfMemoryError: Metaspace` (prebuild's default is
