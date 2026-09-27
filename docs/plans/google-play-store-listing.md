@@ -20,6 +20,10 @@ tenant → owner rent payments (Loan facilitator / Money transfer).
 
 - **Privacy policy URL:** `https://bhavano.com/privacy`
 - **Account deletion URL:** `https://bhavano.com/privacy#delete-account`
+- **Data deletion URL (keep account):** `https://bhavano.com/privacy#delete-data`. Covers
+  photo/video removal (really deleted from R2), unfavourite, message delete (soft: text kept for
+  moderation), listing deactivation (hidden, not erased), and email for anything else.
+- **Partial deletion question:** answered Yes.
 
 The page is public (no login) and linked in-app: login sheet, Help, Contact, About, LegalFooter.
 The app has its own copy at `apps/mobile/app/privacy.tsx`, and the two must be kept in sync.

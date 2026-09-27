@@ -8,8 +8,9 @@ export const metadata = {
 };
 
 // Mirrored in apps/mobile/app/privacy.tsx — keep both in sync. This page is also the privacy
-// policy URL on the Google Play and App Store listings, and #delete-account is the Play Console
-// account-deletion URL, so it must stay public (no login) and describe what the apps actually do.
+// policy URL on the Google Play and App Store listings, and #delete-account / #delete-data are the
+// Play Console account- and data-deletion URLs, so it must stay public (no login) and describe
+// what the apps actually do.
 export default function PrivacyPage() {
   const addressLines = entityAddressLines();
 
@@ -192,8 +193,42 @@ export default function PrivacyPage() {
         </p>
       </PageSection>
 
-      <PageSection heading="7. Deleting your account" id="delete-account">
-        <p className="m-0">You can delete your Bhavano account at any time:</p>
+      <PageSection heading="7. Deleting your data or your account" id="delete-account">
+        <div id="delete-data" className="scroll-mt-24">
+          <p className="m-0 font-bold text-text">Deleting some of your data (keeping your account)</p>
+          <ul className="list-disc mt-2 mb-0 mx-0 pl-5">
+            <li>
+              <strong>Listing photos and videos:</strong> open{" "}
+              <Link href="/my-listings" className="text-green font-bold">
+                My listings
+              </Link>
+              , choose Edit on the ad, and remove the photo or video. The file is deleted from our storage.
+            </li>
+            <li>
+              <strong>Favourites:</strong> tap the heart on a saved listing again to remove it.
+            </li>
+            <li>
+              <strong>Messages:</strong> press and hold (app) or use the delete option (website) on a message you
+              sent. The other person then sees &quot;This message was deleted&quot;. We keep the original text for
+              moderation and safety reviews.
+            </li>
+            <li>
+              <strong>Listings:</strong> deactivate an ad from My listings to take it offline. Its details are kept
+              so you can reactivate it, but it is removed from public view.
+            </li>
+            <li>
+              <strong>Anything else</strong> (for example your page-visit history or a specific message): email{" "}
+              <a href={`mailto:${LEGAL_ENTITY.supportEmail}`} className="text-green font-bold">
+                {LEGAL_ENTITY.supportEmail}
+              </a>{" "}
+              from the email address, or mentioning the phone number, on your account, and say what you want
+              deleted.
+            </li>
+          </ul>
+        </div>
+
+        <p className="m-0 mt-4 font-bold text-text">Deleting your whole account</p>
+        <p className="m-0 mt-2">You can delete your Bhavano account at any time:</p>
         <ul className="list-disc mt-2 mb-0 mx-0 pl-5">
           <li>
             <strong>In the app:</strong> open Account, then tap &quot;Delete my account&quot;.

@@ -188,7 +188,33 @@ export default function PrivacyScreen() {
         </P>
       </PageSection>
 
-      <PageSection heading="7. Deleting your account">
+      <PageSection heading="7. Deleting your data or your account">
+        <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.text }}>
+          Deleting some of your data (keeping your account)
+        </Text>
+        <View style={{ gap: 4 }}>
+          <Bullet>
+            {b("Listing photos and videos:")} open <PageLink href="/my-listings">My listings</PageLink>, choose
+            Edit on the ad, and remove the photo or video. The file is deleted from our storage.
+          </Bullet>
+          <Bullet>{b("Favourites:")} tap the heart on a saved listing again to remove it.</Bullet>
+          <Bullet>
+            {b("Messages:")} press and hold (app) or use the delete option (website) on a message you sent. The
+            other person then sees &ldquo;This message was deleted&rdquo;. We keep the original text for moderation
+            and safety reviews.
+          </Bullet>
+          <Bullet>
+            {b("Listings:")} deactivate an ad from My listings to take it offline. Its details are kept so you can
+            reactivate it, but it is removed from public view.
+          </Bullet>
+          <Bullet>
+            {b("Anything else")} (for example your page-visit history or a specific message): email {mail} from
+            the email address, or mentioning the phone number, on your account, and say what you want deleted.
+          </Bullet>
+        </View>
+        <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.text, marginTop: 8 }}>
+          Deleting your whole account
+        </Text>
         <P>You can delete your Bhavano account at any time:</P>
         <View style={{ gap: 4 }}>
           <Bullet>
