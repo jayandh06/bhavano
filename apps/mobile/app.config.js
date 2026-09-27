@@ -1,6 +1,24 @@
 // Was a static app.json — converted to app.config.js so the react-native-maps plugin below can
 // read EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY from .env at config-evaluation time (a static JSON
 // file can't reference process.env at all). See docs/plans/google-maps-location-picker.md.
+const { withGradleProperties } = require("expo/config-plugins");
+
+// Prebuild's default (-Xmx2048m -XX:MaxMetaspaceSize=512m) runs out of Metaspace in the release
+// build's lintVitalAnalyzeRelease tasks on GitHub/Codemagic runners. Set here rather than per CI
+// provider so EAS cloud, GitHub Actions and Codemagic all build with the same limits. See
+// docs/plans/mobile-ci-github-actions-fastlane.md.
+const GRADLE_JVM_ARGS = "-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8";
+
+function withGradleJvmArgs(config) {
+  return withGradleProperties(config, (cfg) => {
+    cfg.modResults = cfg.modResults.filter(
+      (item) => !(item.type === "property" && item.key === "org.gradle.jvmargs"),
+    );
+    cfg.modResults.push({ type: "property", key: "org.gradle.jvmargs", value: GRADLE_JVM_ARGS });
+    return cfg;
+  });
+}
+
 module.exports = {
   expo: {
     // Display name under the app icon and in the store listing. The publisher/developer name in
@@ -160,6 +178,7 @@ module.exports = {
           iosUrlScheme: "com.googleusercontent.apps.336986668125-vs9rfncotlefvtc9e7rsl15r5lhmjfht",
         },
       ],
+      withGradleJvmArgs,
     ],
     extra: {
       router: {},

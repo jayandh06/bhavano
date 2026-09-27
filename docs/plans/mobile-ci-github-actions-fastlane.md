@@ -1,7 +1,7 @@
 # Mobile CI: EAS, GitHub Actions and Codemagic, used interchangeably
 
 Status: **multi-provider setup added.** GitHub Actions Android `development` verified 2026-09-27
-(run #1, ~20 min). Still untested: Android `production`, iOS, `submit`, Codemagic. Files:
+(run #1, ~20 min; APK installed, loads from local Metro, Google sign-in works). Still untested: Android `production`, iOS, `submit`, Codemagic. Files:
 `.github/workflows/mobile-build.yml`, `codemagic.yaml` (repo root). Builds can run on whichever
 provider still has free quota this month: EAS cloud, GitHub Actions or Codemagic. Every provider
 produces the same binary, and version numbers never collide or go backwards.
@@ -269,6 +269,11 @@ Two workflow files, `.github/workflows/mobile-android.yml` and `mobile-ios.yml`,
    `--local` builds for store binaries, so the two schemes can't hand out clashing numbers.
 
 ## Gotchas
+
+- **Gradle Metaspace in release builds.** The first `production` Android run on GitHub failed in
+  `lintVitalAnalyzeRelease` with `java.lang.OutOfMemoryError: Metaspace` (prebuild's default is
+  `-Xmx2048m -XX:MaxMetaspaceSize=512m`). `app.config.js` now raises `org.gradle.jvmargs` through
+  an inline `withGradleProperties` plugin, so every provider builds with the same limits.
 
 - **pnpm monorepo:** native tooling resolves from `apps/mobile/`, so transitive native deps must be
   direct deps there (README §11). The same failures appear on CI as on EAS.
