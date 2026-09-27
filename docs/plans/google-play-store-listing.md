@@ -43,10 +43,86 @@ hashed email/phone to Google Ads (`server-side-google-ads-conversion-upload.md`)
 
 ## Data safety form — keep consistent with the policy
 
-Declare at least: name, email, phone (account), approximate + precise location (optional, user
-initiated), photos/videos (listings), in-app messages, purchase history, app interactions, device
-or other IDs (push token). Shared with third parties: email/phone hashed to Google Ads (advertising
-and attribution). Encrypted in transit: yes. Users can request deletion: yes.
+Encrypted in transit: yes. Users can request deletion: yes. As submitted 2026-09-27 (Collected
+unless noted; "shared" = the Google Ads conversion upload in `google-ads-conversion.provider.ts`,
+which on Android has no consent gate):
+
+| Data type | Shared | Required | Ephemeral |
+|---|---|---|---|
+| Approximate / precise location | no | optional | no (listing pins stored) |
+| Name | no | required (basics gate) | no |
+| Email, phone | **yes** (hashed) | required (basics gate) | no |
+| User IDs | **yes** (`signup-<userId>` transactionId) | required | no |
+| Purchase history | **yes** (amount, purpose, payment id) | optional | no |
+| User payment info (Razorpay SDK) | no (processor) | optional | no |
+| Other in-app messages | no | optional | no |
+| Photos, videos | no | optional | no |
+| App interactions (pageviews) | **yes** (signup/post-ad/purchase conversions) | required | no |
+| In-app search history | no | optional | **yes** (mobile doesn't log searches) |
+| Other UGC (listings, requirements) | no | optional | no |
+| Other actions (favourites) | no | optional | no |
+| Crash logs (`/client-errors`) | no | required | no |
+| Device or other IDs (push token, analytics session) | no | required | no |
+
+Not declared: address, sensitive personal info, financial other, health, emails/SMS, audio, files,
+calendar, contacts, installed apps, web history, diagnostics. If a new flow sends any of these (or
+a new field joins the Ads upload), update this table and the form together.
+
+Other declarations: Government app — No. Health features — none. Advertising ID — No (AD_ID
+blocked). Category: App → **House & Home**; tag: Interior design only (no real-estate tag exists).
+Store listing language: en-IN only, no AI translations while the app itself is English-only.
+
+## Store listing text
+
+- **App name (30):** `Bhavano` (alternative within limit: `Bhavano: Buy, Rent, PG & Plots`)
+- **Short description (80):** `Buy, rent or lease homes, plots, PG, coworking and furniture across India`
+- **Feature graphic (1024x500):** `apps/mobile/store-assets/play-feature-graphic.png`, built by
+  `make_feature_graphic.py` from `assets/icon.png` plus the web palette (green `#0b3d2e`, cream
+  `#efe9dc`, gold `#c9a15a`) and fonts (Lora wordmark, Manrope text). Fonts aren't committed;
+  the script's docstring says where to get them. Re-run after an icon or palette change.
+- **Full description:** below. Don't claim free posting — a platform fee is required to publish
+  (`BoostPlanSelector`). No "best"/"#1"/emoji per Play's metadata policy.
+
+```text
+Bhavano is a property classifieds app for buying, renting and leasing across India: houses, apartments, villas, plots, PG accommodation, coworking desks, storage and commercial spaces, plus furniture and interiors. Browse freely, with no login needed to look around.
+
+WHAT YOU CAN FIND
+• Buy: houses, apartments, villas, plots and commercial property
+• Rent & Lease: flats, independent houses, shops, offices and storage space
+• PG: paying-guest rooms for students and working professionals
+• Coworking: desks, cabins and office space
+• Furniture and interiors
+
+SEARCH THE WAY YOU WANT
+• Pick your city and area, or use your location to see listings near you
+• Filter by category and property type
+• See photos, videos and the location on a map
+• Save favourites to come back to later
+
+TALK DIRECTLY
+• Chat with owners and buyers inside the app
+• Get a notification as soon as you receive a new message
+• Unlock an owner's contact details when you're ready to call
+
+POST YOUR PROPERTY
+• List a property in a few minutes with photos, video and a map pin
+• Edit, deactivate or reactivate your ads any time from My listings
+• Boost an ad to show it higher in search results
+• A platform fee applies to publish a listing. You'll see the exact amount before you pay.
+
+LOOKING FOR SOMETHING SPECIFIC?
+• Post a requirement describing what you need, so owners can find you
+• Turn on Instant Alerts to hear about matching new listings first
+
+SAFE AND IN YOUR CONTROL
+• Sign in with your phone number (OTP) or your Google account
+• Listings and messages are reviewed by the Bhavano team
+• Delete your photos, messages or your whole account from inside the app
+
+Bhavano is owned and operated by Finfolia Technologies LLP.
+Questions or feedback: support@bhavano.com
+Privacy policy: https://bhavano.com/privacy
+```
 
 ## Open follow-ups
 
