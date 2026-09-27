@@ -271,6 +271,13 @@ Two workflow files, `.github/workflows/mobile-android.yml` and `mobile-ios.yml`,
 
 ## Gotchas
 
+- **Google sign-in `DEVELOPER_ERROR` on Play installs.** Play re-signs every AAB with the Play
+  app signing key, so a Play-delivered app has a different SHA-1 from CI/EAS builds (upload key).
+  Google Cloud project `336986668125` needs one Android OAuth client per certificate, each with
+  package `com.finfolia.bhavano`: upload-key SHA-1 (dev/sideloaded builds) and Play Console →
+  App signing → **Classical** key SHA-1 (added 2026-09-27). If Play starts serving the
+  post-quantum key, add its SHA-1 as another client.
+
 - **Gradle Metaspace in release builds.** The first `production` Android run on GitHub failed in
   `lintVitalAnalyzeRelease` with `java.lang.OutOfMemoryError: Metaspace` (prebuild's default is
   `-Xmx2048m -XX:MaxMetaspaceSize=512m`). `app.config.js` now raises `org.gradle.jvmargs` through
