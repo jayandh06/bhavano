@@ -356,7 +356,29 @@ also the largest property markets, so they matter for the "few hundred listings 
 - Caveat: most of this window still counted registrations as conversions (made secondary on
   09-28), and Thane had too little spend to show.
 
-## Cap the cost per click at ₹100? (question asked 2026-09-28, night) — no
+## All-India targeting vs the 11 cities (question asked 2026-09-28, night)
+
+The ads have never run all-India (they started on the 37 served cities), so the closest evidence
+is the 26 cities just removed. They were the "wider reach" case in miniature: ₹139 CPA vs ₹104,
+34% of spend, about 1 listing per city and 2 enquiries in 18 days.
+
+**All-India: for** more volume and more conversion data for Smart Bidding; owners anywhere can find
+us; no city list to maintain; matches the "across India" store description. **Against:** a
+marketplace needs both sides in the same place, and outside the 11 there are almost no seekers, so
+owners post, hear nothing and leave. The bidder counts those posts as conversions and would drift
+toward the cheapest, emptiest towns. The budget (≈ ₹4,300/day) would be spread over hundreds of
+towns, the site's city pickers only list the 37 served cities, and ad copy can't be local.
+
+**11 cities: for** 92% of listings and about 33 of 35 enquiries are here, so concentrating both
+sides raises enquiries per listing, which is what keeps owners and makes them share; lower CPA;
+SEO, outreach and community work compound in the same places. **Against:** a smaller pool, so CPC
+may rise as budget concentrates (Other-Metro may underspend); owners elsewhere are only reached
+organically; Delhi NCR, Mumbai and Chennai are where the big portals compete hardest.
+
+**Decision: stay on the 11 and expand one city at a time.** Add a city back when it shows organic
+depth (e.g. 30+ live listings, or regular enquiries), not by label. Posting stays open in all 37
+served cities.
+
 
 All 8 campaigns use standalone Maximize Conversions with no target CPA. Google only allows a
 maximum CPC limit on a *portfolio* (shared) bid strategy, so a cap would mean moving the campaigns
