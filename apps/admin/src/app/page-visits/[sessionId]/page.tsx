@@ -4,6 +4,7 @@ import type { DeviceType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchSessionTrail } from "@/lib/bff";
 import { formatDateTime } from "@/lib/formatDateTime";
+import { trailEntry } from "@/lib/pageTrail";
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   desktop: "Desktop",
@@ -129,14 +130,14 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
                     justifyContent: "space-between",
                     alignItems: "flex-start",
                     gap: 12,
-                    border: "1px solid var(--border)",
+                    border: trailEntry(pv.path).isError ? "1px solid var(--danger)" : "1px solid var(--border)",
                     borderRadius: 9,
                     padding: "10px 14px",
                     background: "var(--surface)",
                   }}
                 >
                   <div style={{ fontSize: 13.5, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-                    {i + 1}. {pv.path}
+                    {i + 1}. {trailEntry(pv.path).text}
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{formatDateTime(pv.createdAt)}</div>

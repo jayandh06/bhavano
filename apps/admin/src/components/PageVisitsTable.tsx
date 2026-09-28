@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { DeviceType, PageVisitDto, SessionTrailDto } from "@bhavano/types";
 import { fetchSessionTrailAction } from "@/app/actions/admin";
 import { formatDateTime } from "@/lib/formatDateTime";
+import { trailEntry } from "@/lib/pageTrail";
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
 
@@ -178,7 +179,7 @@ function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loa
                   justifyContent: "space-between",
                   alignItems: "flex-start",
                   gap: 12,
-                  border: "1px solid var(--border)",
+                  border: trailEntry(pv.path).isError ? "1px solid var(--danger)" : "1px solid var(--border)",
                   borderRadius: 9,
                   padding: "8px 12px",
                   background: "var(--surface)",
@@ -186,7 +187,7 @@ function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loa
                 }}
               >
                 <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-                  {i + 1}. {pv.path}
+                  {i + 1}. {trailEntry(pv.path).text}
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
                   <div style={{ fontSize: 11, color: "var(--muted)" }}>{formatDateTime(pv.createdAt)}</div>

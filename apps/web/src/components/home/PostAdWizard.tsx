@@ -140,6 +140,25 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 type Step = "category" | "transactionType" | "details" | "review" | "success";
 
+/** Records a failure at the Preview/Publish step — as a `post_error` dataLayer event and as a
+ * `/post/error?...` trail entry in admin's Page visits, so "reached the preview, never posted" can
+ * be told apart from "hit an error on Publish". Until now only success was recorded, and an error
+ * left no trace anywhere a person could look. The reason travels in the path's query string
+ * (PageView stores nothing but a path) and is truncated; it's the same text the seller was shown,
+ * never form contents. */
+function reportPostError(stage: string, message: string) {
+  const reason = message.slice(0, 140);
+  pushDataLayerEvent("post_error", { stage, message: reason });
+  void fetch("/api/analytics/pageview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: `/post/error?stage=${encodeURIComponent(stage)}&reason=${encodeURIComponent(reason)}` }),
+    keepalive: true,
+  }).catch(() => {
+    // Best-effort, same as StepTracker's own write.
+  });
+}
+
 /**
  * One `post_step_view` per step the user actually reaches, and resets scroll to the top of the
  * page on every step change.
@@ -285,6 +304,16 @@ export function PostAdWizard({
     activeDiscountPercent: number | null;
   } | null>(null);
   const [publishCheckoutError, setPublishCheckoutError] = useState<string | null>(null);
+  // Every error the wizard shows at the review/publish step is also reported (see
+  // reportPostError). Keyed on the message itself so a retry that fails the same way still
+  // reports once per new failure, not once per render.
+  useEffect(() => {
+    if (error) reportPostError(step === "review" ? "publish" : step, error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error]);
+  useEffect(() => {
+    if (publishCheckoutError) reportPostError("checkout", publishCheckoutError);
+  }, [publishCheckoutError]);
   // A boost/instant-alerts choice made ahead of time on the review step — null means the
   // advertiser explicitly skipped it (see selectCategory's pre-fill and BoostPlanSelector's own
   // "Skip" affordance). Only ever read/acted on when previewBoostDisplay?.showSelectorOnPreview.
