@@ -6,7 +6,7 @@ import { priceWithWords } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { BffError, revealContact, toggleFavourite } from "../../lib/bffClient";
-import { publicWebUrl } from "../../lib/appWebUrl";
+import { sharedWebUrl } from "../../lib/appWebUrl";
 import { Icon } from "../Icon";
 import { PriceWithWords } from "./PriceWithWords";
 
@@ -24,13 +24,13 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   // TEMP(auth-gate): viewing listing details is open without login for now.
   const openDetail = () => router.push(`/listing/${item.id}`);
 
-  // The plain, untagged public URL (see publicWebUrl's own doc comment for why not appWebUrl) —
+  // A public URL without `app=1` (see publicWebUrl's own doc comment for why not appWebUrl) —
   // `/listings/{id}` redirects to the real canonical page (see apps/web/src/app/listings/[id]/
   // page.tsx), so a recipient with no app installed still lands on a real, working listing page.
   // `message` carries the URL as text on both platforms — Share's own dedicated `url` field is
   // iOS-only, so Android would otherwise get a share sheet with no link in it at all.
   async function onShare() {
-    const url = publicWebUrl(`/listings/${item.id}`);
+    const url = sharedWebUrl(`/listings/${item.id}`, item.isOwner ? "owner_share" : "listing_share");
     try {
       await Share.share({ message: `${item.title} — ${priceWithWords(item.price, item.priceInWords)}\n${url}`, url, title: item.title });
     } catch {

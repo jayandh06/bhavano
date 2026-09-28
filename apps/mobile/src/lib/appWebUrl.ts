@@ -21,3 +21,10 @@ export function appWebUrl(path: string): string {
 export function publicWebUrl(path: string): string {
   return `${SITE_URL}${path}`;
 }
+
+/** `publicWebUrl` plus the same UTM tags apps/web's shareLinks.ts puts on a web share, so a link
+ * shared from the app is counted as a share rather than as "direct". */
+export function sharedWebUrl(path: string, campaign: "owner_share" | "listing_share"): string {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${SITE_URL}${path}${separator}utm_source=app_share&utm_medium=share&utm_campaign=${campaign}`;
+}
