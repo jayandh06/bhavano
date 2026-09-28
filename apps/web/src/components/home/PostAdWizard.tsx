@@ -1265,7 +1265,7 @@ export function PostAdWizard({
                 onFiles={(files) => void onPhotosSelected(files)}
                 icon="camera"
                 label={preparingPhotos ? "Preparing photos…" : photos.length > 0 ? "Add more photos" : "Add photos"}
-                hint={`JPG, PNG or WebP · larger photos are resized to fit ${PHOTO_SIZE_LABEL} · ${MAX_PHOTOS - photos.length} more allowed`}
+                hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${MAX_PHOTOS - photos.length} more allowed`}
               />
             )}
             {photos.length > 0 && (
