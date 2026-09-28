@@ -72,6 +72,11 @@ interface HomeSheetsContextValue {
   /** `onSuccess` resumes whatever the login interrupted, in place — same pattern as web's
    * AuthGateProvider. */
   requireLogin: (options?: { onSuccess?: () => void }) => void;
+  /** Publish-time check. Resolves `true` when the account already has a verified phone (carry on),
+   * `false` when it opened a phone-OTP sheet instead - `onSuccess` then resumes once the number is
+   * verified, so the caller should just return. Login no longer collects a phone
+   * (docs/plans/post-login-name-and-city.md), so a Google/Apple account reaches Publish without one. */
+  ensureVerifiedPhone: (options: { accessToken: string; onSuccess: () => void }) => Promise<boolean>;
   /** Clears the session on this device. Safe to await — never rejects, even offline. */
   logout: () => Promise<void>;
   isLoggedIn: boolean;
@@ -295,6 +300,10 @@ export function HomeSheetsProvider({
   const onSuccessRef = useRef<(() => void) | undefined>(undefined);
   /** True when basics was opened for an already-signed-in cold start, not a fresh login. */
   const quietBasicsRef = useRef(false);
+  /** True while the basics sheet is being used only to verify a phone at Publish. A ref beside the
+   * state because the sheet's onDismiss (a stale closure) needs the current value. */
+  const verifyPhoneRef = useRef(false);
+  const [verifyPhoneMode, setVerifyPhoneMode] = useState(false);
   const sessionBasicsCheckedRef = useRef(false);
 
   const requireLogin = useCallback((options?: { onSuccess?: () => void }) => {
@@ -307,6 +316,31 @@ export function HomeSheetsProvider({
     setError(null);
     loginSheetRef.current?.present();
   }, [isLoggedIn]);
+
+  const ensureVerifiedPhone = useCallback(
+    async (options: { accessToken: string; onSuccess: () => void }): Promise<boolean> => {
+      try {
+        const current = await fetchProfile(options.accessToken);
+        // A phone is only ever stored once verified (OTP login or the link flow); the BFF
+        // re-checks phoneVerifiedAt authoritatively on create.
+        if (current.phone) return true;
+        onSuccessRef.current = options.onSuccess;
+        quietBasicsRef.current = false;
+        verifyPhoneRef.current = true;
+        setVerifyPhoneMode(true);
+        setBasicsInitial({ ...basicsFromProfile(current), needSecondary: "phone" });
+        setError(null);
+        setPending(false);
+        setLoginStep("basics");
+        loginSheetRef.current?.present();
+        return false;
+      } catch {
+        // Cannot tell - let the server's own check decide rather than blocking a valid seller.
+        return true;
+      }
+    },
+    [],
+  );
 
   /** The city step is a one-tap confirm rather than a search: when the profile has no city yet, offer
    * the one already selected in the header (if any) as the prefilled value. */
@@ -447,6 +481,16 @@ export function HomeSheetsProvider({
   }
 
   function onBasicsSaved(saved: ProfileBasicsValues & { city: City | null }) {
+    if (verifyPhoneRef.current) {
+      const resume = onSuccessRef.current;
+      onSuccessRef.current = undefined;
+      verifyPhoneRef.current = false;
+      setVerifyPhoneMode(false);
+      void refreshProfile();
+      loginSheetRef.current?.dismiss();
+      resume?.();
+      return;
+    }
     if (saved.city) setCity(saved.city);
     void refreshProfile();
     if (quietBasicsRef.current) {
@@ -567,8 +611,8 @@ export function HomeSheetsProvider({
   const userId = useMemo(() => (accessToken ? decodeUserId(accessToken) : null), [accessToken]);
 
   const value = useMemo(
-    () => ({ city, setCity, openLocationPicker, requireLogin, logout, isLoggedIn, accessToken, userId, profile, refreshProfile }),
-    [city, setCity, openLocationPicker, requireLogin, logout, isLoggedIn, accessToken, userId, profile, refreshProfile],
+    () => ({ city, setCity, openLocationPicker, requireLogin, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile }),
+    [city, setCity, openLocationPicker, requireLogin, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile],
   );
 
   return (
@@ -698,7 +742,15 @@ export function HomeSheetsProvider({
         snapPoints={loginStep === "basics" ? ["85%"] : ["55%"]}
         // Name is mandatory — don't swipe away an incomplete profile.
         // City-only gaps may dismiss (canDismissBasics).
-        enablePanDownToClose={loginStep !== "basics" || canDismissBasics(basicsInitial)}
+        enablePanDownToClose={loginStep !== "basics" || verifyPhoneMode || canDismissBasics(basicsInitial)}
+        onDismiss={() => {
+          // Swiped/cancelled out of the Publish-time phone check: drop the pending resume so it
+          // cannot fire later (a completed check clears these itself before dismissing).
+          if (!verifyPhoneRef.current) return;
+          verifyPhoneRef.current = false;
+          onSuccessRef.current = undefined;
+          setVerifyPhoneMode(false);
+        }}
         backgroundStyle={{ backgroundColor: colors.surface }}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
@@ -720,6 +772,8 @@ export function HomeSheetsProvider({
               accessToken={accessToken}
               initial={basicsInitial}
               onSaved={onBasicsSaved}
+              verifyPhoneOnly={verifyPhoneMode}
+              onCancel={() => loginSheetRef.current?.dismiss()}
               onSkip={() => {
                 if (quietBasicsRef.current) {
                   quietBasicsRef.current = false;

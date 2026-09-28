@@ -112,12 +112,19 @@ export function ProfileBasicsStep({
   onSaved,
   onSkip,
   onReauthRequired,
+  verifyPhoneOnly = false,
+  onCancel,
 }: {
   accessToken: string;
   initial: ProfileBasicsValues;
   onSaved: (saved: ProfileBasicsValues & { city: City | null }) => void;
   onSkip: () => void;
   onReauthRequired: () => void;
+  /** Publish-time mode: skip the name/city screen and go straight to verifying a phone. The
+   * caller passes `initial.needSecondary: "phone"`; nothing else about the profile is edited. */
+  verifyPhoneOnly?: boolean;
+  /** Backing out of `verifyPhoneOnly` (its Back button) - abandon the verification. */
+  onCancel?: () => void;
 }) {
   const { colors } = useAppTheme();
   const [name, setName] = useState(initial.name);
@@ -130,7 +137,7 @@ export function ProfileBasicsStep({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [phase, setPhase] = useState<Phase>("details");
+  const [phase, setPhase] = useState<Phase>(verifyPhoneOnly ? "askPhone" : "details");
   const [secondaryDone, setSecondaryDone] = useState(initial.needSecondary === null);
   const [phoneDigits, setPhoneDigits] = useState("");
   const [otp, setOtp] = useState("");
@@ -146,8 +153,8 @@ export function ProfileBasicsStep({
     setCityId(initial.cityId);
     setCityName(initial.cityName);
     setSecondaryDone(initial.needSecondary === null);
-    setPhase("details");
-  }, [initial]);
+    setPhase(verifyPhoneOnly ? "askPhone" : "details");
+  }, [initial, verifyPhoneOnly]);
 
   async function onCityQueryChange(value: string) {
     setCityQuery(value);
@@ -194,7 +201,8 @@ export function ProfileBasicsStep({
   async function finish() {
     setPending(true);
     setError(null);
-    const ok = await saveNameAndCity();
+    // Verify-phone mode never touched name/city - don't re-save (or re-validate) them.
+    const ok = verifyPhoneOnly ? true : await saveNameAndCity();
     setPending(false);
     if (!ok) return;
     onSaved({
@@ -240,7 +248,7 @@ export function ProfileBasicsStep({
       return;
     }
     setSecondaryDone(true);
-    setPhase("details");
+    if (!verifyPhoneOnly) setPhase("details");
     void finish();
   }
 
@@ -413,12 +421,12 @@ export function ProfileBasicsStep({
         {/* Vector chevron, not a "←" glyph — a Unicode arrow renders as a stray character on
             Android fonts that lack it (same fix as the login sheet's own Back button). */}
         <Pressable
-          onPress={() => setPhase("details")}
+          onPress={() => (verifyPhoneOnly ? onCancel?.() : setPhase("details"))}
           disabled={pending}
           style={{ marginTop: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}
         >
           <Icon name="chevronLeft" size={14} color={colors.muted} />
-          <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>Back</Text>
+          <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 13 }}>{verifyPhoneOnly ? "Cancel" : "Back"}</Text>
         </Pressable>
       </View>
     );

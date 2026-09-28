@@ -39,7 +39,15 @@ import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLi
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
-import { createListing, fetchAreas, fetchPlanPricing, previewBoostPricing, uploadPhoto, uploadVideo } from "../../lib/bffClient";
+import {
+  createListing,
+  fetchAreas,
+  fetchPlanPricing,
+  friendlyErrorMessage,
+  previewBoostPricing,
+  uploadPhoto,
+  uploadVideo,
+} from "../../lib/bffClient";
 import { recordAppPageView } from "../../lib/analyticsSession";
 import { clearPostAdDraft, loadPostAdDraft, savePostAdDraft } from "../../lib/postAdDraft";
 import { startBoostCheckout } from "../../lib/boostCheckout";
@@ -185,7 +193,7 @@ export function PostAdWizard({
   accessToken?: string;
 }) {
   const { colors } = useAppTheme();
-  const { requireLogin, profile } = useHomeSheets();
+  const { requireLogin, ensureVerifiedPhone, profile } = useHomeSheets();
   const router = useRouter();
   const [listingId] = useState(() => Crypto.randomUUID());
 
@@ -1019,6 +1027,11 @@ export function PostAdWizard({
     }
     setPostAccessToken(activeToken);
 
+    // A verified phone is required to publish (buyers reach the seller by phone; it is also the
+    // spam control) but login no longer collects one, so a Google/Apple account arrives here
+    // without it. Ask now, before any upload; the sheet resumes this same call once verified.
+    if (!(await ensureVerifiedPhone({ accessToken: activeToken, onSuccess: () => void onSubmit() }))) return;
+
     setPending(true);
     setError(null);
     try {
@@ -1092,7 +1105,7 @@ export function PostAdWizard({
       }
       setStep("success");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create listing");
+      setError(friendlyErrorMessage(e, "Failed to create listing"));
     } finally {
       setPending(false);
     }
