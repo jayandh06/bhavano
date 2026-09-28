@@ -16,6 +16,7 @@ import { useMyListingQuery } from "../../../src/lib/queries";
 import { addListingPhoto, addListingVideo, deleteListingPhoto, deleteListingVideo, updateListing } from "../../../src/lib/bffClient";
 import { Icon } from "../../../src/components/Icon";
 import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
+import { PriceWordsHint } from "../../../src/components/home/PriceWithWords";
 import { CategoryFieldsForm } from "../../../src/components/home/CategoryFieldsForm";
 
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -309,6 +310,10 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
                       onChangeText={(v) => setPrice(clampPrice(v, listing.transactionType))}
                       keyboardType="number-pad"
                       style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                    />
+                    <PriceWordsHint
+                      value={price}
+                      suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                     />
                   </View>
                   <View style={{ flex: 1 }}>

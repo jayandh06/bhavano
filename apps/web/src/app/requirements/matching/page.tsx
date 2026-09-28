@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { auth } from "@/auth";
 import { BffAuthError, fetchMatchingRequirements } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
@@ -99,7 +100,7 @@ async function MatchList({ accessToken }: { accessToken: string }) {
             {[
               match.areaName ?? match.cityName,
               match.bedrooms ? `${match.bedrooms} BHK` : null,
-              match.maxPrice ? `up to ₹${match.maxPrice.toLocaleString("en-IN")}` : null,
+              match.maxPrice ? `up to ${formatInrWithWords(match.maxPrice)}` : null,
               match.moveInBy ? `needed by ${dateFormatter.format(new Date(match.moveInBy))}` : null,
             ]
               .filter(Boolean)

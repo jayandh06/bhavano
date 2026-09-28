@@ -54,6 +54,7 @@ import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { BoostBundleCard } from "./BoostBundleCard";
 import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
+import { PriceWordsHint } from "./PriceWithWords";
 import { appWebUrl } from "../../lib/appWebUrl";
 import { instantAlertsOnlyPrice, priceSuffix } from "../../lib/boostPriceDisplay";
 
@@ -1223,6 +1224,10 @@ export function PostAdWizard({
                   placeholder="e.g. 25000"
                   placeholderTextColor={colors.muted}
                   style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                />
+                <PriceWordsHint
+                  value={price}
+                  suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                 />
                 {price.length > 0 && !priceIsValid(price, category) && (
                   <Text style={styles.fieldError}>Enter a price greater than 0.</Text>

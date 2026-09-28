@@ -10,6 +10,7 @@ import { updateListingAction } from "@/app/actions/listings";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass, primaryButtonClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
+import { PriceWordsHint } from "./PriceWithWords";
 import { CategoryFieldsAccordion } from "./CategoryFieldsAccordion";
 import { EditListingPhotos } from "./EditListingPhotos";
 import { VideoManager } from "./VideoManager";
@@ -215,6 +216,10 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
                       value={price}
                       onChange={(e) => setPrice(clampPrice(e.target.value, listing.transactionType))}
                       className={fieldClass}
+                    />
+                    <PriceWordsHint
+                      value={price}
+                      suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                     />
                   </div>
                   <div className="flex-1">

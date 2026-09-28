@@ -10,9 +10,9 @@ import {
   REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_GAP_LABELS,
   amenityOptionsFor,
-  formatCompactInr,
   missingForLead,
 } from "@bhavano/types/requirementQuestions";
+import { formatInrRangeWithWords } from "@bhavano/types/priceWords";
 import { updateRequirementAction } from "@/app/actions/admin";
 import { formatDateTime } from "@/lib/formatDateTime";
 
@@ -29,10 +29,7 @@ const STATUS_COLORS: Record<RequirementStatus, string> = {
 };
 
 function budgetText(item: AdminRequirementDto): string | null {
-  if (item.minPrice && item.maxPrice) return `${formatCompactInr(item.minPrice)}–${formatCompactInr(item.maxPrice)}`;
-  if (item.maxPrice) return `up to ${formatCompactInr(item.maxPrice)}`;
-  if (item.minPrice) return `from ${formatCompactInr(item.minPrice)}`;
-  return null;
+  return formatInrRangeWithWords(item.minPrice, item.maxPrice) ?? null;
 }
 
 function sizeText(item: AdminRequirementDto): string | null {

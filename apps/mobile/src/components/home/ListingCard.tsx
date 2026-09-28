@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Image, Pressable, Share, StyleSheet, Text, View, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import type { ListingCardDto } from "@bhavano/types";
+import { priceWithWords } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { BffError, revealContact, toggleFavourite } from "../../lib/bffClient";
 import { publicWebUrl } from "../../lib/appWebUrl";
 import { Icon } from "../Icon";
+import { PriceWithWords } from "./PriceWithWords";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
   const { colors } = useAppTheme();
@@ -30,7 +32,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   async function onShare() {
     const url = publicWebUrl(`/listings/${item.id}`);
     try {
-      await Share.share({ message: `${item.title} — ${item.priceInWords || item.price}\n${url}`, url, title: item.title });
+      await Share.share({ message: `${item.title} — ${priceWithWords(item.price, item.priceInWords)}\n${url}`, url, title: item.title });
     } catch {
       // Share.share() resolves normally on a plain dismiss — this only catches the share sheet
       // itself genuinely failing to open, which has nothing to recover from or show an error for.
@@ -122,7 +124,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
 
       <View style={styles.body}>
         <View style={styles.priceRow}>
-          <Text style={{ fontSize: 17, fontWeight: "700", color: colors.green }}>{item.priceInWords || item.price}</Text>
+          <PriceWithWords price={item.price} priceInWords={item.priceInWords} fontSize={17} />
           {!!item.priceQualifier && (
             <View style={[styles.qualifierChip, { backgroundColor: colors.surfaceAlt }]}>
               <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.muted }}>{item.priceQualifier}</Text>

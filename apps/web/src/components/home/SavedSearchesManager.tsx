@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Area, City, ListingCategory, SavedSearchDto, TransactionType } from "@bhavano/types";
+import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { createSavedSearchAction, deleteSavedSearchAction } from "@/app/actions/saved-searches";
 import { listAllAreasAction } from "@/app/actions/locations";
 import { pushDataLayerEvent } from "@/lib/gtm";
@@ -122,8 +123,8 @@ export function SavedSearchesManager({ initial, cities }: { initial: SavedSearch
                 s.category,
                 s.transactionType,
                 s.cityName,
-                s.minPrice !== undefined && `min ₹${s.minPrice}`,
-                s.maxPrice !== undefined && `max ₹${s.maxPrice}`,
+                s.minPrice !== undefined && `min ${formatInrWithWords(s.minPrice)}`,
+                s.maxPrice !== undefined && `max ${formatInrWithWords(s.maxPrice)}`,
                 s.bedrooms !== undefined && `${s.bedrooms} BHK`,
               ]
                 .filter(Boolean)

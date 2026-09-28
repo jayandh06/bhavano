@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { formatInrWithWords } from '@bhavano/types/priceWords';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -99,7 +100,7 @@ export class RequirementMatchJob {
       }
 
       const where = requirement.area?.name ?? requirement.city?.name ?? 'your area';
-      const budget = requirement.maxPrice ? ` up to ₹${requirement.maxPrice.toLocaleString('en-IN')}` : '';
+      const budget = requirement.maxPrice ? ` up to ${formatInrWithWords(requirement.maxPrice)}` : '';
       const by = requirement.moveInBy ? `, needed by ${requirement.moveInBy.toISOString().slice(0, 10)}` : '';
       const line = `${requirement.searchLabel} — in ${where}${budget}${by}`;
 

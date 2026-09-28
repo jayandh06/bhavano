@@ -18,6 +18,7 @@ import {
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { AREA_UNIT_LABELS, areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { clampDigits } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
@@ -868,6 +869,12 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
                       onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
                       style={inputStyle}
                     />
+                    {Number(price) >= 1_000 && (
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                        {formatInrWithWords(Number(price))}
+                        {priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
+                      </div>
+                    )}
                   </div>
                   <div style={{ flex: 1, maxWidth: 220 }}>
                     <label style={labelStyle}>Price qualifier</label>

@@ -3,7 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { useRouter } from "expo-router";
 import type { RequirementDto } from "@bhavano/types";
 import { bedroomLabel } from "@bhavano/types/bedrooms";
-import { describeRequirementGaps, formatCompactInr, missingForLead } from "@bhavano/types/requirementQuestions";
+import { describeRequirementGaps, missingForLead } from "@bhavano/types/requirementQuestions";
+import { formatInrRangeWithWords } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import {
@@ -23,10 +24,7 @@ function daysUntil(iso: string): number {
 }
 
 function budgetText(r: RequirementDto): string | null {
-  if (r.minPrice && r.maxPrice) return `${formatCompactInr(r.minPrice)}–${formatCompactInr(r.maxPrice)}`;
-  if (r.maxPrice) return `up to ${formatCompactInr(r.maxPrice)}`;
-  if (r.minPrice) return `from ${formatCompactInr(r.minPrice)}`;
-  return null;
+  return formatInrRangeWithWords(r.minPrice, r.maxPrice) ?? null;
 }
 
 /**

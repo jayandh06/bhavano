@@ -53,6 +53,7 @@ import { uploadVideoDirect } from "@/lib/videoUpload";
 import { BoostBundlePicker } from "./BoostBundlePicker";
 import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
+import { PriceWordsHint } from "./PriceWithWords";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
 import { VideoManager } from "./VideoManager";
@@ -1071,6 +1072,10 @@ export function PostAdWizard({
                           // per-unit figure — safe to reuse as-is for both modes.
                           onChange={(e) => setPrice(clampPrice(e.target.value, transactionType))}
                           className={fieldClass}
+                        />
+                        <PriceWordsHint
+                          value={price}
+                          suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                         />
                       </div>
                       <div className="flex-1">

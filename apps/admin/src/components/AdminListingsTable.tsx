@@ -16,6 +16,7 @@ import type {
   SendPostedNotificationResponseDto,
   TransactionType,
 } from "@bhavano/types";
+import { priceWithWords } from "@bhavano/types/priceWords";
 import { fetchListingDetailAction, sendBoostPromotionAction, sendPostedNotificationAction } from "@/app/actions/admin";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { ListingRowDetail } from "@/components/ListingRowDetail";
@@ -322,7 +323,7 @@ export function AdminListingsTable({
       key: "price",
       label: "Price",
       sortField: "price",
-      render: (item) => `${item.price}${item.priceQualifier ? ` ${item.priceQualifier}` : ""}`,
+      render: (item) => `${priceWithWords(item.price, item.priceInWords)}${item.priceQualifier ? ` ${item.priceQualifier}` : ""}`,
       defaultVisible: true,
       nowrap: true,
     },

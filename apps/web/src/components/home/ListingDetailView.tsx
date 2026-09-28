@@ -11,6 +11,7 @@ import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
 import { ListingMediaGallery } from "./ListingMediaGallery";
+import { PriceWithWords } from "./PriceWithWords";
 import { ViewTracker } from "./ViewTracker";
 import { Icon, isIconName } from "./Icon";
 
@@ -133,13 +134,8 @@ export async function ListingDetailView({
                 * under the hero — the strip and the hero share a selected index, so they have to stay
                 * in one component even though the page wants something between them. */}
               <div className="flex justify-between items-start gap-4 mb-2">
-                <div>
-                  <div className="font-lora text-[28px] font-bold text-green">
-                    {listing.priceInWords || listing.price}
-                  </div>
-                  {!listing.priceOnRequest && listing.priceInWords && (
-                    <div className="text-[13px] text-muted">{listing.price}</div>
-                  )}
+                <div className="font-lora text-[28px] font-bold text-green">
+                  <PriceWithWords price={listing.price} priceInWords={listing.priceInWords} />
                 </div>
                 {listing.priceQualifier && (
                   <div className="text-[13px] font-bold text-muted bg-surface-alt px-3 py-[5px] rounded-md whitespace-nowrap">

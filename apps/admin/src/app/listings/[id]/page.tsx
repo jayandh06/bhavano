@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
 import type { ListingEditLogEntryDto } from "@bhavano/types";
+import { formatInrWithWords, priceWithWords } from "@bhavano/types/priceWords";
 import {
   fetchListingById,
   fetchListingConversations,
@@ -41,6 +42,12 @@ function formatChangeValue(value: unknown): string {
   if (value === null || value === undefined) return "—";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+/** `price` is logged as the stored whole-rupee total; 0 is "Contact for price". */
+function formatPriceChangeValue(value: unknown): string {
+  if (typeof value !== "number") return formatChangeValue(value);
+  return value === 0 ? "Contact for price" : formatInrWithWords(value);
 }
 
 /** `attributes` diffs as one field/change pair — `diffFields` (listings.service.ts) treats the
@@ -95,9 +102,10 @@ function EditHistoryEntry({ entry }: { entry: ListingEditLogEntryDto }) {
                 </li>
               );
             }
+            const show = field === "price" ? formatPriceChangeValue : formatChangeValue;
             return (
               <li key={field} style={{ color: "var(--text-soft)" }}>
-                <strong>{field}</strong>: {formatChangeValue(change.before)} → {formatChangeValue(change.after)}
+                <strong>{field}</strong>: {show(change.before)} → {show(change.after)}
               </li>
             );
           })}
@@ -159,7 +167,7 @@ export default async function ListingModerationPage({
         <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 20, background: "var(--surface)" }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>{listing.title}</h1>
           <div style={{ fontSize: 14, color: "var(--text-soft)", marginBottom: 4 }}>
-            {listing.price} {listing.priceQualifier} · {listing.category} · {listing.transactionType}
+            {priceWithWords(listing.price, listing.priceInWords)} {listing.priceQualifier} · {listing.category} · {listing.transactionType}
           </div>
           <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>
             {listing.area}, {listing.cityName}

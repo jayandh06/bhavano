@@ -1,6 +1,7 @@
 import type { ListingCategory, TransactionType } from '@bhavano/types';
 import { PRICE_BOUNDS } from '@bhavano/types/priceBounds';
 import { PRICE_ON_REQUEST_CATEGORIES } from '@bhavano/types/priceQualifiers';
+import { formatInrWithWords } from '@bhavano/types/priceWords';
 
 function isSaleType(transactionType: TransactionType): boolean {
   return transactionType === 'buy' || transactionType === 'sell';
@@ -21,7 +22,7 @@ export function checkPriceSanity(
 
   const bounds = PRICE_BOUNDS[category][isSaleType(transactionType) ? 'sale' : 'rental'];
   if (price < bounds.min || price > bounds.max) {
-    return `Price ₹${price.toLocaleString('en-IN')} is outside the expected range (₹${bounds.min.toLocaleString('en-IN')}–₹${bounds.max.toLocaleString('en-IN')}) for this category`;
+    return `Price ${formatInrWithWords(price)} is outside the expected range (${formatInrWithWords(bounds.min)} to ${formatInrWithWords(bounds.max)}) for this category`;
   }
   return null;
 }

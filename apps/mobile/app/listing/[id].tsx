@@ -10,6 +10,7 @@ import { Icon } from "../../src/components/Icon";
 import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
 import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
+import { PriceWithWords } from "../../src/components/home/PriceWithWords";
 
 /** Same URL shape as the website's ListingDetailView.tsx — no origin, so Google Maps prompts for
  * the visitor's own location instead. `lat`/`lng` are already a server-side jittered
@@ -163,14 +164,7 @@ export default function ListingDetailScreen() {
       />
 
       <View style={styles.priceRow}>
-        <View>
-          <Text style={{ fontSize: 22, fontWeight: "700", color: colors.green }}>
-            {listing.priceInWords || listing.price}
-          </Text>
-          {!listing.priceOnRequest && !!listing.priceInWords && (
-            <Text style={{ fontSize: 12.5, color: colors.muted }}>{listing.price}</Text>
-          )}
-        </View>
+        <PriceWithWords price={listing.price} priceInWords={listing.priceInWords} fontSize={22} />
         {!!listing.priceQualifier && (
           <View style={[styles.qualifierChip, { backgroundColor: colors.surfaceAlt }]}>
             <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted }}>{listing.priceQualifier}</Text>

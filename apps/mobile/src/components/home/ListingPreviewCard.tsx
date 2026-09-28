@@ -3,9 +3,10 @@ import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
-import { formatInrInWords } from "@bhavano/types/priceWords";
+import { formatInrInWords, groupInr } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
+import { PriceWithWords } from "./PriceWithWords";
 
 /**
  * Mobile counterpart to the web wizard's ListingPreviewCard — same reasoning: the review step
@@ -44,10 +45,10 @@ export function ListingPreviewCard({
 }) {
   const { colors } = useAppTheme();
   const priceNum = Number(price);
-  const priceDisplay =
-    priceNum > 0
-      ? `${formatInrInWords(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}`
-      : "Contact for price";
+  const exactPrice =
+    priceNum > 0 ? `₹${groupInr(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, priceNum)}` : ""}` : "Contact for price";
+  const wordsPrice =
+    priceNum > 0 ? `${formatInrInWords(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}` : null;
   const specs = deriveCardSpecs(category, attributes);
 
   return (
@@ -65,7 +66,7 @@ export function ListingPreviewCard({
 
       <View style={styles.body}>
         <View style={styles.priceRow}>
-          <Text style={{ fontSize: 17, fontWeight: "700", color: colors.green }}>{priceDisplay}</Text>
+          <PriceWithWords price={exactPrice} priceInWords={wordsPrice} fontSize={17} />
           {!!priceQualifier && (
             <View style={[styles.qualifierChip, { backgroundColor: colors.surfaceAlt }]}>
               <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.muted }}>{priceQualifier}</Text>

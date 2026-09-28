@@ -808,6 +808,7 @@ export class ListingsService {
       cityName: listing.city.name,
       area: listing.area.name,
       price: this.formatListingPrice(listing),
+      priceInWords: this.formatListingPriceInWords(listing),
       priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
       viewCount: listing.viewCount,
       likeCount: listing.likeCount,

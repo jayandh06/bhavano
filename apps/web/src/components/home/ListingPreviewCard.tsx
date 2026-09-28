@@ -2,8 +2,9 @@ import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
-import { formatInrInWords } from "@bhavano/types/priceWords";
+import { formatInrInWords, groupInr } from "@bhavano/types/priceWords";
 import { Icon } from "./Icon";
+import { PriceWithWords } from "./PriceWithWords";
 
 /**
  * What the actual browse-grid `ListingCard` will look like once this ad is posted — same photo/
@@ -48,10 +49,10 @@ export function ListingPreviewCard({
   attributes: Record<string, unknown>;
 }) {
   const priceNum = Number(price);
-  const priceDisplay =
-    priceNum > 0
-      ? `${formatInrInWords(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}`
-      : "Contact for price";
+  const exactPrice =
+    priceNum > 0 ? `₹${groupInr(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, priceNum)}` : ""}` : "Contact for price";
+  const wordsPrice =
+    priceNum > 0 ? `${formatInrInWords(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}` : null;
   const specs = deriveCardSpecs(category, attributes);
 
   return (
@@ -72,7 +73,9 @@ export function ListingPreviewCard({
       </div>
       <div className="p-[18px] flex flex-col gap-2.5">
         <div className="flex justify-between items-start gap-2.5">
-          <div className="font-lora text-xl font-bold text-green">{priceDisplay}</div>
+          <div className="font-lora text-xl font-bold text-green">
+            <PriceWithWords price={exactPrice} priceInWords={wordsPrice} />
+          </div>
           {priceQualifier && (
             <div className="text-xs font-bold text-muted bg-surface-alt px-2.5 py-1 rounded-md whitespace-nowrap">
               {priceQualifier}
