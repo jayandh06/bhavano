@@ -350,8 +350,9 @@ also the largest property markets, so they matter for the "few hundred listings 
   why Bengaluru gets the most. It ignores location bid adjustments, so there is no lighter lever
   short of removing a city.
 - Revisit after about 4 weeks, when this month's changes have settled (conversion goal change,
-  Other-Metro narrowing). If a city stays above about ₹180 per poster in our own database (not
-  Google's count), move it into its own low-budget campaign rather than dropping it.
+  Other-Metro narrowing). If a city's cost per poster in our own database (not Google's count)
+  stays well above the ≈ ₹300 blended figure, move it into its own low-budget campaign rather
+  than dropping it.
 - Caveat: most of this window still counted registrations as conversions (made secondary on
   09-28), and Thane had too little spend to show.
 
