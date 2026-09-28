@@ -78,8 +78,13 @@ Census towns keep `catchmentKm` 25.
    label only when no curated catchment contains the pin; a known area under any curated city; any
    curated catchment. Outside everything, `cityId` stays unset and the seller picks a city.
 
-The area is Google's local place as before, so a folded town becomes an area of its metro
-(Hyderabad → Yadagirigutta, Delhi NCR → Meerut).
+**Area name.** Normally the area is Google's local place (sublocality, else locality) as before. For
+a pin more than half a served city's reach from its centroid (37.5 km for a popular metro, 45 km
+for Delhi NCR, 20 km for the rest), the area is Google's *town* (`locality`) instead, and that is
+also returned as `resolvedLocality`. So a folded town becomes an area of its metro (Hyderabad →
+Yadagirigutta, Delhi NCR → Meerut) rather than taking a neighbourhood name like "Gandhi Nagar"
+(Google's sublocality at the Yadagirigutta pin), which would read as a place in the city itself.
+Pins in the city proper keep their neighbourhood.
 
 **City lists.** `CityDto.isServed` is exposed. The web `LocationPicker` and the mobile city sheet
 list only served cities under "More cities" (the 25 tier-2 instead of 746 towns), and `/cities`
@@ -87,7 +92,8 @@ lists only served cities. Typed search in the pickers still matches any city, so
 every served city can pick their own town. `GET /locations/cities?all=true` still returns every
 city, because the web uses it to resolve city slugs in URLs.
 
-**Tests** (`locations.service.spec.ts`): Yadagirigutta → Hyderabad with area Yadagirigutta; a
+**Tests** (`locations.service.spec.ts`): Yadagirigutta → Hyderabad with area Yadagirigutta (not
+its "Gandhi Nagar" neighbourhood); a Secunderabad pin keeps its neighbourhood as the area; a
 Google locality "Bhongir" inside Hyderabad's reach → Hyderabad; the reported Parvedula pin →
 Nalgonda; a "Kancheepuram" town name inside Chennai's reach → Chennai, and beyond it → Kanchipuram.
 

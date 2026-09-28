@@ -117,7 +117,7 @@ describe('LocationsService.reverseGeocodeGoogle — city stays the curated marke
     source: 'curated',
     lat: 11.0168,
     lng: 76.9558,
-    catchmentKm: 25,
+    catchmentKm: 40,
   };
 
   const delhiNcr = {
@@ -128,7 +128,7 @@ describe('LocationsService.reverseGeocodeGoogle — city stays the curated marke
     source: 'curated',
     lat: 28.7041,
     lng: 77.1025,
-    catchmentKm: 50,
+    catchmentKm: 90,
   };
 
   function serviceWithCurated(cities: object[]) {
@@ -280,7 +280,7 @@ describe('LocationsService.reverseGeocodeGoogle — a district label must not ov
     source: 'curated',
     lat: 13.0827,
     lng: 80.2707,
-    catchmentKm: 35,
+    catchmentKm: 75,
   };
   const kanchipuram = {
     id: 'kanchipuram',
@@ -402,9 +402,10 @@ describe('LocationsService.reverseGeocodeGoogle — towns within a served city r
     });
   }
 
-  it('files Yadagirigutta (~54 km out) under Hyderabad with Yadagirigutta as the area', async () => {
+  it('files Yadagirigutta (~54 km out) under Hyderabad with the town, not its neighbourhood, as the area', async () => {
     const { service, prisma } = telanganaService();
     mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Gandhi Nagar' },
       { types: ['locality'], long_name: 'Yadagirigutta' },
       { types: ['administrative_area_level_3'], long_name: 'Yadagirigutta' },
       { types: ['administrative_area_level_2'], long_name: 'Yadadri Bhuvanagiri' },
@@ -414,6 +415,7 @@ describe('LocationsService.reverseGeocodeGoogle — towns within a served city r
     const result = await service.reverseGeocodeGoogle(17.587, 78.946);
 
     expect(result.cityId).toBe('hyderabad');
+    expect(result.resolvedLocality).toBe('Yadagirigutta');
     expect(prisma.area.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ name: 'Yadagirigutta', cityId: 'hyderabad' }) }),
     );
@@ -430,6 +432,20 @@ describe('LocationsService.reverseGeocodeGoogle — towns within a served city r
     const result = await service.reverseGeocodeGoogle(17.515, 78.886);
 
     expect(result.cityId).toBe('hyderabad');
+  });
+
+  it('keeps the neighbourhood as the area for a pin in the city itself', async () => {
+    const { service } = telanganaService();
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Gandhi Nagar' },
+      { types: ['locality'], long_name: 'Secunderabad' },
+      { types: ['administrative_area_level_1'], long_name: 'Telangana' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(17.435, 78.5);
+
+    expect(result.cityId).toBe('hyderabad');
+    expect(result.resolvedLocality).toBe('Gandhi Nagar');
   });
 
   it('keeps a pin well beyond every reach on its own town (Parvedula → Nalgonda)', async () => {

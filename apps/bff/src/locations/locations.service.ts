@@ -449,10 +449,18 @@ export class LocationsService {
     // 4. Pin inside a curated city's catchment. The local place stays the area.
     if (!city) city = this.cityWithinCatchment(curated, lat, lng);
 
+    // A pin folded into a served city from out of town is named for its town: Google's
+    // neighbourhood there ("Gandhi Nagar" in Yadagirigutta) would read as a place in the city.
+    const townName = isLatinText(locality?.long_name) ? locality!.long_name : '';
+    const placeName =
+      city?.isServed &&
+      townName &&
+      townName.trim().toLowerCase() !== city.name.trim().toLowerCase() &&
+      distanceKm(lat, lng, city.lat, city.lng) > city.catchmentKm / 2
+        ? townName
+        : resolvedLocality;
     const areaName =
-      city && resolvedLocality && resolvedLocality.trim().toLowerCase() !== city.name.trim().toLowerCase()
-        ? resolvedLocality
-        : '';
+      city && placeName && placeName.trim().toLowerCase() !== city.name.trim().toLowerCase() ? placeName : '';
     const area = areaName && city ? await this.ensureArea(city.id, areaName) : null;
 
     logThirdPartyCall({
@@ -470,7 +478,7 @@ export class LocationsService {
       cityId: city?.id,
       areaId: area?.id,
       formattedAddress: stripNonLatinSegments(result.formatted_address),
-      resolvedLocality,
+      resolvedLocality: placeName,
       cityName: city?.name,
       isNewCity: false,
     };
