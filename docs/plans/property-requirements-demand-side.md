@@ -4,6 +4,28 @@
 Phase 1 UI commit). Phase 2+ — the public feed, the paid contact path, SEO aggregates and mobile —
 is still plan only. Written 2026-09-16.
 
+## Requirements as broker leads, and the phone decision revisited (2026-09-28)
+
+Two follow-up plans, not built yet:
+
+- [requirement-refinement-questions.md](requirement-refinement-questions.md): after "Yes, find this
+  for me", short skippable questions (areas, BHK set, budget, must-haves, category specifics) turn
+  a page label like *"Rent 2 BHK Houses in Bengaluru"* into a specific need.
+- [requirement-leads-for-brokers.md](requirement-leads-for-brokers.md): a requirement that names
+  areas plus a budget or size (`isLeadReady`) becomes a lead for brokers and agents in those areas.
+  The recipients are listing holders, agents who declare service areas, and a join-to-respond
+  pitch to off-platform agencies from outreach.
+
+**This supersedes one decision below.** The monetization section's *"reveal the phone only when the
+seeker replies"* (2026-09-17) now applies only to seekers who did **not** consent. For a seeker who
+ticked *"Owners and agents with a matching property may call or message me"*, matched brokers see
+the phone. That is what the checkbox already said. The platform now acts on it, within limits:
+- at most 5 brokers per lead, a daily cap per broker, and verified phones only;
+- a `RequirementLead` audit row per reveal;
+- the seeker sees who has their number, can withdraw consent, and can report.
+
+Non-consenting seekers stay message-only, and vague requirements are never sent to anyone.
+
 ## Consent, and the card as a confirmation (2026-09-17)
 
 The capture card used to say "Nothing matching X right now" and offer two buttons: **Tell us what
@@ -217,6 +239,13 @@ server-side, and an anonymous `POST /requirements` is refused with 401.
 - **The standalone `/post-requirement` form** — see the Phase 1 section for why it was deferred
   rather than built. This is the only *planned* item not built.
 - The public feed, the paid contact path and the SEO aggregates — Phase 2 and beyond.
+- **Refining the captured criteria** (areas, BHK set, budget, amenities, category specifics) with
+  short, skippable questions after "Yes, find this for me" — planned in
+  [requirement-refinement-questions.md](requirement-refinement-questions.md). It relaxes the
+  "criteria are not editable" rule below only until the requirement has been worked.
+- **Requirements as broker leads**, planned in
+  [requirement-leads-for-brokers.md](requirement-leads-for-brokers.md). It replaces the
+  message-first contact path for consenting seekers (see the 2026-09-28 section at the top).
 
 **Closed since first writing this section** (kept here because the list was wrong for a day, and a
 stale "not yet done" is worse than none):
@@ -362,7 +391,10 @@ burns the sender domain the notification stack depends on. Rules:
   notify a thousand people.
 - **Never include the seeker's phone or email** in the notification — or anywhere in the feed. The
   entire contact path goes through the messaging flow below; the number is never a field an API
-  response carries until the seeker has replied.
+  response carries until the seeker has replied. *(2026-09-28: still true for notifications, the
+  digest and non-consenting seekers. With consent, the number is returned only by the capped,
+  audited reveal endpoint in [requirement-leads-for-brokers.md](requirement-leads-for-brokers.md).
+  Requirements that aren't lead-ready are never sent to owners or brokers at all.)*
 - **Reuse `ListingNotificationLog`'s precedent** — record what was sent, to whom, on which channel,
   so "did this lead actually get delivered" is answerable, as it now is for listings.
 
@@ -373,7 +405,10 @@ This is the cleanest fit for **pay-per-lead**, which
 names as pillar (3) and which the site does not yet monetize.
 
 **Decision (2026-09-17): charge for the lead, not for the number. Pay to *message*; reveal the
-phone only when the seeker replies.**
+phone only when the seeker replies.** *Superseded for consenting seekers on 2026-09-28: see the
+section at the top and [requirement-leads-for-brokers.md](requirement-leads-for-brokers.md). The
+reasoning below still governs seekers who did not consent, and the caps it asks for are now in
+`RequirementLeadSetting`.*
 
 The obvious design is to gate the seeker's phone behind a contact-reveal credit, exactly as
 listings do. `ContactRevealSetting` already carries the knobs (2 free reveals per user, packs of 5
