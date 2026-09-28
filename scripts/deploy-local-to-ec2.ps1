@@ -4,16 +4,16 @@
   Pull latest git, build linux/arm64 images locally, scp to the app EC2, load + recreate containers.
 
 .DESCRIPTION
-  See docs/deployment.md → "Local build → copy images to app EC2" and "Windows (amd64 → linux/arm64)".
+  See docs/deployment.md -> "Local build -> copy images to app EC2" and "Windows (amd64 -> linux/arm64)".
 
   Required env (or -params):
-    BHAVANO_EC2_HOST   — app Elastic IP / hostname
-    BHAVANO_EC2_SSH_KEY — path to .pem / private key (optional if ssh-agent has it)
+    BHAVANO_EC2_HOST   - app Elastic IP / hostname
+    BHAVANO_EC2_SSH_KEY - path to .pem / private key (optional if ssh-agent has it)
 
   Optional:
-    BHAVANO_EC2_USER   — default ubuntu
-    BHAVANO_REMOTE_DIR — default ~/bhavano
-    BHAVANO_ENV_FILE   — default .env.prod.build (must contain NEXT_PUBLIC_* for web/admin builds)
+    BHAVANO_EC2_USER   - default ubuntu
+    BHAVANO_REMOTE_DIR - default ~/bhavano
+    BHAVANO_ENV_FILE   - default .env.prod.build (must contain NEXT_PUBLIC_* for web/admin builds)
 
 .EXAMPLE
   $env:BHAVANO_EC2_HOST = "1.2.3.4"
@@ -57,7 +57,7 @@ if (-not $BuildOnly -and [string]::IsNullOrWhiteSpace($Ec2Host)) {
   throw "Set BHAVANO_EC2_HOST or pass -Ec2Host"
 }
 if (-not (Test-Path $EnvFile)) {
-  throw "Env file '$EnvFile' not found. Copy .env.production.example → .env.prod.build and fill NEXT_PUBLIC_* (and other build args)."
+  throw "Env file '$EnvFile' not found. Copy .env.production.example -> .env.prod.build and fill NEXT_PUBLIC_* (and other build args)."
 }
 
 $sshArgs = @()
@@ -105,7 +105,7 @@ $imageRefs = @()
 foreach ($svc in $Services) {
   $localLatest = "${ProjectName}-${svc}:latest"
   $versioned = "${ProjectName}-${svc}:${TAG}"
-  # Compose may use underscore on some setups — try hyphen first, then underscore.
+  # Compose may use underscore on some setups - try hyphen first, then underscore.
   $found = docker images -q $localLatest
   if (-not $found) {
     $alt = "${ProjectName}_${svc}:latest"
@@ -117,9 +117,9 @@ foreach ($svc in $Services) {
   }
 
   $arch = docker image inspect $localLatest --format "{{.Os}}/{{.Architecture}}"
-  Write-Host "    $localLatest → $arch"
+  Write-Host "    $localLatest -> $arch"
   if ($arch -ne $Platform) {
-    throw "Image $localLatest is '$arch', expected '$Platform'. Do not deploy — fix Buildx/platform."
+    throw "Image $localLatest is '$arch', expected '$Platform'. Do not deploy - fix Buildx/platform."
   }
 
   docker tag $localLatest $versioned
@@ -128,14 +128,14 @@ foreach ($svc in $Services) {
 }
 
 if ($BuildOnly) {
-  Write-Host "==> BuildOnly set — images ready: $($imageRefs -join ', ')"
+  Write-Host "==> BuildOnly set - images ready: $($imageRefs -join ', ')"
   Remove-Item Env:DOCKER_DEFAULT_PLATFORM -ErrorAction SilentlyContinue
   exit 0
 }
 
 $tarName = "bhavano-images-$TAG.tar.gz"
 $tarPath = Join-Path $RepoRoot $tarName
-Write-Host "==> docker save → $tarName"
+Write-Host "==> docker save -> $tarName"
 # docker save to stdout + gzip via .NET / tar if gzip missing: write .tar then compress if possible
 $tarPlain = Join-Path $RepoRoot "bhavano-images-$TAG.tar"
 docker save -o $tarPlain @imageRefs
@@ -145,12 +145,13 @@ if (Get-Command gzip -ErrorAction SilentlyContinue) {
   gzip -f $tarPlain
   # gzip renames to .tar.gz
 } elseif (Get-Command wsl -ErrorAction SilentlyContinue) {
-  wsl gzip -f (wsl wslpath -a $tarPlain)
+  # wslpath gets its argument through a shell, which strips backslashes - pass D:/... instead.
+  wsl gzip -f (wsl wslpath -a ($tarPlain -replace '\\', '/'))
 } else {
   # Fallback: scp uncompressed .tar
   $tarName = "bhavano-images-$TAG.tar"
   $tarPath = $tarPlain
-  Write-Host "    (gzip not found — uploading uncompressed .tar)"
+  Write-Host "    (gzip not found - uploading uncompressed .tar)"
 }
 
 if (-not (Test-Path $tarPath) -and (Test-Path "$tarPlain.gz")) {
@@ -159,7 +160,7 @@ if (-not (Test-Path $tarPath) -and (Test-Path "$tarPlain.gz")) {
 }
 
 $remote = "${Ec2User}@${Ec2Host}"
-Write-Host "==> scp $tarName → ${remote}:~/"
+Write-Host "==> scp $tarName -> ${remote}:~/"
 scp @sshArgs $tarPath "${remote}:~/$tarName"
 if ($LASTEXITCODE -ne 0) { throw "scp failed" }
 
@@ -197,7 +198,8 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build `$SER
 
 if [[ "`$DO_MIGRATE" == "true" ]] && echo "`$SERVICES" | grep -qw bff; then
   echo '==> prisma migrate deploy'
-  docker compose -f docker-compose.prod.yml --env-file .env exec -T bff npx prisma migrate deploy
+  # </dev/null: this script arrives on stdin, and the container would otherwise swallow the rest of it.
+  docker compose -f docker-compose.prod.yml --env-file .env exec -T bff npx prisma migrate deploy </dev/null
 fi
 
 rm -f "`$TAR"

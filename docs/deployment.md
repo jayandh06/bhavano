@@ -242,6 +242,10 @@ proven — no separate check needed.
 Future app deploys (pick one):
 
 - **Build on the app EC2** (existing default): `git pull && docker compose -f docker-compose.prod.yml --env-file .env up -d --build` — see also "Building and deploying an individual service" below.
+  **Caution:** the instance has 4 GB RAM and no swap. On 2026-09-28 building `web bff admin` in one
+  command after a lockfile-affecting change (cold `pnpm install` in all three) exhausted memory: the
+  box stopped answering SSH and HTTP for ~25 minutes and the OOM killer took down the live `bff`
+  process. If you build here, build one service at a time, or prefer the local-build path below.
 - **Build on your laptop, copy images to EC2** (shorter downtime on the app box — no compile there): see **"Local build → copy images to app EC2"** below.
 - New migrations: re-run step 10 after deploying. See the sections below for schema-only updates or single-service deploys.
 
@@ -427,6 +431,17 @@ Then continue from **§3 On the app EC2: load before cutting over** below (same 
 - **WSL path vs `D:\Repo`** — if builds fail oddly under Desktop, run the same commands inside
   **WSL2 Ubuntu** from `/mnt/d/Repo/bhavano` (often more reliable for Buildx).
 - **Do not use Hyper-V-only / old Desktop without WSL2** for this — stick to WSL2 backend.
+- **`exec /bin/sh: exec format error`** in the first `RUN` step means arm64 emulation isn't
+  registered (e.g. right after Docker Desktop starts). Fix with the *amd64* installer image — if
+  `DOCKER_DEFAULT_PLATFORM=linux/arm64` is still set in your shell, clear it first or the installer
+  itself pulls as arm64 and fails the same way:
+  `docker run --privileged --rm --platform linux/amd64 tonistiigi/binfmt --install arm64`, then
+  check `docker run --rm --platform linux/arm64 alpine uname -m` prints `aarch64`.
+- **Run `scripts/deploy-local-to-ec2.ps1` via `powershell -File`, without `*>&1` / `2>&1`.** Under
+  Windows PowerShell 5.1 redirected native stderr becomes an error record, and the script's
+  `$ErrorActionPreference = "Stop"` aborts on Docker's first progress line.
+- **Check `NEXT_PUBLIC_SITE_URL` in `.env.prod.build` is `https://www.bhavano.com`** (the canonical
+  host in the app EC2's `.env`), not the apex — it's baked into canonical/SEO URLs at build time.
 
 ### 0. One-time: local Docker + prod build args
 
