@@ -11,8 +11,9 @@ Two follow-up plans, not built yet:
 - [requirement-refinement-questions.md](requirement-refinement-questions.md): after "Yes, find this
   for me", short skippable questions (areas, BHK set, budget, must-haves, category specifics) turn
   a page label like *"Rent 2 BHK Houses in Bengaluru"* into a specific need.
-- [requirement-leads-for-brokers.md](requirement-leads-for-brokers.md): a requirement that names
-  areas plus a budget or size (`isLeadReady`) becomes a lead for brokers and agents in those areas.
+- [requirement-leads-for-brokers.md](requirement-leads-for-brokers.md): a complete requirement
+  (`isLeadReady`: city, 1–5 areas, buy/rent and property type) becomes a lead for brokers and
+  agents in those areas.
   The recipients are listing holders, agents who declare service areas, and a join-to-respond
   pitch to off-platform agencies from outreach.
 

@@ -35,11 +35,18 @@ platform, is how a seeker gets an answer and how supply gets a reason to join.
 
 ## When a requirement becomes a lead
 
-A requirement is sent to brokers only when it is **lead-ready**:
+A requirement is sent to brokers only when it is **complete** (lead-ready). All four of these are
+required; without any one of them it is vague:
 
-- **at least one area** in `areaIds`, **and**
-- a budget (`minPrice`/`maxPrice`) **or** a size (`bedroomOptions`, `minAreaSqft`/`maxAreaSqft`), **and**
-- `status = open`, not expired.
+1. **a city** (`cityId`; a capture can no longer be saved without one),
+2. **1 to 5 areas** in `areaIds`,
+3. **what they want to do**: buy, rent or lease (`transactionType`; PG, furniture and interiors
+   each imply one),
+4. **the property type** (`category`: house, apartment, plot…; PG, furniture and interiors are
+   their own),
+
+and `status = open`, not expired. Budget and size make a lead better but are not required
+(changed 2026-09-28; it used to be area plus a budget or size).
 
 `isLeadReady` is computed, not stored. It lives in `packages/types` so the BFF, the admin queue and
 both apps agree on it.

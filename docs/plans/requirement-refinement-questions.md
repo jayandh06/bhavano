@@ -152,14 +152,16 @@ the label becomes *"2 BHK semi-furnished house for rent in Whitefield or Maratha
 The hard case is the seeker who closes the wizard without answering. The rule that decides what
 happens next is shared with [requirement-leads-for-brokers.md](requirement-leads-for-brokers.md):
 
-**`isLeadReady`** means at least one area in `areaIds`, plus a budget or a size (`bedroomOptions`
-or `minAreaSqft`/`maxAreaSqft`), and the row is open. It's computed, not stored, lives in
-`packages/types`, and is exposed on `RequirementDto` / `AdminRequirementDto`.
+**`isLeadReady`** (a *complete* requirement) means a city, 1 to 5 areas in `areaIds`, what they want
+to do (`transactionType`) and the property type (`category`), and the row is open. Budget and size
+are not required. It's computed, not stored, lives in `packages/types` (`missingForLead` lists the
+gaps), and is exposed on `RequirementDto` / `AdminRequirementDto`. *Changed 2026-09-28 — see
+"City first, and what makes a requirement complete" below.*
 
-A requirement that is **not** lead-ready:
+A requirement that is **not** complete:
 
 - **Honest label.** `formatRequirementLabel` appends what's missing: *"2 BHK house for rent in
-  Bengaluru — area and budget not specified"*. Nobody reading it mistakes it for a precise need.
+  Bengaluru — area not specified"*. Nobody reading it mistakes it for a precise need.
 - **One reminder**, about 3 hours after capture, by push, WhatsApp or email (whichever the capture
   confirmation used), deep-linking to the first unanswered step. Sent at most once
   (`refineNudgedAt`), and only while the row can still be edited.
@@ -288,7 +290,7 @@ six repeat owners), so the rule is **hard on what defines the property, soft on 
 
 | Criterion | Seeker alert (`notifyMatchingBuyers`) | Broker lead ([leads doc](requirement-leads-for-brokers.md)) |
 |---|---|---|
-| Lead-ready (areas + budget or size) | not required | **required**: vague rows are never sent |
+| Complete (city, areas, buy/rent, property type) | not required | **required**: vague rows are never sent |
 | City, category, transaction type | hard | hard |
 | Areas | hard: listing's area ∈ `areaIds` (empty = anywhere) | listing holders or declared service areas in any of `areaIds` |
 | BHK set (5 = gte 5) | hard | ranking: a listing that fits ranks first |
@@ -434,6 +436,33 @@ mapper, `requirementCriteriaFromBrowse` in `requirementQuestions.ts`:
   tablets included.
 - The footer is sticky, with the safe-area inset, and Skip truncates on narrow phones.
 
+**City first, and what makes a requirement complete (2026-09-28).** Replaces parts of the flow
+table and step 4 above.
+- A requirement is **complete** only with all four of: a city; 1–5 areas; what they want to do
+  (buy / rent / lease, implied by PG, furniture and interiors); and the property type (house,
+  apartment, plot…, again implied by PG, furniture and interiors). Anything less is vague. Budget
+  and size are optional. `missingForLead` returns `city | area | transaction | propertyType`, and
+  `REQUIREMENT_GAP_LABELS` / `describeRequirementGaps` give the shared wording for the label, the
+  seeker's card and the admin badge.
+- **No requirement without a city.** "All cities (India)" pages and the mobile home screen with no
+  city show "Which city?" on the capture card (popular cities as chips, plus a search), and "Yes,
+  find this for me" stays disabled until one is picked. The label is then rebuilt around the city
+  with `formatRequirementLabel`, since the page heading says "India". `POST /requirements` refuses
+  a missing or unknown `cityId` with 400 "Pick a city first" (older app builds without the picker
+  get that message on India-wide captures).
+- **Step order is now city → areas → what → property type → specifics → budget → must-haves →
+  timeline.** Where comes first because nothing else is actionable without it. The city step only
+  shows for rows saved before a city was required; `PATCH …/criteria` accepts `cityId` (set, never
+  cleared), and a new city drops the old areas unless new ones come with it.
+- **The four required steps have no Skip**, and Next stays disabled until each is answered.
+  "Anywhere in {city}" is gone (open decision 3, resolved: not allowed). `stepsToAsk` also brings
+  back a required step the search had answered if its answer has since gone (a new city empties
+  the areas). Optional steps keep Skip.
+- `PATCH …/criteria` with `complete: true` returns 400 ("Add at least one area and the property
+  type first") while anything required is missing, so `refinedAt` means complete.
+- Save-first is unchanged: the capture still saves immediately (with its city), and the questions
+  then finish it.
+
 **Not done in A or B.** The analytics events under *Measurement* aren't emitted yet.
 `RequirementMatchJob` does not yet skip rows that aren't lead-ready (Phase C), so vague rows still
 reach owners as before.
@@ -445,8 +474,8 @@ reach owners as before.
 2. **One category or several?** "2 BHK house *or* apartment" is a common Indian ask. v1 stores one
    `category`. The cheapest extension is an "Any home (house / apartment / villa)" option that maps
    to the existing `propertyType` grouping. A `categories[]` column is the full version.
-3. **Is "Anywhere in {city}" allowed at all?** The plan says yes, but demoted. Forbidding it forces
-   precision at the cost of some abandonments.
+3. **Is "Anywhere in {city}" allowed at all?** *Resolved 2026-09-28: no.* At least one area is
+   required for a requirement to be complete, so the areas step has no Skip.
 4. **Area cap**: 5 is a guess. It now also bounds how widely a lead fans out to brokers.
 5. **Amenities hard or soft in alerts**: soft for now (above).
 6. **Budget bands**: accept the table above as v1, or derive them from actual listing prices per
