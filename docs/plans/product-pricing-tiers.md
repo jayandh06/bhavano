@@ -167,9 +167,11 @@ Source: `packages/types/src/boostPricing.ts`.
 |---------|--------|
 | Boost | Implemented |
 | Bhavano Plus ₹99 / ₹549 / ₹899 | Implemented (`subscriptionPricing.ts`) |
-| Agent Pro ₹499 | Implemented (today: unlimited **publish rate**, not slot cap — migrate per slots plan) |
-| Seller pack ₹149 | Planned |
-| Slot caps (5 / 10 / 20) | Planned |
+| Agent Pro ₹499 | Implemented, with stackable 20-slot units and the monthly boost credit (`ProBoostCredit`) |
+| Seller pack ₹149 | Implemented |
+| Slot caps (5 / 10 / 20) | Implemented (`listingSlotAllowance`, `ListingSlotsService`) |
+
+Next for brokers (leads, boost credits, prepaid terms): [`broker-paid-bundles.md`](broker-paid-bundles.md).
 | Expiry reminders & weekly digest | Planned |
 
 When seller slot caps ship, update `subscriptionPricing.ts` and retire publish-rate bypass for Pro.
