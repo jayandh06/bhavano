@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import type { ListingCategory } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
-import { BffAuthError, fetchAreas, fetchCities, fetchListings } from "@/lib/bff";
+import { platformFeeFor } from "@bhavano/types/platformFeePricing";
+import { BffAuthError, fetchAreas, fetchCities, fetchListings, fetchPlanPricing } from "@/lib/bff";
+import { AD_LANDING_INTENTS, resolveAdLandingIntent } from "@/lib/adLandingCard";
+import { AdLandingCard, LISTINGS_ANCHOR_ID } from "@/components/home/AdLandingCard";
 import { sessionAccessToken, sessionHeaderName } from "@/lib/session";
 import { Header } from "@/components/home/Header";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
@@ -144,6 +147,20 @@ export default async function HomePage({
   const cityAreas = resolvedCity ? await fetchAreas(resolvedCity.id, undefined, true) : [];
   const popularSearches = await resolvePopularSearches(cityName ?? "India", resolvedCity?.id);
 
+  // Only the landing request carries the ad params, so the card goes away on the next navigation
+  // and a crawler (which never arrives with them) is always served the ordinary page.
+  const adLanding = resolveAdLandingIntent(sp);
+  // A card with no category (generic, "House/Apartment") is judged on the property tier, which
+  // is what nearly every one of those clicks posts. Pricing unavailable → just don't say "free".
+  const freeToPost = adLanding
+    ? await fetchPlanPricing().then(
+        ({ platformFee }) => {
+          return platformFeeFor(AD_LANDING_INTENTS[adLanding.intent].category ?? "house", platformFee) === 0;
+        },
+        () => false,
+      )
+    : false;
+
   const heading = buildHeading({
     // Buy/Rent leads, matching how people phrase it. Taken from the active tab via the same
     // mapping the filters use, so the heading and the filter pills always agree.
@@ -224,6 +241,9 @@ export default async function HomePage({
         <p className="sm:hidden truncate text-[13px] text-text-soft mb-5">
           Buy, rent, sell & lease — free, no brokerage, message sellers directly.
         </p>
+        {adLanding && (
+          <AdLandingCard intent={adLanding.intent} preview={adLanding.preview} freeToPost={freeToPost} />
+        )}
         {/* The All tab mixes every category together, so none of these filters mean one
           * consistent thing across a PG, a plot, and a sofa in the same grid — same reasoning as
           * BrowseListingsView's own filter row, which hides itself the same way. Picking a real
@@ -271,6 +291,8 @@ export default async function HomePage({
             }}
           />
         )}
+        {/* Below the sticky header when scrolled to from AdLandingCard's "Browse listings". */}
+        <div id={LISTINGS_ANCHOR_ID} className="scroll-mt-40" />
         {noAreaSelected ? (
           <PickAnAreaNotice />
         ) : (

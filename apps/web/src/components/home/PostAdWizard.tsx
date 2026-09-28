@@ -241,6 +241,8 @@ export function PostAdWizard({
   accessToken,
   loggedIn,
   videoEntitlement,
+  presetCategory,
+  presetTransactionType,
 }: {
   cities: City[];
   defaultCityId?: string;
@@ -248,6 +250,10 @@ export function PostAdWizard({
   accessToken?: string;
   loggedIn: boolean;
   videoEntitlement: VideoEntitlement;
+  /** From `/post?category=&transactionType=` (the homepage's AdLandingCard). Applied only when
+   * there is no saved draft to resume — an unfinished ad the seller already typed wins. */
+  presetCategory?: ListingCategory;
+  presetTransactionType?: TransactionType;
 }) {
   const { requireLogin, requireVerifiedPhone } = useAuthGate();
   const [listingId] = useState(() => crypto.randomUUID());
@@ -344,11 +350,31 @@ export function PostAdWizard({
   const draftSavingRef = useRef(false);
   const userStartedRef = useRef(false);
   const [draftRestored, setDraftRestored] = useState(false);
+  const presetRef = useRef({ category: presetCategory, transactionType: presetTransactionType });
 
   useEffect(() => {
     let cancelled = false;
     void loadPostAdDraft().then((saved) => {
       if (cancelled) return;
+      const preset = presetRef.current;
+      if (!saved && preset.category && !userStartedRef.current) {
+        // Same state selectCategory/selectTransactionType would leave behind; an invalid pair
+        // (lease on a plot) falls back to asking, as a hand-picked category would.
+        const presetCategory = preset.category;
+        const postable = POSTABLE_TRANSACTION_TYPES[presetCategory];
+        const presetType =
+          preset.transactionType && postable.includes(preset.transactionType)
+            ? preset.transactionType
+            : postable.length === 1
+              ? postable[0]
+              : null;
+        setCategory(presetCategory);
+        setAttributes(defaultAttributesFor(presetCategory));
+        setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
+        setTransactionType(presetType);
+        setPriceQualifier(presetType ? (getPriceQualifierOptions(presetCategory, presetType)[0]?.value ?? "") : "");
+        setStep(presetType ? "details" : "transactionType");
+      }
       if (saved && !userStartedRef.current) {
         const { draft } = saved;
         const savedCity = draft.city;

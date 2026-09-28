@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { fetchAreas, fetchProfile } from "@/lib/bff";
+import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
 import { resolveDefaultCity } from "@/lib/defaultCity";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { isAccessTokenValid } from "@/lib/session";
@@ -17,6 +18,11 @@ export default async function PostAdPage({
 }) {
   const sp = await searchParams;
   const citySlug = typeof sp.city === "string" ? sp.city : undefined;
+  // Set by AdLandingCard ("Post my villa" → villa, sell). Anything unrecognised is ignored and the
+  // wizard opens at the category step as usual.
+  const presetCategory = typeof sp.category === "string" && isListingCategory(sp.category) ? sp.category : undefined;
+  const presetTransactionType =
+    typeof sp.transactionType === "string" && isTransactionType(sp.transactionType) ? sp.transactionType : undefined;
   // `resolvePageCityContext`'s `allCities` is fetched with `all=true` — not just the popular
   // subset — so a previously-selected tier-2 city is still a real option in the wizard's
   // dropdown, not just a dangling id with no matching entry.
@@ -79,15 +85,18 @@ export default async function PostAdPage({
           * Keyed on the resolved default city: a client-side nav to /post with a different
           * ?city= is a search-param-only change on the same route, so React would otherwise
           * reuse the already-mounted wizard instance and its stale `useState(defaultCityId)`
-          * init instead of picking up the new default. */}
+          * init instead of picking up the new default. The category preset is in the key for
+          * the same reason. */}
         <div>
           <PostAdWizard
-            key={city?.id ?? "none"}
+            key={`${city?.id ?? "none"}:${presetCategory ?? ""}:${presetTransactionType ?? ""}`}
             cities={allCities}
             defaultCityId={city?.id}
             accessToken={accessToken}
             loggedIn={loggedIn}
             videoEntitlement={videoEntitlement}
+            presetCategory={presetCategory}
+            presetTransactionType={presetTransactionType}
           />
         </div>
       </div>
