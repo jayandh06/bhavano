@@ -57,6 +57,7 @@ import {
   photoTooLargeMessage,
   videoTooLargeMessage,
 } from "@/lib/uploadLimits";
+import { shrinkPhoto } from "@/lib/shrinkPhoto";
 import {
   clearPostAdDraft,
   loadPostAdDraft,
@@ -255,6 +256,7 @@ export function PostAdWizard({
     Record<string, string | string[]>
   >({});
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
+  const [preparingPhotos, setPreparingPhotos] = useState(false);
   const [videos, setVideos] = useState<SelectedVideo[]>([]);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -557,7 +559,7 @@ export function PostAdWizard({
     setStep("details");
   }
 
-  function onPhotosSelected(files: FileList | null) {
+  async function onPhotosSelected(files: FileList | null) {
     if (!files || files.length === 0) return;
     setError(null);
 
@@ -569,21 +571,24 @@ export function PostAdWizard({
       );
     }
 
+    setPreparingPhotos(true);
     const accepted: SelectedPhoto[] = [];
-    for (const file of candidates) {
-      if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+    for (const picked of candidates) {
+      if (!ALLOWED_PHOTO_TYPES.includes(picked.type)) {
         setError(
-          `"${file.name}" isn't a supported format — use JPEG, PNG, WebP, or GIF.`,
+          `"${picked.name}" isn't a supported format — use JPEG, PNG, WebP, or GIF.`,
         );
         continue;
       }
+      const file = await shrinkPhoto(picked);
       if (file.size > MAX_PHOTO_BYTES) {
-        setError(photoTooLargeMessage(file.name));
+        setError(photoTooLargeMessage(picked.name));
         continue;
       }
       accepted.push({ file, previewUrl: URL.createObjectURL(file) });
     }
-    setPhotos((prev) => [...prev, ...accepted]);
+    setPreparingPhotos(false);
+    setPhotos((prev) => [...prev, ...accepted].slice(0, MAX_PHOTOS));
   }
 
   function onRemovePhoto(index: number) {
@@ -1257,10 +1262,10 @@ export function PostAdWizard({
               // ad with no photo is the one nobody opens.
               <UploadZone
                 accept="image/jpeg,image/png,image/webp,image/gif"
-                onFiles={onPhotosSelected}
+                onFiles={(files) => void onPhotosSelected(files)}
                 icon="camera"
-                label={photos.length > 0 ? "Add more photos" : "Add photos"}
-                hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${MAX_PHOTOS - photos.length} more allowed`}
+                label={preparingPhotos ? "Preparing photos…" : photos.length > 0 ? "Add more photos" : "Add photos"}
+                hint={`JPG, PNG or WebP · larger photos are resized to fit ${PHOTO_SIZE_LABEL} · ${MAX_PHOTOS - photos.length} more allowed`}
               />
             )}
             {photos.length > 0 && (
