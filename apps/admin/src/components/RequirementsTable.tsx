@@ -3,6 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { AdminRequirementDto, RequirementStatus } from "@bhavano/types";
+import { areaUnitShortLabel, convertArea } from "@bhavano/types/areaUnit";
+import { bedroomLabel } from "@bhavano/types/bedrooms";
+import {
+  REQUIREMENT_ATTRIBUTE_QUESTIONS,
+  REQUIREMENT_CATEGORY_LABELS,
+  amenityOptionsFor,
+  formatCompactInr,
+  missingForLead,
+} from "@bhavano/types/requirementQuestions";
 import { updateRequirementAction } from "@/app/actions/admin";
 import { formatDateTime } from "@/lib/formatDateTime";
 
@@ -17,6 +26,44 @@ const STATUS_COLORS: Record<RequirementStatus, string> = {
   working: "var(--gold)",
   closed: "var(--muted)",
 };
+
+function budgetText(item: AdminRequirementDto): string | null {
+  if (item.minPrice && item.maxPrice) return `${formatCompactInr(item.minPrice)}–${formatCompactInr(item.maxPrice)}`;
+  if (item.maxPrice) return `up to ${formatCompactInr(item.maxPrice)}`;
+  if (item.minPrice) return `from ${formatCompactInr(item.minPrice)}`;
+  return null;
+}
+
+function sizeText(item: AdminRequirementDto): string | null {
+  if (item.minAreaSqft === undefined && item.maxAreaSqft === undefined) return null;
+  const unit = item.areaUnit ?? "sqft";
+  const fmt = (sqft: number) => String(Math.round(convertArea(sqft, "sqft", unit) * 100) / 100);
+  const range =
+    item.minAreaSqft !== undefined && item.maxAreaSqft !== undefined
+      ? `${fmt(item.minAreaSqft)}–${fmt(item.maxAreaSqft)}`
+      : item.maxAreaSqft !== undefined
+        ? `up to ${fmt(item.maxAreaSqft)}`
+        : `from ${fmt(item.minAreaSqft!)}`;
+  return `${range} ${areaUnitShortLabel(unit, 2)}`;
+}
+
+/** Attribute answers as "Furnishing: Semi-furnished, Furnished" lines, with option labels
+ * rather than stored values. */
+function attributeLines(item: AdminRequirementDto): string[] {
+  if (!item.category) return [];
+  const questions = [
+    ...REQUIREMENT_ATTRIBUTE_QUESTIONS[item.category],
+    { key: "amenities", label: "Must-haves", options: amenityOptionsFor(item.category) },
+  ];
+  return questions
+    .map((q) => {
+      const values = item.attributes[q.key];
+      if (!values?.length) return null;
+      const labels = values.map((v) => q.options.find((o) => o.value === v)?.label ?? v);
+      return `${q.label}: ${labels.join(", ")}`;
+    })
+    .filter((line): line is string => line !== null);
+}
 
 /** The unmet-demand queue — and, at current volume, the matching engine itself.
  *
@@ -60,10 +107,13 @@ function RequirementCard({ item }: { item: AdminRequirementDto }) {
     else setError(result.error);
   }
 
-  const budget =
-    item.minPrice !== undefined || item.maxPrice !== undefined
-      ? `₹${(item.minPrice ?? 0).toLocaleString("en-IN")} – ${item.maxPrice ? `₹${item.maxPrice.toLocaleString("en-IN")}` : "any"}`
-      : null;
+  const missing = missingForLead(item);
+  const attributes = attributeLines(item);
+  const refinement = item.refinedAt
+    ? "refined"
+    : item.originalSearchLabel
+      ? "partly refined — stopped before the end"
+      : "not refined";
 
   return (
     <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
@@ -72,15 +122,27 @@ function RequirementCard({ item }: { item: AdminRequirementDto }) {
           <div style={{ fontWeight: 700, fontSize: 14.5 }}>{item.searchLabel}</div>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
             {[
-              item.areaName ?? item.cityName,
-              item.bedrooms ? `${item.bedrooms} BHK` : null,
-              budget,
-              item.category,
+              item.areaNames.length ? item.areaNames.join(", ") : item.cityName,
+              item.bedroomOptions.length ? `${item.bedroomOptions.map(bedroomLabel).join(" or ")} BHK` : null,
+              sizeText(item),
+              budgetText(item),
+              item.category ? REQUIREMENT_CATEGORY_LABELS[item.category] : null,
               item.transactionType,
             ]
               .filter(Boolean)
               .join(" · ")}
           </div>
+          {attributes.length > 0 && (
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{attributes.join(" · ")}</div>
+          )}
+          {/* The capture's original page heading, once the seeker's answers have rewritten the
+              label — what they first searched is often the best clue to what they'll settle for. */}
+          {item.originalSearchLabel && item.originalSearchLabel !== item.searchLabel && (
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+              Originally searched: <em>{item.originalSearchLabel}</em>
+            </div>
+          )}
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Details: {refinement}</div>
         </div>
         <div style={{ textAlign: "right", fontSize: 12 }}>
           <span
@@ -96,6 +158,25 @@ function RequirementCard({ item }: { item: AdminRequirementDto }) {
           >
             {STATUS_LABELS[status]}
           </span>
+          {/* Not lead-ready: too vague to hand to an owner or agent. The call to make first is to
+              the seeker, to ask which areas and what budget. */}
+          {status === "open" && !item.isLeadReady && (
+            <span
+              title={`Missing: ${missing.map((m) => (m === "area" ? "areas" : "budget or size")).join(", ")}`}
+              style={{
+                display: "inline-block",
+                marginLeft: 6,
+                fontWeight: 700,
+                fontSize: 11,
+                color: "var(--gold)",
+                border: "1px solid var(--gold)",
+                borderRadius: 6,
+                padding: "2px 8px",
+              }}
+            >
+              Needs details
+            </span>
+          )}
           <div style={{ color: "var(--muted)", marginTop: 6 }}>{formatDateTime(item.createdAt)}</div>
         </div>
       </div>
