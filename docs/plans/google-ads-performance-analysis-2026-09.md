@@ -5,7 +5,9 @@
 The analysis used read-only GAQL (customer 4214066478, INR) and read-only production database
 queries. On the owner's go-ahead, recommendations **1, 3 and 4** were then applied — see
 [Changes applied](#changes-applied-2026-09-28) for exactly what changed and how to roll it back.
-Recommendations 2, 5, 6 and 7 (product changes and experiments) are still proposals.
+Recommendations 2, 5, 6 and 7 (product changes and experiments) are still proposals. Later the
+same day the Other-Metro campaigns were narrowed to 5 cities — see
+[Narrow to 11 cities?](#narrow-to-11-cities-question-asked-2026-09-28-evening).
 
 Related: [`capture-google-ads-click-attribution.md`](capture-google-ads-click-attribution.md),
 [`server-side-google-ads-conversion-upload.md`](server-side-google-ads-conversion-upload.md),
@@ -264,6 +266,64 @@ Other-Metro (Kolkata, Jaipur, Lucknow, …), so Metro and Other-Metro cannot be 
   CPA — a poster in a city with no seekers churns.
 - Avoid changing structure again this week: the conversion goal was just changed and Smart Bidding
   is re-learning.
+
+### Narrow to 11 cities? (question asked 2026-09-28, evening)
+
+Data: Google Ads `user_location_view` for 2026-09-10 → 09-28, and production listings and
+enquiries (inquiry conversations plus contact reveals) for the same window.
+
+**The 11 cities were picked from the data, not from a "metro" label:** Bengaluru, Delhi NCR
+(including Gurugram, Noida, Ghaziabad, Faridabad), Hyderabad, Pune, Chennai, Mumbai (including
+Navi Mumbai and Thane), Kolkata, Ahmedabad, Jaipur, Lucknow and Coimbatore. Surat, Kochi and
+Chandigarh are flagged popular but have 0 live listings and 0 conversions from ₹190–300 each.
+
+| | Spend | Clicks | Conversions | CPA | Live listings | Enquiries |
+|---|---|---|---|---|---|---|
+| These 11 cities | ₹33.5k | 1,007 | 321 | ₹104 | 408 (92%) | about 33 of 35 |
+| The other ~26 served cities plus spillover | ₹17.6k (34%) | 593 | 127 | ₹139 | 33 across 26 cities | 2 |
+
+Post-split check (09-26 → 09-28): Metro campaigns ₹8.1k for 60 conversions (₹135), Other-Metro
+₹3.7k for 32 (₹116). Other-Metro looks cheaper, but its targeting includes Kolkata, Ahmedabad,
+Jaipur, Lucknow and Coimbatore, which is where its conversions most likely come from. It is also
+only 3 days of data.
+
+**Recommendation: narrow the ads to these 11.** Keep the rest of the site open.
+- A third of spend goes to cities that convert 34% more expensively. Those cities hold 7% of
+  listings, about 1 per city, and received 2 enquiries in 18 days. An owner there posts and hears
+  nothing, which is the churn risk noted above.
+- Moving the ₹17.6k per 18 days (about ₹29k a month) into the 11 would buy roughly 40% more
+  conversions there at today's CPA, though CPA usually rises somewhat as budget grows. That gives
+  denser cities, which every free channel in `growth-beyond-google-ads.md` also depends on.
+- The least disruptive way to do it: change the Other-Metro campaigns' location targeting to
+  Kolkata, Ahmedabad, Jaipur, Lucknow and Coimbatore, keeping campaigns and budgets as they are.
+  Set location options to "people in" on all campaigns. Structure (merging into Metro) can be
+  revisited after about 2 weeks, once Smart Bidding has re-learned.
+- **Site:** leave `City.isServed` and posting unchanged for now. The 33 listings in other cities
+  stay live, and those cities can be re-added to ads once one has organic depth (e.g. 30+ live
+  listings).
+- **Caveats:**
+  - 18 days of data;
+  - several small cities have tiny samples (Mysuru at ₹31 CPA on 9 clicks, Vadodara at ₹63);
+  - enquiries are low even in the 11: about 33 on 408 listings in 18 days. Demand, not supply,
+    is the bigger bottleneck everywhere. Narrowing helps by concentrating on the same 11 cities,
+    but doesn't fix demand on its own.
+
+**Applied 2026-09-28 (evening), on the owner's go-ahead,** via
+[`ads_narrow_other_metro_cities.py`](../../ads_narrow_other_metro_cities.py) after a validate-only
+dry run, then re-run in dry-run mode to confirm every campaign reports "already narrowed".
+- All 4 Other-Metro campaigns: 26 location criteria removed, 5 kept (Kolkata, Ahmedabad, Jaipur,
+  Lucknow, Coimbatore). Budgets (₹300 each), ad groups, keywords and ads are unchanged. Metro
+  campaigns are untouched.
+- "People in" needed no change: all 8 campaigns were already set to presence / presence
+  (positive and negative geo type), so no ads served to people only "interested in" a city.
+- Removed cities: Amritsar, Bhopal, Bhubaneswar, Chandigarh, Dehradun, Guwahati, Indore, Kanpur,
+  Kochi, Kozhikode, Ludhiana, Madurai, Mangaluru, Mysuru, Nagpur, Nashik, Panaji, Patna, Raipur,
+  Rajkot, Ranchi, Surat, Thiruvananthapuram, Vadodara, Vijayawada, Visakhapatnam.
+- **What to watch:** Other-Metro budgets now concentrate on 5 cities. Check after ~7 days whether
+  they still spend their ₹300/day; if they underspend, move the unused budget to the Metro
+  campaigns (which were ₹135 CPA in the post-split window) rather than re-widening.
+- **Rollback:** `python ads_narrow_other_metro_cities.py --restore` re-adds the 26 geo targets
+  (ids listed in `REMOVED_GEO_IDS`) to every Other-Metro campaign.
 
 ## Ad group and ad copy review (2026-09-28) — proposals, nothing applied
 
