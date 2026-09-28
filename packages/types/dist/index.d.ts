@@ -49,6 +49,9 @@ export interface City {
     lat: number;
     lng: number;
     isPopular: boolean;
+    /** One of the 37 markets Bhavano serves; only these are listed in the city pickers. Other
+     * cities exist only for listings already filed under them. */
+    isServed?: boolean;
 }
 export interface Area {
     id: string;

@@ -111,6 +111,7 @@ describe('LocationsService.reverseGeocodeGoogle — city stays the curated marke
 
   const coimbatore = {
     id: 'coimbatore-1',
+    isServed: true,
     name: 'Coimbatore',
     state: 'Tamil Nadu',
     source: 'curated',
@@ -121,6 +122,7 @@ describe('LocationsService.reverseGeocodeGoogle — city stays the curated marke
 
   const delhiNcr = {
     id: 'delhi-ncr',
+    isServed: true,
     name: 'Delhi NCR',
     state: 'Delhi',
     source: 'curated',
@@ -272,6 +274,7 @@ describe('LocationsService.reverseGeocodeGoogle — a district label must not ov
 
   const chennai = {
     id: 'chennai',
+    isServed: true,
     name: 'Chennai',
     state: 'Tamil Nadu',
     source: 'curated',
@@ -355,7 +358,7 @@ describe('LocationsService.reverseGeocodeGoogle — a district label must not ov
     expect(result.cityId).toBe('kanchipuram');
   });
 
-  it('keeps trusting a town-level name even if its city is far from the pin', async () => {
+  it('files a census town name inside a served city reach under the served city', async () => {
     const { service } = serviceWithKancheepuramAlias();
     mockGeocodeFetch([
       { types: ['sublocality', 'sublocality_level_1'], long_name: 'Some Ward' },
@@ -365,6 +368,81 @@ describe('LocationsService.reverseGeocodeGoogle — a district label must not ov
 
     const result = await service.reverseGeocodeGoogle(12.9643304, 80.1598017);
 
+    expect(result.cityId).toBe('chennai');
+  });
+
+  it('keeps trusting a census town name beyond every served reach', async () => {
+    const { service } = serviceWithKancheepuramAlias();
+    mockGeocodeFetch([
+      { types: ['sublocality', 'sublocality_level_1'], long_name: 'Some Ward' },
+      { types: ['locality'], long_name: 'Kancheepuram' },
+      { types: ['administrative_area_level_1'], long_name: 'Tamil Nadu' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(12.6, 79.73);
+
     expect(result.cityId).toBe('kanchipuram');
+  });
+});
+
+describe('LocationsService.reverseGeocodeGoogle — towns within a served city reach fold into it', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  const hyderabad = { id: 'hyderabad', isServed: true, name: 'Hyderabad', state: 'Telangana', source: 'curated', lat: 17.385, lng: 78.4867, catchmentKm: 75 };
+  const bhongir = { id: 'bhongir', isServed: false, name: 'Bhongir', state: 'Telangana', source: 'curated', lat: 17.51544, lng: 78.88563, catchmentKm: 25 };
+  const nalgonda = { id: 'nalgonda', isServed: false, name: 'Nalgonda', state: 'Telangana', source: 'curated', lat: 17.057358, lng: 79.268649, catchmentKm: 25 };
+
+  function telanganaService() {
+    return makeService({
+      city: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([hyderabad, bhongir, nalgonda]),
+        create: jest.fn(),
+      },
+    });
+  }
+
+  it('files Yadagirigutta (~54 km out) under Hyderabad with Yadagirigutta as the area', async () => {
+    const { service, prisma } = telanganaService();
+    mockGeocodeFetch([
+      { types: ['locality'], long_name: 'Yadagirigutta' },
+      { types: ['administrative_area_level_3'], long_name: 'Yadagirigutta' },
+      { types: ['administrative_area_level_2'], long_name: 'Yadadri Bhuvanagiri' },
+      { types: ['administrative_area_level_1'], long_name: 'Telangana' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(17.587, 78.946);
+
+    expect(result.cityId).toBe('hyderabad');
+    expect(prisma.area.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'Yadagirigutta', cityId: 'hyderabad' }) }),
+    );
+  });
+
+  it('does not let a census city named by Google win a pin inside Hyderabad reach', async () => {
+    const { service } = telanganaService();
+    mockGeocodeFetch([
+      { types: ['locality'], long_name: 'Bhongir' },
+      { types: ['administrative_area_level_2'], long_name: 'Yadadri Bhuvanagiri' },
+      { types: ['administrative_area_level_1'], long_name: 'Telangana' },
+    ]);
+
+    const result = await service.reverseGeocodeGoogle(17.515, 78.886);
+
+    expect(result.cityId).toBe('hyderabad');
+  });
+
+  it('keeps a pin well beyond every reach on its own town (Parvedula → Nalgonda)', async () => {
+    const { service } = telanganaService();
+    mockGeocodeFetch([
+      { types: ['locality'], long_name: 'Parvedula' },
+      { types: ['administrative_area_level_3'], long_name: 'Nalgonda' },
+      { types: ['administrative_area_level_1'], long_name: 'Telangana' },
+    ]);
+
+    // The pin of the listing that prompted this: ~113 km from Hyderabad, ~45 km from Nalgonda.
+    const result = await service.reverseGeocodeGoogle(16.6538069, 79.2225576);
+
+    expect(result.cityId).toBe('nalgonda');
   });
 });

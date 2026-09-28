@@ -470,12 +470,11 @@ const areasByCity: Record<string, { name: string; lat: number; lng: number }[]> 
   ],
 };
 
-/** 25 km covers a city the size of Coimbatore. The listed metros are wider because their seeded
- * areas sit past 25 km from the centroid (Noida is ~28 km from the Delhi NCR point). */
-function catchmentKmFor(name: string): number {
-  if (name === 'Delhi NCR') return 50;
-  if (['Bengaluru', 'Mumbai', 'Chennai', 'Hyderabad', 'Kolkata', 'Pune', 'Ahmedabad'].includes(name)) return 35;
-  return 25;
+/** Every city here is served (targeted by the Google Ads campaigns), and its catchment is its
+ * reach: the towns around it fold into it. See docs/plans/serve-only-ad-targeted-cities.md. */
+function catchmentKmFor(name: string, isPopular: boolean): number {
+  if (name === 'Delhi NCR') return 90;
+  return isPopular ? 75 : 40;
 }
 
 /** Upserts every city and its curated areas — safe to run repeatedly anywhere, including
@@ -488,7 +487,7 @@ export async function seedCities(prisma: PrismaClient): Promise<{
 }> {
   const cityRecords = new Map<string, string>();
   for (const c of cities) {
-    const data = { ...c, catchmentKm: catchmentKmFor(c.name) };
+    const data = { ...c, catchmentKm: catchmentKmFor(c.name, c.isPopular), isServed: true };
     const city = await prisma.city.upsert({
       where: { name_state: { name: c.name, state: c.state } },
       update: data,

@@ -124,6 +124,7 @@ function toDto(city: City): CityDto {
     lat: city.lat,
     lng: city.lng,
     isPopular: city.isPopular,
+    isServed: city.isServed,
   };
 }
 
@@ -297,12 +298,15 @@ export class LocationsService {
    * server-side, IP-restricted API key — never call Google's Geocoding API directly from a
    * browser/app with this key.
    *
-   * City is a curated market, never a Google locality string. Resolution order (first hit wins):
-   * a LocalityAlias, a curated city name read from every geocode result (after stripping a
-   * trailing district/taluk/direction qualifier), an existing Area's parent city, then the
-   * nearest curated city whose catchmentKm contains the pin. Outside every catchment, `cityId`
-   * stays unset and nothing is created — the seller picks a city, and the local place is saved
-   * as an area under it. See docs/plans/canonical-city-catchment.md. */
+   * City is a curated market, never a Google locality string. Served cities (the 37 the ads
+   * target) are tried first — alias, town name, known area, then reach — so a town within a served
+   * city's reach is an area of it (Yadagirigutta → Hyderabad). Only a pin beyond every reach falls
+   * to the census towns: a LocalityAlias, a curated city name read from every geocode result
+   * (after stripping a trailing district/taluk/direction qualifier), an existing Area's parent
+   * city, then the nearest curated city whose catchmentKm contains the pin. Outside every
+   * catchment, `cityId` stays unset and nothing is created — the seller picks a city, and the
+   * local place is saved as an area under it. See docs/plans/serve-only-ad-targeted-cities.md
+   * and docs/plans/canonical-city-catchment.md. */
   async reverseGeocodeGoogle(lat: number, lng: number): Promise<ReverseGeocodeResultDto> {
     const apiKey = this.config.get<string>('GOOGLE_MAPS_SERVER_KEY');
     if (!apiKey) {
@@ -398,14 +402,34 @@ export class LocationsService {
       return null;
     };
 
-    // 1. Admin-patched alias for the town/locality names, including spelling pairs and Delhi NCR
-    // child names.
-    let city: City | null = (await findAlias(townNames))?.city ?? null;
+    const townAlias = (await findAlias(townNames))?.city ?? null;
+    let knownAreas: (Area & { city: City })[] | null = null;
+    const findKnownAreas = async () =>
+      (knownAreas ??= resolvedLocality
+        ? await this.prisma.area.findMany({
+            where: { name: { equals: resolvedLocality, mode: 'insensitive' }, city: { source: 'curated' } },
+            include: { city: true },
+          })
+        : []);
 
+    // Served first: an alias or town name for a served city, a known area under one, or a pin
+    // within one's reach. A census town inside that reach (Bhongir, Meerut) never wins the pin.
+    let city: City | null = townAlias?.isServed ? townAlias : null;
     let curated: City[] = [];
     if (!city) {
       curated = await this.prisma.city.findMany({ where: { source: 'curated' } });
+      const served = curated.filter((candidate) => candidate.isServed);
+      city =
+        matchCuratedName(served, townNames) ??
+        this.cityFromKnownAreas((await findKnownAreas()).filter((area) => area.city.isServed), lat, lng) ??
+        this.cityWithinCatchment(served, lat, lng);
+    }
 
+    // Beyond every served city's reach, the town keeps its own city.
+    // 1. Admin-patched alias for the town/locality names, including spelling pairs.
+    if (!city) city = townAlias;
+
+    if (!city) {
       // 2. Curated city name from a town-level component — "Coimbatore North" matches Coimbatore.
       // A user-submitted city with the ward's name is not in this list, so it cannot keep the pin.
       city = matchCuratedName(curated, townNames);
@@ -420,13 +444,7 @@ export class LocationsService {
     }
 
     // 3. A place name that is already an Area under a curated city inherits that city.
-    if (!city && resolvedLocality) {
-      const knownAreas = await this.prisma.area.findMany({
-        where: { name: { equals: resolvedLocality, mode: 'insensitive' }, city: { source: 'curated' } },
-        include: { city: true },
-      });
-      city = this.cityFromKnownAreas(knownAreas, lat, lng);
-    }
+    if (!city && resolvedLocality) city = this.cityFromKnownAreas(await findKnownAreas(), lat, lng);
 
     // 4. Pin inside a curated city's catchment. The local place stays the area.
     if (!city) city = this.cityWithinCatchment(curated, lat, lng);

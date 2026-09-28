@@ -199,9 +199,13 @@ model City {
   source    String    @default("curated")
   /// How far from this city's centroid a dropped pin still counts as this city, in kilometres.
   /// A ward Google labels as its own locality stays an area of this city when the pin is inside
-  /// the circle. Wider for metros whose seeded areas sit well past 25 km. See
-  /// docs/plans/canonical-city-catchment.md.
+  /// the circle. For a served city this is its reach: 75 km for the popular metros (Delhi NCR 90),
+  /// 40 km for the rest. See docs/plans/serve-only-ad-targeted-cities.md.
   catchmentKm Int     @default(25)
+  /// One of the 37 markets the Google Ads campaigns target. A pin within a served city's reach is
+  /// filed under it before any other city is considered, and only served cities are listed in the
+  /// city pickers. Census towns keep their rows for listings already filed under them.
+  isServed  Boolean   @default(false)
   listings  Listing[]
   areas     Area[]
   users     User[]
