@@ -136,6 +136,7 @@ export function HomeSheetsProvider({
   const [showToast, setShowToast] = useState(false);
 
   const [locationQuery, setLocationQuery] = useState("");
+  const latestLocationQuery = useRef("");
   const [locationResults, setLocationResults] = useState<City[]>(popularCities);
   const [allCities, setAllCities] = useState<City[] | null>(null);
   const [loadingAllCities, setLoadingAllCities] = useState(false);
@@ -227,6 +228,7 @@ export function HomeSheetsProvider({
   }, [popularCities]);
 
   const setCity = useCallback((next: City) => {
+    Keyboard.dismiss();
     setCityState(next);
     // Fire-and-forget: failing to remember the choice is not worth blocking the sheet closing,
     // and the next launch simply falls back to the IP guess.
@@ -246,6 +248,7 @@ export function HomeSheetsProvider({
 
   const openLocationPicker = useCallback(() => {
     setLocationQuery("");
+    latestLocationQuery.current = "";
     setLocationResults(popularCities);
     setAllCities(null);
     locationSheetRef.current?.present();
@@ -325,11 +328,15 @@ export function HomeSheetsProvider({
 
   async function onLocationQueryChange(value: string) {
     setLocationQuery(value);
+    latestLocationQuery.current = value;
     if (!value) {
       setLocationResults(popularCities);
       return;
     }
-    setLocationResults(await fetchCities(value));
+    const results = await fetchCities(value).catch(() => []);
+    // Typing fires one request per keystroke; a slower earlier one ("Ch") must not overwrite the
+    // results for what's actually in the box now ("Chennai").
+    if (latestLocationQuery.current === value) setLocationResults(results);
   }
 
   /**
@@ -568,13 +575,25 @@ export function HomeSheetsProvider({
           occluding it, and scrolls away. `profile` stays on this context because the banner and
           the Account screen both read it. */}
 
-      <BottomSheetModal ref={locationSheetRef} snapPoints={["70%"]} backgroundStyle={{ backgroundColor: colors.surface }}>
+      {/* Same keyboard props as the login sheet below: without adjustResize the Android keyboard
+        * sat over the search results, so a typed city couldn't be reached to tap. */}
+      <BottomSheetModal
+        ref={locationSheetRef}
+        snapPoints={["70%"]}
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
+      >
         {/* Scrollable, not a plain BottomSheetView: "Show more cities" replaces a short popular
             list with every city in the country, which overflows the 70% sheet. In a plain View the
             overflow is simply unreachable. BottomSheetScrollView (rather than RN's ScrollView)
             coordinates with the sheet's own pan gesture, so dragging the list scrolls it and
             dragging past the top dismisses the sheet, instead of the two fighting each other. */}
-        <BottomSheetScrollView contentContainerStyle={sheetContentStyle}>
+        {/* "handled": with the search keyboard open, the default ("never") spent the first tap on
+          * a result just closing the keyboard, so picking a searched city looked like it did
+          * nothing. */}
+        <BottomSheetScrollView contentContainerStyle={sheetContentStyle} keyboardShouldPersistTaps="handled">
           <Text style={[styles.sheetTitle, { color: colors.text }]}>Choose your location</Text>
           <Pressable
             onPress={clearCity}
