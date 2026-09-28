@@ -1596,6 +1596,29 @@ model Requirement {
    * is the record of *when* they agreed, which a bare flag cannot answer. */
   contactConsentAt DateTime?
 
+  // The refinement questions — docs/plans/requirement-refinement-questions.md. `areaId` and
+  // `bedrooms` above stay populated (first area, smallest BHK) for readers that only understand
+  // one of each.
+  /** Every area named, in the order chosen, at most MAX_REQUIREMENT_AREAS. Empty = the whole city. */
+  areaIds             String[]  @default([])
+  /** BHK buckets, 5 = "5+" — the browse filter's convention. */
+  bedroomOptions      Int[]     @default([])
+  /** Plot / commercial / storage size, normalized to sqft so it can be compared. */
+  minAreaSqft         Int?
+  maxAreaSqft         Int?
+  /** The unit the size was entered in — display only. */
+  areaUnit            String?
+  /** Category-specific wants, keys and values from REQUIREMENT_ATTRIBUTE_QUESTIONS (every value a
+   * list read as "any of"), plus `amenities`. Validated per category on every write. */
+  attributes          Json?
+  /** The page label at capture, before refinement rewrote `searchLabel` — "what they searched" vs
+   * "what they actually wanted". */
+  originalSearchLabel String?
+  /** When the seeker reached the review step. Null with answers saved = partly refined. */
+  refinedAt           DateTime?
+  /** The one "finish your requirement" reminder, for rows still not lead-ready after capture. */
+  refineNudgedAt      DateTime?
+
   @@index([status, createdAt])
   @@index([expiresAt])
   @@index([cityId, areaId])

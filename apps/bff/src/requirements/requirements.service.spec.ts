@@ -1,7 +1,10 @@
+import { Prisma } from '@prisma/client';
 import { RequirementsService } from './requirements.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { SavedSearchesService } from '../saved-searches/saved-searches.service';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** The behaviour worth pinning: the capture is the part that must never be lost. The alert and
  * the confirmation are both best-effort, and a failure in either has to leave the requirement
@@ -16,9 +19,12 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
       transactionType: data.transactionType ?? null,
       cityId: data.cityId ?? null,
       areaId: data.areaId ?? null,
+      areaIds: data.areaIds ?? [],
       minPrice: data.minPrice ?? null,
       maxPrice: data.maxPrice ?? null,
       bedrooms: data.bedrooms ?? null,
+      bedroomOptions: data.bedroomOptions ?? [],
+      attributes: data.attributes ?? null,
       landingPath: data.landingPath ?? null,
       savedSearchId: data.savedSearchId ?? null,
       contactConsentAt: data.contactConsentAt ?? null,
@@ -34,6 +40,15 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
   );
   const requirementFindFirst = jest.fn();
   const requirementUpdate = jest.fn();
+  const savedSearchUpdate = jest.fn().mockResolvedValue({});
+  // Areas a1..a9 are in city c1; anything else belongs to another city.
+  const areaFindMany = jest.fn().mockImplementation(({ where }: { where: { id: { in: string[] }; cityId?: string } }) =>
+    Promise.resolve(
+      where.id.in
+        .filter((id) => /^a\d$/.test(id) && (!where.cityId || where.cityId === 'c1'))
+        .map((id) => ({ id, name: `Area ${id}` })),
+    ),
+  );
   const prisma = {
     requirement: {
       create: requirementCreate,
@@ -41,6 +56,8 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
       findFirst: requirementFindFirst,
       update: requirementUpdate,
     },
+    area: { findMany: areaFindMany },
+    savedSearch: { update: savedSearchUpdate },
     user: { findUnique: jest.fn().mockResolvedValue({ id: 'u1', name: 'A', email: 'a@b.c', phone: null }) },
   } as unknown as PrismaService;
 
@@ -61,6 +78,7 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
     requirementFindFirst,
     requirementUpdate,
     savedSearchCreate,
+    savedSearchUpdate,
     notifyRequirementCaptured,
     savedSearchesService,
   };
@@ -151,9 +169,178 @@ describe('RequirementsService.create', () => {
     await expect(service.create('u1', dto)).resolves.toMatchObject({ id: 'r1' });
     expect(requirementCreate).toHaveBeenCalled();
   });
+
+  it('keeps every area and the whole BHK set the search had, instead of collapsing them', async () => {
+    const { service, requirementCreate, savedSearchCreate } = make();
+
+    const result = await service.create('u1', {
+      ...dto,
+      areaId: undefined,
+      bedrooms: undefined,
+      areaIds: ['a1', 'a2', 'elsewhere'],
+      bedroomOptions: [3, 2],
+      attributes: { furnished: ['semi'], bogus: ['x'] },
+    });
+
+    // A foreign area or an unknown facet is dropped, never a reason to fail the capture.
+    expect(requirementCreate.mock.calls[0][0].data).toMatchObject({
+      areaIds: ['a1', 'a2'],
+      areaId: 'a1',
+      bedroomOptions: [2, 3],
+      bedrooms: 2,
+      attributes: { furnished: ['semi'] },
+    });
+    // The alert holds one area and one count: several become "any" — broader, never narrower.
+    expect(savedSearchCreate.mock.calls[0][1]).toMatchObject({ areaId: undefined, bedrooms: undefined });
+    expect(result.areaNames).toEqual(['Area a1', 'Area a2']);
+    expect(result.isLeadReady).toBe(true);
+  });
 });
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+/** The refinement questions — docs/plans/requirement-refinement-questions.md. The rules worth
+ * pinning: criteria change only until someone has acted on them, every write is re-validated as
+ * a whole, and the label and the alert follow the criteria. */
+describe('RequirementsService.refineMine', () => {
+  const row = (overrides: Record<string, unknown> = {}) => ({
+    id: 'r1',
+    seekerId: 'u1',
+    searchLabel: 'Rent 2 BHK Houses in Bengaluru',
+    originalSearchLabel: null,
+    category: 'house',
+    transactionType: 'rent',
+    cityId: 'c1',
+    areaId: null,
+    areaIds: [],
+    bedrooms: 2,
+    bedroomOptions: [2],
+    minPrice: null,
+    maxPrice: null,
+    minAreaSqft: null,
+    maxAreaSqft: null,
+    areaUnit: null,
+    attributes: null,
+    note: null,
+    moveInBy: null,
+    status: 'open',
+    closedReason: null,
+    adminNote: null,
+    ownersNotifiedAt: null,
+    refinedAt: null,
+    savedSearchId: 'ss1',
+    contactConsentAt: null,
+    expiresAt: new Date(Date.now() + 10 * DAY_MS),
+    createdAt: new Date(),
+    city: { id: 'c1', name: 'Bengaluru' },
+    area: null,
+    ...overrides,
+  });
+
+  function setup(existing: Record<string, unknown> = {}) {
+    const ctx = make();
+    ctx.requirementFindFirst.mockResolvedValue(row(existing));
+    ctx.requirementUpdate.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve(row({ ...existing, ...data, attributes: data.attributes && typeof data.attributes === 'object' ? data.attributes : null })),
+    );
+    return ctx;
+  }
+
+  it.each([
+    { adminNote: 'called, sent 2 options' },
+    { ownersNotifiedAt: new Date() },
+    { status: 'working' },
+    { expiresAt: new Date(Date.now() - DAY_MS) },
+  ])('refuses once the requirement has been acted on (%p)', async (acted) => {
+    const { service, requirementUpdate } = setup(acted);
+
+    await expect(service.refineMine('u1', 'r1', { minPrice: 20000 })).rejects.toThrow(/already being worked on/);
+    expect(requirementUpdate).not.toHaveBeenCalled();
+  });
+
+  it('merges a step, rewrites the label from the criteria, and keeps the original', async () => {
+    const { service, requirementUpdate } = setup();
+
+    const result = await service.refineMine('u1', 'r1', { areaIds: ['a1', 'a2'], minPrice: 25000, maxPrice: 35000 });
+
+    const data = requirementUpdate.mock.calls[0][0].data;
+    expect(data).toMatchObject({
+      areaIds: ['a1', 'a2'],
+      areaId: 'a1',
+      bedroomOptions: [2],
+      minPrice: 25000,
+      maxPrice: 35000,
+      originalSearchLabel: 'Rent 2 BHK Houses in Bengaluru',
+      searchLabel: '2 BHK house for rent in Area a1 or Area a2, Bengaluru · ₹25k–35k/month',
+    });
+    // Not complete until they reach the review step.
+    expect(data.refinedAt).toBeUndefined();
+    expect(result.isLeadReady).toBe(true);
+  });
+
+  it('stamps refinedAt only when the seeker completes the questions', async () => {
+    const { service, requirementUpdate } = setup();
+
+    await service.refineMine('u1', 'r1', { complete: true });
+
+    expect(requirementUpdate.mock.calls[0][0].data.refinedAt).toBeInstanceOf(Date);
+  });
+
+  it('says what is missing in the label when it is still not specific enough', async () => {
+    const { service, requirementUpdate } = setup({ bedroomOptions: [], bedrooms: null });
+
+    await service.refineMine('u1', 'r1', { complete: true });
+
+    expect(requirementUpdate.mock.calls[0][0].data.searchLabel).toBe('House for rent in Bengaluru — area and budget not specified');
+  });
+
+  it('refuses areas outside the requirement’s city', async () => {
+    const { service, requirementUpdate } = setup();
+
+    await expect(service.refineMine('u1', 'r1', { areaIds: ['a1', 'elsewhere'] })).rejects.toThrow(/city/);
+    expect(requirementUpdate).not.toHaveBeenCalled();
+  });
+
+  it('refuses a transaction the category cannot have', async () => {
+    const { service } = setup();
+
+    await expect(service.refineMine('u1', 'r1', { category: 'plot' })).rejects.toThrow(/plot/);
+  });
+
+  it('refuses facets the category never declares', async () => {
+    const { service } = setup();
+
+    await expect(service.refineMine('u1', 'r1', { attributes: { sharingType: ['double'] } })).rejects.toThrow(/sharingType/);
+  });
+
+  it('clears what the new category cannot have when the category changes', async () => {
+    const { service, requirementUpdate } = setup({ attributes: { furnished: ['semi'], preferredTenantTypes: ['family'] } });
+
+    await service.refineMine('u1', 'r1', { category: 'plot', transactionType: 'sell' });
+
+    const data = requirementUpdate.mock.calls[0][0].data;
+    expect(data.bedroomOptions).toEqual([]);
+    expect(data.bedrooms).toBeNull();
+    // Stale facets are dropped quietly — only what this request sent can be "wrong".
+    expect(data.attributes).toBe(Prisma.DbNull);
+  });
+
+  it('brings the paired alert along, broadening several areas to "any"', async () => {
+    const { service, savedSearchUpdate } = setup();
+
+    await service.refineMine('u1', 'r1', { areaIds: ['a1', 'a2'], maxPrice: 30000 });
+
+    expect(savedSearchUpdate.mock.calls[0][0]).toMatchObject({
+      where: { id: 'ss1' },
+      data: { areaId: null, maxPrice: 30000, bedrooms: 2, category: 'house', transactionType: 'rent' },
+    });
+  });
+
+  it('still saves the refinement when the alert cannot follow', async () => {
+    const { service, savedSearchUpdate } = setup();
+    savedSearchUpdate.mockRejectedValueOnce(new Error('gone'));
+
+    await expect(service.refineMine('u1', 'r1', { maxPrice: 30000 })).resolves.toMatchObject({ id: 'r1' });
+  });
+});
 
 /** Phase 1's seeker-side controls. The rule worth pinning hardest is the renewal arithmetic:
  * counting 30 days from *now* instead of from the later of now/expiry would silently shorten the
@@ -166,7 +353,17 @@ describe('RequirementsService — the seeker\'s own controls', () => {
     closedReason: null,
     ...overrides,
   });
-  const updated = { id: 'r1', searchLabel: 'x', expiresAt: new Date(), createdAt: new Date(), status: 'open', city: null, area: null };
+  const updated = {
+    id: 'r1',
+    searchLabel: 'x',
+    expiresAt: new Date(),
+    createdAt: new Date(),
+    status: 'open',
+    areaIds: [],
+    bedroomOptions: [],
+    city: null,
+    area: null,
+  };
 
   it('refuses to touch a requirement belonging to someone else', async () => {
     const { service, requirementFindFirst, requirementUpdate } = make();

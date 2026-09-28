@@ -6,6 +6,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { RequirementsService } from './requirements.service';
 import { CreateRequirementDto } from './dto/create-requirement.dto';
+import { RefineRequirementDto } from './dto/refine-requirement.dto';
 import { UpdateMyRequirementDto } from './dto/update-my-requirement.dto';
 
 @Controller('requirements')
@@ -27,6 +28,22 @@ export class RequirementsController {
   @Get('mine')
   listMine(@CurrentUser() user: RequestUser): Promise<RequirementDto[]> {
     return this.requirementsService.listMine(user.id);
+  }
+
+  @Get('mine/:id')
+  getMine(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<RequirementDto> {
+    return this.requirementsService.getMine(user.id, id);
+  }
+
+  /** One step of the refinement questions asked after capture. 409 once anyone has acted on the
+   * requirement — see RequirementsService.refineMine. */
+  @Patch('mine/:id/criteria')
+  refineMine(
+    @Param('id') id: string,
+    @Body() dto: RefineRequirementDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<RequirementDto> {
+    return this.requirementsService.refineMine(user.id, id, dto);
   }
 
   @Patch('mine/:id')

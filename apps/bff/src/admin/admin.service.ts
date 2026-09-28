@@ -51,6 +51,7 @@ import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pri
 import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
+import { areaNamesFor, toRequirementDto } from '../requirements/requirements.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
@@ -1560,29 +1561,10 @@ export class AdminService {
       this.prisma.requirement.count({ where: { status: 'open' } }),
     ]);
 
+    const areaNames = await areaNamesFor(this.prisma, rows);
     return {
       items: rows.map((row) => ({
-        id: row.id,
-        searchLabel: row.searchLabel,
-        category: row.category ?? undefined,
-        transactionType: row.transactionType ?? undefined,
-        cityId: row.cityId ?? undefined,
-        cityName: row.city?.name,
-        areaId: row.areaId ?? undefined,
-        areaName: row.area?.name,
-        minPrice: row.minPrice ?? undefined,
-        maxPrice: row.maxPrice ?? undefined,
-        bedrooms: row.bedrooms ?? undefined,
-        landingPath: row.landingPath ?? undefined,
-        note: row.note ?? undefined,
-        moveInBy: row.moveInBy?.toISOString(),
-        status: row.status,
-        closedReason: row.closedReason ?? undefined,
-        expiresAt: row.expiresAt.toISOString(),
-        isExpired: row.expiresAt.getTime() <= Date.now(),
-        hasAlert: row.savedSearchId !== null,
-        contactConsent: row.contactConsentAt !== null,
-        createdAt: row.createdAt.toISOString(),
+        ...toRequirementDto(row, areaNames),
         seekerId: row.seekerId,
         seekerName: row.seeker.name,
         seekerPhone: row.seeker.phone,

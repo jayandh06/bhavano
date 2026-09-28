@@ -1,8 +1,24 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 import type { ListingCategory, TransactionType } from '@bhavano/types';
+import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
+import { MAX_REQUIREMENT_AREAS, type RequirementAttributes } from '@bhavano/types/requirementQuestions';
 
-const LISTING_CATEGORIES: ListingCategory[] = [
+export const LISTING_CATEGORIES: ListingCategory[] = [
   'house',
   'apartment',
   'villa',
@@ -14,7 +30,7 @@ const LISTING_CATEGORIES: ListingCategory[] = [
   'plot',
   'commercial',
 ];
-const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
+export const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 
 /** Mirrors CreateSavedSearchDto's criteria vocabulary deliberately — the same fields the matcher
  * already speaks, so one prompt can create both without translating between two shapes. */
@@ -59,6 +75,30 @@ export class CreateRequirementDto {
   @IsInt()
   @Min(1)
   bedrooms?: number;
+
+  /** Every area the search named. The web caller leaves it out when more than
+   * MAX_REQUIREMENT_AREAS were ticked — that many is not a specific ask, and the areas question
+   * gets it instead. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_REQUIREMENT_AREAS)
+  @IsString({ each: true })
+  areaIds?: string[];
+
+  /** The whole BHK set the search had ticked, not just its smallest. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_BEDROOMS)
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Max(MAX_BEDROOMS, { each: true })
+  bedroomOptions?: number[];
+
+  /** Facet filters the search had set. Checked against the category in the service, where an
+   * unknown key is dropped rather than failing the capture. */
+  @IsOptional()
+  @IsObject()
+  attributes?: RequirementAttributes;
 
   /** The seeker's own words, when the flow asked for them. The Phase 0 one-tap capture leaves
    * this empty on purpose — it worked precisely because it was not a form. */
