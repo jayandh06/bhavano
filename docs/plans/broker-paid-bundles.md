@@ -1,6 +1,6 @@
 # Paid bundles for brokers and agents (2026-09-28)
 
-## Status: plan only; nothing built
+## Status: Phase 0 built (2026-09-28); Phases 1 and 2 are plan only
 
 Builds on [`product-pricing-tiers.md`](product-pricing-tiers.md) (Agent Pro ₹499 per 20 slots),
 [`listing-slots-seller-notifications.md`](listing-slots-seller-notifications.md) (slot caps, Pro
@@ -15,7 +15,9 @@ as leads) and [`contact-reveal-credits.md`](contact-reveal-credits.md) (the cred
   month (`ProBoostCredit`, unique per `userId` + `monthKey`).
 - **Seller slot pack**, ₹149 a month for 10 slots.
 - Monthly only: `agentPro` and `sellerSlotPack` throw on any duration other than 1 month.
-- Nothing marks an account as a broker. There is no owner/agent flag on the user or the listing.
+- Before Phase 0, nothing marked an *account* as a broker. Listings in the residential, plot and
+  commercial categories already had an optional per-listing `fromBroker` yes/no attribute (it
+  gates the brokerage fields), but about 200 of 235 production listings left it blank.
 
 ## What production says (2026-09-28)
 
@@ -40,6 +42,27 @@ with depth in the 11 ad cities (see `growth-beyond-google-ads.md` §3).
   Owner/Dealer), and it keeps owner-only features, such as free posting, owner-first sorting and
   the "invite an owner" referral, honest.
 - Admin: filter users by seller type; see agents' listing counts and enquiries.
+
+**As built:**
+- `User.sellerType` (enum `SellerType`, nullable), `agencyName`, `reraNumber`; migration
+  `20260928230000_user_seller_type`. Setting "owner" clears agency and RERA.
+- **Reconciled with the existing `fromBroker` field** rather than asking twice
+  (`resolveDeclaredSellerType` in `listings.service.ts`):
+  - The wizard (web and mobile) asks "You are posting as Owner / Agent / broker" on the review
+    step, and makes it required, only when the profile has no answer **and** the listing's own
+    `fromBroker` is blank. The answer is sent as `CreateListingInput.postedAs`.
+  - On create, a blank `fromBroker` is filled from `postedAs`, else the profile (only in
+    categories that have the field). The profile is set from `postedAs`, or seeded from the
+    listing's `fromBroker` answer when the profile is still empty.
+  - The label (`ListingCardDto.postedBy` / `postedByAgency`, formatted by `postedByLabel` in
+    `@bhavano/types/sellerType`) prefers the listing's `fromBroker` answer, then the account's.
+    The agency name is shown only when both agree it is an agent listing. Unanswered shows nothing.
+- Profile: "I post as" on the web profile form, with agency name and RERA inputs for agents. The
+  mobile app has no profile editor for it yet; mobile users answer in the post wizard.
+- Labels on web and mobile cards, detail pages and the `/agent/[userId]` storefront.
+- Admin: "Posts as" column and filter (Owner / Agent / Not answered) on Users, and seller type,
+  agency and RERA on the user page. Agents' listing counts and enquiries are not built yet.
+- Resolves open decision 1: required, but asked only once per account.
 
 ### Phase 1: founding-broker programme (no payment code)
 - In each of the 11 cities, offer the first ~20 agents **Agent Pro free for 3 months** via an
@@ -101,7 +124,7 @@ Why this shape:
   price yet.
 
 ## Open decisions
-1. Owner/agent question: required, or optional with a nudge?
+1. ~~Owner/agent question: required, or optional with a nudge?~~ Required, asked once (Phase 0).
 2. Founding programme: 3 months free, or 50% off the first year?
 3. Tier numbers (slots, boosts, leads, prices): set from Phase 1 data.
 4. Verified agent: RERA number for the badge, or phone verification only?
