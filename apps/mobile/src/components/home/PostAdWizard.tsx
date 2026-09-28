@@ -64,6 +64,7 @@ import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { BoostBundleCard } from "./BoostBundleCard";
 import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
+import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
 import { PriceWordsHint } from "./PriceWithWords";
 import { appWebUrl } from "../../lib/appWebUrl";
 import { priceSuffix } from "../../lib/boostPriceDisplay";
@@ -1667,6 +1668,8 @@ export function PostAdWizard({
               />
             )
           )}
+
+          <OwnerWhatsAppShare listing={createdListing} />
 
           {/* A real push (not the replace() this used to do straight out of onSubmit) — see this
               screen's own header comment for why that mattered: it's what makes the listing's
