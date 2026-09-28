@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
-import { useRouter } from "expo-router";
-import type { CreateRequirementInput } from "@bhavano/types";
+import { useFocusEffect, useRouter } from "expo-router";
+import type { CreateRequirementInput, RequirementDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
-import { createRequirement } from "../../lib/bffClient";
+import { createRequirement, fetchMyRequirement } from "../../lib/bffClient";
 import { Icon } from "../Icon";
 
 /**
@@ -33,8 +33,26 @@ export function RequirementPrompt({
   const router = useRouter();
   const { requireLogin, accessToken } = useHomeSheets();
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
-  const [hasAlert, setHasAlert] = useState(false);
+  const [saved, setSaved] = useState<RequirementDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Coming back from the refine screen: pick up the rewritten label and whether the questions were
+  // finished, so the card offers to continue only when there is something left to answer.
+  const savedId = saved?.id;
+  useFocusEffect(
+    useCallback(() => {
+      if (!savedId || !accessToken) return;
+      let cancelled = false;
+      fetchMyRequirement(accessToken, savedId)
+        .then((r) => {
+          if (!cancelled) setSaved(r);
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }, [savedId, accessToken]),
+  );
   /** On by default, same as web: someone asking us to go and find a house generally does want the
    * person who has one to ring them, and the toggle is right there. */
   const [allowContact, setAllowContact] = useState(true);
@@ -54,37 +72,60 @@ export function RequirementPrompt({
         searchLabel: label,
         contactConsent: allowContact,
       });
-      setHasAlert(requirement.hasAlert);
+      setSaved(requirement);
       setState("done");
+      // The follow-up questions open by themselves once the row is saved —
+      // docs/plans/requirement-refinement-questions.md. "Rent 2 BHK Houses in Bengaluru" is too
+      // vague for an owner or agent to act on, and this is when the seeker is most willing to say more.
+      if (requirement.canRefine) router.push(`/requirement/${requirement.id}/refine`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save that just now");
       setState("idle");
     }
   }
 
-  if (state === "done") {
+  if (state === "done" && saved) {
+    const canContinue = saved.canRefine && !saved.refinedAt;
     return (
       <View style={[styles.card, { borderColor: colors.green, backgroundColor: colors.surface }]}>
         <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5, textAlign: "center" }}>
-          {hasAlert
+          {saved.hasAlert
             ? "Confirmed — we'll message you as soon as something matching is posted."
             : "Confirmed — our team will look into what's available and get back to you."}
         </Text>
+        {saved.refinedAt && (
+          <View style={[styles.criteria, { borderColor: colors.border, backgroundColor: colors.surfaceAlt, marginTop: 10 }]}>
+            <Text style={{ color: colors.text, fontSize: 12.5, fontWeight: "700", textAlign: "center" }}>
+              {saved.searchLabel}
+            </Text>
+          </View>
+        )}
         <Text style={{ color: colors.muted, fontSize: 12.5, textAlign: "center", marginTop: 6 }}>
           {allowContact
             ? "Owners and agents with a matching property can get in touch with you directly."
             : "Only Bhavano will contact you — your number stays with us."}
         </Text>
         {/* Offered *after* the save, never before it — same as web. The one-tap capture works
-            because it is not a form; detail is a follow-on for whoever wants to give it. */}
+            because it is not a form, so the questions are a follow-on over a row that already
+            exists — leaving them halfway keeps both the row and whatever was answered. */}
         <Pressable
-          onPress={() => router.push("/my-requirements")}
+          onPress={() =>
+            canContinue ? router.push(`/requirement/${saved.id}/refine`) : router.push("/my-requirements")
+          }
           style={{ marginTop: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3 }}
         >
-          <Text style={{ color: colors.muted, fontSize: 12.5, textAlign: "center", textDecorationLine: "underline" }}>
-            Add a budget or timeline
+          <Text
+            style={{
+              color: canContinue ? colors.green : colors.muted,
+              fontWeight: canContinue ? "700" : "400",
+              fontSize: 12.5,
+              textAlign: "center",
+              textDecorationLine: "underline",
+            }}
+          >
+            {canContinue ? "Add areas, budget and more" : "See your requirements"}
           </Text>
-          <Icon name="chevronRight" size={12} color={colors.muted} />
+          <Icon name="chevronRight" size={12} color={canContinue ? colors.green : colors.muted} />
         </Pressable>
       </View>
     );

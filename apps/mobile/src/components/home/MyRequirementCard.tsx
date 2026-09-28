@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useRouter } from "expo-router";
 import type { RequirementDto } from "@bhavano/types";
+import { bedroomLabel } from "@bhavano/types/bedrooms";
+import { formatCompactInr, missingForLead } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { Icon } from "../Icon";
 import {
   closeMyRequirement,
   renewMyRequirement,
@@ -18,6 +22,18 @@ function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 }
 
+function budgetText(r: RequirementDto): string | null {
+  if (r.minPrice && r.maxPrice) return `${formatCompactInr(r.minPrice)}–${formatCompactInr(r.maxPrice)}`;
+  if (r.maxPrice) return `up to ${formatCompactInr(r.maxPrice)}`;
+  if (r.minPrice) return `from ${formatCompactInr(r.minPrice)}`;
+  return null;
+}
+
+const MISSING_WORDS: Record<ReturnType<typeof missingForLead>[number], string> = {
+  area: "which areas",
+  budget: "a budget or size",
+};
+
 /**
  * Mobile counterpart to web's `MyRequirementCard` — Phase 1 of
  * docs/plans/property-requirements-demand-side.md. Same renew / close / optional note+timeline
@@ -32,6 +48,7 @@ export function MyRequirementCard({
   accessToken: string;
 }) {
   const { colors } = useAppTheme();
+  const router = useRouter();
   const [current, setCurrent] = useState(requirement);
   const [note, setNote] = useState(requirement.note ?? "");
   const [moveInBy, setMoveInBy] = useState(requirement.moveInBy?.slice(0, 10) ?? "");
@@ -70,12 +87,13 @@ export function MyRequirementCard({
       : `Active until ${dateFormatter.format(new Date(current.expiresAt))}`;
 
   const meta = [
-    current.areaName ?? current.cityName,
-    current.bedrooms ? `${current.bedrooms} BHK` : null,
-    current.maxPrice ? `up to ₹${current.maxPrice.toLocaleString("en-IN")}` : null,
+    current.areaNames.length ? current.areaNames.join(", ") : current.cityName,
+    current.bedroomOptions.length ? `${current.bedroomOptions.map(bedroomLabel).join(" or ")} BHK` : null,
+    budgetText(current),
   ]
     .filter(Boolean)
     .join(" · ");
+  const missing = missingForLead(current);
 
   return (
     <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -87,6 +105,23 @@ export function MyRequirementCard({
           {meta ? (
             <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>{meta}</Text>
           ) : null}
+          {current.canRefine && !current.isLeadReady && (
+            <Text style={{ fontSize: 12.5, color: colors.muted, marginTop: 6 }}>
+              Needs {missing.map((m) => MISSING_WORDS[m]).join(" and ")} before owners and agents can act on it.
+            </Text>
+          )}
+          {current.canRefine && (
+            <Pressable
+              onPress={() => router.push(`/requirement/${current.id}/refine`)}
+              hitSlop={6}
+              style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 8 }}
+            >
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13, textDecorationLine: "underline" }}>
+                {current.refinedAt ? "Edit details" : "Finish details"}
+              </Text>
+              <Icon name="chevronRight" size={12} color={colors.green} />
+            </Pressable>
+          )}
         </View>
         <View style={{ alignItems: "flex-end", maxWidth: "42%" }}>
           <Text

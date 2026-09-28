@@ -88,9 +88,14 @@ export default function HomeScreen() {
     propertyType,
     cityId: city?.id,
     cityName: city?.name,
+    areaIds: filters.areaIds,
     minPrice: filters.minPrice,
     maxPrice: filters.maxPrice,
     bedrooms: filters.bedrooms,
+    furnished: filters.furnished,
+    sharingType: category === "pg" ? filters.sharingType : undefined,
+    condition: category === "furniture" ? filters.condition : undefined,
+    serviceType: category === "interiors" ? filters.serviceType : undefined,
   });
 
   // Switching tabs/property-type clears stale filters — a leftover BHK/price selection from

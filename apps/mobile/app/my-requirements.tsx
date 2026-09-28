@@ -92,7 +92,9 @@ export default function MyRequirementsScreen() {
         <FlatList
           contentContainerStyle={{ padding: 16, paddingBottom: 40, flexGrow: 1 }}
           data={requirements ?? []}
-          keyExtractor={(item) => item.id}
+          // The card keeps its own copy of the row for renew/close, so a refined row (reloaded on
+          // focus after the refine screen) needs a new key to replace it.
+          keyExtractor={(item) => `${item.id}:${item.searchLabel}:${item.refinedAt ?? ""}`}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           refreshControl={
             <RefreshControl

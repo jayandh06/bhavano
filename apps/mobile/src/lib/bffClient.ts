@@ -25,6 +25,7 @@ import type {
   PlaceAutocompletePrediction,
   PlaceGeocodeResultDto,
   PropertyTypeFilter,
+  RefineRequirementInput,
   RequirementDto,
   RevealContactResponseDto,
   ReverseGeocodeResultDto,
@@ -603,6 +604,23 @@ export function createRequirement(accessToken: string, input: CreateRequirementI
 
 export function fetchMyRequirements(accessToken: string): Promise<RequirementDto[]> {
   return authedBffFetch(accessToken, "/requirements/mine");
+}
+
+export function fetchMyRequirement(accessToken: string, id: string): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, `/requirements/mine/${id}`);
+}
+
+/** One step of the refinement questions — docs/plans/requirement-refinement-questions.md. 409
+ * once the requirement is past its edit window. */
+export function refineMyRequirement(
+  accessToken: string,
+  id: string,
+  input: RefineRequirementInput,
+): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, `/requirements/mine/${id}/criteria`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
 }
 
 export function updateMyRequirement(

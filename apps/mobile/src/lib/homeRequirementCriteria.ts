@@ -1,4 +1,5 @@
-import type { CreateRequirementInput, ListingCategory, PropertyTypeFilter, TransactionType } from "@bhavano/types";
+import type { CreateRequirementInput, PropertyTypeFilter } from "@bhavano/types";
+import { requirementCriteriaFromBrowse } from "@bhavano/types/requirementQuestions";
 import { HOME_TABS, type HomeTabValue } from "../components/home/categories";
 
 /**
@@ -7,28 +8,41 @@ import { HOME_TABS, type HomeTabValue } from "../components/home/categories";
  * react-native import of its own). See docs/plans/property-requirements-demand-side.md and
  * RequirementPrompt.tsx's own doc comment for why this exists at all.
  *
- * `category`/`transactionType` mirror seoRoute.ts's own "one representative value for a group"
- * rule (buy -> sell, rentLease -> rent) rather than the multi-category set the tab actually
- * queries with — a Requirement holds one of each, same as SavedSearch. `areaId` is left out of
- * the result entirely: FilterSheet's areaIds is a multi-select set, and "any of these areas" is
- * not a single requirement any more than it is on web (see BrowseListingsView's identical
- * comment on its own areaId).
+ * The criteria come from `requirementCriteriaFromBrowse`, the same mapping web's browse pages use
+ * (docs/plans/requirement-refinement-questions.md), so a search captured on either app is stored
+ * the same way: the tab picks one representative transaction (Buy → sell, Rent & Lease and PG →
+ * rent, Interiors → sell), and the area set, the BHK set and the tab's own facet carry through.
+ * More than `MAX_REQUIREMENT_AREAS` areas is "anywhere", left for the refinement questions.
  */
 export function deriveHomeRequirementCriteria(input: {
   category: HomeTabValue;
   propertyType?: PropertyTypeFilter;
   cityId?: string;
   cityName?: string;
+  areaIds?: string[];
   minPrice?: number;
   maxPrice?: number;
   bedrooms: number[];
+  furnished?: string;
+  sharingType?: string;
+  condition?: string;
+  serviceType?: string;
 }): { criteria: Omit<CreateRequirementInput, "searchLabel">; label: string } {
-  const { category, propertyType, cityId, cityName, minPrice, maxPrice, bedrooms } = input;
+  const { category, propertyType, cityName } = input;
 
-  const requirementCategory: ListingCategory | undefined =
-    category === "pg" || category === "furniture" || category === "interiors" ? category : propertyType;
-  const requirementTransactionType: TransactionType | undefined =
-    category === "buy" ? "sell" : category === "rentLease" ? "rent" : undefined;
+  const criteria = requirementCriteriaFromBrowse({
+    homeCategory: category === "all" ? undefined : category,
+    propertyType,
+    cityId: input.cityId,
+    areaIds: input.areaIds,
+    bedrooms: input.bedrooms,
+    minPrice: input.minPrice,
+    maxPrice: input.maxPrice,
+    furnished: input.furnished,
+    sharingType: input.sharingType,
+    condition: input.condition,
+    serviceType: input.serviceType,
+  });
 
   const categoryLabel = HOME_TABS.find((t) => t.value === category)?.label ?? "All";
   const propertyTypeLabel =
@@ -39,17 +53,6 @@ export function deriveHomeRequirementCriteria(input: {
 
   return {
     label,
-    criteria: {
-      category: requirementCategory,
-      transactionType: requirementTransactionType,
-      cityId,
-      minPrice,
-      maxPrice,
-      // SavedSearch/Requirement hold one bedroom count, the filter holds a set — take the
-      // smallest, which is the least restrictive reading of "2 or 3 BHK" (same rule
-      // BrowseListingsView's own criteria construction uses).
-      bedrooms: bedrooms.length > 0 ? Math.min(...bedrooms) : undefined,
-      landingPath: "mobile-app:home",
-    },
+    criteria: { ...criteria, landingPath: "mobile-app:home" },
   };
 }

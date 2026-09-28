@@ -11,12 +11,19 @@ describe("deriveHomeRequirementCriteria", () => {
     expect(label).toBe("All");
   });
 
-  it("resolves the pg/furniture/interiors tabs directly to their own category, no transactionType", () => {
-    for (const category of ["pg", "furniture", "interiors"] as const) {
-      const { criteria } = deriveHomeRequirementCriteria({ category, bedrooms: [] });
-      expect(criteria.category).toBe(category);
-      expect(criteria.transactionType).toBeUndefined();
-    }
+  it("resolves the pg/furniture/interiors tabs to their own category, with web's transaction mapping", () => {
+    const pg = deriveHomeRequirementCriteria({ category: "pg", bedrooms: [] }).criteria;
+    expect(pg.category).toBe("pg");
+    expect(pg.transactionType).toBe("rent");
+
+    const interiors = deriveHomeRequirementCriteria({ category: "interiors", bedrooms: [] }).criteria;
+    expect(interiors.category).toBe("interiors");
+    expect(interiors.transactionType).toBe("sell");
+
+    // Furniture can be bought or rented — the refinement questions ask which.
+    const furniture = deriveHomeRequirementCriteria({ category: "furniture", bedrooms: [] }).criteria;
+    expect(furniture.category).toBe("furniture");
+    expect(furniture.transactionType).toBeUndefined();
   });
 
   it("resolves Buy to transactionType sell, using propertyType as the category when chosen", () => {
@@ -60,9 +67,44 @@ describe("deriveHomeRequirementCriteria", () => {
     expect(label).toBe("PG");
   });
 
-  it("takes the smallest bedroom count from a multi-select set, and omits it entirely when empty", () => {
-    expect(deriveHomeRequirementCriteria({ category: "all", bedrooms: [3, 2, 4] }).criteria.bedrooms).toBe(2);
-    expect(deriveHomeRequirementCriteria({ category: "all", bedrooms: [] }).criteria.bedrooms).toBeUndefined();
+  it("keeps the whole BHK set, with the smallest as the legacy single count", () => {
+    const { criteria } = deriveHomeRequirementCriteria({ category: "all", bedrooms: [3, 2, 4] });
+    expect(criteria.bedroomOptions).toEqual([2, 3, 4]);
+    expect(criteria.bedrooms).toBe(2);
+
+    const empty = deriveHomeRequirementCriteria({ category: "all", bedrooms: [] }).criteria;
+    expect(empty.bedroomOptions).toEqual([]);
+    expect(empty.bedrooms).toBeUndefined();
+  });
+
+  it("drops the BHK set for a category without bedrooms", () => {
+    const { criteria } = deriveHomeRequirementCriteria({ category: "pg", bedrooms: [2] });
+    expect(criteria.bedroomOptions).toEqual([]);
+  });
+
+  it("keeps up to five areas, and treats more as anywhere in the city", () => {
+    const few = deriveHomeRequirementCriteria({ category: "all", areaIds: ["a1", "a2"], bedrooms: [] }).criteria;
+    expect(few.areaIds).toEqual(["a1", "a2"]);
+
+    const many = deriveHomeRequirementCriteria({
+      category: "all",
+      areaIds: ["a1", "a2", "a3", "a4", "a5", "a6"],
+      bedrooms: [],
+    }).criteria;
+    expect(many.areaIds).toEqual([]);
+  });
+
+  it("carries the tab's own facet and furnishing as attributes", () => {
+    const pg = deriveHomeRequirementCriteria({ category: "pg", sharingType: "double", bedrooms: [] }).criteria;
+    expect(pg.attributes).toEqual({ sharingType: ["double"] });
+
+    const home = deriveHomeRequirementCriteria({
+      category: "rentLease",
+      propertyType: "apartment",
+      furnished: "semi",
+      bedrooms: [],
+    }).criteria;
+    expect(home.attributes).toEqual({ furnished: ["semi"] });
   });
 
   it("passes cityId, minPrice, and maxPrice straight through", () => {
