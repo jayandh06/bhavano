@@ -8,12 +8,11 @@ export const metadata = {
   description: "Every city Bhavano covers for buying, renting, and leasing property across India.",
 };
 
-/** The full-catalog counterpart to the footer's curated "Browse Cities" block (which only shows
- * `isPopular` cities plus a link here) — see docs/plans/seo-all-cities-footer-links.md. Grouped
- * by state rather than one flat list, since that's what actually makes a few hundred links
- * scannable instead of just long. */
+/** Every served city — the counterpart to the footer's "Browse Cities" block (which only shows
+ * `isPopular` cities plus a link here), grouped by state. See
+ * docs/plans/seo-all-cities-footer-links.md and docs/plans/serve-only-ad-targeted-cities.md. */
 export default async function CitiesPage() {
-  const cities = await fetchCities(undefined, true).catch(() => []);
+  const cities = (await fetchCities(undefined, true).catch(() => [])).filter((city) => city.isServed);
 
   const byState = new Map<string, typeof cities>();
   for (const city of cities) {

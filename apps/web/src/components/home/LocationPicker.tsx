@@ -126,7 +126,7 @@ export function LocationPicker({
     );
   }
 
-  const tierCities = allCities ? { popular: allCities.filter((c) => c.isPopular), more: allCities.filter((c) => !c.isPopular) } : null;
+  const tierCities = allCities ? { popular: allCities.filter((c) => c.isPopular), more: allCities.filter((c) => !c.isPopular && c.isServed) } : null;
 
   return (
     <>

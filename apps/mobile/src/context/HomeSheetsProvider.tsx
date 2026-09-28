@@ -638,7 +638,7 @@ export function HomeSheetsProvider({
                 ))}
               <Text style={[styles.sheetLabel, { color: colors.muted, marginTop: 10 }]}>MORE CITIES</Text>
               {allCities
-                .filter((c) => !c.isPopular)
+                .filter((c) => !c.isPopular && c.isServed)
                 .map((c) => (
                   <Pressable key={c.id} onPress={() => setCity(c)} style={styles.cityRow}>
                     <Text style={{ color: colors.text, fontSize: 14 }}>{c.name}</Text>
