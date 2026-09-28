@@ -1,14 +1,12 @@
-import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { BoostPlanSelection, BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
-import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { BOOST_DURATIONS, boostOptionFor, boostSavings } from "@bhavano/types/boostPricing";
 import { listingPublishCheckoutTotalRupees } from "@bhavano/types/listingPublishPricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import { platformFeeFor } from "@bhavano/types/platformFeePricing";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import { Icon } from "../Icon";
-
-const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 
 /**
  * Ad-preview-step counterpart to BoostBundleCard — same duration-rows + Instant-Alerts-toggle
@@ -61,15 +59,7 @@ export function BoostPlanSelector({
         )
       : platformFeeRupees;
 
-  const optionKey =
-    effective.duration === 7
-      ? effective.includeInstantAlerts
-        ? "boost7WithInstantAlerts"
-        : "boost7"
-      : effective.includeInstantAlerts
-        ? "boost15WithInstantAlerts"
-        : "boost15";
-  const option = pricing[optionKey];
+  const option = boostOptionFor(pricing, effective.duration);
 
   // Was a single string with a "→" glyph — reported on Android as rendering as a stray "'n"
   // instead of an arrow (see BoostBundleCard's identical PriceText for the likely cause: this
@@ -111,41 +101,62 @@ export function BoostPlanSelector({
       </View>
 
       <View style={{ gap: 8 }}>
-        {BOOST_DURATIONS.map((days) => {
-          const selected = !!value && effective.duration === days;
+{BOOST_DURATIONS.map((days) => {
+          const opt = boostOptionFor(pricing, days);
+          const saving = days !== 7 ? boostSavings(pricing, days) : null;
           return (
             <Pressable
               key={days}
-              onPress={() => onChange({ duration: days, includeInstantAlerts: effective.includeInstantAlerts })}
+              onPress={() => onChange({ duration: days, includeInstantAlerts: true })}
               style={[
                 styles.optionButton,
                 {
-                  borderColor: selected ? colors.green : colors.border,
-                  backgroundColor: selected ? `${colors.green}1a` : colors.surface,
+                  borderColor: !!value && effective.duration === days ? colors.green : colors.border,
+                  backgroundColor: !!value && effective.duration === days ? `${colors.green}1a` : colors.surface,
                 },
               ]}
             >
-              <Text style={{ flex: 1, fontWeight: "700", fontSize: 14, color: colors.text }}>Boost {days} days</Text>
+              <View style={{ flex: 1, gap: 2 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>Boost {days} days</Text>
+                  {days === 30 && saving && (
+                    <Text
+                      style={{
+                        fontSize: 10.5,
+                        fontWeight: "700",
+                        color: colors.onGreen,
+                        backgroundColor: colors.green,
+                        borderRadius: 6,
+                        paddingHorizontal: 6,
+                        paddingVertical: 1,
+                        overflow: "hidden",
+                      }}
+                    >
+                      Best value
+                    </Text>
+                  )}
+                </View>
+                {saving ? (
+                  <Text style={{ fontSize: 12, color: colors.green }}>
+                    ₹{saving.perDay}/day · save ₹{saving.rupees} ({saving.percent}%) vs the 7-day price
+                  </Text>
+                ) : (
+                  opt &&
+                  !opt.free && (
+                    <Text style={{ fontSize: 12, color: colors.muted }}>₹{Math.round(opt.amount / days)}/day</Text>
+                  )
+                )}
+              </View>
               <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>
-                <PriceText opt={days === 7 ? pricing.boost7 : pricing.boost15} />
+                <PriceText opt={opt} />
               </Text>
             </Pressable>
           );
         })}
-
-        <View
-          style={[
-            styles.optionButton,
-            { borderColor: colors.border, backgroundColor: colors.surface, justifyContent: "space-between" },
-          ]}
-        >
-          <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>Add Instant Alerts</Text>
-          <Switch
-            value={effective.includeInstantAlerts}
-            onValueChange={(next) => onChange({ duration: effective.duration, includeInstantAlerts: next })}
-          />
-        </View>
       </View>
+      <Text style={{ fontSize: 12.5, color: colors.textSoft, marginTop: 10 }}>
+        Instant Alerts is included: you are emailed the moment someone messages you.
+      </Text>
 
       <Text style={{ fontWeight: "700", fontSize: 13, color: colors.green, marginTop: 12 }}>
         {value ? (

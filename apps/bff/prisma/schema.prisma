@@ -892,10 +892,13 @@ model BoostPriceSetting {
   id                              String   @id
   propertyBoostPrice7d            Int      @default(199)
   propertyBoostPrice15d           Int      @default(349)
+  propertyBoostPrice30d           Int      @default(299)
   coworkingPgStorageBoostPrice7d  Int      @default(99)
   coworkingPgStorageBoostPrice15d Int      @default(179)
+  coworkingPgStorageBoostPrice30d Int      @default(299)
   furnitureInteriorsBoostPrice7d  Int      @default(49)
   furnitureInteriorsBoostPrice15d Int      @default(89)
+  furnitureInteriorsBoostPrice30d Int      @default(149)
   /// Where the Boost/Instant Alerts picker appears: false (default) = post-ad upsell only
   /// (today's behavior); true = on the ad-preview step instead. Mutually exclusive.
   showSelectorOnPreview           Boolean  @default(false)

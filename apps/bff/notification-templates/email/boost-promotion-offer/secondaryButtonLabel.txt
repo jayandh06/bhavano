@@ -1,1 +1,0 @@
-Boost + Instant Alerts — ₹{{bundlePrice}} (was ₹{{bundleBasePrice}})

@@ -1,14 +1,12 @@
 "use client";
 
 import type { BoostPlanSelection, BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
-import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { BOOST_DURATIONS, boostOptionFor, boostSavings } from "@bhavano/types/boostPricing";
 import { listingPublishCheckoutTotalRupees } from "@bhavano/types/listingPublishPricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import { platformFeeFor } from "@bhavano/types/platformFeePricing";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import { Icon } from "./Icon";
-
-const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 
 /**
  * Ad-preview-step counterpart to BoostBundlePicker — same duration-rows + Instant-Alerts-toggle
@@ -47,15 +45,7 @@ export function BoostPlanSelector({
       : 0;
   const effective: BoostPlanSelection = value ?? { duration: 15, includeInstantAlerts: true };
 
-  const optionKey =
-    effective.duration === 7
-      ? effective.includeInstantAlerts
-        ? "boost7WithInstantAlerts"
-        : "boost7"
-      : effective.includeInstantAlerts
-        ? "boost15WithInstantAlerts"
-        : "boost15";
-  const option = pricing[optionKey];
+  const option = boostOptionFor(pricing, effective.duration);
 
   function priceText(opt: BoostPricingPreviewDto["boost7"]): string {
     if (opt.free) return "Free";
@@ -95,32 +85,41 @@ export function BoostPlanSelector({
       <div className="flex flex-col gap-2.5">
         {BOOST_DURATIONS.map((days) => {
           const selected = !!value && effective.duration === days;
+          const opt = boostOptionFor(pricing, days);
+          const saving = days !== 7 ? boostSavings(pricing, days) : null;
           return (
             <button
               key={days}
               type="button"
-              onClick={() => onChange({ duration: days, includeInstantAlerts: effective.includeInstantAlerts })}
-              className={`flex justify-between items-center border-[1.5px] rounded-[10px] px-4 py-3 text-sm font-bold cursor-pointer ${
+              // Instant Alerts is included in every boost, so it is always sent as included.
+              onClick={() => onChange({ duration: days, includeInstantAlerts: true })}
+              className={`flex justify-between items-center gap-3 border-[1.5px] rounded-[10px] px-4 py-3 text-sm font-bold cursor-pointer ${
                 selected ? "border-green bg-green/10 text-text" : "border-border bg-surface-alt text-text"
               }`}
             >
-              <span>Boost {days} days</span>
-              <span className="text-green">{priceText(days === 7 ? pricing.boost7 : pricing.boost15)}</span>
+              <span className="flex flex-col items-start gap-0.5 text-left">
+                <span className="flex items-center gap-2">
+                  Boost {days} days
+                  {days === 30 && saving && (
+                    <span className="text-[10.5px] font-bold text-on-green bg-green rounded-md px-1.5 py-[1px]">
+                      Best value
+                    </span>
+                  )}
+                </span>
+                {saving ? (
+                  <span className="text-[12px] font-normal text-green">
+                    ₹{saving.perDay}/day · save ₹{saving.rupees} ({saving.percent}%) vs the 7-day price
+                  </span>
+                ) : (
+                  !opt.free && <span className="text-[12px] font-normal text-muted">₹{Math.round(opt.amount / days)}/day</span>
+                )}
+              </span>
+              <span className="text-green">{priceText(opt)}</span>
             </button>
           );
         })}
-
-        <label className="flex items-center justify-between gap-2 border-[1.5px] border-border rounded-[10px] px-4 py-3 text-sm font-bold text-text cursor-pointer bg-surface-alt">
-          <span className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={effective.includeInstantAlerts}
-              onChange={(e) => onChange({ duration: effective.duration, includeInstantAlerts: e.target.checked })}
-            />
-            Add Instant Alerts
-          </span>
-        </label>
       </div>
+      <p className="text-[12.5px] text-text-soft mt-2.5 mb-0">Instant Alerts is included: you are emailed the moment someone messages you.</p>
 
       <p className="text-[13px] font-bold text-green mt-3 mb-0">{value ? `Boost add-on: ${priceText(option)}` : "Not boosting this ad"}</p>
 

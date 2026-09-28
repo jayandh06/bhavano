@@ -144,7 +144,8 @@ SERVICES='$SVC_LIST'
 DO_MIGRATE='$DO_MIGRATE'
 
 echo '==> git pull on EC2'
-cd "\$REMOTE_DIR"
+# A quoted "~/bhavano" is not tilde-expanded, so expand a leading ~ by hand.
+cd "\${REMOTE_DIR/#\~/\$HOME}"
 git pull --ff-only
 
 echo '==> docker load'
@@ -164,7 +165,8 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build \$SER
 
 if [[ "\$DO_MIGRATE" == "1" ]] && echo "\$SERVICES" | grep -qw bff; then
   echo '==> prisma migrate deploy'
-  docker compose -f docker-compose.prod.yml --env-file .env exec -T bff npx prisma migrate deploy
+  # </dev/null: exec -T would otherwise read the rest of this script from stdin and swallow it.
+  docker compose -f docker-compose.prod.yml --env-file .env exec -T bff npx prisma migrate deploy </dev/null
 fi
 
 rm -f "\$TAR"

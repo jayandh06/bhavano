@@ -58,7 +58,7 @@ import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { PriceWordsHint } from "./PriceWithWords";
 import { appWebUrl } from "../../lib/appWebUrl";
-import { instantAlertsOnlyPrice, priceSuffix } from "../../lib/boostPriceDisplay";
+import { priceSuffix } from "../../lib/boostPriceDisplay";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -68,14 +68,7 @@ const BOOST_BENEFITS: [IconName, string][] = [
   ["featured", "A gold Featured badge on your ad"],
   ["check", "Ranks above regular listings in search"],
   ["check", "Rotates fairly through the top slots"],
-  ["bell", "Alerts you the moment someone likes it"],
-];
-
-// Mirrors the website's identical Instant Alerts pitch card.
-const INSTANT_ALERTS_BENEFITS: [IconName, string][] = [
-  ["check", "Real-time email or WhatsApp on every new enquiry"],
-  ["check", "Valid until this ad expires"],
-  ["check", "Already have the app? You get this for free — this is for reaching you by email/WhatsApp too"],
+  ["bell", "Instant Alerts included: told the moment someone messages or shows interest"],
 ];
 
 /** Short two- or three-option fields stay inline as a segmented control — seeing every choice at
@@ -436,7 +429,6 @@ export function PostAdWizard({
         ? buildDisplayBoostPricing(
             category,
             planPricingSettings.boost,
-            planPricingSettings.instantAlerts,
             planPricingSettings.activeDiscountPercent,
           )
         : null,
@@ -505,9 +497,7 @@ export function PostAdWizard({
 
     if (Platform.OS === "ios") {
       WebBrowser.openBrowserAsync(
-        appWebUrl(
-          `/my-listings?openBoost=${createdListing.id}${selectedBoostPlan.includeInstantAlerts ? "&withAlerts=1" : ""}`,
-        ),
+        appWebUrl(`/my-listings?openBoost=${createdListing.id}`),
       );
       return;
     }
@@ -1143,24 +1133,46 @@ export function PostAdWizard({
       )}
 
       {draftRestored && step !== "success" && (
+        // Deliberately loud: someone who tapped "Post free ad" and landed mid-form, possibly in a
+        // category they did not choose today, has to understand why before they publish into it.
         <View
+          accessibilityRole="alert"
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8,
-            marginBottom: 14,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            borderRadius: 10,
-            borderWidth: 1,
-            borderColor: colors.border,
+            gap: 6,
+            marginBottom: 16,
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            borderRadius: 12,
+            borderWidth: 2,
+            borderColor: colors.gold,
             backgroundColor: colors.surfaceAlt,
           }}
         >
-          <Text style={{ color: colors.text, fontSize: 13, flex: 1 }}>We restored the ad you were writing.</Text>
-          <Pressable onPress={startOver} hitSlop={8}>
-            <Text style={{ color: colors.green, fontSize: 13, fontWeight: "700" }}>Start over</Text>
+          <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>
+            We restored the ad you were writing on this device
+          </Text>
+          <Text style={{ color: colors.textSoft, fontSize: 13 }}>
+            {(() => {
+              const label = POST_CATEGORIES.find((c) => c.value === category)?.label;
+              return label ? `You are continuing your ${label} ad from where you left off. ` : "";
+            })()}
+            Check the category and details before you post, or start a new ad.
+          </Text>
+          <Pressable
+            onPress={startOver}
+            hitSlop={8}
+            style={{
+              alignSelf: "flex-start",
+              marginTop: 4,
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+            }}
+          >
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>Start a new ad instead</Text>
           </Pressable>
         </View>
       )}
@@ -1559,12 +1571,11 @@ export function PostAdWizard({
           </View>
 
           {Platform.OS === "ios" ? (
-            // iOS keeps the old two-button, redirect-to-website treatment — a native Razorpay
-            // checkout for a paid feature is exactly what Apple's Guideline 3.1.1 forbids here,
-            // same reasoning the buttons below already documented before the Android-only
-            // BoostBundleCard existed. `?openBoost=`/`?openInstantAlerts=` still deep-link
-            // straight into the website's own (separate, unbundled) purchase dialogs — see
-            // AutoOpenPurchaseModal.tsx on web, which this doesn't change.
+            // iOS keeps the redirect-to-website button — a native Razorpay checkout for a paid
+            // feature is exactly what Apple's Guideline 3.1.1 forbids here. `?openBoost=` deep-links
+            // straight into the website's Boost dialog (see AutoOpenPurchaseModal.tsx on web), which
+            // shows all three durations. Instant Alerts is part of every boost, so there is no
+            // second button for it any more.
             <>
               <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -1591,30 +1602,6 @@ export function PostAdWizard({
                 </Pressable>
               </View>
 
-              <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <Icon name="bell" size={17} color={colors.gold} />
-                  <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-                    Get notified when someone messages or shows interest
-                  </Text>
-                </View>
-                <View style={{ gap: 8 }}>
-                  {INSTANT_ALERTS_BENEFITS.map(([icon, text]) => (
-                    <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <Icon name={icon} size={14} color={colors.green} />
-                      <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft }}>{text}</Text>
-                    </View>
-                  ))}
-                </View>
-                <Pressable
-                  onPress={() => WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openInstantAlerts=${createdListing.id}`))}
-                  style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
-                >
-                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>
-                    Get Instant Alerts{priceSuffix(instantAlertsOnlyPrice(iosPricing) ?? undefined)}
-                  </Text>
-                </Pressable>
-              </View>
             </>
           ) : previewBoostDisplay?.showSelectorOnPreview ? (
             // The full picker stays hidden here — the choice was already made on the review step
@@ -1632,9 +1619,7 @@ export function PostAdWizard({
                 ) : (
                   <>
                     <Text style={{ fontSize: 13, color: colors.textSoft, marginBottom: 12 }}>
-                      {`Payment for your ${selectedBoostPlan.duration}-day Boost${
-                        selectedBoostPlan.includeInstantAlerts ? " + Instant Alerts" : ""
-                      } didn’t go through.`}
+                      {`Payment for your ${selectedBoostPlan.duration}-day Boost didn’t go through.`}
                     </Text>
                     <Pressable onPress={retryBoostCheckout} style={[styles.submitButton, { backgroundColor: colors.green }]}>
                       <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Finish boosting this listing</Text>

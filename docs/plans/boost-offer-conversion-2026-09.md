@@ -139,3 +139,29 @@ Verdict: add the in-app message as an **extra** channel, not a replacement.
 "Boost promo" column, and a switched-off automatic nudge) is built — see
 [`admin-in-app-boost-message.md`](admin-in-app-boost-message.md). The message shows as "Bhavano Admin";
 the sending admin's name is never shown.
+
+## Pricing-structure questions (2026-09-28) — recommendations, nothing changed
+
+**Instant Alerts as a separate ₹25 product.** Weak as a standalone: 0 standalone purchases; 7 of 20
+paid boosts included it (₹12.50 each after the promo) — about ₹90 of revenue in total. App users already
+get message push free, and the original design (`contact-owner-message-notifications.md`) was
+free-for-everyone before it was made paid. It also matters to marketplace health: a buyer's message
+to a seller who never sees it is a lost lead for both sides. Recommendation: fold it into Boost as a
+built-in benefit (removes a checkbox and a decision, raises what the boost is worth), and separately
+decide whether a basic email alert should be free for every seller. Watch WhatsApp per-message cost;
+alerts are already debounced to one per unread burst.
+
+**7 / 15 / 30 days.** 13 of 19 buyers took 7 days (the cheapest). A 30-day option (about the whole
+listing life; ≈ ₹279–329, i.e. ~₹10/day against ₹14 and ₹12) adds a high anchor and makes 15 days look
+like the middle choice. Low risk; the 8-slot featured cap and rotation already limit how long any one
+ad holds a slot. Volumes are too small (≈ 8 boost decisions a week) for a statistically clean test.
+
+**Auto-applied discount vs typing the code.** Keep it auto-applied. The measured effect of the
+discount is large (12% → 59% completion) and checkout already loses ~40%; a code box adds a step and
+sends people off to hunt for codes. The "feel" of a discount comes from showing it: the struck-through
+price, "50% off — you save ₹X", the applied-code chip, and a per-user countdown (see the 48-hour
+personal offer). One caution on anchoring: a struck-through price must be a price that was really
+charged recently (₹199 was, until mid-September); a permanent fake "was" price is misleading and can
+breach advertising rules. Run real, time-limited offers instead.
+
+**Update 2026-09-28:** the owner approved folding Instant Alerts into every boost and adding a 30-day boost at ₹299 with the saving shown. Built — see [`boost-30-day-and-included-alerts.md`](boost-30-day-and-included-alerts.md).

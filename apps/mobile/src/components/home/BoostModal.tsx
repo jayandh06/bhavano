@@ -3,6 +3,7 @@ import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
 import RazorpayCheckout from "react-native-razorpay";
 import type { ListingCategory } from "@bhavano/types";
 import {
+  BOOST_DURATIONS,
   boostPriceFor,
   DEFAULT_BOOST_PRICE_SETTINGS,
   type BoostDurationDays,
@@ -11,8 +12,6 @@ import {
 import { useAppTheme } from "../../theme/ThemeContext";
 import { createBoostOrder, fetchPlanPricing } from "../../lib/bffClient";
 import { isRazorpayUserCancel, razorpayFailureMessage } from "../../lib/razorpayNative";
-
-const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 
 /**
  * Native equivalent of the website's `BoostProvider` modal — same duration/price picker, same

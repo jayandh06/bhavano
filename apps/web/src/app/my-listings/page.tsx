@@ -13,7 +13,6 @@ import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
 import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
 import { BoostButton } from "@/components/home/BoostButton";
-import { InstantAlertsButton } from "@/components/home/InstantAlertsButton";
 import { ListingInterestsPanel } from "@/components/home/ListingInterestsPanel";
 import { AutoOpenPurchaseModal } from "@/components/home/AutoOpenPurchaseModal";
 import {
@@ -245,9 +244,6 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
             {canRenew && <RenewButton listingId={item.id} />}
             {item.status === "active" && !item.isExpired && !item.isBoosted && (
               <BoostButton listingId={item.id} category={item.category} />
-            )}
-            {item.status === "active" && !item.isExpired && !item.hasInstantAlerts && (
-              <InstantAlertsButton listingId={item.id} />
             )}
             <Link
               href={buildListingPath(item)}

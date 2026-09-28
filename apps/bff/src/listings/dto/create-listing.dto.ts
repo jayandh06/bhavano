@@ -48,8 +48,8 @@ export class CreatedPhotoInputDto {
 
 export class ListingCheckoutIntentDto {
   @IsOptional()
-  @IsIn([7, 15])
-  boostDays?: 7 | 15;
+  @IsIn([7, 15, 30])
+  boostDays?: 7 | 15 | 30;
 
   @IsOptional()
   @IsBoolean()

@@ -56,7 +56,7 @@ export async function startBoostCheckout({
         currency: order.currency,
         order_id: order.razorpayOrderId!,
         name: "Bhavano",
-        description: `Boost this ad for ${duration} days${includeInstantAlerts ? " + Instant Alerts" : ""}`,
+        description: `Boost this ad for ${duration} days (Instant Alerts included)`,
         handler: () => {
           pushDataLayerEvent("boost_purchase", {
             transactionId: order.paymentId,

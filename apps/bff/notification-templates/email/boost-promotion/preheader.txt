@@ -1,1 +1,1 @@
-Boost from ₹{{boostPrice}} for {{boostDays}} days, or add Instant Alerts.
+Boost from ₹{{boostPrice}} for {{boostDays}} days. Instant Alerts included.

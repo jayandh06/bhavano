@@ -54,7 +54,6 @@ export class PaymentsController {
       dto.listingId,
       dto.boostDays,
       dto.discountCode,
-      dto.includeInstantAlerts,
       purchaseContext(tracking, client),
     );
   }
@@ -98,7 +97,6 @@ export class PaymentsController {
       user.id,
       dto.listingId,
       dto.boostDays,
-      dto.includeInstantAlerts,
       dto.discountCode,
       purchaseContext(tracking, client),
     );

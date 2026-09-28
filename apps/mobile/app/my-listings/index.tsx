@@ -9,7 +9,6 @@ import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useMyListingsQuery } from "../../src/lib/queries";
 import { renewListing } from "../../src/lib/bffClient";
 import { BoostButton } from "../../src/components/home/BoostButton";
-import { InstantAlertsButton } from "../../src/components/home/InstantAlertsButton";
 import { ListingInterestsPanel } from "../../src/components/home/ListingInterestsPanel";
 import { Icon } from "../../src/components/Icon";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
@@ -208,9 +207,6 @@ export default function MyListingsScreen() {
                     )}
                     {!isPendingPublish && item.status === "active" && !item.isExpired && !item.isBoosted && accessToken && (
                       <BoostButton listingId={item.id} category={item.category} accessToken={accessToken} />
-                    )}
-                    {!isPendingPublish && item.status === "active" && !item.isExpired && !item.hasInstantAlerts && accessToken && (
-                      <InstantAlertsButton listingId={item.id} accessToken={accessToken} />
                     )}
                   </View>
                   <View style={styles.navRow}>

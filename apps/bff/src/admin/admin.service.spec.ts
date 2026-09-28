@@ -330,26 +330,26 @@ describe('AdminService.sendBoostPromotion', () => {
     expect(result.results[0].error).toBe('Not a live listing — nothing to promote');
   });
 
-  it('skips an ad that already has both boost and Instant Alerts — nothing left to offer', async () => {
+  it('skips an ad that is already boosted — Instant Alerts comes with the boost, so nothing is left to offer', async () => {
     const future = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
     const { service, notificationsService } = makeService({
       listing: {
-        findMany: jest.fn().mockResolvedValue([listingRow({ boostedUntil: future, instantAlertsUntil: future })]),
+        findMany: jest.fn().mockResolvedValue([listingRow({ boostedUntil: future })]),
       },
     });
 
     const result = await service.sendBoostPromotion(['listing1']);
 
     expect(notificationsService.notifyBoostPromotion).not.toHaveBeenCalled();
-    expect(result.results[0].error).toBe('Already boosted and on Instant Alerts');
+    expect(result.results[0].error).toBe('Already boosted');
   });
 
-  it('still promotes Instant Alerts to an ad that is boosted but has no alerts', async () => {
+  it('still promotes a boost to an ad that only has a standalone Instant Alerts purchase', async () => {
     const { service, notificationsService } = makeService({
       listing: {
         findMany: jest
           .fn()
-          .mockResolvedValue([listingRow({ boostedUntil: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) })]),
+          .mockResolvedValue([listingRow({ instantAlertsUntil: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) })]),
       },
     });
 
@@ -506,6 +506,11 @@ describe('AdminService.sendBoostPromotion — in-app channel', () => {
       'admin1',
       expect.stringContaining('boost it for 7 days for ₹199'),
     );
+    // The longer option is quoted from the same settings, and there is no separate alerts price.
+    const body = (messagingService.sendAnnouncement as jest.Mock).mock.calls[0][2] as string;
+    expect(body).toContain('30 days is ₹599');
+    expect(body).toContain('Instant Alerts is included');
+    expect(body).not.toContain('+₹');
     expect(messagingGateway.broadcastMessage).toHaveBeenCalledWith('conv1', expect.objectContaining({ id: 'msg1' }));
     // The push and unread update are fire-and-forget, so let their promise chain settle.
     await new Promise((resolve) => setImmediate(resolve));

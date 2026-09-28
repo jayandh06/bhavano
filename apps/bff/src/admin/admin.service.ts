@@ -1130,11 +1130,10 @@ export class AdminService {
         results.push({ listingId, success: false, error: 'Bulk-import placeholder owner — no real recipient' });
         continue;
       }
-      if (
-        (listing.boostedUntil?.getTime() ?? 0) > now &&
-        (listing.instantAlertsUntil?.getTime() ?? 0) > now
-      ) {
-        results.push({ listingId, success: false, error: 'Already boosted and on Instant Alerts' });
+      // Instant Alerts is part of every boost, so a boosted ad has already bought everything the
+      // message offers.
+      if ((listing.boostedUntil?.getTime() ?? 0) > now) {
+        results.push({ listingId, success: false, error: 'Already boosted' });
         continue;
       }
       if (listing.notificationLogs.length > 0) {
@@ -1161,15 +1160,15 @@ export class AdminService {
         const site = process.env.PUBLIC_SITE_URL ?? 'https://www.bhavano.com';
         const boostLink = `${site}/my-listings?openBoost=${listing.id}`;
         try {
+          const longBase = boostPriceFor(listing.category, 30, boostPrices);
           await this.sendInAppBoostMessage(opts.adminId!, listing, {
             title: listing.title,
             location: `${listing.area.name}, ${listing.city.name}`,
             boostPrice: offerPercent ? promoPriceFor(boostBasePrice, offerPercent) : boostBasePrice,
-            bundlePrice: offerPercent ? promoPriceFor(bundleBasePrice, offerPercent) : bundleBasePrice,
             boostDays: PROMO_BOOST_DAYS,
+            longer: { days: 30, price: offerPercent ? promoPriceFor(longBase, offerPercent) : longBase },
             offer: promoOffer,
             boostLink,
-            bundleLink: `${boostLink}&withAlerts=1`,
           });
           results.push({ listingId, success: true });
         } catch (error) {

@@ -2,22 +2,19 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   fetchBoostPricingSettings,
-  fetchInstantAlertsPricingSettings,
   fetchPlatformFeeSettings,
   fetchSubscriptionPlanSettings,
 } from "@/lib/bff";
 import { BoostPricingSettingsForm } from "@/components/BoostPricingSettingsForm";
 import { PlatformFeeSettingsForm } from "@/components/PlatformFeeSettingsForm";
 import { SubscriptionPlanSettingsForm } from "@/components/SubscriptionPlanSettingsForm";
-import { InstantAlertsPricingSettingsForm } from "@/components/InstantAlertsPricingSettingsForm";
 
 import { FullPageLink } from "@/components/FullPageLink";
 export default async function PlansSettingsPage() {
   const { accessToken } = await requireAdmin();
-  const [boostPricing, subscriptionPlans, instantAlertsPricing, platformFee] = await Promise.all([
+  const [boostPricing, subscriptionPlans, platformFee] = await Promise.all([
     fetchBoostPricingSettings(accessToken),
     fetchSubscriptionPlanSettings(accessToken),
-    fetchInstantAlertsPricingSettings(accessToken),
     fetchPlatformFeeSettings(accessToken),
   ]);
 
@@ -29,7 +26,7 @@ export default async function PlansSettingsPage() {
         </FullPageLink>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px" }}>Plans</h1>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 24px" }}>
-          Platform fee, boost prices, Instant Alerts pricing, and subscription tiers (Bhavano Plus,
+          Platform fee, boost prices (7, 15 and 30 days, with Instant Alerts included), and subscription tiers (Bhavano Plus,
           Agent/Broker Pro, Seller slot pack) including listing-slot counts. Changes take effect
           immediately — post-ad checkout, the boost picker, the Instant Alerts modal, the Bhavano
           Plus subscribe button, and the plan comparison page all read these live, and checkout
@@ -47,10 +44,8 @@ export default async function PlansSettingsPage() {
             <BoostPricingSettingsForm initial={boostPricing} />
           </section>
 
-          <section>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Instant Alerts price</h2>
-            <InstantAlertsPricingSettingsForm initial={instantAlertsPricing} />
-          </section>
+          {/* No Instant Alerts price section any more: alerts are included in every boost, so there
+            * is nothing to price. The setting row and its endpoint remain only for older app builds. */}
 
           <section>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px" }}>Subscription plans &amp; listing slots</h2>

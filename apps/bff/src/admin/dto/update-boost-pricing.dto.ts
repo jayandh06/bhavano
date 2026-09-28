@@ -11,6 +11,10 @@ export class UpdateBoostPricingDto {
 
   @IsInt()
   @Min(1)
+  propertyBoostPrice30d!: number;
+
+  @IsInt()
+  @Min(1)
   coworkingPgStorageBoostPrice7d!: number;
 
   @IsInt()
@@ -19,11 +23,19 @@ export class UpdateBoostPricingDto {
 
   @IsInt()
   @Min(1)
+  coworkingPgStorageBoostPrice30d!: number;
+
+  @IsInt()
+  @Min(1)
   furnitureInteriorsBoostPrice7d!: number;
 
   @IsInt()
   @Min(1)
   furnitureInteriorsBoostPrice15d!: number;
+
+  @IsInt()
+  @Min(1)
+  furnitureInteriorsBoostPrice30d!: number;
 
   @IsBoolean()
   showSelectorOnPreview!: boolean;

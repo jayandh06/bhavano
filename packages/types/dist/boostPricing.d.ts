@@ -1,6 +1,7 @@
-import type { BoostPricingPreviewDto, ListingCategory } from "./index";
-import type { InstantAlertsPriceSettings } from "./instantAlertsPricing";
-export type BoostDurationDays = 7 | 15;
+import type { BoostPricingOptionDto, BoostPricingPreviewDto, ListingCategory } from "./index";
+export type BoostDurationDays = 7 | 15 | 30;
+/** Every duration a seller can buy, shortest first — the one list the pickers render from. */
+export declare const BOOST_DURATIONS: readonly BoostDurationDays[];
 /** Admin-editable boost pricing — same singleton-row convention as RateLimitSettingsDto. Column
  * groups mirror the three category value-tiers this pricing has always used: a flat fee across
  * categories this different in value (a ₹50 furniture listing vs. a multi-crore apartment) would
@@ -10,11 +11,14 @@ export type BoostDurationDays = 7 | 15;
 export interface BoostPriceSettings {
     propertyBoostPrice7d: number;
     propertyBoostPrice15d: number;
+    propertyBoostPrice30d: number;
     coworkingPgStorageBoostPrice7d: number;
     coworkingPgStorageBoostPrice15d: number;
+    coworkingPgStorageBoostPrice30d: number;
     furnitureInteriorsBoostPrice7d: number;
     furnitureInteriorsBoostPrice15d: number;
-    /** Where the Boost/Instant Alerts picker appears: `false` (default) is today's behavior — only
+    furnitureInteriorsBoostPrice30d: number;
+    /** Where the Boost picker appears: `false` (default) is today's behavior — only
      * as an upsell after the ad is posted. `true` moves it onto the ad-preview step instead, before
      * posting — the two placements are mutually exclusive, never both at once. See
      * docs/plans/boost-instant-alerts-preview-selector.md. */
@@ -26,6 +30,22 @@ export interface BoostPriceSettings {
  * settings have ever been saved) reuses this exact same constant rather than redefining it. */
 export declare const DEFAULT_BOOST_PRICE_SETTINGS: BoostPriceSettings;
 export declare function boostPriceFor(category: ListingCategory, days: BoostDurationDays, settings?: BoostPriceSettings): number;
+/** The option for one duration — so a picker can index by the duration it is showing instead of
+ * spelling out `boost7` / `boost15` / `boost30` at every use. */
+export declare function boostOptionFor(pricing: Pick<BoostPricingPreviewDto, "boost7" | "boost15" | "boost30">, days: BoostDurationDays): BoostPricingOptionDto;
+/** What a longer boost saves against the 7-day price, for the badge under each option. Computed
+ * from the *charged* amounts (any promo already applied), so the figure on screen matches the
+ * price next to it: the promo takes the same percentage off every duration, so the saving is the
+ * same shape with or without it.
+ *
+ * "Save ₹125" means: 30 days bought at the 7-day rate would cost ₹424; this costs ₹299.
+ * Null when there is nothing honest to say — a free option (Agent Pro credit), a missing price, or
+ * a longer option that is not actually cheaper per day. */
+export declare function boostSavings(pricing: Pick<BoostPricingPreviewDto, "boost7" | "boost15" | "boost30">, days: 15 | 30): {
+    perDay: number;
+    rupees: number;
+    percent: number;
+} | null;
 /** Display pricing built from the public, no-login-required settings + active-promo endpoint
  * (`GET /plans/pricing`, `activeDiscountPercent`) — for the ad-preview step's `BoostPlanSelector`,
  * which has to be usable before the advertiser has necessarily logged in (posting an ad only asks
@@ -35,4 +55,4 @@ export declare function boostPriceFor(category: ListingCategory, days: BoostDura
  * never used to decide what a checkout actually charges, only what the selector displays before
  * that fetch is even possible. `discountPercent` omitted/`null` shows undiscounted prices, same
  * as `previewBoostPricing` would once the code turns out invalid/expired/exhausted. */
-export declare function buildDisplayBoostPricing(category: ListingCategory, boostSettings: BoostPriceSettings, instantAlertsSettings: InstantAlertsPriceSettings, discountPercent?: number | null): BoostPricingPreviewDto;
+export declare function buildDisplayBoostPricing(category: ListingCategory, boostSettings: BoostPriceSettings, discountPercent?: number | null): BoostPricingPreviewDto;

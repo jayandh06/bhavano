@@ -33,7 +33,7 @@ Related: [`instant-alerts-paid-message-notifications.md`](instant-alerts-paid-me
   placeholder owner, prices from the live settings with the active promo quoted. **Its own 14-day
   cooldown**, separate from the email/WhatsApp one, so an email yesterday does not block the in-app
   message. Endpoint: `POST /admin/listings/notify-boost-message`.
-- **Wording** (`admin/boost-message.ts`, pure and tested): the whole pitch is the first sentence,
+- **Wording** (`admin/boost-message.ts`, pure and tested; updated 2026-09-28 when Instant Alerts became part of every boost, see [`boost-30-day-and-included-alerts.md`](boost-30-day-and-included-alerts.md) — the message now describes alerts as included, quotes the 30-day price, and an already-boosted ad is skipped): the whole pitch is the first sentence,
   because that sentence is the push preview. "Ads without a boost get very few views in their first
   week" (measured: 1.6 average vs 18.9 boosted, small sample — re-check it), "above unboosted
   listings, with a Featured label" (not "top of results": the featured tier is capped at 8 slots).

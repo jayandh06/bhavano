@@ -6,7 +6,6 @@ import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
 import { AuthGateProvider } from "@/components/home/AuthGateProvider";
 import { BuyCreditsProvider } from "@/components/home/BuyCreditsProvider";
 import { BoostProvider } from "@/components/home/BoostProvider";
-import { InstantAlertsProvider } from "@/components/home/InstantAlertsProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
 import { ProfileCompletionDialog } from "@/components/home/ProfileCompletionDialog";
 import { JsConfirmation } from "@/components/home/JsConfirmation";
@@ -112,14 +111,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <AuthGateProvider>
             <BuyCreditsProvider>
               <BoostProvider>
-                <InstantAlertsProvider>
-                  <JsConfirmation />
-                  <SoftNavPageViews />
-                  <SignupConversionTracker />
-                  <ProfileCompletionBanner />
-                  <ProfileCompletionDialog />
-                  {children}
-                </InstantAlertsProvider>
+                <JsConfirmation />
+                <SoftNavPageViews />
+                <SignupConversionTracker />
+                <ProfileCompletionBanner />
+                <ProfileCompletionDialog />
+                {children}
               </BoostProvider>
             </BuyCreditsProvider>
           </AuthGateProvider>

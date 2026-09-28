@@ -155,7 +155,7 @@ export class PaymentsService {
       });
   }
 
-  private async activateListingBoost(listingId: string, boostDays: number, paymentId: string): Promise<void> {
+  private async activateListingBoost(listingId: string, boostDays: number, paymentId: string): Promise<Date> {
     const boostedUntil = new Date(Date.now() + boostDays * 24 * 60 * 60 * 1000);
     await this.prisma.listingBoost.create({
       data: { listingId, paymentId, boostedUntil },
@@ -164,22 +164,26 @@ export class PaymentsService {
       where: { id: listingId },
       data: { boostedUntil, boostRank: Math.random() },
     });
+    return boostedUntil;
   }
 
-  /** Unlike activateListingBoost, activeUntil isn't computed from a purchased duration — it's
-   * the listing's own *current* expiresAt, re-read here (webhook time) rather than at order
-   * creation, in case the listing was renewed in between. */
-  private async activateInstantAlerts(listingId: string, paymentId: string): Promise<void> {
+  /** Instant Alerts is included in every boost, for as long as the boost runs. `until` is the
+   * boost's end; the listing's own *current* expiresAt (re-read here at webhook time rather than at
+   * order creation, in case the listing was renewed in between) still caps it, since alerts on an
+   * expired ad are pointless. Without `until` (only the deprecated standalone purchase) it runs to
+   * the listing's expiresAt, as it always did. */
+  private async activateInstantAlerts(listingId: string, paymentId: string, until?: Date): Promise<void> {
     const listing = await this.prisma.listing.findUniqueOrThrow({
       where: { id: listingId },
       select: { expiresAt: true },
     });
+    const activeUntil = until && until < listing.expiresAt ? until : listing.expiresAt;
     await this.prisma.listingInstantAlert.create({
-      data: { listingId, paymentId, activeUntil: listing.expiresAt },
+      data: { listingId, paymentId, activeUntil },
     });
     await this.prisma.listing.update({
       where: { id: listingId },
-      data: { instantAlertsUntil: listing.expiresAt },
+      data: { instantAlertsUntil: activeUntil },
     });
   }
 
@@ -339,17 +343,15 @@ export class PaymentsService {
     listingId: string,
     boostDays: BoostDurationDays,
     discountCode?: string,
-    includeInstantAlerts = false,
     context: PurchaseContext = {},
   ): Promise<CreateBoostOrderResponseDto> {
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
     if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
 
-    // The free monthly Agent Pro credit only ever covers the boost itself — bundling in Instant
-    // Alerts means real money changes hands regardless, so the bundle skips this shortcut
-    // entirely rather than deciding how to split a ₹0 boost from a paid add-on.
-    if (boostDays === 7 && !includeInstantAlerts) {
+    // The free monthly Agent Pro credit covers the 7-day boost. Instant Alerts is included in every
+    // boost, so there is no separate paid add-on to split out of it any more.
+    if (boostDays === 7) {
       const owner = await this.prisma.user.findUnique({
         where: { id: userId },
         select: { agentProUntil: true },
@@ -374,7 +376,8 @@ export class PaymentsService {
               paidAt: new Date(),
             },
           });
-          await this.activateListingBoost(listingId, boostDays, payment.id);
+          const boostedUntil = await this.activateListingBoost(listingId, boostDays, payment.id);
+          await this.activateInstantAlerts(listingId, payment.id, boostedUntil);
           await this.prisma.proBoostCredit.update({
             where: { id: credit.id },
             data: { redeemedAt: new Date(), listingId },
@@ -393,19 +396,14 @@ export class PaymentsService {
     const boostPriceSettings =
       (await this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } })) ??
       DEFAULT_BOOST_PRICE_SETTINGS;
-    const instantAlertsPriceSettings = includeInstantAlerts
-      ? ((await this.prisma.instantAlertsPriceSetting.findUnique({ where: { id: INSTANT_ALERTS_PRICE_SETTINGS_ID } })) ??
-        DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS)
-      : null;
-    const baseRupees =
-      boostPriceFor(listing.category, boostDays, boostPriceSettings) + (instantAlertsPriceSettings?.instantAlertsPrice ?? 0);
+    const baseRupees = boostPriceFor(listing.category, boostDays, boostPriceSettings);
     const amountInPaise = this.applyDiscount(baseRupees * 100, discount?.discountPercent);
 
     const order = await this.getRazorpay().orders.create({
       amount: amountInPaise,
       currency: 'INR',
       receipt: `boost_${listingId}_${Date.now()}`,
-      notes: { purpose: 'listing_boost', listingId, boostDays: String(boostDays), includeInstantAlerts: String(includeInstantAlerts) },
+      notes: { purpose: 'listing_boost', listingId, boostDays: String(boostDays), includeInstantAlerts: 'true' },
     });
 
     const payment = await this.prisma.payment.create({
@@ -417,7 +415,8 @@ export class PaymentsService {
         purpose: 'listing_boost',
         listingId,
         boostDays,
-        boostIncludesInstantAlerts: includeInstantAlerts,
+        // Every boost includes Instant Alerts (for the length of the boost), see activateInstantAlerts.
+        boostIncludesInstantAlerts: true,
         discountCodeId: discount?.id,
         ...context,
       },
@@ -432,7 +431,7 @@ export class PaymentsService {
     };
   }
 
-  /** Every price the post-ad success screen's Boost/Instant Alerts picker needs, in one call —
+  /** Every price the post-ad success screen's Boost picker needs, in one call —
    * rupees, not paise (display only; `createBoostOrder` is the source of truth for what actually
    * gets charged). `discountCode` is resolved the same way `createBoostOrder` does, except a
    * bad/expired/exhausted code degrades to "no discount" here rather than throwing: this is a
@@ -440,13 +439,11 @@ export class PaymentsService {
    * auto-applied promo that's gone stale should just silently fall back to full price instead of
    * failing the whole screen. */
   async previewBoostPricing(userId: string, category: ListingCategory, discountCode?: string): Promise<BoostPricingPreviewDto> {
-    const [boostPriceSettingsRow, instantAlertsPriceSettingsRow, owner] = await Promise.all([
+    const [boostPriceSettingsRow, owner] = await Promise.all([
       this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } }),
-      this.prisma.instantAlertsPriceSetting.findUnique({ where: { id: INSTANT_ALERTS_PRICE_SETTINGS_ID } }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { agentProUntil: true } }),
     ]);
     const boostPriceSettings = boostPriceSettingsRow ?? DEFAULT_BOOST_PRICE_SETTINGS;
-    const instantAlertsPriceSettings = instantAlertsPriceSettingsRow ?? DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS;
 
     let discountPercent: number | undefined;
     try {
@@ -457,8 +454,7 @@ export class PaymentsService {
     }
 
     // Same free-credit check createBoostOrder makes, so this preview never shows a price the
-    // actual checkout wouldn't charge — only ever applies to the boost-alone 7-day option, per
-    // createBoostOrder's own reasoning for why the bundle skips this shortcut.
+    // actual checkout wouldn't charge — it only ever applies to the 7-day option.
     const isPro = (owner?.agentProUntil?.getTime() ?? 0) > Date.now();
     let hasFreeBoostCredit = false;
     if (isPro) {
@@ -470,7 +466,7 @@ export class PaymentsService {
 
     const boost7Rupees = boostPriceFor(category, 7, boostPriceSettings);
     const boost15Rupees = boostPriceFor(category, 15, boostPriceSettings);
-    const alertsRupees = instantAlertsPriceSettings.instantAlertsPrice;
+    const boost30Rupees = boostPriceFor(category, 30, boostPriceSettings);
 
     const option = (baseRupees: number, free: boolean): BoostPricingOptionDto => {
       if (free) return { amount: 0, originalAmount: 0, discountApplied: false, free: true };
@@ -481,8 +477,11 @@ export class PaymentsService {
     return {
       boost7: option(boost7Rupees, hasFreeBoostCredit),
       boost15: option(boost15Rupees, false),
-      boost7WithInstantAlerts: option(boost7Rupees + alertsRupees, false),
-      boost15WithInstantAlerts: option(boost15Rupees + alertsRupees, false),
+      boost30: option(boost30Rupees, false),
+      // Instant Alerts is included in every boost at no extra charge; these two equal the plain
+      // options and exist only for older app builds that still read them.
+      boost7WithInstantAlerts: option(boost7Rupees, hasFreeBoostCredit),
+      boost15WithInstantAlerts: option(boost15Rupees, false),
       showSelectorOnPreview: boostPriceSettings.showSelectorOnPreview,
     };
   }
@@ -542,7 +541,6 @@ export class PaymentsService {
     userId: string,
     listingId: string,
     boostDays?: BoostDurationDays,
-    includeInstantAlerts = false,
     discountCode?: string,
     context: PurchaseContext = {},
   ): Promise<CreateListingPublishOrderResponseDto> {
@@ -552,25 +550,15 @@ export class PaymentsService {
     if (listing.publishState !== 'pending_checkout') {
       throw new BadRequestException('This listing is not awaiting publish checkout');
     }
-    if (includeInstantAlerts && !boostDays) {
-      throw new BadRequestException('Instant Alerts requires a Boost selection at publish time');
-    }
 
-    const [platformFeeSettings, boostPriceSettings, instantAlertsPriceSettings] = await Promise.all([
+    const [platformFeeSettings, boostPriceSettings] = await Promise.all([
       this.prisma.platformFeeSetting.findUnique({ where: { id: PLATFORM_FEE_SETTINGS_ID } }),
       this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } }),
-      includeInstantAlerts
-        ? this.prisma.instantAlertsPriceSetting.findUnique({ where: { id: INSTANT_ALERTS_PRICE_SETTINGS_ID } })
-        : Promise.resolve(null),
     ]);
     const feeRupees = platformFeeFor(listing.category, platformFeeSettings ?? undefined);
     let boostRupees = 0;
     if (boostDays) {
-      boostRupees =
-        boostPriceFor(listing.category, boostDays, boostPriceSettings ?? DEFAULT_BOOST_PRICE_SETTINGS) +
-        (includeInstantAlerts
-          ? (instantAlertsPriceSettings ?? DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS).instantAlertsPrice
-          : 0);
+      boostRupees = boostPriceFor(listing.category, boostDays, boostPriceSettings ?? DEFAULT_BOOST_PRICE_SETTINGS);
     }
     if (feeRupees === 0 && !boostDays) {
       throw new BadRequestException('Nothing to charge for this listing');
@@ -581,7 +569,7 @@ export class PaymentsService {
     let proCreditRedeem:
       | { id: string }
       | null = null;
-    if (boostDays === 7 && !includeInstantAlerts && boostRupees > 0) {
+    if (boostDays === 7 && boostRupees > 0) {
       const owner = await this.prisma.user.findUnique({
         where: { id: userId },
         select: { agentProUntil: true },
@@ -599,7 +587,7 @@ export class PaymentsService {
       }
     }
 
-    // Promo codes apply to Boost / Instant Alerts only — platform fee is always charged in full.
+    // Promo codes apply to Boost only — platform fee is always charged in full.
     const amountInPaise =
       feeRupees * 100 + this.applyDiscount(boostRupees * 100, discount?.discountPercent);
 
@@ -613,7 +601,7 @@ export class PaymentsService {
           purpose: 'listing_publish',
           listingId,
           boostDays: boostDays ?? null,
-          boostIncludesInstantAlerts: includeInstantAlerts,
+          boostIncludesInstantAlerts: !!boostDays,
           discountCodeId: discount?.id,
           status: 'paid',
           paidAt: new Date(),
@@ -648,7 +636,7 @@ export class PaymentsService {
         purpose: 'listing_publish',
         listingId,
         boostDays: boostDays ? String(boostDays) : '',
-        includeInstantAlerts: String(includeInstantAlerts),
+        includeInstantAlerts: String(!!boostDays),
       },
     });
 
@@ -661,7 +649,7 @@ export class PaymentsService {
         purpose: 'listing_publish',
         listingId,
         boostDays: boostDays ?? null,
-        boostIncludesInstantAlerts: includeInstantAlerts,
+        boostIncludesInstantAlerts: !!boostDays,
         discountCodeId: discount?.id,
         ...context,
       },
@@ -708,12 +696,12 @@ export class PaymentsService {
       payment.adsTrackingAuthorized ?? undefined,
     );
     if (payment.boostDays) {
-      if (payment.boostDays === 7 && !payment.boostIncludesInstantAlerts) {
+      if (payment.boostDays === 7) {
         await this.tryRedeemProBoostCreditForListing(payment.userId, payment.listingId);
       }
-      await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
+      const boostedUntil = await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
       if (payment.boostIncludesInstantAlerts) {
-        await this.activateInstantAlerts(payment.listingId, payment.id);
+        await this.activateInstantAlerts(payment.listingId, payment.id, boostedUntil);
         this.notifyBoostAndInstantAlertsActivated(payment.listingId, payment.boostDays);
       } else {
         this.notifyListingBoostActivated(payment.listingId, payment.boostDays);
@@ -861,10 +849,10 @@ export class PaymentsService {
     }
 
     if (payment.purpose === 'listing_boost' && payment.listingId && payment.boostDays) {
-      await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
+      const boostedUntil = await this.activateListingBoost(payment.listingId, payment.boostDays, payment.id);
       this.logger.log(`Boost activated for listing ${payment.listingId}`);
       if (payment.boostIncludesInstantAlerts) {
-        await this.activateInstantAlerts(payment.listingId, payment.id);
+        await this.activateInstantAlerts(payment.listingId, payment.id, boostedUntil);
         this.logger.log(`Instant Alerts activated for listing ${payment.listingId} (bundled with boost)`);
         this.notifyBoostAndInstantAlertsActivated(payment.listingId, payment.boostDays);
       } else {

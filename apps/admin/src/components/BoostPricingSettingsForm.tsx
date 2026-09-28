@@ -7,17 +7,24 @@ import { updateBoostPricingAction } from "@/app/actions/admin";
 export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSettings }) {
   const [propertyBoostPrice7d, setPropertyBoostPrice7d] = useState(String(initial.propertyBoostPrice7d));
   const [propertyBoostPrice15d, setPropertyBoostPrice15d] = useState(String(initial.propertyBoostPrice15d));
+  const [propertyBoostPrice30d, setPropertyBoostPrice30d] = useState(String(initial.propertyBoostPrice30d));
   const [coworkingPgStorageBoostPrice7d, setCoworkingPgStorageBoostPrice7d] = useState(
     String(initial.coworkingPgStorageBoostPrice7d),
   );
   const [coworkingPgStorageBoostPrice15d, setCoworkingPgStorageBoostPrice15d] = useState(
     String(initial.coworkingPgStorageBoostPrice15d),
   );
+  const [coworkingPgStorageBoostPrice30d, setCoworkingPgStorageBoostPrice30d] = useState(
+    String(initial.coworkingPgStorageBoostPrice30d),
+  );
   const [furnitureInteriorsBoostPrice7d, setFurnitureInteriorsBoostPrice7d] = useState(
     String(initial.furnitureInteriorsBoostPrice7d),
   );
   const [furnitureInteriorsBoostPrice15d, setFurnitureInteriorsBoostPrice15d] = useState(
     String(initial.furnitureInteriorsBoostPrice15d),
+  );
+  const [furnitureInteriorsBoostPrice30d, setFurnitureInteriorsBoostPrice30d] = useState(
+    String(initial.furnitureInteriorsBoostPrice30d),
   );
   const [showSelectorOnPreview, setShowSelectorOnPreview] = useState(initial.showSelectorOnPreview);
   const [saving, setSaving] = useState(false);
@@ -26,10 +33,13 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
   const prices = {
     propertyBoostPrice7d: Number(propertyBoostPrice7d),
     propertyBoostPrice15d: Number(propertyBoostPrice15d),
+    propertyBoostPrice30d: Number(propertyBoostPrice30d),
     coworkingPgStorageBoostPrice7d: Number(coworkingPgStorageBoostPrice7d),
     coworkingPgStorageBoostPrice15d: Number(coworkingPgStorageBoostPrice15d),
+    coworkingPgStorageBoostPrice30d: Number(coworkingPgStorageBoostPrice30d),
     furnitureInteriorsBoostPrice7d: Number(furnitureInteriorsBoostPrice7d),
     furnitureInteriorsBoostPrice15d: Number(furnitureInteriorsBoostPrice15d),
+    furnitureInteriorsBoostPrice30d: Number(furnitureInteriorsBoostPrice30d),
   };
   const parsed: BoostPriceSettings = { ...prices, showSelectorOnPreview };
   // Only the price fields need this check — showSelectorOnPreview is a boolean, not a positive
@@ -53,6 +63,7 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
         <div style={{ display: "flex", gap: 12 }}>
           <Field label="7-day boost (₹)" value={propertyBoostPrice7d} onChange={setPropertyBoostPrice7d} />
           <Field label="15-day boost (₹)" value={propertyBoostPrice15d} onChange={setPropertyBoostPrice15d} />
+          <Field label="30-day boost (₹)" value={propertyBoostPrice30d} onChange={setPropertyBoostPrice30d} />
         </div>
       </div>
 
@@ -68,6 +79,11 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
             label="15-day boost (₹)"
             value={coworkingPgStorageBoostPrice15d}
             onChange={setCoworkingPgStorageBoostPrice15d}
+          />
+          <Field
+            label="30-day boost (₹)"
+            value={coworkingPgStorageBoostPrice30d}
+            onChange={setCoworkingPgStorageBoostPrice30d}
           />
         </div>
       </div>
@@ -85,6 +101,11 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
             value={furnitureInteriorsBoostPrice15d}
             onChange={setFurnitureInteriorsBoostPrice15d}
           />
+          <Field
+            label="30-day boost (₹)"
+            value={furnitureInteriorsBoostPrice30d}
+            onChange={setFurnitureInteriorsBoostPrice30d}
+          />
         </div>
       </div>
 
@@ -98,7 +119,7 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
           />
           <span>
             <span style={{ fontWeight: 700, fontSize: 14, display: "block" }}>
-              Show the Boost/Instant Alerts selector on the ad Preview step
+              Show the Boost selector on the ad Preview step
             </span>
             <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
               When checked, advertisers pick a plan before posting instead of being offered one

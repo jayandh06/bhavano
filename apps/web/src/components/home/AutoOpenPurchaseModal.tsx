@@ -4,11 +4,10 @@ import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import { useBoost } from "./BoostProvider";
-import { useInstantAlerts } from "./InstantAlertsProvider";
 
 /**
  * Deep-links straight into the Boost/Instant Alerts dialog when landing here from the mobile
- * app's iOS in-app browser (BoostButton.tsx/InstantAlertsButton.tsx/PostAdWizard.tsx there open
+ * app's iOS in-app browser (BoostButton.tsx/PostAdWizard.tsx there open
  * `/my-listings?openBoost=<id>` or `?openInstantAlerts=<id>` instead of the bare path, since
  * Apple Guideline 3.1.1 means iOS can't open the native checkout itself) — without this, the
  * seller lands on the plain listings page and has to re-find the ad and tap the button again.
@@ -32,32 +31,19 @@ export function AutoOpenPurchaseModal({
   const searchParams = useSearchParams();
   const router = useRouter();
   const { boost } = useBoost();
-  const { getInstantAlerts } = useInstantAlerts();
   const firedRef = useRef(false);
 
   useEffect(() => {
     if (firedRef.current) return;
-    const openBoostId = searchParams.get("openBoost");
-    const openInstantAlertsId = searchParams.get("openInstantAlerts");
-    if (!openBoostId && !openInstantAlertsId) return;
+    // `openInstantAlerts` is an old link (Instant Alerts used to be sold on its own). Instant Alerts
+    // now comes with every boost, so an old link opens the Boost screen for that ad instead, and
+    // `withAlerts` is simply ignored.
+    const openBoostId = searchParams.get("openBoost") ?? searchParams.get("openInstantAlerts");
+    if (!openBoostId) return;
     firedRef.current = true;
 
-    if (openBoostId) {
-      const listing = listings.find((l) => l.id === openBoostId);
-      // `withAlerts=1` opens the same screen with Instant Alerts already ticked — what the
-      // promotion email's "Boost my ad + Instant Alerts" button asks for, so the seller sees the
-      // combined price they clicked rather than having to find the checkbox.
-      if (listing)
-        boost({
-          listingId: listing.id,
-          category: listing.category,
-          withInstantAlerts: searchParams.get("withAlerts") === "1",
-          initialPricing,
-        });
-    }
-    if (openInstantAlertsId) {
-      getInstantAlerts({ listingId: openInstantAlertsId });
-    }
+    const listing = listings.find((l) => l.id === openBoostId);
+    if (listing) boost({ listingId: listing.id, category: listing.category, initialPricing });
 
     const params = new URLSearchParams(searchParams.toString());
     params.delete("openBoost");

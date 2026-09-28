@@ -461,7 +461,6 @@ export function PostAdWizard({
         ? buildDisplayBoostPricing(
             category,
             planPricingSettings.boost,
-            planPricingSettings.instantAlerts,
             planPricingSettings.activeDiscountPercent,
           )
         : null,
@@ -1037,14 +1036,28 @@ export function PostAdWizard({
     <div>
       <StepTracker step={step} />
       {draftRestored && step !== "success" && (
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4 rounded-[10px] border border-border bg-surface-alt px-3.5 py-2.5 text-[13px] text-text">
-          <span>We restored the ad you were writing on this device.</span>
+        // Deliberately loud: someone who tapped "Post free ad" and landed mid-form, possibly in a
+        // category they did not choose today, has to understand why before they publish into it.
+        <div
+          role="status"
+          className="mb-5 rounded-xl border-2 border-[color:var(--gold)] bg-[color:var(--gold)]/10 px-4 py-3.5 text-text"
+        >
+          <div className="font-lora font-bold text-[15px] mb-1">
+            We restored the ad you were writing on this device
+          </div>
+          <p className="m-0 text-[13px] text-text-soft">
+            {(() => {
+              const label = POST_CATEGORIES.find((c) => c.value === category)?.label;
+              return label ? `You are continuing your ${label} ad from where you left off. ` : "";
+            })()}
+            Check the category and details before you post, or start a new ad.
+          </p>
           <button
             type="button"
             onClick={startOver}
-            className="bg-transparent border-0 p-0 text-[13px] font-bold text-green cursor-pointer"
+            className="mt-2.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-[13px] font-bold text-text cursor-pointer"
           >
-            Start over
+            Start a new ad instead
           </button>
         </div>
       )}
@@ -1549,9 +1562,7 @@ export function PostAdWizard({
                 ) : (
                   <>
                     <p className="text-[13px] text-text-soft mt-0 mb-3">
-                      {`Payment for your ${selectedBoostPlan.duration}-day Boost${
-                        selectedBoostPlan.includeInstantAlerts ? " + Instant Alerts" : ""
-                      } didn’t go through.`}
+                      {`Payment for your ${selectedBoostPlan.duration}-day Boost didn’t go through.`}
                     </p>
                     <button onClick={retryBoostCheckout} className={primaryButtonClass}>
                       Finish boosting this listing

@@ -2,6 +2,8 @@
 
 ## Status: implemented (2026-09-22)
 
+**Superseded in part (2026-09-28):** Instant Alerts is no longer a separate add-on — it is included in every boost, and a 30-day duration was added; the selector's "Add Instant Alerts" toggle is gone. See [`boost-30-day-and-included-alerts.md`](boost-30-day-and-included-alerts.md).
+
 **Superseded in part (2026-09-25):** the wizard's "only ask for an account at Post ad" point below
 is no longer true. Both web and mobile `PostAdWizard`s now ask for login when the user presses
 **Preview Ad** (`onPreview()`), and continue straight to the Preview step on success. `onSubmit`

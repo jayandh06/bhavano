@@ -4,7 +4,6 @@ import type {
   BoostPricingPreviewDto,
   CreateBoostOrderResponseDto,
   CreateContactRevealCreditsOrderResponseDto,
-  CreateInstantAlertsOrderResponseDto,
   CreateListingPublishOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
   ListingCategory,
@@ -18,7 +17,6 @@ import { auth } from "@/auth";
 import {
   createBoostOrder,
   createContactRevealCreditsOrder,
-  createInstantAlertsOrder,
   createListingPublishOrder,
   createSubscriptionOrder,
   fetchPlanPricing,
@@ -33,13 +31,6 @@ import { isAccessTokenValid } from "@/lib/session";
 export async function fetchBoostPricingAction(): Promise<BoostPriceSettings> {
   const { boost } = await fetchPlanPricing();
   return boost;
-}
-
-/** Same reasoning as fetchBoostPricingAction — called from InstantAlertsProvider when its
- * confirmation modal actually opens. */
-export async function fetchInstantAlertsPricingAction(): Promise<InstantAlertsPriceSettings> {
-  const { instantAlerts } = await fetchPlanPricing();
-  return instantAlerts;
 }
 
 /** Same reasoning as fetchBoostPricingAction — called from PostAdWizard's Preview-step selector,
@@ -154,25 +145,6 @@ export async function createSubscriptionOrderAction(
 
   try {
     const order = await createSubscriptionOrder(session.accessToken, tier, months, agentProUnits);
-    return { success: true, order };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Failed to start checkout" };
-  }
-}
-
-export type CreateInstantAlertsOrderResult =
-  | { success: true; order: CreateInstantAlertsOrderResponseDto }
-  | { success: false; error: string };
-
-export async function createInstantAlertsOrderAction(
-  listingId: string,
-  discountCode?: string,
-): Promise<CreateInstantAlertsOrderResult> {
-  const session = await auth();
-  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
-
-  try {
-    const order = await createInstantAlertsOrder(session.accessToken, listingId, discountCode);
     return { success: true, order };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to start checkout" };

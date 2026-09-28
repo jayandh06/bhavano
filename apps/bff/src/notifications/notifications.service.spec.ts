@@ -57,7 +57,8 @@ describe('NotificationsService.notifyBoostPromotion', () => {
     expect(subject).toContain('50% off');
     // Both destinations reach the plain-text part, which is the only place a URL belongs.
     expect(text).toContain('my-listings?openBoost=abc123');
-    expect(text).toContain('withAlerts=1');
+    // One boost, alerts included: there is no second "Boost + Instant Alerts" destination any more.
+    expect(text).not.toContain('withAlerts=1');
   });
 
   it('skips WhatsApp entirely with no offer running, since the template names an end date', async () => {

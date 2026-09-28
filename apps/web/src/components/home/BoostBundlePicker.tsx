@@ -3,34 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
-import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { BOOST_DURATIONS, boostOptionFor, boostSavings, type BoostDurationDays } from "@bhavano/types/boostPricing";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import { previewBoostPricingAction } from "@/app/actions/payments";
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { Icon } from "./Icon";
 
-const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
-
-/** Replaces the old side-by-side Boost/Instant Alerts buttons on the post-ad success screen —
- * those only ever showed a price after being clicked (each opened its own modal that fetched
- * pricing on open), and treated the two as fully separate purchases even for a seller who wanted
- * both. This fetches every combination's price up front (via PaymentsService.previewBoostPricing,
- * which also auto-applies the current promo code and the Agent Pro free-credit check) and, when
- * Instant Alerts is added, checks out as a single combined Razorpay payment
- * (createBoostOrder's `includeInstantAlerts`) rather than two payments back to back. */
+/** The Boost picker on the post-ad success screen and My Listings. Fetches every duration's price
+ * up front (via PaymentsService.previewBoostPricing, which also auto-applies the current promo code
+ * and the Agent Pro free-credit check) and shows what each longer option saves against the 7-day
+ * price. Instant Alerts is included in every boost at no extra charge, so there is no separate
+ * choice to make. */
 export function BoostBundlePicker({
   listingId,
   category,
   onActivating,
-  defaultAddInstantAlerts = false,
   initialPricing,
 }: {
   listingId: string;
   category: ListingCategory;
-  /** Pre-ticks "Add Instant Alerts". Set when the seller arrived by choosing that specifically —
-   * the Boost + Instant Alerts button in the admin-sent promotion email lands here with it on,
-   * so the screen already reflects what they clicked. */
-  defaultAddInstantAlerts?: boolean;
   /** A price resolved before this mounted — the deep-link path passes the one its page's server
    * render produced. With it, there is no fetch, no retry ladder and no race with a
    * just-established session: the dialog opens showing the price. */
@@ -42,8 +33,9 @@ export function BoostBundlePicker({
 }) {
   const router = useRouter();
   const [pricing, setPricing] = useState<BoostPricingPreviewDto | null>(initialPricing ?? null);
-  const [duration, setDuration] = useState<BoostDurationDays>(7);
-  const [addInstantAlerts, setAddInstantAlerts] = useState(defaultAddInstantAlerts);
+  // The middle option is pre-selected: a 7-day default was taken by 13 of 19 buyers, and the longer
+  // options are cheaper per day.
+  const [duration, setDuration] = useState<BoostDurationDays>(15);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Why the price could not be loaded — distinct from `error` (a checkout failure), because the
@@ -107,21 +99,13 @@ export function BoostBundlePicker({
     return () => window.removeEventListener("focus", onFocus);
   }, [pricing]);
 
-  const optionKey =
-    duration === 7
-      ? addInstantAlerts
-        ? "boost7WithInstantAlerts"
-        : "boost7"
-      : addInstantAlerts
-        ? "boost15WithInstantAlerts"
-        : "boost15";
-  const option = pricing?.[optionKey];
+  const option = pricing ? boostOptionFor(pricing, duration) : undefined;
 
   async function onPay() {
     setPending(true);
     setError(null);
 
-    const result = await startBoostCheckout({ listingId, category, duration, includeInstantAlerts: addInstantAlerts });
+    const result = await startBoostCheckout({ listingId, category, duration, includeInstantAlerts: true });
     setPending(false);
 
     if (result.outcome === "activated") {
@@ -159,7 +143,7 @@ export function BoostBundlePicker({
         {(
           [
             ["featured", "A gold Featured badge, ranked above regular listings"],
-            ["bell", "Add Instant Alerts to get emailed when someone messages or shows interest"],
+            ["bell", "Instant Alerts included: get emailed the moment someone messages or shows interest"],
           ] as const
         ).map(([icon, text]) => (
           <li key={text} className="flex items-start gap-2 text-[13px] text-text-soft">
@@ -170,42 +154,41 @@ export function BoostBundlePicker({
       </ul>
 
       <div className="flex flex-col gap-2.5">
-        {BOOST_DURATIONS.map((days) => (
-          <button
-            key={days}
-            type="button"
-            onClick={() => setDuration(days)}
-            disabled={pending}
-            className={`flex justify-between items-center border-[1.5px] rounded-[10px] px-4 py-3 text-sm font-bold cursor-pointer disabled:opacity-50 ${
-              duration === days ? "border-green bg-green/10 text-text" : "border-border bg-surface-alt text-text"
-            }`}
-          >
-            <span>Boost {days} days</span>
-            <PriceTag
-              option={pricing ? (days === 7 ? pricing.boost7 : pricing.boost15) : undefined}
-            />
-          </button>
-        ))}
-
-        <label className="flex items-center justify-between gap-2 border-[1.5px] border-border rounded-[10px] px-4 py-3 text-sm font-bold text-text cursor-pointer bg-surface-alt">
-          <span className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={addInstantAlerts}
+        {BOOST_DURATIONS.map((days) => {
+          const opt = pricing ? boostOptionFor(pricing, days) : undefined;
+          const saving = pricing && days !== 7 ? boostSavings(pricing, days) : null;
+          return (
+            <button
+              key={days}
+              type="button"
+              onClick={() => setDuration(days)}
               disabled={pending}
-              onChange={(e) => setAddInstantAlerts(e.target.checked)}
-            />
-            Add Instant Alerts
-          </span>
-          {pricing && (
-            <span className="text-[13px] text-muted font-normal">
-              +₹
-              {duration === 7
-                ? pricing.boost7WithInstantAlerts.amount - pricing.boost7.amount
-                : pricing.boost15WithInstantAlerts.amount - pricing.boost15.amount}
-            </span>
-          )}
-        </label>
+              className={`flex justify-between items-center gap-3 border-[1.5px] rounded-[10px] px-4 py-3 text-sm font-bold cursor-pointer disabled:opacity-50 ${
+                duration === days ? "border-green bg-green/10 text-text" : "border-border bg-surface-alt text-text"
+              }`}
+            >
+              <span className="flex flex-col items-start gap-0.5 text-left">
+                <span className="flex items-center gap-2">
+                  Boost {days} days
+                  {days === 30 && saving && (
+                    <span className="text-[10.5px] font-bold text-on-green bg-green rounded-md px-1.5 py-[1px]">
+                      Best value
+                    </span>
+                  )}
+                </span>
+                {saving ? (
+                  <span className="text-[12px] font-normal text-green">
+                    ₹{saving.perDay}/day · save ₹{saving.rupees} ({saving.percent}%) vs the 7-day price
+                  </span>
+                ) : (
+                  opt &&
+                  !opt.free && <span className="text-[12px] font-normal text-muted">₹{Math.round(opt.amount / days)}/day</span>
+                )}
+              </span>
+              <PriceTag option={opt} />
+            </button>
+          );
+        })}
       </div>
 
       {error && <p className="text-[#b3413a] text-[13px] mt-3 mb-0">{error}</p>}

@@ -1,7 +1,5 @@
 Hi {{name}},
 
-Your ad "{{title}}" is live. Two ways to get it in front of more people:
+Your ad "{{title}}" is live. A boost puts it above unboosted listings in {{location}}, with a Featured label, and it includes Instant Alerts, so you hear the moment someone messages you about it.
 
-Boost puts your ad above unboosted listings in {{location}}, with a Featured label. Instant Alerts tells you the moment someone messages you about it.
-
-One-time payment, no subscription — and you can change the duration or drop Instant Alerts before paying. Either way your ad stays live and free for its full term.
+Boost for {{boostDays}} days from ₹{{boostPrice}}, or pick 15 or 30 days for a lower price per day. One-time payment, no subscription. Either way your ad stays live and free for its full term.

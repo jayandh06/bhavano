@@ -941,7 +941,11 @@ export interface BoostPricingOptionDto {
 export interface BoostPricingPreviewDto {
     boost7: BoostPricingOptionDto;
     boost15: BoostPricingOptionDto;
+    boost30: BoostPricingOptionDto;
+    /** @deprecated Instant Alerts is included in every boost at no extra charge, so these equal
+     * `boost7` / `boost15`. Kept only so an older app build that still reads them keeps working. */
     boost7WithInstantAlerts: BoostPricingOptionDto;
+    /** @deprecated See `boost7WithInstantAlerts`. */
     boost15WithInstantAlerts: BoostPricingOptionDto;
     showSelectorOnPreview: boolean;
 }

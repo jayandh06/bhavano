@@ -651,7 +651,7 @@ export function closeMyRequirement(
 export function createBoostOrder(
   accessToken: string,
   listingId: string,
-  boostDays: 7 | 15,
+  boostDays: 7 | 15 | 30,
   discountCode?: string,
   includeInstantAlerts?: boolean,
 ): Promise<CreateBoostOrderResponseDto> {
@@ -664,7 +664,7 @@ export function createBoostOrder(
 export function createListingPublishOrder(
   accessToken: string,
   listingId: string,
-  boostDays?: 7 | 15,
+  boostDays?: 7 | 15 | 30,
   includeInstantAlerts?: boolean,
   discountCode?: string,
 ): Promise<import("@bhavano/types").CreateListingPublishOrderResponseDto> {

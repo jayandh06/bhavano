@@ -28,9 +28,6 @@ interface BoostOptions {
   /** Fired when the boost is either activated for free (Pro credit) or paid for — the trigger
    * uses it to swap itself for a "Boost pending…" label while the webhook catches up. */
   onActivating?: () => void;
-  /** Opens with "Add Instant Alerts" already ticked — used by the deep link the promotion email's
-   * "Boost + Instant Alerts" button carries. */
-  withInstantAlerts?: boolean;
   /** A price the caller already has, so the dialog does not have to fetch one. Only the deep-link
    * path supplies it (resolved in my-listings' own server render); an in-app click leaves it unset
    * and the dialog fetches as before, with a session that is long since warm. */
@@ -75,7 +72,6 @@ export function BoostProvider({ children }: { children: ReactNode }) {
             <BoostBundlePicker
               listingId={opts.listingId}
               category={opts.category}
-              defaultAddInstantAlerts={opts.withInstantAlerts}
               initialPricing={opts.initialPricing}
               onActivating={() => {
                 setOpen(false);

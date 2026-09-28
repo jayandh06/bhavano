@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
-import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import { BOOST_DURATIONS, boostOptionFor, boostSavings, type BoostDurationDays } from "@bhavano/types/boostPricing";
 import { ACTIVE_PROMO_CODE, discountPercentFor } from "@bhavano/types/promoCode";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { previewBoostPricing } from "../../lib/bffClient";
 import { startBoostCheckout } from "../../lib/boostCheckout";
 import { Icon } from "../Icon";
-
-const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 
 // Temporary September promo — same constant as the website's own copy in
 // app/actions/payments.ts. Auto-applied so the price shown is just what checkout will actually
@@ -19,13 +17,10 @@ const BOOST_DURATIONS: BoostDurationDays[] = [7, 15];
 
 
 /**
- * Android-only inline replacement for the old separate BoostModal/InstantAlertsModal buttons on
- * the post-ad success screen — those only ever showed a price after being tapped, and treated
- * Boost and Instant Alerts as two fully independent purchases even for a seller who wanted both.
- * This fetches every combination's price up front (PaymentsService.previewBoostPricing, which
- * also resolves the current promo code and the Agent Pro free-credit case) and, when Instant
- * Alerts is added, checks out as a single combined Razorpay payment (createBoostOrder's
- * `includeInstantAlerts`) instead of two payments back to back.
+ * Android-only inline Boost picker on the post-ad success screen. Fetches every duration's price up
+ * front (PaymentsService.previewBoostPricing, which also resolves the current promo code and the
+ * Agent Pro free-credit case) and shows what each longer option saves against the 7-day price.
+ * Instant Alerts is included in every boost at no extra charge, so there is no separate choice.
  *
  * iOS keeps the old two-button, redirect-to-website treatment untouched — a native Razorpay
  * checkout for a paid feature is exactly what Apple's Guideline 3.1.1 forbids there, same
@@ -47,8 +42,9 @@ export function BoostBundleCard({
 }) {
   const { colors } = useAppTheme();
   const [pricing, setPricing] = useState<BoostPricingPreviewDto | null>(null);
-  const [duration, setDuration] = useState<BoostDurationDays>(7);
-  const [addInstantAlerts, setAddInstantAlerts] = useState(false);
+  // The middle option is pre-selected: a 7-day default was taken by 13 of 19 buyers, and the longer
+  // options are cheaper per day.
+  const [duration, setDuration] = useState<BoostDurationDays>(15);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,15 +60,7 @@ export function BoostBundleCard({
     };
   }, [accessToken, category]);
 
-  const optionKey =
-    duration === 7
-      ? addInstantAlerts
-        ? "boost7WithInstantAlerts"
-        : "boost7"
-      : addInstantAlerts
-        ? "boost15WithInstantAlerts"
-        : "boost15";
-  const option = pricing?.[optionKey];
+  const option = pricing ? boostOptionFor(pricing, duration) : undefined;
 
   async function onPay() {
     setPending(true);
@@ -81,7 +69,7 @@ export function BoostBundleCard({
       accessToken,
       listingId,
       duration,
-      includeInstantAlerts: addInstantAlerts,
+      includeInstantAlerts: true,
       discountCode: ACTIVE_PROMO_CODE,
     });
     setPending(false);
@@ -132,37 +120,64 @@ export function BoostBundleCard({
       </View>
 
       <View style={{ gap: 8 }}>
-        {BOOST_DURATIONS.map((days) => (
-          <Pressable
-            key={days}
-            onPress={() => setDuration(days)}
-            disabled={pending}
-            style={[
-              styles.optionButton,
-              {
-                borderColor: duration === days ? colors.green : colors.border,
-                backgroundColor: duration === days ? `${colors.green}1a` : colors.surface,
-                opacity: pending ? 0.5 : 1,
-              },
-            ]}
-          >
-            <Text style={{ flex: 1, fontWeight: "700", fontSize: 14, color: colors.text }}>Boost {days} days</Text>
-            <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>
-              <PriceText opt={days === 7 ? pricing?.boost7 : pricing?.boost15} strikeColor={colors.muted} />
-            </Text>
-          </Pressable>
-        ))}
-
-        <View
-          style={[
-            styles.optionButton,
-            { borderColor: colors.border, backgroundColor: colors.surface, justifyContent: "space-between" },
-          ]}
-        >
-          <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>Add Instant Alerts</Text>
-          <Switch value={addInstantAlerts} onValueChange={setAddInstantAlerts} disabled={pending} />
-        </View>
+{BOOST_DURATIONS.map((days) => {
+          const opt = pricing ? boostOptionFor(pricing, days) : undefined;
+          const saving = pricing && days !== 7 ? boostSavings(pricing, days) : null;
+          return (
+            <Pressable
+              key={days}
+              onPress={() => setDuration(days)}
+              disabled={pending}
+              style={[
+                styles.optionButton,
+                {
+                  borderColor: duration === days ? colors.green : colors.border,
+                  backgroundColor: duration === days ? `${colors.green}1a` : colors.surface,
+                  opacity: pending ? 0.5 : 1,
+                },
+              ]}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>Boost {days} days</Text>
+                  {days === 30 && saving && (
+                    <Text
+                      style={{
+                        fontSize: 10.5,
+                        fontWeight: "700",
+                        color: colors.onGreen,
+                        backgroundColor: colors.green,
+                        borderRadius: 6,
+                        paddingHorizontal: 6,
+                        paddingVertical: 1,
+                        overflow: "hidden",
+                      }}
+                    >
+                      Best value
+                    </Text>
+                  )}
+                </View>
+                {saving ? (
+                  <Text style={{ fontSize: 12, color: colors.green }}>
+                    ₹{saving.perDay}/day · save ₹{saving.rupees} ({saving.percent}%) vs the 7-day price
+                  </Text>
+                ) : (
+                  opt &&
+                  !opt.free && (
+                    <Text style={{ fontSize: 12, color: colors.muted }}>₹{Math.round(opt.amount / days)}/day</Text>
+                  )
+                )}
+              </View>
+              <Text style={{ fontWeight: "700", fontSize: 14, color: colors.green }}>
+                <PriceText opt={opt} strikeColor={colors.muted} />
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
+      <Text style={{ fontSize: 12.5, color: colors.textSoft, marginTop: 10 }}>
+        Instant Alerts is included: you are emailed the moment someone messages you.
+      </Text>
 
       {pending && <ActivityIndicator color={colors.green} style={{ marginTop: 14 }} />}
       {error && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 14 }}>{error}</Text>}

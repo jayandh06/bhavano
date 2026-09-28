@@ -120,7 +120,6 @@ function PublishCheckoutModal({
         ? buildDisplayBoostPricing(
             category,
             planPricing.boost,
-            planPricing.instantAlerts,
             planPricing.activeDiscountPercent,
           )
         : null,
