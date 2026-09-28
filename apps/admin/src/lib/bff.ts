@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
+import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
@@ -494,6 +495,7 @@ export interface PaymentsQuery {
   purpose?: PaymentPurpose;
   status?: PaymentStatus;
   listingTitle?: string;
+  source?: PurchaseSource;
   sort?: AdminPaymentSort;
   limit?: number;
 }

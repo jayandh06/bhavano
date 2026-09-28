@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { PaymentPurpose, PaymentStatus } from "@bhavano/types";
+import { PURCHASE_SOURCES, PURCHASE_SOURCE_LABELS, parsePurchaseSource } from "@bhavano/types/purchaseSource";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminPaymentSort, AdminPaymentSortField, fetchPayments } from "@/lib/bff";
 import {
@@ -66,6 +67,11 @@ const STATUS_LABELS: Record<PaymentStatus, string> = {
   refunded: "Refunded",
 };
 
+function sourceLabel(source: string | undefined): string | undefined {
+  const known = parsePurchaseSource(source);
+  return known ? PURCHASE_SOURCE_LABELS[known] : undefined;
+}
+
 /** Same IST-day-picker convention as the page-visits screen — kept as raw YYYY-MM-DD in the URL
  * so the date inputs round-trip, only widened to instants when actually calling the BFF. */
 const IST_OFFSET = "+05:30";
@@ -87,6 +93,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
   const from = str(sp.from);
   const to = str(sp.to);
   const listingTitle = str(sp.listingTitle);
+  const source = parsePurchaseSource(str(sp.source));
   const sort = str(sp.sort) as AdminPaymentSort | undefined;
 
   const result = await fetchPayments(accessToken, {
@@ -97,6 +104,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
     purpose,
     status,
     listingTitle,
+    source,
     sort,
     limit,
   });
@@ -160,6 +168,17 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
               </SelectField>
             </Field>
 
+            <Field label="Source">
+              <SelectField name="source" defaultValue={source ?? "any"} style={selectStyle}>
+                <option value="any">All sources</option>
+                {PURCHASE_SOURCES.map((s) => (
+                  <option key={s} value={s}>
+                    {PURCHASE_SOURCE_LABELS[s]}
+                  </option>
+                ))}
+              </SelectField>
+            </Field>
+
             <Field label="From (IST)">
               <input type="date" name="from" defaultValue={from} style={dateInputStyle} />
             </Field>
@@ -213,6 +232,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
                       be an orderBy target. See AdminPaymentDto's own doc comment. */}
                   <th style={thStyle}>Expiry</th>
                   <th style={thStyle}>Discount code</th>
+                  <th style={thStyle}>Source</th>
                   <th style={thStyle} />
                 </tr>
                 <tr style={{ background: "var(--surface-alt)" }}>
@@ -227,6 +247,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
                       style={headerInputStyle}
                     />
                   </th>
+                  <th style={filterThStyle} />
                   <th style={filterThStyle} />
                   <th style={filterThStyle} />
                   <th style={filterThStyle} />
@@ -262,6 +283,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
                     </td>
                     <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{p.expiresAt ? formatDate(p.expiresAt) : dash}</td>
                     <td style={tdStyle}>{p.discountCode ?? dash}</td>
+                    <td style={tdStyle}>{sourceLabel(p.source) ?? dash}</td>
                     <td style={tdStyle}>
                       {/* Manual override for support cases (a payment that should still get the
                           boost, or a refund) — only offered while there's an active boost to
@@ -275,7 +297,7 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
                 ))}
                 {result.items.length === 0 && (
                   <tr style={{ borderTop: "1px solid var(--border)" }}>
-                    <td colSpan={9} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
+                    <td colSpan={10} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
                       No purchases match these filters.
                     </td>
                   </tr>
