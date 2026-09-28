@@ -82,6 +82,12 @@ export class UsersService {
       if (!city) throw new BadRequestException('Unknown cityId');
     }
 
+    // Agency details belong to agents only — switching to "owner" clears them rather than leaving
+    // a stale agency name that would reappear if they ever switched back.
+    const clean = (v: string | undefined) => (v === undefined ? undefined : v.trim() || null);
+    const agencyName = dto.sellerType === 'owner' ? null : clean(dto.agencyName);
+    const reraNumber = dto.sellerType === 'owner' ? null : clean(dto.reraNumber);
+
     // No try/catch for P2002 any more: the only unique field this endpoint could collide on was
     // `email`, and an address now reaches the profile solely through the verified flow, which
     // does its own conflict handling.
@@ -90,6 +96,9 @@ export class UsersService {
       data: {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.cityId !== undefined ? { cityId: dto.cityId } : {}),
+        ...(dto.sellerType !== undefined ? { sellerType: dto.sellerType } : {}),
+        ...(agencyName !== undefined ? { agencyName } : {}),
+        ...(reraNumber !== undefined ? { reraNumber } : {}),
       },
       include: { city: true },
     });
@@ -119,5 +128,8 @@ function toProfileDto(
     agentProUnits: user.agentProUnits,
     activeListingCount,
     listingSlotAllowance: listingSlotAllowanceValue,
+    sellerType: user.sellerType,
+    agencyName: user.agencyName,
+    reraNumber: user.reraNumber,
   };
 }

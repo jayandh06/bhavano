@@ -16,6 +16,7 @@ import type {
   CreatedVideoInput,
   HomeCategoryFilter,
   ListingCardDto,
+  SellerType,
   ListingCategory,
   ListingDetailDto,
   ListingEditLogEntryDto,
@@ -240,7 +241,7 @@ const LISTING_MEDIA_INCLUDE = {
   // phone/email are never sent to the client directly from toDetailDto — only echoed back into
   // ownerPhone/ownerEmail once ContactRevealService confirms this viewer has actually unlocked
   // them (see toDetailDto's revealState param).
-  owner: { select: { agentProUntil: true, phone: true, email: true } },
+  owner: { select: { agentProUntil: true, phone: true, email: true, sellerType: true, agencyName: true } },
   listingRenewals: { orderBy: { renewedAt: 'desc' as const } },
 };
 
@@ -261,6 +262,39 @@ function cardSpecs(listing: { category: ListingCategory; attributes: unknown; sp
     listing.attributes as Record<string, unknown>,
   );
   return derived.length > 0 ? derived.slice(0, 3) : listing.specs;
+}
+
+/** A listing's own "Posted by Broker / Agent" (`fromBroker`) answer as a SellerType — null when
+ * it was left blank or the category has no such field. */
+function fromBrokerAnswer(attributes: unknown): SellerType | null {
+  const value = (attributes as Record<string, unknown> | null)?.fromBroker;
+  return value === 'yes' ? 'agent' : value === 'no' ? 'owner' : null;
+}
+
+/** Reconciles the two ways a poster says who they are: the per-listing `fromBroker` field (optional,
+ * and mostly left blank) and the account's `User.sellerType` (asked once). A blank `fromBroker` is
+ * filled from the account's answer so the label and the brokerage fields agree; a listing's
+ * answer never overrides the account, since an agent may also post their own flat — it only seeds
+ * an account that has no answer yet. `postedAs` is the wizard's explicit question and always
+ * saves. See docs/plans/broker-paid-bundles.md, Phase 0. */
+export function resolveDeclaredSellerType(
+  category: ListingCategory,
+  attributes: Record<string, unknown>,
+  postedAs: SellerType | undefined,
+  profileSellerType: SellerType | null,
+): { attributes: Record<string, unknown>; saveToProfile: SellerType | null } {
+  const listingAnswer = fromBrokerAnswer(attributes);
+  const hasField = CATEGORY_FIELD_CONFIG[category].some((f) => f.key === 'fromBroker');
+  const effective = postedAs ?? listingAnswer ?? profileSellerType;
+  const filled =
+    hasField && !listingAnswer && effective
+      ? { ...attributes, fromBroker: effective === 'agent' ? 'yes' : 'no' }
+      : attributes;
+  const declared = postedAs ?? (profileSellerType === null ? listingAnswer : null);
+  return {
+    attributes: filled,
+    saveToProfile: declared && declared !== profileSellerType ? declared : null,
+  };
 }
 
 /** update()'s own before/after diff for ListingEditLog — only the keys actually present in
@@ -1225,6 +1259,7 @@ export class ListingsService {
         email: true,
         phone: true,
         acquisitionGclid: true,
+        sellerType: true,
       },
     });
     if (owner?.deletedAt) {
@@ -1236,10 +1271,13 @@ export class ListingsService {
       input.transactionType,
       input.attributes ?? {},
     );
-    const attributes = this.normalizeAttributes(
+    const declaredSellerType = resolveDeclaredSellerType(
       input.category,
-      input.attributes ?? {},
+      this.normalizeAttributes(input.category, input.attributes ?? {}),
+      input.postedAs,
+      owner?.sellerType ?? null,
     );
+    const attributes = declaredSellerType.attributes;
     this.assertValidPriceQualifier(
       input.category,
       input.transactionType,
@@ -1313,6 +1351,17 @@ export class ListingsService {
         photoNoCounter: Math.max(0, ...input.photos.map((p) => p.photoNo)),
       },
     });
+
+    if (declaredSellerType.saveToProfile) {
+      const sellerType = declaredSellerType.saveToProfile;
+      await this.prisma.user.update({
+        where: { id: ownerId },
+        data: {
+          sellerType,
+          ...(sellerType === 'owner' ? { agencyName: null, reraNumber: null } : {}),
+        },
+      });
+    }
 
     await this.prisma.listingPhoto.createMany({
       data: input.photos.map((p) => ({
@@ -2918,7 +2967,13 @@ export class ListingsService {
       area: Area;
       listingPhotos: ListingPhoto[];
       listingVideos: ListingVideo[];
-      owner: { agentProUntil: Date | null; phone: string | null; email: string | null };
+      owner: {
+        agentProUntil: Date | null;
+        phone: string | null;
+        email: string | null;
+        sellerType?: SellerType | null;
+        agencyName?: string | null;
+      };
       listingRenewals: ListingRenewal[];
     },
     favouritedIds?: Set<string>,
@@ -3032,13 +3087,30 @@ export class ListingsService {
     };
   }
 
+  /** The listing's own `fromBroker` answer wins over the account's, for an agent posting their own
+   * flat; the agency name only shows when both say "agent". */
+  private postedBy(listing: {
+    attributes: unknown;
+    owner: { sellerType?: SellerType | null; agencyName?: string | null };
+  }): Pick<ListingCardDto, 'postedBy' | 'postedByAgency'> {
+    const postedBy = fromBrokerAnswer(listing.attributes) ?? listing.owner.sellerType ?? null;
+    const agency =
+      postedBy === 'agent' && listing.owner.sellerType === 'agent' ? listing.owner.agencyName ?? null : null;
+    return { postedBy, postedByAgency: agency };
+  }
+
   private toCardDto(
     listing: Listing & {
       city: City;
       area: Area;
       listingPhotos: ListingPhoto[];
       listingVideos: ListingVideo[];
-      owner: { phone: string | null; email: string | null };
+      owner: {
+        phone: string | null;
+        email: string | null;
+        sellerType?: SellerType | null;
+        agencyName?: string | null;
+      };
     },
     favouritedIds?: Set<string>,
     /** Compared against the row's ownerId — see the DTO field. */
@@ -3089,6 +3161,7 @@ export class ListingsService {
       // Browse-card badge only — not gated on isOwnerOrAdmin like toDetailDto's `videos` array,
       // since "does this listing have a playable video at all" is fine as public info once done.
       hasVideo: listing.listingVideos.some((v) => v.status === 'done'),
+      ...this.postedBy(listing),
       ...(revealStates?.get(listing.id) ?? { contactRevealed: false, ownerPhone: null, ownerEmail: null }),
     };
   }

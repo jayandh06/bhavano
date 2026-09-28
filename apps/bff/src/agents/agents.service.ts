@@ -17,7 +17,7 @@ export class AgentsService {
   async getStorefront(userId: string): Promise<AgentStorefrontDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, agentProUntil: true, createdAt: true },
+      select: { id: true, name: true, agentProUntil: true, createdAt: true, sellerType: true, agencyName: true },
     });
     if (!user) throw new NotFoundException('Agent not found');
 
@@ -27,6 +27,8 @@ export class AgentsService {
       id: user.id,
       name: user.name ?? 'Bhavano user',
       isAgentPro: (user.agentProUntil?.getTime() ?? 0) > Date.now(),
+      sellerType: user.sellerType,
+      agencyName: user.sellerType === 'agent' ? user.agencyName : null,
       memberSince: user.createdAt.toISOString(),
       listings: listingsPage.items,
       total: listingsPage.total,

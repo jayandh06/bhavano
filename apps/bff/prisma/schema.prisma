@@ -141,6 +141,11 @@ enum SubscriptionTier {
   sellerSlotPack
 }
 
+enum SellerType {
+  owner
+  agent
+}
+
 /** Where an outreach contact came from — kept as provenance so a bad import batch can be
  * identified and undone. See docs/plans/outreach-campaign-contacts.md. */
 enum ContactSource {
@@ -327,6 +332,14 @@ model User {
   agentProUnits         Int            @default(1)
   /** Denormalized seller add-on (10 concurrent slots) — see sellerSlotPack subscription tier. */
   sellerSlotPackUntil   DateTime?
+  /** Owner or agent/broker, as the user declared it — asked once when posting, changeable in the
+   * profile. Null until they answer (and for every account before this existed), which shows no
+   * label on their listings. See docs/plans/broker-paid-bundles.md, Phase 0. */
+  sellerType            SellerType?
+  /** Agents only, optional — shown beside the "Agent" label on their listings. */
+  agencyName            String?
+  /** Agents only, optional — RERA registration number as typed; not verified. */
+  reraNumber            String?
   proBoostCredits       ProBoostCredit[]
   contactRevealCreditBatches ContactRevealCreditBatch[]
   contactReveals        ContactReveal[]

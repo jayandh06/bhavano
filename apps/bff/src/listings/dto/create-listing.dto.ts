@@ -15,8 +15,10 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import type { ListingCategory, TransactionType } from '@bhavano/types';
+import type { ListingCategory, SellerType, TransactionType } from '@bhavano/types';
 import type { AreaUnit } from '@bhavano/types/areaUnit';
+
+const SELLER_TYPES: SellerType[] = ['owner', 'agent'];
 
 const AREA_UNITS: AreaUnit[] = ['sqft', 'sqm', 'acre', 'hectare', 'cent'];
 
@@ -159,4 +161,9 @@ export class CreateListingDto {
   @ValidateNested()
   @Type(() => ListingCheckoutIntentDto)
   checkoutIntent?: ListingCheckoutIntentDto;
+
+  /// The poster's answer to "Owner or agent?" — saved onto User.sellerType. See CreateListingInput.
+  @IsOptional()
+  @IsIn(SELLER_TYPES)
+  postedAs?: SellerType;
 }

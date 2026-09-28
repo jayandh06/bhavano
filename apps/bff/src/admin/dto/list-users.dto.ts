@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import type { UserRole } from '@bhavano/types';
+import type { SellerType, UserRole } from '@bhavano/types';
 
 const USER_ROLES: UserRole[] = ['user', 'admin'];
 const USER_SORT_VALUES = ['createdAt_desc', 'createdAt_asc', 'name_asc'] as const;
@@ -33,6 +33,11 @@ export class ListUsersDto {
   @IsOptional()
   @IsIn(['yes', 'no'])
   welcomed?: 'yes' | 'no';
+
+  /** `unset` = never answered "Owner or agent?". */
+  @IsOptional()
+  @IsIn(['owner', 'agent', 'unset'])
+  sellerType?: SellerType | 'unset';
 
   @IsOptional()
   @IsIn(USER_SORT_VALUES)

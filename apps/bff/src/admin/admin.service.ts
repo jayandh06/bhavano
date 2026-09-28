@@ -909,7 +909,7 @@ export class AdminService {
    * docs/plans/whatsapp-welcome-mobile-signups.md's backfill, which found 34 users with the flag
    * set and zero real log rows). */
   async listUsers(query: ListUsersDto): Promise<AdminUsersPage> {
-    const { offset, from, to, q, role, welcomed, sort, limit } = query;
+    const { offset, from, to, q, role, welcomed, sellerType, sort, limit } = query;
 
     const where: Prisma.UserWhereInput = {
       deletedAt: null,
@@ -928,6 +928,7 @@ export class AdminService {
         : {}),
       ...(welcomed === 'yes' ? { notificationLogs: { some: { kind: 'welcome' } } } : {}),
       ...(welcomed === 'no' ? { notificationLogs: { none: { kind: 'welcome' } } } : {}),
+      ...(sellerType ? { sellerType: sellerType === 'unset' ? null : sellerType } : {}),
     };
 
     const [rows, total] = await Promise.all([
@@ -951,6 +952,8 @@ export class AdminService {
         phone: u.phone,
         email: u.email,
         role: u.role,
+        sellerType: u.sellerType,
+        agencyName: u.agencyName,
         cityName: u.city?.name ?? null,
         createdAt: u.createdAt.toISOString(),
         welcomed: u.notificationLogs.length > 0,
@@ -1422,6 +1425,9 @@ export class AdminService {
         email: user.email,
         cityName: user.city?.name ?? null,
         role: user.role,
+        sellerType: user.sellerType,
+        agencyName: user.agencyName,
+        reraNumber: user.reraNumber,
         createdAt: user.createdAt.toISOString(),
         acquisitionSource: user.acquisitionSource,
         acquisitionMedium: user.acquisitionMedium,

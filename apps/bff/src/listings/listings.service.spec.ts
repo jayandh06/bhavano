@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { ListingsService, recentMixGroupKey, roundRobinByGroup } from './listings.service';
+import { ListingsService, recentMixGroupKey, resolveDeclaredSellerType, roundRobinByGroup } from './listings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -1190,6 +1190,34 @@ describe('ListingsService', () => {
       );
     });
 
+    it.each([
+      [{ agentProUntil: null, sellerType: 'agent', agencyName: 'Sai Realty' }, 'agent', 'Sai Realty'],
+      [{ agentProUntil: null, sellerType: 'owner', agencyName: 'Stale Realty' }, 'owner', null],
+      [{ agentProUntil: null }, null, null],
+    ])('labels the poster from User.sellerType (%o)', async (owner, postedBy, postedByAgency) => {
+      const { service } = setup(listingRow(), listingRow({ owner }));
+
+      const dto = await service.renew('listing1', 'owner1');
+
+      expect(dto.postedBy).toBe(postedBy);
+      expect(dto.postedByAgency).toBe(postedByAgency);
+    });
+
+    it("prefers the listing's own fromBroker answer over the account's, hiding the agency", async () => {
+      const { service } = setup(
+        listingRow(),
+        listingRow({
+          attributes: { fromBroker: 'no' },
+          owner: { agentProUntil: null, sellerType: 'agent', agencyName: 'Sai Realty' },
+        }),
+      );
+
+      const dto = await service.renew('listing1', 'owner1');
+
+      expect(dto.postedBy).toBe('owner');
+      expect(dto.postedByAgency).toBeNull();
+    });
+
     it('writes the audit row and the expiry bump in a single transaction', async () => {
       const { service, prisma } = setup(listingRow());
 
@@ -1681,5 +1709,37 @@ describe('ListingsService.assertOwnerPhoneVerified', () => {
     await expect(service.assertOwnerPhoneVerified('u1')).rejects.toMatchObject({
       response: { code: 'PHONE_VERIFICATION_REQUIRED' },
     });
+  });
+});
+
+describe('resolveDeclaredSellerType', () => {
+  it('fills a blank fromBroker from the wizard answer and saves it to the profile', () => {
+    const r = resolveDeclaredSellerType('apartment', {}, 'agent', null);
+    expect(r.attributes.fromBroker).toBe('yes');
+    expect(r.saveToProfile).toBe('agent');
+  });
+
+  it("fills a blank fromBroker from the profile without re-saving it", () => {
+    const r = resolveDeclaredSellerType('house', {}, undefined, 'owner');
+    expect(r.attributes.fromBroker).toBe('no');
+    expect(r.saveToProfile).toBeNull();
+  });
+
+  it("seeds an unanswered profile from the listing's fromBroker", () => {
+    const r = resolveDeclaredSellerType('plot', { fromBroker: 'yes' }, undefined, null);
+    expect(r.attributes.fromBroker).toBe('yes');
+    expect(r.saveToProfile).toBe('agent');
+  });
+
+  it("never lets one listing's answer overwrite an answered profile", () => {
+    const r = resolveDeclaredSellerType('apartment', { fromBroker: 'no' }, undefined, 'agent');
+    expect(r.attributes.fromBroker).toBe('no');
+    expect(r.saveToProfile).toBeNull();
+  });
+
+  it('leaves categories without a fromBroker field untouched', () => {
+    const r = resolveDeclaredSellerType('pg', {}, 'owner', null);
+    expect(r.attributes).not.toHaveProperty('fromBroker');
+    expect(r.saveToProfile).toBe('owner');
   });
 });

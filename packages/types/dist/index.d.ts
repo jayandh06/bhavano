@@ -38,6 +38,9 @@ export type PaymentPurpose = "listing_boost" | "listing_publish" | "buyer_premiu
 export type PaymentStatus = "created" | "paid" | "failed" | "refunded";
 /** buyerPremium = Bhavano Plus; agentPro = broker slots + storefront; sellerSlotPack = +5 slots (10 total). */
 export type SubscriptionTier = "buyerPremium" | "agentPro" | "sellerSlotPack";
+/** How a poster describes themselves — asked once when posting, editable in the profile. See
+ * docs/plans/broker-paid-bundles.md, Phase 0. */
+export type SellerType = "owner" | "agent";
 /** Homepage top-level browsing tab — organized around seeker intent, not a flat
  * (category x transactionType) grid. "buy"/"rentLease" filter by transactionType
  * (+ an optional propertyType sub-filter); "pg"/"furniture" filter by category alone. */
@@ -107,6 +110,11 @@ export interface ListingCardDto {
      * badge. Deliberately not the full `videos[]` array here (see ListingDetailDto.videos) since
      * browse pages render 20+ cards and none of them play video. See docs/plans/listing-video-uploads.md. */
     hasVideo: boolean;
+    /** The poster's declared `User.sellerType` — drives the "Owner" / "Agent" label. Null when they
+     * never answered (older accounts, bulk imports), which shows no label rather than a guess. */
+    postedBy: SellerType | null;
+    /** The poster's agency name, when they're an agent and gave one. */
+    postedByAgency: string | null;
     /** The viewer posted this listing. Hides the contact actions on the card, for the same reason
      * as on the detail page — always false for an anonymous viewer, who owns nothing. */
     isOwner: boolean;
@@ -413,6 +421,9 @@ export interface CreateListingInput {
         boostDays?: BoostDurationDays;
         includeInstantAlerts?: boolean;
     };
+    /** The poster's answer to "Owner or agent?", saved onto `User.sellerType` — the wizard asks
+     * only while the profile has none, so an answer here never silently overwrites a profile edit. */
+    postedAs?: SellerType;
 }
 /** Response from reverse-geocoding a dropped map pin — a suggestion the poster can accept or
  * override, never an auto-locked value (Google's locality boundaries won't line up perfectly
@@ -586,6 +597,9 @@ export interface UserProfileDto {
     agentProUnits: number;
     activeListingCount: number;
     listingSlotAllowance: number;
+    sellerType: SellerType | null;
+    agencyName: string | null;
+    reraNumber: string | null;
 }
 /** Whether to show the deferred profile-completion dialog and what it should ask for. Computed
  * BFF-side (it owns the snooze/count fields and profile completeness) so the answer is the same
@@ -599,6 +613,11 @@ export interface ProfileNudgeDto {
 export interface UpdateProfileInput {
     name?: string;
     cityId?: string;
+    sellerType?: SellerType;
+    /** Empty string clears it. Only kept while `sellerType` is "agent". */
+    agencyName?: string;
+    /** Empty string clears it. Only kept while `sellerType` is "agent". */
+    reraNumber?: string;
 }
 /** Admin moderation queue — deliberately NOT the same shape as the public/owner detail view.
  * `AdminListingsTable` only ever renders this subset (title/status/moderation/category/
@@ -851,6 +870,9 @@ export interface UserActivityDto {
         email: string | null;
         cityName: string | null;
         role: UserRole;
+        sellerType: SellerType | null;
+        agencyName: string | null;
+        reraNumber: string | null;
         createdAt: string;
         /** First-touch attribution — how this user originally found Bhavano. Null for pre-existing
          * users whose signup predates this being captured. */
@@ -879,6 +901,8 @@ export interface UserSummaryDto {
     phone: string | null;
     email: string | null;
     role: UserRole;
+    sellerType: SellerType | null;
+    agencyName: string | null;
     cityName: string | null;
     createdAt: string;
     welcomed: boolean;
@@ -1179,6 +1203,8 @@ export interface AgentStorefrontDto {
     id: string;
     name: string;
     isAgentPro: boolean;
+    sellerType: SellerType | null;
+    agencyName: string | null;
     memberSince: string;
     listings: ListingCardDto[];
     total: number;

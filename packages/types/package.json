@@ -113,6 +113,10 @@
       "types": "./dist/listingSlots.d.ts",
       "default": "./dist/listingSlots.js"
     },
+    "./sellerType": {
+      "types": "./dist/sellerType.d.ts",
+      "default": "./dist/sellerType.js"
+    },
     "./legalEntity": {
       "types": "./dist/legalEntity.d.ts",
       "default": "./dist/legalEntity.js"
