@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { RequirementCaptureCriteria, RequirementDto } from "@bhavano/types";
+import type { RequirementAnswers, RequirementCaptureCriteria, RequirementDto } from "@bhavano/types";
 import { formatRequirementLabel } from "@bhavano/types/requirementQuestions";
 import { createRequirementAction } from "@/app/actions/requirements";
+import { hasSessionAction } from "@/app/actions/auth";
 import { useAuthGate } from "./AuthGateProvider";
 import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 import { RequirementRefineDialog } from "./RequirementRefineDialog";
+import type { RequirementWizardSubject } from "./RequirementRefineWizard";
 
 /**
  * Turns a dead-end search into a captured requirement — Phase 0 of
@@ -20,10 +22,10 @@ import { RequirementRefineDialog } from "./RequirementRefineDialog";
  * search failed, already carrying what they just typed. `criteria` comes from the page's own
  * resolved filters, so there is nothing to re-enter.
  *
- * The ask is framed as a **confirmation**, not a form: it states the criteria back, asks whether
- * we may go find it and whether owners and agents with a match may contact them, and only then
- * writes the row. That is the honest shape of the exchange — the one thing about a requirement
- * that cannot be inferred from the search they just ran is permission to act on it.
+ * The ask is framed as a **confirmation**, not a form: it states the criteria back and asks
+ * whether owners and agents with a match may contact them. "Yes" then opens the questions for
+ * whatever the search didn't answer, and the requirement is created at the end with every answer
+ * — never half-filled (docs/plans/requirement-refinement-questions.md).
  *
  * A client leaf by necessity (a click, a server action, and the login gate) — kept deliberately
  * small so `ListingGrid` and every page rendering it stay server components and nothing moves out
@@ -32,25 +34,27 @@ import { RequirementRefineDialog } from "./RequirementRefineDialog";
 export function RequirementPrompt({
   criteria,
   label,
+  cityName,
   variant = "empty",
 }: {
-  /** Without a `cityId` (an India-wide page) the card asks for a city before it can save. */
+  /** Without a `cityId` (an India-wide page) the card asks for a city first. */
   criteria: RequirementCaptureCriteria;
-  /** How the search reads to a human — the page heading. Becomes both the copy here and the
-   * stored `searchLabel`, so an admin reading the row later sees what the seeker was shown. When
-   * the card had to ask for the city, the label is rewritten around it instead: the heading says
-   * "India". */
+  /** How the search reads to a human — the page heading. Shown here and kept as the row's
+   * `originalSearchLabel`; the stored `searchLabel` is written from the answers. When the card had
+   * to ask for the city, the label is rewritten around it instead: the heading says "India". */
   label: string;
+  /** The page's city, for the questions ("Which areas of Chennai?"). */
+  cityName?: string;
   /** `empty` = the zero-results card. `inline` = a quiet link alongside real results, for
    * someone who looked and did not like what they found. */
   variant?: "empty" | "inline";
 }) {
   const { requireLogin } = useAuthGate();
-  const [state, setState] = useState<"idle" | "saving" | "done">("idle");
+  const [state, setState] = useState<"idle" | "checking" | "done">("idle");
   const [saved, setSaved] = useState<RequirementDto | null>(null);
-  /** The follow-up questions open by themselves once the row is saved — docs/plans/
-   * requirement-refinement-questions.md. "Rent 2 BHK Houses in Bengaluru" is too vague for an
-   * owner or agent to act on, and this is the moment the seeker is most willing to say more. */
+  /** The questions for whatever the search didn't answer. "Rent 2 BHK Houses in Bengaluru" is too
+   * vague for an owner or agent to act on, and this is the moment the seeker is most willing to
+   * say more. */
   const [refining, setRefining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Pre-ticked: someone asking us to go and find a house generally does want the person who has
@@ -67,33 +71,72 @@ export function RequirementPrompt({
   const cityId = criteria.cityId ?? city?.id;
   const shownLabel = needsCity && city ? formatRequirementLabel({ ...criteria, cityId: city.id }, { cityName: city.name }) : label;
 
-  async function submit() {
+  /** Login comes before the questions, not after them: Google sign-in is a full-page redirect,
+   * which would throw away every answer given so far. */
+  async function start() {
     if (!cityId) {
       setError("Pick a city first");
       return;
     }
-    setState("saving");
     setError(null);
-
-    const result = await createRequirementAction({ ...criteria, cityId, searchLabel: shownLabel, contactConsent: allowContact });
-
-    if (result.success) {
-      setSaved(result.requirement);
-      setState("done");
-      setRefining(result.requirement.canRefine);
-      return;
-    }
-    if (result.needsLogin) {
-      // Resume straight into the save once they are in, rather than making them press the same
-      // button again — which reads as the first press having failed. Same pattern as the posting
-      // wizard's publish-after-login.
-      setState("idle");
-      requireLogin({ onSuccess: () => void submit() });
-      return;
-    }
-    setError(result.error);
+    setState("checking");
+    const loggedIn = await hasSessionAction();
     setState("idle");
+    if (!loggedIn) {
+      // Resume straight into the questions once they are in, rather than making them press the
+      // same button again — same pattern as the posting wizard's publish-after-login.
+      requireLogin({ onSuccess: () => setRefining(true) });
+      return;
+    }
+    setRefining(true);
   }
+
+  async function create(answers: RequirementAnswers): Promise<RequirementDto> {
+    const result = await createRequirementAction({
+      ...answers,
+      searchLabel: shownLabel,
+      landingPath: criteria.landingPath,
+      contactConsent: allowContact,
+    });
+    if (result.success) return result.requirement;
+    if (result.needsLogin) {
+      requireLogin();
+      throw new Error("You were signed out — sign in, then press the button again.");
+    }
+    throw new Error(result.error);
+  }
+
+  const subject: RequirementWizardSubject = {
+    category: criteria.category,
+    transactionType: criteria.transactionType,
+    cityId,
+    cityName: criteria.cityId ? cityName : city?.name,
+    areaIds: criteria.areaIds ?? (criteria.areaId ? [criteria.areaId] : []),
+    areaNames: [],
+    bedroomOptions: criteria.bedroomOptions ?? (criteria.bedrooms ? [criteria.bedrooms] : []),
+    minPrice: criteria.minPrice,
+    maxPrice: criteria.maxPrice,
+    minAreaSqft: criteria.minAreaSqft,
+    maxAreaSqft: criteria.maxAreaSqft,
+    areaUnit: criteria.areaUnit,
+    attributes: criteria.attributes ?? {},
+    moveInBy: criteria.moveInBy,
+    note: criteria.note,
+    contactConsent: allowContact,
+  };
+
+  const questions = refining && (
+    <RequirementRefineDialog
+      requirement={subject}
+      create={create}
+      onFinished={(requirement) => {
+        setSaved(requirement);
+        setState("done");
+        setRefining(false);
+      }}
+      onClose={() => setRefining(false)}
+    />
+  );
 
   if (state === "done" && saved) {
     return (
@@ -104,43 +147,19 @@ export function RequirementPrompt({
         {saved.hasAlert
           ? "Confirmed — we'll message you as soon as something matching is posted."
           : "Confirmed — our team will look into what's available and get back to you."}
-        {saved.refinedAt && (
-          <div className="mt-2 mx-auto max-w-[440px] rounded-lg border border-border bg-surface-alt px-3 py-2 text-[12.5px] text-text">
-            {saved.searchLabel}
-          </div>
-        )}
+        <div className="mt-2 mx-auto max-w-[440px] rounded-lg border border-border bg-surface-alt px-3 py-2 text-[12.5px] text-text">
+          {saved.searchLabel}
+        </div>
         <div className="mt-1.5 text-[12.5px] font-normal">
           {allowContact
             ? "Owners and agents with a matching property can get in touch with you directly."
             : "Only Bhavano will contact you — your number stays with us."}
         </div>
-        {/* Offered *after* the save, never before it. The one-tap capture works precisely because
-            it is not a form, so the questions are a follow-on over a row that already exists —
-            closing them halfway keeps both the row and whatever was answered. */}
         <div className="mt-2 font-normal">
-          {saved.canRefine && !saved.refinedAt ? (
-            <button type="button" onClick={() => setRefining(true)} className={inlineButtonClass}>
-              Add areas, budget and more →
-            </button>
-          ) : (
-            <Link href="/my-requirements" className="text-[12.5px] underline text-inherit">
-              See your requirements →
-            </Link>
-          )}
+          <Link href="/my-requirements" className="text-[12.5px] underline text-inherit">
+            See your requirements →
+          </Link>
         </div>
-        {refining && (
-          <RequirementRefineDialog
-            requirement={saved}
-            onFinished={(requirement) => {
-              setSaved(requirement);
-              setRefining(false);
-            }}
-            onClose={(requirement) => {
-              setSaved(requirement);
-              setRefining(false);
-            }}
-          />
-        )}
       </div>
     );
   }
@@ -157,8 +176,8 @@ export function RequirementPrompt({
 
   const confirmation = (
     <>
-      {/* The criteria, stated back. This is the thing being confirmed, so it has to be visible and
-        * verbatim — it is also exactly what gets stored as `searchLabel`. */}
+      {/* The criteria, stated back — the thing being confirmed, so it has to be visible. The
+        * questions that follow fill in what it doesn't say. */}
       <div className="rounded-lg border border-border bg-surface-alt px-3.5 py-2.5 text-[13px] font-semibold text-text">
         {shownLabel}
       </div>
@@ -168,7 +187,7 @@ export function RequirementPrompt({
           <p className="text-left text-[12px] text-muted m-0 mb-2">
             Nobody can find you a place anywhere in India — start with the city, and we&apos;ll ask which areas next.
           </p>
-          <RequirementCityPicker value={city} onChange={setCity} disabled={state === "saving"} />
+          <RequirementCityPicker value={city} onChange={setCity} disabled={state === "checking"} />
         </div>
       )}
       <label className="mt-3.5 flex items-start gap-2.5 text-left text-[13px] text-text cursor-pointer">
@@ -187,13 +206,14 @@ export function RequirementPrompt({
       </label>
       <button
         type="button"
-        onClick={() => void submit()}
-        disabled={state === "saving" || !cityId}
+        onClick={() => void start()}
+        disabled={state === "checking" || !cityId}
         className={`${primaryButtonClass} mt-4 w-full`}
       >
-        {state === "saving" ? "Confirming…" : "Yes, find this for me"}
+        {state === "checking" ? "One moment…" : "Yes, find this for me"}
       </button>
       {error && <p className="text-[12px] text-danger mt-3 mb-0">{error}</p>}
+      {questions}
     </>
   );
 
@@ -207,8 +227,8 @@ export function RequirementPrompt({
         * asked them to "tell us what you need" — which they just had, by searching. */}
       <div className="font-lora text-lg font-bold mb-1.5 text-center">Shall we find this for you?</div>
       <p className="text-muted text-[13px] m-0 mb-4 text-center">
-        There&apos;s nothing matching right now. Confirm below and we&apos;ll go looking — you don&apos;t have to
-        keep checking back.
+        There&apos;s nothing matching right now. Answer a few quick questions and we&apos;ll go looking — you
+        don&apos;t have to keep checking back.
       </p>
       {confirmation}
       <p className="text-muted text-[11.5px] mt-4 mb-0 text-center">Or adjust the filters above to widen the search.</p>

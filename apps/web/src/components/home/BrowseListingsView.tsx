@@ -292,7 +292,7 @@ export async function BrowseListingsView({
                 })}
               />
             )}
-            <ListingGrid items={listingsPage.items} requirement={{ label: requirementLabel, criteria: requirementCriteria }} />
+            <ListingGrid items={listingsPage.items} requirement={{ label: requirementLabel, criteria: requirementCriteria, cityName }} />
           </>
         )}
         {!noAreaSelected && (
@@ -303,7 +303,7 @@ export async function BrowseListingsView({
           * purpose: it must not compete with the listings someone came to read. */}
         {listingsPage.items.length > 0 && (
           <div className="mt-6 text-center">
-            <RequirementPrompt variant="inline" label={requirementLabel} criteria={requirementCriteria} />
+            <RequirementPrompt variant="inline" label={requirementLabel} criteria={requirementCriteria} cityName={cityName} />
           </div>
         )}
         {/* "Explore nearby" lives here, at the bottom, rather than above the results: a dozen

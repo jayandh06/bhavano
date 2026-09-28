@@ -12,7 +12,7 @@ export function ListingGrid({
   requirement?: {
     criteria: RequirementCaptureCriteria;
     label: string;
-    /** City-scoped `/post` link for the card's secondary action. */
+    cityName?: string;
   };
 }) {
   // Now that the footer sticks to the bottom of the viewport regardless of content height, a
@@ -29,6 +29,7 @@ export function ListingGrid({
         <RequirementPrompt
           criteria={requirement.criteria}
           label={requirement.label}
+          cityName={requirement.cityName}
         />
       );
     }

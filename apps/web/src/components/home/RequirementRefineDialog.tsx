@@ -1,22 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { RequirementDto } from "@bhavano/types";
-import { RequirementRefineWizard } from "./RequirementRefineWizard";
+import { useEffect, useState } from "react";
+import type { RequirementAnswers, RequirementDto } from "@bhavano/types";
+import { RequirementRefineWizard, type RequirementWizardSubject } from "./RequirementRefineWizard";
 
-/** The refinement questions as a modal over the page the search failed on — a bottom sheet on a
- * phone, a centred card on a tablet or desktop. Escape and the backdrop both close it; whatever was
- * answered is already saved, so closing is never losing anything. */
+/** The requirement questions as a modal over the page the search failed on — a bottom sheet on a
+ * phone, a centred card on a tablet or desktop. Nothing is saved until the last step creates the
+ * requirement, so Escape and the backdrop simply close it. */
 export function RequirementRefineDialog({
   requirement,
+  create,
   onFinished,
   onClose,
 }: {
-  requirement: RequirementDto;
+  requirement: RequirementWizardSubject;
+  create: (answers: RequirementAnswers) => Promise<RequirementDto>;
   onFinished: (requirement: RequirementDto) => void;
-  onClose: (requirement: RequirementDto) => void;
+  onClose: () => void;
 }) {
-  const latest = useRef(requirement);
   /** The visible part of the page. Mobile browsers — iOS Safari above all — lay the on-screen
    * keyboard over a fixed overlay instead of shrinking it, which would leave the bottom sheet and
    * whatever field is being typed into behind the keyboard. Pinning the overlay to the visual
@@ -48,7 +49,7 @@ export function RequirementRefineDialog({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose(latest.current);
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -61,7 +62,7 @@ export function RequirementRefineDialog({
       }`}
       style={viewport ? { top: viewport.top, height: viewport.height } : undefined}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose(latest.current);
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -72,11 +73,9 @@ export function RequirementRefineDialog({
       >
         <RequirementRefineWizard
           requirement={requirement}
+          mode={{ kind: "create", create }}
           onFinished={onFinished}
           onClose={onClose}
-          onSaved={(saved) => {
-            latest.current = saved;
-          }}
         />
       </div>
     </div>

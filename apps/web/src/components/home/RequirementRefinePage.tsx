@@ -15,7 +15,12 @@ export function RequirementRefinePage({ requirement }: { requirement: Requiremen
   };
   return (
     <div className="w-full border border-border rounded-xl bg-surface p-5 sm:p-8">
-      <RequirementRefineWizard requirement={requirement} onFinished={back} onClose={back} />
+      <RequirementRefineWizard
+        requirement={requirement}
+        mode={{ kind: "refine", id: requirement.id }}
+        onFinished={back}
+        onClose={back}
+      />
     </div>
   );
 }
