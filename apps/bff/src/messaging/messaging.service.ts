@@ -427,11 +427,12 @@ export class MessagingService {
     ]);
     // Never the raw phone number — this titles a push notification, which can sit on a locked
     // screen for anyone nearby to read. Same fix/reasoning as listConversations/getConversation.
-    // Moderation always titles as staff, not the acting admin's personal name.
+    // Staff threads (moderation and announcement) always title as staff, not the acting admin's
+    // personal name.
     const senderIsPoster = conversation.posterId === senderId;
     const senderName =
-      conversation.type === 'moderation'
-        ? 'Bhavano Admin'
+      conversation.posterId !== senderId && staffLabel(conversation.type)
+        ? STAFF_SENDER_LABEL
         : (sender?.name ?? (senderIsPoster ? 'Seller' : 'Buyer'));
 
     // Instant Alerts is bought by and for the advertiser (the poster) — never fires for the

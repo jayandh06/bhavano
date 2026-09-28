@@ -16,7 +16,11 @@ import { DEFAULT_BOOST_PRICE_SETTINGS } from '@bhavano/types/boostPricing';
 import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
 import { ACTIVE_PROMO_CODE } from '@bhavano/types/promoCode';
 
-function makeService(overrides: Record<string, unknown> = {}, notificationsOverrides: Record<string, unknown> = {}) {
+function makeService(
+  overrides: Record<string, unknown> = {},
+  notificationsOverrides: Record<string, unknown> = {},
+  listingsOverrides: Record<string, unknown> = {},
+) {
   const prisma = {
     user: {
       findUnique: jest.fn().mockResolvedValue({
@@ -67,6 +71,14 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
       recipientId: 'owner1',
       listingTitle: 'A listing',
     }),
+    getOrCreateModerationThread: jest.fn().mockResolvedValue({ id: 'modThread1' }),
+    sendMessage: jest.fn().mockResolvedValue({
+      message: { id: 'modMsg1', conversationId: 'modThread1', senderId: 'admin1', body: 'x', createdAt: '', readAt: null, deletedAt: null },
+      recipientId: 'owner1',
+      senderName: 'Bhavano Admin',
+      listingTitle: 'A listing',
+      listingId: 'listing1',
+    }),
     getUnreadTotal: jest.fn().mockResolvedValue(1),
     getListingPushImageUrl: jest.fn().mockResolvedValue(undefined),
   } as unknown as MessagingService;
@@ -75,7 +87,7 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
 
   const service = new AdminService(
     prisma,
-    {} as ListingsService,
+    listingsOverrides as unknown as ListingsService,
     messagingService,
     notificationsService,
     {} as RateLimitService,
@@ -492,6 +504,35 @@ describe('AdminService.sendBoostPromotion', () => {
  * owner's inbox and push exactly once, is recorded so the Listings page can show it, and does not
  * share a cooldown with email/WhatsApp — otherwise an email sent yesterday would silently block the
  * message the owner is actually more likely to see. */
+describe('AdminService — moderation messages reach the owner like chat messages', () => {
+  it('broadcasts, updates the unread badge and pushes as "Bhavano Admin" when an admin changes a status', async () => {
+    const setStatusAsAdmin = jest.fn().mockResolvedValue({ id: 'listing1' });
+    const { service, messagingService, pushService, messagingGateway } = makeService({}, {}, { setStatusAsAdmin });
+
+    await service.setListingStatus('listing1', 'sold', 'admin1');
+
+    expect(messagingService.sendMessage).toHaveBeenCalledWith('modThread1', 'admin1', 'Status changed to "sold" by an admin.');
+    expect(messagingGateway.broadcastMessage).toHaveBeenCalledWith('modThread1', expect.objectContaining({ id: 'modMsg1' }));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(messagingGateway.notifyUnread).toHaveBeenCalledWith('owner1', { conversationId: 'modThread1', unreadCount: 1 });
+    expect(pushService.notifyNewMessage).toHaveBeenCalledWith(
+      'owner1',
+      expect.objectContaining({ id: 'modMsg1' }),
+      'Bhavano Admin',
+      expect.objectContaining({ unreadCount: 1, listingTitle: 'A listing' }),
+    );
+  });
+
+  it('never fails the admin action when the push step fails', async () => {
+    const setStatusAsAdmin = jest.fn().mockResolvedValue({ id: 'listing1' });
+    const { service, pushService } = makeService({}, {}, { setStatusAsAdmin });
+    (pushService.notifyNewMessage as jest.Mock).mockRejectedValueOnce(new Error('expo down'));
+
+    await expect(service.setListingStatus('listing1', 'sold', 'admin1')).resolves.toEqual({ id: 'listing1' });
+    await new Promise((resolve) => setImmediate(resolve));
+  });
+});
+
 describe('AdminService.sendBoostPromotion — in-app channel', () => {
   it('delivers an announcement, broadcasts it, pushes it and logs an in_app row', async () => {
     const { service, prisma, notificationsService, messagingService, pushService, messagingGateway } = makeService({

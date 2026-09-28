@@ -305,4 +305,26 @@ describe('MessagingService.sendMessage', () => {
       senderName: 'Buyer',
     });
   });
+
+  it.each(['moderation', 'announcement'])(
+    'titles an admin\'s message in a %s thread as "Bhavano Admin", never the admin\'s own name',
+    async (type) => {
+      const service = makeSendService(
+        { id: 'c1', posterId: 'owner1', inquirerId: 'admin1', listingId: 'l1', type },
+        { name: 'Jay (admin)', phone: null },
+      );
+      await expect(service.sendMessage('c1', 'admin1', 'hi')).resolves.toMatchObject({
+        recipientId: 'owner1',
+        senderName: 'Bhavano Admin',
+      });
+    },
+  );
+
+  it("uses the owner's own name when the owner replies in a staff thread", async () => {
+    const service = makeSendService(
+      { id: 'c1', posterId: 'owner1', inquirerId: 'admin1', listingId: 'l1', type: 'announcement' },
+      { name: 'Asha', phone: null },
+    );
+    await expect(service.sendMessage('c1', 'owner1', 'hi')).resolves.toMatchObject({ senderName: 'Asha' });
+  });
 });

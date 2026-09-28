@@ -324,8 +324,7 @@ export class AdminService {
    * the owner so they don't have to notice the message on their own. */
   async flagListing(id: string, adminId: string, message: string): Promise<ListingDetailDto> {
     const listing = await this.listingsService.flag(id, adminId);
-    const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
-    await this.messagingService.sendMessage(thread.id, adminId, message);
+    await this.sendModerationMessage(id, adminId, message);
 
     const owner = await this.getListingOwner(id);
     if (owner) {
@@ -378,8 +377,7 @@ export class AdminService {
 
   async approveListing(id: string, adminId: string): Promise<ListingDetailDto> {
     const listing = await this.listingsService.approve(id, adminId);
-    const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
-    await this.messagingService.sendMessage(thread.id, adminId, APPROVED_MESSAGE);
+    await this.sendModerationMessage(id, adminId, APPROVED_MESSAGE);
 
     const owner = await this.getListingOwner(id);
     if (owner) {
@@ -408,9 +406,8 @@ export class AdminService {
     await this.listingsService.completePendingPublish(id);
 
     if (wasPending) {
-      const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
-      await this.messagingService.sendMessage(
-        thread.id,
+      await this.sendModerationMessage(
+        id,
         adminId,
         'An admin published this ad without payment (fee waived / settled offline).',
       );
@@ -422,12 +419,12 @@ export class AdminService {
   /** Admin override of a listing's status (active/sold/rented/deactivated) — see
    * ListingsService.setStatusAsAdmin's doc comment for why this exists. Same transparency
    * principle as flag/approve above: never silent, always a message in the moderation thread the
-   * owner already sees. No push/SMS/WhatsApp notification here (unlike flag/approve) — this is a
-   * support/correction action, not something that needs to interrupt the owner. */
+   * owner already sees. The message reaches the app as a push like any admin message, but there is
+   * no email/SMS/WhatsApp here (unlike flag/approve) — this is a support/correction action, not
+   * something worth chasing the owner across channels for. */
   async setListingStatus(id: string, status: ListingStatus, adminId: string): Promise<ListingDetailDto> {
     const listing = await this.listingsService.setStatusAsAdmin(id, status, adminId);
-    const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
-    await this.messagingService.sendMessage(thread.id, adminId, `Status changed to "${status}" by an admin.`);
+    await this.sendModerationMessage(id, adminId, `Status changed to "${status}" by an admin.`);
     return listing;
   }
 
@@ -437,9 +434,43 @@ export class AdminService {
    * changed is visible in ListingEditLog for anyone who needs the precise diff. */
   async updateListing(id: string, dto: AdminUpdateListingInput, adminId: string): Promise<ListingDetailDto> {
     const listing = await this.listingsService.updateAsAdmin(id, dto, adminId);
-    const thread = await this.messagingService.getOrCreateModerationThread(id, adminId);
-    await this.messagingService.sendMessage(thread.id, adminId, "This listing's details were updated by an admin.");
+    await this.sendModerationMessage(id, adminId, "This listing's details were updated by an admin.");
     return listing;
+  }
+
+  /** Posts into the listing's admin↔owner moderation thread and delivers it the way a chat message
+   * is delivered — see deliverStaffMessage. */
+  private async sendModerationMessage(listingId: string, adminId: string, body: string): Promise<void> {
+    const thread = await this.messagingService.getOrCreateModerationThread(listingId, adminId);
+    const { message, recipientId, listingTitle } = await this.messagingService.sendMessage(thread.id, adminId, body);
+    this.deliverStaffMessage({ conversationId: thread.id, message, recipientId, listingId, listingTitle });
+  }
+
+  /** What `MessagingController.sendMessage` does after saving a chat message, for a message sent
+   * from here: the realtime update for any open thread, the unread badge, and the mobile push
+   * (titled with the ad, from "Bhavano Admin"). All best-effort side effects of a message that
+   * already exists, so a failure is logged and never fails the admin action. */
+  private deliverStaffMessage(params: {
+    conversationId: string;
+    message: MessageDto;
+    recipientId: string;
+    listingId: string;
+    listingTitle: string;
+    imageUrl?: string;
+  }): void {
+    const { conversationId, message, recipientId, listingId, listingTitle } = params;
+    this.messagingGateway.broadcastMessage(conversationId, message);
+    void this.messagingService
+      .getUnreadTotal(recipientId)
+      .then(async (unreadCount) => {
+        this.messagingGateway.notifyUnread(recipientId, { conversationId, unreadCount });
+        const imageUrl =
+          params.imageUrl ?? (await this.messagingService.getListingPushImageUrl(listingId).catch(() => undefined));
+        await this.pushService.notifyNewMessage(recipientId, message, STAFF_SENDER_LABEL, { unreadCount, listingTitle, imageUrl });
+      })
+      .catch((error) =>
+        this.logger.warn(`Post-send unread/push step failed: ${error instanceof Error ? error.message : String(error)}`),
+      );
   }
 
   /** Used both internally (flag/approve notifications) and by the admin UI's listing-detail
@@ -1265,16 +1296,7 @@ export class AdminService {
       buildBoostMessageBody(input),
       buildBoostMessageCard(input, { id: listing.id, category: listing.category, imageUrl: imageUrl ?? null }),
     );
-    this.messagingGateway.broadcastMessage(conversationId, message);
-    void this.messagingService
-      .getUnreadTotal(recipientId)
-      .then(async (unreadCount) => {
-        this.messagingGateway.notifyUnread(recipientId, { conversationId, unreadCount });
-        await this.pushService.notifyNewMessage(recipientId, message, STAFF_SENDER_LABEL, { unreadCount, listingTitle, imageUrl });
-      })
-      .catch((error) =>
-        this.logger.warn(`Post-send unread/push step failed: ${error instanceof Error ? error.message : String(error)}`),
-      );
+    this.deliverStaffMessage({ conversationId, message, recipientId, listingId: listing.id, listingTitle, imageUrl });
     await this.prisma.listingNotificationLog.create({
       data: {
         listingId: listing.id,
