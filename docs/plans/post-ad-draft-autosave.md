@@ -1,0 +1,63 @@
+# Post-ad draft autosave (web and mobile)
+
+Status: built (2026-09-28).
+
+## Why
+
+On 28 Sept 2026 a seller from a Google Ads click (Bhubaneswar, "Sell Plot/Land" ad group) spent
+about 11 minutes filling in `/post`, including photos. She signed in with OTP at the "Preview Ad"
+button. A web deploy had gone out a minute earlier, so her browser was still on the old build.
+After the login, Next.js' `router.refresh()` hit the version skew and fell back to a full page
+reload. That reload wiped the wizard's in-memory state and the `requireLogin({ onSuccess })`
+resume. She landed back on an empty category step, never reached the preview, and went to
+`/my-listings` looking for the ad she thought she had posted.
+
+Deploys aren't the only thing that reloads the page. Pull-to-refresh, a mobile browser discarding a
+background tab while the seller reads the OTP SMS, and an accidental back/forward all do it too. On
+the app, Android can kill the process in the background for the same reasons. The form has to
+survive all of these.
+
+## What shipped
+
+- **Web** (`apps/web/src/lib/postAdDraft.ts`, `PostAdWizard.tsx`):
+  - The text fields are saved to `localStorage` (`bhavano:post-ad-draft`). This covers the step,
+    category, transaction type, price, qualifier, price mode, title, city (id plus the city object,
+    for a pin-resolved city missing from the page's list), area, pin, description, attributes and
+    the boost choice. Saves are debounced by 400 ms.
+  - Photos are required, and `localStorage` can't hold them. They're saved as the `File` objects
+    themselves in IndexedDB (`bhavano-drafts` / `post-ad-photos`), and preview URLs are rebuilt on
+    restore.
+- **Mobile** (`apps/mobile/src/lib/postAdDraft.ts`, `PostAdWizard.tsx`):
+  - The same fields, plus `specs`, go into AsyncStorage.
+  - Photos are kept as the image picker's cache URIs. On restore, any URI the OS has since cleared
+    (checked with `Image.getSize`) is dropped.
+- **Both apps:**
+  - The restore runs once on mount. Nothing is saved until that attempt has finished, so an empty
+    first render can't overwrite a saved draft.
+  - If the seller picks a category before the restore resolves, the restore is skipped.
+  - A draft saved on the preview step resumes on the details step, because the preview is only
+    shown after the account check in `onPreview`.
+  - A banner reads "We restored the ad you were writing", with a **Start over** button that clears
+    the draft and resets the form.
+  - The draft is cleared once `createListing` succeeds, even when payment is still pending, so
+    retrying payment can never try to create the same listing id again. Saving stops at that point.
+  - Drafts older than 7 days are discarded.
+- **Map pickers** take an `initialPin`, and a restored or previously placed pin is where the map
+  opens. On web this also skips the automatic "use my current location" when permission is already
+  granted. Before, going back from the preview to the details step re-ran that auto-locate. It moved
+  the pin to wherever the seller was sitting and overwrote the city and area they had picked.
+
+## Not kept
+
+- **Videos.** They're too large to store, and they're optional. A seller who had added one adds it
+  again.
+- **`listingId`.** It's regenerated on every mount. Photos uploaded under an old id by a submit that
+  failed partway stay orphaned, which is also how it worked before this change.
+- **Anything server-side.** The draft lives only on this device and browser, so switching devices
+  starts fresh. A server draft would need a login before the form, and the post flow deliberately
+  asks for an account only at the preview step.
+
+## Related
+
+- The deploy itself is still what triggers the reload. Deploying outside peak ad hours (IST
+  daytime) reduces how often it happens, but this autosave is what stops it losing anyone's work.
