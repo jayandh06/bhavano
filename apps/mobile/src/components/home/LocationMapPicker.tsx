@@ -20,11 +20,15 @@ const SEARCH_DEBOUNCE_MS = 300;
  * same reasoning as the static-map proxy. */
 export function LocationMapPicker({
   defaultCenter,
+  initialPin,
   onPinChange,
 }: {
   defaultCenter: { lat: number; lng: number };
+  /** A pin already placed (a restored draft, or back from the preview). The map opens on it. */
+  initialPin?: { lat: number; lng: number } | null;
   onPinChange: (pin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) => void;
 }) {
+  const start = initialPin ?? defaultCenter;
   const { colors } = useAppTheme();
   const mapRef = useRef<MapView>(null);
   // Deferred by one tick rather than mounted immediately: on Android, react-native-maps' MapView
@@ -44,7 +48,7 @@ export function LocationMapPicker({
     const raf = requestAnimationFrame(() => setMapReady(true));
     return () => cancelAnimationFrame(raf);
   }, []);
-  const [marker, setMarker] = useState<LatLng>({ latitude: defaultCenter.lat, longitude: defaultCenter.lng });
+  const [marker, setMarker] = useState<LatLng>({ latitude: start.lat, longitude: start.lng });
   const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,10 +138,10 @@ export function LocationMapPicker({
           // consistent with the rest of this light-only screen regardless of device theme.
           userInterfaceStyle="light"
           initialRegion={{
-            latitude: defaultCenter.lat,
-            longitude: defaultCenter.lng,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
+            latitude: start.lat,
+            longitude: start.lng,
+            latitudeDelta: initialPin ? 0.01 : 0.05,
+            longitudeDelta: initialPin ? 0.01 : 0.05,
           }}
           onPress={(e: MapPressEvent) => handlePinMove(e.nativeEvent.coordinate)}
         >

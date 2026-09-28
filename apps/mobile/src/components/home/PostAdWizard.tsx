@@ -40,6 +40,7 @@ import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
 import { createListing, fetchAreas, fetchPlanPricing, previewBoostPricing, uploadPhoto, uploadVideo } from "../../lib/bffClient";
 import { recordAppPageView } from "../../lib/analyticsSession";
+import { clearPostAdDraft, loadPostAdDraft, savePostAdDraft } from "../../lib/postAdDraft";
 import { startBoostCheckout } from "../../lib/boostCheckout";
 import { startListingPublishCheckout } from "../../lib/listingPublishCheckout";
 import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPricing";
@@ -309,6 +310,112 @@ export function PostAdWizard({
   // block's own comment for why this can't just reuse BoostBundleCard's `bundleActivating`.
   const [boostCheckoutOutcome, setBoostCheckoutOutcome] = useState<"succeeded" | "failed" | null>(null);
   const boostAutoFiredRef = useRef(false);
+  // Draft autosave (lib/postAdDraft.ts): nothing is saved until the restore attempt has run, so
+  // an empty first render can't overwrite a saved draft; and nothing after the listing exists.
+  const draftSavingRef = useRef(false);
+  const userStartedRef = useRef(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadPostAdDraft().then((draft) => {
+      if (cancelled) return;
+      if (draft && !userStartedRef.current) {
+        const savedCity = draft.city;
+        if (savedCity && !cities.some((c) => c.id === savedCity.id)) {
+          setPinResolvedCities((prev) => (prev.some((c) => c.id === savedCity.id) ? prev : [...prev, savedCity]));
+        }
+        setCategory(draft.category);
+        setTransactionType(draft.transactionType);
+        setPrice(draft.price);
+        setPriceQualifier(draft.priceQualifier);
+        setPriceMode(draft.priceMode);
+        setTitle(draft.title);
+        if (draft.cityId) setCityId(draft.cityId);
+        setAreaQuery(draft.areaQuery);
+        setAreaId(draft.areaId);
+        setSpecs(draft.specs);
+        setPin(draft.pin);
+        setAttributes(draft.attributes);
+        setPhotoUris(draft.photoUris);
+        setSelectedBoostPlan(draft.selectedBoostPlan);
+        // The preview is only shown after the account check in onPreview, so resume one step back.
+        setStep(draft.step === "review" ? "details" : draft.step);
+        setDraftRestored(true);
+      }
+      draftSavingRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Runs once on mount; `cities` is only read to decide where a restored city goes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!draftSavingRef.current || !category || step === "success") return;
+    const timer = setTimeout(() => {
+      if (!draftSavingRef.current) return;
+      void savePostAdDraft({
+        step,
+        category,
+        transactionType,
+        price,
+        priceQualifier,
+        priceMode,
+        title,
+        cityId,
+        city: cityOptions.find((c) => c.id === cityId) ?? null,
+        areaQuery,
+        areaId,
+        specs,
+        pin,
+        attributes,
+        photoUris,
+        selectedBoostPlan,
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [
+    step,
+    category,
+    transactionType,
+    price,
+    priceQualifier,
+    priceMode,
+    title,
+    cityId,
+    cityOptions,
+    areaQuery,
+    areaId,
+    specs,
+    pin,
+    attributes,
+    photoUris,
+    selectedBoostPlan,
+  ]);
+
+  function startOver() {
+    void clearPostAdDraft();
+    setPhotoUris([]);
+    setCategory(null);
+    setTransactionType(null);
+    setPrice("");
+    setPriceQualifier("");
+    setPriceMode("total");
+    setTitle("");
+    setCityId(defaultCityId ?? cities[0]?.id ?? "");
+    setAreaQuery("");
+    setAreaId(null);
+    setSpecs("");
+    setPin(null);
+    setAttributes({});
+    setSelectedBoostPlan(null);
+    setPinLookupNote(null);
+    setError(null);
+    setDraftRestored(false);
+    setStep("category");
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -450,6 +557,7 @@ export function PostAdWizard({
   }, [createdListing, postAccessToken]);
 
   function selectCategory(next: ListingCategory) {
+    userStartedRef.current = true;
     setCategory(next);
     setAttributes(defaultAttributesFor(next));
     // A category swap can invalidate "price per unit" (the new category might have no area field
@@ -960,6 +1068,9 @@ export function PostAdWizard({
       );
 
       setCreatedListing(listing);
+      // The listing exists now (even if payment is still pending), so a retry must not recreate it.
+      draftSavingRef.current = false;
+      void clearPostAdDraft();
       if (listing.publishState === "pending_checkout") {
         const published = await finishPublishCheckout(listing, activeToken);
         if (!published) return;
@@ -1013,6 +1124,29 @@ export function PostAdWizard({
               </Text>
             </View>
           ))}
+        </View>
+      )}
+
+      {draftRestored && step !== "success" && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            marginBottom: 14,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.surfaceAlt,
+          }}
+        >
+          <Text style={{ color: colors.text, fontSize: 13, flex: 1 }}>We restored the ad you were writing.</Text>
+          <Pressable onPress={startOver} hitSlop={8}>
+            <Text style={{ color: colors.green, fontSize: 13, fontWeight: "700" }}>Start over</Text>
+          </Pressable>
         </View>
       )}
 
@@ -1104,6 +1238,7 @@ export function PostAdWizard({
           >
             <LocationMapPicker
               defaultCenter={cityOptions.find((c) => c.id === cityId) ?? cities[0] ?? { lat: 20.5937, lng: 78.9629 }}
+              initialPin={pin}
               onPinChange={onPinChange}
             />
           </ErrorBoundary>
