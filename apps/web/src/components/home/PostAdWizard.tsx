@@ -793,6 +793,7 @@ export function PostAdWizard({
     areaQuery.trim().length > 0 &&
     !!cityId &&
     photos.length > 0 &&
+    !preparingPhotos &&
     requiredAttributesFilled;
 
   /**
@@ -1372,7 +1373,7 @@ export function PostAdWizard({
               disabled={!detailsValid}
               className={`ml-auto ${primaryButtonClass}`}
             >
-              Preview Ad
+              {preparingPhotos ? "Preparing photos…" : "Preview Ad"}
             </button>
           </div>
         </div>
