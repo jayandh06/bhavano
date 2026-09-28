@@ -509,7 +509,9 @@ manual action if you index them at scale. So:
 5. **Verified seeker** — tie to the planned ID verification so brokers can filter to serious
    demand. Directly attacks the "leads are junk" objection that kills pay-per-lead products.
 6. **WhatsApp-first posting** — most seekers would rather send a message than fill a form; the
-   WhatsApp channel already exists for notifications.
+   WhatsApp channel already exists for notifications. The seller-side version (receiving messages,
+   one-tap login link) is planned in [`post-ad-via-whatsapp.md`](post-ad-via-whatsapp.md); the
+   same incoming-message webhook would serve requirement posting.
 7. **Requirement → listing nudge** — when a matching listing finally appears, notify the seeker,
    which is `notifySavedSearchMatch` again and free if the paired SavedSearch was created.
 8. **Commercial/plot specialisation** — the categories where inventory is thinnest and demand
