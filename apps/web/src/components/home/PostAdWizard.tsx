@@ -293,6 +293,12 @@ export function PostAdWizard({
   const preparingMedia = preparingPhotos || preparingVideos;
   const [videos, setVideos] = useState<SelectedVideo[]>([]);
   const [videoError, setVideoError] = useState<string | null>(null);
+  // Messages about the photos just picked (too many, wrong format, too big). Deliberately NOT the
+  // wizard's shared `error`: that one is also what the Preview screen prints above the Post button,
+  // so a photo-limit note left there read as a problem with the ad being posted, and nothing
+  // cleared it after the seller removed photos to get back under the limit. This one is shown only
+  // beside the photo picker, and cleared by anything that changes the photos.
+  const [photoNotice, setPhotoNotice] = useState<{ kind: "limit" | "file"; text: string } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slotCap, setSlotCap] = useState<ListingSlotCapErrorBody | null>(null);
@@ -439,6 +445,7 @@ export function PostAdWizard({
     setSelectedBoostPlan(null);
     setPinLookupNote(null);
     setError(null);
+    setPhotoNotice(null);
     setDraftRestored(false);
     setStep("category");
   }
@@ -605,27 +612,30 @@ export function PostAdWizard({
   async function onPhotosSelected(files: FileList | null) {
     if (!files || files.length === 0) return;
     setError(null);
+    setPhotoNotice(null);
 
     const room = MAX_PHOTOS - photos.length;
     const candidates = Array.from(files).slice(0, room);
     if (files.length > room) {
-      setError(
-        `Up to ${MAX_PHOTOS} photos allowed — only added the first ${room}.`,
-      );
+      setPhotoNotice({
+        kind: "limit",
+        text: `Up to ${MAX_PHOTOS} photos allowed — only added the first ${room}.`,
+      });
     }
 
     setPreparingPhotos(true);
     const accepted: SelectedPhoto[] = [];
     for (const picked of candidates) {
       if (!ALLOWED_PHOTO_TYPES.includes(picked.type)) {
-        setError(
-          `"${picked.name}" isn't a supported format — use JPEG, PNG, WebP, or GIF.`,
-        );
+        setPhotoNotice({
+          kind: "file",
+          text: `"${picked.name}" isn't a supported format — use JPEG, PNG, WebP, or GIF.`,
+        });
         continue;
       }
       const file = await shrinkPhoto(picked);
       if (file.size > MAX_PHOTO_BYTES) {
-        setError(photoTooLargeMessage(picked.name));
+        setPhotoNotice({ kind: "file", text: photoTooLargeMessage(picked.name) });
         continue;
       }
       accepted.push({ file, previewUrl: URL.createObjectURL(file) });
@@ -635,6 +645,8 @@ export function PostAdWizard({
   }
 
   function onRemovePhoto(index: number) {
+    // Removing a photo is the fix for "too many photos", so the note about it goes with it.
+    setPhotoNotice(null);
     setPhotos((prev) => {
       URL.revokeObjectURL(prev[index].previewUrl);
       return prev.filter((_, i) => i !== index);
@@ -648,6 +660,7 @@ export function PostAdWizard({
    * step's `ListingPreviewCard` already reads `photos[0]` — so this one reorder is all either
    * needs. */
   function onSetCoverPhoto(index: number) {
+    setPhotoNotice(null);
     setPhotos((prev) => {
       if (index === 0) return prev;
       const next = [...prev];
@@ -713,6 +726,8 @@ export function PostAdWizard({
   }
 
   function onRemoveVideo(index: number) {
+    // Same reasoning as onRemovePhoto: removing one is how a seller gets back under the limit.
+    setVideoError(null);
     setVideos((prev) => {
       URL.revokeObjectURL(prev[index].previewUrl);
       return prev.filter((_, i) => i !== index);
@@ -866,6 +881,7 @@ export function PostAdWizard({
       activeToken = await getAccessTokenAction();
       setToken(activeToken);
     }
+    setPhotoNotice(null);
     if (!activeToken) {
       pushDataLayerEvent("post_login_required", { step });
       requireLogin({ onSuccess: () => setStep("review") });
@@ -1372,6 +1388,11 @@ export function PostAdWizard({
                   </div>
                 ))}
               </div>
+            )}
+            {/* The "only added the first N" note is only true while the list is still full; the moment a
+              * photo is removed it is stale, so it is hidden as well as cleared. */}
+            {photoNotice && (photoNotice.kind === "file" || photos.length >= MAX_PHOTOS) && (
+              <p className="text-[#b3413a] text-[13px] mt-2">{photoNotice.text}</p>
             )}
             {error && (
               <p className="text-[#b3413a] text-[13px] mt-2">{error}</p>

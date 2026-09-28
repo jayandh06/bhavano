@@ -266,6 +266,12 @@ export function PostAdWizard({
   const [videoError, setVideoError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Messages about the photos just picked (too many, wrong format, too big). Deliberately NOT the
+  // wizard's shared `error`: that one is also what the Preview screen prints above the Post button,
+  // so a photo-limit note left there read as a problem with the ad being posted, and nothing
+  // cleared it after the seller removed photos to get back under the limit. This one is shown only
+  // beside the photo picker, and cleared by anything that changes the photos.
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(null);
   // Captured from onSubmit's own resolved token (accessToken prop, or the SecureStore fallback
   // right after a just-completed login) rather than reusing the prop directly — the two can be
@@ -407,6 +413,7 @@ export function PostAdWizard({
     setSelectedBoostPlan(null);
     setPinLookupNote(null);
     setError(null);
+    setPhotoNotice(null);
     setDraftRestored(false);
     setStep("category");
   }
@@ -592,14 +599,15 @@ export function PostAdWizard({
     });
     if (result.canceled) return;
 
+    setPhotoNotice(null);
     const accepted: string[] = [];
     for (const asset of result.assets) {
       if (asset.mimeType && !ALLOWED_PHOTO_MIME_TYPES.includes(asset.mimeType)) {
-        setError(`One of the selected photos isn't a supported format — use JPEG, PNG, WebP, or GIF.`);
+        setPhotoNotice(`One of the selected photos isn't a supported format — use JPEG, PNG, WebP, or GIF.`);
         continue;
       }
       if (asset.fileSize && asset.fileSize > MAX_PHOTO_SIZE_BYTES) {
-        setError(`One of the selected photos is over the 4MB limit.`);
+        setPhotoNotice(`One of the selected photos is over the 4MB limit.`);
         continue;
       }
       accepted.push(asset.uri);
@@ -608,6 +616,7 @@ export function PostAdWizard({
   }
 
   function removePhoto(uri: string) {
+    setPhotoNotice(null);
     setPhotoUris((prev) => prev.filter((u) => u !== uri));
   }
 
@@ -979,6 +988,7 @@ export function PostAdWizard({
     if (!activeToken) {
       activeToken = (await SecureStore.getItemAsync(TOKEN_KEY)) ?? undefined;
     }
+    setPhotoNotice(null);
     if (!activeToken) {
       requireLogin({ onSuccess: () => setStep("review") });
       return;
@@ -1444,6 +1454,7 @@ export function PostAdWizard({
               ))}
             </View>
           )}
+          {photoNotice && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{photoNotice}</Text>}
 
           <Text style={[styles.label, { color: colors.textSoft, marginTop: 18 }]}>
             Video (optional, up to {videoEntitlement.maxVideos})
