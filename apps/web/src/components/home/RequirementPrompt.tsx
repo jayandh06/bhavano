@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { CreateRequirementInput, RequirementDto } from "@bhavano/types";
+import type { RequirementCaptureCriteria, RequirementDto } from "@bhavano/types";
+import { formatRequirementLabel } from "@bhavano/types/requirementQuestions";
 import { createRequirementAction } from "@/app/actions/requirements";
 import { useAuthGate } from "./AuthGateProvider";
+import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 import { RequirementRefineDialog } from "./RequirementRefineDialog";
 
 /**
@@ -32,9 +34,12 @@ export function RequirementPrompt({
   label,
   variant = "empty",
 }: {
-  criteria: Omit<CreateRequirementInput, "searchLabel">;
+  /** Without a `cityId` (an India-wide page) the card asks for a city before it can save. */
+  criteria: RequirementCaptureCriteria;
   /** How the search reads to a human — the page heading. Becomes both the copy here and the
-   * stored `searchLabel`, so an admin reading the row later sees what the seeker was shown. */
+   * stored `searchLabel`, so an admin reading the row later sees what the seeker was shown. When
+   * the card had to ask for the city, the label is rewritten around it instead: the heading says
+   * "India". */
   label: string;
   /** `empty` = the zero-results card. `inline` = a quiet link alongside real results, for
    * someone who looked and did not like what they found. */
@@ -55,12 +60,22 @@ export function RequirementPrompt({
   /** The inline variant asks the same question, but only once they have shown interest —
    * otherwise it would be a consent form sitting under every page of results. */
   const [inlineOpen, setInlineOpen] = useState(false);
+  /** A requirement for "anywhere in India" is not one anybody can act on, so a page without a
+   * city asks for one before anything is saved. */
+  const needsCity = !criteria.cityId;
+  const [city, setCity] = useState<PickedCity | undefined>(undefined);
+  const cityId = criteria.cityId ?? city?.id;
+  const shownLabel = needsCity && city ? formatRequirementLabel({ ...criteria, cityId: city.id }, { cityName: city.name }) : label;
 
   async function submit() {
+    if (!cityId) {
+      setError("Pick a city first");
+      return;
+    }
     setState("saving");
     setError(null);
 
-    const result = await createRequirementAction({ ...criteria, searchLabel: label, contactConsent: allowContact });
+    const result = await createRequirementAction({ ...criteria, cityId, searchLabel: shownLabel, contactConsent: allowContact });
 
     if (result.success) {
       setSaved(result.requirement);
@@ -145,8 +160,17 @@ export function RequirementPrompt({
       {/* The criteria, stated back. This is the thing being confirmed, so it has to be visible and
         * verbatim — it is also exactly what gets stored as `searchLabel`. */}
       <div className="rounded-lg border border-border bg-surface-alt px-3.5 py-2.5 text-[13px] font-semibold text-text">
-        {label}
+        {shownLabel}
       </div>
+      {needsCity && (
+        <div className="mt-3.5">
+          <div className="text-left text-[13px] font-bold text-text mb-1">Which city?</div>
+          <p className="text-left text-[12px] text-muted m-0 mb-2">
+            Nobody can find you a place anywhere in India — start with the city, and we&apos;ll ask which areas next.
+          </p>
+          <RequirementCityPicker value={city} onChange={setCity} disabled={state === "saving"} />
+        </div>
+      )}
       <label className="mt-3.5 flex items-start gap-2.5 text-left text-[13px] text-text cursor-pointer">
         <input
           type="checkbox"
@@ -164,7 +188,7 @@ export function RequirementPrompt({
       <button
         type="button"
         onClick={() => void submit()}
-        disabled={state === "saving"}
+        disabled={state === "saving" || !cityId}
         className={`${primaryButtonClass} mt-4 w-full`}
       >
         {state === "saving" ? "Confirming…" : "Yes, find this for me"}

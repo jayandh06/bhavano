@@ -14,24 +14,29 @@ import {
   REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_INTENTS,
   REQUIREMENT_TIMELINE_OPTIONS,
+  REQUIRED_REQUIREMENT_STEPS,
   amenityOptionsFor,
   answeredSteps,
   applicableSteps,
   applyIntent,
   budgetPresetsFor,
+  canLeaveStep,
   formatRequirementLabel,
   intentOf,
   sanitizeRequirementAttributes,
   sizeQuestionFor,
+  stepsToAsk,
   type RequirementCriteria,
   type RequirementStep,
 } from "@bhavano/types/requirementQuestions";
 import { refineRequirementAction } from "@/app/actions/requirements";
 import { listAllAreasAction } from "@/app/actions/locations";
+import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 
 type WizardStep = RequirementStep | "review";
 
 const STEP_TITLES: Record<WizardStep, string> = {
+  city: "Which city?",
   intent: "What are you looking for?",
   category: "What type of property?",
   details: "A few specifics",
@@ -93,8 +98,9 @@ function toUnit(sqft: number | undefined, unit: AreaUnit): string {
  * Runs against a requirement that is already saved: the one-tap capture stays the thing that
  * always succeeds, and this only makes the row better. Every step saves as it is answered, so
  * closing halfway still keeps what was given. Steps the search already answered are skipped
- * (decided once, when this opens, so answering one question never makes another vanish), and
- * every step can be skipped — "any" is always an acceptable answer.
+ * (decided once, when this opens, so answering one question never makes another vanish). City,
+ * areas, what and property type must be answered — a requirement is vague without them — and
+ * every later step can be skipped, "any" being an acceptable answer there.
  */
 export function RequirementRefineWizard({
   requirement,
@@ -113,12 +119,16 @@ export function RequirementRefineWizard({
   const [current, setCurrent] = useState(requirement);
   const [draft, setDraft] = useState<RequirementCriteria>(() => criteriaOf(requirement));
   const skipped = useMemo(() => answeredSteps(criteriaOf(requirement)), [requirement]);
-  const steps: WizardStep[] = [...applicableSteps(draft).filter((s) => !skipped.has(s)), "review"];
+  const steps: WizardStep[] = [...stepsToAsk(draft, skipped), "review"];
   const [stepKey, setStepKey] = useState<WizardStep>(steps[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [areas, setAreas] = useState<Area[] | null>(null);
+  const [pickedCity, setPickedCity] = useState<PickedCity | undefined>(() =>
+    requirement.cityId && requirement.cityName ? { id: requirement.cityId, name: requirement.cityName } : undefined,
+  );
+  /** Keyed by city, so a new city's step never shows the old city's list while its own loads. */
+  const [cityAreas, setCityAreas] = useState<{ cityId: string; list: Area[] } | null>(null);
   const [areaQuery, setAreaQuery] = useState("");
   const [sizeUnit, setSizeUnit] = useState<AreaUnit>(requirement.areaUnit ?? "sqft");
   const [sizeMin, setSizeMin] = useState(() => toUnit(requirement.minAreaSqft, requirement.areaUnit ?? "sqft"));
@@ -128,16 +138,18 @@ export function RequirementRefineWizard({
   const [timeline, setTimeline] = useState<string | null>(null);
   const [note, setNote] = useState(requirement.note ?? "");
 
+  const savedCityId = current.cityId;
   useEffect(() => {
-    if (!requirement.cityId) return;
+    if (!savedCityId) return;
     let cancelled = false;
-    void listAllAreasAction(requirement.cityId).then((list) => {
-      if (!cancelled) setAreas([...list].sort((a, b) => a.name.localeCompare(b.name)));
+    void listAllAreasAction(savedCityId).then((list) => {
+      if (!cancelled) setCityAreas({ cityId: savedCityId, list: [...list].sort((a, b) => a.name.localeCompare(b.name)) });
     });
     return () => {
       cancelled = true;
     };
-  }, [requirement.cityId]);
+  }, [savedCityId]);
+  const areas = cityAreas && cityAreas.cityId === savedCityId ? cityAreas.list : null;
 
   const intent = intentOf(draft.category, draft.transactionType);
   const areaById = useMemo(() => new Map((areas ?? []).map((a) => [a.id, a])), [areas]);
@@ -151,6 +163,8 @@ export function RequirementRefineWizard({
       ? sanitizeRequirementAttributes(draft.category, draft.transactionType, draft.attributes ?? {}).attributes
       : undefined;
     switch (step) {
+      case "city":
+        return { cityId: draft.cityId };
       case "intent":
       case "category":
         return { category: draft.category ?? null, transactionType: draft.transactionType ?? null };
@@ -198,14 +212,14 @@ export function RequirementRefineWizard({
     return result.requirement;
   }
 
-  function goNext() {
-    // Recomputed from the latest draft: choosing Buy adds the property-type step, choosing PG
-    // removes it.
-    const next = [...applicableSteps(draft).filter((s) => !skipped.has(s)), "review" as const];
+  /** `from` is the criteria just saved when there are some: choosing Buy adds the property-type
+   * step, choosing PG removes it, and a new city empties the areas. */
+  function goNext(from: RequirementCriteria = draft) {
+    const next = [...stepsToAsk(from, skipped), "review" as const];
     const at = next.indexOf(stepKey);
     // A step opened from the review's "Change" links may be one the search had answered, so it is
-    // not in the sequence — it returns straight to the review.
-    setStepKey(at === -1 ? "review" : (next[at + 1] ?? "review"));
+    // not in the sequence. It returns to the first step still needing an answer, or the review.
+    setStepKey(at === -1 ? (next.find((s) => s !== "review" && !canLeaveStep(s, from)) ?? "review") : (next[at + 1] ?? "review"));
   }
 
   async function saveAndNext() {
@@ -214,7 +228,8 @@ export function RequirementRefineWizard({
       if (saved) onFinished(saved);
       return;
     }
-    if (await save(stepKey)) goNext();
+    const saved = await save(stepKey);
+    if (saved) goNext(criteriaOf(saved));
   }
 
   function goBack() {
@@ -233,6 +248,22 @@ export function RequirementRefineWizard({
   }
 
   // --- step bodies -------------------------------------------------------------------------
+
+  function CityStep() {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="m-0 text-[12.5px] text-muted">Start with the city — we&apos;ll ask which areas next.</p>
+        <RequirementCityPicker
+          value={pickedCity}
+          onChange={(city) => {
+            setPickedCity(city);
+            setDraft((d) => (d.cityId === city.id ? d : { ...d, cityId: city.id, areaIds: [] }));
+          }}
+          disabled={saving}
+        />
+      </div>
+    );
+  }
 
   function IntentStep() {
     const choices = intent ? INTENT_TRANSACTION_CHOICES[intent] : undefined;
@@ -394,7 +425,7 @@ export function RequirementRefineWizard({
     return (
       <div className="flex flex-col gap-3">
         <p className="m-0 text-[12.5px] text-muted">
-          Pick up to {MAX_REQUIREMENT_AREAS}. Owners and agents respond when you name the areas you&apos;d actually live in.
+          Pick 1 to {MAX_REQUIREMENT_AREAS}. Owners and agents can only help when you name the areas you&apos;d actually live in.
         </p>
         {selected.length > 0 && (
           <ChipRow>
@@ -554,6 +585,7 @@ export function RequirementRefineWizard({
   }
 
   const body: Record<WizardStep, () => React.ReactNode> = {
+    city: CityStep,
     intent: IntentStep,
     category: CategoryStep,
     details: DetailsStep,
@@ -596,8 +628,8 @@ export function RequirementRefineWizard({
       {error && <p className="m-0 text-[12.5px] text-danger">{error}</p>}
 
       {/* Sticky so Next stays reachable under a long area list, whether the scroller is the
-          dialog or (on the refine page) the window. Skip truncates rather than wrapping when
-          "Anywhere in {city}" won't fit beside Back and Next on a narrow phone. */}
+          dialog or (on the refine page) the window. City, areas, what and property type have no
+          Skip: without them a requirement is too vague for anyone to act on. */}
       <div className="sticky bottom-0 z-10 -mb-1 flex items-center gap-3 border-t border-border bg-surface pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {position !== 0 && (
           <button type="button" onClick={goBack} disabled={saving} className={`${linkButtonClass} shrink-0`}>
@@ -605,15 +637,15 @@ export function RequirementRefineWizard({
           </button>
         )}
         <div className="flex-1" />
-        {stepKey !== "review" && (
-          <button type="button" onClick={goNext} disabled={saving} className={`${linkButtonClass} min-w-0 truncate`}>
-            {stepKey === "areas" ? `Anywhere in ${current.cityName ?? "the city"}` : "Skip"}
+        {stepKey !== "review" && !REQUIRED_REQUIREMENT_STEPS.has(stepKey) && (
+          <button type="button" onClick={() => goNext()} disabled={saving} className={`${linkButtonClass} min-w-0 truncate`}>
+            Skip
           </button>
         )}
         <button
           type="button"
           onClick={() => void saveAndNext()}
-          disabled={saving}
+          disabled={saving || (stepKey !== "review" && !canLeaveStep(stepKey, draft))}
           className={`${primaryButtonClass} shrink-0`}
         >
           {saving ? "Saving…" : stepKey === "review" ? "Done" : "Next"}
@@ -624,6 +656,7 @@ export function RequirementRefineWizard({
 }
 
 const STEP_LINK_LABELS: Record<RequirementStep, string> = {
+  city: "city",
   intent: "what",
   category: "type",
   details: "specifics",

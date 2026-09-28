@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { RequirementDto } from "@bhavano/types";
 import { bedroomLabel } from "@bhavano/types/bedrooms";
-import { formatCompactInr, missingForLead } from "@bhavano/types/requirementQuestions";
+import { describeRequirementGaps, formatCompactInr, missingForLead } from "@bhavano/types/requirementQuestions";
 import {
   closeRequirementAction,
   renewRequirementAction,
@@ -27,11 +27,6 @@ function budgetText(r: RequirementDto): string | null {
   if (r.minPrice) return `from ${formatCompactInr(r.minPrice)}`;
   return null;
 }
-
-const MISSING_WORDS: Record<ReturnType<typeof missingForLead>[number], string> = {
-  area: "which areas",
-  budget: "a budget or size",
-};
 
 /**
  * One captured requirement, with the controls its owner should have over it — Phase 1 of
@@ -98,7 +93,7 @@ export function MyRequirementCard({ requirement }: { requirement: RequirementDto
           </div>
           {current.canRefine && !current.isLeadReady && (
             <div className="text-[12.5px] text-muted mt-1.5">
-              Needs {missing.map((m) => MISSING_WORDS[m]).join(" and ")} before owners and agents can act on it.
+              Needs {describeRequirementGaps(missing)} before owners and agents can act on it.
             </div>
           )}
           {current.canRefine && (

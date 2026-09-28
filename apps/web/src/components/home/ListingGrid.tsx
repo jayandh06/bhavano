@@ -1,4 +1,4 @@
-import type { CreateRequirementInput, ListingCardDto } from "@bhavano/types";
+import type { ListingCardDto, RequirementCaptureCriteria } from "@bhavano/types";
 import { ListingCard } from "./ListingCard";
 import { RequirementPrompt } from "./RequirementPrompt";
 
@@ -10,7 +10,7 @@ export function ListingGrid({
   /** The current search, for the zero-results prompt. Omit it and the empty state stays the
    * plain message — used where there is no single coherent search to capture. */
   requirement?: {
-    criteria: Omit<CreateRequirementInput, "searchLabel">;
+    criteria: RequirementCaptureCriteria;
     label: string;
     /** City-scoped `/post` link for the card's secondary action. */
   };
