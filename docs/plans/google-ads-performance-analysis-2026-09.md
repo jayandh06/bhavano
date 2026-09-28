@@ -356,6 +356,30 @@ also the largest property markets, so they matter for the "few hundred listings 
 - Caveat: most of this window still counted registrations as conversions (made secondary on
   09-28), and Thane had too little spend to show.
 
+## Cap the cost per click at ₹100? (question asked 2026-09-28, night) — no
+
+All 8 campaigns use standalone Maximize Conversions with no target CPA. Google only allows a
+maximum CPC limit on a *portfolio* (shared) bid strategy, so a cap would mean moving the campaigns
+into one and restarting learning again. The data says it isn't worth it (keyword level, 09-10 → 09-28,
+₹57k spend, average CPC ≈ ₹32):
+
+| Keyword average CPC | Share of spend | Conversion rate | CPA |
+|---|---|---|---|
+| under ₹30 | 24% | 13.5% | ₹164 |
+| ₹30–50 | 42% | 42% | ₹90 |
+| ₹50–75 | 31% | 47% | ₹119 |
+| ₹75–100 | 1% | — | ₹73 |
+| ₹100 and above | 2% (3 keywords, 6 clicks) | 0 | — |
+
+- Clicks at ₹100+ are about ₹1,000 of ₹57k. A ₹100 cap saves almost nothing.
+- Price does not predict quality: the cheapest clicks convert worst, and the ₹30–75 band is the
+  best. A lower cap (say ₹50) would cut the best-converting third of spend.
+- The ₹100+ keywords ("post rental ad free", "advertise rentals for free", "best place to advertise
+  rental property") are on-intent; 6 clicks is too few to judge them.
+- **Better lever, later:** once the goal change has re-learned (about 2–4 weeks) and each campaign
+  has ~30 conversions a month, set a target CPA near the measured CPA (≈ ₹110–120). That reins in
+  expensive auctions by value, not by a flat price.
+
 ## Ad group and ad copy review (2026-09-28) — proposals, nothing applied
 
 Findings (read-only): every enabled ad group has **one** responsive search ad (no variant to test
