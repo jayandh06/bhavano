@@ -155,7 +155,7 @@ export function HomeSheetsProvider({
     phone: null,
     email: null,
     emailVerified: false,
-    needSecondary: "email",
+    needSecondary: null,
   });
 
   const googleSignIn = useGoogleSignIn();
@@ -308,7 +308,14 @@ export function HomeSheetsProvider({
     loginSheetRef.current?.present();
   }, [isLoggedIn]);
 
-  /** Cold start / already-logged-in: force name + verified secondary if missing. */
+  /** The city step is a one-tap confirm rather than a search: when the profile has no city yet, offer
+   * the one already selected in the header (if any) as the prefilled value. */
+  function withSelectedCity(basics: ProfileBasicsValues): ProfileBasicsValues {
+    if (basics.cityId || !city) return basics;
+    return { ...basics, cityId: city.id, cityName: city.name };
+  }
+
+  /** Cold start / already-logged-in: force a name if missing. */
   useEffect(() => {
     if (!accessToken || !profile || sessionBasicsCheckedRef.current) return;
     if (!profileNeedsMandatoryBasics(profile)) {
@@ -319,7 +326,7 @@ export function HomeSheetsProvider({
     // Fresh login already opened basics via onLoginSuccess — don't flip to quiet mode.
     if (loginStep === "basics") return;
     quietBasicsRef.current = true;
-    setBasicsInitial(basicsFromProfile(profile));
+    setBasicsInitial(withSelectedCity(basicsFromProfile(profile)));
     setError(null);
     setPending(false);
     setLoginStep("basics");
@@ -391,13 +398,13 @@ export function HomeSheetsProvider({
       if (t) pushTokenRef.current = t;
     });
 
-    // Name + verified secondary required; city optional — see
+    // Name required; city optional and prefilled from the selected city — see
     // docs/plans/post-login-name-and-city.md. Keep the login sheet open for this step.
     try {
       const nextProfile = await fetchProfile(accessToken);
       setProfile(nextProfile);
       if (profileNeedsBasics(nextProfile)) {
-        setBasicsInitial(basicsFromProfile(nextProfile));
+        setBasicsInitial(withSelectedCity(basicsFromProfile(nextProfile)));
         setError(null);
         setPending(false);
         setLoginStep("basics");
@@ -689,7 +696,7 @@ export function HomeSheetsProvider({
       <BottomSheetModal
         ref={loginSheetRef}
         snapPoints={loginStep === "basics" ? ["85%"] : ["55%"]}
-        // Name + verified secondary are mandatory — don't swipe away an incomplete profile.
+        // Name is mandatory — don't swipe away an incomplete profile.
         // City-only gaps may dismiss (canDismissBasics).
         enablePanDownToClose={loginStep !== "basics" || canDismissBasics(basicsInitial)}
         backgroundStyle={{ backgroundColor: colors.surface }}

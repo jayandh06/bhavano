@@ -46,11 +46,7 @@ export function profileNeedsBasics(profile: {
   emailVerified: boolean;
   cityId: string | null;
 }): boolean {
-  return (
-    !profile.name?.trim() ||
-    secondaryNeedFromProfile(profile) !== null ||
-    !profile.cityId
-  );
+  return !profile.name?.trim() || !profile.cityId;
 }
 
 /** Mandatory only (name + verified secondary) — session restore / cold start. */
@@ -60,7 +56,7 @@ export function profileNeedsMandatoryBasics(profile: {
   email?: string | null;
   emailVerified: boolean;
 }): boolean {
-  return !profile.name?.trim() || secondaryNeedFromProfile(profile) !== null;
+  return !profile.name?.trim();
 }
 
 export function secondaryNeedFromProfile(profile: {
@@ -88,7 +84,9 @@ export function basicsFromProfile(profile: {
     phone: profile.phone ?? null,
     email: profile.email ?? null,
     emailVerified: profile.emailVerified,
-    needSecondary: secondaryNeedFromProfile(profile),
+    // Deferred: login asks only for name (+ optional city). The phone/email verification phases
+    // below are reused later, at Publish — see docs/plans/post-login-name-and-city.md.
+    needSecondary: null,
   };
 }
 
@@ -105,7 +103,7 @@ type Phase =
   | "confirmMerge";
 
 /**
- * Post-login name + mandatory verified secondary + optional city —
+ * Post-login name + optional city (secondary verification is deferred to Publish) —
  * see docs/plans/post-login-name-and-city.md.
  */
 export function ProfileBasicsStep({

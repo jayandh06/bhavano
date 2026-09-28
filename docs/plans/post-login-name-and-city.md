@@ -1,6 +1,40 @@
-# Post-login name + verified secondary identifier (+ optional city)
+# Post-login name (+ optional city); secondary verification deferred to Publish
 
-Status: **implemented** (2026-09-25; secondary verification added same day)
+Status: **login half changed 2026-09-28** — login now asks only for name (+ optional city); the
+verified secondary identifier is no longer required at login. **The Publish-time gate that replaces
+it is not built yet** (see "Deferred verification" below). Everything below "Original design"
+describes the earlier behaviour and is kept for the reasoning and the still-reused phases.
+
+## 2026-09-28 change: what login asks now
+
+| Login method | Required at login | Optional at login |
+| --- | --- | --- |
+| Phone OTP | **Name** (typed) | City (prefilled, see below) |
+| Google / Apple | **Name** (prefilled from the provider, editable) | City (prefilled) |
+
+Why: the forced second verification straight after the first login was a second wall in front of a
+new user (observed drop-offs between signup and Publish). `profileNeedsBasics` is now
+`!name || !cityId`; `profileNeedsMandatoryBasics` is `!name`; `basicsFromProfile` always returns
+`needSecondary: null`, so `ProfileBasicsStep`'s `askPhone/askOtp/askEmail/askEmailCode/
+confirmMerge` phases never run at login. They are intentionally left in place: the Publish gate
+reuses them.
+
+City: mobile prefills it from the city already selected in the header (one-tap confirm) when the
+profile has none. **Web does not prefill yet** — the selected city lives in a server-side cookie
+(`bhavano_city`), not in client state the auth modal can read.
+
+### Deferred verification (not built yet)
+
+- **Google / Apple users** verify their **phone at Publish** (single OTP via the existing
+  `linkPhone` flow) — buyers reach sellers by phone and it is the spam control.
+- **Phone-OTP users** publish immediately; email becomes an optional, dismissible nudge after the
+  ad is live (only needed for receipts/notifications — confirm the Razorpay flow does not require
+  it).
+- Existing accounts missing the second identifier get a gentle nudge, never a block
+  ([profile-completion-dialog.md](profile-completion-dialog.md) / the banner already cover this).
+
+## Original design (2026-09-25, superseded for login)
+
 
 ## Goal
 

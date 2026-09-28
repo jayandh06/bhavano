@@ -75,7 +75,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     phone: null,
     email: null,
     emailVerified: false,
-    needSecondary: "email",
+    needSecondary: null,
   });
   const onSuccessRef = useRef<(() => void) | undefined>(undefined);
   /** True when basics was opened for an already-signed-in session (or full-page Google return),

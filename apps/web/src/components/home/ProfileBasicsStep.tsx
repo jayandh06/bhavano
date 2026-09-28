@@ -23,11 +23,13 @@ export interface ProfileBasicsValues {
   phone: string | null;
   email: string | null;
   emailVerified: boolean;
-  /** Missing secondary channel that must be verified before leaving the sheet. */
+  /** Missing secondary channel to verify before leaving the sheet. Always null at login now; kept
+   * for the deferred phone/email verification phases below. */
   needSecondary: SecondaryNeed;
 }
 
-/** Gate helper — open basics when name, verified secondary, or city is missing. */
+/** Gate helper — open basics when name or city is missing. (Verified phone/email is no longer part
+ * of login: it is collected later, at Publish — docs/plans/post-login-name-and-city.md.) */
 export function profileNeedsBasics(profile: {
   name: string | null;
   phone?: string | null;
@@ -35,14 +37,10 @@ export function profileNeedsBasics(profile: {
   emailVerified: boolean;
   cityId: string | null;
 }): boolean {
-  return (
-    !profile.name?.trim() ||
-    secondaryNeedFromProfile(profile) !== null ||
-    !profile.cityId
-  );
+  return !profile.name?.trim() || !profile.cityId;
 }
 
-/** Mandatory only (name + verified secondary). Used on session restore / full-page Google return
+/** Mandatory only (name). Used on session restore / full-page Google return
  * so we don't nag city-only gaps every page load — city stays optional. */
 export function profileNeedsMandatoryBasics(profile: {
   name: string | null;
@@ -50,7 +48,7 @@ export function profileNeedsMandatoryBasics(profile: {
   email?: string | null;
   emailVerified: boolean;
 }): boolean {
-  return !profile.name?.trim() || secondaryNeedFromProfile(profile) !== null;
+  return !profile.name?.trim();
 }
 
 export function secondaryNeedFromProfile(profile: {
@@ -78,11 +76,13 @@ export function basicsFromProfile(profile: {
     phone: profile.phone ?? null,
     email: profile.email ?? null,
     emailVerified: profile.emailVerified,
-    needSecondary: secondaryNeedFromProfile(profile),
+    // Deferred: login asks only for name (+ optional city). The phone/email verification phases
+    // below are reused later, at Publish — see docs/plans/post-login-name-and-city.md.
+    needSecondary: null,
   };
 }
 
-/** Dismiss / Skip only when name + secondary were already satisfied (city-only gap). */
+/** Dismiss / Skip only once a name exists (a city-only gap). */
 export function canDismissBasics(initial: ProfileBasicsValues): boolean {
   return initial.name.trim().length > 0 && initial.needSecondary === null;
 }
@@ -96,7 +96,7 @@ type Phase =
   | "confirmMerge";
 
 /**
- * Post-login name + mandatory verified secondary + optional city —
+ * Post-login name + optional city (secondary verification is deferred to Publish) —
  * see docs/plans/post-login-name-and-city.md.
  */
 export function ProfileBasicsStep({
