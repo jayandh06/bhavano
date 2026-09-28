@@ -513,7 +513,34 @@ export interface MessageDto {
   createdAt: string;
   readAt: string | null;
   deletedAt: string | null;
+  /** Structured rendering for staff messages (the Boost offer). Clients that know the `kind` draw
+   * the card and ignore `body`; older clients keep showing `body`, which always carries the same
+   * content as plain text. Null for ordinary chat messages and once the message is deleted. */
+  card?: MessageCardDto | null;
 }
+
+/** A Boost offer about one of the recipient's own listings — see
+ * docs/plans/admin-in-app-boost-message.md. */
+export interface BoostOfferMessageCardDto {
+  kind: "boost_offer";
+  listingId: string;
+  category: ListingCategory;
+  title: string;
+  /** "Area, City". */
+  location: string;
+  /** The cover photo's small variant; null when the ad has no photo. */
+  imageUrl: string | null;
+  /** The pitch in one line, e.g. "Boost it for 7 days for ₹99". */
+  headline: string;
+  /** Present only while a promo is live, e.g. "50% off until 30 September · was ₹99". */
+  offerNote: string | null;
+  paragraphs: string[];
+  ctaLabel: string;
+  /** Site-relative, e.g. "/my-listings?openBoost=<id>". */
+  ctaPath: string;
+}
+
+export type MessageCardDto = BoostOfferMessageCardDto;
 
 export interface MessageDeletedEvent {
   messageId: string;
@@ -1212,6 +1239,9 @@ export interface AdminPaymentDto {
    * necessarily reached `paid` (see DiscountCodeRedemption's own doc comment), but this reflects
    * what the buyer entered regardless of outcome. */
   discountCode?: string;
+  /** Where the checkout was started from, e.g. "admin_boost_message" — see
+   * @bhavano/types/purchaseSource. */
+  source?: string;
 }
 
 export interface AdminPaymentsPage {

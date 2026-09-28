@@ -14,6 +14,7 @@ import type {
   DiscountCodeDto,
   ListingDetailDto,
   ListingEditLogPage,
+  ListingCategory,
   ListingEngagementPage,
   ListingOwnerDto,
   ListingStatus,
@@ -72,7 +73,7 @@ import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
 import { PushService } from '../push/push.service';
 import { MessagingGateway } from '../messaging/messaging.gateway';
 import { STAFF_SENDER_LABEL } from '../messaging/messaging.service';
-import { buildBoostMessageBody } from './boost-message';
+import { boostMessagePath, buildBoostMessageBody, buildBoostMessageCard, type BoostMessageInput } from './boost-message';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
@@ -1158,7 +1159,7 @@ export class AdminService {
 
       if (inApp) {
         const site = process.env.PUBLIC_SITE_URL ?? 'https://www.bhavano.com';
-        const boostLink = `${site}/my-listings?openBoost=${listing.id}`;
+        const boostLink = `${site}${boostMessagePath(listing.id)}`;
         try {
           const longBase = boostPriceFor(listing.category, 30, boostPrices);
           await this.sendInAppBoostMessage(opts.adminId!, listing, {
@@ -1254,20 +1255,21 @@ export class AdminService {
    * row can always be traced back to the exact message. */
   private async sendInAppBoostMessage(
     adminId: string,
-    listing: { id: string; title: string },
-    input: Parameters<typeof buildBoostMessageBody>[0],
+    listing: { id: string; title: string; category: ListingCategory },
+    input: BoostMessageInput,
   ): Promise<void> {
+    const imageUrl = await this.messagingService.getListingPushImageUrl(listing.id).catch(() => undefined);
     const { conversationId, message, recipientId, listingTitle } = await this.messagingService.sendAnnouncement(
       listing.id,
       adminId,
       buildBoostMessageBody(input),
+      buildBoostMessageCard(input, { id: listing.id, category: listing.category, imageUrl: imageUrl ?? null }),
     );
     this.messagingGateway.broadcastMessage(conversationId, message);
     void this.messagingService
       .getUnreadTotal(recipientId)
       .then(async (unreadCount) => {
         this.messagingGateway.notifyUnread(recipientId, { conversationId, unreadCount });
-        const imageUrl = await this.messagingService.getListingPushImageUrl(listing.id).catch(() => undefined);
         await this.pushService.notifyNewMessage(recipientId, message, STAFF_SENDER_LABEL, { unreadCount, listingTitle, imageUrl });
       })
       .catch((error) =>
@@ -1555,7 +1557,7 @@ export class AdminService {
    * purpose-specific audit-trail rows this payment actually created (see AdminPaymentDto's own
    * doc comment), so it's resolved here per-row rather than in the query itself. */
   async listPayments(query: ListPaymentsDto): Promise<AdminPaymentsPage> {
-    const { offset, from, to, userId, purpose, status, listingTitle, sort, limit } = query;
+    const { offset, from, to, userId, purpose, status, listingTitle, source, sort, limit } = query;
 
     const where: Prisma.PaymentWhereInput = {
       ...(from || to
@@ -1564,6 +1566,7 @@ export class AdminService {
       ...(userId ? { userId } : {}),
       ...(purpose ? { purpose } : {}),
       ...(status ? { status } : {}),
+      ...(source ? { source } : {}),
     };
     const listingTitleClause = parseTextFilter(listingTitle);
     // parseTextFilter is typed for Visit's nullable string columns (StringNullableFilter);
@@ -1620,6 +1623,7 @@ export class AdminService {
           ...(p.agentProUnits ? { agentProUnits: p.agentProUnits } : {}),
           ...(p.creditPackSize ? { creditPackSize: p.creditPackSize } : {}),
           ...(p.discountCode ? { discountCode: p.discountCode.code } : {}),
+          ...(p.source ? { source: p.source } : {}),
         };
       }),
       total,

@@ -597,6 +597,9 @@ model Message {
   senderId       String
   sender         User         @relation(fields: [senderId], references: [id])
   body           String
+  /** MessageCardDto for staff messages that render as a card (the Boost offer); `body` keeps
+   * the same content as plain text for clients that don't know the card. */
+  card           Json?
   createdAt      DateTime     @default(now())
   readAt         DateTime?
   deletedAt      DateTime?
@@ -984,6 +987,9 @@ model Payment {
    * a question the data could not previously: nine boost purchases from ad clicks recorded zero
    * conversions, and whether that was mobile or a broken web tag was unknowable. */
   platform          String?
+  /** Where the checkout was started from, when it's a place we measure — one of PURCHASE_SOURCES
+   * in @bhavano/types/purchaseSource (e.g. "admin_boost_message"). Null for everything else. */
+  source            String?
   /** contact_reveal_credits orders only — how many credits this order buys, read from
    * ContactRevealSetting at order-creation time (never client-supplied). */
   creditPackSize    Int?

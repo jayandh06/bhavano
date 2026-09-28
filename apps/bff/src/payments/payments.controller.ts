@@ -54,7 +54,7 @@ export class PaymentsController {
       dto.listingId,
       dto.boostDays,
       dto.discountCode,
-      purchaseContext(tracking, client),
+      { ...purchaseContext(tracking, client), ...(dto.source ? { source: dto.source } : {}) },
     );
   }
 

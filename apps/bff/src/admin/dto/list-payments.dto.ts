@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { PURCHASE_SOURCES, type PurchaseSource } from '@bhavano/types/purchaseSource';
 
 /** Mirrors Payment.purpose (schema.prisma) — kept here rather than imported from the Prisma
  * client so this DTO's validation doesn't depend on the generated client's own enum export. */
@@ -79,6 +80,11 @@ export class ListPaymentsDto {
   @IsString()
   @MaxLength(300)
   listingTitle?: string;
+
+  /** Where the checkout was started from — see @bhavano/types/purchaseSource. */
+  @IsOptional()
+  @IsIn(PURCHASE_SOURCES)
+  source?: PurchaseSource;
 
   @IsOptional()
   @IsIn(ADMIN_PAYMENT_SORT_VALUES)

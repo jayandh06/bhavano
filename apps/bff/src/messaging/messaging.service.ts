@@ -3,6 +3,7 @@ import type {
   AdminConversationsPage,
   ConversationDetailDto,
   ConversationSummaryDto,
+  MessageCardDto,
   MessageDto,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,6 +21,7 @@ function toMessageDto(message: Message, opts: { revealDeletedBody?: boolean } = 
     createdAt: message.createdAt.toISOString(),
     readAt: message.readAt?.toISOString() ?? null,
     deletedAt: message.deletedAt?.toISOString() ?? null,
+    card: isDeleted || message.card == null ? null : (message.card as unknown as MessageCardDto),
   };
 }
 
@@ -136,6 +138,7 @@ export class MessagingService {
     listingId: string,
     adminId: string,
     body: string,
+    card?: MessageCardDto,
   ): Promise<{
     conversationId: string;
     message: MessageDto;
@@ -156,7 +159,12 @@ export class MessagingService {
       create: { listingId, inquirerId: adminId, posterId: listing.ownerId, type: 'announcement' },
     });
     const message = await this.prisma.message.create({
-      data: { conversationId: conversation.id, senderId: adminId, body },
+      data: {
+        conversationId: conversation.id,
+        senderId: adminId,
+        body,
+        ...(card ? { card: card as unknown as Prisma.InputJsonValue } : {}),
+      },
     });
     return {
       conversationId: conversation.id,

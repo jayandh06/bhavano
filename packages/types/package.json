@@ -73,6 +73,10 @@
       "types": "./dist/promoCode.d.ts",
       "default": "./dist/promoCode.js"
     },
+    "./purchaseSource": {
+      "types": "./dist/purchaseSource.d.ts",
+      "default": "./dist/purchaseSource.js"
+    },
     "./instantAlertsPricing": {
       "types": "./dist/instantAlertsPricing.d.ts",
       "default": "./dist/instantAlertsPricing.js"

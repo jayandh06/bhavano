@@ -39,6 +39,7 @@ import {
   PLATFORM_FEE_SETTINGS_ID,
 } from '../plans/plans.constants';
 import { platformFeeFor } from '@bhavano/types/platformFeePricing';
+import type { PurchaseSource } from '@bhavano/types/purchaseSource';
 import { ListingsService } from '../listings/listings.service';
 
 interface RazorpayWebhookPayload {
@@ -63,6 +64,7 @@ function utcMonthKey(date = new Date()): string {
 export interface PurchaseContext {
   adsTrackingAuthorized?: boolean;
   platform?: string;
+  source?: PurchaseSource;
 }
 
 @Injectable()
@@ -374,6 +376,7 @@ export class PaymentsService {
               boostDays,
               status: 'paid',
               paidAt: new Date(),
+              source: context.source,
             },
           });
           const boostedUntil = await this.activateListingBoost(listingId, boostDays, payment.id);

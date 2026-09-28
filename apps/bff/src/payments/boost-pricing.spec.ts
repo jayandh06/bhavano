@@ -127,6 +127,16 @@ describe('PaymentsService.createBoostOrder — 30 days, alerts included', () => 
 
     expect(prisma.payment.create).toHaveBeenCalledWith({ data: expect.objectContaining({ amount: 14950 }) });
   });
+
+  it('records where the checkout started, so admin-message boosts can be counted', async () => {
+    const { service, prisma } = makePayments();
+
+    await service.createBoostOrder('u1', 'l1', 7, undefined, { source: 'admin_boost_message' });
+
+    expect(prisma.payment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ source: 'admin_boost_message' }),
+    });
+  });
 });
 
 describe('PaymentsService.previewBoostPricing — 30 days', () => {

@@ -505,6 +505,16 @@ describe('AdminService.sendBoostPromotion — in-app channel', () => {
       'listing1',
       'admin1',
       expect.stringContaining('boost it for 7 days for ₹199'),
+      expect.objectContaining({
+        kind: 'boost_offer',
+        listingId: 'listing1',
+        ctaLabel: 'Boost my ad · ₹199',
+        ctaPath: '/my-listings?openBoost=listing1&src=admin_boost_message',
+      }),
+    );
+    // Older app versions show only the body, so its link carries the same tag as the button.
+    expect((messagingService.sendAnnouncement as jest.Mock).mock.calls[0][2]).toContain(
+      '/my-listings?openBoost=listing1&src=admin_boost_message',
     );
     // The longer option is quoted from the same settings, and there is no separate alerts price.
     const body = (messagingService.sendAnnouncement as jest.Mock).mock.calls[0][2] as string;
