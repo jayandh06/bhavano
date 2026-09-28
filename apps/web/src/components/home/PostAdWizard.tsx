@@ -50,6 +50,12 @@ import {
   secondaryButtonClass,
 } from "@/lib/formStyles";
 import { uploadVideoDirect } from "@/lib/videoUpload";
+import {
+  clearPostAdDraft,
+  loadPostAdDraft,
+  savePostAdDraftFields,
+  savePostAdDraftPhotos,
+} from "@/lib/postAdDraft";
 import { BoostBundlePicker } from "./BoostBundlePicker";
 import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
@@ -274,6 +280,115 @@ export function PostAdWizard({
   // drives the narrow "Finish boosting this listing" retry prompt on the success step.
   const [boostCheckoutOutcome, setBoostCheckoutOutcome] = useState<"succeeded" | "failed" | null>(null);
   const boostAutoFiredRef = useRef(false);
+  // Draft autosave (lib/postAdDraft.ts): nothing is saved until the restore attempt has run, so
+  // an empty first render can't overwrite a saved draft; and nothing after the listing exists.
+  const draftSavingRef = useRef(false);
+  const userStartedRef = useRef(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadPostAdDraft().then((saved) => {
+      if (cancelled) return;
+      if (saved && !userStartedRef.current) {
+        const { draft } = saved;
+        const savedCity = draft.city;
+        if (savedCity) {
+          setCities((prev) => (prev.some((c) => c.id === savedCity.id) ? prev : [...prev, savedCity]));
+        }
+        setCategory(draft.category);
+        setTransactionType(draft.transactionType);
+        setPrice(draft.price);
+        setPriceQualifier(draft.priceQualifier);
+        setPriceMode(draft.priceMode);
+        setTitle(draft.title);
+        if (draft.cityId) setCityId(draft.cityId);
+        setAreaQuery(draft.areaQuery);
+        setAreaId(draft.areaId);
+        setPin(draft.pin);
+        setDescription(draft.description);
+        setAttributes(draft.attributes);
+        setSelectedBoostPlan(draft.selectedBoostPlan);
+        setPhotos(saved.photos.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })));
+        // The preview is only shown after the account check in onPreview, so resume one step back.
+        setStep(draft.step === "review" ? "details" : draft.step);
+        setDraftRestored(true);
+      }
+      draftSavingRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!draftSavingRef.current || !category || step === "success") return;
+    const timer = setTimeout(() => {
+      if (!draftSavingRef.current) return;
+      savePostAdDraftFields({
+        step,
+        category,
+        transactionType,
+        price,
+        priceQualifier,
+        priceMode,
+        title,
+        cityId,
+        city: cities.find((c) => c.id === cityId) ?? null,
+        areaQuery,
+        areaId,
+        pin,
+        description,
+        attributes,
+        selectedBoostPlan,
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [
+    step,
+    category,
+    transactionType,
+    price,
+    priceQualifier,
+    priceMode,
+    title,
+    cityId,
+    cities,
+    areaQuery,
+    areaId,
+    pin,
+    description,
+    attributes,
+    selectedBoostPlan,
+  ]);
+
+  useEffect(() => {
+    if (!draftSavingRef.current) return;
+    void savePostAdDraftPhotos(photos.map((photo) => photo.file));
+  }, [photos]);
+
+  function startOver() {
+    void clearPostAdDraft();
+    photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+    setPhotos([]);
+    setCategory(null);
+    setTransactionType(null);
+    setPrice("");
+    setPriceQualifier("");
+    setPriceMode("total");
+    setTitle("");
+    setCityId(defaultCityId ?? initialCities[0]?.id ?? "");
+    setAreaQuery("");
+    setAreaId(null);
+    setPin(null);
+    setDescription("");
+    setAttributes({});
+    setSelectedBoostPlan(null);
+    setPinLookupNote(null);
+    setError(null);
+    setDraftRestored(false);
+    setStep("category");
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -397,6 +512,7 @@ export function PostAdWizard({
   useClickOutside(areaFieldRef, () => setShowAreaSuggestions(false));
 
   function selectCategory(next: ListingCategory) {
+    userStartedRef.current = true;
     setCategory(next);
     setAttributes(defaultAttributesFor(next));
     // A category swap can invalidate "price per unit" (the new category might have no area field
@@ -816,6 +932,9 @@ export function PostAdWizard({
     }
     setSlotCap(null);
     setCreatedListing(result.listing);
+    // The listing exists now (even if payment is still pending), so a retry must not recreate it.
+    draftSavingRef.current = false;
+    void clearPostAdDraft();
 
     if (result.listing.publishState === "pending_checkout") {
       const published = await finishPublishCheckout(result.listing);
@@ -840,6 +959,18 @@ export function PostAdWizard({
   return (
     <div>
       <StepTracker step={step} />
+      {draftRestored && step !== "success" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4 rounded-[10px] border border-border bg-surface-alt px-3.5 py-2.5 text-[13px] text-text">
+          <span>We restored the ad you were writing on this device.</span>
+          <button
+            type="button"
+            onClick={startOver}
+            className="bg-transparent border-0 p-0 text-[13px] font-bold text-green cursor-pointer"
+          >
+            Start over
+          </button>
+        </div>
+      )}
       {step !== "success" && (
         <div className="flex gap-1.5 mb-6 text-xs font-bold text-muted">
           {(["category", "transactionType", "details", "review"] as Step[]).map(
@@ -953,6 +1084,7 @@ export function PostAdWizard({
                 cities.find((c) => c.id === cityId) ??
                 cities[0] ?? { lat: 20.5937, lng: 78.9629 }
               }
+              initialPin={pin}
               onPinChange={onPinChange}
             />
             {pinLookupNote && (

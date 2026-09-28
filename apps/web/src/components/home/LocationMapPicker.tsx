@@ -18,9 +18,12 @@ const fieldClass =
  * See docs/plans/google-maps-location-picker.md. */
 export function LocationMapPicker({
   defaultCenter,
+  initialPin,
   onPinChange,
 }: {
   defaultCenter: { lat: number; lng: number };
+  /** A pin already placed (a restored draft). The map opens on it and does not auto-locate. */
+  initialPin?: { lat: number; lng: number } | null;
   onPinChange: (pin: { lat: number; lng: number }, suggestion: ReverseGeocodeResultDto | null) => void;
 }) {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
@@ -79,13 +82,14 @@ export function LocationMapPicker({
       .then(() => {
         if (cancelled || !mapDivRef.current) return;
 
+        const start = initialPin ?? defaultCenter;
         const map = new google.maps.Map(mapDivRef.current, {
-          center: defaultCenter,
-          zoom: 14,
+          center: start,
+          zoom: initialPin ? 17 : 14,
           streetViewControl: false,
           mapTypeControl: false,
         });
-        const marker = new google.maps.Marker({ position: defaultCenter, map, draggable: true });
+        const marker = new google.maps.Marker({ position: start, map, draggable: true });
         markerRef.current = marker;
 
         // Shared by the map's own handlers and by the "use my location" button below, so both
@@ -101,14 +105,16 @@ export function LocationMapPicker({
         // Auto-locate only when permission was ALREADY granted — asking on render fires a
         // browser prompt the moment this step appears, which is easy to dismiss permanently and
         // then hard to recover from. Users who have not granted it get the button instead.
-        void navigator.permissions
-          ?.query({ name: "geolocation" as PermissionName })
-          .then((status) => {
-            if (!cancelled && status.state === "granted") locate();
-          })
-          .catch(() => {
-            // Permissions API unsupported (older Safari) — fall back to the button.
-          });
+        if (!initialPin) {
+          void navigator.permissions
+            ?.query({ name: "geolocation" as PermissionName })
+            .then((status) => {
+              if (!cancelled && status.state === "granted") locate();
+            })
+            .catch(() => {
+              // Permissions API unsupported (older Safari) — fall back to the button.
+            });
+        }
 
         marker.addListener("dragend", () => {
           const pos = marker.getPosition();
