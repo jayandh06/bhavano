@@ -257,6 +257,10 @@ export function PostAdWizard({
   >({});
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [preparingPhotos, setPreparingPhotos] = useState(false);
+  const [preparingVideos, setPreparingVideos] = useState(false);
+  // Picked files are only added once checked (and photos resized), so Preview waits for them —
+  // otherwise a Publish could go out without the media the seller just chose.
+  const preparingMedia = preparingPhotos || preparingVideos;
   const [videos, setVideos] = useState<SelectedVideo[]>([]);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -630,6 +634,15 @@ export function PostAdWizard({
       );
     }
 
+    setPreparingVideos(true);
+    try {
+      await addVideos(candidates);
+    } finally {
+      setPreparingVideos(false);
+    }
+  }
+
+  async function addVideos(candidates: File[]) {
     for (const file of candidates) {
       if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
         setVideoError(`"${file.name}" isn't a supported video format.`);
@@ -793,7 +806,7 @@ export function PostAdWizard({
     areaQuery.trim().length > 0 &&
     !!cityId &&
     photos.length > 0 &&
-    !preparingPhotos &&
+    !preparingMedia &&
     requiredAttributesFilled;
 
   /**
@@ -1326,7 +1339,7 @@ export function PostAdWizard({
                 accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/x-matroska"
                 onFiles={(files) => void onVideosSelected(files)}
                 icon="video"
-                label={videos.length > 0 ? "Add another video" : "Add a video"}
+                label={preparingVideos ? "Preparing video…" : videos.length > 0 ? "Add another video" : "Add a video"}
                 hint={`MP4 or MOV · up to ${VIDEO_SIZE_LABEL} and ${videoEntitlement.maxDurationSec}s each`}
               />
             )}
@@ -1373,7 +1386,7 @@ export function PostAdWizard({
               disabled={!detailsValid}
               className={`ml-auto ${primaryButtonClass}`}
             >
-              {preparingPhotos ? "Preparing photos…" : "Preview Ad"}
+              {preparingMedia ? "Preparing media…" : "Preview Ad"}
             </button>
           </div>
         </div>
