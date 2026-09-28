@@ -124,6 +124,10 @@
     "./unreadCount": {
       "types": "./dist/unreadCount.d.ts",
       "default": "./dist/unreadCount.js"
+    },
+    "./requirementQuestions": {
+      "types": "./dist/requirementQuestions.d.ts",
+      "default": "./dist/requirementQuestions.js"
     }
   },
   "scripts": {

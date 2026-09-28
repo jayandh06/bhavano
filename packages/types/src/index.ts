@@ -1,6 +1,7 @@
 import type { VideoEntitlement } from "./videoLimits";
 import type { BoostDurationDays } from "./boostPricing";
 import type { AreaUnit } from "./areaUnit";
+import type { RequirementAttributes } from "./requirementQuestions";
 
 export type ListingCategory =
   | "house"
@@ -1303,11 +1304,33 @@ export interface RequirementDto {
   transactionType?: TransactionType;
   cityId?: string;
   cityName?: string;
+  /** The first of `areaIds` — kept for readers that only understand one area. */
   areaId?: string;
   areaName?: string;
+  /** Every area named, in the order chosen — see docs/plans/requirement-refinement-questions.md. */
+  areaIds: string[];
+  areaNames: string[];
   minPrice?: number;
   maxPrice?: number;
+  /** The smallest of `bedroomOptions` — kept for readers that only understand one count. */
   bedrooms?: number;
+  /** BHK buckets, 5 = "5+". */
+  bedroomOptions: number[];
+  /** Plot / commercial / storage size, in sqft. */
+  minAreaSqft?: number;
+  maxAreaSqft?: number;
+  /** How the size was entered — display only. */
+  areaUnit?: AreaUnit;
+  /** Category-specific wants (furnishing, sharing, must-have amenities…), every value "any of". */
+  attributes: RequirementAttributes;
+  /** The page label at capture, before the refinement questions rewrote `searchLabel`. */
+  originalSearchLabel?: string;
+  /** When the seeker reached the end of the refinement questions. */
+  refinedAt?: string;
+  /** Specific enough to send to owners and agents: an area, plus a budget or a size. */
+  isLeadReady: boolean;
+  /** Whether the criteria can still be refined — only until anyone has acted on them. */
+  canRefine: boolean;
   landingPath?: string;
   /** The seeker's own words, when they added any — absent for a one-tap capture. */
   note?: string;
@@ -1389,6 +1412,9 @@ export interface OwnerRequirementMatchDto {
   minPrice?: number;
   maxPrice?: number;
   bedrooms?: number;
+  areaNames: string[];
+  bedroomOptions: number[];
+  attributes: RequirementAttributes;
   note?: string;
   moveInBy?: string;
   createdAt: string;
@@ -1399,6 +1425,25 @@ export interface UpdateMyRequirementInput {
   moveInBy?: string;
 }
 
+/** One step of the refinement questions. Every field is optional so each step saves on its own;
+ * `null` clears a value, an absent field leaves it alone. */
+export interface RefineRequirementInput {
+  category?: ListingCategory | null;
+  transactionType?: TransactionType | null;
+  areaIds?: string[];
+  bedroomOptions?: number[];
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  minAreaSqft?: number | null;
+  maxAreaSqft?: number | null;
+  areaUnit?: AreaUnit | null;
+  attributes?: RequirementAttributes;
+  moveInBy?: string | null;
+  note?: string | null;
+  /** The seeker reached the review step — stamps `refinedAt`. */
+  complete?: boolean;
+}
+
 export interface CreateRequirementInput {
   searchLabel: string;
   note?: string;
@@ -1407,9 +1452,15 @@ export interface CreateRequirementInput {
   transactionType?: TransactionType;
   cityId?: string;
   areaId?: string;
+  /** Every area the search named, when it named no more than `MAX_REQUIREMENT_AREAS`. */
+  areaIds?: string[];
   minPrice?: number;
   maxPrice?: number;
   bedrooms?: number;
+  /** The whole BHK set the search had ticked, rather than just its smallest. */
+  bedroomOptions?: number[];
+  /** Facet filters the search had set (furnishing, sharing, amenities…). */
+  attributes?: RequirementAttributes;
   landingPath?: string;
   /** The seeker's answer to "may owners and agents with a match contact you directly?" — asked
    * on the capture card itself, since it is the one thing about a requirement that cannot be
