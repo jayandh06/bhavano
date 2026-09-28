@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Area, City, ListingCardDto, ListingCategory } from "@bhavano/types";
+import { requirementCriteriaFromBrowse } from "@bhavano/types/requirementQuestions";
 import { auth } from "@/auth";
 import { fetchListings, type ListingsQuery } from "@/lib/bff";
 import { homeCategoryForSegments, type ParsedSegments } from "@/lib/seoRoute";
@@ -140,6 +141,14 @@ export async function BrowseListingsView({
   // real page are a crawl-trap/dead-end worth 404ing (see docs/plans/seo-distinct-window-pagination.md).
   const totalPages = Math.ceil(listingsPage.total / PAGE_SIZE);
   if (page > 1 && page > totalPages) notFound();
+
+  // What the visitor is looking at, as a requirement. The query speaks the tab vocabulary
+  // (homeCategory + propertyType), so it goes through the shared mapping rather than reading
+  // `category`/`transactionType` directly — those are set only by a few raw SEO filters, and
+  // reading them alone stored most captures with no category at all. The label is the heading
+  // they actually saw, query-param filters included.
+  const requirementLabel = filteredHeading ?? heading;
+  const requirementCriteria = { ...requirementCriteriaFromBrowse(query), landingPath: basePath };
 
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
@@ -283,26 +292,7 @@ export async function BrowseListingsView({
                 })}
               />
             )}
-            <ListingGrid
-              items={listingsPage.items}
-              requirement={{
-                label: heading,
-                criteria: {
-                  category: query.category,
-                  transactionType: query.transactionType,
-                  cityId: query.cityId,
-                  // The single path area when there is one; the multi-select filter is intentionally
-                  // not collapsed into one areaId, since "any of these five" is not a requirement.
-                  areaId: query.areaId,
-                  minPrice: query.minPrice,
-                  maxPrice: query.maxPrice,
-                  // SavedSearch/Requirement hold one bedroom count, the filter holds a set — take the
-                  // smallest, which is the least restrictive reading of "2 or 3 BHK".
-                  bedrooms: query.bedrooms?.length ? Math.min(...query.bedrooms) : undefined,
-                  landingPath: basePath,
-                },
-              }}
-            />
+            <ListingGrid items={listingsPage.items} requirement={{ label: requirementLabel, criteria: requirementCriteria }} />
           </>
         )}
         {!noAreaSelected && (
@@ -313,20 +303,7 @@ export async function BrowseListingsView({
           * purpose: it must not compete with the listings someone came to read. */}
         {listingsPage.items.length > 0 && (
           <div className="mt-6 text-center">
-            <RequirementPrompt
-              variant="inline"
-              label={heading}
-              criteria={{
-                category: query.category,
-                transactionType: query.transactionType,
-                cityId: query.cityId,
-                areaId: query.areaId,
-                minPrice: query.minPrice,
-                maxPrice: query.maxPrice,
-                bedrooms: query.bedrooms?.length ? Math.min(...query.bedrooms) : undefined,
-                landingPath: basePath,
-              }}
-            />
+            <RequirementPrompt variant="inline" label={requirementLabel} criteria={requirementCriteria} />
           </div>
         )}
         {/* "Explore nearby" lives here, at the bottom, rather than above the results: a dozen

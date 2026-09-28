@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { CreateRequirementInput } from "@bhavano/types";
+import type { CreateRequirementInput, RequirementDto } from "@bhavano/types";
 import { createRequirementAction } from "@/app/actions/requirements";
 import { useAuthGate } from "./AuthGateProvider";
+import { RequirementRefineDialog } from "./RequirementRefineDialog";
 
 /**
  * Turns a dead-end search into a captured requirement — Phase 0 of
@@ -41,7 +42,11 @@ export function RequirementPrompt({
 }) {
   const { requireLogin } = useAuthGate();
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
-  const [hasAlert, setHasAlert] = useState(false);
+  const [saved, setSaved] = useState<RequirementDto | null>(null);
+  /** The follow-up questions open by themselves once the row is saved — docs/plans/
+   * requirement-refinement-questions.md. "Rent 2 BHK Houses in Bengaluru" is too vague for an
+   * owner or agent to act on, and this is the moment the seeker is most willing to say more. */
+  const [refining, setRefining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Pre-ticked: someone asking us to go and find a house generally does want the person who has
    * one to ring them, and the box is right there to untick. Unticking is a real choice, not a
@@ -58,8 +63,9 @@ export function RequirementPrompt({
     const result = await createRequirementAction({ ...criteria, searchLabel: label, contactConsent: allowContact });
 
     if (result.success) {
-      setHasAlert(result.requirement.hasAlert);
+      setSaved(result.requirement);
       setState("done");
+      setRefining(result.requirement.canRefine);
       return;
     }
     if (result.needsLogin) {
@@ -74,28 +80,52 @@ export function RequirementPrompt({
     setState("idle");
   }
 
-  if (state === "done") {
+  if (state === "done" && saved) {
     return (
       <div className={variant === "empty" ? doneCardClass : "text-[13px] text-green font-bold"}>
         {/* Says which of two things will actually happen. With an alert we can promise to tell
             them; without one, only that a person will look. Implying an alert that will never
             arrive would be worse than the dead end this replaces. */}
-        {hasAlert
+        {saved.hasAlert
           ? "Confirmed — we'll message you as soon as something matching is posted."
           : "Confirmed — our team will look into what's available and get back to you."}
+        {saved.refinedAt && (
+          <div className="mt-2 mx-auto max-w-[440px] rounded-lg border border-border bg-surface-alt px-3 py-2 text-[12.5px] text-text">
+            {saved.searchLabel}
+          </div>
+        )}
         <div className="mt-1.5 text-[12.5px] font-normal">
           {allowContact
             ? "Owners and agents with a matching property can get in touch with you directly."
             : "Only Bhavano will contact you — your number stays with us."}
         </div>
         {/* Offered *after* the save, never before it. The one-tap capture works precisely because
-            it is not a form, so the extra detail is a follow-on for whoever wants to give it —
-            not a step in front of the thing that already succeeded. */}
+            it is not a form, so the questions are a follow-on over a row that already exists —
+            closing them halfway keeps both the row and whatever was answered. */}
         <div className="mt-2 font-normal">
-          <Link href="/my-requirements" className="text-[12.5px] underline text-inherit">
-            Add a budget or timeline →
-          </Link>
+          {saved.canRefine && !saved.refinedAt ? (
+            <button type="button" onClick={() => setRefining(true)} className={inlineButtonClass}>
+              Add areas, budget and more →
+            </button>
+          ) : (
+            <Link href="/my-requirements" className="text-[12.5px] underline text-inherit">
+              See your requirements →
+            </Link>
+          )}
         </div>
+        {refining && (
+          <RequirementRefineDialog
+            requirement={saved}
+            onFinished={(requirement) => {
+              setSaved(requirement);
+              setRefining(false);
+            }}
+            onClose={(requirement) => {
+              setSaved(requirement);
+              setRefining(false);
+            }}
+          />
+        )}
       </div>
     );
   }

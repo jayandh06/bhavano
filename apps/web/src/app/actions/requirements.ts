@@ -1,9 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { CreateRequirementInput, RequirementDto, UpdateMyRequirementInput } from "@bhavano/types";
+import type { CreateRequirementInput, RefineRequirementInput, RequirementDto, UpdateMyRequirementInput } from "@bhavano/types";
 import { auth } from "@/auth";
-import { closeMyRequirement, createRequirement, renewMyRequirement, updateMyRequirement } from "@/lib/bff";
+import {
+  closeMyRequirement,
+  createRequirement,
+  refineMyRequirement,
+  renewMyRequirement,
+  updateMyRequirement,
+} from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 
 /** `needsLogin` is distinct from a plain error on purpose: the caller opens the login gate and
@@ -54,6 +60,15 @@ export async function closeRequirementAction(
   reason: "fulfilled" | "withdrawn",
 ): Promise<RequirementActionResult> {
   return mutate((token) => closeMyRequirement(token, id, reason));
+}
+
+/** One step of the refinement questions — each step saves on its own, so someone who stops
+ * halfway still leaves a better requirement than the one they started with. */
+export async function refineRequirementAction(
+  id: string,
+  input: RefineRequirementInput,
+): Promise<RequirementActionResult> {
+  return mutate((token) => refineMyRequirement(token, id, input));
 }
 
 export async function updateRequirementDetailsAction(

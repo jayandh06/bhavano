@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { RequirementDto } from "@bhavano/types";
+import { bedroomLabel } from "@bhavano/types/bedrooms";
+import { formatCompactInr, missingForLead } from "@bhavano/types/requirementQuestions";
 import {
   closeRequirementAction,
   renewRequirementAction,
@@ -17,6 +20,18 @@ const dateFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: 
 function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 }
+
+function budgetText(r: RequirementDto): string | null {
+  if (r.minPrice && r.maxPrice) return `${formatCompactInr(r.minPrice)}–${formatCompactInr(r.maxPrice)}`;
+  if (r.maxPrice) return `up to ${formatCompactInr(r.maxPrice)}`;
+  if (r.minPrice) return `from ${formatCompactInr(r.minPrice)}`;
+  return null;
+}
+
+const MISSING_WORDS: Record<ReturnType<typeof missingForLead>[number], string> = {
+  area: "which areas",
+  budget: "a budget or size",
+};
 
 /**
  * One captured requirement, with the controls its owner should have over it — Phase 1 of
@@ -37,6 +52,7 @@ export function MyRequirementCard({ requirement }: { requirement: RequirementDto
 
   const closed = current.status === "closed";
   const expiringSoon = !closed && !current.isExpired && daysUntil(current.expiresAt) <= RENEW_WINDOW_DAYS;
+  const missing = missingForLead(current);
 
   async function run(key: string, action: () => Promise<{ success: boolean; requirement?: RequirementDto; error?: string }>) {
     setPending(key);
@@ -71,13 +87,28 @@ export function MyRequirementCard({ requirement }: { requirement: RequirementDto
           <div className="font-lora text-lg font-bold">{current.searchLabel}</div>
           <div className="text-[13px] text-muted mt-1">
             {[
-              current.areaName ?? current.cityName,
-              current.bedrooms ? `${current.bedrooms} BHK` : null,
-              current.maxPrice ? `up to ₹${current.maxPrice.toLocaleString("en-IN")}` : null,
+              current.areaNames.length ? current.areaNames.join(", ") : current.cityName,
+              current.bedroomOptions.length
+                ? `${current.bedroomOptions.map(bedroomLabel).join(" or ")} BHK`
+                : null,
+              budgetText(current),
             ]
               .filter(Boolean)
               .join(" · ")}
           </div>
+          {current.canRefine && !current.isLeadReady && (
+            <div className="text-[12.5px] text-muted mt-1.5">
+              Needs {missing.map((m) => MISSING_WORDS[m]).join(" and ")} before owners and agents can act on it.
+            </div>
+          )}
+          {current.canRefine && (
+            <Link
+              href={`/my-requirements/${current.id}/refine`}
+              className="inline-block mt-2 text-[13px] font-bold text-green underline"
+            >
+              {current.refinedAt ? "Edit details →" : "Finish details →"}
+            </Link>
+          )}
         </div>
         <div className="text-[12.5px] text-right">
           <div className={closed || current.isExpired ? "text-muted font-bold" : "text-green font-bold"}>{statusLine}</div>

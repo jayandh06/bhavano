@@ -1,0 +1,672 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import type { Area, RefineRequirementInput, RequirementDto } from "@bhavano/types";
+import { convertArea, type AreaUnit } from "@bhavano/types/areaUnit";
+import { bedroomLabel } from "@bhavano/types/bedrooms";
+import { formatInrInWords } from "@bhavano/types/priceWords";
+import {
+  INTENT_CATEGORIES,
+  INTENT_TRANSACTION_CHOICES,
+  MAX_REQUIREMENT_AREAS,
+  REQUIREMENT_ATTRIBUTE_QUESTIONS,
+  REQUIREMENT_BEDROOM_OPTIONS,
+  REQUIREMENT_CATEGORY_LABELS,
+  REQUIREMENT_INTENTS,
+  REQUIREMENT_TIMELINE_OPTIONS,
+  amenityOptionsFor,
+  answeredSteps,
+  applicableSteps,
+  applyIntent,
+  budgetPresetsFor,
+  formatRequirementLabel,
+  intentOf,
+  sanitizeRequirementAttributes,
+  sizeQuestionFor,
+  type RequirementCriteria,
+  type RequirementStep,
+} from "@bhavano/types/requirementQuestions";
+import { refineRequirementAction } from "@/app/actions/requirements";
+import { listAllAreasAction } from "@/app/actions/locations";
+
+type WizardStep = RequirementStep | "review";
+
+const STEP_TITLES: Record<WizardStep, string> = {
+  intent: "What are you looking for?",
+  category: "What type of property?",
+  details: "A few specifics",
+  areas: "Which areas?",
+  budget: "What's your budget?",
+  amenities: "Any must-haves?",
+  timeline: "When do you need it?",
+  review: "Does this look right?",
+};
+
+const AREA_UNIT_SHORT: Record<AreaUnit, string> = { sqft: "sq ft", sqm: "sq m", acre: "acres", hectare: "hectares", cent: "cents" };
+
+/** How far a suggested area may be from one already picked. */
+const NEARBY_KM = 6;
+
+function criteriaOf(r: RequirementDto): RequirementCriteria {
+  return {
+    category: r.category,
+    transactionType: r.transactionType,
+    cityId: r.cityId,
+    areaIds: r.areaIds,
+    bedroomOptions: r.bedroomOptions,
+    minPrice: r.minPrice,
+    maxPrice: r.maxPrice,
+    minAreaSqft: r.minAreaSqft,
+    maxAreaSqft: r.maxAreaSqft,
+    areaUnit: r.areaUnit,
+    attributes: r.attributes,
+    moveInBy: r.moveInBy,
+  };
+}
+
+function distanceKm(a: Area, b: Area): number {
+  if (a.lat === null || a.lng === null || b.lat === null || b.lng === null) return Infinity;
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+
+function parseAmount(raw: string): number | undefined {
+  const digits = raw.replace(/[^\d]/g, "");
+  return digits ? Number(digits) : undefined;
+}
+
+function parseSize(raw: string): number | undefined {
+  const n = Number(raw);
+  return raw.trim() && Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function toUnit(sqft: number | undefined, unit: AreaUnit): string {
+  return sqft === undefined ? "" : String(Math.round(convertArea(sqft, "sqft", unit) * 100) / 100);
+}
+
+/**
+ * The questions asked after "Yes, find this for me" — docs/plans/requirement-refinement-questions.md.
+ *
+ * Runs against a requirement that is already saved: the one-tap capture stays the thing that
+ * always succeeds, and this only makes the row better. Every step saves as it is answered, so
+ * closing halfway still keeps what was given. Steps the search already answered are skipped
+ * (decided once, when this opens, so answering one question never makes another vanish), and
+ * every step can be skipped — "any" is always an acceptable answer.
+ */
+export function RequirementRefineWizard({
+  requirement,
+  onFinished,
+  onClose,
+  onSaved,
+}: {
+  requirement: RequirementDto;
+  /** Called with the saved requirement after the review step. */
+  onFinished: (requirement: RequirementDto) => void;
+  /** Called when the seeker stops early — what they answered is already saved. */
+  onClose: (requirement: RequirementDto) => void;
+  /** Called after every step that saves, for a host that can close this from outside. */
+  onSaved?: (requirement: RequirementDto) => void;
+}) {
+  const [current, setCurrent] = useState(requirement);
+  const [draft, setDraft] = useState<RequirementCriteria>(() => criteriaOf(requirement));
+  const skipped = useMemo(() => answeredSteps(criteriaOf(requirement)), [requirement]);
+  const steps: WizardStep[] = [...applicableSteps(draft).filter((s) => !skipped.has(s)), "review"];
+  const [stepKey, setStepKey] = useState<WizardStep>(steps[0]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [areas, setAreas] = useState<Area[] | null>(null);
+  const [areaQuery, setAreaQuery] = useState("");
+  const [sizeUnit, setSizeUnit] = useState<AreaUnit>(requirement.areaUnit ?? "sqft");
+  const [sizeMin, setSizeMin] = useState(() => toUnit(requirement.minAreaSqft, requirement.areaUnit ?? "sqft"));
+  const [sizeMax, setSizeMax] = useState(() => toUnit(requirement.maxAreaSqft, requirement.areaUnit ?? "sqft"));
+  const [budgetMin, setBudgetMin] = useState(requirement.minPrice?.toString() ?? "");
+  const [budgetMax, setBudgetMax] = useState(requirement.maxPrice?.toString() ?? "");
+  const [timeline, setTimeline] = useState<string | null>(null);
+  const [note, setNote] = useState(requirement.note ?? "");
+
+  useEffect(() => {
+    if (!requirement.cityId) return;
+    let cancelled = false;
+    void listAllAreasAction(requirement.cityId).then((list) => {
+      if (!cancelled) setAreas([...list].sort((a, b) => a.name.localeCompare(b.name)));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [requirement.cityId]);
+
+  const intent = intentOf(draft.category, draft.transactionType);
+  const areaById = useMemo(() => new Map((areas ?? []).map((a) => [a.id, a])), [areas]);
+  const selectedAreaNames = (draft.areaIds ?? []).map(
+    (id) => areaById.get(id)?.name ?? current.areaNames[current.areaIds.indexOf(id)] ?? "",
+  );
+  const position = steps.indexOf(stepKey);
+
+  function patchFor(step: WizardStep): RefineRequirementInput {
+    const attributes = draft.category
+      ? sanitizeRequirementAttributes(draft.category, draft.transactionType, draft.attributes ?? {}).attributes
+      : undefined;
+    switch (step) {
+      case "intent":
+      case "category":
+        return { category: draft.category ?? null, transactionType: draft.transactionType ?? null };
+      case "details": {
+        const min = parseSize(sizeMin);
+        const max = parseSize(sizeMax);
+        return {
+          bedroomOptions: draft.bedroomOptions ?? [],
+          minAreaSqft: min === undefined ? null : Math.round(convertArea(min, sizeUnit, "sqft")),
+          maxAreaSqft: max === undefined ? null : Math.round(convertArea(max, sizeUnit, "sqft")),
+          areaUnit: min === undefined && max === undefined ? null : sizeUnit,
+          attributes,
+        };
+      }
+      case "areas":
+        return { areaIds: draft.areaIds ?? [] };
+      case "budget":
+        return { minPrice: parseAmount(budgetMin) ?? null, maxPrice: parseAmount(budgetMax) ?? null };
+      case "amenities":
+        return { attributes };
+      case "timeline": {
+        const option = REQUIREMENT_TIMELINE_OPTIONS.find((o) => o.value === timeline);
+        return {
+          ...(option ? { moveInBy: option.days ? new Date(Date.now() + option.days * 86_400_000).toISOString() : null } : {}),
+          note: note.trim() || null,
+        };
+      }
+      case "review":
+        return { complete: true };
+    }
+  }
+
+  async function save(step: WizardStep): Promise<RequirementDto | null> {
+    setSaving(true);
+    setError(null);
+    const result = await refineRequirementAction(current.id, patchFor(step));
+    setSaving(false);
+    if (!result.success) {
+      setError(result.error);
+      return null;
+    }
+    setCurrent(result.requirement);
+    setDraft(criteriaOf(result.requirement));
+    onSaved?.(result.requirement);
+    return result.requirement;
+  }
+
+  function goNext() {
+    // Recomputed from the latest draft: choosing Buy adds the property-type step, choosing PG
+    // removes it.
+    const next = [...applicableSteps(draft).filter((s) => !skipped.has(s)), "review" as const];
+    const at = next.indexOf(stepKey);
+    // A step opened from the review's "Change" links may be one the search had answered, so it is
+    // not in the sequence — it returns straight to the review.
+    setStepKey(at === -1 ? "review" : (next[at + 1] ?? "review"));
+  }
+
+  async function saveAndNext() {
+    if (stepKey === "review") {
+      const saved = await save("review");
+      if (saved) onFinished(saved);
+      return;
+    }
+    if (await save(stepKey)) goNext();
+  }
+
+  function goBack() {
+    if (position === -1) setStepKey("review");
+    else if (position > 0) setStepKey(steps[position - 1]);
+  }
+
+  function toggleIn(list: string[] | undefined, value: string, multi: boolean): string[] {
+    const set = list ?? [];
+    if (set.includes(value)) return set.filter((v) => v !== value);
+    return multi ? [...set, value] : [value];
+  }
+
+  function setAttribute(key: string, values: string[]) {
+    setDraft((d) => ({ ...d, attributes: { ...(d.attributes ?? {}), [key]: values } }));
+  }
+
+  // --- step bodies -------------------------------------------------------------------------
+
+  function IntentStep() {
+    const choices = intent ? INTENT_TRANSACTION_CHOICES[intent] : undefined;
+    return (
+      <>
+        <ChipRow>
+          {REQUIREMENT_INTENTS.map((option) => (
+            <Chip
+              key={option.value}
+              active={intent === option.value}
+              onClick={() => setDraft((d) => ({ ...d, ...applyIntent(option.value, d) }))}
+            >
+              {option.label}
+            </Chip>
+          ))}
+        </ChipRow>
+        {choices && (
+          <div className="mt-4">
+            <Label>{intent === "furniture" ? "Buy or rent?" : "Rent or lease?"}</Label>
+            <ChipRow>
+              {choices.map((option) => (
+                <Chip
+                  key={option.value}
+                  active={draft.transactionType === option.value}
+                  onClick={() => setDraft((d) => ({ ...d, transactionType: option.value }))}
+                >
+                  {option.label}
+                </Chip>
+              ))}
+            </ChipRow>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  function CategoryStep() {
+    const options = intent ? INTENT_CATEGORIES[intent] : [];
+    return (
+      <ChipRow>
+        {options.map((category) => (
+          <Chip key={category} active={draft.category === category} onClick={() => setDraft((d) => ({ ...d, category }))}>
+            {REQUIREMENT_CATEGORY_LABELS[category]}
+          </Chip>
+        ))}
+      </ChipRow>
+    );
+  }
+
+  function DetailsStep() {
+    if (!draft.category) return null;
+    const size = sizeQuestionFor(draft.category);
+    const questions = REQUIREMENT_ATTRIBUTE_QUESTIONS[draft.category].filter(
+      (q) => !q.transactionTypes || (draft.transactionType && q.transactionTypes.includes(draft.transactionType)),
+    );
+    return (
+      <div className="flex flex-col gap-4">
+        {size?.kind === "bedrooms" && (
+          <div>
+            <Label>{size.label} <Hint>pick all that work</Hint></Label>
+            <ChipRow>
+              {REQUIREMENT_BEDROOM_OPTIONS.map((n) => (
+                <Chip
+                  key={n}
+                  active={draft.bedroomOptions?.includes(n) ?? false}
+                  onClick={() =>
+                    setDraft((d) => ({
+                      ...d,
+                      bedroomOptions: toggleIn(d.bedroomOptions?.map(String), String(n), true).map(Number),
+                    }))
+                  }
+                >
+                  {bedroomLabel(n)} BHK
+                </Chip>
+              ))}
+            </ChipRow>
+          </div>
+        )}
+        {size?.kind === "area" && (
+          <div>
+            <Label>{size.label}</Label>
+            <div className="flex items-center gap-2 w-full">
+              <input
+                inputMode="decimal"
+                value={sizeMin}
+                onChange={(e) => setSizeMin(e.target.value)}
+                placeholder="Min"
+                className={`${inputClass} flex-1 min-w-0`}
+                aria-label="Smallest size"
+              />
+              <span className="text-muted text-[13px]">to</span>
+              <input
+                inputMode="decimal"
+                value={sizeMax}
+                onChange={(e) => setSizeMax(e.target.value)}
+                placeholder="Max"
+                className={`${inputClass} flex-1 min-w-0`}
+                aria-label="Largest size"
+              />
+              {size.units.length > 1 ? (
+                <select
+                  value={sizeUnit}
+                  onChange={(e) => setSizeUnit(e.target.value as AreaUnit)}
+                  className={inputClass}
+                  aria-label="Unit"
+                >
+                  {size.units.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {AREA_UNIT_SHORT[unit]}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-muted text-[13px]">{AREA_UNIT_SHORT[size.units[0]]}</span>
+              )}
+            </div>
+          </div>
+        )}
+        {questions.map((q) => (
+          <div key={q.key}>
+            <Label>
+              {q.label} {q.multi && <Hint>pick all that work</Hint>}
+            </Label>
+            <ChipRow>
+              {q.options.map((option) => (
+                <Chip
+                  key={option.value}
+                  active={draft.attributes?.[q.key]?.includes(option.value) ?? false}
+                  onClick={() => setAttribute(q.key, toggleIn(draft.attributes?.[q.key], option.value, q.multi))}
+                >
+                  {option.label}
+                </Chip>
+              ))}
+            </ChipRow>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function AreasStep() {
+    const selected = draft.areaIds ?? [];
+    const full = selected.length >= MAX_REQUIREMENT_AREAS;
+    const query = areaQuery.trim().toLowerCase();
+    const matches = (areas ?? []).filter((a) => !selected.includes(a.id) && (!query || a.name.toLowerCase().includes(query)));
+    const picked = selected.map((id) => areaById.get(id)).filter((a): a is Area => Boolean(a));
+    const nearby = picked.length
+      ? (areas ?? [])
+          .filter((a) => !selected.includes(a.id))
+          .map((a) => ({ area: a, km: Math.min(...picked.map((p) => distanceKm(p, a))) }))
+          .filter((x) => x.km <= NEARBY_KM)
+          .sort((x, y) => x.km - y.km)
+          .slice(0, 5)
+          .map((x) => x.area)
+      : [];
+    const toggle = (id: string) =>
+      setDraft((d) => ({ ...d, areaIds: toggleIn(d.areaIds, id, true).slice(0, MAX_REQUIREMENT_AREAS) }));
+
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="m-0 text-[12.5px] text-muted">
+          Pick up to {MAX_REQUIREMENT_AREAS}. Owners and agents respond when you name the areas you&apos;d actually live in.
+        </p>
+        {selected.length > 0 && (
+          <ChipRow>
+            {selected.map((id, i) => (
+              <Chip key={id} active onClick={() => toggle(id)}>
+                {selectedAreaNames[i] || "Area"} ✕
+              </Chip>
+            ))}
+          </ChipRow>
+        )}
+        {nearby.length > 0 && !full && (
+          <div>
+            <Label>Also consider nearby</Label>
+            <ChipRow>
+              {nearby.map((a) => (
+                <Chip key={a.id} active={false} onClick={() => toggle(a.id)}>
+                  + {a.name}
+                </Chip>
+              ))}
+            </ChipRow>
+          </div>
+        )}
+        <input
+          value={areaQuery}
+          onChange={(e) => setAreaQuery(e.target.value)}
+          placeholder={`Search areas in ${current.cityName ?? "the city"}`}
+          className={inputClass}
+          disabled={full}
+        />
+        {areas === null ? (
+          <p className="m-0 text-[12.5px] text-muted">Loading areas…</p>
+        ) : (
+          !full && (
+            <div className="max-h-[220px] md:max-h-[320px] overflow-auto overscroll-contain border border-border rounded-lg divide-y divide-border">
+              {matches.slice(0, 40).map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => toggle(a.id)}
+                  className="block w-full text-left bg-surface px-3 py-2 pointer-coarse:py-3 text-[13px] text-text border-none cursor-pointer hover:bg-surface-alt"
+                >
+                  {a.name}
+                </button>
+              ))}
+              {matches.length === 0 && <p className="m-0 px-3 py-2 text-[12.5px] text-muted">No area by that name.</p>}
+            </div>
+          )
+        )}
+      </div>
+    );
+  }
+
+  function BudgetStep() {
+    const { unit, presets } = budgetPresetsFor(draft.category, draft.transactionType);
+    const min = parseAmount(budgetMin);
+    const max = parseAmount(budgetMax);
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="m-0 text-[12.5px] text-muted">In rupees, {unit}.</p>
+        <ChipRow>
+          {presets.map((p) => (
+            <Chip
+              key={p.label}
+              active={min === p.min && max === p.max}
+              onClick={() => {
+                setBudgetMin(p.min?.toString() ?? "");
+                setBudgetMax(p.max?.toString() ?? "");
+              }}
+            >
+              {p.label}
+            </Chip>
+          ))}
+        </ChipRow>
+        <div className="grid grid-cols-2 gap-3 w-full">
+          <label className="flex flex-col gap-1 min-w-0">
+            <span className="text-[11.5px] text-muted font-bold">From ₹</span>
+            <input inputMode="numeric" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} className={`${inputClass} w-full`} />
+            {min !== undefined && <span className="text-[11.5px] text-muted">{formatInrInWords(min)}</span>}
+          </label>
+          <label className="flex flex-col gap-1 min-w-0">
+            <span className="text-[11.5px] text-muted font-bold">Up to ₹</span>
+            <input inputMode="numeric" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} className={`${inputClass} w-full`} />
+            {max !== undefined && <span className="text-[11.5px] text-muted">{formatInrInWords(max)}</span>}
+          </label>
+        </div>
+      </div>
+    );
+  }
+
+  function AmenitiesStep() {
+    if (!draft.category) return null;
+    return (
+      <ChipRow>
+        {amenityOptionsFor(draft.category).map((option) => (
+          <Chip
+            key={option.value}
+            active={draft.attributes?.amenities?.includes(option.value) ?? false}
+            onClick={() => setAttribute("amenities", toggleIn(draft.attributes?.amenities, option.value, true))}
+          >
+            {option.label}
+          </Chip>
+        ))}
+      </ChipRow>
+    );
+  }
+
+  function TimelineStep() {
+    return (
+      <div className="flex flex-col gap-3">
+        <ChipRow>
+          {REQUIREMENT_TIMELINE_OPTIONS.map((option) => (
+            <Chip key={option.value} active={timeline === option.value} onClick={() => setTimeline(option.value)}>
+              {option.label}
+            </Chip>
+          ))}
+        </ChipRow>
+        {timeline === null && current.moveInBy && (
+          <p className="m-0 text-[12.5px] text-muted">
+            Currently: needed by {new Date(current.moveInBy).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+          </p>
+        )}
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12px] text-muted font-bold">Anything else? (optional)</span>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            maxLength={1000}
+            placeholder="Near a metro station, ground floor, pet friendly…"
+            className={inputClass}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  function ReviewStep() {
+    const label = formatRequirementLabel(draft, { cityName: current.cityName, areaNames: selectedAreaNames.filter(Boolean) });
+    const editable = applicableSteps(draft);
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="rounded-lg border border-border bg-surface-alt px-3.5 py-2.5 text-[13.5px] font-semibold text-text">{label}</div>
+        <div className="flex gap-2 flex-wrap">
+          {editable.map((step) => (
+            <button key={step} type="button" onClick={() => setStepKey(step)} className={linkButtonClass}>
+              Change {STEP_LINK_LABELS[step]}
+            </button>
+          ))}
+        </div>
+        <p className="m-0 text-[12.5px] text-muted">
+          {current.contactConsent
+            ? "Owners and agents with a matching property may call or message you."
+            : "Only Bhavano will contact you — your number stays with us."}
+        </p>
+      </div>
+    );
+  }
+
+  const body: Record<WizardStep, () => React.ReactNode> = {
+    intent: IntentStep,
+    category: CategoryStep,
+    details: DetailsStep,
+    areas: AreasStep,
+    budget: BudgetStep,
+    amenities: AmenitiesStep,
+    timeline: TimelineStep,
+    review: ReviewStep,
+  };
+
+  const counted = steps.length - 1;
+  return (
+    <div
+      className="flex flex-col gap-4 w-full"
+      // Phone browsers don't reliably scroll a field inside a fixed, scrolling dialog into view when
+      // the on-screen keyboard opens, so do it once the keyboard has had time to take its space.
+      onFocusCapture={(e) => {
+        const target = e.target;
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+          setTimeout(() => target.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+        }
+      }}
+    >
+      <div className="flex justify-between items-start gap-3">
+        <div>
+          <div className="text-[11.5px] text-muted font-bold uppercase tracking-wide">
+            {stepKey === "review" ? "Review" : position === -1 ? "Edit" : `Step ${position + 1} of ${counted}`}
+          </div>
+          <div className="font-lora text-lg font-bold mt-0.5">
+            {stepKey === "areas" && current.cityName ? `Which areas of ${current.cityName}?` : STEP_TITLES[stepKey]}
+          </div>
+        </div>
+        <button type="button" onClick={() => onClose(current)} className={`${linkButtonClass} shrink-0`} aria-label="Close">
+          Close
+        </button>
+      </div>
+
+      {body[stepKey]()}
+
+      {error && <p className="m-0 text-[12.5px] text-danger">{error}</p>}
+
+      {/* Sticky so Next stays reachable under a long area list, whether the scroller is the
+          dialog or (on the refine page) the window. Skip truncates rather than wrapping when
+          "Anywhere in {city}" won't fit beside Back and Next on a narrow phone. */}
+      <div className="sticky bottom-0 z-10 -mb-1 flex items-center gap-3 border-t border-border bg-surface pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        {position !== 0 && (
+          <button type="button" onClick={goBack} disabled={saving} className={`${linkButtonClass} shrink-0`}>
+            Back
+          </button>
+        )}
+        <div className="flex-1" />
+        {stepKey !== "review" && (
+          <button type="button" onClick={goNext} disabled={saving} className={`${linkButtonClass} min-w-0 truncate`}>
+            {stepKey === "areas" ? `Anywhere in ${current.cityName ?? "the city"}` : "Skip"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => void saveAndNext()}
+          disabled={saving}
+          className={`${primaryButtonClass} shrink-0`}
+        >
+          {saving ? "Saving…" : stepKey === "review" ? "Done" : "Next"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const STEP_LINK_LABELS: Record<RequirementStep, string> = {
+  intent: "what",
+  category: "type",
+  details: "specifics",
+  areas: "areas",
+  budget: "budget",
+  amenities: "must-haves",
+  timeline: "timeline",
+};
+
+function ChipRow({ children }: { children: React.ReactNode }) {
+  return <div className="flex gap-2 flex-wrap">{children}</div>;
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-lg border px-3 py-1.5 pointer-coarse:min-h-11 pointer-coarse:px-3.5 text-[13px] cursor-pointer ${
+        active ? "border-green bg-surface-alt text-text font-bold" : "border-border bg-surface text-text"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <div className="text-[12px] text-muted font-bold mb-1.5">{children}</div>;
+}
+
+function Hint({ children }: { children: React.ReactNode }) {
+  return <span className="font-normal">· {children}</span>;
+}
+
+/** 16px on phones, as in lib/formStyles.ts: iOS Safari zooms the page into any focused input under
+ * 16px and doesn't reliably zoom back out. */
+const inputClass =
+  "border border-border rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-[13.5px] bg-surface text-text outline-none focus:border-green";
+
+const primaryButtonClass =
+  "bg-green text-on-green border-none rounded-lg px-5 py-2.5 pointer-coarse:py-3 text-[13.5px] font-bold cursor-pointer disabled:opacity-60";
+
+const linkButtonClass =
+  "bg-transparent border-none px-0 py-1 pointer-coarse:min-h-11 text-[13px] text-muted underline cursor-pointer disabled:opacity-60";

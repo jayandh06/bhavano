@@ -39,6 +39,7 @@ import type {
   RevealContactResponseDto,
   SellerAttentionDto,
   OwnerRequirementMatchDto,
+  RefineRequirementInput,
   RequirementDto,
   ReverseGeocodeResultDto,
   SavedSearchDto,
@@ -277,6 +278,18 @@ export function updateMyRequirement(
   input: UpdateMyRequirementInput,
 ): Promise<RequirementDto> {
   return authedBffFetch(accessToken, `/requirements/mine/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function refineMyRequirement(
+  accessToken: string,
+  id: string,
+  input: RefineRequirementInput,
+): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, `/requirements/mine/${id}/criteria`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function fetchMyRequirement(accessToken: string, id: string): Promise<RequirementDto> {
+  return authedBffFetch(accessToken, `/requirements/mine/${id}`, { cache: "no-store" });
 }
 
 export function renewMyRequirement(accessToken: string, id: string): Promise<RequirementDto> {
