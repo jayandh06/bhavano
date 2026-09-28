@@ -1,4 +1,4 @@
-import type { CreateRequirementInput, PropertyTypeFilter } from "@bhavano/types";
+import type { PropertyTypeFilter, RequirementCaptureCriteria } from "@bhavano/types";
 import { requirementCriteriaFromBrowse } from "@bhavano/types/requirementQuestions";
 import { HOME_TABS, type HomeTabValue } from "../components/home/categories";
 
@@ -27,7 +27,7 @@ export function deriveHomeRequirementCriteria(input: {
   sharingType?: string;
   condition?: string;
   serviceType?: string;
-}): { criteria: Omit<CreateRequirementInput, "searchLabel">; label: string } {
+}): { criteria: RequirementCaptureCriteria; label: string } {
   const { category, propertyType, cityName } = input;
 
   const criteria = requirementCriteriaFromBrowse({

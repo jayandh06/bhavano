@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { useRouter } from "expo-router";
 import type { RequirementDto } from "@bhavano/types";
 import { bedroomLabel } from "@bhavano/types/bedrooms";
-import { formatCompactInr, missingForLead } from "@bhavano/types/requirementQuestions";
+import { describeRequirementGaps, formatCompactInr, missingForLead } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import {
@@ -28,11 +28,6 @@ function budgetText(r: RequirementDto): string | null {
   if (r.minPrice) return `from ${formatCompactInr(r.minPrice)}`;
   return null;
 }
-
-const MISSING_WORDS: Record<ReturnType<typeof missingForLead>[number], string> = {
-  area: "which areas",
-  budget: "a budget or size",
-};
 
 /**
  * Mobile counterpart to web's `MyRequirementCard` — Phase 1 of
@@ -107,7 +102,7 @@ export function MyRequirementCard({
           ) : null}
           {current.canRefine && !current.isLeadReady && (
             <Text style={{ fontSize: 12.5, color: colors.muted, marginTop: 6 }}>
-              Needs {missing.map((m) => MISSING_WORDS[m]).join(" and ")} before owners and agents can act on it.
+              Needs {describeRequirementGaps(missing)} before owners and agents can act on it.
             </Text>
           )}
           {current.canRefine && (

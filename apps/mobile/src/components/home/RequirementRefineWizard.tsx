@@ -27,15 +27,18 @@ import {
   REQUIREMENT_CATEGORY_LABELS,
   REQUIREMENT_INTENTS,
   REQUIREMENT_TIMELINE_OPTIONS,
+  REQUIRED_REQUIREMENT_STEPS,
   amenityOptionsFor,
   answeredSteps,
   applicableSteps,
   applyIntent,
   budgetPresetsFor,
+  canLeaveStep,
   formatRequirementLabel,
   intentOf,
   sanitizeRequirementAttributes,
   sizeQuestionFor,
+  stepsToAsk,
   type RequirementCriteria,
   type RequirementStep,
 } from "@bhavano/types/requirementQuestions";
@@ -43,11 +46,13 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { refineMyRequirement } from "../../lib/bffClient";
 import { useAreasQuery } from "../../lib/queries";
 import { useTabBarHeight } from "../../lib/tabBarHeight";
+import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 
 type WizardStep = RequirementStep | "review";
 type Colors = ReturnType<typeof useAppTheme>["colors"];
 
 const STEP_TITLES: Record<WizardStep, string> = {
+  city: "Which city?",
   intent: "What are you looking for?",
   category: "What type of property?",
   details: "A few specifics",
@@ -59,6 +64,7 @@ const STEP_TITLES: Record<WizardStep, string> = {
 };
 
 const STEP_LINK_LABELS: Record<RequirementStep, string> = {
+  city: "city",
   intent: "what",
   category: "type",
   details: "specifics",
@@ -129,7 +135,8 @@ function toggleIn(list: string[] | undefined, value: string, multi: boolean): st
  * Runs against a requirement that is already saved, and every step saves as it is answered, so
  * leaving halfway (the header's back, or Android's) keeps what was given. Steps the search already
  * answered are skipped — decided once, when this opens, so answering one question never makes
- * another vanish — and every step can be skipped.
+ * another vanish. City, areas, what and property type must be answered; every later step can be
+ * skipped.
  */
 export function RequirementRefineWizard({
   requirement,
@@ -145,12 +152,15 @@ export function RequirementRefineWizard({
   const [current, setCurrent] = useState(requirement);
   const [draft, setDraft] = useState<RequirementCriteria>(() => criteriaOf(requirement));
   const skipped = useMemo(() => answeredSteps(criteriaOf(requirement)), [requirement]);
-  const steps: WizardStep[] = [...applicableSteps(draft).filter((s) => !skipped.has(s)), "review"];
+  const steps: WizardStep[] = [...stepsToAsk(draft, skipped), "review"];
   const [stepKey, setStepKey] = useState<WizardStep>(steps[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: areas, isLoading: areasLoading } = useAreasQuery(requirement.cityId);
+  const [pickedCity, setPickedCity] = useState<PickedCity | undefined>(() =>
+    requirement.cityId && requirement.cityName ? { id: requirement.cityId, name: requirement.cityName } : undefined,
+  );
+  const { data: areas, isLoading: areasLoading } = useAreasQuery(current.cityId);
   const [areaQuery, setAreaQuery] = useState("");
   const [sizeUnit, setSizeUnit] = useState<AreaUnit>(requirement.areaUnit ?? "sqft");
   const [sizeMin, setSizeMin] = useState(() => toUnit(requirement.minAreaSqft, requirement.areaUnit ?? "sqft"));
@@ -194,12 +204,15 @@ export function RequirementRefineWizard({
   );
   const position = steps.indexOf(stepKey);
   const cityName = current.cityName ?? "the city";
+  const canContinue = stepKey === "review" || canLeaveStep(stepKey, draft);
 
   function patchFor(step: WizardStep): RefineRequirementInput {
     const attributes = draft.category
       ? sanitizeRequirementAttributes(draft.category, draft.transactionType, draft.attributes ?? {}).attributes
       : undefined;
     switch (step) {
+      case "city":
+        return { cityId: draft.cityId };
       case "intent":
       case "category":
         return { category: draft.category ?? null, transactionType: draft.transactionType ?? null };
@@ -248,13 +261,14 @@ export function RequirementRefineWizard({
     }
   }
 
-  function goNext() {
-    // Recomputed from the latest draft: choosing Buy adds the property-type step, choosing PG
-    // removes it. A step opened from the review's "Change" links may be one the search had
-    // answered, so it is not in the sequence — it returns straight to the review.
-    const next = [...applicableSteps(draft).filter((s) => !skipped.has(s)), "review" as const];
+  /** `from` is the criteria just saved when there are some: choosing Buy adds the property-type
+   * step, choosing PG removes it, and a new city empties the areas. A step opened from the
+   * review's "Change" links may be one the search had answered, so it is not in the sequence — it
+   * returns to the first step still needing an answer, or the review. */
+  function goNext(from: RequirementCriteria = draft) {
+    const next = [...stepsToAsk(from, skipped), "review" as const];
     const at = next.indexOf(stepKey);
-    setStepKey(at === -1 ? "review" : (next[at + 1] ?? "review"));
+    setStepKey(at === -1 ? (next.find((s) => s !== "review" && !canLeaveStep(s, from)) ?? "review") : (next[at + 1] ?? "review"));
   }
 
   async function saveAndNext() {
@@ -263,7 +277,8 @@ export function RequirementRefineWizard({
       if (saved) onFinished(saved);
       return;
     }
-    if (await save(stepKey)) goNext();
+    const saved = await save(stepKey);
+    if (saved) goNext(criteriaOf(saved));
   }
 
   function goBack() {
@@ -276,6 +291,22 @@ export function RequirementRefineWizard({
   }
 
   // --- step bodies -------------------------------------------------------------------------
+
+  function renderCity() {
+    return (
+      <View style={{ gap: 14 }}>
+        <Hint colors={colors}>Start with the city — we&rsquo;ll ask which areas next.</Hint>
+        <RequirementCityPicker
+          value={pickedCity}
+          onChange={(city) => {
+            setPickedCity(city);
+            setDraft((d) => (d.cityId === city.id ? d : { ...d, cityId: city.id, areaIds: [] }));
+          }}
+          disabled={saving}
+        />
+      </View>
+    );
+  }
 
   function renderIntent() {
     const choices = intent ? INTENT_TRANSACTION_CHOICES[intent] : undefined;
@@ -451,8 +482,8 @@ export function RequirementRefineWizard({
         }}
       >
         <Hint colors={colors}>
-          Pick up to {MAX_REQUIREMENT_AREAS}. Owners and agents respond when you name the areas you&rsquo;d actually
-          live in.
+          Pick 1 to {MAX_REQUIREMENT_AREAS}. Owners and agents can only help when you name the areas you&rsquo;d
+          actually live in.
         </Hint>
         {selected.length > 0 && (
           <ChipRow>
@@ -644,6 +675,7 @@ export function RequirementRefineWizard({
   }
 
   const body: Record<WizardStep, () => ReactNode> = {
+    city: renderCity,
     intent: renderIntent,
     category: renderCategory,
     details: renderDetails,
@@ -684,17 +716,19 @@ export function RequirementRefineWizard({
           </Pressable>
         )}
         <View style={{ flex: 1 }} />
-        {stepKey !== "review" && (
-          <Pressable onPress={goNext} disabled={saving} hitSlop={8} style={{ flexShrink: 1 }}>
+        {/* City, areas, what and property type have no Skip: without them a requirement is too
+            vague for anyone to act on. */}
+        {stepKey !== "review" && !REQUIRED_REQUIREMENT_STEPS.has(stepKey) && (
+          <Pressable onPress={() => goNext()} disabled={saving} hitSlop={8} style={{ flexShrink: 1 }}>
             <Text style={{ color: colors.muted, fontSize: 13.5, textDecorationLine: "underline" }} numberOfLines={1}>
-              {stepKey === "areas" ? `Anywhere in ${cityName}` : "Skip"}
+              Skip
             </Text>
           </Pressable>
         )}
         <Pressable
           onPress={() => void saveAndNext()}
-          disabled={saving}
-          style={[styles.primaryButton, { backgroundColor: colors.green, opacity: saving ? 0.6 : 1 }]}
+          disabled={saving || !canContinue}
+          style={[styles.primaryButton, { backgroundColor: colors.green, opacity: saving || !canContinue ? 0.6 : 1 }]}
         >
           {saving ? (
             <ActivityIndicator color={colors.onGreen} />

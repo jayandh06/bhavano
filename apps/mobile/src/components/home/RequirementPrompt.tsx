@@ -1,11 +1,13 @@
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import type { CreateRequirementInput, RequirementDto } from "@bhavano/types";
+import type { RequirementCaptureCriteria, RequirementDto } from "@bhavano/types";
+import { formatRequirementLabel } from "@bhavano/types/requirementQuestions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { createRequirement, fetchMyRequirement } from "../../lib/bffClient";
 import { Icon } from "../Icon";
+import { RequirementCityPicker, type PickedCity } from "./RequirementCityPicker";
 
 /**
  * Mobile counterpart to the web wizard's `RequirementPrompt` (`apps/web/src/components/home/
@@ -26,7 +28,8 @@ export function RequirementPrompt({
   criteria,
   label,
 }: {
-  criteria: Omit<CreateRequirementInput, "searchLabel">;
+  /** Without a `cityId` (no city picked on the home screen) the card asks for one before saving. */
+  criteria: RequirementCaptureCriteria;
   label: string;
 }) {
   const { colors } = useAppTheme();
@@ -56,8 +59,17 @@ export function RequirementPrompt({
   /** On by default, same as web: someone asking us to go and find a house generally does want the
    * person who has one to ring them, and the toggle is right there. */
   const [allowContact, setAllowContact] = useState(true);
+  /** A requirement for "anywhere in India" is not one anybody can act on — same rule as web. */
+  const needsCity = !criteria.cityId;
+  const [city, setCity] = useState<PickedCity | undefined>(undefined);
+  const cityId = criteria.cityId ?? city?.id;
+  const shownLabel = needsCity && city ? formatRequirementLabel({ ...criteria, cityId: city.id }, { cityName: city.name }) : label;
 
   async function submit() {
+    if (!cityId) {
+      setError("Pick a city first");
+      return;
+    }
     if (!accessToken) {
       // Resumes straight into the save once login completes, rather than making the seeker tap
       // the button again — same pattern as ListingCard's onMessage/onViewContact.
@@ -69,7 +81,8 @@ export function RequirementPrompt({
     try {
       const requirement = await createRequirement(accessToken, {
         ...criteria,
-        searchLabel: label,
+        cityId,
+        searchLabel: shownLabel,
         contactConsent: allowContact,
       });
       setSaved(requirement);
@@ -145,8 +158,17 @@ export function RequirementPrompt({
       {/* The criteria, stated back — this is the thing being confirmed, and it is verbatim what
         * gets stored as `searchLabel`. */}
       <View style={[styles.criteria, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
-        <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>{label}</Text>
+        <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>{shownLabel}</Text>
       </View>
+      {needsCity && (
+        <View style={{ marginTop: 14, gap: 4 }}>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>Which city?</Text>
+          <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 6 }}>
+            Nobody can find you a place anywhere in India — start with the city, and we'll ask which areas next.
+          </Text>
+          <RequirementCityPicker value={city} onChange={setCity} disabled={state === "saving"} />
+        </View>
+      )}
       <View style={styles.consentRow}>
         <Switch value={allowContact} onValueChange={setAllowContact} disabled={state === "saving"} />
         <View style={{ flex: 1 }}>
@@ -160,8 +182,8 @@ export function RequirementPrompt({
       </View>
       <Pressable
         onPress={() => void submit()}
-        disabled={state === "saving"}
-        style={[styles.primaryButton, { backgroundColor: colors.green, opacity: state === "saving" ? 0.6 : 1 }]}
+        disabled={state === "saving" || !cityId}
+        style={[styles.primaryButton, { backgroundColor: colors.green, opacity: state === "saving" || !cityId ? 0.6 : 1 }]}
       >
         {state === "saving" ? (
           <ActivityIndicator color={colors.onGreen} />
