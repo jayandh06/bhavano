@@ -325,6 +325,36 @@ dry run, then re-run in dry-run mode to confirm every campaign reports "already 
 - **Rollback:** `python ads_narrow_other_metro_cities.py --restore` re-adds the 26 geo targets
   (ids listed in `REMOVED_GEO_IDS`) to every Other-Metro campaign.
 
+### Cut the Metro campaigns further, to the 3 cheapest? (question asked 2026-09-28, night) — no
+
+The Metro campaigns already target exactly 6 markets (14 geo targets, read back from the account
+after the narrowing), so the account now serves 11 cities: 6 Metro plus 5 Other-Metro. The follow-up
+question was whether to drop the three expensive metros too. Data: Google Ads `geographic_view` for
+the Metro campaigns 09-10 → 09-28, plus production live listings and new conversations or contact
+reveals since 09-10.
+
+| Market | Spend | Conversions | CPA | Live listings | Conversations / reveals |
+|---|---|---|---|---|---|
+| Bengaluru | ₹6,775 | 79 | ₹86 | 82 | 27 / 5 |
+| Hyderabad | ₹3,047 | 34 | ₹90 | 47 | 10 / 0 |
+| Pune (incl. Pimpri-Chinchwad) | ₹2,854 | 31 | ₹92 | 42 | 15 / 3 |
+| Delhi NCR (Delhi, New Delhi, Gurugram, Noida, Ghaziabad) | ₹6,186 | 49 | ₹126 | 61 | 16 / 2 |
+| Mumbai (incl. Navi Mumbai) | ₹2,465 | 19 | ₹130 | 39 | 12 / 1 |
+| Chennai | ₹3,957 | 27 | ₹147 | 42 | 14 / 5 |
+
+**Keep all 6.** Delhi NCR, Mumbai and Chennai cost about ₹133 per conversion against about ₹88 for
+the cheap three. But they hold 142 live listings (45% of the metro listings) and draw about the same
+enquiries per listing, so they are not the thin-market problem the 26 removed cities were. They are
+also the largest property markets, so they matter for the "few hundred listings per focus city" goal.
+- Maximize Conversions already moves spend toward the cheaper cities inside each campaign, which is
+  why Bengaluru gets the most. It ignores location bid adjustments, so there is no lighter lever
+  short of removing a city.
+- Revisit after about 4 weeks, when this month's changes have settled (conversion goal change,
+  Other-Metro narrowing). If a city stays above about ₹180 per poster in our own database (not
+  Google's count), move it into its own low-budget campaign rather than dropping it.
+- Caveat: most of this window still counted registrations as conversions (made secondary on
+  09-28), and Thane had too little spend to show.
+
 ## Ad group and ad copy review (2026-09-28) — proposals, nothing applied
 
 Findings (read-only): every enabled ad group has **one** responsive search ad (no variant to test
