@@ -69,8 +69,9 @@ export interface ListingCardDto {
     /** Exact figure — "₹35,00,000" / "₹5,000/cent" / "Contact for price". Edit forms and JSON-LD
      * strip this back to digits, so it must stay a plain grouped number, never words. */
     price: string;
-    /** What buyers see on cards/detail — "₹35 Lakh" / "₹5 Thousand/cent" / "Contact for price".
-     * Detail views also show the exact `price` beneath it. See docs/plans/listing-price-in-words.md. */
+    /** Word form — "₹35 Lakh" / "₹5 Thousand/cent" / "Contact for price". Every surface shows it
+     * alongside the exact `price`, "₹35,00,000 (35 Lakh)" (`priceWithWords` in
+     * @bhavano/types/priceWords). See docs/plans/listing-price-in-words.md. */
     priceInWords: string;
     priceQualifier: string;
     /** True when `price` reads "Contact for price" rather than a real ₹ amount — pg/coworking
@@ -602,6 +603,8 @@ export interface AdminListingRowDto {
     likeCount: number;
     messageCount?: number;
     price: string;
+    /** Same as ListingCardDto.priceInWords — the queue shows `price` with these words in brackets. */
+    priceInWords?: string;
     priceQualifier: string;
     createdAt: string;
     updatedAt: string;
@@ -1191,7 +1194,8 @@ export interface RequirementDto {
     originalSearchLabel?: string;
     /** When the seeker reached the end of the refinement questions. */
     refinedAt?: string;
-    /** Specific enough to send to owners and agents: an area, plus a budget or a size. */
+    /** Complete: a city, 1–5 areas, buy/rent and the property type (`missingForLead`). Every row
+     * created since 2026-09-28 is; older ones may not be. */
     isLeadReady: boolean;
     /** Whether the criteria can still be refined — only until anyone has acted on them. */
     canRefine: boolean;
@@ -1304,6 +1308,9 @@ export interface RefineRequirementInput {
     /** The seeker reached the review step — stamps `refinedAt`. */
     complete?: boolean;
 }
+/** Sent once, at the end of the questions, with every answer: the BFF refuses a requirement
+ * without a city, 1–5 areas, buy/rent and the property type, and writes `searchLabel` from the
+ * answers (the page heading sent here is kept as `originalSearchLabel`). */
 export interface CreateRequirementInput {
     searchLabel: string;
     note?: string;
@@ -1321,6 +1328,10 @@ export interface CreateRequirementInput {
     bedrooms?: number;
     /** The whole BHK set the search had ticked, rather than just its smallest. */
     bedroomOptions?: number[];
+    /** Plot / commercial / storage size, in sqft. */
+    minAreaSqft?: number;
+    maxAreaSqft?: number;
+    areaUnit?: AreaUnit;
     /** Facet filters the search had set (furnishing, sharing, amenities…). */
     attributes?: RequirementAttributes;
     landingPath?: string;
@@ -1334,6 +1345,9 @@ export interface CreateRequirementInput {
 export type RequirementCaptureCriteria = Omit<CreateRequirementInput, "searchLabel" | "cityId"> & {
     cityId?: string;
 };
+/** What the requirement questions hand back at the end — the criteria half of
+ * `CreateRequirementInput`; the capture card adds the label, landing path and consent. */
+export type RequirementAnswers = Omit<CreateRequirementInput, "searchLabel" | "landingPath" | "contactConsent">;
 export interface CreateSavedSearchInput {
     name: string;
     category?: ListingCategory;
