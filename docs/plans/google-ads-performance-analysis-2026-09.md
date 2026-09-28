@@ -66,7 +66,8 @@ ads are effectively the only acquisition channel.**
 - 122 sign-ups (41%) never posted. They hold a verified phone number and cost ≈ ₹21k to acquire.
 - Visit → sign-up (JS-confirmed): desktop 33%, mobile 17%, tablet ~5%. Home (`/`) lands ~94% of
   paid traffic and converts 17–33%; `/post` landings (sitelinks) converted 2 of 45.
-- Session depth: 59% of paid sessions are single-page; average 2.7 page views.
+- Session depth: 59% of paid sessions are single-page; average 2.7 page views. What those
+  single-page sessions actually are: see "Why ~60% of ad clicks leave from the home page" below.
 
 ## Where the money goes and what it returns (clean window)
 
@@ -362,3 +363,104 @@ click and cost per poster. Keep the winner, pause the other.
 
 Rollback: pause the three new ads (`adGroupAds/202586212471~826203751137`,
 `198411059486~826203751140`, `199363402229~826203751143`).
+
+## Why ~60% of ad clicks leave from the home page (question asked 2026-09-28)
+
+Read-only production query. Paid web sessions (`gclid` or google/cpc) from 2026-09-16 to
+2026-09-28, excluding rows flagged `isBot` and mobile-app sessions: **1,306 sessions**. A
+session "did something" if it had a second page view, a login (`LoginEvent.sessionId`), or
+**two or more** distinct `SearchEvent`s.
+
+Caveat: `SearchTracker` logs one row as soon as any listing page mounts, the home page included.
+A single `SearchEvent` is therefore not an interaction. Counting it as one makes the bounce rate
+look like 16%, which is wrong.
+
+| What the session did | Sessions | Share |
+|---|---|---|
+| Page never ran JavaScript (no `jsConfirmedAt`) | 145 | 11% |
+| Page loaded, visitor did nothing (1 page, no search change, no login) | 524 | 40% |
+| Stayed on home but changed tab, city or search | 106 | 8% |
+| Stayed on home and signed in there | 50 | 4% |
+| Went to a second page | 497 | 38% |
+
+The rows in the first four lines are single-page sessions, 62% in total. That matches the ~60%
+seen in the dashboard.
+
+What the numbers rule in and out:
+
+- **Page speed is not the cause.** Among visitors who did nothing, JavaScript was confirmed at
+  a median of 1.0 s after the request (p75 1.6 s), the same as among visitors who went on to
+  another page.
+- **About 11% is junk traffic.** No-JavaScript sessions bounce 89% of the time. They include
+  all 76 sessions with no device type and all 12 US sessions. They are concentrated before
+  10:00 IST: 26% of clicks in that window never ran JavaScript, against 7% for the rest of the
+  day. This is consistent with recommendation 4 (bid down in the early hours). Location
+  targeting should be "people in" the target cities, not "people in or interested in".
+- **The main cause is the landing page, on mobile especially.** 40% of visitors loaded the page
+  and did nothing. That is 45% on mobile against 33% on desktop. Every one of these home
+  sessions saw the default view:
+  - no city and no category, so the heading reads "All Listings in India";
+  - on mobile, a one-line tagline ("Buy, rent, sell & lease…");
+  - a grid of other people's listings.
+
+  The ads say "post / sell / rent out your property free". On a phone, the only way to act on
+  that is a small "Post ad" button in the header. A poster sees nothing about posting, and a
+  seeker sees nothing from their city, so both leave.
+- **Some clickers are seekers.** Among home visitors who went on to a second page, more browsed
+  than posted: roughly 150 went to `/rent-lease`, `/buy` or a city page, against 96 to `/post`.
+  This matches the seeker search terms found earlier.
+- **Specific-asset ad groups have the highest rate of visitors who did nothing.** The ad groups
+  whose queries are most ambiguous between owners and buyers are highest:
+  - Sell Apartment 1.2: 63%
+  - Other-Metro Rent Out House 2.1: 57%
+  - Sell Villa 1.3: 56%
+  - Rent Out Commercial 2.4: 54%
+
+  Generic Post Ad Intent, where the query itself says "post ad", is lowest at 29%.
+- **Returns are rare.** 35 of the 209 hardest bounces (no JavaScript, or one page) had another
+  visit from the same IP within 7 days. Only 1 of those signed in. Mobile carrier IPs are
+  shared, so treat this as an upper bound.
+
+What we cannot see: how long a single-page visitor stayed, or whether they scrolled. We have no
+dwell-time or scroll beacon, so "glanced for 2 s" and "read for 40 s, then left" look the same.
+Interactions inside the `/post` wizard are not logged either, so `/post` landings cannot be
+compared with home landings on this measure.
+
+### Proposed fixes (1 implemented 2026-09-28; 2–4 not applied)
+
+1. **Show paid visitors a posting-first home screen — implemented.** The final URL stays on the
+   home page, per the decision above.
+   - **When it shows:** `apps/web/src/lib/adLandingCard.ts` resolves the card from the landing
+     URL. It shows when the URL has `gclid` or `utm_medium=cpc`. The ad group is taken from
+     `adgroupid`, and an unknown ad group gets the generic card.
+   - **Placement:** `AdLandingCard` renders under the H1 on the landing request only. Crawlers
+     never carry these params, so the indexed page is unchanged.
+   - **What it says:**
+     - a "For property owners" label;
+     - a headline chosen per ad group;
+     - "No brokerage" and "photos/videos from your phone";
+     - "Free to post", only while `platformFeeFor(category) === 0`. Cards with no category use
+       the property tier, and if pricing fails to load the line is left out;
+     - a button into `/post`;
+     - "Looking to buy or rent? Browse listings ↓", which scrolls to `#listings`.
+   - **Form presets:** `/post?category=&transactionType=` presets the wizard, via the
+     `presetCategory`/`presetTransactionType` props, only when no saved draft exists. A preset
+     is set only for unambiguous ad groups: apartment, villa, plot, PG, commercial and
+     furniture. The "House/Apartment", "Villa/Independent House", "Residential" and generic
+     ad groups open at the category step.
+   - **Preview without an ad:** use `/?adcard=<intent>`, e.g. `/?adcard=sell_villa`. A preview
+     records no clicks and no paid attribution.
+   - **Measurement:**
+     - clicks are written as synthetic page views `/ad-card/post?intent=…` and
+       `/ad-card/browse?intent=…`, plus the GTM event `ad_card_click`;
+     - showing the card writes nothing, so it can't inflate session depth;
+     - compare the did-nothing share (40% overall, 45% on mobile) and mobile visit → sign-up
+       (17%) for the two weeks before and after 2026-09-28.
+2. **Tighten keywords on the worst ad groups (Sell Apartment, Sell Villa, Rent Out 2.x).** Add
+   phrase negatives for seeker wording such as "for sale", "for rent", "to let", "near me",
+   "price", "buy", "flats in". Review `search_term_view` for those groups first.
+3. **Location targeting "people in", plus the early-morning bid-down.** This covers the ~11%
+   junk share.
+4. **Measure engagement.** Add a one-shot beacon after ~10 s visible or 50% scroll, plus the
+   wizard step events from recommendation 5. This lets the remaining 40% be split into
+   "glanced" and "read and left".
