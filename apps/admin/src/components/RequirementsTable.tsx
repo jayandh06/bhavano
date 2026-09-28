@@ -8,6 +8,7 @@ import { bedroomLabel } from "@bhavano/types/bedrooms";
 import {
   REQUIREMENT_ATTRIBUTE_QUESTIONS,
   REQUIREMENT_CATEGORY_LABELS,
+  REQUIREMENT_GAP_LABELS,
   amenityOptionsFor,
   formatCompactInr,
   missingForLead,
@@ -158,11 +159,11 @@ function RequirementCard({ item }: { item: AdminRequirementDto }) {
           >
             {STATUS_LABELS[status]}
           </span>
-          {/* Not lead-ready: too vague to hand to an owner or agent. The call to make first is to
-              the seeker, to ask which areas and what budget. */}
+          {/* Not complete: too vague to hand to an owner or agent. The call to make first is to
+              the seeker, to fill in what's missing. */}
           {status === "open" && !item.isLeadReady && (
             <span
-              title={`Missing: ${missing.map((m) => (m === "area" ? "areas" : "budget or size")).join(", ")}`}
+              title={`Missing: ${missing.map((m) => REQUIREMENT_GAP_LABELS[m]).join(", ")}`}
               style={{
                 display: "inline-block",
                 marginLeft: 6,
