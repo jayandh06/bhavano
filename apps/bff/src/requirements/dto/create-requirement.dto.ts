@@ -50,9 +50,11 @@ export class CreateRequirementDto {
   @IsIn(TRANSACTION_TYPES)
   transactionType?: TransactionType;
 
-  @IsOptional()
-  @IsString()
-  cityId?: string;
+  /** Required — a requirement for "anywhere in India" is not one anybody can act on, so the
+   * capture card asks for a city first. The service also checks it is a real one. */
+  @IsString({ message: 'Pick a city first' })
+  @MinLength(1, { message: 'Pick a city first' })
+  cityId!: string;
 
   @IsOptional()
   @IsString()

@@ -6,6 +6,11 @@ import type { SavedSearchesService } from '../saved-searches/saved-searches.serv
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const CITIES: Record<string, { id: string; name: string }> = {
+  c1: { id: 'c1', name: 'Bengaluru' },
+  c2: { id: 'c2', name: 'Chennai' },
+};
+
 /** The behaviour worth pinning: the capture is the part that must never be lost. The alert and
  * the confirmation are both best-effort, and a failure in either has to leave the requirement
  * standing — otherwise a seeker who was told "we've noted it" ends up with nothing recorded,
@@ -57,6 +62,11 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
       update: requirementUpdate,
     },
     area: { findMany: areaFindMany },
+    city: {
+      findUnique: jest.fn().mockImplementation(({ where }: { where: { id: string } }) =>
+        Promise.resolve(CITIES[where.id] ?? null),
+      ),
+    },
     savedSearch: { update: savedSearchUpdate },
     user: { findUnique: jest.fn().mockResolvedValue({ id: 'u1', name: 'A', email: 'a@b.c', phone: null }) },
   } as unknown as PrismaService;
@@ -195,6 +205,14 @@ describe('RequirementsService.create', () => {
     expect(result.areaNames).toEqual(['Area a1', 'Area a2']);
     expect(result.isLeadReady).toBe(true);
   });
+
+  it('refuses a capture without a real city — "anywhere in India" is not a requirement', async () => {
+    const { service, requirementCreate, savedSearchCreate } = make();
+
+    await expect(service.create('u1', { ...dto, cityId: 'nowhere' })).rejects.toThrow(/city/);
+    expect(requirementCreate).not.toHaveBeenCalled();
+    expect(savedSearchCreate).not.toHaveBeenCalled();
+  });
 });
 
 /** The refinement questions — docs/plans/requirement-refinement-questions.md. The rules worth
@@ -277,25 +295,69 @@ describe('RequirementsService.refineMine', () => {
   });
 
   it('stamps refinedAt only when the seeker completes the questions', async () => {
-    const { service, requirementUpdate } = setup();
+    const { service, requirementUpdate } = setup({ areaIds: ['a1'], areaId: 'a1' });
 
     await service.refineMine('u1', 'r1', { complete: true });
 
     expect(requirementUpdate.mock.calls[0][0].data.refinedAt).toBeInstanceOf(Date);
   });
 
-  it('says what is missing in the label when it is still not specific enough', async () => {
-    const { service, requirementUpdate } = setup({ bedroomOptions: [], bedrooms: null });
+  it('says what is missing in the label when it is still vague', async () => {
+    const { service, requirementUpdate } = setup({ category: null, bedroomOptions: [], bedrooms: null });
 
-    await service.refineMine('u1', 'r1', { complete: true });
+    await service.refineMine('u1', 'r1', { minPrice: 20000 });
 
-    expect(requirementUpdate.mock.calls[0][0].data.searchLabel).toBe('House for rent in Bengaluru — area and budget not specified');
+    expect(requirementUpdate.mock.calls[0][0].data.searchLabel).toBe(
+      'Property for rent in Bengaluru · ₹20k+/month — area and property type not specified',
+    );
+  });
+
+  it('refuses to complete a requirement missing a city, an area, buy/rent or the property type', async () => {
+    const { service, requirementUpdate } = setup({ category: null });
+
+    await expect(service.refineMine('u1', 'r1', { complete: true })).rejects.toThrow(
+      'Add at least one area and the property type first',
+    );
+    expect(requirementUpdate).not.toHaveBeenCalled();
+  });
+
+  it('does not need a budget or size to be complete', async () => {
+    const { service, requirementUpdate } = setup({ areaIds: ['a1'], areaId: 'a1', bedroomOptions: [], bedrooms: null });
+
+    const result = await service.refineMine('u1', 'r1', { complete: true });
+
+    expect(requirementUpdate.mock.calls[0][0].data.searchLabel).toBe('House for rent in Area a1, Bengaluru');
+    expect(result.isLeadReady).toBe(true);
   });
 
   it('refuses areas outside the requirement’s city', async () => {
     const { service, requirementUpdate } = setup();
 
     await expect(service.refineMine('u1', 'r1', { areaIds: ['a1', 'elsewhere'] })).rejects.toThrow(/city/);
+    expect(requirementUpdate).not.toHaveBeenCalled();
+  });
+
+  it('gives a row saved without a city one, and writes it into the label', async () => {
+    const { service, requirementUpdate } = setup({ cityId: null, city: null });
+
+    await service.refineMine('u1', 'r1', { cityId: 'c2' });
+
+    const data = requirementUpdate.mock.calls[0][0].data;
+    expect(data.cityId).toBe('c2');
+    expect(data.searchLabel).toBe('2 BHK house for rent in Chennai — area not specified');
+  });
+
+  it('drops the old areas when the city changes, unless new ones come with it', async () => {
+    const { service, requirementUpdate } = setup({ areaIds: ['a1'], areaId: 'a1' });
+
+    await service.refineMine('u1', 'r1', { cityId: 'c2' });
+    expect(requirementUpdate.mock.calls[0][0].data).toMatchObject({ cityId: 'c2', areaIds: [], areaId: null });
+  });
+
+  it('refuses a city that does not exist', async () => {
+    const { service, requirementUpdate } = setup({ cityId: null, city: null });
+
+    await expect(service.refineMine('u1', 'r1', { cityId: 'nowhere' })).rejects.toThrow(/city/);
     expect(requirementUpdate).not.toHaveBeenCalled();
   });
 

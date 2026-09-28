@@ -2,8 +2,10 @@ import { BadRequestException, ConflictException, Injectable, Logger, NotFoundExc
 import type { ListingCategory, OwnerRequirementMatchDto, RequirementDto, TransactionType } from '@bhavano/types';
 import type { AreaUnit } from '@bhavano/types/areaUnit';
 import {
+  describeRequirementGaps,
   formatRequirementLabel,
   isLeadReady,
+  missingForLead,
   isValidRequirementTransaction,
   sanitizeRequirementAttributes,
   sizeQuestionFor,
@@ -179,6 +181,11 @@ export class RequirementsService {
   }
 
   async create(userId: string, dto: CreateRequirementDto): Promise<RequirementDto> {
+    // The one thing that is refused rather than dropped: without a city nothing else in the row
+    // can be matched, shown to an agent, or even refined (areas belong to a city).
+    const city = await this.prisma.city.findUnique({ where: { id: dto.cityId }, select: { id: true } });
+    if (!city) throw new BadRequestException('Pick a city first');
+
     // The capture must never fail on a detail — it is the part that works — so anything that
     // doesn't fit (a foreign area id, a facet the category doesn't have) is dropped, not refused.
     const areaIds = await this.areasInCity(dto.cityId, dto.areaIds ?? (dto.areaId ? [dto.areaId] : []));
@@ -303,9 +310,17 @@ export class RequirementsService {
       throw new BadRequestException(`A ${category} can't be had on ${transactionType}`);
     }
 
-    let areaIds = existing.areaIds;
+    let city = existing.city;
+    if (dto.cityId !== undefined && dto.cityId !== existing.cityId) {
+      city = await this.prisma.city.findUnique({ where: { id: dto.cityId } });
+      if (!city) throw new BadRequestException('Unknown city');
+    }
+    const cityChanged = (city?.id ?? null) !== existing.cityId;
+
+    // Areas belong to a city, so a new city drops the old ones unless new ones came with it.
+    let areaIds = cityChanged ? [] : existing.areaIds;
     if (dto.areaIds !== undefined) {
-      areaIds = await this.areasInCity(existing.cityId, dto.areaIds);
+      areaIds = await this.areasInCity(city?.id, dto.areaIds);
       if (areaIds.length !== new Set(dto.areaIds).size) throw new BadRequestException('Every area must be in the requirement’s city');
     }
 
@@ -342,7 +357,7 @@ export class RequirementsService {
     const criteria: RequirementCriteria = {
       category: category ?? undefined,
       transactionType: transactionType ?? undefined,
-      cityId: existing.cityId ?? undefined,
+      cityId: city?.id,
       areaIds,
       bedroomOptions,
       minPrice: minPrice ?? undefined,
@@ -352,9 +367,15 @@ export class RequirementsService {
       areaUnit: areaUnit ?? undefined,
       attributes,
     };
+    // The review's Done is the seeker saying "that's what I need" — it can't be said of a row
+    // still missing what makes it a requirement at all.
+    const missing = missingForLead(criteria);
+    if (dto.complete && missing.length > 0) {
+      throw new BadRequestException(`Add ${describeRequirementGaps(missing)} first`);
+    }
     const names = await areaNamesFor(this.prisma, [{ ...existing, areaIds }]);
     const searchLabel = formatRequirementLabel(criteria, {
-      cityName: existing.city?.name,
+      cityName: city?.name,
       areaNames: areaIds.map((areaId) => names.get(areaId)).filter((name): name is string => Boolean(name)),
     });
 
@@ -363,6 +384,7 @@ export class RequirementsService {
       data: {
         category,
         transactionType,
+        ...(cityChanged && city ? { cityId: city.id } : {}),
         areaIds,
         areaId: areaIds[0] ?? null,
         bedroomOptions,

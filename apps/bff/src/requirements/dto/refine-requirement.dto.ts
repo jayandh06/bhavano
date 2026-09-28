@@ -12,6 +12,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 import type { ListingCategory, TransactionType } from '@bhavano/types';
 import type { AreaUnit } from '@bhavano/types/areaUnit';
@@ -37,6 +38,13 @@ export class RefineRequirementDto {
   @IsOptional()
   @IsIn(TRANSACTION_TYPES)
   transactionType?: TransactionType | null;
+
+  /** For a row saved before a city was required. Set, never cleared; a different city drops the
+   * areas unless `areaIds` (in the new city) comes with it. */
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  cityId?: string;
 
   @IsOptional()
   @IsArray()
