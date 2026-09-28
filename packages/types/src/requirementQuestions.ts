@@ -356,18 +356,22 @@ export const REQUIREMENT_TIMELINE_OPTIONS: { value: string; label: string; days?
 // Which steps to ask
 // ---------------------------------------------------------------------------
 
-export type RequirementStep = "intent" | "category" | "details" | "areas" | "budget" | "amenities" | "timeline";
+export type RequirementStep = "city" | "areas" | "intent" | "category" | "details" | "budget" | "amenities" | "timeline";
 
-/** The steps that make sense for these criteria, in the order they are asked — by value to
- * matching, so the earliest are the ones a drop-off can least afford to lose. */
+/** The steps that make sense for these criteria, in the order they are asked. Where comes first
+ * — city, then areas — because nothing else about a requirement is actionable without it: no
+ * owner or agent can do anything with "a 2 BHK" and no place, and areas are what makes a row
+ * lead-ready. The rest follow by value to matching. The city step only ever shows for a row saved
+ * without one, since a capture can no longer be; the areas step appears once there is a city. */
 export function applicableSteps(c: RequirementCriteria): RequirementStep[] {
   const intent = intentOf(c.category, c.transactionType);
-  const steps: RequirementStep[] = ["intent"];
+  const steps: RequirementStep[] = ["city"];
+  if (c.cityId) steps.push("areas");
+  steps.push("intent");
   if (intent === "buy" || intent === "rentLease") steps.push("category");
   if (c.category && (REQUIREMENT_ATTRIBUTE_QUESTIONS[c.category].length > 0 || sizeQuestionFor(c.category))) {
     steps.push("details");
   }
-  if (c.cityId) steps.push("areas");
   steps.push("budget");
   if (c.category && amenityOptionsFor(c.category).length > 0) steps.push("amenities");
   steps.push("timeline");
@@ -391,6 +395,7 @@ function detailsAnswered(c: RequirementCriteria): boolean {
  */
 export function answeredSteps(c: RequirementCriteria): Set<RequirementStep> {
   const done = new Set<RequirementStep>();
+  if (c.cityId) done.add("city");
   if (intentOf(c.category, c.transactionType)) done.add("intent");
   if (c.category) done.add("category");
   if (detailsAnswered(c)) done.add("details");
@@ -401,31 +406,82 @@ export function answeredSteps(c: RequirementCriteria): Set<RequirementStep> {
   return done;
 }
 
+/** The steps a requirement is not complete without (see `missingForLead`). They have no Skip,
+ * and are asked even when the search had answered them if the answer has since gone — a new city
+ * empties the areas. */
+export const REQUIRED_REQUIREMENT_STEPS: ReadonlySet<RequirementStep> = new Set<RequirementStep>(["city", "areas", "intent", "category"]);
+
+/**
+ * The steps to walk through, in order: every applicable step the search had not answered when the
+ * questions opened, plus any required step that is unanswered now.
+ */
+export function stepsToAsk(draft: RequirementCriteria, answeredAtOpen: Set<RequirementStep>): RequirementStep[] {
+  const answeredNow = answeredSteps(draft);
+  return applicableSteps(draft).filter(
+    (step) => !answeredAtOpen.has(step) || (REQUIRED_REQUIREMENT_STEPS.has(step) && !answeredNow.has(step)),
+  );
+}
+
+/** Whether a required step has what it needs to move on — other steps can always be skipped. */
+export function canLeaveStep(step: RequirementStep, draft: RequirementCriteria): boolean {
+  return !REQUIRED_REQUIREMENT_STEPS.has(step) || answeredSteps(draft).has(step);
+}
+
 // ---------------------------------------------------------------------------
-// Lead readiness and the label
+// Completeness and the label
 // ---------------------------------------------------------------------------
 
-/** What a requirement still lacks before it is specific enough to send to owners and agents. */
-export function missingForLead(c: RequirementCriteria): ("area" | "budget")[] {
-  const missing: ("area" | "budget")[] = [];
+export type RequirementGap = "city" | "area" | "transaction" | "propertyType";
+
+/** Short, for the label's "— … not specified" and the admin badge. */
+export const REQUIREMENT_GAP_LABELS: Record<RequirementGap, string> = {
+  city: "city",
+  area: "area",
+  transaction: "buy or rent",
+  propertyType: "property type",
+};
+
+/** For a sentence addressed to the seeker: "Needs {a} and {b} before owners and agents…". */
+export const REQUIREMENT_GAP_PHRASES: Record<RequirementGap, string> = {
+  city: "a city",
+  area: "at least one area",
+  transaction: "whether you're buying or renting",
+  propertyType: "the property type",
+};
+
+/**
+ * What a requirement still lacks before it is complete. Four things, and without any one of them
+ * it is vague: the city; at least one area (at most `MAX_REQUIREMENT_AREAS`); what they want to do
+ * (buy, rent, lease — PG, furniture and interiors each imply one); and the property type (house,
+ * apartment, plot… — PG, furniture and interiors are their own). Budget, size and the rest make a
+ * requirement better, but their absence does not make it vague.
+ */
+export function missingForLead(c: RequirementCriteria): RequirementGap[] {
+  const missing: RequirementGap[] = [];
+  if (!c.cityId) missing.push("city");
   if (!c.areaIds?.length) missing.push("area");
-  const hasBudgetOrSize =
-    c.minPrice !== undefined ||
-    c.maxPrice !== undefined ||
-    (c.bedroomOptions?.length ?? 0) > 0 ||
-    c.minAreaSqft !== undefined ||
-    c.maxAreaSqft !== undefined;
-  if (!hasBudgetOrSize) missing.push("budget");
+  if (!c.transactionType) missing.push("transaction");
+  if (!c.category) missing.push("propertyType");
   return missing;
 }
 
 /**
- * Specific enough to be a lead: at least one named area, plus a budget or a size. A city-wide
- * requirement is never one — sent to every agent in a 700 km² city it is spam to them and a flood
- * of calls for the seeker. See docs/plans/requirement-leads-for-brokers.md.
+ * Complete, and so specific enough to be a lead — see `missingForLead`. A city-wide requirement
+ * is never one: sent to every agent in a 700 km² city it is spam to them and a flood of calls for
+ * the seeker. See docs/plans/requirement-leads-for-brokers.md.
  */
 export function isLeadReady(c: RequirementCriteria): boolean {
   return missingForLead(c).length === 0;
+}
+
+function joinAnd(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/** "a city, at least one area and the property type" — for the seeker-facing "needs …" lines. */
+export function describeRequirementGaps(missing: RequirementGap[]): string {
+  return joinAnd(missing.map((gap) => REQUIREMENT_GAP_PHRASES[gap]));
 }
 
 function joinOr(items: string[]): string {
@@ -509,7 +565,7 @@ function subjectPhrase(c: RequirementCriteria): string {
  * previewed by the review step, e.g. "2 or 3 BHK semi-furnished apartment for rent in Adyar or
  * Velachery, Chennai · ₹20k–35k/month · lift, power backup".
  *
- * Honest about gaps: a requirement that is not lead-ready says so ("— area and budget not
+ * Honest about gaps: a requirement that is not complete says so ("— area and property type not
  * specified"), so nobody reading it in the queue mistakes it for a precise need.
  */
 export function formatRequirementLabel(
@@ -529,7 +585,7 @@ export function formatRequirementLabel(
       : undefined,
   ].filter(Boolean);
   const missing = missingForLead(c);
-  const gap = missing.length ? ` — ${missing.join(" and ")} not specified` : "";
+  const gap = missing.length ? ` — ${joinAnd(missing.map((m) => REQUIREMENT_GAP_LABELS[m]))} not specified` : "";
   const label = `${subjectPhrase(c)}${where}${extras.length ? ` · ${extras.join(" · ")}` : ""}${gap}`;
   return label.length > 200 ? `${label.slice(0, 199)}…` : label;
 }

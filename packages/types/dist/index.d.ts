@@ -1289,6 +1289,8 @@ export interface UpdateMyRequirementInput {
 export interface RefineRequirementInput {
     category?: ListingCategory | null;
     transactionType?: TransactionType | null;
+    /** Only ever set, never cleared. A new city drops the areas unless `areaIds` comes with it. */
+    cityId?: string;
     areaIds?: string[];
     bedroomOptions?: number[];
     minPrice?: number | null;
@@ -1308,7 +1310,9 @@ export interface CreateRequirementInput {
     moveInBy?: string;
     category?: ListingCategory;
     transactionType?: TransactionType;
-    cityId?: string;
+    /** Required: "a 2 BHK anywhere in India" is not something anyone can act on. A search with no
+     * city asks for one on the capture card before it can be saved. */
+    cityId: string;
     areaId?: string;
     /** Every area the search named, when it named no more than `MAX_REQUIREMENT_AREAS`. */
     areaIds?: string[];
@@ -1325,6 +1329,11 @@ export interface CreateRequirementInput {
      * inferred from the search. Absent is treated as no. */
     contactConsent?: boolean;
 }
+/** What a browse page's filters say about a requirement, before the capture card has made sure
+ * there is a city — an India-wide page has none. */
+export type RequirementCaptureCriteria = Omit<CreateRequirementInput, "searchLabel" | "cityId"> & {
+    cityId?: string;
+};
 export interface CreateSavedSearchInput {
     name: string;
     category?: ListingCategory;

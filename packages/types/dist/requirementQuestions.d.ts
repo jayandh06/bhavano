@@ -120,9 +120,12 @@ export declare const REQUIREMENT_TIMELINE_OPTIONS: {
     label: string;
     days?: number;
 }[];
-export type RequirementStep = "intent" | "category" | "details" | "areas" | "budget" | "amenities" | "timeline";
-/** The steps that make sense for these criteria, in the order they are asked — by value to
- * matching, so the earliest are the ones a drop-off can least afford to lose. */
+export type RequirementStep = "city" | "areas" | "intent" | "category" | "details" | "budget" | "amenities" | "timeline";
+/** The steps that make sense for these criteria, in the order they are asked. Where comes first
+ * — city, then areas — because nothing else about a requirement is actionable without it: no
+ * owner or agent can do anything with "a 2 BHK" and no place, and areas are what makes a row
+ * lead-ready. The rest follow by value to matching. The city step only ever shows for a row saved
+ * without one, since a capture can no longer be; the areas step appears once there is a city. */
 export declare function applicableSteps(c: RequirementCriteria): RequirementStep[];
 /**
  * The steps the search already answered — computed once, when the questions open, and skipped.
@@ -130,20 +133,44 @@ export declare function applicableSteps(c: RequirementCriteria): RequirementStep
  * furnishing still gets the details step, with 2 BHK already ticked.
  */
 export declare function answeredSteps(c: RequirementCriteria): Set<RequirementStep>;
-/** What a requirement still lacks before it is specific enough to send to owners and agents. */
-export declare function missingForLead(c: RequirementCriteria): ("area" | "budget")[];
+/** The steps a requirement is not complete without (see `missingForLead`). They have no Skip,
+ * and are asked even when the search had answered them if the answer has since gone — a new city
+ * empties the areas. */
+export declare const REQUIRED_REQUIREMENT_STEPS: ReadonlySet<RequirementStep>;
 /**
- * Specific enough to be a lead: at least one named area, plus a budget or a size. A city-wide
- * requirement is never one — sent to every agent in a 700 km² city it is spam to them and a flood
- * of calls for the seeker. See docs/plans/requirement-leads-for-brokers.md.
+ * The steps to walk through, in order: every applicable step the search had not answered when the
+ * questions opened, plus any required step that is unanswered now.
+ */
+export declare function stepsToAsk(draft: RequirementCriteria, answeredAtOpen: Set<RequirementStep>): RequirementStep[];
+/** Whether a required step has what it needs to move on — other steps can always be skipped. */
+export declare function canLeaveStep(step: RequirementStep, draft: RequirementCriteria): boolean;
+export type RequirementGap = "city" | "area" | "transaction" | "propertyType";
+/** Short, for the label's "— … not specified" and the admin badge. */
+export declare const REQUIREMENT_GAP_LABELS: Record<RequirementGap, string>;
+/** For a sentence addressed to the seeker: "Needs {a} and {b} before owners and agents…". */
+export declare const REQUIREMENT_GAP_PHRASES: Record<RequirementGap, string>;
+/**
+ * What a requirement still lacks before it is complete. Four things, and without any one of them
+ * it is vague: the city; at least one area (at most `MAX_REQUIREMENT_AREAS`); what they want to do
+ * (buy, rent, lease — PG, furniture and interiors each imply one); and the property type (house,
+ * apartment, plot… — PG, furniture and interiors are their own). Budget, size and the rest make a
+ * requirement better, but their absence does not make it vague.
+ */
+export declare function missingForLead(c: RequirementCriteria): RequirementGap[];
+/**
+ * Complete, and so specific enough to be a lead — see `missingForLead`. A city-wide requirement
+ * is never one: sent to every agent in a 700 km² city it is spam to them and a flood of calls for
+ * the seeker. See docs/plans/requirement-leads-for-brokers.md.
  */
 export declare function isLeadReady(c: RequirementCriteria): boolean;
+/** "a city, at least one area and the property type" — for the seeker-facing "needs …" lines. */
+export declare function describeRequirementGaps(missing: RequirementGap[]): string;
 /**
  * The one label format for a refined requirement — written by the BFF as `searchLabel` and
  * previewed by the review step, e.g. "2 or 3 BHK semi-furnished apartment for rent in Adyar or
  * Velachery, Chennai · ₹20k–35k/month · lift, power backup".
  *
- * Honest about gaps: a requirement that is not lead-ready says so ("— area and budget not
+ * Honest about gaps: a requirement that is not complete says so ("— area and property type not
  * specified"), so nobody reading it in the queue mistakes it for a precise need.
  */
 export declare function formatRequirementLabel(c: RequirementCriteria, names: {
