@@ -107,6 +107,19 @@ re-resolved when the request itself submits a new `dto.price` — never re-deriv
 `priceUnit: null` on update is handled as an explicit "clear back to whole price" signal, distinct
 from `undefined` ("leave unchanged").
 
+**Fixed 2026-09-28: the plausibility range was checked on the typed figure, not the total.**
+`ModerationService.moderate()` ran `checkPriceSanity` on `input.price`, which is the per-unit
+figure for a per-unit listing. So an ordinary ₹12,500/sq ft house was rejected as under the
+₹1 lakh sale minimum. A seller who then inflated the rate got past the check, and the total
+(₹3,696 crore) overflowed `Listing.price`'s Int column as a Prisma error. This happened to a real
+Google Ads seller in Hyderabad, who tried five times and gave up. The range check is now
+`listingPriceIssue()` in `packages/types/src/priceBounds.ts`, run on the resolved total:
+- the BFF runs it in `create()`, and in `applyUpdate()` when the price changes;
+- both post forms run it on the details step, before the preview and before any upload.
+
+For a per-unit price, the message shows the working ("₹X/sq ft × N sq ft comes to ₹Y, outside the
+expected range…"). The ₹50 crore maximum fits in an Int, so an in-range total can't overflow.
+
 ## Display — consolidated the duplicated price-formatting logic
 
 `toAdminQueueRowDto`/`findMetaById`/`toCardDto`/`toDetailDto` in `listings.service.ts` now all call
