@@ -242,6 +242,27 @@ redirect, or JSON-LD change. The count is login-gated and non-crawlable. Net SEO
   and when the screen regains focus. This replaced the earlier `onContentSizeChange`/`onLayout`
   approach, which had the same flaw for long threads.
 
+## Admin messages (2026-09-28)
+
+Every message an admin sends an owner now gets the same delivery as a chat message: the realtime
+update, the unread badge, and a push titled with the ad, from "Bhavano Admin". The paths are:
+
+- **Replies typed on the admin listing page:** these go through `POST /conversations/:id/messages`,
+  so they already had it.
+- **The in-app Boost message:** `AdminService.sendInAppBoostMessage`, which already had it.
+- **The automatic moderation notes:** flag, approve, publish-without-payment, admin status change
+  and admin edit. These used to write the message straight into the thread with no push, badge or
+  live update. They now go through `AdminService.sendModerationMessage` and share
+  `deliverStaffMessage` with the Boost message.
+
+`MessagingService.sendMessage` titles any admin message in a `moderation` **or** `announcement`
+thread as "Bhavano Admin". Previously only moderation threads did, so an admin replying to a Boost
+message would have shown their own name on the owner's push. When the owner replies in a staff
+thread, their own name is used.
+
+A push only reaches owners who have the app installed and allowed notifications (a `PushToken`
+row). On 2026-09-28 that was 6 Android devices in total.
+
 ## Known limitations (v1, acceptable)
 
 - Web `getSocket` is a singleton created once with the first token; a tab open past the 1h token
