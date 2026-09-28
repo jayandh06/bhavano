@@ -726,14 +726,24 @@ export class NotificationsService {
     // attach a BCC header to instead.
     const tpl = loadTemplate('email/listing-posted');
     const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
-    const buttonLabel = tpl.buttonLabel
-      ? renderTemplate(tpl.buttonLabel, vars)
-      : undefined;
+    // Same message and UTM tags as the web's OwnerWhatsAppShare, so a share from this email is
+    // counted with the rest of `owner_share` (docs/plans/growth-beyond-google-ads.md).
+    const shareText =
+      `${listing.title}\n${listing.area}, ${listing.cityName}\n` +
+      `Photos and details on Bhavano — message me there:\n` +
+      `${link}?utm_source=whatsapp&utm_medium=share&utm_campaign=owner_share`;
+    const shareLink = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    const buttons = [
+      tpl.buttonLabel ? { label: renderTemplate(tpl.buttonLabel, vars), url: link } : undefined,
+      tpl.secondaryButtonLabel
+        ? { label: renderTemplate(tpl.secondaryButtonLabel, vars), url: shareLink }
+        : undefined,
+    ].filter((b): b is { label: string; url: string } => b !== undefined);
     const html = renderEmail({
       heading: renderTemplate(tpl.heading, vars),
       preheader: renderTemplate(tpl.preheader, vars),
       paragraphs,
-      button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+      button: buttons,
     });
     // The plain-text part mirrors the HTML rather than reusing renderEmail's own text — that
     // function only ever produces markup, matching notifyWelcome's separate emailBody/html
@@ -741,7 +751,7 @@ export class NotificationsService {
     // button label, or it would be unreadable in a text-only client.
     const text =
       `${paragraphs.join('\n\n')}\n\n` +
-      (buttonLabel ? `${buttonLabel}: ${link}` : link);
+      (buttons.length ? buttons.map((b) => `${b.label}: ${b.url}`).join('\n') : link);
     const subject = renderTemplate(tpl.subject, vars);
 
     if (user.email) {

@@ -3,3 +3,5 @@ Hi {{name}},
 Your ad "{{title}}" is now live on Bhavano and visible to interested people in your area.
 
 Tap below to see how it looks. You can manage, renew, or boost it anytime from My Listings — a boosted ad gets priority placement and more views.
+
+Want enquiries sooner? Share it on WhatsApp with your society, office or family groups — people nearby often know someone looking.

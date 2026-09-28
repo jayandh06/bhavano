@@ -192,6 +192,20 @@ describe('NotificationsService — support@ visibility on the WhatsApp branch', 
     expect(options).not.toHaveProperty('bcc');
   });
 
+  it('notifyListingPosted email carries a pre-written, owner_share-tagged WhatsApp share link', async () => {
+    const { service, emailSend } = make();
+
+    await service.notifyListingPosted({ name: 'Ravi', email: 'ravi@example.com', phone: null }, LISTING);
+
+    const [, , text, options] = emailSend.mock.calls[0];
+    const shareLine = (text as string).split('\n').find((l) => l.startsWith('Share on WhatsApp: '));
+    expect(shareLine).toBeDefined();
+    const shared = decodeURIComponent(shareLine!.replace('Share on WhatsApp: https://wa.me/?text=', ''));
+    expect(shared).toContain('2 BHK for rent in Koramangala\nKoramangala, Bengaluru');
+    expect(shared).toContain('utm_source=whatsapp&utm_medium=share&utm_campaign=owner_share');
+    expect((options as { html: string }).html).toContain('https://wa.me/?text=');
+  });
+
   it('notifyListingPosted skips the support@ copy when the WhatsApp send itself fails', async () => {
     const { service, emailSend, sendAdPostedConfirmation } = make();
     (sendAdPostedConfirmation as jest.Mock).mockResolvedValueOnce({ sent: false, messageId: null });

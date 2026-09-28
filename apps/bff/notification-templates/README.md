@@ -45,8 +45,8 @@ Leave anything inside `{{double braces}}` exactly as it is — those are filled 
 **Fields:** `subject.txt`, `preheader.txt` (the one-line summary an inbox shows beside the
 subject), `heading.txt`, `body.txt` (multiple paragraphs — separate with a blank line, same as
 writing an email), `buttonLabel.txt` (omit this file for a message with no button) and
-`secondaryButtonLabel.txt` (a second, alternative action stacked under the first — only the Boost
-promotion has one). Keep URLs out of `body.txt`: the buttons are the links, and a promotional
+`secondaryButtonLabel.txt` (a second, alternative action stacked under the first — the Boost
+promotion and the "your ad is live" email's Share on WhatsApp have one). Keep URLs out of `body.txt`: the buttons are the links, and a promotional
 message with links scattered through the prose reads like a phishing attempt.
 
 **Not here, and not meant to be:** the branded shell — logo, colours, the footer's legal links —
