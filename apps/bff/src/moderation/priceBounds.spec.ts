@@ -1,4 +1,17 @@
+import { listingPriceIssue } from '@bhavano/types/priceBounds';
 import { checkPriceSanity } from './priceBounds';
+
+describe('listingPriceIssue on a per-unit price', () => {
+  it('accepts an ordinary per-sq-ft rate whose total is in range', () => {
+    expect(listingPriceIssue('house', 'sell', 12_500 * 3_000, { price: 12_500, area: 3_000, unit: 'sqft' })).toBeNull();
+  });
+
+  it('rejects an inflated rate on the total, showing the working', () => {
+    const issue = listingPriceIssue('house', 'sell', 12_320_000 * 3_000, { price: 12_320_000, area: 3_000, unit: 'sqft' });
+    expect(issue).toMatch(/^₹1,23,20,000\/sq ft × 3,000 sq ft comes to ₹36,96,00,00,000 \(3696 Crore\)/);
+    expect(issue).toMatch(/Check the price per sq ft and the area\.$/);
+  });
+});
 
 describe('checkPriceSanity', () => {
   it('allows price: 0 for pg (a price-on-request category)', () => {

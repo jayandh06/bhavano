@@ -45,6 +45,7 @@ import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from '@bhavano/types/priceQualifiers';
 import { areaUnitShortLabel, type AreaUnit } from '@bhavano/types/areaUnit';
 import { formatInrInWords } from '@bhavano/types/priceWords';
+import { listingPriceIssue } from '@bhavano/types/priceBounds';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { MAX_PHOTOS } from '@bhavano/types/photoLimits';
@@ -1230,8 +1231,9 @@ export class ListingsService {
       attributes,
     );
     this.assertValidPrice(input.category, resolvedPrice.price);
+    this.assertPriceInRange(input.category, input.transactionType, input.price, resolvedPrice);
 
-    const moderation = await this.moderationService.moderate(input);
+    const moderation = await this.moderationService.moderate({ ...input, price: resolvedPrice.price });
     if (!moderation.ok) throw new BadRequestException(moderation.reason);
 
     const areaId =
@@ -1869,6 +1871,9 @@ export class ListingsService {
       resolvedPrice?.price ?? (categoryOrTxnChanged ? existing.price : undefined);
     if (priceToValidate !== undefined) {
       this.assertValidPrice(nextCategory, priceToValidate);
+    }
+    if (dto.price !== undefined && resolvedPrice && resolvedPrice.price !== existing.price) {
+      this.assertPriceInRange(nextCategory, nextTransactionType, dto.price, resolvedPrice);
     }
 
     // City/area resolution — admin-only, and only when at least one of the three is present.
@@ -2752,7 +2757,7 @@ export class ListingsService {
     price: number,
     priceUnit: string | undefined,
     attributes: Record<string, unknown>,
-  ): { price: number; priceUnit: AreaUnit | null } {
+  ): { price: number; priceUnit: AreaUnit | null; area?: number } {
     if (!priceUnit) return { price, priceUnit: null };
 
     if (transactionType !== 'sell' && transactionType !== 'lease') {
@@ -2777,7 +2782,27 @@ export class ListingsService {
       throw new BadRequestException("Price-per-unit must match the listing's own area unit");
     }
 
-    return { price: Math.round(price * areaValue), priceUnit };
+    return { price: Math.round(price * areaValue), priceUnit, area: areaValue };
+  }
+
+  /** The plausibility range, on the resolved total. Checking what the seller typed instead
+   * rejected ordinary per-unit rates (₹12,500/sq ft is under the ₹1 lakh minimum) and let an
+   * inflated one through to overflow `Listing.price`'s Int column. */
+  private assertPriceInRange(
+    category: ListingCategory,
+    transactionType: TransactionType,
+    typedPrice: number,
+    resolved: { price: number; priceUnit: AreaUnit | null; area?: number },
+  ): void {
+    const issue = listingPriceIssue(
+      category,
+      transactionType,
+      resolved.price,
+      resolved.priceUnit && resolved.area
+        ? { price: typedPrice, area: resolved.area, unit: resolved.priceUnit }
+        : undefined,
+    );
+    if (issue) throw new BadRequestException(issue);
   }
 
   /** The reverse of `resolveListingPrice` — re-derives what the seller actually typed (the
