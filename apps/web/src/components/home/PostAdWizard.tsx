@@ -52,6 +52,12 @@ import {
 } from "@/lib/formStyles";
 import { uploadVideoDirect } from "@/lib/videoUpload";
 import {
+  PHOTO_SIZE_LABEL,
+  VIDEO_SIZE_LABEL,
+  photoTooLargeMessage,
+  videoTooLargeMessage,
+} from "@/lib/uploadLimits";
+import {
   clearPostAdDraft,
   loadPostAdDraft,
   savePostAdDraftFields,
@@ -572,7 +578,7 @@ export function PostAdWizard({
         continue;
       }
       if (file.size > MAX_PHOTO_BYTES) {
-        setError(`"${file.name}" is over the 4MB limit.`);
+        setError(photoTooLargeMessage(file.name));
         continue;
       }
       accepted.push({ file, previewUrl: URL.createObjectURL(file) });
@@ -625,9 +631,7 @@ export function PostAdWizard({
         continue;
       }
       if (file.size > MAX_VIDEO_BYTES) {
-        setVideoError(
-          `"${file.name}" is over the ${Math.round(MAX_VIDEO_BYTES / (1024 * 1024))}MB limit.`,
-        );
+        setVideoError(videoTooLargeMessage(file.name));
         continue;
       }
       // A courtesy check only — the server verifies actual duration via ffprobe regardless (see
@@ -1256,7 +1260,7 @@ export function PostAdWizard({
                 onFiles={onPhotosSelected}
                 icon="camera"
                 label={photos.length > 0 ? "Add more photos" : "Add photos"}
-                hint={`JPG, PNG or WebP · ${MAX_PHOTOS - photos.length} more allowed`}
+                hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${MAX_PHOTOS - photos.length} more allowed`}
               />
             )}
             {photos.length > 0 && (
@@ -1317,7 +1321,7 @@ export function PostAdWizard({
                 onFiles={(files) => void onVideosSelected(files)}
                 icon="video"
                 label={videos.length > 0 ? "Add another video" : "Add a video"}
-                hint={`MP4 or MOV · up to ${videoEntitlement.maxDurationSec}s each`}
+                hint={`MP4 or MOV · up to ${VIDEO_SIZE_LABEL} and ${videoEntitlement.maxDurationSec}s each`}
               />
             )}
             {videos.length > 0 && (

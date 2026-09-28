@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { addOwnPhotoAction, deleteOwnPhotoAction, rotateOwnPhotoAction, setOwnCoverPhotoAction } from "@/app/actions/listings";
 import { labelClass } from "@/lib/formStyles";
-import { MAX_PHOTOS } from "@bhavano/types/photoLimits";
+import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
+import { PHOTO_SIZE_LABEL, photoTooLargeMessage } from "@/lib/uploadLimits";
 import { UploadZone } from "./UploadZone";
 
 /** PhotoProcessingService polls for pending jobs every 3s — this just adds a little margin so a
@@ -104,6 +105,10 @@ export function EditListingPhotos({
         setError(`"${file.name}" isn't a supported image format.`);
         continue;
       }
+      if (file.size > MAX_PHOTO_BYTES) {
+        setError(photoTooLargeMessage(file.name));
+        continue;
+      }
       const formData = new FormData();
       formData.set("file", file);
       const result = await addOwnPhotoAction(listingId, formData);
@@ -156,7 +161,7 @@ export function EditListingPhotos({
           onFiles={(files) => void onFilesSelected(files)}
           icon="camera"
           label={uploading ? "Uploading…" : photos.length > 0 ? "Add more photos" : "Add photos"}
-          hint={`JPG, PNG or WebP · ${roomLeft} more allowed`}
+          hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${roomLeft} more allowed`}
         />
       )}
 

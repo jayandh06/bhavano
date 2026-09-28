@@ -3,7 +3,9 @@
 import { useState } from "react";
 import type { ListingDetailDto } from "@bhavano/types";
 import { deleteVideoAction } from "@/app/actions/listings";
+import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { addVideoToListing } from "@/lib/videoUpload";
+import { VIDEO_SIZE_LABEL, videoTooLargeMessage } from "@/lib/uploadLimits";
 import { UploadZone } from "./UploadZone";
 
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
@@ -39,6 +41,10 @@ export function VideoManager({
 
     if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
       setError(`"${file.name}" isn't a supported video format.`);
+      return;
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      setError(videoTooLargeMessage(file.name));
       return;
     }
 
@@ -103,11 +109,11 @@ export function VideoManager({
       onFiles={(files) => void onFileSelected(files)}
       icon="video"
       label={pending ? "Uploading…" : listing.videos.length > 0 ? "Add another video" : "Add a video"}
-      hint={`MP4 or MOV · up to ${entitlement.maxDurationSec}s`}
+      hint={`MP4 or MOV · up to ${VIDEO_SIZE_LABEL} and ${entitlement.maxDurationSec}s`}
     />
   ) : (
     <label className="text-[13px] font-bold text-green cursor-pointer">
-      {pending ? "Uploading…" : `+ Add video (up to ${entitlement.maxDurationSec}s)`}
+      {pending ? "Uploading…" : `+ Add video (up to ${VIDEO_SIZE_LABEL}, ${entitlement.maxDurationSec}s)`}
       <input
         type="file"
         accept={ALLOWED_VIDEO_TYPES.join(",")}
