@@ -519,6 +519,7 @@ export interface AdminUsersQuery {
   q?: string;
   role?: UserRole;
   welcomed?: "yes" | "no";
+  sellerType?: "owner" | "agent" | "unset";
   sort?: AdminUserSort;
   limit?: number;
 }

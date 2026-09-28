@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ActivityEventDto, DeviceType, VisitDto } from "@bhavano/types";
+import { postedByLabel } from "@bhavano/types/sellerType";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchUserActivity } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
@@ -59,6 +60,10 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
           <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
             {user.cityName ? `${user.cityName} · ` : ""}
             {user.role === "admin" ? "Admin" : "User"} · joined {formatDate(user.createdAt)}
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
+            Posts as: {postedByLabel(user.sellerType, user.agencyName) ?? "not answered yet"}
+            {user.reraNumber && ` · RERA ${user.reraNumber}`}
           </div>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
             Found via:{" "}

@@ -19,6 +19,12 @@ const WELCOMED_OPTIONS: { value: "yes" | "no"; label: string }[] = [
   { value: "no", label: "Not welcomed" },
 ];
 
+const SELLER_TYPE_OPTIONS: { value: "owner" | "agent" | "unset"; label: string }[] = [
+  { value: "owner", label: "Owner" },
+  { value: "agent", label: "Agent / broker" },
+  { value: "unset", label: "Not answered" },
+];
+
 const SORT_OPTIONS: { value: AdminUserSort; label: string }[] = [
   { value: "createdAt_desc", label: "Newest first" },
   { value: "createdAt_asc", label: "Oldest first" },
@@ -34,6 +40,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const q = str(sp.q);
   const role = str(sp.role) as UserRole | undefined;
   const welcomed = str(sp.welcomed) as "yes" | "no" | undefined;
+  const sellerType = str(sp.sellerType) as "owner" | "agent" | "unset" | undefined;
   const from = str(sp.from);
   const to = str(sp.to);
   const sort = str(sp.sort) as AdminUserSort | undefined;
@@ -43,6 +50,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     q,
     role,
     welcomed,
+    sellerType,
     from,
     to,
     sort,
@@ -95,6 +103,17 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             <SelectField name="welcomed" defaultValue={welcomed ?? ""} style={selectStyle}>
               <option value="">Any status</option>
               {WELCOMED_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+
+          <Field label="Posts as">
+            <SelectField name="sellerType" defaultValue={sellerType ?? ""} style={selectStyle}>
+              <option value="">Anyone</option>
+              {SELLER_TYPE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
