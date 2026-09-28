@@ -42,6 +42,47 @@ Related: [`instant-alerts-paid-message-notifications.md`](instant-alerts-paid-me
   message has no such dependency. Reach is limited: ad-acquired sellers post from mobile web and few
   come back, so keep WhatsApp for one-off reminders to people who abandoned a checkout.
 
+## The message as a card, and counting boosts it sells (added 2026-09-28)
+
+- **Card, not a wall of text.** `Message.card` (JSON, migration `20260928210000_message_card`) holds
+  a `BoostOfferMessageCardDto` built by `buildBoostMessageCard`. It has:
+  - the ad's cover photo (the small `preview` variant, the same one the push uses), shown on the
+    left of the title;
+  - the title in bold, and the "Area, City" location with a pin icon;
+  - the headline ("Boost it for 7 days for ₹99"), plus a highlighted offer line while a promo is
+    live;
+  - the same paragraphs as before;
+  - a green **Boost my ad · ₹X** button instead of the raw link.
+
+  Web (`BoostOfferMessageCard.tsx`) and mobile (`BoostOfferMessageCard.tsx`) draw the card whenever
+  `message.card.kind === "boost_offer"`.
+- **`body` is unchanged plain text,** built from the same sentences (`buildBoostMessageBody`). Older
+  app builds, the push preview, the inbox's last-message line and the admin message views all keep
+  using it, so nothing breaks for clients that don't know the card.
+- **The mobile button follows `BoostButton`.** iOS opens the website's boost dialog, because of
+  Apple Guideline 3.1.1. Android opens `BoostBundleCard` in a modal, with the promo auto-applied and
+  `ignorePlacementSetting`, so the "show selector on preview" setting doesn't hide it. The card
+  needs the next mobile build; until then the app shows the text version.
+- **Counting boosts from the message.** New column `Payment.source` (migration
+  `20260928210100_payment_source`); the allowed values are in `@bhavano/types/purchaseSource`
+  (`admin_boost_message`). How it gets there:
+  - Both the card button and the text link go to
+    `/my-listings?openBoost=<id>&src=admin_boost_message` (`boostMessagePath`).
+  - Web: `AutoOpenPurchaseModal` reads `src`, and it travels through `BoostProvider`,
+    `BoostBundlePicker`, `startBoostCheckout` and `createBoostOrderAction` to
+    `POST /payments/orders { source }`.
+  - Android: the card passes `source` to `BoostBundleCard` itself.
+  - The BFF only accepts listed values (`@IsIn(PURCHASE_SOURCES)`) and stores the value on the
+    payment, including a free Agent Pro credit boost.
+  - Web GTM `begin_checkout_boost` and `boost_purchase` events carry `source` too.
+- **Where to see it:** the admin Payments page (`/subscriptions`) has a **Source** column and a
+  **Source** filter. Set Source = "Admin boost message" and Status = Paid to list every boost the
+  message sold.
+- **Limitation:** this counts boosts bought *through the message's button or link*. A seller who
+  reads the message and later boosts from My Listings isn't tagged. Comparing boost dates against
+  the in-app `ListingNotificationLog` rows would catch those, if a looser "after the message"
+  figure is ever wanted.
+
 ## Automatic nudge (`admin/boost-nudge.job.ts`) — off by default
 
 Hourly at :15, 10:00–19:59 IST, **only if `BOOST_NUDGE_AUTO_ENABLED=true`**. Finds live, approved,
