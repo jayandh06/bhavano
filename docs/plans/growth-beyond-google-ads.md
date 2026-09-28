@@ -60,9 +60,16 @@ Related: [`google-ads-performance-analysis-2026-09.md`](google-ads-performance-a
   - GTM event: `owner_share_whatsapp {listingId, placement}`. `share_listing` now also carries
     `owner`.
 - **Mobile:** `sharedWebUrl()` in `apps/mobile/src/lib/appWebUrl.ts` tags app shares
-  (`utm_source=app_share`).
+  (`utm_source=app_share`). The post-success screen has the same "Get enquiries sooner" card
+  (`apps/mobile/src/components/home/OwnerWhatsAppShare.tsx`), which opens `wa.me` with the message
+  pre-written; a tap records the synthetic page view `/post/success/share-whatsapp`. Both ship with
+  the next app build.
+- **"Your ad is live" email:** a second button, "Share on WhatsApp", opens `wa.me` with the same
+  pre-written message and an `owner_share` link (`NotificationsService.notifyListingPosted`; label
+  in `notification-templates/email/listing-posted/secondaryButtonLabel.txt`).
 - **Not done yet:**
-  - a share button in the "your ad is live" push or WhatsApp notification;
+  - a share button in the "your ad is live" WhatsApp message: the MSG91 template is Meta-approved
+    wording, so it needs a new template submitted and approved;
   - measurement of shares per listing, visits from shares and enquiries from shares. For
     visits, query `Visit` where `medium = 'share'`, grouped by `campaign`/`source`.
 
