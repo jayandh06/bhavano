@@ -17,7 +17,7 @@ function makeService(conversations: unknown[]) {
   return { service: new MessagingService(prisma, notNotified, { recordInterest: jest.fn().mockResolvedValue({ interested: true, notified: false }) } as never), prisma };
 }
 
-function conversation(posterId: string, inquirerId: string, premiumUntil: Date | null, type: 'inquiry' | 'moderation' = 'inquiry') {
+function conversation(posterId: string, inquirerId: string, premiumUntil: Date | null, type: 'inquiry' | 'moderation' | 'announcement' = 'inquiry') {
   return {
     id: 'c1',
     listingId: 'l1',
@@ -77,6 +77,67 @@ describe('MessagingService.listConversations — unified inquiry + moderation in
     expect(result.type).toBe('moderation');
     expect(result.otherPartyName).toBe('Bhavano Admin');
     expect(result.otherPartyIsVerifiedBuyer).toBe(false);
+  });
+});
+
+describe('MessagingService — announcement threads (the Boost message)', () => {
+  it("labels them \"Bhavano Admin\" — never the sending admin's own name", async () => {
+    // The admin user has a real display name; it must not reach the owner's inbox.
+    const row = conversation('owner1', 'admin1', future(), 'announcement');
+    row.inquirer.name = 'Priya Sharma';
+    const { service } = makeService([row]);
+    const [result] = await service.listConversations('owner1');
+    expect(result.type).toBe('announcement');
+    expect(result.otherPartyName).toBe('Bhavano Admin');
+    expect(JSON.stringify(result)).not.toContain('Priya');
+    expect(result.otherPartyIsVerifiedBuyer).toBe(false);
+  });
+
+  function makeAnnouncementService(listing: unknown) {
+    const prisma = {
+      listing: { findUnique: jest.fn().mockResolvedValue(listing) },
+      conversation: { upsert: jest.fn().mockResolvedValue({ id: 'conv1' }) },
+      message: {
+        create: jest.fn().mockResolvedValue({
+          id: 'm1',
+          conversationId: 'conv1',
+          senderId: 'admin1',
+          body: 'hello',
+          createdAt: new Date('2026-09-28T10:00:00Z'),
+          readAt: null,
+          deletedAt: null,
+        }),
+      },
+    } as unknown as PrismaService;
+    return {
+      service: new MessagingService(prisma, notNotified, {} as never),
+      prisma,
+    };
+  }
+
+  it('creates one announcement thread per listing and admin, then the message in it', async () => {
+    const { service, prisma } = makeAnnouncementService({ ownerId: 'owner1', title: 'A listing' });
+
+    const result = await service.sendAnnouncement('l1', 'admin1', 'hello');
+
+    expect(prisma.conversation.upsert).toHaveBeenCalledWith({
+      where: { listingId_inquirerId_type: { listingId: 'l1', inquirerId: 'admin1', type: 'announcement' } },
+      update: {},
+      create: { listingId: 'l1', inquirerId: 'admin1', posterId: 'owner1', type: 'announcement' },
+    });
+    expect(prisma.message.create).toHaveBeenCalledWith({
+      data: { conversationId: 'conv1', senderId: 'admin1', body: 'hello' },
+    });
+    expect(result).toMatchObject({ conversationId: 'conv1', recipientId: 'owner1', listingTitle: 'A listing' });
+  });
+
+  it('refuses a missing listing, and an admin messaging about their own listing', async () => {
+    await expect(makeAnnouncementService(null).service.sendAnnouncement('l1', 'admin1', 'x')).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(
+      makeAnnouncementService({ ownerId: 'admin1', title: 'Mine' }).service.sendAnnouncement('l1', 'admin1', 'x'),
+    ).rejects.toThrow("can't send an announcement about your own listing");
   });
 });
 

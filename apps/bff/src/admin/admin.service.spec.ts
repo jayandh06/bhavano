@@ -9,6 +9,8 @@ import { BoostPricingSettingsService } from '../plans/boost-pricing-settings.ser
 import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
 import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pricing-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
+import type { PushService } from '../push/push.service';
+import type { MessagingGateway } from '../messaging/messaging.gateway';
 import type { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { DEFAULT_BOOST_PRICE_SETTINGS } from '@bhavano/types/boostPricing';
 import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
@@ -58,10 +60,23 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
     getSettings: jest.fn().mockResolvedValue(DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS),
   } as unknown as InstantAlertsPricingSettingsService;
 
+  const messagingService = {
+    sendAnnouncement: jest.fn().mockResolvedValue({
+      conversationId: 'conv1',
+      message: { id: 'msg1', conversationId: 'conv1', senderId: 'admin1', body: 'x', createdAt: '', readAt: null, deletedAt: null },
+      recipientId: 'owner1',
+      listingTitle: 'A listing',
+    }),
+    getUnreadTotal: jest.fn().mockResolvedValue(1),
+    getListingPushImageUrl: jest.fn().mockResolvedValue(undefined),
+  } as unknown as MessagingService;
+  const pushService = { notifyNewMessage: jest.fn().mockResolvedValue(undefined) } as unknown as PushService;
+  const messagingGateway = { broadcastMessage: jest.fn(), notifyUnread: jest.fn() } as unknown as MessagingGateway;
+
   const service = new AdminService(
     prisma,
     {} as ListingsService,
-    {} as MessagingService,
+    messagingService,
     notificationsService,
     {} as RateLimitService,
     {} as ContactRevealService,
@@ -71,8 +86,10 @@ function makeService(overrides: Record<string, unknown> = {}, notificationsOverr
     { getSettings: jest.fn().mockResolvedValue({ propertyListingFee: 0, coworkingPgStorageListingFee: 0, furnitureInteriorsListingFee: 0, allowLivePublishWithPendingPayment: false }) } as unknown as import('../plans/platform-fee-settings.service').PlatformFeeSettingsService,
     {} as AccountDeletionService,
     {} as SavedSearchesService,
+    pushService,
+    messagingGateway,
   );
-  return { service, prisma, notificationsService };
+  return { service, prisma, notificationsService, messagingService, pushService, messagingGateway };
 }
 
 function listingRow(overrides: Record<string, unknown> = {}) {
@@ -468,6 +485,98 @@ describe('AdminService.sendBoostPromotion', () => {
     expect(result.failed).toBe(2);
     expect(result.results.find((r) => r.listingId === 'fresh')?.success).toBe(true);
     expect(result.results.find((r) => r.listingId === 'missing')?.error).toBe('Listing not found');
+  });
+});
+
+/** The in-app channel is the free way to send the same pitch. What matters is that it reaches the
+ * owner's inbox and push exactly once, is recorded so the Listings page can show it, and does not
+ * share a cooldown with email/WhatsApp — otherwise an email sent yesterday would silently block the
+ * message the owner is actually more likely to see. */
+describe('AdminService.sendBoostPromotion — in-app channel', () => {
+  it('delivers an announcement, broadcasts it, pushes it and logs an in_app row', async () => {
+    const { service, prisma, notificationsService, messagingService, pushService, messagingGateway } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow()]) },
+    });
+
+    const result = await service.sendBoostPromotion(['listing1'], { channel: 'in_app', adminId: 'admin1' });
+
+    expect(notificationsService.notifyBoostPromotion).not.toHaveBeenCalled();
+    expect(messagingService.sendAnnouncement).toHaveBeenCalledWith(
+      'listing1',
+      'admin1',
+      expect.stringContaining('boost it for 7 days for ₹199'),
+    );
+    expect(messagingGateway.broadcastMessage).toHaveBeenCalledWith('conv1', expect.objectContaining({ id: 'msg1' }));
+    // The push and unread update are fire-and-forget, so let their promise chain settle.
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(messagingGateway.notifyUnread).toHaveBeenCalledWith('owner1', { conversationId: 'conv1', unreadCount: 1 });
+    expect(pushService.notifyNewMessage).toHaveBeenCalledWith(
+      'owner1',
+      expect.objectContaining({ id: 'msg1' }),
+      'Bhavano Admin',
+      expect.objectContaining({ unreadCount: 1, listingTitle: 'A listing' }),
+    );
+    expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
+      data: { listingId: 'listing1', kind: 'boost_promo', channel: 'in_app', providerMessageId: 'msg1' },
+    });
+    expect(result).toEqual({ sent: 1, failed: 0, results: [{ listingId: 'listing1', success: true }] });
+  });
+
+  it('has its own cooldown: the in-app query looks only at in_app rows, the outbound one excludes them', async () => {
+    const inApp = makeService({ listing: { findMany: jest.fn().mockResolvedValue([listingRow()]) } });
+    await inApp.service.sendBoostPromotion(['listing1'], { channel: 'in_app', adminId: 'admin1' });
+    const inAppWhere = (inApp.prisma.listing.findMany as jest.Mock).mock.calls[0][0].include.notificationLogs.where;
+    expect(inAppWhere.channel).toBe('in_app');
+
+    const outbound = makeService({ listing: { findMany: jest.fn().mockResolvedValue([listingRow()]) } });
+    await outbound.service.sendBoostPromotion(['listing1']);
+    const outboundWhere = (outbound.prisma.listing.findMany as jest.Mock).mock.calls[0][0].include.notificationLogs.where;
+    expect(outboundWhere.channel).toEqual({ not: 'in_app' });
+  });
+
+  it('refuses an ad already messaged inside the cooldown', async () => {
+    const { service, messagingService } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow({ notificationLogs: [{ id: 'log1' }] })]) },
+    });
+
+    const result = await service.sendBoostPromotion(['listing1'], { channel: 'in_app', adminId: 'admin1' });
+
+    expect(messagingService.sendAnnouncement).not.toHaveBeenCalled();
+    expect(result.results[0].error).toBe('Promoted in the last 14 days');
+  });
+
+  it('applies the same skip rules as the outbound send (sold listing)', async () => {
+    const { service, messagingService } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow({ status: 'sold' })]) },
+    });
+
+    const result = await service.sendBoostPromotion(['listing1'], { channel: 'in_app', adminId: 'admin1' });
+
+    expect(messagingService.sendAnnouncement).not.toHaveBeenCalled();
+    expect(result.results[0].error).toBe('Not a live listing — nothing to promote');
+  });
+
+  it('reports a failed delivery per listing instead of failing the batch', async () => {
+    const { service, prisma, messagingService } = makeService({
+      listing: { findMany: jest.fn().mockResolvedValue([listingRow(), listingRow({ id: 'listing2' })]) },
+    });
+    (messagingService.sendAnnouncement as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+
+    const result = await service.sendBoostPromotion(['listing1', 'listing2'], { channel: 'in_app', adminId: 'admin1' });
+
+    expect(result.results).toEqual([
+      { listingId: 'listing1', success: false, error: 'In-app message failed' },
+      { listingId: 'listing2', success: true },
+    ]);
+    // A failed delivery must not be logged as sent — the Listings page would then claim it was.
+    expect(prisma.listingNotificationLog.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('needs a sending admin', async () => {
+    const { service } = makeService();
+    await expect(service.sendBoostPromotion(['listing1'], { channel: 'in_app' })).rejects.toThrow(
+      'An in-app message needs a sending admin',
+    );
   });
 });
 

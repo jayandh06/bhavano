@@ -20,8 +20,10 @@ export type UserRole = "user" | "admin";
  * owner — this IS the soft-delete, there's no separate "deleted" state. */
 export type ModerationState = "approved" | "flagged";
 /** inquiry = buyer/seller chat about a listing; moderation = admin↔owner thread about a
- * flagged listing. Kept distinct so an admin's thread can't collide with a real buyer's. */
-export type ConversationType = "inquiry" | "moderation";
+ * flagged listing; announcement = staff-to-owner tip/offer about a listing (the Boost message).
+ * Kept distinct so an admin's thread can't collide with a real buyer's, and so a sales message
+ * can't be mistaken for a moderation warning. */
+export type ConversationType = "inquiry" | "moderation" | "announcement";
 export type LoginMethod = "otp" | "google" | "apple";
 export type RateLimitKind = "publish" | "view";
 /** Internal workflow state for a captured requirement — not a moderation state, since a
@@ -246,6 +248,8 @@ export interface ListingDetailDto extends ListingCardDto {
     boostPromo?: {
         emailCount: number;
         whatsappCount: number;
+        /** In-app "Bhavano" announcement messages (ConversationType `announcement`). */
+        inAppCount: number;
         /** Newest send on any channel, ISO. Null only when nothing was ever sent. */
         lastSentAt: string | null;
     };
@@ -600,6 +604,7 @@ export interface AdminListingRowDto {
     boostPromo?: {
         emailCount: number;
         whatsappCount: number;
+        inAppCount: number;
         lastSentAt: string | null;
     };
     viewCount: number;

@@ -77,6 +77,10 @@ enum ModerationState {
 enum ConversationType {
   inquiry
   moderation
+  /// Staff-to-owner promotional/tips thread about one listing (e.g. the Boost message). Kept apart
+  /// from `moderation` so a sales message can never read as a takedown warning. See
+  /// docs/plans/admin-in-app-boost-message.md.
+  announcement
 }
 
 /** Phase 0 of docs/plans/property-requirements-demand-side.md. `open` = captured, nobody has

@@ -17,7 +17,12 @@ import type {
   TransactionType,
 } from "@bhavano/types";
 import { priceWithWords } from "@bhavano/types/priceWords";
-import { fetchListingDetailAction, sendBoostPromotionAction, sendPostedNotificationAction } from "@/app/actions/admin";
+import {
+  fetchListingDetailAction,
+  sendBoostMessageAction,
+  sendBoostPromotionAction,
+  sendPostedNotificationAction,
+} from "@/app/actions/admin";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { ListingRowDetail } from "@/components/ListingRowDetail";
 import type { AdminListingSortField } from "@/lib/bff";
@@ -440,6 +445,18 @@ export function AdminListingsTable({
           >
             {pending ? "Sending…" : "Send boost promo"}
           </button>
+          {/* The same offer as an in-app message from "Bhavano Admin" in the owner's inbox (plus a
+            * push if they have the app). Free, and it has its own cooldown, so it can follow an
+            * email/WhatsApp promo. The "Boost promo" column counts these as "in-app". */}
+          <button
+            type="button"
+            onClick={() => void onSend(sendBoostMessageAction)}
+            disabled={pending}
+            style={secondaryActionButtonStyle}
+            title="Sends the owner an in-app Boost / Instant Alerts message from Bhavano Admin (push notification if they have the app). Free — the admin's own name is never shown."
+          >
+            {pending ? "Sending…" : "Send boost message (in-app)"}
+          </button>
           {pendingPostedCount > 0 && (
             <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
               {pendingPostedCount} on this page never got the posted notification
@@ -853,15 +870,21 @@ function PostedNotificationBadge({
  * Counts, not a yes/no, because unlike the posted acknowledgement this one repeats: it can go
  * again after its 14-day cooldown, and "3× email, last in July" is a different decision from
  * "1×, yesterday" when choosing whether to send another. An owner with both an email and a phone
- * gets one row per channel per send, so `2× email · 2× WhatsApp` means two sends, not four.
+ * gets one row per channel per send, so `2× email · 2× WhatsApp` means two sends, not four. "in-app"
+ * is the message from Bhavano Admin in the owner's inbox.
  *
  * "WhatsApp", not "SMS": the promotion has never gone out over SMS — the two channels are the
  * templated WhatsApp message and the email. */
-function BoostPromoBadge({ promo }: { promo?: { emailCount: number; whatsappCount: number; lastSentAt: string | null } }) {
+function BoostPromoBadge({
+  promo,
+}: {
+  promo?: { emailCount: number; whatsappCount: number; inAppCount: number; lastSentAt: string | null };
+}) {
   if (!promo) return dash;
   const parts = [
     promo.emailCount > 0 ? `${promo.emailCount}× email` : null,
     promo.whatsappCount > 0 ? `${promo.whatsappCount}× WhatsApp` : null,
+    promo.inAppCount > 0 ? `${promo.inAppCount}× in-app` : null,
   ].filter(Boolean);
   if (parts.length === 0) return <Badge label="Never sent" color="var(--muted)" borderColor="var(--border)" />;
   return (

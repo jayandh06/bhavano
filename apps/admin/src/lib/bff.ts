@@ -554,6 +554,19 @@ export function sendBoostPromotion(
   });
 }
 
+/** The same Boost promotion delivered as an in-app "Bhavano Admin" message in the owner's inbox
+ * (free; has its own cooldown, separate from the email/WhatsApp one) — see
+ * AdminService.sendBoostPromotion. */
+export function sendBoostMessage(
+  accessToken: string,
+  input: SendPostedNotificationInput,
+): Promise<SendPostedNotificationResponseDto> {
+  return authedBffFetch(accessToken, "/admin/listings/notify-boost-message", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export function fetchRateLimitSettings(accessToken: string): Promise<RateLimitSettingsDto> {
   return authedBffFetch(accessToken, "/admin/rate-limits", { cache: "no-store" });
 }

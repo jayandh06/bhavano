@@ -23,6 +23,15 @@ function toMessageDto(message: Message, opts: { revealDeletedBody?: boolean } = 
   };
 }
 
+/** How a staff-sent thread is labelled in the owner's inbox — always "Bhavano Admin", never the
+ * acting admin's personal name and never a phone number. `moderation` (takedown/fix) and
+ * `announcement` (tip/offer) share the label but stay separate thread types, so the inbox can
+ * still tell them apart and a sales message never lands inside a takedown conversation. */
+export const STAFF_SENDER_LABEL = 'Bhavano Admin';
+function staffLabel(type: string): string | null {
+  return type === 'moderation' || type === 'announcement' ? STAFF_SENDER_LABEL : null;
+}
+
 @Injectable()
 export class MessagingService {
   private readonly logger = new Logger(MessagingService.name);
@@ -118,6 +127,45 @@ export class MessagingService {
     });
   }
 
+  /** Staff-to-owner tip/offer about one listing (the Boost message) — a separate thread `type` from
+   * moderation, one per listing per sending admin. Creates the thread and the message together and
+   * returns what the caller needs for the realtime unread update and the push, exactly as
+   * `sendMessage` does: this service cannot broadcast (the gateway depends on it), so the caller
+   * does. The owner can reply; a reply lands in the sending admin's own inbox, same as moderation. */
+  async sendAnnouncement(
+    listingId: string,
+    adminId: string,
+    body: string,
+  ): Promise<{
+    conversationId: string;
+    message: MessageDto;
+    recipientId: string;
+    listingTitle: string;
+  }> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { ownerId: true, title: true },
+    });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.ownerId === adminId) {
+      throw new BadRequestException("You can't send an announcement about your own listing");
+    }
+    const conversation = await this.prisma.conversation.upsert({
+      where: { listingId_inquirerId_type: { listingId, inquirerId: adminId, type: 'announcement' } },
+      update: {},
+      create: { listingId, inquirerId: adminId, posterId: listing.ownerId, type: 'announcement' },
+    });
+    const message = await this.prisma.message.create({
+      data: { conversationId: conversation.id, senderId: adminId, body },
+    });
+    return {
+      conversationId: conversation.id,
+      message: toMessageDto(message),
+      recipientId: listing.ownerId,
+      listingTitle: listing.title,
+    };
+  }
+
   /** Unified owner/buyer inbox — buyer inquiries **and** admin↔owner moderation threads that
    * already have at least one non-deleted message. Empty moderation rows (created when an admin
    * merely opens a listing via `getOrCreateModerationThread`) stay out because of the
@@ -169,10 +217,7 @@ export class MessagingService {
           // to `otherParty.phone`, handing out contact info the paid reveal flow exists to gate
           // (see contact-reveal.service.ts). Moderation always reads as "Bhavano Admin" so an
           // individual admin's personal name never looks like a buyer in the unified inbox.
-          otherPartyName:
-            c.type === 'moderation'
-              ? 'Bhavano Admin'
-              : (otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller')),
+          otherPartyName: staffLabel(c.type) ?? (otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller')),
           otherPartyIsVerifiedBuyer,
           lastMessage: c.messages[0] ? toMessageDto(c.messages[0]) : null,
           unreadCount,
@@ -218,10 +263,7 @@ export class MessagingService {
       type: conversation.type,
       // See listConversations' identical fix — never the raw phone number; moderation is always
       // labeled as staff, not the acting admin's personal display name.
-      otherPartyName:
-        conversation.type === 'moderation'
-          ? 'Bhavano Admin'
-          : (otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller')),
+      otherPartyName: staffLabel(conversation.type) ?? (otherParty.name ?? (viewerIsPoster ? 'Buyer' : 'Seller')),
       listing: {
         id: conversation.listing.id,
         title: conversation.listing.title,

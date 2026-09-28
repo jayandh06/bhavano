@@ -86,7 +86,7 @@ async function ConversationList({ accessToken }: { accessToken: string }) {
                 * hands out who someone is. The listing is what the thread is about either way. */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold text-sm">{c.listingTitle}</span>
-                {c.type === "moderation" && (
+                {(c.type === "moderation" || c.type === "announcement") && (
                   <span className="text-[10.5px] font-bold text-muted border border-border rounded-md px-1.5 py-[1px] whitespace-nowrap">
                     From Bhavano
                   </span>

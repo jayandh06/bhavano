@@ -34,6 +34,7 @@ import {
   sendMessage,
   sendPostedNotification,
   sendBoostPromotion,
+  sendBoostMessage,
   setCoverPhoto,
   setListingStatus,
   setReviewed,
@@ -170,6 +171,22 @@ export async function sendBoostPromotionAction(
     return result;
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to send promotion" };
+  }
+}
+
+/** Backs the listings dashboard's bulk "Send boost message" action — the in-app counterpart of
+ * the promo above. Delivered to the owner's inbox as "Bhavano Admin"; the acting admin's name is
+ * never sent anywhere. */
+export async function sendBoostMessageAction(
+  listingIds: string[],
+): Promise<SendPostedNotificationResponseDto | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const result = await sendBoostMessage(accessToken, { listingIds });
+    revalidatePath("/");
+    return result;
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to send message" };
   }
 }
 

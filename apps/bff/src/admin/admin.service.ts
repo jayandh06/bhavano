@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   ActivityEventDto,
@@ -69,6 +69,10 @@ import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
 import { UpdateInstantAlertsPricingDto } from './dto/update-instant-alerts-pricing.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
+import { PushService } from '../push/push.service';
+import { MessagingGateway } from '../messaging/messaging.gateway';
+import { STAFF_SENDER_LABEL } from '../messaging/messaging.service';
+import { buildBoostMessageBody } from './boost-message';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
@@ -236,12 +240,17 @@ const BOOST_PROMO_NOTIFICATION_KIND = 'boost_promo';
  * two in a week is spam, and an owner who reads it that way stops reading everything else. */
 const PROMO_COOLDOWN_DAYS = 14;
 
+/** `ListingNotificationLog.channel` for a message delivered inside the app (an announcement thread). */
+const IN_APP_CHANNEL = 'in_app';
+
 /** The duration quoted in the message — the cheaper of the two, as the entry price. The dialog
  * the link opens offers both. */
 const PROMO_BOOST_DAYS: BoostDurationDays = 7;
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly listingsService: ListingsService,
@@ -255,6 +264,8 @@ export class AdminService {
     private readonly platformFeeSettingsService: PlatformFeeSettingsService,
     private readonly accountDeletion: AccountDeletionService,
     private readonly savedSearchesService: SavedSearchesService,
+    private readonly pushService: PushService,
+    private readonly messagingGateway: MessagingGateway,
   ) {}
 
   listListings(query: ListAdminListingsDto): Promise<AdminListingsPage> {
@@ -1059,7 +1070,12 @@ export class AdminService {
    *
    * Sequential rather than `Promise.all`: one external send (SMTP / WhatsApp) per listing.
    */
-  async sendBoostPromotion(listingIds: string[]): Promise<SendPostedNotificationResponseDto> {
+  async sendBoostPromotion(
+    listingIds: string[],
+    opts: { channel?: 'outbound' | 'in_app'; adminId?: string } = {},
+  ): Promise<SendPostedNotificationResponseDto> {
+    const inApp = opts.channel === 'in_app';
+    if (inApp && !opts.adminId) throw new BadRequestException('An in-app message needs a sending admin');
     const cooldownStart = new Date(Date.now() - PROMO_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
     const [listings, boostPrices, alertsPrices, promo] = await Promise.all([
       this.prisma.listing.findMany({
@@ -1069,7 +1085,14 @@ export class AdminService {
           city: true,
           area: true,
           notificationLogs: {
-            where: { kind: BOOST_PROMO_NOTIFICATION_KIND, sentAt: { gte: cooldownStart } },
+            // Each surface has its own cooldown: an email/WhatsApp promotion two days ago should not
+            // block the in-app message (a different, free surface the owner may actually see), and
+            // the other way round. Within a surface it is still "anything recently", not "how many".
+            where: {
+              kind: BOOST_PROMO_NOTIFICATION_KIND,
+              sentAt: { gte: cooldownStart },
+              channel: inApp ? IN_APP_CHANNEL : { not: IN_APP_CHANNEL },
+            },
             take: 1,
           },
         },
@@ -1125,6 +1148,39 @@ export class AdminService {
 
       const boostBasePrice = boostPriceFor(listing.category, PROMO_BOOST_DAYS, boostPrices);
       const bundleBasePrice = boostBasePrice + alertsPrices.instantAlertsPrice;
+      const promoOffer = offerPercent
+        ? {
+            discountPercent: offerPercent,
+            boostBasePrice,
+            bundleBasePrice,
+            endsOn: formatOfferEnd(promo!.expiresAt),
+          }
+        : undefined;
+
+      if (inApp) {
+        const site = process.env.PUBLIC_SITE_URL ?? 'https://www.bhavano.com';
+        const boostLink = `${site}/my-listings?openBoost=${listing.id}`;
+        try {
+          await this.sendInAppBoostMessage(opts.adminId!, listing, {
+            title: listing.title,
+            location: `${listing.area.name}, ${listing.city.name}`,
+            boostPrice: offerPercent ? promoPriceFor(boostBasePrice, offerPercent) : boostBasePrice,
+            bundlePrice: offerPercent ? promoPriceFor(bundleBasePrice, offerPercent) : bundleBasePrice,
+            boostDays: PROMO_BOOST_DAYS,
+            offer: promoOffer,
+            boostLink,
+            bundleLink: `${boostLink}&withAlerts=1`,
+          });
+          results.push({ listingId, success: true });
+        } catch (error) {
+          this.logger.warn(
+            `In-app boost message failed for listing ${listingId}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          results.push({ listingId, success: false, error: 'In-app message failed' });
+        }
+        continue;
+      }
+
       const channels = await this.notificationsService.notifyBoostPromotion(
         listing.owner,
         {
@@ -1189,6 +1245,43 @@ export class AdminService {
       failed: results.filter((r) => !r.success).length,
       results,
     };
+  }
+
+  /** Delivers one Boost message into the owner's inbox as a "Bhavano" announcement thread: the
+   * message, the realtime unread update for any open client, and the mobile push — the same three
+   * things `MessagingController.sendMessage` does for a chat message, because this is one. The
+   * push and the unread update are best-effort side effects of a message that already exists, so
+   * their failure never fails the send. The log row is written last and carries the message id so a
+   * row can always be traced back to the exact message. */
+  private async sendInAppBoostMessage(
+    adminId: string,
+    listing: { id: string; title: string },
+    input: Parameters<typeof buildBoostMessageBody>[0],
+  ): Promise<void> {
+    const { conversationId, message, recipientId, listingTitle } = await this.messagingService.sendAnnouncement(
+      listing.id,
+      adminId,
+      buildBoostMessageBody(input),
+    );
+    this.messagingGateway.broadcastMessage(conversationId, message);
+    void this.messagingService
+      .getUnreadTotal(recipientId)
+      .then(async (unreadCount) => {
+        this.messagingGateway.notifyUnread(recipientId, { conversationId, unreadCount });
+        const imageUrl = await this.messagingService.getListingPushImageUrl(listing.id).catch(() => undefined);
+        await this.pushService.notifyNewMessage(recipientId, message, STAFF_SENDER_LABEL, { unreadCount, listingTitle, imageUrl });
+      })
+      .catch((error) =>
+        this.logger.warn(`Post-send unread/push step failed: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    await this.prisma.listingNotificationLog.create({
+      data: {
+        listingId: listing.id,
+        kind: BOOST_PROMO_NOTIFICATION_KIND,
+        channel: IN_APP_CHANNEL,
+        providerMessageId: message.id,
+      },
+    });
   }
 
   /** Merges several tables that each already carry a userId-ish field + timestamp (logins,

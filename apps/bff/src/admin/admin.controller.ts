@@ -122,6 +122,18 @@ export class AdminController {
     return this.adminService.sendBoostPromotion(dto.listingIds);
   }
 
+  /** The same Boost promotion, delivered as an in-app "Bhavano" message in the owner's inbox
+   * instead of email/WhatsApp — see AdminService.sendBoostPromotion. Free, and the one channel
+   * that still works when no discount is running (the WhatsApp template needs an offer end date).
+   * Has its own cooldown, separate from the email/WhatsApp one. */
+  @Post('listings/notify-boost-message')
+  sendBoostMessage(
+    @Body() dto: SendPostedNotificationDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<SendPostedNotificationResponseDto> {
+    return this.adminService.sendBoostPromotion(dto.listingIds, { channel: 'in_app', adminId: user.id });
+  }
+
   @Patch('listings/:id/review')
   setReviewed(@Param('id') id: string, @Body() dto: SetReviewedDto): Promise<ListingDetailDto> {
     return this.adminService.setReviewed(id, dto.adminReviewed);

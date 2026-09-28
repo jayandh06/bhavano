@@ -101,7 +101,7 @@ export default function MessagesScreen() {
                     <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }} numberOfLines={1}>
                       {item.listingTitle}
                     </Text>
-                    {item.type === "moderation" && (
+                    {(item.type === "moderation" || item.type === "announcement") && (
                       <Text
                         style={{
                           fontSize: 10.5,

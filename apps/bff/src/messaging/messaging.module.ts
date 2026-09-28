@@ -11,6 +11,6 @@ import { ListingsModule } from '../listings/listings.module';
   imports: [PushModule, NotificationsModule, ListingsModule],
   controllers: [MessagingController, MessagesController],
   providers: [MessagingService, MessagingGateway],
-  exports: [MessagingService],
+  exports: [MessagingService, MessagingGateway],
 })
 export class MessagingModule {}

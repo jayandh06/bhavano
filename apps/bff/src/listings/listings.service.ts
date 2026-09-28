@@ -777,6 +777,7 @@ export class ListingsService {
         boostPromo: {
           emailCount: promos.filter((log) => log.channel === 'email').length,
           whatsappCount: promos.filter((log) => log.channel === 'whatsapp').length,
+          inAppCount: promos.filter((log) => log.channel === 'in_app').length,
           // Ordered newest-first by the include, so the first row is the latest send on any
           // channel — an owner with both gets two rows a second apart, and either answers "when".
           lastSentAt: promos[0]?.sentAt.toISOString() ?? null,
