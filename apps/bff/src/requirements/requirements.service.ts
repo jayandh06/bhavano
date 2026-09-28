@@ -180,39 +180,91 @@ export class RequirementsService {
     return unique.filter((id) => valid.has(id));
   }
 
+  /**
+   * Created once, at the end of the questions, with every answer — never half-filled. A
+   * requirement missing its city, areas, buy/rent or property type is too vague for anyone to act
+   * on, so it is refused rather than saved and "refined later". See
+   * docs/plans/requirement-refinement-questions.md.
+   */
   async create(userId: string, dto: CreateRequirementDto): Promise<RequirementDto> {
-    // The one thing that is refused rather than dropped: without a city nothing else in the row
-    // can be matched, shown to an agent, or even refined (areas belong to a city).
-    const city = await this.prisma.city.findUnique({ where: { id: dto.cityId }, select: { id: true } });
+    const city = await this.prisma.city.findUnique({ where: { id: dto.cityId }, select: { id: true, name: true } });
     if (!city) throw new BadRequestException('Pick a city first');
 
-    // The capture must never fail on a detail — it is the part that works — so anything that
-    // doesn't fit (a foreign area id, a facet the category doesn't have) is dropped, not refused.
-    const areaIds = await this.areasInCity(dto.cityId, dto.areaIds ?? (dto.areaId ? [dto.areaId] : []));
-    const bedroomOptions = [...new Set(dto.bedroomOptions ?? (dto.bedrooms ? [dto.bedrooms] : []))].sort((a, b) => a - b);
-    const attributes = dto.category && dto.attributes
-      ? sanitizeRequirementAttributes(dto.category, dto.transactionType, dto.attributes).attributes
+    const category = dto.category;
+    const transactionType = dto.transactionType;
+    if (category && transactionType && !isValidRequirementTransaction(category, transactionType)) {
+      throw new BadRequestException(`A ${category} can't be had on ${transactionType}`);
+    }
+
+    // A foreign area id or a facet the category doesn't have is dropped, not refused — web sends
+    // the browse page's own filters along, and those can carry more than a requirement holds.
+    const areaIds = await this.areasInCity(city.id, dto.areaIds ?? (dto.areaId ? [dto.areaId] : []));
+    const size = category ? sizeQuestionFor(category) : undefined;
+    const bedroomOptions =
+      size?.kind === 'bedrooms'
+        ? [...new Set(dto.bedroomOptions ?? (dto.bedrooms ? [dto.bedrooms] : []))].sort((a, b) => a - b)
+        : [];
+    const minAreaSqft = size?.kind === 'area' ? dto.minAreaSqft : undefined;
+    const maxAreaSqft = size?.kind === 'area' ? dto.maxAreaSqft : undefined;
+    const areaUnit = size?.kind === 'area' && (minAreaSqft !== undefined || maxAreaSqft !== undefined) ? dto.areaUnit : undefined;
+    if (minAreaSqft !== undefined && maxAreaSqft !== undefined && minAreaSqft > maxAreaSqft) {
+      throw new BadRequestException('The smallest size is larger than the largest');
+    }
+    if (dto.minPrice !== undefined && dto.maxPrice !== undefined && dto.minPrice > dto.maxPrice) {
+      throw new BadRequestException('The lowest budget is higher than the highest');
+    }
+    const attributes = category && dto.attributes
+      ? sanitizeRequirementAttributes(category, transactionType, dto.attributes).attributes
       : {};
-    const criteria = { ...dto, areaIds, bedroomOptions };
-    const savedSearchId = await this.tryCreateAlert(userId, criteria);
+
+    const criteria: RequirementCriteria = {
+      category,
+      transactionType,
+      cityId: city.id,
+      areaIds,
+      bedroomOptions,
+      minPrice: dto.minPrice,
+      maxPrice: dto.maxPrice,
+      minAreaSqft,
+      maxAreaSqft,
+      areaUnit,
+      attributes,
+    };
+    const missing = missingForLead(criteria);
+    if (missing.length > 0) throw new BadRequestException(`Add ${describeRequirementGaps(missing)} first`);
+
+    const names = await this.prisma.area.findMany({ where: { id: { in: areaIds } }, select: { id: true, name: true } });
+    const nameById = new Map(names.map((area) => [area.id, area.name]));
+    const searchLabel = formatRequirementLabel(criteria, {
+      cityName: city.name,
+      areaNames: areaIds.map((id) => nameById.get(id)).filter((name): name is string => Boolean(name)),
+    });
+
+    const savedSearchId = await this.tryCreateAlert(userId, { ...dto, searchLabel, areaIds, bedroomOptions });
 
     const requirement = await this.prisma.requirement.create({
       data: {
         seekerId: userId,
-        searchLabel: dto.searchLabel,
-        category: dto.category,
-        transactionType: dto.transactionType,
-        cityId: dto.cityId,
-        areaId: dto.areaId ?? areaIds[0],
+        searchLabel,
+        originalSearchLabel: dto.searchLabel,
+        category,
+        transactionType,
+        cityId: city.id,
+        areaId: areaIds[0],
         areaIds,
         minPrice: dto.minPrice,
         maxPrice: dto.maxPrice,
-        bedrooms: dto.bedrooms ?? bedroomOptions[0],
+        bedrooms: bedroomOptions[0],
         bedroomOptions,
+        minAreaSqft,
+        maxAreaSqft,
+        areaUnit,
         attributes: Object.keys(attributes).length ? attributes : undefined,
         landingPath: dto.landingPath,
-        note: dto.note,
+        note: dto.note?.trim() || undefined,
         moveInBy: dto.moveInBy ? new Date(dto.moveInBy) : undefined,
+        // Every question was in front of them before this was sent.
+        refinedAt: new Date(),
         expiresAt: expiryFromNow(),
         savedSearchId,
         // Stamped at the moment they agreed, and only when they actually did — see the field's
@@ -230,7 +282,7 @@ export class RequirementsService {
     });
     if (seeker) {
       await this.notificationsService
-        .notifyRequirementCaptured(seeker, dto.searchLabel, savedSearchId !== null)
+        .notifyRequirementCaptured(seeker, searchLabel, savedSearchId !== null)
         .catch((error: unknown) => {
           this.logger.error(`Requirement ${requirement.id} captured but confirmation failed: ${String(error)}`);
           return null;

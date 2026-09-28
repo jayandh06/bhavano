@@ -18,9 +18,7 @@ import type { ListingCategory, TransactionType } from '@bhavano/types';
 import type { AreaUnit } from '@bhavano/types/areaUnit';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { MAX_REQUIREMENT_AREAS, type RequirementAttributes } from '@bhavano/types/requirementQuestions';
-import { LISTING_CATEGORIES, TRANSACTION_TYPES } from './create-requirement.dto';
-
-const AREA_UNITS: AreaUnit[] = ['sqft', 'sqm', 'acre', 'hectare', 'cent'];
+import { AREA_UNITS, LISTING_CATEGORIES, TRANSACTION_TYPES } from './create-requirement.dto';
 
 /**
  * One step of the refinement questions — docs/plans/requirement-refinement-questions.md.

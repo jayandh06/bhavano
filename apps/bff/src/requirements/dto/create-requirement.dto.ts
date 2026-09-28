@@ -15,6 +15,7 @@ import {
   MinLength,
 } from 'class-validator';
 import type { ListingCategory, TransactionType } from '@bhavano/types';
+import type { AreaUnit } from '@bhavano/types/areaUnit';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { MAX_REQUIREMENT_AREAS, type RequirementAttributes } from '@bhavano/types/requirementQuestions';
 
@@ -31,12 +32,18 @@ export const LISTING_CATEGORIES: ListingCategory[] = [
   'commercial',
 ];
 export const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
+export const AREA_UNITS: AreaUnit[] = ['sqft', 'sqm', 'acre', 'hectare', 'cent'];
 
 /** Mirrors CreateSavedSearchDto's criteria vocabulary deliberately — the same fields the matcher
- * already speaks, so one prompt can create both without translating between two shapes. */
+ * already speaks, so one prompt can create both without translating between two shapes.
+ *
+ * Sent once, at the end of the questions, with every answer — a requirement is only created
+ * complete (city, 1–5 areas, buy/rent, property type). See
+ * docs/plans/requirement-refinement-questions.md. */
 export class CreateRequirementDto {
   /** How the search was described to the seeker, e.g. "2 BHK apartments for rent in Koramangala,
-   * Bengaluru". Doubles as the alert's name when one is created alongside. */
+   * Bengaluru" — kept as `originalSearchLabel`. The stored `searchLabel` is written from the
+   * answers, the same way a refinement rewrites it. */
   @IsString()
   @MinLength(1)
   @MaxLength(200)
@@ -95,6 +102,24 @@ export class CreateRequirementDto {
   @Min(1, { each: true })
   @Max(MAX_BEDROOMS, { each: true })
   bedroomOptions?: number[];
+
+  /** Plot / commercial / storage size, in sqft. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  minAreaSqft?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  maxAreaSqft?: number;
+
+  /** How the size was entered — display only. */
+  @IsOptional()
+  @IsIn(AREA_UNITS)
+  areaUnit?: AreaUnit;
 
   /** Facet filters the search had set. Checked against the category in the service, where an
    * unknown key is dropped rather than failing the capture. */

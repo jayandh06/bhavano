@@ -29,6 +29,11 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
       maxPrice: data.maxPrice ?? null,
       bedrooms: data.bedrooms ?? null,
       bedroomOptions: data.bedroomOptions ?? [],
+      minAreaSqft: data.minAreaSqft ?? null,
+      maxAreaSqft: data.maxAreaSqft ?? null,
+      areaUnit: data.areaUnit ?? null,
+      originalSearchLabel: data.originalSearchLabel ?? null,
+      refinedAt: data.refinedAt ?? null,
       attributes: data.attributes ?? null,
       landingPath: data.landingPath ?? null,
       savedSearchId: data.savedSearchId ?? null,
@@ -111,9 +116,10 @@ describe('RequirementsService.create', () => {
 
     const result = await service.create('u1', dto);
 
-    expect(requirementCreate.mock.calls[0][0].data).toMatchObject({
+    const data = requirementCreate.mock.calls[0][0].data;
+    expect(data).toMatchObject({
       seekerId: 'u1',
-      searchLabel: dto.searchLabel,
+      originalSearchLabel: dto.searchLabel,
       category: 'apartment',
       transactionType: 'rent',
       cityId: 'c1',
@@ -123,9 +129,57 @@ describe('RequirementsService.create', () => {
       landingPath: dto.landingPath,
       savedSearchId: 'ss1',
     });
+    // Written from the answers, like a refinement, rather than trusting the page heading.
+    expect(data.searchLabel).toContain('Area a1');
+    expect(data.searchLabel).toContain('Bengaluru');
+    expect(data.refinedAt).toBeInstanceOf(Date);
     // The alert reuses the same criteria vocabulary, with the label as its name.
-    expect(savedSearchCreate.mock.calls[0][1]).toMatchObject({ name: dto.searchLabel, category: 'apartment' });
+    expect(savedSearchCreate.mock.calls[0][1]).toMatchObject({ name: data.searchLabel, category: 'apartment' });
     expect(result.hasAlert).toBe(true);
+    expect(result.isLeadReady).toBe(true);
+  });
+
+  it.each([
+    ['an area', { areaId: undefined }, /area/],
+    ['buy or rent', { transactionType: undefined }, /buying or renting/],
+    ['the property type', { category: undefined }, /property type/],
+  ])('refuses a requirement without %s — it is created complete or not at all', async (_gap, overrides, message) => {
+    const { service, requirementCreate, savedSearchCreate } = make();
+
+    await expect(service.create('u1', { ...dto, ...overrides })).rejects.toThrow(message);
+    expect(requirementCreate).not.toHaveBeenCalled();
+    expect(savedSearchCreate).not.toHaveBeenCalled();
+  });
+
+  it('refuses when every area named is outside the city', async () => {
+    const { service, requirementCreate } = make();
+
+    await expect(service.create('u1', { ...dto, areaId: undefined, areaIds: ['elsewhere'] })).rejects.toThrow(/area/);
+    expect(requirementCreate).not.toHaveBeenCalled();
+  });
+
+  it('keeps a plot size, and drops a size the category does not have', async () => {
+    const { service, requirementCreate } = make();
+
+    await service.create('u1', {
+      ...dto,
+      category: 'plot',
+      transactionType: 'buy',
+      bedrooms: undefined,
+      maxPrice: undefined,
+      minAreaSqft: 1200,
+      maxAreaSqft: 2400,
+      areaUnit: 'sqft',
+    });
+    expect(requirementCreate.mock.calls[0][0].data).toMatchObject({ minAreaSqft: 1200, maxAreaSqft: 2400, areaUnit: 'sqft', bedroomOptions: [] });
+
+    await service.create('u1', { ...dto, minAreaSqft: 1200, areaUnit: 'sqft' });
+    expect(requirementCreate.mock.calls[1][0].data).toMatchObject({ minAreaSqft: undefined, areaUnit: undefined });
+  });
+
+  it('refuses a budget whose lowest is above its highest', async () => {
+    const { service } = make();
+    await expect(service.create('u1', { ...dto, minPrice: 50000, maxPrice: 40000 })).rejects.toThrow(/budget/);
   });
 
   it('still captures when the seeker has no alert allowance left', async () => {
@@ -137,7 +191,11 @@ describe('RequirementsService.create', () => {
     expect(requirementCreate.mock.calls[0][0].data.savedSearchId).toBeNull();
     expect(result.hasAlert).toBe(false);
     // And the confirmation must not promise an alert that will never arrive.
-    expect(notifyRequirementCaptured).toHaveBeenCalledWith(expect.anything(), dto.searchLabel, false);
+    expect(notifyRequirementCaptured).toHaveBeenCalledWith(
+      expect.anything(),
+      requirementCreate.mock.calls[0][0].data.searchLabel,
+      false,
+    );
   });
 
   it('still captures when creating the alert throws', async () => {
@@ -192,7 +250,7 @@ describe('RequirementsService.create', () => {
       attributes: { furnished: ['semi'], bogus: ['x'] },
     });
 
-    // A foreign area or an unknown facet is dropped, never a reason to fail the capture.
+    // A foreign area or an unknown facet is dropped rather than failing the whole request.
     expect(requirementCreate.mock.calls[0][0].data).toMatchObject({
       areaIds: ['a1', 'a2'],
       areaId: 'a1',
