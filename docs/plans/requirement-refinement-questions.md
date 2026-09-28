@@ -55,18 +55,20 @@ The parent plan's central finding was that **forms kill this**. `SavedSearch` sa
 partly because it asked people to retype criteria, and capture works because it is a one-tap
 confirmation of a search the visitor already made. So:
 
-- **Save first, then refine** (recommended). "Yes" writes the row exactly as today, with consent and
-  alert, and *then* the questions open against that saved row. Every answered step is saved as it
-  is answered. Someone who closes the wizard after one question still leaves a requirement, and it is
-  better than today's.
+- **Save first, then refine** (the original recommendation). "Yes" writes the row exactly as today,
+  with consent and alert, and *then* the questions open against that saved row. Every answered step
+  is saved as it is answered. Someone who closes the wizard after one question still leaves a
+  requirement, and it is better than today's. *Reversed 2026-09-28: the requirement is now created
+  at the end of the questions, complete — see "Created at the end, complete" under What shipped.*
 - **Every step is skippable** ("Any" / "Skip"), prefilled from the search, and **skipped entirely
   when the search already answered it** (a `/chennai/adyar/rent/apartment?bedrooms=2` search opens
   straight at Budget).
 - **One question per screen**, chips rather than inputs wherever a finite list exists, a visible
   "2 of 5" progress count that only counts the steps actually being asked.
 
-The alternative, asking the questions *before* saving, is listed under open decisions. It gives
-cleaner rows but puts a form in front of the only capture path that has ever worked.
+The alternative, asking the questions *before* saving, was listed under open decisions. It gives
+cleaner rows but puts a form in front of the only capture path that has ever worked. It is the one
+that shipped: a vague requirement was judged worse than none.
 
 ## The question flow
 
@@ -158,7 +160,8 @@ are not required. It's computed, not stored, lives in `packages/types` (`missing
 gaps), and is exposed on `RequirementDto` / `AdminRequirementDto`. *Changed 2026-09-28 — see
 "City first, and what makes a requirement complete" below.*
 
-A requirement that is **not** complete:
+A requirement that is **not** complete (since requirements are created at the end, complete, only
+rows saved before that change can be in this state):
 
 - **Honest label.** `formatRequirementLabel` appends what's missing: *"2 BHK house for rent in
   Bengaluru — area not specified"*. Nobody reading it mistakes it for a precise need.
@@ -215,8 +218,9 @@ the alert tied to the requirement (`savedSearchId`) can honour the refinement. A
 
 ## API
 
-- `POST /requirements`: unchanged. The capture still takes the page's criteria, and the web callers
-  additionally pass `areaIds` and the full bedroom set instead of collapsing them.
+- `POST /requirements`: the capture takes the page's criteria, and the web callers additionally pass
+  `areaIds` and the full bedroom set instead of collapsing them. *Since 2026-09-28 it takes every
+  wizard answer and refuses an incomplete requirement — see "Created at the end, complete".*
 - **`PATCH /requirements/mine/:id/criteria`** (new) with `RefineRequirementDto`, all fields optional
   so each wizard step can save alone: `transactionType`, `category`, `areaIds`, `bedroomOptions`,
   `minPrice`, `maxPrice`, `minAreaSqft`, `maxAreaSqft`, `attributes`, `moveInBy`, `note`, and
@@ -460,8 +464,38 @@ table and step 4 above.
   the areas). Optional steps keep Skip.
 - `PATCH …/criteria` with `complete: true` returns 400 ("Add at least one area and the property
   type first") while anything required is missing, so `refinedAt` means complete.
-- Save-first is unchanged: the capture still saves immediately (with its city), and the questions
-  then finish it.
+- Save-first was unchanged at this point; see the next section.
+
+**Created at the end, complete (2026-09-28).** Replaces save-first. Creating a row after only the
+city meant storing a requirement known to be vague, so the questions now come first and the row is
+written once, at the review, with every answer.
+- **Flow.** "Yes, find this for me" (with the contact-consent checkbox) now opens the questions
+  instead of saving. Login is asked for *before* they open, because Google sign-in on web is a
+  full-page redirect that would lose in-memory answers. The review's button reads "Find this for
+  me" and does the create; closing early saves nothing.
+- **Wizard modes.** `RequirementRefineWizard` (web and mobile) takes a `mode`: `create` (answers
+  kept in memory, one `create(answers)` call at the review, label shown from the answers) or
+  `refine` (the old per-step `PATCH`, used by `/my-requirements/[id]/refine` and the mobile refine
+  route for rows saved before this change). Its input is a `RequirementWizardSubject`, the criteria
+  subset of `RequirementDto`, so a not-yet-saved requirement can be passed in.
+- **Hosts.** Web: `RequirementRefineDialog` is create-only; `RequirementPrompt` opens it and calls
+  `createRequirementAction`. Mobile: `RequirementPrompt` stores a draft in
+  `src/lib/requirementDraft.ts` (an in-memory hand-off, not route params) and pushes
+  `app/requirement/new.tsx`; the created row comes back through `takeCreatedRequirement()` when the
+  home screen regains focus.
+- **`POST /requirements`** (`CreateRequirementDto`) also takes `minAreaSqft`, `maxAreaSqft` and
+  `areaUnit`, and now validates like the refine endpoint instead of dropping silently: 400 for a
+  missing city, a transaction the category can't have, min above max, or anything required missing
+  ("Add at least one area and the property type first", from `describeRequirementGaps`). Areas
+  outside the city are still filtered, then count as missing. BHK and size are kept only where the
+  category asks for them, and attributes are sanitized. The stored label is regenerated server-side
+  with `formatRequirementLabel`; the page's label goes to `originalSearchLabel`, and `refinedAt` is
+  stamped at create, so every new row is complete.
+- **Trade-offs.** A seeker who abandons the questions leaves no row and gets no reminder; the
+  capture-rate guardrail under *Measurement* is the thing to watch. The incomplete-requirement
+  reminder (`refineNudgedAt`) now only matters for legacy rows. **Old app builds** still create first
+  and refine after, so their captures without an area or property type get the 400 until users
+  update.
 
 **Not done in A or B.** The analytics events under *Measurement* aren't emitted yet.
 `RequirementMatchJob` does not yet skip rows that aren't lead-ready (Phase C), so vague rows still
@@ -469,8 +503,9 @@ reach owners as before.
 
 ## Open decisions
 
-1. **Save first, then refine (recommended), or refine before saving?** Before-saving gives cleaner
-   rows and no edit-window rule, but puts a form in front of the one capture path that works.
+1. **Save first, then refine, or refine before saving?** Before-saving gives cleaner rows and no
+   edit-window rule, but puts a form in front of the one capture path that works. *Resolved
+   2026-09-28: refine before saving* — the requirement is created at the end, complete.
 2. **One category or several?** "2 BHK house *or* apartment" is a common Indian ask. v1 stores one
    `category`. The cheapest extension is an "Any home (house / apartment / villa)" option that maps
    to the existing `propertyType` grouping. A `categories[]` column is the full version.
