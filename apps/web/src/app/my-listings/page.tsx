@@ -21,6 +21,7 @@ import {
   PublishCheckoutRecoveryProvider,
 } from "@/components/home/PublishCheckoutRecovery";
 import { RenewButton } from "@/components/home/RenewButton";
+import { OwnerWhatsAppShare } from "@/components/home/OwnerWhatsAppShare";
 import { VideoManager } from "@/components/home/VideoManager";
 import { daysUntil } from "@/lib/listingExpiry";
 import { Icon } from "@/components/home/Icon";
@@ -244,6 +245,9 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
             {canRenew && <RenewButton listingId={item.id} />}
             {item.status === "active" && !item.isExpired && !item.isBoosted && (
               <BoostButton listingId={item.id} category={item.category} />
+            )}
+            {item.status === "active" && !item.isExpired && (
+              <OwnerWhatsAppShare listing={item} placement="my_listings" variant="compact" />
             )}
             <Link
               href={buildListingPath(item)}

@@ -68,6 +68,7 @@ import {
 import { BoostBundlePicker } from "./BoostBundlePicker";
 import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
+import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
 import { PriceWordsHint } from "./PriceWithWords";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
@@ -1642,6 +1643,8 @@ export function PostAdWizard({
              * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */
             <BoostBundlePicker listingId={createdListing.id} category={createdListing.category} />
           )}
+
+          <OwnerWhatsAppShare listing={createdListing} placement="post_success" variant="prominent" />
 
           <div className="w-full flex justify-center">
             <VideoManager listing={createdListing} accessToken={token ?? ""} />

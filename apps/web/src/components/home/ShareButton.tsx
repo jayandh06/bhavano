@@ -3,7 +3,10 @@
 import { useRef, useState } from "react";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { taggedShareUrl, type ShareChannel } from "@/lib/shareLinks";
 import { Icon } from "./Icon";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bhavano.com";
 
 /**
  * One share control, not a share button plus a separate email button. `navigator.share` already
@@ -18,6 +21,7 @@ export function ShareButton({
   path,
   title,
   listingId,
+  isOwner = false,
   className,
 }: {
   /** Relative path, e.g. `buildListingPath(item)` — resolved against `window.location.origin` at
@@ -26,6 +30,8 @@ export function ShareButton({
   path: string;
   title: string;
   listingId: string;
+  /** The viewer owns this listing — tags the link `owner_share` rather than `listing_share`. */
+  isOwner?: boolean;
   className: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -33,17 +39,18 @@ export function ShareButton({
   const containerRef = useRef<HTMLDivElement>(null);
   useClickOutside(containerRef, () => setOpen(false));
 
-  function absoluteUrl(): string {
-    return typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
+  function absoluteUrl(channel: ShareChannel): string {
+    const origin = typeof window !== "undefined" ? window.location.origin : SITE_URL;
+    return taggedShareUrl(`${origin}${path}`, channel, isOwner ? "owner_share" : "listing_share");
   }
 
   async function onShare(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    pushDataLayerEvent("share_listing", { listingId });
+    pushDataLayerEvent("share_listing", { listingId, owner: isOwner });
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({ title, url: absoluteUrl() });
+        await navigator.share({ title, url: absoluteUrl("share_sheet") });
       } catch {
         // AbortError on cancel, or any other failure — either way the OS's own share sheet
         // already closed itself, nothing left here to recover.
@@ -56,14 +63,13 @@ export function ShareButton({
   async function onCopyLink(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    await navigator.clipboard.writeText(absoluteUrl());
+    await navigator.clipboard.writeText(absoluteUrl("copy"));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
 
-  const url = absoluteUrl();
-  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(`${title} — ${url}`)}`;
-  const emailHref = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`;
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(`${title} — ${absoluteUrl("whatsapp")}`)}`;
+  const emailHref = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(absoluteUrl("email"))}`;
 
   return (
     <div ref={containerRef} className="relative">

@@ -195,6 +195,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             path={href}
             title={item.title}
             listingId={item.id}
+            isOwner={item.isOwner}
             className="flex items-center justify-center w-8 h-8 rounded-full bg-[#ffffffee] border-none cursor-pointer text-[15px] text-[#3a3a3a]"
           />
           <button
