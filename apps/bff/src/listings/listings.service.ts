@@ -1181,6 +1181,27 @@ export class ListingsService {
     );
   }
 
+  /** Publishing needs a *verified* phone: buyers reach a seller by phone, and a proven number is
+   * what deters throwaway spam ads. Login no longer requires one (name + optional city only —
+   * docs/plans/post-login-name-and-city.md), so a Google/Apple account can reach Publish without
+   * it; the client asks for it there, and this is the authoritative backstop. Called by the
+   * user-facing create route only — not by `create` itself, which outreach also uses to post on
+   * behalf of a contact who has no account phone. `code` lets a client tell this apart from any
+   * other 403 without matching the message text. */
+  async assertOwnerPhoneVerified(ownerId: string): Promise<void> {
+    const owner = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { phone: true, phoneVerifiedAt: true },
+    });
+    if (!owner?.phone || !owner.phoneVerifiedAt) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'PHONE_VERIFICATION_REQUIRED',
+        message: 'Verify your phone number to publish your ad.',
+      });
+    }
+  }
+
   async create(
     input: CreateListingInput,
     ownerId: string,

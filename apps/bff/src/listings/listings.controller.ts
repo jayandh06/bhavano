@@ -87,11 +87,12 @@ export class ListingsController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(
+  async create(
     @Body() dto: CreateListingDto,
     @CurrentUser() user: RequestUser,
     @Headers('x-tracking-authorized') trackingAuthorizedHeader?: string,
   ): Promise<ListingDetailDto> {
+    await this.listingsService.assertOwnerPhoneVerified(user.id);
     return this.listingsService.create(dto, user.id, parseTrackingAuthorized(trackingAuthorizedHeader));
   }
 

@@ -1659,3 +1659,27 @@ describe('ListingsService.getSellerAttention', () => {
     });
   });
 });
+
+describe('ListingsService.assertOwnerPhoneVerified', () => {
+  const setup = (owner: unknown) => {
+    const { service, prisma } = makeService();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue(owner);
+    return service;
+  };
+
+  it('passes for an owner whose phone is verified', async () => {
+    const service = setup({ phone: '+919999999999', phoneVerifiedAt: new Date() });
+    await expect(service.assertOwnerPhoneVerified('u1')).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ['no phone at all (Google/Apple signup)', { phone: null, phoneVerifiedAt: null }],
+    ['a phone that was never verified', { phone: '+919999999999', phoneVerifiedAt: null }],
+    ['no such user', null],
+  ])('rejects with a machine-readable code for %s', async (_label, owner) => {
+    const service = setup(owner);
+    await expect(service.assertOwnerPhoneVerified('u1')).rejects.toMatchObject({
+      response: { code: 'PHONE_VERIFICATION_REQUIRED' },
+    });
+  });
+});
