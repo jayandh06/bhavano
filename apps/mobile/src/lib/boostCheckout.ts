@@ -1,5 +1,6 @@
 import RazorpayCheckout from "react-native-razorpay";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { createBoostOrder } from "./bffClient";
 import { isRazorpayUserCancel, razorpayFailureMessage } from "./razorpayNative";
 
@@ -22,15 +23,17 @@ export async function startBoostCheckout({
   duration,
   includeInstantAlerts,
   discountCode,
+  source,
 }: {
   accessToken: string;
   listingId: string;
   duration: BoostDurationDays;
   includeInstantAlerts: boolean;
   discountCode?: string;
+  source?: PurchaseSource;
 }): Promise<BoostCheckoutResult> {
   try {
-    const order = await createBoostOrder(accessToken, listingId, duration, discountCode, includeInstantAlerts);
+    const order = await createBoostOrder(accessToken, listingId, duration, discountCode, includeInstantAlerts, source);
 
     if (order.activated) return { outcome: "activated" };
 

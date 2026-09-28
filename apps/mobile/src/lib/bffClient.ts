@@ -1,6 +1,7 @@
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
+import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import type {
   Area,
   BoostPricingPreviewDto,
@@ -654,10 +655,11 @@ export function createBoostOrder(
   boostDays: 7 | 15 | 30,
   discountCode?: string,
   includeInstantAlerts?: boolean,
+  source?: PurchaseSource,
 ): Promise<CreateBoostOrderResponseDto> {
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
-    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts }),
+    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts, source }),
   });
 }
 

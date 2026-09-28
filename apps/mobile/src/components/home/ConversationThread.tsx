@@ -9,6 +9,7 @@ import { deleteMessage, markConversationRead, sendFirstMessage, sendMessage } fr
 import { getSocket } from "../../lib/socket";
 import { Icon } from "../Icon";
 import { MessageBody } from "./MessageBody";
+import { BoostOfferMessageCard } from "./BoostOfferMessageCard";
 import { ScreenHeader } from "./ScreenHeader";
 
 /** The thread body shared by an existing conversation ([id].tsx) and a not-yet-created one
@@ -186,6 +187,9 @@ export function ConversationThread({
         renderItem={({ item }) => {
           const isMine = item.senderId === userId;
           const isDeleted = item.deletedAt != null;
+          if (!isDeleted && item.card?.kind === "boost_offer") {
+            return <BoostOfferMessageCard card={item.card} accessToken={accessToken} />;
+          }
           const bubble = (
             <View
               style={[

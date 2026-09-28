@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import { BOOST_DURATIONS, boostOptionFor, boostSavings, type BoostDurationDays } from "@bhavano/types/boostPricing";
 import { ACTIVE_PROMO_CODE, discountPercentFor } from "@bhavano/types/promoCode";
+import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { previewBoostPricing } from "../../lib/bffClient";
 import { startBoostCheckout } from "../../lib/boostCheckout";
@@ -31,10 +32,17 @@ export function BoostBundleCard({
   category,
   accessToken,
   onActivating,
+  source,
+  ignorePlacementSetting = false,
 }: {
   listingId: string;
   category: ListingCategory;
   accessToken: string;
+  /** Where this checkout was started from, recorded on the payment. */
+  source?: PurchaseSource;
+  /** The admin placement setting (below) only decides where the post-ad screen offers a boost;
+   * a caller outside that flow (the admin Boost message) always shows the picker. */
+  ignorePlacementSetting?: boolean;
   /** Payment succeeded (or a Pro credit activated it directly, no checkout needed) — the caller
    * swaps this card for its own "pending" state while the webhook confirms, same contract
    * BoostModal/InstantAlertsModal already use. */
@@ -71,6 +79,7 @@ export function BoostBundleCard({
       duration,
       includeInstantAlerts: true,
       discountCode: ACTIVE_PROMO_CODE,
+      source,
     });
     setPending(false);
     if (result.outcome === "activated" || result.outcome === "paid") onActivating();
@@ -103,7 +112,7 @@ export function BoostBundleCard({
   // Admin has moved this offer onto the ad-preview step instead — see
   // docs/plans/boost-instant-alerts-preview-selector.md. The two placements are mutually
   // exclusive, so this post-creation card stays hidden entirely rather than duplicating the offer.
-  if (pricing?.showSelectorOnPreview) return null;
+  if (pricing?.showSelectorOnPreview && !ignorePlacementSetting) return null;
 
   return (
     <View style={[styles.card, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
