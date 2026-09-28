@@ -172,6 +172,8 @@ set -euo pipefail
 TAG='$TAG'
 PROJECT='$ProjectName'
 REMOTE_DIR='$RemoteDir'
+# Single quotes above keep a leading ~ literal, so cd would look for a directory named "~".
+REMOTE_DIR="`${REMOTE_DIR/#\~/`$HOME}"
 TAR=~/$tarName
 SERVICES='$svcList'
 DO_MIGRATE='$migrate'
