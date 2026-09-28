@@ -17,6 +17,7 @@ import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPri
 import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, fieldIsVisible } from "@bhavano/types/categoryFields";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { listingPriceIssue } from "@bhavano/types/priceBounds";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
@@ -763,7 +764,20 @@ export function PostAdWizard({
   // 0 is a real, submittable price ("Contact for price") for pg/coworking — see
   // PRICE_ON_REQUEST_CATEGORIES's own doc comment. Every other category still needs a real one.
   const priceOnRequestAllowed = !!category && PRICE_ON_REQUEST_CATEGORIES.has(category);
-  const priceValid = Number(price) > 0 || priceOnRequestAllowed;
+  // Same range check the server makes, on the total — here so it's caught before the preview and
+  // before any photo upload, not after pressing Publish.
+  const pricedPerUnit = priceMode === "perUnit" && !!priceUnitAreaField;
+  const priceArea = priceUnitAreaField ? Number(attributes[priceUnitAreaField.key]) : NaN;
+  const priceIssue =
+    category && transactionType && price !== "" && (!pricedPerUnit || priceArea > 0)
+      ? listingPriceIssue(
+          category,
+          transactionType,
+          pricedPerUnit ? Math.round(Number(price) * priceArea) : Number(price),
+          pricedPerUnit ? { price: Number(price), area: priceArea, unit: currentAreaUnit } : undefined,
+        )
+      : null;
+  const priceValid = (Number(price) > 0 || priceOnRequestAllowed) && !priceIssue;
   const detailsValid =
     priceValid &&
     title.length > 0 &&
@@ -1209,6 +1223,7 @@ export function PostAdWizard({
                           value={price}
                           suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                         />
+                        {priceIssue && <p className="text-xs text-[#b3413a] mt-1.5 m-0">{priceIssue}</p>}
                       </div>
                       <div className="flex-1">
                         <RequiredLabel text="Price qualifier" />

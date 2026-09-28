@@ -31,6 +31,7 @@ import {
 } from "@bhavano/types/categoryFields";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { listingPriceIssue } from "@bhavano/types/priceBounds";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { AREA_UNIT_LABELS, areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
@@ -924,6 +925,19 @@ export function PostAdWizard({
       ? CATEGORY_FIELD_CONFIG[category].find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
+  // Same range check the server makes, on the total — here so it's caught before the preview and
+  // before any photo upload, not after tapping Post.
+  const pricedPerUnit = priceMode === "perUnit" && !!priceUnitAreaField;
+  const priceArea = priceUnitAreaField ? Number(attributes[priceUnitAreaField.key]) : NaN;
+  const priceIssue =
+    category && transactionType && price !== "" && (!pricedPerUnit || priceArea > 0)
+      ? listingPriceIssue(
+          category,
+          transactionType,
+          pricedPerUnit ? Math.round(Number(price) * priceArea) : Number(price),
+          pricedPerUnit ? { price: Number(price), area: priceArea, unit: currentAreaUnit } : undefined,
+        )
+      : null;
 
   // Same merge CategoryFieldsForm.tsx's `sectionExtras` does for the edit screen — the
   // Price/Price-per-unit/qualifier block below is folded into whichever position SECTION_ORDER
@@ -957,6 +971,7 @@ export function PostAdWizard({
 
   const detailsValid =
     priceIsValid(price, category) &&
+    !priceIssue &&
     title.length > 0 &&
     areaQuery.trim().length > 0 &&
     !!cityId &&
@@ -1364,9 +1379,11 @@ export function PostAdWizard({
                   value={price}
                   suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                 />
-                {price.length > 0 && !priceIsValid(price, category) && (
+                {price.length > 0 && !priceIsValid(price, category) ? (
                   <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
-                )}
+                ) : priceIssue ? (
+                  <Text style={styles.fieldError}>{priceIssue}</Text>
+                ) : null}
                 <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier *</Text>
                 <View style={styles.chipRow}>
                   {getPriceQualifierOptions(category, transactionType).map((opt) => (
