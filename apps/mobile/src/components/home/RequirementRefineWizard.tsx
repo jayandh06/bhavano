@@ -14,10 +14,10 @@ import {
   KeyboardStickyView,
   type KeyboardAwareScrollViewRef,
 } from "react-native-keyboard-controller";
-import type { Area, RefineRequirementInput, RequirementDto } from "@bhavano/types";
+import type { Area, RefineRequirementInput, RequirementAnswers, RequirementDto } from "@bhavano/types";
 import { areaUnitShortLabel, convertArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { bedroomLabel } from "@bhavano/types/bedrooms";
-import { formatInrInWords } from "@bhavano/types/priceWords";
+import { formatInrWithWords } from "@bhavano/types/priceWords";
 import {
   INTENT_CATEGORIES,
   INTENT_TRANSACTION_CHOICES,
@@ -80,7 +80,35 @@ const NEARBY_KM = 6;
 /** Same breakpoint as the home screen's two-column grid: at or above it this is a tablet. */
 const WIDE_SCREEN_BREAKPOINT = 700;
 
-function criteriaOf(r: RequirementDto): RequirementCriteria {
+/** What the questions start from: a saved requirement, or (before anything is saved) the search
+ * the capture card was shown for. */
+export type RequirementWizardSubject = Pick<
+  RequirementDto,
+  | "category"
+  | "transactionType"
+  | "cityId"
+  | "cityName"
+  | "areaIds"
+  | "areaNames"
+  | "bedroomOptions"
+  | "minPrice"
+  | "maxPrice"
+  | "minAreaSqft"
+  | "maxAreaSqft"
+  | "areaUnit"
+  | "attributes"
+  | "moveInBy"
+  | "note"
+  | "contactConsent"
+>;
+
+/** `create`: nothing is saved until the review, which creates the requirement with every answer
+ * at once. `refine`: an older, saved requirement, patched as each step is answered. */
+export type RequirementWizardMode =
+  | { kind: "create"; create: (answers: RequirementAnswers) => Promise<RequirementDto> }
+  | { kind: "refine"; id: string; accessToken: string };
+
+function criteriaOf(r: RequirementWizardSubject): RequirementCriteria {
   return {
     category: r.category,
     transactionType: r.transactionType,
@@ -120,6 +148,10 @@ function toUnit(sqft: number | undefined, unit: AreaUnit): string {
   return sqft === undefined ? "" : String(Math.round(convertArea(sqft, "sqft", unit) * 100) / 100);
 }
 
+function daysFromNow(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString();
+}
+
 function toggleIn(list: string[] | undefined, value: string, multi: boolean): string[] {
   const set = list ?? [];
   if (set.includes(value)) return set.filter((v) => v !== value);
@@ -132,24 +164,25 @@ function toggleIn(list: string[] | undefined, value: string, multi: boolean): st
  * same per-step save, all from `@bhavano/types/requirementQuestions`, so the two apps can't drift
  * on what gets asked.
  *
- * Runs against a requirement that is already saved, and every step saves as it is answered, so
- * leaving halfway (the header's back, or Android's) keeps what was given. Steps the search already
- * answered are skipped — decided once, when this opens, so answering one question never makes
- * another vanish. City, areas, what and property type must be answered; every later step can be
- * skipped.
+ * From the capture card this runs in `create` mode: the requirement is created at the review with
+ * every answer, so there is never a half-filled one — leaving early saves nothing. The refine
+ * screen runs it in `refine` mode over an older, saved row, saving each step. Steps the search
+ * already answered are skipped — decided once, when this opens, so answering one question never
+ * makes another vanish. City, areas, what and property type must be answered; every later step can
+ * be skipped.
  */
 export function RequirementRefineWizard({
   requirement,
-  accessToken,
+  mode,
   onFinished,
 }: {
-  requirement: RequirementDto;
-  accessToken: string;
+  requirement: RequirementWizardSubject;
+  mode: RequirementWizardMode;
   /** Called with the saved requirement after the review step. */
   onFinished: (requirement: RequirementDto) => void;
 }) {
   const { colors } = useAppTheme();
-  const [current, setCurrent] = useState(requirement);
+  const [current, setCurrent] = useState<RequirementWizardSubject>(requirement);
   const [draft, setDraft] = useState<RequirementCriteria>(() => criteriaOf(requirement));
   const skipped = useMemo(() => answeredSteps(criteriaOf(requirement)), [requirement]);
   const steps: WizardStep[] = [...stepsToAsk(draft, skipped), "review"];
@@ -206,6 +239,24 @@ export function RequirementRefineWizard({
   const cityName = current.cityName ?? "the city";
   const canContinue = stepKey === "review" || canLeaveStep(stepKey, draft);
 
+  function detailsPatch() {
+    const min = parseSize(sizeMin);
+    const max = parseSize(sizeMax);
+    return {
+      bedroomOptions: draft.bedroomOptions ?? [],
+      minAreaSqft: min === undefined ? null : Math.round(convertArea(min, sizeUnit, "sqft")),
+      maxAreaSqft: max === undefined ? null : Math.round(convertArea(max, sizeUnit, "sqft")),
+      areaUnit: min === undefined && max === undefined ? null : sizeUnit,
+      attributes: draft.category
+        ? sanitizeRequirementAttributes(draft.category, draft.transactionType, draft.attributes ?? {}).attributes
+        : undefined,
+    };
+  }
+
+  function budgetPatch() {
+    return { minPrice: parseAmount(budgetMin) ?? null, maxPrice: parseAmount(budgetMax) ?? null };
+  }
+
   function patchFor(step: WizardStep): RefineRequirementInput {
     const attributes = draft.category
       ? sanitizeRequirementAttributes(draft.category, draft.transactionType, draft.attributes ?? {}).attributes
@@ -216,27 +267,18 @@ export function RequirementRefineWizard({
       case "intent":
       case "category":
         return { category: draft.category ?? null, transactionType: draft.transactionType ?? null };
-      case "details": {
-        const min = parseSize(sizeMin);
-        const max = parseSize(sizeMax);
-        return {
-          bedroomOptions: draft.bedroomOptions ?? [],
-          minAreaSqft: min === undefined ? null : Math.round(convertArea(min, sizeUnit, "sqft")),
-          maxAreaSqft: max === undefined ? null : Math.round(convertArea(max, sizeUnit, "sqft")),
-          areaUnit: min === undefined && max === undefined ? null : sizeUnit,
-          attributes,
-        };
-      }
+      case "details":
+        return detailsPatch();
       case "areas":
         return { areaIds: draft.areaIds ?? [] };
       case "budget":
-        return { minPrice: parseAmount(budgetMin) ?? null, maxPrice: parseAmount(budgetMax) ?? null };
+        return budgetPatch();
       case "amenities":
         return { attributes };
       case "timeline": {
         const option = REQUIREMENT_TIMELINE_OPTIONS.find((o) => o.value === timeline);
         return {
-          ...(option ? { moveInBy: option.days ? new Date(Date.now() + option.days * 86_400_000).toISOString() : null } : {}),
+          ...(option ? { moveInBy: option.days ? daysFromNow(option.days) : null } : {}),
           note: note.trim() || null,
         };
       }
@@ -245,11 +287,56 @@ export function RequirementRefineWizard({
     }
   }
 
-  async function save(step: WizardStep): Promise<RequirementDto | null> {
+  /** Every answer, as the create call wants them. Criteria the category has no use for (a BHK
+   * set after switching to Plot) are left out, as the BFF would drop them anyway. */
+  function answersOf(): RequirementAnswers {
+    const timeline = patchFor("timeline");
+    return {
+      ...criteriaAnswers(),
+      moveInBy: timeline.moveInBy === undefined ? current.moveInBy : (timeline.moveInBy ?? undefined),
+      note: timeline.note ?? undefined,
+    };
+  }
+
+  /** The answers without the timeline — what the review's label is written from. The timeline
+   * reads the clock, so it is only worked out when the button is pressed, never while rendering. */
+  function criteriaAnswers(): RequirementAnswers {
+    const details = detailsPatch();
+    const budget = budgetPatch();
+    const size = draft.category ? sizeQuestionFor(draft.category) : undefined;
+    return {
+      cityId: draft.cityId ?? "",
+      category: draft.category,
+      transactionType: draft.transactionType,
+      areaIds: draft.areaIds ?? [],
+      bedroomOptions: size?.kind === "bedrooms" ? details.bedroomOptions : [],
+      minAreaSqft: size?.kind === "area" ? (details.minAreaSqft ?? undefined) : undefined,
+      maxAreaSqft: size?.kind === "area" ? (details.maxAreaSqft ?? undefined) : undefined,
+      areaUnit: size?.kind === "area" ? (details.areaUnit ?? undefined) : undefined,
+      attributes: details.attributes,
+      minPrice: budget.minPrice ?? undefined,
+      maxPrice: budget.maxPrice ?? undefined,
+    };
+  }
+
+  async function create() {
+    if (mode.kind !== "create") return;
     setSaving(true);
     setError(null);
     try {
-      const saved = await refineMyRequirement(accessToken, current.id, patchFor(step));
+      onFinished(await mode.create(answersOf()));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save that — try again");
+      setSaving(false);
+    }
+  }
+
+  async function save(step: WizardStep): Promise<RequirementDto | null> {
+    if (mode.kind !== "refine") return null;
+    setSaving(true);
+    setError(null);
+    try {
+      const saved = await refineMyRequirement(mode.accessToken, mode.id, patchFor(step));
       setCurrent(saved);
       setDraft(criteriaOf(saved));
       return saved;
@@ -272,6 +359,13 @@ export function RequirementRefineWizard({
   }
 
   async function saveAndNext() {
+    if (mode.kind === "create") {
+      if (stepKey === "review") return create();
+      // The areas list follows the city once the city step is left, as it does after a save.
+      if (stepKey === "city" && pickedCity) setCurrent((c) => ({ ...c, cityId: pickedCity.id, cityName: pickedCity.name }));
+      goNext();
+      return;
+    }
     if (stepKey === "review") {
       const saved = await save("review");
       if (saved) onFinished(saved);
@@ -579,7 +673,7 @@ export function RequirementRefineWizard({
               keyboardType="numeric"
               style={[styles.input, inputColors(colors)]}
             />
-            {min !== undefined && <Hint colors={colors}>{formatInrInWords(min)}</Hint>}
+            {min !== undefined && <Hint colors={colors}>{formatInrWithWords(min)}</Hint>}
           </View>
           <View style={{ flex: 1, gap: 4 }}>
             <FieldLabel colors={colors}>Up to ₹</FieldLabel>
@@ -589,7 +683,7 @@ export function RequirementRefineWizard({
               keyboardType="numeric"
               style={[styles.input, inputColors(colors)]}
             />
-            {max !== undefined && <Hint colors={colors}>{formatInrInWords(max)}</Hint>}
+            {max !== undefined && <Hint colors={colors}>{formatInrWithWords(max)}</Hint>}
           </View>
         </View>
       </View>
@@ -650,7 +744,7 @@ export function RequirementRefineWizard({
   }
 
   function renderReview() {
-    const label = formatRequirementLabel(draft, { cityName: current.cityName, areaNames: selectedAreaNames.filter(Boolean) });
+    const label = formatRequirementLabel(criteriaAnswers(), { cityName: current.cityName, areaNames: selectedAreaNames.filter(Boolean) });
     return (
       <View style={{ gap: 14 }}>
         <View style={[styles.labelBox, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
@@ -734,7 +828,7 @@ export function RequirementRefineWizard({
             <ActivityIndicator color={colors.onGreen} />
           ) : (
             <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>
-              {stepKey === "review" ? "Done" : "Next"}
+              {stepKey !== "review" ? "Next" : mode.kind === "create" ? "Find this for me" : "Done"}
             </Text>
           )}
         </Pressable>

@@ -162,7 +162,7 @@ export default function HomeScreen() {
         // "nothing found" card for every category/filter change while the new query is still
         // loading, which reads as a real (and wrong) answer instead of a loading state.
         ListEmptyComponent={
-          isLoading ? null : <RequirementPrompt criteria={requirementCriteria} label={requirementLabel} />
+          isLoading ? null : <RequirementPrompt criteria={requirementCriteria} label={requirementLabel} cityName={city?.name} />
         }
         renderItem={({ item }) => (
           <View style={numColumns > 1 ? styles.gridItem : styles.singleItem}>

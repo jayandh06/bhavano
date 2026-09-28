@@ -86,7 +86,11 @@ export default function RefineRequirementScreen() {
           </Pressable>
         </View>
       ) : (
-        <RequirementRefineWizard requirement={requirement} accessToken={accessToken} onFinished={leave} />
+        <RequirementRefineWizard
+          requirement={requirement}
+          mode={{ kind: "refine", id: requirement.id, accessToken }}
+          onFinished={leave}
+        />
       )}
     </View>
   );
