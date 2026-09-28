@@ -9,6 +9,7 @@ import type {
   ListingCategory,
   ListingDetailDto,
   ReverseGeocodeResultDto,
+  SellerType,
   TransactionType,
 } from "@bhavano/types";
 import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
@@ -244,6 +245,7 @@ export function PostAdWizard({
   videoEntitlement,
   presetCategory,
   presetTransactionType,
+  sellerType: profileSellerType,
 }: {
   cities: City[];
   defaultCityId?: string;
@@ -255,10 +257,14 @@ export function PostAdWizard({
    * there is no saved draft to resume — an unfinished ad the seller already typed wins. */
   presetCategory?: ListingCategory;
   presetTransactionType?: TransactionType;
+  /** The profile's answer to "Owner or agent?". Null (never answered, or logged out) asks it on
+   * the review step; once answered it's changed from the profile, not here. */
+  sellerType: SellerType | null;
 }) {
   const { requireLogin, requireVerifiedPhone } = useAuthGate();
   const [listingId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("category");
+  const [postedAs, setPostedAs] = useState<SellerType | null>(null);
   // Held in state as well as taken as a prop: after a login at submit, the prop is still the
   // undefined this mounted with until router.refresh() lands, which is later than the resumed
   // upload needs it. Whichever arrives first wins.
@@ -292,6 +298,9 @@ export function PostAdWizard({
   const [attributes, setAttributes] = useState<
     Record<string, string | string[]>
   >({});
+  // An answered "Posted by Broker / Agent" field already says it; the BFF saves that to the
+  // profile itself (resolveDeclaredSellerType), so don't ask twice.
+  const askSellerType = profileSellerType === null && !attributes.fromBroker;
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [preparingPhotos, setPreparingPhotos] = useState(false);
   const [preparingVideos, setPreparingVideos] = useState(false);
@@ -928,6 +937,10 @@ export function PostAdWizard({
    */
   async function onSubmit() {
     if (!category || !transactionType) return;
+    if (askSellerType && !postedAs) {
+      setError("Please tell us whether you're the owner or an agent.");
+      return;
+    }
 
     setPending(true);
     setError(null);
@@ -1038,6 +1051,7 @@ export function PostAdWizard({
       attributes,
       lat: pin?.lat,
       lng: pin?.lng,
+      postedAs: askSellerType && postedAs ? postedAs : undefined,
       ...(needsCheckout
         ? {
             checkoutIntent: selectedBoostPlan
@@ -1559,6 +1573,35 @@ export function PostAdWizard({
           </div>
 
           <div className="flex flex-col gap-3 mt-3">
+          {askSellerType && (
+            <div className="flex flex-col gap-2">
+              <span className="text-[13px] font-bold text-text">You are posting as</span>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["owner", "Owner"],
+                    ["agent", "Agent / broker"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setPostedAs(value);
+                      setError(null);
+                    }}
+                    className={transactionButtonClass(postedAs === value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[12px] text-muted">
+                Shown on your ads so buyers know who they&rsquo;re talking to. You can change it in
+                your profile.
+              </span>
+            </div>
+          )}
           {slotCap ? (
             <ListingSlotCapPrompt slotCap={slotCap} />
           ) : error ? (

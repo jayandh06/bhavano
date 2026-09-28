@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Area, City, ListingDetailDto } from "@bhavano/types";
+import { postedByLabel } from "@bhavano/types/sellerType";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
@@ -67,6 +68,7 @@ export async function ListingDetailView({
   accessToken?: string;
 }) {
   const attributes = listing.attributes as Record<string, string | string[]>;
+  const postedBy = postedByLabel(listing.postedBy, listing.postedByAgency);
   // A field's stored value only makes sense to show once its `dependsOn` condition (if any) is
   // currently met — e.g. a brokerage fee shouldn't display for a listing where "posted by
   // broker" has since been edited back to "no". Same visibility rule the posting/edit forms use
@@ -154,6 +156,7 @@ export async function ListingDetailView({
               </h1>
               <div className="text-sm text-muted mb-3">
                 <Icon name="pin" /> {listing.area}, {listing.cityName}
+                {postedBy && <span className="ml-2 font-semibold text-text-soft">· {postedBy}</span>}
               </div>
             </ListingMediaGallery>
             {listing.lat !== undefined && listing.lng !== undefined && (

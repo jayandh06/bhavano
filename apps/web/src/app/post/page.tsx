@@ -49,12 +49,8 @@ export default async function PostAdPage({
   // listing exists yet at posting time, so only Agent Pro (not a boost) can elevate this.
   // Defaults to the base tier if the profile fetch fails — a video-limit hiccup should never
   // block posting a listing entirely.
-  const videoEntitlement = loggedIn
-    ? await fetchProfile(accessToken).then(
-        (profile) => resolveVideoEntitlement(profile),
-        () => resolveVideoEntitlement({ agentProUntil: null }),
-      )
-    : resolveVideoEntitlement({ agentProUntil: null });
+  const profile = loggedIn ? await fetchProfile(accessToken).catch(() => null) : null;
+  const videoEntitlement = resolveVideoEntitlement(profile ?? { agentProUntil: null });
 
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
@@ -97,6 +93,7 @@ export default async function PostAdPage({
             videoEntitlement={videoEntitlement}
             presetCategory={presetCategory}
             presetTransactionType={presetTransactionType}
+            sellerType={profile?.sellerType ?? null}
           />
         </div>
       </div>

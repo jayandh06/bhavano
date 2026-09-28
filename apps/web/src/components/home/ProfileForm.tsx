@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AccountMergeSummary, City, UserProfileDto } from "@bhavano/types";
+import type { AccountMergeSummary, City, SellerType, UserProfileDto } from "@bhavano/types";
 import { autoDetectCityAction, searchCitiesAction } from "@/app/actions/locations";
 import { LocationMapPicker } from "./LocationMapPicker";
 import {
@@ -19,6 +19,9 @@ type PhoneStep = "idle" | "otpSent";
 
 export function ProfileForm({ profile }: { profile: UserProfileDto }) {
   const [name, setName] = useState(profile.name ?? "");
+  const [sellerType, setSellerType] = useState<SellerType | null>(profile.sellerType);
+  const [agencyName, setAgencyName] = useState(profile.agencyName ?? "");
+  const [reraNumber, setReraNumber] = useState(profile.reraNumber ?? "");
   const [cityId, setCityId] = useState(profile.cityId ?? undefined);
   const [cityName, setCityName] = useState(profile.cityName ?? "");
   const [state, setState] = useState(profile.state ?? "");
@@ -259,6 +262,8 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
     const result = await updateProfileAction({
       name: name.trim() || undefined,
       cityId,
+      sellerType: sellerType ?? undefined,
+      ...(sellerType === "agent" ? { agencyName, reraNumber } : {}),
     });
     setSaving(false);
     setDetected(false);
@@ -602,6 +607,55 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
           </div>
         )}
       </div>
+
+      <div>
+        <label className={labelClass}>I post as</label>
+        <div className="flex gap-2">
+          {(
+            [
+              ["owner", "Owner"],
+              ["agent", "Agent / broker"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setSellerType(value)}
+              className={`border-[1.5px] rounded-[9px] px-4 py-2.5 text-sm font-bold cursor-pointer text-text ${
+                sellerType === value ? "border-green bg-surface-alt" : "border-border bg-surface"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[12px] text-muted m-0 mt-1.5">Shown on your ads as &ldquo;Owner&rdquo; or &ldquo;Agent&rdquo;.</p>
+      </div>
+
+      {sellerType === "agent" && (
+        <>
+          <div>
+            <label className={labelClass}>Agency name (optional)</label>
+            <input
+              value={agencyName}
+              onChange={(e) => setAgencyName(e.target.value)}
+              maxLength={100}
+              placeholder="e.g. Sai Realty"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>RERA number (optional)</label>
+            <input
+              value={reraNumber}
+              onChange={(e) => setReraNumber(e.target.value)}
+              maxLength={40}
+              placeholder="Your RERA agent registration number"
+              className={inputClass}
+            />
+          </div>
+        </>
+      )}
 
       {message && (
         <p className={`text-[13px] m-0 ${message.type === "success" ? "text-green" : "text-[#b3413a]"}`}>{message.text}</p>

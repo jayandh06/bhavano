@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ListingCardDto } from "@bhavano/types";
+import { postedByLabel } from "@bhavano/types/sellerType";
 import { useRouter } from "next/navigation";
 import { useAuthGate } from "./AuthGateProvider";
 import { useBuyCredits } from "./BuyCreditsProvider";
@@ -23,6 +24,8 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   const [likeCount, setLikeCount] = useState(item.likeCount);
   const [contactError, setContactError] = useState<string | null>(null);
   const href = buildListingPath(item);
+  // Agency name left to the detail page — a card's location row has no room for it.
+  const postedBy = postedByLabel(item.postedBy);
 
   const [contactRevealed, setContactRevealed] = useState(item.contactRevealed);
   const [ownerPhone, setOwnerPhone] = useState(item.ownerPhone);
@@ -230,6 +233,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
               * the app passed an empty string, giving "Koramangala, ". A card states where the
               * place is; that is never a property of the page it happens to appear on. */}
             <Icon name="pin" /> {item.area}, {item.cityName}
+            {postedBy && <span className="ml-auto text-[12px] font-semibold text-text-soft whitespace-nowrap">{postedBy}</span>}
           </div>
           <div className="flex gap-3.5 text-[13px] text-text-soft font-semibold pt-0.5">
             {item.specs.map((spec) => (
