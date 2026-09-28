@@ -198,3 +198,13 @@ that (and every existing `@Throttle`) work.
   throttling on a real visitor IP forwarded explicitly by web/admin's Server Actions, the way
   `/client-errors` already does, rather than on `req.ip`), and doing it correctly is a separate
   follow-up, not something to attempt again casually.
+
+## Addendum: handled post-ad errors (2026-09-28)
+
+`error.tsx`/`global-error.tsx` only see crashes, so an error the web post-ad wizard *catches and
+shows* on the review panel (failed upload, failed create, checkout cancelled/failed) never reached
+Loki. `reportPostError` in `apps/web/src/components/home/PostAdWizard.tsx` now also sends those
+through `reportClientErrorAction`, with the message prefixed `post_error [<stage>]: ...`. In
+Grafana Explore: `{service="bff", app="web"} | json | message=~"post_error.*"`. They also appear
+as `/post/error?...` entries in admin's page trail and as a `post_error` dataLayer event. Subject to
+the endpoint's existing 10 reports/minute/IP throttle; carries no user id.

@@ -26,6 +26,7 @@ import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
+import { reportClientErrorAction } from "@/app/actions/clientErrors";
 import { createListingAction, fetchMyListingAction, uploadPhotoAction } from "@/app/actions/listings";
 import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPricing";
 import { platformFeeApplies } from "@bhavano/types/platformFeePricing";
@@ -145,10 +146,20 @@ type Step = "category" | "transactionType" | "details" | "review" | "success";
  * be told apart from "hit an error on Publish". Until now only success was recorded, and an error
  * left no trace anywhere a person could look. The reason travels in the path's query string
  * (PageView stores nothing but a path) and is truncated; it's the same text the seller was shown,
- * never form contents. */
+ * never form contents. Also reported to Loki as a `client_error` (see below). */
 function reportPostError(stage: string, message: string) {
   const reason = message.slice(0, 140);
   pushDataLayerEvent("post_error", { stage, message: reason });
+  // Also to Loki (Grafana: {service="bff", app="web"} | json | message=~"post_error.*") through the
+  // same path a UI crash takes. A handled error like this one never reaches error.tsx, so without
+  // this it was visible only in the admin trail. Prefixed so it filters apart from real crashes.
+  void reportClientErrorAction({
+    message: `post_error [${stage}]: ${reason}`,
+    url: typeof window !== "undefined" ? window.location.href : undefined,
+    userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+  }).catch(() => {
+    // Best-effort — a failed error report must never surface as a second error.
+  });
   void fetch("/api/analytics/pageview", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
