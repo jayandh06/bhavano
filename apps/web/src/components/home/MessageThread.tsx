@@ -7,6 +7,7 @@ import { getSocket } from "@/lib/socket";
 import { deleteMessageAction, markReadAction, sendFirstMessageAction, sendMessageAction } from "@/app/actions/messaging";
 import { useAuthGate } from "./AuthGateProvider";
 import { MessageBody } from "./MessageBody";
+import { BoostOfferMessageCard } from "./BoostOfferMessageCard";
 import { Icon } from "./Icon";
 
 export function MessageThread({
@@ -134,6 +135,9 @@ export function MessageThread({
         {messages.map((m) => {
           const isMine = m.senderId === currentUserId;
           const isDeleted = m.deletedAt != null;
+          if (!isDeleted && m.card?.kind === "boost_offer") {
+            return <BoostOfferMessageCard key={m.id} card={m.card} />;
+          }
           return (
             <div
               key={m.id}

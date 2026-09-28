@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
+import { PURCHASE_SOURCE_PARAM, parsePurchaseSource } from "@bhavano/types/purchaseSource";
 import { useBoost } from "./BoostProvider";
 
 /**
@@ -43,10 +44,12 @@ export function AutoOpenPurchaseModal({
     firedRef.current = true;
 
     const listing = listings.find((l) => l.id === openBoostId);
-    if (listing) boost({ listingId: listing.id, category: listing.category, initialPricing });
+    const source = parsePurchaseSource(searchParams.get(PURCHASE_SOURCE_PARAM));
+    if (listing) boost({ listingId: listing.id, category: listing.category, initialPricing, source });
 
     const params = new URLSearchParams(searchParams.toString());
     params.delete("openBoost");
+    params.delete(PURCHASE_SOURCE_PARAM);
     params.delete("openInstantAlerts");
     params.delete("withAlerts");
     router.replace(params.toString() ? `/my-listings?${params.toString()}` : "/my-listings");

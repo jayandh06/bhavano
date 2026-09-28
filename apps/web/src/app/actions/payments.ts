@@ -13,6 +13,7 @@ import type { BoostDurationDays, BoostPriceSettings } from "@bhavano/types/boost
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
+import { parsePurchaseSource, type PurchaseSource } from "@bhavano/types/purchaseSource";
 import { auth } from "@/auth";
 import {
   createBoostOrder,
@@ -61,12 +62,20 @@ export async function createBoostOrderAction(
   boostDays: BoostDurationDays,
   discountCode?: string,
   includeInstantAlerts?: boolean,
+  source?: PurchaseSource,
 ): Promise<CreateBoostOrderResult> {
   const session = await auth();
   if (!session?.accessToken) return { success: false, error: "You must be logged in." };
 
   try {
-    const order = await createBoostOrder(session.accessToken, listingId, boostDays, discountCode, includeInstantAlerts);
+    const order = await createBoostOrder(
+      session.accessToken,
+      listingId,
+      boostDays,
+      discountCode,
+      includeInstantAlerts,
+      parsePurchaseSource(source),
+    );
     return { success: true, order };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to start checkout" };
@@ -99,8 +108,9 @@ export async function createBoostBundleOrderAction(
   listingId: string,
   boostDays: BoostDurationDays,
   includeInstantAlerts: boolean,
+  source?: PurchaseSource,
 ): Promise<CreateBoostOrderResult> {
-  return createBoostOrderAction(listingId, boostDays, ACTIVE_PROMO_CODE, includeInstantAlerts);
+  return createBoostOrderAction(listingId, boostDays, ACTIVE_PROMO_CODE, includeInstantAlerts, source);
 }
 
 export type CreateListingPublishOrderResult =

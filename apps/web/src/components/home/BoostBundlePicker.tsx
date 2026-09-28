@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import { BOOST_DURATIONS, boostOptionFor, boostSavings, type BoostDurationDays } from "@bhavano/types/boostPricing";
 import { discountPercentFor } from "@bhavano/types/promoCode";
+import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { previewBoostPricingAction } from "@/app/actions/payments";
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { Icon } from "./Icon";
@@ -19,9 +20,12 @@ export function BoostBundlePicker({
   category,
   onActivating,
   initialPricing,
+  source,
 }: {
   listingId: string;
   category: ListingCategory;
+  /** Where this checkout was started from, recorded on the payment. */
+  source?: PurchaseSource;
   /** A price resolved before this mounted — the deep-link path passes the one its page's server
    * render produced. With it, there is no fetch, no retry ladder and no race with a
    * just-established session: the dialog opens showing the price. */
@@ -105,7 +109,7 @@ export function BoostBundlePicker({
     setPending(true);
     setError(null);
 
-    const result = await startBoostCheckout({ listingId, category, duration, includeInstantAlerts: true });
+    const result = await startBoostCheckout({ listingId, category, duration, includeInstantAlerts: true, source });
     setPending(false);
 
     if (result.outcome === "activated") {

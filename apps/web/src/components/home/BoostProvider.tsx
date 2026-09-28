@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
+import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { BoostBundlePicker } from "./BoostBundlePicker";
 
 /**
@@ -32,6 +33,8 @@ interface BoostOptions {
    * path supplies it (resolved in my-listings' own server render); an in-app click leaves it unset
    * and the dialog fetches as before, with a session that is long since warm. */
   initialPricing?: BoostPricingPreviewDto;
+  /** Where the checkout was started from (the `?src=` of a deep link), recorded on the payment. */
+  source?: PurchaseSource;
 }
 
 interface BoostContextValue {
@@ -73,6 +76,7 @@ export function BoostProvider({ children }: { children: ReactNode }) {
               listingId={opts.listingId}
               category={opts.category}
               initialPricing={opts.initialPricing}
+              source={opts.source}
               onActivating={() => {
                 setOpen(false);
                 opts.onActivating?.();

@@ -52,6 +52,7 @@ import type {
   UserProfileDto,
 } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import type { CreateSupportTicketResponse } from "@bhavano/types/support";
 import type { LinkIdentifierResult } from "@bhavano/types";
 import { isListingSlotCapErrorBody, ListingSlotCapError } from "@/lib/listingSlotErrors";
@@ -636,10 +637,11 @@ export function createBoostOrder(
   boostDays: BoostDurationDays,
   discountCode?: string,
   includeInstantAlerts?: boolean,
+  source?: PurchaseSource,
 ): Promise<CreateBoostOrderResponseDto> {
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
-    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts }),
+    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts, source }),
   });
 }
 

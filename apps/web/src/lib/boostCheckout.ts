@@ -1,5 +1,6 @@
 import type { ListingCategory } from "@bhavano/types";
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
+import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { createBoostBundleOrderAction } from "@/app/actions/payments";
 import { loadRazorpayScript } from "./razorpay";
 import { pushDataLayerEvent } from "./gtm";
@@ -20,13 +21,15 @@ export async function startBoostCheckout({
   category,
   duration,
   includeInstantAlerts,
+  source,
 }: {
   listingId: string;
   category: ListingCategory;
   duration: BoostDurationDays;
   includeInstantAlerts: boolean;
+  source?: PurchaseSource;
 }): Promise<BoostCheckoutResult> {
-  const result = await createBoostBundleOrderAction(listingId, duration, includeInstantAlerts);
+  const result = await createBoostBundleOrderAction(listingId, duration, includeInstantAlerts, source);
   if (!result.success) return { outcome: "error", message: result.error };
 
   if (result.order.activated) return { outcome: "activated" };
@@ -44,6 +47,7 @@ export async function startBoostCheckout({
     includeInstantAlerts,
     value: order.amount / 100,
     currency: order.currency,
+    ...(source ? { source } : {}),
   });
 
   try {
@@ -66,6 +70,7 @@ export async function startBoostCheckout({
             includeInstantAlerts,
             value: order.amount / 100,
             currency: order.currency,
+            ...(source ? { source } : {}),
           });
           resolve({ outcome: "paid" });
         },
