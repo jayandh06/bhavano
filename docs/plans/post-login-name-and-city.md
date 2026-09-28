@@ -1,9 +1,9 @@
 # Post-login name (+ optional city); secondary verification deferred to Publish
 
-Status: **login half changed 2026-09-28** — login now asks only for name (+ optional city); the
-verified secondary identifier is no longer required at login. **The Publish-time gate that replaces
-it is not built yet** (see "Deferred verification" below). Everything below "Original design"
-describes the earlier behaviour and is kept for the reasoning and the still-reused phases.
+Status: **changed 2026-09-28** — login asks only for name (+ optional city); a **verified phone is
+now required at Publish** instead (built the same day, see "Deferred verification"). Everything
+below "Original design" describes the earlier behaviour and is kept for the reasoning and the
+still-reused phases.
 
 ## 2026-09-28 change: what login asks now
 
@@ -23,15 +23,28 @@ City: mobile prefills it from the city already selected in the header (one-tap c
 profile has none. **Web does not prefill yet** — the selected city lives in a server-side cookie
 (`bhavano_city`), not in client state the auth modal can read.
 
-### Deferred verification (not built yet)
+### Deferred verification (built)
 
-- **Google / Apple users** verify their **phone at Publish** (single OTP via the existing
-  `linkPhone` flow) — buyers reach sellers by phone and it is the spam control.
-- **Phone-OTP users** publish immediately; email becomes an optional, dismissible nudge after the
-  ad is live (only needed for receipts/notifications — confirm the Razorpay flow does not require
-  it).
-- Existing accounts missing the second identifier get a gentle nudge, never a block
-  ([profile-completion-dialog.md](profile-completion-dialog.md) / the banner already cover this).
+- **Rule:** publishing needs a *verified phone*. Phone-OTP accounts always have one. Google/Apple
+  accounts usually do not, so they are asked at Publish. Email is never required to publish.
+- **BFF (authoritative):** `ListingsService.assertOwnerPhoneVerified`, called by the user-facing
+  `POST /listings` controller only (not inside `create`, which outreach also uses to post on a
+  contact's behalf). Rejects with 403 `{ code: PHONE_VERIFICATION_REQUIRED, message: "Verify your
+  phone number to publish your ad." }` when `phone` or `phoneVerifiedAt` is missing.
+- **Web:** `useAuthGate().requireVerifiedPhone({ onSuccess })` (AuthGateProvider). The wizard's
+  `onSubmit` calls it before any upload when `getUserContactAction()` has no phone; the modal
+  reuses `ProfileBasicsStep` in `verifyPhoneOnly` mode (starts at the phone step, Cancel closes,
+  no name/city re-save) and resumes `onSubmit` once linked. A create-time 403 with the message
+  above re-opens it as a backstop.
+- **Mobile:** `useHomeSheets().ensureVerifiedPhone({ accessToken, onSuccess })` resolves `true`
+  (already verified — carry on) or `false` (it opened the basics sheet in `verifyPhoneOnly`
+  mode; `onSuccess` resumes). Swiping the sheet away drops the pending resume.
+- **Phone already on another account:** the existing account-merge confirm phase applies, unchanged.
+- **Deploy order:** web/mobile first, BFF second — an old web talking to the new BFF would show a
+  Google-only user a bare 403 instead of the dialog.
+- **Still open:** phone-OTP users' optional post-publish email nudge; a gentle nudge (never a
+  block) for legacy accounts missing the other identifier — the banner/dialog in
+  [profile-completion-dialog.md](profile-completion-dialog.md) already cover that.
 
 ## Original design (2026-09-25, superseded for login)
 

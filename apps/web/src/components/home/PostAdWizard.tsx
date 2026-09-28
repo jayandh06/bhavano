@@ -32,7 +32,7 @@ import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPri
 import { platformFeeApplies } from "@bhavano/types/platformFeePricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import { startListingPublishCheckout } from "@/lib/listingPublishCheckout";
-import { NEEDS_LOGIN_ERROR } from "@/lib/postAdErrors";
+import { NEEDS_LOGIN_ERROR, PHONE_VERIFICATION_REQUIRED_MESSAGE } from "@/lib/postAdErrors";
 import {
   fetchPostAdPlanPricingAction,
 } from "@/app/actions/payments";
@@ -249,7 +249,7 @@ export function PostAdWizard({
   loggedIn: boolean;
   videoEntitlement: VideoEntitlement;
 }) {
-  const { requireLogin } = useAuthGate();
+  const { requireLogin, requireVerifiedPhone } = useAuthGate();
   const [listingId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("category");
   // Held in state as well as taken as a prop: after a login at submit, the prop is still the
@@ -926,6 +926,17 @@ export function PostAdWizard({
       return;
     }
 
+    // A verified phone is required to publish (buyers reach the seller by phone; it is also the
+    // spam control) but login no longer collects one, so a Google/Apple account arrives here
+    // without it. Ask now, before any upload, and resume this same call once it is verified.
+    // The BFF re-checks authoritatively on create — see the result handling below.
+    const publisher = await getUserContactAction();
+    if (!publisher.phone) {
+      setPending(false);
+      requireVerifiedPhone({ onSuccess: () => void onSubmit() });
+      return;
+    }
+
     const uploadedPhotos: { photoNo: number; hash: string; ext: string }[] = [];
     for (let i = 0; i < photos.length; i++) {
       const photoNo = i + 1;
@@ -1016,6 +1027,11 @@ export function PostAdWizard({
       setPending(false);
       if (result.error === NEEDS_LOGIN_ERROR) {
         requireLogin({ onSuccess: () => void onSubmit() });
+        return;
+      }
+      // Backstop for a phone that went missing between the check above and this request.
+      if (result.error?.includes(PHONE_VERIFICATION_REQUIRED_MESSAGE)) {
+        requireVerifiedPhone({ onSuccess: () => void onSubmit() });
         return;
       }
       setSlotCap(result.slotCap ?? null);

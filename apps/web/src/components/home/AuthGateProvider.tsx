@@ -48,6 +48,11 @@ interface AuthGateContextValue {
    * still always fail that check, so offering it here is a guaranteed dead end, not a real
    * choice. */
   requireLogin: (options?: { redirectTo?: string; onSuccess?: () => void; phoneOnly?: boolean }) => void;
+  /** Publish-time check: runs `onSuccess` straight away if the account already has a verified
+   * phone, otherwise opens a phone-OTP dialog first and runs it once the number is verified.
+   * Login no longer collects a phone (docs/plans/post-login-name-and-city.md), so a Google/Apple
+   * account reaches Publish without one. */
+  requireVerifiedPhone: (options: { onSuccess: () => void }) => void;
 }
 
 const AuthGateContext = createContext<AuthGateContextValue | null>(null);
@@ -68,6 +73,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [showToast, setShowToast] = useState(false);
   const [redirectTo, setRedirectTo] = useState<string | undefined>(undefined);
   const [phoneOnly, setPhoneOnly] = useState(false);
+  /** True while the basics step is being used only to verify a phone at Publish. */
+  const [verifyPhoneMode, setVerifyPhoneMode] = useState(false);
   const [basicsInitial, setBasicsInitial] = useState<ProfileBasicsValues>({
     name: "",
     cityId: null,
@@ -99,7 +106,38 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     setShowLoginModal(true);
   }
 
+  async function requireVerifiedPhone(options: { onSuccess: () => void }) {
+    const result = await fetchProfileAction();
+    // Not logged in / lookup failed: nothing to verify against here. Fall back to the ordinary
+    // login prompt, which resumes the same callback afterwards.
+    if (result.requiresLogin) {
+      requireLogin({ onSuccess: options.onSuccess });
+      return;
+    }
+    // A phone is only ever stored once verified (OTP login or the linkPhone flow), so presence
+    // is enough; the BFF re-checks `phoneVerifiedAt` authoritatively on create.
+    if (result.profile.phone) {
+      options.onSuccess();
+      return;
+    }
+    onSuccessRef.current = options.onSuccess;
+    quietBasicsRef.current = false;
+    setVerifyPhoneMode(true);
+    setBasicsInitial({ ...basicsFromProfile(result.profile), needSecondary: "phone" });
+    setError(null);
+    setPending(false);
+    setLoginStep("basics");
+    setShowLoginModal(true);
+  }
+
   function closeModal() {
+    if (verifyPhoneMode) {
+      // Backing out of the Publish-time check just returns to the ad they were about to publish.
+      onSuccessRef.current = undefined;
+      setVerifyPhoneMode(false);
+      setShowLoginModal(false);
+      return;
+    }
     // Name + verified secondary are mandatory — backdrop / X must not abandon an incomplete
     // profile. City-only gaps may dismiss (canDismissBasics).
     if (loginStep === "basics" && !canDismissBasics(basicsInitial)) return;
@@ -116,6 +154,14 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   }
 
   function onBasicsComplete() {
+    if (verifyPhoneMode) {
+      const resume = onSuccessRef.current;
+      onSuccessRef.current = undefined;
+      setVerifyPhoneMode(false);
+      setShowLoginModal(false);
+      resume?.();
+      return;
+    }
     if (quietBasicsRef.current) {
       quietBasicsRef.current = false;
       setShowLoginModal(false);
@@ -376,7 +422,7 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthGateContext.Provider value={{ requireLogin }}>
+    <AuthGateContext.Provider value={{ requireLogin, requireVerifiedPhone: (o) => void requireVerifiedPhone(o) }}>
       {children}
 
       {showLoginModal && (
@@ -393,11 +439,11 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 {loginStep === "choose" && "Log in to continue"}
                 {loginStep === "phone" && "Enter your phone number"}
                 {loginStep === "otp" && "Enter the OTP"}
-                {loginStep === "basics" && "Complete your profile"}
+                {loginStep === "basics" && (verifyPhoneMode ? "Verify your phone to publish" : "Complete your profile")}
               </div>
               {loginStep === "basics" ? (
                 <ProfileBasicsCloseButton
-                  canDismiss={canDismissBasics(basicsInitial)}
+                  canDismiss={verifyPhoneMode || canDismissBasics(basicsInitial)}
                   onClose={closeModal}
                 />
               ) : (
@@ -498,6 +544,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
                 onPending={setPending}
                 onSaved={onBasicsComplete}
                 onSkip={onBasicsComplete}
+                verifyPhoneOnly={verifyPhoneMode}
+                onCancel={closeModal}
                 onReauthRequired={() => {
                   setShowLoginModal(false);
                   void signOutAction();

@@ -6,3 +6,9 @@
  * exact string is how the wizard tells "genuinely logged out, reopen the login dialog" apart from
  * every other failure reason, which it shows as a plain error instead. */
 export const NEEDS_LOGIN_ERROR = "You must be logged in to post an ad.";
+
+/** The BFF's own message when Publish is attempted without a verified phone (403,
+ * `code: PHONE_VERIFICATION_REQUIRED`). The wizard normally asks up front, before any upload; this
+ * is matched (by substring — the server-action layer may wrap the text) only as the backstop for
+ * a number that went missing between that check and the request. */
+export const PHONE_VERIFICATION_REQUIRED_MESSAGE = "Verify your phone number to publish your ad.";
