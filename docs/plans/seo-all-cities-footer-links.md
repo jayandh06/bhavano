@@ -65,3 +65,7 @@ in `sitemap.ts`'s static entries alongside `/about`, `/tools`, etc.
 
 Files: `Footer.tsx` (`cityItems` filter, `LocationBlock` gained `viewAllHref`/`viewAllLabel`),
 new `app/cities/page.tsx`, `sitemap.ts`.
+
+**2026-09-28:** `/cities` now lists only the 37 served cities (`City.isServed`), not the 700+
+census towns — see [serve-only-ad-targeted-cities.md](serve-only-ad-targeted-cities.md). Census
+towns that have listings stay in the sitemap and their pages keep working.

@@ -1,5 +1,9 @@
 # Canonical city, local place as area
 
+> **2026-09-28:** served cities (the 37 the ads target, `City.isServed`) are now tried first, with
+> reaches of 75 km (popular), 90 km (Delhi NCR) and 40 km (the rest). The order below is the fallback
+> for pins beyond every reach. See [serve-only-ad-targeted-cities.md](serve-only-ad-targeted-cities.md).
+
 A dropped pin stays on a curated city. The neighbourhood Google returns is an area under that city. Reverse geocoding does not create a city. This replaces the `ensureCity` fallback described in [fix-wrong-city-geocoding-locality-alias.md](fix-wrong-city-geocoding-locality-alias.md).
 
 ## Why one city was splitting
