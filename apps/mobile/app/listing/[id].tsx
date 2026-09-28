@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { postedByLabel } from "@bhavano/types/sellerType";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
@@ -185,6 +186,7 @@ export default function ListingDetailScreen() {
         <Icon name="pin" size={12} color={colors.muted} />
         <Text style={{ fontSize: 13, color: colors.muted }}>
           {listing.area}, {listing.cityName}
+          {listing.postedBy && ` · ${postedByLabel(listing.postedBy, listing.postedByAgency)}`}
         </Text>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginTop: 6 }}>

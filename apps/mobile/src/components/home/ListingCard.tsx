@@ -3,6 +3,7 @@ import { Image, Pressable, Share, StyleSheet, Text, View, Linking } from "react-
 import { useRouter } from "expo-router";
 import type { ListingCardDto } from "@bhavano/types";
 import { priceWithWords } from "@bhavano/types/priceWords";
+import { postedByLabel } from "@bhavano/types/sellerType";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { BffError, revealContact, toggleFavourite } from "../../lib/bffClient";
@@ -23,6 +24,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
 
   // TEMP(auth-gate): viewing listing details is open without login for now.
   const openDetail = () => router.push(`/listing/${item.id}`);
+  const postedBy = postedByLabel(item.postedBy);
 
   // A public URL without `app=1` (see publicWebUrl's own doc comment for why not appWebUrl) —
   // `/listings/{id}` redirects to the real canonical page (see apps/web/src/app/listings/[id]/
@@ -137,9 +139,12 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             "Koramangala, " with a dangling comma. */}
         <View style={styles.metaRow}>
           <Icon name="pin" size={11} color={colors.muted} />
-          <Text style={{ fontSize: 12, color: colors.muted }}>
+          <Text style={{ fontSize: 12, color: colors.muted, flexShrink: 1 }} numberOfLines={1}>
             {item.area}, {item.cityName}
           </Text>
+          {postedBy && (
+            <Text style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: "600", color: colors.textSoft }}>{postedBy}</Text>
+          )}
         </View>
         <View style={styles.specsRow}>
           {item.specs.map((spec) => (

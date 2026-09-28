@@ -15,6 +15,7 @@ import type {
   ListingCategory,
   ListingDetailDto,
   ReverseGeocodeResultDto,
+  SellerType,
   TransactionType,
 } from "@bhavano/types";
 import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
@@ -270,6 +271,10 @@ export function PostAdWizard({
   // string[] for multi-select fields (preferredTenantTypes); the attributes column is JSONB and
   // typed Record<string, unknown> on the wire, so an array round-trips as-is.
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>({});
+  // Asked only while the profile has no answer and this listing's own "Posted by Broker / Agent"
+  // field is blank — the BFF saves either answer to the profile (resolveDeclaredSellerType).
+  const [postedAs, setPostedAs] = useState<SellerType | null>(null);
+  const askSellerType = !profile?.sellerType && !attributes.fromBroker;
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [videos, setVideos] = useState<SelectedVideo[]>([]);
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -1017,6 +1022,10 @@ export function PostAdWizard({
    */
   async function onSubmit() {
     if (!category || !transactionType) return;
+    if (askSellerType && !postedAs) {
+      setError("Please tell us whether you're the owner or an agent.");
+      return;
+    }
 
     let activeToken = accessToken;
     if (!activeToken) {
@@ -1082,6 +1091,7 @@ export function PostAdWizard({
           attributes: pruneHiddenAttributes(category, transactionType, attributes),
           lat: pin?.lat,
           lng: pin?.lng,
+          postedAs: askSellerType && postedAs ? postedAs : undefined,
           ...(needsCheckout
             ? {
                 checkoutIntent: selectedBoostPlan
@@ -1561,6 +1571,40 @@ export function PostAdWizard({
               platformFeeSettings={planPricingSettings.platformFee}
               showBoostOptions={showBoostOnReview}
             />
+          )}
+
+          {askSellerType && (
+            <View style={{ gap: 6 }}>
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>You are posting as</Text>
+              <View style={styles.chipRow}>
+                {(
+                  [
+                    ["owner", "Owner"],
+                    ["agent", "Agent / broker"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    onPress={() => {
+                      setPostedAs(value);
+                      setError(null);
+                    }}
+                    style={[
+                      styles.chip,
+                      {
+                        borderColor: postedAs === value ? colors.green : colors.border,
+                        backgroundColor: postedAs === value ? colors.surfaceAlt : "transparent",
+                      },
+                    ]}
+                  >
+                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={{ color: colors.muted, fontSize: 12 }}>
+                Shown on your ads so buyers know who they&rsquo;re talking to.
+              </Text>
+            </View>
           )}
 
           {(error || publishCheckoutError) && (
