@@ -207,6 +207,7 @@ fi
 rm -f "`$TAR"
 echo '==> done'
 docker compose -f docker-compose.prod.yml ps
+# PowerShell ends piped input with CRLF; the stray CR lands in this comment instead of a command.
 "@
 
 Write-Host "==> remote load + up --no-build"
