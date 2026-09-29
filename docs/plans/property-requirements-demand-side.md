@@ -292,6 +292,10 @@ one card and a notification.
    `apps/mobile/app/my-requirements.tsx` mirrors `/my-listings`: status badge (active / expired /
    fulfilled), renew, withdraw, optional note/timeline.
 
+> **Revisited 2026-09-29** in [`requirements-feed-for-owners-agents.md`](requirements-feed-for-owners-agents.md):
+> a Requirements link beside Tools/Plans on web, and a mobile tab shown only to owners and agents.
+> The reasoning below still governs what seekers see.
+
 **No separate top-level tab**, for either meaning of "tab":
 
 - The homepage tabs (Buy / Rent & Lease / PG / Furniture / Interiors) are *intent filters over
