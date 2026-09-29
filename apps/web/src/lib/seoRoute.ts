@@ -153,6 +153,7 @@ export const SERVICE_TYPE_VALUES = CATEGORY_FIELD_CONFIG.interiors.find((f) => f
  * explicitly means literal posting-date order, boosted listings still first but uncapped, same as
  * picking a price/popularity sort. See ListingsService.list()'s `ORDER_BY`/`wantsExplicitSort`. */
 export const SORT_VALUES = ["auto", "newest", "price_asc", "price_desc", "popular"] as const;
+export const POSTED_BY_VALUES = ["owner"] as const;
 
 export type FacetKind = "bedrooms" | "sharingType" | "condition" | "serviceType" | "none";
 

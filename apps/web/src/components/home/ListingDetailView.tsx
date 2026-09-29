@@ -68,7 +68,7 @@ export async function ListingDetailView({
   accessToken?: string;
 }) {
   const attributes = listing.attributes as Record<string, string | string[]>;
-  const postedBy = postedByLabel(listing.postedBy, listing.postedByAgency);
+  const postedBy = postedByLabel(listing.postedBy, listing.postedByAgency, listing.postedByReraVerified);
   // A field's stored value only makes sense to show once its `dependsOn` condition (if any) is
   // currently met — e.g. a brokerage fee shouldn't display for a listing where "posted by
   // broker" has since been edited back to "no". Same visibility rule the posting/edit forms use

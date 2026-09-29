@@ -653,6 +653,11 @@ export function ProfileForm({ profile }: { profile: UserProfileDto }) {
               placeholder="Your RERA agent registration number"
               className={inputClass}
             />
+            <p className="text-[12px] text-muted mt-1 mb-0">
+              {profile.reraVerified && reraNumber.trim() === (profile.reraNumber ?? "")
+                ? "✓ Verified by Bhavano — shown on your listings. Changing it removes the badge until we check again."
+                : "We check RERA numbers and add a “RERA verified” badge to your listings."}
+            </p>
           </div>
         </>
       )}

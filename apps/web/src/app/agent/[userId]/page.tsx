@@ -40,7 +40,7 @@ export default async function AgentStorefrontPage({
           )}
         </div>
         <p className="text-[13px] text-muted mb-6">
-          {agent.sellerType && <>{postedByLabel(agent.sellerType, agent.agencyName)} · </>}
+          {agent.sellerType && <>{postedByLabel(agent.sellerType, agent.agencyName, agent.reraVerified)} · </>}
           {agent.total} active listing{agent.total === 1 ? "" : "s"} · Member since{" "}
           {new Date(agent.memberSince).toLocaleDateString()}
         </p>

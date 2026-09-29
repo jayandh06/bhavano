@@ -14,6 +14,7 @@ import { Icon } from "@/components/home/Icon";
 import { AreaFilter } from "@/components/home/AreaFilter";
 import { AssetTypeFilter } from "@/components/home/TypeFilters";
 import { BhkFilter } from "@/components/home/BhkFilter";
+import { OwnersOnlyToggle } from "@/components/home/OwnersOnlyToggle";
 import { hasAssetFilter } from "@/lib/assetFilters";
 import { ListingGrid } from "@/components/home/ListingGrid";
 import { Pagination } from "@/components/home/Pagination";
@@ -31,6 +32,7 @@ import {
   parseEnum,
   parseIntList,
   parsePage,
+  POSTED_BY_VALUES,
   PROPERTY_TYPE_VALUES,
   SERVICE_TYPE_VALUES,
   SHARING_TYPE_VALUES,
@@ -69,6 +71,7 @@ export default async function HomePage({
    * several are chosen, where the heading names the asset alone. */
   const singleBedroom = bedrooms?.length === 1 ? bedrooms[0] : undefined;
   const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);
+  const postedBy = parseEnum(sp.postedBy, POSTED_BY_VALUES);
   const sharingType = parseEnum(sp.sharingType, SHARING_TYPE_VALUES);
   const condition = parseEnum(sp.condition, CONDITION_VALUES);
   const serviceType = parseEnum(sp.serviceType, SERVICE_TYPE_VALUES);
@@ -109,6 +112,7 @@ export default async function HomePage({
     q: q || undefined,
     bedrooms,
     furnished,
+    postedBy,
     sharingType,
     condition,
     serviceType,
@@ -196,6 +200,7 @@ export default async function HomePage({
     if (resolvedCity) params.set("city", slugify(resolvedCity.name));
     if (bedrooms && bedrooms.length > 0) params.set("bedrooms", bedrooms.join(","));
     if (furnished) params.set("furnished", furnished);
+    if (postedBy) params.set("postedBy", postedBy);
     if (sharingType) params.set("sharingType", sharingType);
     if (condition) params.set("condition", condition);
     if (serviceType) params.set("serviceType", serviceType);
@@ -270,6 +275,9 @@ export default async function HomePage({
               * writes `?bedrooms=`, which this page has always accepted. */}
             {homeAsset && hasAssetFilter(homeAsset, "bedrooms") && (
               <BhkFilter category={homeAsset} urlMode="query" />
+            )}
+            {(activeTab.value === "buy" || activeTab.value === "rentLease") && (
+              <OwnersOnlyToggle active={postedBy === "owner"} />
             )}
           </div>
         )}

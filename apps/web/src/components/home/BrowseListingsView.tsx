@@ -17,6 +17,7 @@ import { AssetTypeFilter } from "./TypeFilters";
 import { hasAssetFilter } from "@/lib/assetFilters";
 import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
+import { OwnersOnlyToggle } from "./OwnersOnlyToggle";
 import { SortDropdown } from "./SortDropdown";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
@@ -61,6 +62,7 @@ function buildPageHref(basePath: string, query: Omit<ListingsQuery, "limit" | "c
   if (query.minPrice !== undefined) params.set("minPrice", String(query.minPrice));
   if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
   if (query.furnished) params.set("furnished", query.furnished);
+  if (query.postedBy) params.set("postedBy", query.postedBy);
   if (query.areaIds && query.areaIds.length > 0) params.set("areas", query.areaIds.join(","));
   if (query.bedrooms && query.bedrooms.length > 0) params.set("bedrooms", query.bedrooms.join(","));
   if (query.sort) params.set("sort", query.sort);
@@ -242,6 +244,9 @@ export async function BrowseListingsView({
                 activeCondition={query.condition}
                 activeServiceType={query.serviceType}
               />
+              {(activeIntent === "buy" || activeIntent === "rentLease") && (
+                <OwnersOnlyToggle active={query.postedBy === "owner"} />
+              )}
             </div>
           </div>
         )}

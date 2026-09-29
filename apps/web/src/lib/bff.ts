@@ -176,6 +176,8 @@ export interface ListingsQuery {
    * from the SEO path facet in practice (the query param wins when both are present). */
   bedrooms?: number[];
   furnished?: "unfurnished" | "semi" | "furnished";
+  /** "Owners only" — listings labelled Owner. */
+  postedBy?: "owner";
   /** Amenity keys the listing must all have (`attributes.<key> === "yes"`) — which keys exist
    * depends on the property type, since the config declares them per category. */
   amenities?: string[];
@@ -204,6 +206,7 @@ export function fetchListings(query: ListingsQuery, accessToken?: string): Promi
   if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
   if (query.bedrooms && query.bedrooms.length > 0) params.set("bedrooms", query.bedrooms.join(","));
   if (query.furnished) params.set("furnished", query.furnished);
+  if (query.postedBy) params.set("postedBy", query.postedBy);
   if (query.amenities && query.amenities.length > 0) params.set("amenities", query.amenities.join(","));
   if (query.sharingType) params.set("sharingType", query.sharingType);
   if (query.condition) params.set("condition", query.condition);

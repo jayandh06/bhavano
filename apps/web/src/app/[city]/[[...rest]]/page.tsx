@@ -26,6 +26,7 @@ import {
   CONDITION_VALUES,
   SERVICE_TYPE_VALUES,
   SORT_VALUES,
+  POSTED_BY_VALUES,
   transactionGroupFor,
   type ParsedSegments,
 } from "@/lib/seoRoute";
@@ -365,6 +366,7 @@ async function NationalBrowsePage({
   const maxPrice = parsePositiveInt(sp.maxPrice);
   const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);
   const sort = parseEnum(sp.sort, SORT_VALUES);
+  const postedBy = parseEnum(sp.postedBy, POSTED_BY_VALUES);
   const bedroomsFromQuery = parseIntList(sp.bedrooms);
   const selects = parseAssetSelects(sp);
   const amenities = parseAmenities(sp.amenities);
@@ -381,6 +383,7 @@ async function NationalBrowsePage({
         minPrice,
         maxPrice,
         furnished,
+        postedBy,
         sort,
         sharingType: selects.sharingType ?? baseQuery.sharingType,
         condition: selects.condition ?? baseQuery.condition,
@@ -582,6 +585,7 @@ export default async function CityBrowsePage({
   const maxPrice = parsePositiveInt(sp.maxPrice);
   const furnished = parseEnum(sp.furnished, FURNISHING_VALUES);
   const sort = parseEnum(sp.sort, SORT_VALUES);
+  const postedBy = parseEnum(sp.postedBy, POSTED_BY_VALUES);
 
   // The multi-select BHK filter (`?bedrooms=1,3,5`) — when present it wins over the single
   // bedroom bucket already resolved from the path facet (same precedence `areaIds` already has
@@ -626,6 +630,7 @@ export default async function CityBrowsePage({
           minPrice,
           maxPrice,
           furnished,
+          postedBy,
           sort,
           sharingType: selects.sharingType ?? baseQuery.sharingType,
           condition: selects.condition ?? baseQuery.condition,
