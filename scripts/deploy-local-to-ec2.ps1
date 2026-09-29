@@ -35,7 +35,13 @@ param(
   [switch] $SkipMigrate,
   [switch] $BuildOnly,
   [string] $Platform = "linux/arm64",
-  [string] $ProjectName = "bhavano"
+  [string] $ProjectName = "bhavano",
+  # Releases of each image left on the server after a deploy: the live one plus a rollback.
+  [ValidateRange(1, 10)]
+  [int] $KeepReleases = 2,
+  # A bff image unpacks to about 1.3 GB; loading with less than this free risks a half-extracted image.
+  [ValidateRange(1, 20)]
+  [int] $MinFreeGB = 2
 )
 
 $ErrorActionPreference = "Stop"
@@ -177,10 +183,36 @@ REMOTE_DIR="`${REMOTE_DIR/#\~/`$HOME}"
 TAR=~/$tarName
 SERVICES='$svcList'
 DO_MIGRATE='$migrate'
+KEEP_RELEASES=$KeepReleases
+MIN_FREE_KB=$($MinFreeGB * 1024 * 1024)
+
+# Drops all but the newest KEEP_RELEASES timestamped tags of every app image. A tag still used by a
+# running container only loses its name; the container keeps running.
+prune_old_releases() {
+  for svc in web bff admin; do
+    docker images --format '{{.Tag}}' "`${PROJECT}-`${svc}" | grep -E '^[0-9]{14}_' | sort -r | \
+      tail -n +`$((KEEP_RELEASES + 1)) | while read -r old; do
+        docker rmi "`${PROJECT}-`${svc}:`${old}" >/dev/null && echo "    removed `${PROJECT}-`${svc}:`${old}"
+      done || true
+  done
+  docker image prune -f >/dev/null || true
+}
 
 echo '==> git pull on EC2'
 cd "`$REMOTE_DIR"
 git pull --ff-only
+
+echo '==> free disk before load'
+prune_old_releases
+FREE_KB=`$(df --output=avail -k / | tail -1)
+echo "    `$((FREE_KB / 1024)) MB free"
+# docker load can report success while failing to unpack layers on a full disk, and retagging
+# :latest onto a half-extracted image breaks the next restart. Stop here instead.
+if (( FREE_KB < MIN_FREE_KB )); then
+  echo "Not enough disk on the server (need $MinFreeGB GB free). Nothing was changed." >&2
+  rm -f "`$TAR"
+  exit 1
+fi
 
 echo '==> docker load'
 if [[ "`$TAR" == *.gz ]]; then
@@ -190,8 +222,11 @@ else
 fi
 
 for svc in `$SERVICES; do
-  docker tag "`${PROJECT}-`${svc}:`${TAG}" "`${PROJECT}-`${svc}:latest" || \
-    docker tag "`${PROJECT}_`${svc}:`${TAG}" "`${PROJECT}_`${svc}:latest"
+  # Creating a container needs every layer unpacked, so this catches a partial load before
+  # :latest moves.
+  probe=`$(docker create "`${PROJECT}-`${svc}:`${TAG}")
+  docker rm "`$probe" >/dev/null
+  docker tag "`${PROJECT}-`${svc}:`${TAG}" "`${PROJECT}-`${svc}:latest"
 done
 
 echo '==> compose up --no-build'
@@ -205,13 +240,21 @@ if [[ "`$DO_MIGRATE" == "true" ]] && echo "`$SERVICES" | grep -qw bff; then
 fi
 
 rm -f "`$TAR"
+
+echo "==> keeping the newest `$KEEP_RELEASES releases of each image"
+prune_old_releases
+df -h / | tail -1
+
 echo '==> done'
 docker compose -f docker-compose.prod.yml ps
-# PowerShell ends piped input with CRLF; the stray CR lands in this comment instead of a command.
 "@
 
+# Sent as base64 of an LF-only script: this file is checked out with CRLF in some worktrees, and
+# PowerShell adds CRLF to piped input, either of which leaves bash reading "pipefail\r".
+$remoteB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($remoteScript -replace "`r", "")))
+
 Write-Host "==> remote load + up --no-build"
-$remoteScript | ssh @sshArgs $remote "bash -s"
+ssh @sshArgs $remote "echo $remoteB64 | base64 -d | bash"
 if ($LASTEXITCODE -ne 0) { throw "remote deploy failed" }
 
 Remove-Item Env:DOCKER_DEFAULT_PLATFORM -ErrorAction SilentlyContinue

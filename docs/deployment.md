@@ -571,6 +571,20 @@ rm ~/bhavano-images-$TAG.tar.gz
 docker image prune -f
 ```
 
+`scripts/deploy-local-to-ec2.ps1` does this cleanup itself. After a successful `up` it keeps only the
+newest two timestamped tags of each `bhavano-<svc>` image (the live release plus one rollback;
+change with `-KeepReleases`). Each release is about 1.6 GB (bff about 1.3 GB, web about 0.3 GB), and
+the 29 GB disk can't hold more than a few. Before `docker load` it also stops with "Not enough disk"
+if less than `-MinFreeGB` (default 2) is free. On a full disk `docker load` can report success while
+leaving layers unpacked; retagging `:latest` onto that image breaks the next container restart.
+
+To roll back, retag the kept previous release and recreate:
+
+```bash
+docker tag bhavano-bff:<previous-tag> bhavano-bff:latest   # same for web
+COMPOSE_PROJECT_NAME=bhavano docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build bff web
+```
+
 ### Partial deploys
 
 Same idea for one service only — save/load a single image, then:
