@@ -29,6 +29,7 @@ const SORT_OPTIONS: { value: AdminUserSort; label: string }[] = [
   { value: "createdAt_desc", label: "Newest first" },
   { value: "createdAt_asc", label: "Oldest first" },
   { value: "name_asc", label: "Name — A→Z" },
+  { value: "listings_desc", label: "Most listings (all time)" },
 ];
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {

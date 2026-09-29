@@ -101,7 +101,7 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
               <th style={thStyle}>
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} />
               </th>
-              {["Created", "Name", "Phone", "Email", "Role", "Posts as", "City", "Notification status", ""].map((h) => (
+              {["Created", "Name", "Phone", "Email", "Role", "Posts as", "Live ads", "Enquiries", "City", "Notification status", ""].map((h) => (
                 <th key={h || "actions"} style={thStyle}>
                   {h}
                 </th>
@@ -140,6 +140,8 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
                 </td>
                 <td style={tdStyle}>{u.role}</td>
                 <td style={tdStyle}>{postedByLabel(u.sellerType, u.agencyName) ?? dash}</td>
+                <td style={{ ...tdStyle, textAlign: "right" }}>{u.liveListings || dash}</td>
+                <td style={{ ...tdStyle, textAlign: "right" }}>{u.enquiries || dash}</td>
                 <td style={tdStyle}>{u.cityName ?? dash}</td>
                 <td style={tdStyle}>
                   {u.welcomed ? (

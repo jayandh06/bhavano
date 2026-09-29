@@ -122,7 +122,7 @@ export type AdminPaymentSort = `${AdminPaymentSortField}_asc` | `${AdminPaymentS
 export type AdminPageVisitTraffic = "any" | "humans" | "js_confirmed" | "bots" | "unclassified";
 
 /** Mirrors the BFF's USER_SORT_VALUES (apps/bff/src/admin/dto/list-users.dto.ts). */
-export type AdminUserSort = "createdAt_desc" | "createdAt_asc" | "name_asc";
+export type AdminUserSort = "createdAt_desc" | "createdAt_asc" | "name_asc" | "listings_desc";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
