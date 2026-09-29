@@ -1,4 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   AdminConversationsPage,
   ConversationDetailDto,
@@ -9,6 +16,7 @@ import type {
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ListingsService } from '../listings/listings.service';
+import { isBulkImportOwner, OWNER_UNVERIFIED_MESSAGE } from '../listings/bulk-import-owner';
 import type { Conversation, Message, Prisma } from '@prisma/client';
 
 function toMessageDto(message: Message, opts: { revealDeletedBody?: boolean } = {}): MessageDto {
@@ -61,10 +69,16 @@ export class MessagingService {
     listingId: string;
   }> {
     const result = await this.prisma.$transaction(async (tx) => {
-      const listing = await tx.listing.findUnique({ where: { id: listingId } });
+      const listing = await tx.listing.findUnique({
+        where: { id: listingId },
+        include: { owner: { select: { phone: true } } },
+      });
       if (!listing) throw new NotFoundException('Listing not found');
       if (listing.ownerId === senderId) {
         throw new BadRequestException("You can't message yourself about your own listing");
+      }
+      if (isBulkImportOwner(listing.owner)) {
+        throw new ConflictException({ message: OWNER_UNVERIFIED_MESSAGE, code: 'OWNER_UNVERIFIED' });
       }
 
       const conversation = await tx.conversation.upsert({

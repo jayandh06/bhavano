@@ -1,7 +1,10 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import type { ContactRevealBalanceDto, ContactRevealSettingsDto, RevealContactResponseDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { BULK_IMPORT_OWNER_PHONE, OWNER_UNVERIFIED_MESSAGE } from '../listings/bulk-import-owner';
 import { CONTACT_REVEAL_SETTINGS_ID, DEFAULT_CONTACT_REVEAL_SETTINGS } from './contact-reveal.constants';
+
+const UNREVEALABLE: ContactRevealState = { contactRevealed: false, ownerPhone: null, ownerEmail: null };
 
 /** 402 — a status the frontend can key off reliably (not a message string) to know it should
  * open the credit-purchase sheet rather than show a plain error banner. */
@@ -62,7 +65,7 @@ export class ContactRevealService {
     ownerPhone: string | null,
     ownerEmail: string | null,
   ): Promise<ContactRevealState> {
-    if (!userId) return { contactRevealed: false, ownerPhone: null, ownerEmail: null };
+    if (!userId || ownerPhone === BULK_IMPORT_OWNER_PHONE) return UNREVEALABLE;
 
     const existing = await this.prisma.contactReveal.findUnique({
       where: { listingId_userId: { listingId, userId } },
@@ -110,6 +113,10 @@ export class ContactRevealService {
     const hasCredit = freeAvailable ? false : await this.hasCreditAvailable(userId);
 
     for (const listing of listings) {
+      if (listing.ownerPhone === BULK_IMPORT_OWNER_PHONE) {
+        states.set(listing.id, UNREVEALABLE);
+        continue;
+      }
       if (revealedIds.has(listing.id)) {
         states.set(listing.id, { contactRevealed: true, ownerPhone: listing.ownerPhone, ownerEmail: listing.ownerEmail });
         continue;
@@ -160,6 +167,9 @@ export class ContactRevealService {
     });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
     const { phone: ownerPhone, email: ownerEmail } = listing.owner;
+    if (ownerPhone === BULK_IMPORT_OWNER_PHONE) {
+      throw new ConflictException({ message: OWNER_UNVERIFIED_MESSAGE, code: 'OWNER_UNVERIFIED' });
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.contactReveal.findUnique({ where: { listingId_userId: { listingId, userId } } });

@@ -145,7 +145,7 @@ export async function ListingDetailView({
                   </div>
                 )}
               </div>
-              {listing.priceOnRequest && (
+              {listing.priceOnRequest && !listing.ownerUnverified && (
                 <p className="text-[13px] text-muted mb-2">
                   Plans and pricing vary — reach out to the owner for a quote.
                 </p>
@@ -266,6 +266,7 @@ export async function ListingDetailView({
                 initialIsFavourited={listing.isFavourited}
                 initialLikeCount={listing.likeCount}
                 isOwner={listing.isOwner}
+                ownerUnverified={listing.ownerUnverified}
                 isLoggedIn={!!accessToken}
                 initialContactRevealed={listing.contactRevealed}
                 initialOwnerPhone={listing.ownerPhone}

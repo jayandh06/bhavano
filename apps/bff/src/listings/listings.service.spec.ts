@@ -11,6 +11,7 @@ import { ListingSlotsService } from '../listing-slots/listing-slots.service';
 import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
 import { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provider';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
+import type { AnalyticsService } from '../analytics/analytics.service';
 import { ConfigService } from '@nestjs/config';
 import type { Prisma } from '@prisma/client';
 
@@ -65,6 +66,7 @@ function makeService() {
       }),
     } as unknown as PlatformFeeSettingsService,
     { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+  { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
   );
   return { service, prisma, notificationsService, listingSlotsService };
 }
@@ -107,6 +109,7 @@ describe('ListingsService.list — word match + fuzzy title search', () => {
         }),
       } as unknown as PlatformFeeSettingsService,
       { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+    { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
     );
     return { service, findMany, count, queryRaw };
   }
@@ -189,6 +192,7 @@ describe('ListingsService.list — amenity filter', () => {
         }),
       } as unknown as PlatformFeeSettingsService,
       { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+    { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
     );
     return { service, count };
   }
@@ -383,6 +387,7 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
         }),
       } as unknown as PlatformFeeSettingsService,
       { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+    { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
     );
     return { service, findMany };
   }
@@ -519,6 +524,7 @@ describe('ListingsService.listEngagement', () => {
         }),
       } as unknown as PlatformFeeSettingsService,
       { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+    { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
     );
     return { service, prisma };
   }
@@ -1046,6 +1052,7 @@ describe('ListingsService', () => {
           }),
         } as unknown as PlatformFeeSettingsService,
         { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+      { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
       );
       // getMine's own plumbing (toDetailDto etc.) isn't what these tests are about — stubbed so
       // a resolved add/delete just needs to not throw, not exercise the whole DTO pipeline.

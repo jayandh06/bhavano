@@ -166,4 +166,14 @@ export class CreateListingDto {
   @IsOptional()
   @IsIn(SELLER_TYPES)
   postedAs?: SellerType;
+
+  /// The visitor's analytics session (web bhavano_sid / mobile's own uuid) — lets the server
+  /// record the /post/success page-view trail entry itself once this listing actually goes live,
+  /// rather than trusting a client-side fire-and-forget request after the fact (which silently
+  /// drops on a network blip, an ad/privacy blocker, or the app backgrounding). Absent for
+  /// outreach/admin-created listings, which have no browser/app session at all.
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  sessionId?: string;
 }

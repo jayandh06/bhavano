@@ -175,7 +175,7 @@ export default function ListingDetailScreen() {
       {/* Mirrors ListingDetailView.tsx's own note on web — pg/coworking's price=0 ("Contact for
         * price") is already rendered as that literal string by the BFF's toCardDto, but the
         * reason behind it needs spelling out so it doesn't just look like a missing price. */}
-      {listing.priceOnRequest && (
+      {listing.priceOnRequest && !listing.ownerUnverified && (
         <Text style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>
           Plans and pricing vary — reach out to the owner for a quote.
         </Text>
@@ -252,7 +252,7 @@ export default function ListingDetailScreen() {
               <Icon name="heart" size={18} filled={isFavourited} color={isFavourited ? "#c0554b" : colors.text} />
               <Text style={{ fontSize: 10, fontWeight: "700", color: colors.muted }}>{likeCount}</Text>
             </Pressable>
-            {!listing.isOwner && (
+            {!listing.isOwner && !listing.ownerUnverified && (
               <>
                 <Pressable onPress={onMessage} style={[styles.actionButton, { borderColor: colors.border }]}>
                   <Icon name="message" size={18} color={colors.green} />
@@ -273,7 +273,12 @@ export default function ListingDetailScreen() {
               </>
             )}
           </View>
-          {!listing.isOwner && !!accessToken && (
+          {!listing.isOwner && listing.ownerUnverified && (
+            <Text style={{ fontSize: 13, color: colors.muted, marginTop: 12 }}>
+              The owner hasn&rsquo;t verified this listing on Bhavano yet, so they can&rsquo;t be contacted here.
+            </Text>
+          )}
+          {!listing.isOwner && !listing.ownerUnverified && !!accessToken && (
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 12 }}>
               The owner may be notified that you viewed this ad and can message you on Bhavano.
             </Text>

@@ -254,7 +254,10 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
           {/* Hidden on your own listing — the same reason as on the detail page, and more
             * visible here since a seller scrolling their own city sees the card among everyone
             * else's. */}
-          {!item.isOwner && (
+          {!item.isOwner && item.ownerUnverified && (
+            <span className="text-[11.5px] text-muted whitespace-nowrap">Owner not verified yet</span>
+          )}
+          {!item.isOwner && !item.ownerUnverified && (
             <div className="flex gap-1.5">
               <button
                 onClick={onMessage}

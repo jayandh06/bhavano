@@ -168,7 +168,10 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
               <Text style={{ fontSize: 11, color: colors.muted }}>{likeCount}</Text>
             </View>
           </View>
-          {!item.isOwner && (
+          {!item.isOwner && item.ownerUnverified && (
+            <Text style={{ fontSize: 11, color: colors.muted }}>Owner not verified yet</Text>
+          )}
+          {!item.isOwner && !item.ownerUnverified && (
             <View style={{ flexDirection: "row", gap: 6 }}>
               {/* Light green rather than filled: sharing a row with the counts, a solid button the
                   same weight as before would visually shout over them. */}

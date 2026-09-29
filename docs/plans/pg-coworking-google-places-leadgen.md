@@ -111,6 +111,20 @@ Message/View Contact actions. JSON-LD omits the `Offer` entirely for these listi
 emitting a misleading `price: "0"` to crawlers. `bulk_upload_listings.py`'s row validation
 mirrors this same rule.
 
+**Unclaimed listings can't be contacted (2026-09-29).**
+- **The problem:** until claimed, a scraped listing is owned by the Bulk Import account, whose
+  phone is the placeholder `9000000002`. A buyer who tapped View Contact spent a free reveal or a
+  paid credit on a number nobody answers, and Message sent the enquiry to an inbox nobody reads.
+  On 29 Sept there were 225 such live listings, 5 reveals and 25 buyer conversations.
+- **The fix:** listing responses carry `ownerUnverified`. Web and app show "The owner hasn't
+  verified this listing on Bhavano yet" instead of Message/View Contact, and drop the "reach out
+  for a quote" line.
+- **Backend:** the BFF refuses a reveal (`ContactRevealService.revealContact`) and a first message
+  (`MessagingService.sendFirstMessage`) with a 409 `OWNER_UNVERIFIED`. No credit is spent. The
+  placeholder number is never returned, even to a buyer who revealed it before.
+- **On claim:** `claimListing` moves the listing's existing enquiry threads from the Bulk Import
+  account to the new owner, so enquiries sent before the fix reach the business if it claims.
+
 ## Claiming a bulk-imported listing (WhatsApp verification)
 
 A scraped business owner has never logged in, so "send a WhatsApp asking them to verify/update

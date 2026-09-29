@@ -14,6 +14,7 @@ export function ListingDetailActions({
   initialIsFavourited,
   initialLikeCount,
   isOwner,
+  ownerUnverified,
   isLoggedIn,
   initialContactRevealed,
   initialOwnerPhone,
@@ -29,6 +30,8 @@ export function ListingDetailActions({
    * and offering it reads as the page not knowing whose ad it is. Favourite stays: an owner
    * bookmarking their own listing is harmless and the like count is part of how the page reads. */
   isOwner: boolean;
+  /** Unclaimed scraped listing — see ListingCardDto.ownerUnverified. */
+  ownerUnverified: boolean;
   /** Logged-in non-owners get a short disclosure that viewing notifies the advertiser. */
   isLoggedIn: boolean;
   initialContactRevealed: boolean;
@@ -123,7 +126,7 @@ export function ListingDetailActions({
           <Icon name="heart" filled={isFavourited} className="text-[19px]" />
           <span className="text-[10px] font-bold text-muted">{likeCount}</span>
         </button>
-        {!isOwner && (
+        {!isOwner && !ownerUnverified && (
           <>
             <button
               onClick={onMessage}
@@ -152,7 +155,13 @@ export function ListingDetailActions({
 
       {revealError && <p className="text-[#b3413a] text-[13px] mt-2">{revealError}</p>}
 
-      {!isOwner && isLoggedIn && (
+      {!isOwner && ownerUnverified && (
+        <p className="m-0 mt-3 text-[13px] text-text-soft">
+          The owner hasn&apos;t verified this listing on Bhavano yet, so they can&apos;t be contacted here.
+        </p>
+      )}
+
+      {!isOwner && !ownerUnverified && isLoggedIn && (
         <p className="m-0 mt-3 text-[12px] text-muted">
           The owner may be notified that you viewed this ad and can message you on Bhavano.
         </p>

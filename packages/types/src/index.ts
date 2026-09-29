@@ -161,6 +161,10 @@ export interface ListingCardDto {
   /** The viewer posted this listing. Hides the contact actions on the card, for the same reason
    * as on the detail page — always false for an anonymous viewer, who owns nothing. */
   isOwner: boolean;
+  /** Still owned by the Bulk Import account (a scraped business that hasn't claimed it). There's
+   * nobody to reach, so clients show a "not verified yet" note instead of Message/View Contact,
+   * and the BFF refuses both. */
+  ownerUnverified: boolean;
   /** Whether the requesting viewer has already unlocked this listing's owner contact — always
    * derived server-side from a real ContactReveal row (see docs/plans/contact-reveal-credits.md),
    * never a cached flag. `ownerPhone`/`ownerEmail` are only ever populated when this is true; the
@@ -445,6 +449,10 @@ export interface CreateListingInput {
   /** Client-generated (UUID) before any photo is uploaded, so upload keys and the listing's
    * real id agree from the very first upload — no post-creation rename step needed. */
   id: string;
+  /** The visitor's analytics session (web bhavano_sid / mobile's own uuid) — lets the server
+   * record the /post/success page-view trail entry itself once this listing actually goes live.
+   * Absent for outreach/admin-created listings, which have no browser/app session at all. */
+  sessionId?: string;
   category: ListingCategory;
   transactionType: TransactionType;
   price: number;

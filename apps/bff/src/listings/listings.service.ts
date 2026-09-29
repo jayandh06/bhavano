@@ -55,6 +55,7 @@ import { toE164India } from '../outreach/phone';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { Prisma } from '@prisma/client';
 import type {
   Area,
@@ -99,19 +100,17 @@ import { ContactRevealService, type ContactRevealState } from '../contact-reveal
 import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
 import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
 import { scrubPhonesInText } from './scrub-listing-phones';
+import { BULK_IMPORT_OWNER_PHONE, isBulkImportOwner } from './bulk-import-owner';
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
 const DEFAULT_LISTING_DURATION_DAYS = 30;
-// Same literal as OutreachService's own BULK_IMPORT_OWNER_PHONE and seedBulkImportOwner.ts —
-// the system account bulk_upload_listings.py and OutreachService.createListingFromContact post
-// under instead of a real user's. Checked here so create()'s owner-facing side effects (the
-// "your ad was posted" WhatsApp/email/SMS, the Google Ads "post ad success" conversion upload)
-// don't fire for a phone number nobody's actually monitoring, or attribute a fake acquisition
-// event to a system account. savedSearchesService.notifyMatchingBuyers below is NOT skipped —
-// real buyers with a matching saved search should hear about a real new listing regardless of
-// which account technically posted it.
-const BULK_IMPORT_OWNER_PHONE = '9000000002';
+// BULK_IMPORT_OWNER_PHONE is checked here so create()'s owner-facing side effects (the "your ad
+// was posted" WhatsApp/email/SMS, the Google Ads "post ad success" conversion upload) don't fire
+// for a phone number nobody's actually monitoring, or attribute a fake acquisition event to a
+// system account. savedSearchesService.notifyMatchingBuyers below is NOT skipped — real buyers
+// with a matching saved search should hear about a real new listing regardless of which account
+// technically posted it.
 
 /** Property types nested under each of the Buy / Rent & Lease browsing tabs — nobody
  * buys/sells Storage or Coworking, so those only appear under Rent & Lease. */
@@ -430,6 +429,7 @@ export class ListingsService {
     private readonly contactRevealService: ContactRevealService,
     private readonly platformFeeSettingsService: PlatformFeeSettingsService,
     private readonly pushService: PushService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async list(
@@ -1150,7 +1150,17 @@ export class ListingsService {
     trackingAuthorized: boolean | undefined,
     ownerId: string,
     isBulkImportOwner = owner?.phone === BULK_IMPORT_OWNER_PHONE,
+    /** The visitor's analytics session, if this call came from a real browser/app post rather
+     * than outreach/admin — see CreateListingInput.sessionId's own doc comment for why this,
+     * rather than the client, is what records /post/success now. */
+    sessionId?: string,
   ): Promise<void> {
+    if (sessionId) {
+      this.analyticsService
+        .recordPageView({ sessionId, path: '/post/success' })
+        .catch(() => undefined);
+    }
+
     this.savedSearchesService.notifyMatchingBuyers(listing).catch(() => undefined);
 
     if (
@@ -1433,7 +1443,14 @@ export class ListingsService {
     const isBulkImportOwner = owner?.phone === BULK_IMPORT_OWNER_PHONE;
 
     if (!pendingCheckout) {
-      await this.runPostLiveSideEffects(listing, owner, trackingAuthorized, ownerId, isBulkImportOwner);
+      await this.runPostLiveSideEffects(
+        listing,
+        owner,
+        trackingAuthorized,
+        ownerId,
+        isBulkImportOwner,
+        input.sessionId,
+      );
     }
 
     await this.logEdit(listing.id, isBulkImportOwner ? 'system' : 'owner', ownerId, 'created', null);
@@ -2151,10 +2168,16 @@ export class ListingsService {
     }
 
     const claimedAt = new Date();
-    const [, listing] = await this.prisma.$transaction([
+    const [, , listing] = await this.prisma.$transaction([
       this.prisma.outreachContact.update({
         where: { id: existing.claimContactId },
         data: { userId },
+      }),
+      // Buyer enquiries sent before the claim went to the Bulk Import account; they're the new
+      // owner's leads now.
+      this.prisma.conversation.updateMany({
+        where: { listingId, posterId: existing.ownerId, type: 'inquiry', inquirerId: { not: userId } },
+        data: { posterId: userId },
       }),
       this.prisma.listing.update({
         where: { id: listingId },
@@ -3184,6 +3207,7 @@ export class ListingsService {
       // Browse-card badge only — not gated on isOwnerOrAdmin like toDetailDto's `videos` array,
       // since "does this listing have a playable video at all" is fine as public info once done.
       hasVideo: listing.listingVideos.some((v) => v.status === 'done'),
+      ownerUnverified: isBulkImportOwner(listing.owner),
       ...this.postedBy(listing),
       ...(revealStates?.get(listing.id) ?? { contactRevealed: false, ownerPhone: null, ownerEmail: null }),
     };

@@ -80,6 +80,26 @@ describe('MessagingService.listConversations — unified inquiry + moderation in
   });
 });
 
+describe('MessagingService.sendFirstMessage — unclaimed Bulk Import listings', () => {
+  it('refuses a first message, since nobody would receive it', async () => {
+    const tx = {
+      listing: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'l1', ownerId: 'bulk', title: 'PG', owner: { phone: '9000000002' } }),
+      },
+      conversation: { upsert: jest.fn() },
+      message: { count: jest.fn(), create: jest.fn() },
+    };
+    const prisma = { $transaction: (run: (t: typeof tx) => unknown) => run(tx) } as unknown as PrismaService;
+    const service = new MessagingService(prisma, notNotified, { recordInterest: jest.fn() } as never);
+
+    await expect(service.sendFirstMessage('l1', 'buyer1', 'Is it available?')).rejects.toMatchObject({
+      status: 409,
+      response: { code: 'OWNER_UNVERIFIED' },
+    });
+    expect(tx.conversation.upsert).not.toHaveBeenCalled();
+  });
+});
+
 describe('MessagingService — announcement threads (the Boost message)', () => {
   it("labels them \"Bhavano Admin\" — never the sending admin's own name", async () => {
     // The admin user has a real display name; it must not reach the owner's inbox.
