@@ -54,7 +54,7 @@ interface RazorpayWebhookPayload {
   };
 }
 
-function utcMonthKey(date = new Date()): string {
+export function utcMonthKey(date = new Date()): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 

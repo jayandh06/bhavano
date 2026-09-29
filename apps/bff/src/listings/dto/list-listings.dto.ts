@@ -106,6 +106,11 @@ export class ListListingsDto {
   @IsIn(FURNISHING_VALUES)
   furnished?: (typeof FURNISHING_VALUES)[number];
 
+  /** "Owners only": listings labelled Owner (see ListingsService.postedBy). */
+  @IsOptional()
+  @IsIn(['owner'])
+  postedBy?: 'owner';
+
   /** Matches `attributes.sharingType` exactly (PG mega-menu links). */
   @IsOptional()
   @IsIn(SHARING_TYPE_VALUES)

@@ -57,6 +57,8 @@ import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
 import { ListUsersDto } from './dto/list-users.dto';
 import { SendWelcomeDto } from './dto/send-welcome.dto';
+import { GrantAgentProDto } from './dto/grant-agent-pro.dto';
+import { SetReraVerifiedDto } from './dto/set-rera-verified.dto';
 import { SendPostedNotificationDto } from './dto/notify-posted.dto';
 import { ListPaymentsDto } from './dto/list-payments.dto';
 import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
@@ -314,6 +316,16 @@ export class AdminController {
   @Get('users/:id/activity')
   getUserActivity(@Param('id') id: string): Promise<UserActivityDto> {
     return this.adminService.getUserActivity(id);
+  }
+
+  @Post('users/:id/agent-pro-grant')
+  grantAgentPro(@Param('id') id: string, @Body() dto: GrantAgentProDto): Promise<{ agentProUntil: string }> {
+    return this.adminService.grantAgentPro(id, dto.months, dto.reason);
+  }
+
+  @Patch('users/:id/rera-verified')
+  setReraVerified(@Param('id') id: string, @Body() dto: SetReraVerifiedDto): Promise<{ reraVerifiedAt: string | null }> {
+    return this.adminService.setReraVerified(id, dto.verified);
   }
 
   @Get('rate-limits')

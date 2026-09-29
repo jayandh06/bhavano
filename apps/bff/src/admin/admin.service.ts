@@ -69,6 +69,8 @@ import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-sett
 import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
 import { UpdateInstantAlertsPricingDto } from './dto/update-instant-alerts-pricing.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
+import type { AgentProGrantReason } from './dto/grant-agent-pro.dto';
+import { utcMonthKey } from '../payments/payments.service';
 import { CAMPAIGN_NAMES, AD_GROUP_NAMES } from '../ads/campaign-names';
 import { PushService } from '../push/push.service';
 import { MessagingGateway } from '../messaging/messaging.gateway';
@@ -1027,6 +1029,59 @@ export class AdminService {
     };
   }
 
+  /** Free Agent Pro for the founding-broker programme (docs/plans/broker-paid-bundles.md,
+   * Phase 1). Extends an active Pro rather than replacing it, keeps any stacked units, and writes
+   * a payment-less UserSubscription row as the audit trail. Uses the same "Pro is active" message
+   * and monthly boost credit a paid activation gets. */
+  async grantAgentPro(userId: string, months: number, reason: AgentProGrantReason): Promise<{ agentProUntil: string }> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: { id: true, email: true, phone: true, agentProUntil: true, agentProUnits: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const now = Date.now();
+    const activeUntil = user.agentProUntil && user.agentProUntil.getTime() > now ? user.agentProUntil.getTime() : null;
+    const endsAt = new Date((activeUntil ?? now) + months * 30 * 24 * 60 * 60 * 1000);
+    const units = activeUntil ? user.agentProUnits : 1;
+
+    await this.prisma.userSubscription.create({
+      data: { userId, tier: 'agentPro', endsAt, grantReason: reason },
+    });
+    await this.prisma.user.update({ where: { id: userId }, data: { agentProUntil: endsAt, agentProUnits: units } });
+    const monthKey = utcMonthKey();
+    await this.prisma.proBoostCredit.upsert({
+      where: { userId_monthKey: { userId, monthKey } },
+      create: { userId, monthKey },
+      update: {},
+    });
+
+    const settings = await this.subscriptionPlanSettingsService.getSettings();
+    void this.notificationsService
+      .notifyAgentProActivated(user, endsAt, units * settings.proListingSlotsPerUnit)
+      .catch((err: unknown) => this.logger.warn(`Agent Pro grant message failed for ${userId}: ${String(err)}`));
+
+    return { agentProUntil: endsAt.toISOString() };
+  }
+
+  /** Marks the user's RERA number as checked against the state register (or un-marks it). */
+  async setReraVerified(userId: string, verified: boolean): Promise<{ reraVerifiedAt: string | null }> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: { sellerType: true, reraNumber: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    if (verified && (user.sellerType !== 'agent' || !user.reraNumber)) {
+      throw new BadRequestException('Only an agent with a RERA number on file can be verified');
+    }
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { reraVerifiedAt: verified ? new Date() : null },
+      select: { reraVerifiedAt: true },
+    });
+    return { reraVerifiedAt: updated.reraVerifiedAt?.toISOString() ?? null };
+  }
+
   /** Admin-triggered (re)send of the "your ad is live" acknowledgement (see
    * docs/plans/post-ad-acknowledgement.md and NotificationsService.notifyListingPosted) for one
    * or many listings at once — the resend path that plan explicitly left out of scope, for
@@ -1438,6 +1493,8 @@ export class AdminService {
         sellerType: user.sellerType,
         agencyName: user.agencyName,
         reraNumber: user.reraNumber,
+        reraVerifiedAt: user.reraVerifiedAt?.toISOString() ?? null,
+        agentProUntil: user.agentProUntil?.toISOString() ?? null,
         createdAt: user.createdAt.toISOString(),
         acquisitionSource: user.acquisitionSource,
         acquisitionMedium: user.acquisitionMedium,

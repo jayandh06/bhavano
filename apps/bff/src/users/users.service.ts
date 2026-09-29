@@ -87,6 +87,11 @@ export class UsersService {
     const clean = (v: string | undefined) => (v === undefined ? undefined : v.trim() || null);
     const agencyName = dto.sellerType === 'owner' ? null : clean(dto.agencyName);
     const reraNumber = dto.sellerType === 'owner' ? null : clean(dto.reraNumber);
+    // An admin verified one specific number — a different one (or none) needs checking again.
+    const reraChanged =
+      reraNumber !== undefined &&
+      reraNumber !==
+        (await this.prisma.user.findUnique({ where: { id: userId }, select: { reraNumber: true } }))?.reraNumber;
 
     // No try/catch for P2002 any more: the only unique field this endpoint could collide on was
     // `email`, and an address now reaches the profile solely through the verified flow, which
@@ -99,6 +104,7 @@ export class UsersService {
         ...(dto.sellerType !== undefined ? { sellerType: dto.sellerType } : {}),
         ...(agencyName !== undefined ? { agencyName } : {}),
         ...(reraNumber !== undefined ? { reraNumber } : {}),
+        ...(reraChanged ? { reraVerifiedAt: null } : {}),
       },
       include: { city: true },
     });
@@ -131,5 +137,6 @@ function toProfileDto(
     sellerType: user.sellerType,
     agencyName: user.agencyName,
     reraNumber: user.reraNumber,
+    reraVerified: user.reraVerifiedAt !== null,
   };
 }

@@ -115,6 +115,8 @@ export interface ListingCardDto {
     postedBy: SellerType | null;
     /** The poster's agency name, when they're an agent and gave one. */
     postedByAgency: string | null;
+    /** Agent listing whose poster's RERA number an admin has verified. */
+    postedByReraVerified: boolean;
     /** The viewer posted this listing. Hides the contact actions on the card, for the same reason
      * as on the detail page — always false for an anonymous viewer, who owns nothing. */
     isOwner: boolean;
@@ -600,6 +602,8 @@ export interface UserProfileDto {
     sellerType: SellerType | null;
     agencyName: string | null;
     reraNumber: string | null;
+    /** An admin checked `reraNumber` against the state RERA register; cleared if it changes. */
+    reraVerified: boolean;
 }
 /** Whether to show the deferred profile-completion dialog and what it should ask for. Computed
  * BFF-side (it owns the snooze/count fields and profile completeness) so the answer is the same
@@ -873,6 +877,8 @@ export interface UserActivityDto {
         sellerType: SellerType | null;
         agencyName: string | null;
         reraNumber: string | null;
+        reraVerifiedAt: string | null;
+        agentProUntil: string | null;
         createdAt: string;
         /** First-touch attribution — how this user originally found Bhavano. Null for pre-existing
          * users whose signup predates this being captured. */
@@ -1209,6 +1215,7 @@ export interface AgentStorefrontDto {
     isAgentPro: boolean;
     sellerType: SellerType | null;
     agencyName: string | null;
+    reraVerified: boolean;
     memberSince: string;
     listings: ListingCardDto[];
     total: number;

@@ -241,7 +241,9 @@ const LISTING_MEDIA_INCLUDE = {
   // phone/email are never sent to the client directly from toDetailDto — only echoed back into
   // ownerPhone/ownerEmail once ContactRevealService confirms this viewer has actually unlocked
   // them (see toDetailDto's revealState param).
-  owner: { select: { agentProUntil: true, phone: true, email: true, sellerType: true, agencyName: true } },
+  owner: {
+    select: { agentProUntil: true, phone: true, email: true, sellerType: true, agencyName: true, reraVerifiedAt: true },
+  },
   listingRenewals: { orderBy: { renewedAt: 'desc' as const } },
 };
 
@@ -448,6 +450,7 @@ export class ListingsService {
       maxPrice,
       bedrooms,
       furnished,
+      postedBy,
       amenities,
       sharingType,
       condition,
@@ -488,6 +491,22 @@ export class ListingsService {
     if (furnished)
       attributeFilters.push({
         attributes: { path: ['furnished'], equals: furnished },
+      });
+    // Mirrors postedBy(): the listing's own fromBroker answer wins, else the account's. A blank
+    // fromBroker is matched explicitly (missing key or ""), because NOT on a JSON path drops rows
+    // where the key is absent — which is most listings.
+    if (postedBy === 'owner')
+      attributeFilters.push({
+        OR: [
+          { attributes: { path: ['fromBroker'], equals: 'no' } },
+          {
+            owner: { sellerType: 'owner' },
+            OR: [
+              { attributes: { path: ['fromBroker'], equals: Prisma.AnyNull } },
+              { attributes: { path: ['fromBroker'], equals: '' } },
+            ],
+          },
+        ],
       });
     // One clause per amenity, ANDed — two ticked boxes mean a place with both. Each is its own
     // top-level entry for the same reason the comment above gives: merging them under one
@@ -1357,7 +1376,7 @@ export class ListingsService {
         where: { id: ownerId },
         data: {
           sellerType,
-          ...(sellerType === 'owner' ? { agencyName: null, reraNumber: null } : {}),
+          ...(sellerType === 'owner' ? { agencyName: null, reraNumber: null, reraVerifiedAt: null } : {}),
         },
       });
     }
@@ -2972,6 +2991,7 @@ export class ListingsService {
         email: string | null;
         sellerType?: SellerType | null;
         agencyName?: string | null;
+        reraVerifiedAt?: Date | null;
       };
       listingRenewals: ListingRenewal[];
     },
@@ -3090,12 +3110,15 @@ export class ListingsService {
    * flat; the agency name only shows when both say "agent". */
   private postedBy(listing: {
     attributes: unknown;
-    owner: { sellerType?: SellerType | null; agencyName?: string | null };
-  }): Pick<ListingCardDto, 'postedBy' | 'postedByAgency'> {
+    owner: { sellerType?: SellerType | null; agencyName?: string | null; reraVerifiedAt?: Date | null };
+  }): Pick<ListingCardDto, 'postedBy' | 'postedByAgency' | 'postedByReraVerified'> {
     const postedBy = fromBrokerAnswer(listing.attributes) ?? listing.owner.sellerType ?? null;
-    const agency =
-      postedBy === 'agent' && listing.owner.sellerType === 'agent' ? listing.owner.agencyName ?? null : null;
-    return { postedBy, postedByAgency: agency };
+    const bothAgent = postedBy === 'agent' && listing.owner.sellerType === 'agent';
+    return {
+      postedBy,
+      postedByAgency: bothAgent ? listing.owner.agencyName ?? null : null,
+      postedByReraVerified: bothAgent && !!listing.owner.reraVerifiedAt,
+    };
   }
 
   private toCardDto(
@@ -3109,6 +3132,7 @@ export class ListingsService {
         email: string | null;
         sellerType?: SellerType | null;
         agencyName?: string | null;
+        reraVerifiedAt?: Date | null;
       };
     },
     favouritedIds?: Set<string>,

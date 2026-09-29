@@ -338,8 +338,11 @@ model User {
   sellerType            SellerType?
   /** Agents only, optional — shown beside the "Agent" label on their listings. */
   agencyName            String?
-  /** Agents only, optional — RERA registration number as typed; not verified. */
+  /** Agents only, optional — RERA registration number as typed. */
   reraNumber            String?
+  /** When an admin checked `reraNumber` against the state RERA register — shows the "RERA verified"
+   * badge. Cleared whenever the number changes or the user switches to owner. */
+  reraVerifiedAt        DateTime?
   proBoostCredits       ProBoostCredit[]
   contactRevealCreditBatches ContactRevealCreditBatch[]
   contactReveals        ContactReveal[]
@@ -1032,8 +1035,11 @@ model UserSubscription {
   tier      SubscriptionTier
   startsAt  DateTime         @default(now())
   endsAt    DateTime
-  paymentId String           @unique
-  payment   Payment          @relation(fields: [paymentId], references: [id])
+  /** Null for an admin grant (see `grantReason`), which has no payment behind it. */
+  paymentId String?          @unique
+  payment   Payment?         @relation(fields: [paymentId], references: [id])
+  /** Admin grants only — e.g. "founding_broker". See docs/plans/broker-paid-bundles.md, Phase 1. */
+  grantReason String?
 
   @@index([userId])
 }
