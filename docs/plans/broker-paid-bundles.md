@@ -1,6 +1,6 @@
 # Paid bundles for brokers and agents (2026-09-28)
 
-## Status: Phase 0 built (2026-09-28); Phases 1 and 2 are plan only
+## Status: Phase 0 built (2026-09-28); Phase 1 tooling built (2026-09-29); Phase 2 is plan only
 
 Builds on [`product-pricing-tiers.md`](product-pricing-tiers.md) (Agent Pro ₹499 per 20 slots),
 [`listing-slots-seller-notifications.md`](listing-slots-seller-notifications.md) (slot caps, Pro
@@ -77,12 +77,36 @@ with depth in the 11 ad cities (see `growth-beyond-google-ads.md` §3).
 
 ### Phase 1: founding-broker programme (no payment code)
 - In each of the 11 cities, offer the first ~20 agents **Agent Pro free for 3 months** via an
-  admin grant (a manual `agentProUntil`, which already exists in admin), in exchange for posting
-  their live inventory. That builds the listing depth every channel depends on.
+  admin grant, in exchange for posting their live inventory. That builds the listing depth every
+  channel depends on.
 - Source agents from the Google Places outreach contacts (`outreach-direct-listing-creation.md`),
   by phone or WhatsApp. Brokers are sold to by people, not self-serve.
 - Measure listings per agent, enquiries per agent listing and 90-day retention. This sets the price
   of the paid bundle from real value.
+
+**As built (2026-09-29):**
+- **Founding-broker grant.** "Grant founding-broker Pro (3 months)" on the admin user page calls
+  `POST /admin/users/:id/agent-pro-grant` (`{ months: 1–12, reason: 'founding_broker' }`,
+  `AdminService.grantAgentPro`). It extends from the current `agentProUntil` if still active (else
+  from now) by months × 30 days, keeps the current units (else 1), writes a `UserSubscription`
+  with `paymentId` null and `grantReason` set (so grants are countable apart from paid
+  subscriptions), grants this month's `ProBoostCredit`, and sends the usual Agent Pro activated
+  notification. Migration `20260929020000_founding_broker_rera_verified` made
+  `UserSubscription.paymentId` nullable and added `grantReason`.
+- **RERA verified badge.** `User.reraVerifiedAt` is set by admin ("Mark RERA verified",
+  `PATCH /admin/users/:id/rera-verified`), only for an agent with a RERA number on file. It is
+  cleared whenever the RERA number changes (profile edit, or switching to owner). Shown as
+  "Agent · Agency · RERA verified ✓" (`postedByLabel`'s third argument) on web and mobile listing
+  detail pages and the `/agent/[userId]` storefront, from `ListingCardDto.postedByReraVerified`
+  and `AgentStorefrontDto.reraVerified` (only when the listing is labelled Agent). Cards stay
+  "Agent" for space. The profile forms say whether the number is verified.
+- **"Owners only" search filter.** `GET /listings?postedBy=owner` matches the Owner label:
+  `fromBroker` "no", or `fromBroker` missing/blank and the owner's account says owner (the
+  missing-key case needs `Prisma.AnyNull`, not a JSON `NOT`, which drops rows without the key).
+  Web: an "Owners only" pill in the Buy / Rent & Lease filter rows (homepage and browse pages),
+  as `?postedBy=owner` on the canonical path, so no new indexable URLs. Mobile: a "Posted by"
+  section in the filter sheet on the same tabs. Listings from older app builds that preset
+  `fromBroker` "no" (see Phase 0 known gap) match it.
 
 ### Phase 2: the paid bundle (when there are enquiries to sell)
 One product, "Bhavano Pro for agents", in tiers with prepaid terms. Numbers below are
@@ -136,6 +160,7 @@ Why this shape:
 
 ## Open decisions
 1. ~~Owner/agent question: required, or optional with a nudge?~~ Required, asked once (Phase 0).
-2. Founding programme: 3 months free, or 50% off the first year?
+2. ~~Founding programme: 3 months free, or 50% off the first year?~~ 3 months free (Phase 1).
 3. Tier numbers (slots, boosts, leads, prices): set from Phase 1 data.
-4. Verified agent: RERA number for the badge, or phone verification only?
+4. ~~Verified agent: RERA number for the badge, or phone verification only?~~ A RERA number
+   admin has checked (Phase 1).
