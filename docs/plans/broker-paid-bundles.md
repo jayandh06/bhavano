@@ -66,8 +66,8 @@ with depth in the 11 ad cities (see `growth-beyond-google-ads.md` §3).
   - The label (`ListingCardDto.postedBy` / `postedByAgency`, formatted by `postedByLabel` in
     `@bhavano/types/sellerType`) prefers the listing's `fromBroker` answer, then the account's.
     The agency name is shown only when both agree it is an agent listing. Unanswered shows nothing.
-- Profile: "I post as" on the web profile form, with agency name and RERA inputs for agents. The
-  mobile app has no profile editor for it yet; mobile users answer in the post wizard.
+- Profile: "I post as" on the web profile form and the app's Account screen, with agency name
+  and RERA inputs for agents.
 - Labels on web and mobile cards, detail pages and the `/agent/[userId]` storefront.
 - Admin: "Posts as" column and filter (Owner / Agent / Not answered) on Users, and seller type,
   agency and RERA on the user page. The Users list also shows each user's live ads and
