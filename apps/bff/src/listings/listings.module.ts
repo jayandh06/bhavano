@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ListingsController } from './listings.controller';
 import { ListingsService } from './listings.service';
 import { ListingPhotosService } from './listing-photos.service';
+import { AssistedListingExpiryJob } from './assisted-listing-expiry.job';
 import { ModerationModule } from '../moderation/moderation.module';
 import { RateLimitModule } from '../rate-limit/rate-limit.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -18,7 +19,7 @@ import { AnalyticsModule } from '../analytics/analytics.module';
 @Module({
   imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule, AdsModule, ContactRevealModule, PlansModule, PushModule, AnalyticsModule],
   controllers: [ListingsController],
-  providers: [ListingsService, ListingPhotosService],
+  providers: [ListingsService, ListingPhotosService, AssistedListingExpiryJob],
   exports: [ListingsService, ListingPhotosService],
 })
 export class ListingsModule {}

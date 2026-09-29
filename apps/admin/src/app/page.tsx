@@ -1,5 +1,11 @@
 import Link from "next/link";
-import type { ListingCategory, ListingStatus, ModerationState, TransactionType } from "@bhavano/types";
+import type {
+  ListingCategory,
+  ListingPublishState,
+  ListingStatus,
+  ModerationState,
+  TransactionType,
+} from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { AdminListingSort, fetchAdminListings, fetchAreas, fetchCities } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
@@ -10,17 +16,23 @@ import { Pagination } from "@/components/Pagination";
 import { AdminListingsTable } from "@/components/AdminListingsTable";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 
-type FilterTab = "needsReview" | "flagged" | "all";
+type FilterTab = "needsReview" | "flagged" | "awaitingClaim" | "all";
 
 const TABS: { value: FilterTab; label: string }[] = [
   { value: "needsReview", label: "Needs review" },
   { value: "flagged", label: "Flagged" },
+  { value: "awaitingClaim", label: "Awaiting claim" },
   { value: "all", label: "All listings" },
 ];
 
-function tabToQuery(tab: FilterTab): { moderationState?: ModerationState; adminReviewed?: boolean } {
+function tabToQuery(tab: FilterTab): {
+  moderationState?: ModerationState;
+  adminReviewed?: boolean;
+  publishState?: ListingPublishState;
+} {
   if (tab === "needsReview") return { adminReviewed: false };
   if (tab === "flagged") return { moderationState: "flagged" };
+  if (tab === "awaitingClaim") return { publishState: "awaiting_claim" };
   return {};
 }
 
@@ -50,8 +62,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Silent default to a 1-day window, same pattern as page-visits/page.tsx's DEFAULT_TRAFFIC —
   // confirmed with the user that this applies to Listings too, so the moderation queue defaults
   // to "created today" rather than unbounded history. Doesn't redirect the URL to show it.
-  const createdFrom = str(sp.createdFrom) ?? daysAgoIST(1);
-  const createdTo = str(sp.createdTo) ?? todayIST();
+  // Awaiting claim is a short list (unclaimed ads are deleted after 14 days) that staff need in
+  // full, so it gets no default window.
+  const createdFrom = str(sp.createdFrom) ?? (tab === "awaitingClaim" ? undefined : daysAgoIST(1));
+  const createdTo = str(sp.createdTo) ?? (tab === "awaitingClaim" ? undefined : todayIST());
   const updatedFrom = str(sp.updatedFrom);
   const updatedTo = str(sp.updatedTo);
   const category = str(sp.category) as ListingCategory | undefined;
@@ -151,7 +165,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </Field>
 
             <Field label="Created (date range)">
-              <DateRangeFilter basePath="/" sp={sp} currentFrom={createdFrom} currentTo={createdTo} fromParam="createdFrom" toParam="createdTo">
+              <DateRangeFilter basePath="/" sp={sp} currentFrom={createdFrom ?? ""} currentTo={createdTo ?? ""} fromParam="createdFrom" toParam="createdTo">
                 <Field label="Created from">
                   <input type="date" name="createdFrom" defaultValue={createdFrom} style={dateInputStyle} />
                 </Field>

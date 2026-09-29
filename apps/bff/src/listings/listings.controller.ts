@@ -14,7 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { ContactRevealSettingsDto, ListingDetailDto, ListingInterestPage, ListingMetaDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RecordListingInterestResponseDto, RevealContactResponseDto } from '@bhavano/types';
+import type { ContactRevealSettingsDto, ListingClaimPreviewDto, ListingDetailDto, ListingInterestPage, ListingMetaDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RecordListingInterestResponseDto, RevealContactResponseDto } from '@bhavano/types';
 import { VIDEO_LIMITS } from '@bhavano/types/videoLimits';
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -124,8 +124,14 @@ export class ListingsController {
     @CurrentUser() user: RequestUser,
     @Query('via') via?: string,
   ): Promise<ListingDetailDto> {
-    const source = via === 'email' || via === 'whatsapp' ? via : undefined;
+    const source = via === 'email' || via === 'whatsapp' || via === 'assisted' ? via : undefined;
     return this.listingsService.claimListing(id, user.id, source);
+  }
+
+  /** Public: the claim page's preview before sign-in. See ListingsService.getClaimPreview. */
+  @Get(':id/claim-preview')
+  claimPreview(@Param('id') id: string): Promise<ListingClaimPreviewDto> {
+    return this.listingsService.getClaimPreview(id);
   }
 
   @Post(':id/view')

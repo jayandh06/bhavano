@@ -41,6 +41,7 @@ export class ListingExpiryReminderJob {
     const listings = await this.prisma.listing.findMany({
       where: {
         status: 'active',
+        publishState: 'live',
         moderationState: 'approved',
         expiresAt: { gte: windowStart, lt: windowEnd },
         notificationLogs: { none: { kind } },

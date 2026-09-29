@@ -806,6 +806,9 @@ function ListingStatusBadge({
       {publishState === "pending_checkout" && (
         <Badge label="Not live — payment pending" color="var(--danger)" />
       )}
+      {publishState === "awaiting_claim" && (
+        <Badge label="Not live — awaiting seller claim" color="var(--danger)" />
+      )}
     </span>
   );
 }
@@ -830,6 +833,7 @@ function SourceBadge({ source }: { source?: ListingSource }) {
 const CLAIM_SOURCE_LABELS: Record<ClaimSource, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
+  assisted: "Assisted",
 };
 
 /** Which outreach channel's claim link the owner actually clicked — see

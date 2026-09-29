@@ -45,6 +45,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { AdminService } from './admin.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
+import { CreateAssistedListingDto } from './dto/create-assisted-listing.dto';
 import { ListListingEngagementDto } from './dto/list-listing-engagement.dto';
 import { ListListingEditHistoryDto } from './dto/list-listing-edit-history.dto';
 import { ListListingConversationsDto } from './dto/list-listing-conversations.dto';
@@ -105,6 +106,16 @@ export class AdminController {
   @Get('listings')
   listListings(@Query() query: ListAdminListingsDto): Promise<AdminListingsPage> {
     return this.adminService.listListings(query);
+  }
+
+  /** Posting on a seller's behalf: saved hidden under the Bulk Import account until the seller
+   * claims it with their own phone. See docs/plans/admin-assisted-posting.md. */
+  @Post('listings/assisted')
+  createAssistedListing(
+    @Body() dto: CreateAssistedListingDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<ListingDetailDto> {
+    return this.adminService.createAssistedListing(dto, user.id);
   }
 
   /** Admin-triggered (re)send of the "your ad is live" acknowledgement for one or many listings

@@ -1,6 +1,7 @@
 # Admin-assisted posting (post on behalf of a seller)
 
-Status: proposed (2026-09-29). Not built.
+Status: v1 built (2026-09-29). See "As built" at the end for where it diverges from the design
+below.
 
 ## Why
 
@@ -148,3 +149,50 @@ leaves nothing behind for good.
 - Hidden until claimed.
 - The Bulk Import reveal gap is fixed first, as a separate change.
 - Expiry: 14 days, revisit once there's real usage.
+
+## As built (v1, 2026-09-29)
+
+- **No "Edit before publishing" step.** Signing in on `/claim/<id>?via=assisted` and pressing
+  "Sign in and publish" publishes straight away. The seller sees the full preview card before
+  signing in, can edit afterwards from My listings like any other ad, or reply to our message to
+  get changes made before they publish. A deferred-publish edit mode would have needed a second
+  owner-edit flow for a state no other listing is in.
+- **Data model:** `Listing.claimPhoneE164`, `claimName`, `claimSellerType` (the owner or agent
+  answer, applied at claim time) and `createdByAdminId`. `createdByAdminId` is a plain column
+  with no relation, so deleting a staff user never touches listings. Migration
+  `20260929130000_admin_assisted_posting` also adds `awaiting_claim` and `ClaimSource.assisted`.
+- **Create:** `POST /admin/listings/assisted` (`CreateAssistedListingDto` = `CreateListingDto` +
+  `claimPhone`, `claimName`, `postedAs`) calls `ListingsService.createAssisted`, then `create` in
+  assisted mode:
+  - The owner is Bulk Import, with `publishState: 'awaiting_claim'` and `adminReviewed: true`.
+  - `checkoutIntent`, `videos`, `sessionId` and `claimContactId` are stripped. Videos are stripped
+    because the Bulk Import account is Agent Pro, which would otherwise let them through.
+  - Nothing goes to the admin's profile, and there are no post-live side effects.
+  - `ListingEditLog` gets a `created` row as an admin action by the staff member.
+  - `postedAs` is required by the service, not the DTO, because the parent DTO's `@IsOptional`
+    is inherited.
+- **Claim:** `claimListing` accepts `claimContact?.phoneE164 ?? claimPhoneE164`. Assisted claims go
+  through `publishAssistedClaim`:
+  - It runs `assertCanPublish` for the seller. The platform fee applies as normal, so the ad can
+    land in `pending_checkout` and show in My listings for checkout.
+  - `expiresAt` resets to 30 days from the claim.
+  - `sellerType` is saved only if the profile has none.
+  - `ListingEditLog` gets a `claimed` row.
+  - The update is a single conditional `updateMany` (`claimedAt: null`, `awaiting_claim`), so two
+    claims racing can't both win.
+  - The Google Ads conversion is uploaded only when the seller has an `acquisitionGclid`.
+- **Claim page:** a new public `GET /listings/:id/claim-preview` returns `ListingClaimPreviewDto`,
+  with the phone masked. `/claim/[id]` renders `AssistedClaim` when `kind === "assisted"`, and the
+  existing `ClaimListing` otherwise.
+- **Hidden until claimed:** `findOne` now 404s for any non-`live` listing unless the viewer is the
+  owner or an admin. Admins get an `assisted` block on the detail DTO. The expiry-reminder,
+  boost-nudge and requirement-match jobs now filter on `publishState: 'live'`.
+- **Web:** the admin check on `/post` decodes the `role` claim from the access token, for display
+  only; `AdminGuard` enforces it on the BFF. `AssistedSellerPanel` replaces the wizard's own
+  owner/agent question and turns off draft autosave. The success screen shows the claim link with
+  Copy and "Share on WhatsApp".
+- **Admin app:** an "Awaiting claim" tab (`publishState=awaiting_claim`, no default date range),
+  a "Not live, awaiting seller claim" badge in the table, and a panel on the listing page with the
+  masked phone, the preparer and the claim link.
+- **Expiry:** `AssistedListingExpiryJob` runs daily at 03:30 IST and fully deletes unclaimed
+  assisted listings older than 14 days.

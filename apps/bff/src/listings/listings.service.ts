@@ -11,7 +11,9 @@ import { ConfigService } from '@nestjs/config';
 import type {
   AdminListingRowDto,
   AdminListingsPage,
+  AssistedListingInfoDto,
   ClaimSource,
+  ListingClaimPreviewDto,
   CreateListingInput,
   CreatedVideoInput,
   HomeCategoryFilter,
@@ -101,6 +103,15 @@ import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.servi
 import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
 import { scrubPhonesInText } from './scrub-listing-phones';
 import { BULK_IMPORT_OWNER_PHONE, isBulkImportOwner } from './bulk-import-owner';
+import { assistedClaimCutoff, assistedClaimUrl, maskClaimPhone } from './assisted-listing';
+
+/** `create`'s admin-assisted mode — see ListingsService.createAssisted. */
+export interface AssistedCreateOptions {
+  claimPhoneE164: string;
+  claimName: string;
+  claimSellerType: SellerType;
+  adminId: string;
+}
 
 /** Fixed for now — a future paid-plan tier would compute a different duration here
  * instead of this flat constant, without needing any schema change. */
@@ -743,6 +754,7 @@ export class ListingsService {
       category,
       transactionType,
       status,
+      publishState,
       cityId,
       areaId,
       userId,
@@ -757,6 +769,7 @@ export class ListingsService {
     const where: Prisma.ListingWhereInput = {
       ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
       ...(moderationState ? { moderationState } : {}),
+      ...(publishState ? { publishState } : {}),
       ...(adminReviewed !== undefined ? { adminReviewed } : {}),
       ...(category ? { category } : {}),
       ...(transactionType ? { transactionType } : {}),
@@ -1075,7 +1088,7 @@ export class ListingsService {
     if (listing.moderationState === 'flagged' && !isOwnerOrAdmin) {
       throw new NotFoundException(`Listing ${id} not found`);
     }
-    if (listing.publishState === 'pending_checkout' && !isOwnerOrAdmin) {
+    if (listing.publishState !== 'live' && !isOwnerOrAdmin) {
       throw new NotFoundException(`Listing ${id} not found`);
     }
 
@@ -1089,13 +1102,17 @@ export class ListingsService {
     // Ownership is passed separately from isOwnerOrAdmin: an admin looking at someone else's
     // listing is not its owner and may well need the contact actions, so the two cannot share a
     // flag even though they are computed a line apart.
-    return this.toDetailDto(
+    const dto = this.toDetailDto(
       listing,
       favouritedIds,
       isOwnerOrAdmin,
       currentUser?.id === listing.ownerId,
       revealState,
     );
+    if (currentUser?.role === 'admin' && listing.claimPhoneE164) {
+      return { ...dto, assisted: await this.assistedInfo(listing) };
+    }
+    return dto;
   }
 
   /** Lean counterpart to findOne, for generateMetadata's independent second fetch — see
@@ -1265,10 +1282,17 @@ export class ListingsService {
   }
 
   async create(
-    input: CreateListingInput,
+    rawInput: CreateListingInput,
     ownerId: string,
     trackingAuthorized?: boolean,
+    assisted?: AssistedCreateOptions,
   ): Promise<ListingDetailDto> {
+    // An assisted listing is hidden until claimed, so nothing that belongs to going live applies
+    // yet: no checkout, no session trail. Videos are left for the seller to add once it's theirs,
+    // since the Bulk Import account's Agent Pro would otherwise lift the video limit.
+    const input: CreateListingInput = assisted
+      ? { ...rawInput, checkoutIntent: undefined, videos: [], sessionId: undefined, claimContactId: undefined }
+      : rawInput;
     if (!input.photos.length)
       throw new BadRequestException('At least one photo is required');
     if (input.photos.length > MAX_PHOTOS)
@@ -1299,11 +1323,13 @@ export class ListingsService {
       input.transactionType,
       input.attributes ?? {},
     );
+    // For an assisted listing the answer is the seller's, not the Bulk Import account's: it fills
+    // the listing's own fromBroker here and reaches the seller's profile at claim time.
     const declaredSellerType = resolveDeclaredSellerType(
       input.category,
       this.normalizeAttributes(input.category, input.attributes ?? {}),
-      input.postedAs,
-      owner?.sellerType ?? null,
+      assisted ? assisted.claimSellerType : input.postedAs,
+      assisted ? null : (owner?.sellerType ?? null),
     );
     const attributes = declaredSellerType.attributes;
     this.assertValidPriceQualifier(
@@ -1372,15 +1398,27 @@ export class ListingsService {
         lat: input.lat,
         lng: input.lng,
         claimContactId: input.claimContactId ?? null,
-        publishState: pendingCheckout ? 'pending_checkout' : 'live',
-        publishedAt: pendingCheckout ? null : now,
+        ...(assisted
+          ? {
+              publishState: 'awaiting_claim' as const,
+              publishedAt: null,
+              claimPhoneE164: assisted.claimPhoneE164,
+              claimName: assisted.claimName,
+              claimSellerType: assisted.claimSellerType,
+              createdByAdminId: assisted.adminId,
+              adminReviewed: true,
+            }
+          : {
+              publishState: pendingCheckout ? ('pending_checkout' as const) : ('live' as const),
+              publishedAt: pendingCheckout ? null : now,
+            }),
         // A post-creation addPhoto atomically increments this — see the field's own doc comment
         // in schema.prisma for why it must start at least as high as any photoNo already in use.
         photoNoCounter: Math.max(0, ...input.photos.map((p) => p.photoNo)),
       },
     });
 
-    if (declaredSellerType.saveToProfile) {
+    if (declaredSellerType.saveToProfile && !assisted) {
       const sellerType = declaredSellerType.saveToProfile;
       await this.prisma.user.update({
         where: { id: ownerId },
@@ -1442,7 +1480,7 @@ export class ListingsService {
 
     const isBulkImportOwner = owner?.phone === BULK_IMPORT_OWNER_PHONE;
 
-    if (!pendingCheckout) {
+    if (!pendingCheckout && !assisted) {
       await this.runPostLiveSideEffects(
         listing,
         owner,
@@ -1453,9 +1491,69 @@ export class ListingsService {
       );
     }
 
+    if (assisted) {
+      await this.logEdit(listing.id, 'admin', assisted.adminId, 'created', null);
+      const dto = this.toDetailDto(listing, undefined, true, false);
+      return { ...dto, assisted: await this.assistedInfo(listing) };
+    }
     await this.logEdit(listing.id, isBulkImportOwner ? 'system' : 'owner', ownerId, 'created', null);
 
     return this.toDetailDto(listing, undefined, true, true);
+  }
+
+  /** Admin-assisted posting: `create` under the Bulk Import account, hidden until the seller
+   * behind `claimPhone` claims it. The seller's own limits are checked at claim time instead. */
+  async createAssisted(
+    input: CreateListingInput & { claimPhone: string; claimName: string; postedAs: SellerType },
+    adminId: string,
+  ): Promise<ListingDetailDto> {
+    const claimPhoneE164 = toE164India(input.claimPhone);
+    if (!claimPhoneE164) {
+      throw new BadRequestException("The seller's phone must be a 10-digit Indian mobile number.");
+    }
+    if (input.postedAs !== 'owner' && input.postedAs !== 'agent') {
+      throw new BadRequestException('Choose whether the seller is the owner or an agent.');
+    }
+    if (!input.claimName?.trim()) {
+      throw new BadRequestException("Enter the seller's name.");
+    }
+    const bulkImportOwner = await this.prisma.user.findUnique({
+      where: { phone: BULK_IMPORT_OWNER_PHONE },
+      select: { id: true },
+    });
+    if (!bulkImportOwner) {
+      throw new BadRequestException('The Bulk Import account is missing. Run prisma:seed:bulk-import-owner.');
+    }
+    const listingInput: CreateListingInput & Partial<typeof input> = { ...input, postedAs: undefined };
+    delete listingInput.claimPhone;
+    delete listingInput.claimName;
+    return this.create(listingInput, bulkImportOwner.id, false, {
+      claimPhoneE164,
+      claimName: input.claimName.trim(),
+      claimSellerType: input.postedAs,
+      adminId,
+    });
+  }
+
+  private async assistedInfo(
+    listing: Pick<Listing, 'id' | 'claimPhoneE164' | 'claimName' | 'claimSellerType' | 'createdByAdminId' | 'claimedAt'>,
+  ): Promise<AssistedListingInfoDto | undefined> {
+    if (!listing.claimPhoneE164) return undefined;
+    const admin = listing.createdByAdminId
+      ? await this.prisma.user.findUnique({ where: { id: listing.createdByAdminId }, select: { name: true } })
+      : null;
+    return {
+      claimPhone: listing.claimPhoneE164,
+      claimName: listing.claimName,
+      claimSellerType: listing.claimSellerType,
+      preparedByName: admin?.name ?? null,
+      claimUrl: assistedClaimUrl(this.siteUrl(), listing.id),
+      claimedAt: listing.claimedAt?.toISOString() ?? null,
+    };
+  }
+
+  private siteUrl(): string {
+    return this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
   }
 
   /** Trims a wizard-submitted videos array down to what the owner is currently entitled to
@@ -2142,7 +2240,8 @@ export class ListingsService {
       include: { claimContact: { select: { phoneE164: true } } },
     });
     if (!existing) throw new NotFoundException(`Listing ${listingId} not found`);
-    if (!existing.claimContactId || !existing.claimContact) {
+    const claimPhoneE164 = existing.claimContact?.phoneE164 ?? existing.claimPhoneE164;
+    if (!claimPhoneE164) {
       throw new BadRequestException('This listing is not claimable');
     }
     if (existing.claimedAt) {
@@ -2161,10 +2260,17 @@ export class ListingsService {
       select: { phone: true },
     });
     const userPhoneE164 = toE164India(user?.phone);
-    if (!userPhoneE164 || userPhoneE164 !== existing.claimContact.phoneE164) {
+    if (!userPhoneE164 || userPhoneE164 !== claimPhoneE164) {
       throw new ForbiddenException(
-        "This phone number doesn't match the one on file for this business listing.",
+        existing.claimContactId
+          ? "This phone number doesn't match the one on file for this business listing."
+          : "This phone number doesn't match the one Bhavano has for this ad. Sign in with the number " +
+              'you gave us, or reply to the message we sent you.',
       );
+    }
+
+    if (!existing.claimContactId) {
+      return this.publishAssistedClaim(existing, userId, source ?? 'assisted');
     }
 
     const claimedAt = new Date();
@@ -2187,6 +2293,114 @@ export class ListingsService {
     ]);
 
     return this.toDetailDto(listing, undefined, true, true);
+  }
+
+  /** The seller confirming an admin-assisted listing: it becomes theirs and goes live (or waits
+   * on the platform fee, as their own post would). Their listing limit is checked here, not at
+   * creation, when it was only checked against the Bulk Import account. */
+  private async publishAssistedClaim(
+    existing: Listing,
+    userId: string,
+    source: ClaimSource,
+  ): Promise<ListingDetailDto> {
+    if (existing.publishState !== 'awaiting_claim') {
+      throw new BadRequestException('This listing is not claimable');
+    }
+    await this.listingSlotsService.assertCanPublish(userId);
+
+    const owner = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { deletedAt: true, name: true, email: true, phone: true, acquisitionGclid: true, sellerType: true },
+    });
+    if (!owner || owner.deletedAt) throw new UnauthorizedException('This account was deleted');
+
+    const platformFeeSettings = await this.platformFeeSettingsService.getSettings();
+    const pendingCheckout =
+      !platformFeeSettings.allowLivePublishWithPendingPayment &&
+      platformFeeApplies(existing.category, platformFeeSettings);
+    const now = new Date();
+
+    // Conditional on still being unclaimed, so two sign-ins racing on the same link can't both win.
+    const { count } = await this.prisma.listing.updateMany({
+      where: { id: existing.id, claimedAt: null, publishState: 'awaiting_claim' },
+      data: {
+        ownerId: userId,
+        claimedAt: now,
+        claimSource: source,
+        publishState: pendingCheckout ? 'pending_checkout' : 'live',
+        publishedAt: pendingCheckout ? null : now,
+        expiresAt: new Date(now.getTime() + DEFAULT_LISTING_DURATION_DAYS * 24 * 60 * 60 * 1000),
+      },
+    });
+    if (count === 0) {
+      throw new ConflictException('This listing has already been claimed by someone else.');
+    }
+
+    if (!owner.sellerType && existing.claimSellerType) {
+      await this.prisma.user.update({ where: { id: userId }, data: { sellerType: existing.claimSellerType } });
+    }
+    await this.logEdit(existing.id, 'owner', userId, 'claimed', {
+      ownerId: { before: existing.ownerId, after: userId },
+    });
+
+    const listing = await this.prisma.listing.findUniqueOrThrow({
+      where: { id: existing.id },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+    });
+    if (!pendingCheckout) {
+      // Staff typed this ad, so an ads conversion is only credited when the seller actually came
+      // from an ad click, not matched on their email or phone alone.
+      await this.runPostLiveSideEffects(listing, owner, owner.acquisitionGclid ? undefined : false, userId, false);
+    }
+    return this.toDetailDto(listing, undefined, true, true);
+  }
+
+  /** What the claim page shows before sign-in. Public: listing ids are unguessable, and the
+   * contact phone is masked. */
+  async getClaimPreview(listingId: string): Promise<ListingClaimPreviewDto> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      include: {
+        city: true,
+        area: true,
+        claimContact: { select: { phoneE164: true } },
+        listingPhotos: { orderBy: [{ displayOrder: 'asc' }, { photoNo: 'asc' }], select: { photoNo: true, updatedAt: true } },
+      },
+    });
+    const claimPhoneE164 = listing?.claimContact?.phoneE164 ?? listing?.claimPhoneE164;
+    if (!listing || !claimPhoneE164) throw new NotFoundException(`Listing ${listingId} not found`);
+
+    const cover = listing.listingPhotos[0];
+    return {
+      id: listing.id,
+      kind: listing.claimContactId ? 'outreach' : 'assisted',
+      claimed: listing.claimedAt !== null,
+      title: listing.title,
+      category: listing.category,
+      transactionType: listing.transactionType,
+      price: this.formatListingPrice(listing),
+      priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
+      cityName: listing.city.name,
+      area: listing.area.name,
+      specs: cardSpecs(listing),
+      description: listing.description,
+      photoUrl: cover ? publicVariantUrl(this.cdnBase(), listing.id, cover.photoNo, 'full', cover.updatedAt) : null,
+      photoCount: listing.listingPhotos.length,
+      maskedPhone: maskClaimPhone(claimPhoneE164),
+      claimName: listing.claimName,
+    };
+  }
+
+  /** Deletes admin-assisted listings nobody claimed within ASSISTED_CLAIM_DAYS, photos included. */
+  async deleteExpiredAssistedListings(now = new Date()): Promise<number> {
+    const stale = await this.prisma.listing.findMany({
+      where: { publishState: 'awaiting_claim', claimedAt: null, createdAt: { lt: assistedClaimCutoff(now) } },
+      select: { id: true },
+    });
+    for (const { id } of stale) {
+      await this.deleteCompletely(id);
+    }
+    return stale.length;
   }
 
   /** Top (category, transactionType, city) combinations by real inventory — feeds the

@@ -19,8 +19,10 @@ export type TransactionType = "buy" | "sell" | "rent" | "lease";
 
 export type ListingStatus = "active" | "sold" | "rented" | "deactivated";
 
-/** Whether a newly created listing is visible in browse and has fired post-live side effects. */
-export type ListingPublishState = "live" | "pending_checkout";
+/** Whether a newly created listing is visible in browse and has fired post-live side effects.
+ * `awaiting_claim`: an admin prepared it for a seller, hidden until that seller claims it — see
+ * docs/plans/admin-assisted-posting.md. */
+export type ListingPublishState = "live" | "pending_checkout" | "awaiting_claim";
 
 export type ListingCondition = "new" | "used";
 
@@ -30,8 +32,9 @@ export type ListingCondition = "new" | "used";
 export type ListingSource = "direct" | "manual" | "google_api";
 
 /** Which outreach channel's claim link was actually clicked to complete a listing claim — see
- * Listing.claimSource and ListingsService.claimListing. */
-export type ClaimSource = "email" | "whatsapp";
+ * Listing.claimSource and ListingsService.claimListing. `assisted` is the link an admin shares
+ * after posting on a seller's behalf. */
+export type ClaimSource = "email" | "whatsapp" | "assisted";
 
 export type UserRole = "user" | "admin";
 
@@ -325,6 +328,50 @@ export interface ListingDetailDto extends ListingCardDto {
   claimSource?: ClaimSource | null;
   /** Count of identified interested buyers — only populated for the owner on `listMine`. */
   interestCount?: number;
+  /** Admin-assisted listings only, and only for an admin viewer. */
+  assisted?: AssistedListingInfoDto;
+}
+
+/** Who an admin-assisted listing is waiting on, and the link to send them. */
+export interface AssistedListingInfoDto {
+  claimPhone: string;
+  claimName: string | null;
+  claimSellerType: SellerType | null;
+  preparedByName: string | null;
+  claimUrl: string;
+  /** Null until the seller claims it. */
+  claimedAt: string | null;
+}
+
+/** POST /admin/listings/assisted — the wizard's normal create input plus who it's for. */
+export interface CreateAssistedListingInput extends CreateListingInput {
+  /** 10-digit Indian mobile, with or without +91. */
+  claimPhone: string;
+  claimName: string;
+  postedAs: SellerType;
+}
+
+/** GET /listings/:id/claim-preview — public, so the claim page can show what the seller is about
+ * to take over before they sign in. Only what a card shows, plus a masked phone. */
+export interface ListingClaimPreviewDto {
+  id: string;
+  /** assisted: an admin prepared it on request. outreach: imported from a business listing. */
+  kind: "assisted" | "outreach";
+  claimed: boolean;
+  title: string;
+  category: ListingCategory;
+  transactionType: TransactionType;
+  price: string;
+  priceQualifier: string;
+  cityName: string;
+  area: string;
+  specs: string[];
+  description: string | null;
+  photoUrl: string | null;
+  photoCount: number;
+  /** "+91 98xxx xx210". */
+  maskedPhone: string | null;
+  claimName: string | null;
 }
 
 /** One row in the owner's "who's interested" list — Level 1 (Message only), no seeker phone/email.

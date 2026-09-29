@@ -161,6 +161,7 @@ export class RequirementMatchJob {
         ...(requirement.category ? { category: requirement.category as never } : {}),
         // Never the seeker themselves, and never the bulk-import placeholder account.
         ownerId: { not: requirement.seekerId },
+        publishState: 'live',
       },
       select: { ownerId: true },
       distinct: ['ownerId'],

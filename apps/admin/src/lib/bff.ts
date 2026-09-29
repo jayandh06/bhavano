@@ -28,6 +28,7 @@ import type {
   ListingEditLogPage,
   ListingEngagementPage,
   ListingOwnerDto,
+  ListingPublishState,
   ListingStatus,
   LoginMethod,
   MessageDto,
@@ -208,6 +209,7 @@ export interface AdminListingsQuery {
   category?: ListingCategory;
   transactionType?: TransactionType;
   status?: ListingStatus;
+  publishState?: ListingPublishState;
   cityId?: string;
   areaId?: string;
   userId?: string;
@@ -228,6 +230,7 @@ export function fetchAdminListings(accessToken: string, query: AdminListingsQuer
   if (query.category) params.set("category", query.category);
   if (query.transactionType) params.set("transactionType", query.transactionType);
   if (query.status) params.set("status", query.status);
+  if (query.publishState) params.set("publishState", query.publishState);
   if (query.cityId) params.set("cityId", query.cityId);
   if (query.areaId) params.set("areaId", query.areaId);
   if (query.userId) params.set("userId", query.userId);

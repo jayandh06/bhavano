@@ -17,6 +17,19 @@ function decodeJwtExpiryMs(token: string): number | null {
   }
 }
 
+/** Whether the BFF token was issued to an admin (its `role` claim). Display only, like the expiry
+ * check above: admin endpoints still enforce the role themselves. */
+export function isAdminAccessToken(accessToken?: string | null): boolean {
+  if (!isAccessTokenValid(accessToken)) return false;
+  try {
+    const payload = accessToken.split(".")[1];
+    const json = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { role?: string };
+    return json.role === "admin";
+  } catch {
+    return false;
+  }
+}
+
 /** A type predicate (not just `boolean`) so `if (!isAccessTokenValid(session.accessToken)) return;`
  * narrows `session.accessToken` itself to `string` afterwards — needed at call sites that pass it
  * straight into a function expecting a required `string` (e.g. `uploadPhoto`). */

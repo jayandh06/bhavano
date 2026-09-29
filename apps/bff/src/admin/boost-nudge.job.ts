@@ -62,6 +62,7 @@ export class BoostNudgeJob {
     const candidates = await this.prisma.listing.findMany({
       where: {
         status: 'active',
+        publishState: 'live',
         moderationState: 'approved',
         expiresAt: { gt: now },
         createdAt: {

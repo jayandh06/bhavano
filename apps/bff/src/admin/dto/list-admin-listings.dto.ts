@@ -1,6 +1,12 @@
 import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import type { ListingCategory, ListingStatus, ModerationState, TransactionType } from '@bhavano/types';
+import type {
+  ListingCategory,
+  ListingPublishState,
+  ListingStatus,
+  ModerationState,
+  TransactionType,
+} from '@bhavano/types';
 
 const LISTING_CATEGORIES: ListingCategory[] = [
   'house',
@@ -17,6 +23,7 @@ const LISTING_CATEGORIES: ListingCategory[] = [
 const MODERATION_STATES: ModerationState[] = ['approved', 'flagged'];
 const TRANSACTION_TYPES: TransactionType[] = ['buy', 'sell', 'rent', 'lease'];
 const LISTING_STATUSES: ListingStatus[] = ['active', 'sold', 'rented', 'deactivated'];
+const PUBLISH_STATES: ListingPublishState[] = ['live', 'pending_checkout', 'awaiting_claim'];
 /** One asc/desc pair per sortable column on the admin listings table, so each header can be a
  * sort toggle. `messageCount` is included even though it isn't a column on Listing — it's a
  * relation count, which Prisma can order by (`conversations: { _count }`), unlike the admin
@@ -81,6 +88,10 @@ export class ListAdminListingsDto {
   @IsOptional()
   @IsIn(LISTING_STATUSES)
   status?: ListingStatus;
+
+  @IsOptional()
+  @IsIn(PUBLISH_STATES)
+  publishState?: ListingPublishState;
 
   @IsOptional()
   @IsString()

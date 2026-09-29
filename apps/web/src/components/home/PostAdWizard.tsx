@@ -6,6 +6,7 @@ import type {
   Area,
   BoostPlanSelection,
   City,
+  CreateListingInput,
   ListingCategory,
   ListingDetailDto,
   ReverseGeocodeResultDto,
@@ -29,7 +30,19 @@ import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
 import { reportClientErrorAction } from "@/app/actions/clientErrors";
-import { createListingAction, fetchMyListingAction, uploadPhotoAction } from "@/app/actions/listings";
+import {
+  createAssistedListingAction,
+  createListingAction,
+  fetchMyListingAction,
+  uploadPhotoAction,
+} from "@/app/actions/listings";
+import {
+  AssistedClaimLinkPanel,
+  AssistedSellerPanel,
+  EMPTY_ASSISTED_SELLER,
+  assistedSellerProblem,
+  type AssistedSeller,
+} from "./AssistedSellerPanel";
 import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPricing";
 import { platformFeeApplies } from "@bhavano/types/platformFeePricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
@@ -250,6 +263,7 @@ export function PostAdWizard({
   presetCategory,
   presetTransactionType,
   sellerType: profileSellerType,
+  isAdmin = false,
 }: {
   cities: City[];
   defaultCityId?: string;
@@ -264,11 +278,15 @@ export function PostAdWizard({
   /** The profile's answer to "Owner or agent?". Null (never answered, or logged out) asks it on
    * the review step; once answered it's changed from the profile, not here. */
   sellerType: SellerType | null;
+  /** Offers "Posting for someone else" — see AssistedSellerPanel. */
+  isAdmin?: boolean;
 }) {
   const { requireLogin, requireVerifiedPhone } = useAuthGate();
   const [listingId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("category");
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
+  const [assistedSeller, setAssistedSeller] = useState<AssistedSeller>(EMPTY_ASSISTED_SELLER);
+  const assistedMode = isAdmin && assistedSeller.enabled;
   // Held in state as well as taken as a prop: after a login at submit, the prop is still the
   // undefined this mounted with until router.refresh() lands, which is later than the resumed
   // upload needs it. Whichever arrives first wins.
@@ -304,7 +322,7 @@ export function PostAdWizard({
   >({});
   // An answered "Posted by Broker / Agent" field already says it, so don't ask twice. Once the
   // profile has an answer, that field is pre-selected from it instead (fromBrokerDefault).
-  const askSellerType = profileSellerType === null && !attributes.fromBroker;
+  const askSellerType = profileSellerType === null && !attributes.fromBroker && !assistedMode;
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [preparingPhotos, setPreparingPhotos] = useState(false);
   const [preparingVideos, setPreparingVideos] = useState(false);
@@ -429,8 +447,10 @@ export function PostAdWizard({
     };
   }, []);
 
+  // Off while posting for someone else: one seller's ad must never come back as the admin's own
+  // next post.
   useEffect(() => {
-    if (!draftSavingRef.current || !category || step === "success") return;
+    if (!draftSavingRef.current || !category || step === "success" || assistedMode) return;
     const timer = setTimeout(() => {
       if (!draftSavingRef.current) return;
       savePostAdDraftFields({
@@ -468,12 +488,13 @@ export function PostAdWizard({
     description,
     attributes,
     selectedBoostPlan,
+    assistedMode,
   ]);
 
   useEffect(() => {
-    if (!draftSavingRef.current) return;
+    if (!draftSavingRef.current || assistedMode) return;
     void savePostAdDraftPhotos(photos.map((photo) => photo.file));
-  }, [photos]);
+  }, [photos, assistedMode]);
 
   function startOver() {
     void clearPostAdDraft();
@@ -581,7 +602,7 @@ export function PostAdWizard({
     [category, planPricingSettings],
   );
 
-  const showPublishPanelOnReview = !!(
+  const showPublishPanelOnReview = !assistedMode && !!(
     category &&
     planPricingSettings &&
     (platformFeeApplies(category, planPricingSettings.platformFee) || previewBoostDisplay?.showSelectorOnPreview)
@@ -1025,6 +1046,11 @@ export function PostAdWizard({
       setError("Please tell us whether you're the owner or an agent.");
       return;
     }
+    const assistedProblem = assistedMode ? assistedSellerProblem(assistedSeller) : null;
+    if (assistedProblem) {
+      setError(assistedProblem);
+      return;
+    }
 
     setPending(true);
     setError(null);
@@ -1054,8 +1080,9 @@ export function PostAdWizard({
     // spam control) but login no longer collects one, so a Google/Apple account arrives here
     // without it. Ask now, before any upload, and resume this same call once it is verified.
     // The BFF re-checks authoritatively on create — see the result handling below.
-    const publisher = await getUserContactAction();
-    if (!publisher.phone) {
+    // Not for an assisted ad: the seller proves their phone when they claim it.
+    const publisher = assistedMode ? null : await getUserContactAction();
+    if (publisher && !publisher.phone) {
       setPending(false);
       requireVerifiedPhone({ onSuccess: () => void onSubmit() });
       return;
@@ -1109,7 +1136,7 @@ export function PostAdWizard({
       durationSec: number;
       sizeBytes: number;
     }[] = [];
-    for (const video of videos) {
+    for (const video of assistedMode ? [] : videos) {
       try {
         uploadedVideos.push(
           await uploadVideoDirect(video.file, listingId, activeToken),
@@ -1128,7 +1155,7 @@ export function PostAdWizard({
       planPricingSettings &&
       listingPublishRequiresCheckout(category, planPricingSettings.platformFee, selectedBoostPlan);
 
-    const result = await createListingAction({
+    const listingInput: CreateListingInput = {
       id: listingId,
       category,
       transactionType,
@@ -1156,7 +1183,22 @@ export function PostAdWizard({
               : undefined,
           }
         : {}),
-    });
+    };
+    const result =
+      assistedMode && assistedSeller.sellerType
+        ? await createAssistedListingAction({
+            ...listingInput,
+            // A "Posted by Broker / Agent" answer pre-filled from the admin's own profile would
+            // otherwise contradict the seller's.
+            attributes:
+              "fromBroker" in attributes
+                ? { ...attributes, fromBroker: assistedSeller.sellerType === "agent" ? "yes" : "no" }
+                : attributes,
+            claimPhone: assistedSeller.phone,
+            claimName: assistedSeller.name.trim(),
+            postedAs: assistedSeller.sellerType,
+          })
+        : await createListingAction(listingInput);
 
     if (!result.success) {
       setPending(false);
@@ -1178,6 +1220,13 @@ export function PostAdWizard({
     // The listing exists now (even if payment is still pending), so a retry must not recreate it.
     draftSavingRef.current = false;
     void clearPostAdDraft();
+
+    // Not a conversion, and nothing to pay: the seller publishes it when they claim it.
+    if (assistedMode) {
+      setPending(false);
+      setStep("success");
+      return;
+    }
 
     if (result.listing.publishState === "pending_checkout") {
       const published = await finishPublishCheckout(result.listing);
@@ -1249,6 +1298,10 @@ export function PostAdWizard({
             ),
           )}
         </div>
+      )}
+
+      {isAdmin && step !== "success" && (
+        <AssistedSellerPanel value={assistedSeller} onChange={setAssistedSeller} />
       )}
 
       {step === "category" && (
@@ -1559,7 +1612,12 @@ export function PostAdWizard({
               {videoEntitlement.canUpgradeByBoosting &&
                 " Boost this listing after posting to add up to 3 videos, up to 2 minutes each."}
             </p>
-            {videos.length < videoEntitlement.maxVideos && (
+            {assistedMode && (
+              <p className="text-xs text-muted mt-0 mb-1.5">
+                Not saved when posting for someone else. The seller can add videos after publishing.
+              </p>
+            )}
+            {!assistedMode && videos.length < videoEntitlement.maxVideos && (
               <UploadZone
                 accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/x-matroska"
                 onFiles={(files) => void onVideosSelected(files)}
@@ -1716,7 +1774,9 @@ export function PostAdWizard({
           ) : null}
 
           <p className="m-0 text-[12px] text-muted">
-            Your phone/email may be shown to users who unlock this listing&rsquo;s contact details.
+            {assistedMode
+              ? "Saved hidden. It goes live when the seller signs in with their phone and presses Publish."
+              : "Your phone/email may be shown to users who unlock this listing\u2019s contact details."}
           </p>
 
           <div className="flex gap-2.5">
@@ -1731,14 +1791,37 @@ export function PostAdWizard({
               disabled={pending}
               className={`ml-auto ${primaryButtonClass}`}
             >
-              {pending ? "Posting…" : "Post ad"}
+              {pending ? "Posting…" : assistedMode ? "Save for seller" : "Post ad"}
             </button>
           </div>
           </div>
         </div>
       )}
 
-      {step === "success" && createdListing && (
+      {step === "success" && createdListing && assistedMode && (
+        <div className="w-full max-w-[440px] mx-auto flex flex-col items-center gap-5 py-4 px-1">
+          <div className="text-center">
+            <div className="font-lora text-xl sm:text-2xl font-bold text-text">Saved for {assistedSeller.name.trim()}</div>
+            <p className="text-sm text-muted mt-1 mb-0">Hidden until they claim it.</p>
+          </div>
+          <AssistedClaimLinkPanel
+            claimUrl={createdListing.assisted?.claimUrl ?? `${SITE_URL}/claim/${createdListing.id}?via=assisted`}
+            sellerName={assistedSeller.name}
+            sellerPhone={assistedSeller.phone}
+            title={createdListing.title}
+          />
+          {/* A full load, so the next ad starts from an empty wizard rather than this one's state. */}
+          <button
+            type="button"
+            onClick={() => window.location.assign("/post")}
+            className="text-[13px] font-bold text-muted hover:text-text transition-colors bg-transparent border-0 cursor-pointer"
+          >
+            Post another ad &rarr;
+          </button>
+        </div>
+      )}
+
+      {step === "success" && createdListing && !assistedMode && (
         <div className="w-full max-w-[440px] mx-auto flex flex-col items-center gap-5 py-4 px-1">
           <div className="flex flex-col items-center gap-3 text-center">
             <span className="w-14 h-14 rounded-full bg-green/10 text-green text-2xl flex items-center justify-center">

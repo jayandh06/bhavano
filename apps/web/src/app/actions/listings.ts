@@ -1,7 +1,15 @@
 "use server";
 
 import { cookies } from "next/headers";
-import type { CreateListingInput, ListingDetailDto, RevealContactResponseDto, UpdateListingInput } from "@bhavano/types";
+import type {
+  ClaimSource,
+  CreateAssistedListingInput,
+  CreateListingInput,
+  ListingDetailDto,
+  ListingOwnerDto,
+  RevealContactResponseDto,
+  UpdateListingInput,
+} from "@bhavano/types";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { ListingSlotCapError } from "@/lib/listingSlotErrors";
 import { auth } from "@/auth";
@@ -11,7 +19,9 @@ import {
   ListingAlreadyClaimedError,
   addOwnListingPhoto,
   claimListing,
+  createAssistedListing,
   createListing,
+  searchUsersAsAdmin,
   deleteListingVideo,
   deleteOwnListingPhoto,
   fetchMyListings,
@@ -169,9 +179,33 @@ export type ClaimListingResult =
   | { requiresLogin: false; success: false; alreadyClaimed: true }
   | { requiresLogin: false; success: false; alreadyClaimed: false; error: string };
 
+/** Admin-assisted posting — the BFF rejects anyone who isn't an admin. */
+export async function createAssistedListingAction(input: CreateAssistedListingInput): Promise<CreateListingResult> {
+  const session = await auth();
+  if (!session || !isAccessTokenValid(session.accessToken)) {
+    return { success: false, error: NEEDS_LOGIN_ERROR };
+  }
+  try {
+    const listing = await createAssistedListing(input, session.accessToken);
+    return { success: true, listing };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to create listing" };
+  }
+}
+
+export async function searchUsersAsAdminAction(q: string): Promise<ListingOwnerDto[]> {
+  const session = await auth();
+  if (!session || !isAccessTokenValid(session.accessToken) || q.trim().length < 2) return [];
+  try {
+    return await searchUsersAsAdmin(session.accessToken, q.trim());
+  } catch {
+    return [];
+  }
+}
+
 export async function claimListingAction(
   listingId: string,
-  source?: "email" | "whatsapp",
+  source?: ClaimSource,
 ): Promise<ClaimListingResult> {
   const session = await auth();
   if (!session?.accessToken) return { requiresLogin: true };

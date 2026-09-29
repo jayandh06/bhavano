@@ -70,7 +70,7 @@ New sibling app mirroring `apps/web`'s structure (Server Components/Actions call
     message was read.
   - An admin viewing the thread never sets it.
   - Boost announcement threads (`type: announcement`) aren't shown on this page.
-- No listing creation/deletion UI beyond flag/approve — admins moderate, they don't post on behalf of users.
+- No listing creation/deletion UI beyond flag/approve — admins moderate, they don't post on behalf of users. Exception (2026-09-29): admin-assisted posting ([admin-assisted-posting.md](admin-assisted-posting.md)) lets staff prepare an ad that stays hidden until the seller claims it with an OTP on their own phone.
 
 **Verification (Phase 2):** log in to the admin app with an allowlisted phone/email, confirm a non-admin session gets bounced; flag a listing with a message from the dashboard and confirm it's now hidden on the public site and the message appears in the owner's `/messages` on `apps/web`; edit the listing as the owner and confirm it reappears in the admin queue as needing re-review; approve it and confirm it's public again.
 

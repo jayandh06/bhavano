@@ -4,7 +4,7 @@ import { fetchAreas, fetchProfile } from "@/lib/bff";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
 import { resolveDefaultCity } from "@/lib/defaultCity";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
-import { isAccessTokenValid } from "@/lib/session";
+import { isAccessTokenValid, isAdminAccessToken } from "@/lib/session";
 import { resolveVideoEntitlement } from "@bhavano/types/videoLimits";
 import { Footer } from "@/components/home/Footer";
 import { PageHeader } from "@/components/home/PageHeader";
@@ -94,6 +94,7 @@ export default async function PostAdPage({
             presetCategory={presetCategory}
             presetTransactionType={presetTransactionType}
             sellerType={profile?.sellerType ?? null}
+            isAdmin={isAdminAccessToken(accessToken)}
           />
         </div>
       </div>

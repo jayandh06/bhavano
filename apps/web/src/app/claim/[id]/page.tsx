@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ClaimListing } from "@/components/home/ClaimListing";
+import { AssistedClaim } from "@/components/home/AssistedClaim";
+import { fetchListingClaimPreview } from "@/lib/bff";
 
 /** Reached only from a private outreach link (email or WhatsApp) sent to one specific business —
  * never linked from anywhere crawlable, and there's nothing here for a reader anyway. noindex so
@@ -23,5 +25,8 @@ export default async function ClaimListingPage({
   // via === 'email' || via === 'whatsapp' check), so a malformed/missing param never becomes a
   // claim with bogus source data.
   const source = via === "email" || via === "whatsapp" ? via : undefined;
+  // An ad an admin prepared on request is reviewed and published by the seller, not claimed on load.
+  const preview = await fetchListingClaimPreview(id);
+  if (preview?.kind === "assisted") return <AssistedClaim preview={preview} />;
   return <ClaimListing listingId={id} source={source} />;
 }

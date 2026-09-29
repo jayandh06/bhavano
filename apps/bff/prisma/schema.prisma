@@ -36,6 +36,9 @@ enum ListingStatus {
 enum ListingPublishState {
   live
   pending_checkout
+  /// Prepared by an admin for a seller (claimPhoneE164) and hidden until that seller claims it.
+  /// See docs/plans/admin-assisted-posting.md.
+  awaiting_claim
 }
 
 enum ListingCondition {
@@ -58,6 +61,8 @@ enum ListingSource {
 enum ClaimSource {
   email
   whatsapp
+  /// The claim link an admin copied after posting on a seller's behalf.
+  assisted
 }
 
 enum UserRole {
@@ -458,6 +463,15 @@ model Listing {
   /// same listing), for the admin-visible email-vs-WhatsApp claim-rate breakdown. Null for a
   /// claim reached without that param (e.g. someone pasted the bare /claim/<id> URL).
   claimSource      ClaimSource?
+  /// Admin-assisted listings only (publishState awaiting_claim until claimed): the E.164 phone
+  /// that may claim it, the seller's name and Owner/Agent answer as staff took them down, and
+  /// the admin who prepared it. claimListing checks claimContact's phone first, then this one.
+  /// createdByAdminId has no relation on purpose: Listing→User already has `owner`, and the
+  /// 'created' ListingEditLog row names the same admin as its actor.
+  claimPhoneE164   String?
+  claimName        String?
+  claimSellerType  SellerType?
+  createdByAdminId String?
   relatedListingId String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt

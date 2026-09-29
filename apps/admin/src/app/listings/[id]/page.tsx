@@ -20,6 +20,7 @@ import { Pagination } from "@/components/Pagination";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 
 import { FullPageLink } from "@/components/FullPageLink";
+import { CopyButton } from "@/components/CopyButton";
 const LIKED_PARAM_NAMES = { page: "likedPage", limit: "likedLimit" };
 const MSG_PARAM_NAMES = { page: "msgPage", limit: "msgLimit" };
 const HISTORY_PARAM_NAMES = { page: "historyPage", limit: "historyLimit" };
@@ -34,6 +35,7 @@ const ACTION_LABELS: Record<string, string> = {
   photo_removed: "Photo removed",
   video_added: "Video added",
   video_removed: "Video removed",
+  claimed: "Claimed by seller",
 };
 
 /** `changes` values are `unknown` (see ListingFieldChange) since different actions touch
@@ -234,6 +236,39 @@ export default async function ListingModerationPage({
             </div>
           )}
         </div>
+
+        {listing.assisted && (
+          <div
+            style={{
+              border: "1px solid var(--gold, var(--border))",
+              borderRadius: 10,
+              padding: "12px 16px",
+              marginBottom: 12,
+              background: "var(--surface)",
+              fontSize: 13,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <div>
+              <strong>
+                {listing.assisted.claimedAt
+                  ? `Assisted, claimed ${formatDateTime(listing.assisted.claimedAt)}`
+                  : "Assisted, awaiting claim"}
+              </strong>{" "}
+              by {listing.assisted.claimName ?? "the seller"} ({listing.assisted.claimPhone}
+              {listing.assisted.claimSellerType ? `, ${listing.assisted.claimSellerType}` : ""})
+              {listing.assisted.preparedByName && `, prepared by ${listing.assisted.preparedByName}`}
+            </div>
+            {!listing.assisted.claimedAt && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <code style={{ fontSize: 12, wordBreak: "break-all" }}>{listing.assisted.claimUrl}</code>
+                <CopyButton text={listing.assisted.claimUrl} label="Copy claim link" />
+              </div>
+            )}
+          </div>
+        )}
 
         {owner && (
           <div

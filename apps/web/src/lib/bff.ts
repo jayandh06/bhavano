@@ -12,6 +12,10 @@ import type {
   AuthSession,
   BoostPricingPreviewDto,
   City,
+  ClaimSource,
+  CreateAssistedListingInput,
+  ListingClaimPreviewDto,
+  ListingOwnerDto,
   ClientErrorInput,
   ContactRevealBalanceDto,
   ContactRevealSettingsDto,
@@ -473,10 +477,33 @@ export function renewListing(accessToken: string, listingId: string): Promise<Li
 export function claimListing(
   accessToken: string,
   listingId: string,
-  source?: "email" | "whatsapp",
+  source?: ClaimSource,
 ): Promise<ListingDetailDto> {
   const params = source ? `?via=${source}` : "";
   return authedBffFetch(accessToken, `/listings/${listingId}/claim${params}`, { method: "POST" });
+}
+
+/** Null when the listing doesn't exist or can't be claimed. */
+export async function fetchListingClaimPreview(listingId: string): Promise<ListingClaimPreviewDto | null> {
+  try {
+    return await bffFetch<ListingClaimPreviewDto>(`/listings/${encodeURIComponent(listingId)}/claim-preview`, {
+      cache: "no-store",
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Admin only — see docs/plans/admin-assisted-posting.md. */
+export function createAssistedListing(
+  input: CreateAssistedListingInput,
+  accessToken: string,
+): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, "/admin/listings/assisted", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function searchUsersAsAdmin(accessToken: string, q: string): Promise<ListingOwnerDto[]> {
+  return authedBffFetch(accessToken, `/admin/users/search?q=${encodeURIComponent(q)}&limit=8`, { cache: "no-store" });
 }
 
 /** Unlike adding a video (which uploads a file and so must bypass Server Actions' 1MB body limit
