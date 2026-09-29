@@ -189,23 +189,25 @@ function reportPostError(stage: string, message: string) {
  * arrival at a step rather than on the button that leaves the previous one, so a step reached by
  * the Back button counts the same as one reached going forward.
  *
- * Preview and success are in-wizard steps (URL stays `/post`), so SoftNavPageViews /
- * middleware never see them. When those steps open, also write synthetic PageViews at
- * `/post/preview` and `/post/success` so admin Page visits show who reached card preview and
- * who finished posting — same hop SoftNav uses, same 2s same-path dedupe.
+ * Preview is an in-wizard step (URL stays `/post`), so SoftNavPageViews / middleware never see
+ * it. When it opens, also write a synthetic PageView at `/post/preview` so admin Page visits
+ * shows who reached card preview — same hop SoftNav uses, same 2s same-path dedupe.
+ *
+ * `/post/success` is NOT written from here — createListingAction passes this session's id to
+ * the BFF, which records it itself once the listing actually goes live. A fire-and-forget client
+ * request after the fact silently dropped on a network blip / blocker / backgrounding, which is
+ * exactly what a "did the post actually finish" signal cannot afford to miss.
  */
 function StepTracker({ step }: { step: Step }) {
   useEffect(() => {
     window.scrollTo(0, 0);
     pushDataLayerEvent("post_step_view", { step });
 
-    const syntheticPath =
-      step === "review" ? "/post/preview" : step === "success" ? "/post/success" : null;
-    if (!syntheticPath) return;
+    if (step !== "review") return;
     void fetch("/api/analytics/pageview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: syntheticPath }),
+      body: JSON.stringify({ path: "/post/preview" }),
       keepalive: true,
     }).catch(() => {
       // Offline or navigated away mid-flight — same stance as SoftNavPageViews.

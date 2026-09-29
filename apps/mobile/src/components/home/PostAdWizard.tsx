@@ -50,7 +50,7 @@ import {
   uploadPhoto,
   uploadVideo,
 } from "../../lib/bffClient";
-import { recordAppPageView } from "../../lib/analyticsSession";
+import { getAnalyticsSessionId, recordAppPageView } from "../../lib/analyticsSession";
 import { clearPostAdDraft, loadPostAdDraft, savePostAdDraft } from "../../lib/postAdDraft";
 import { startBoostCheckout } from "../../lib/boostCheckout";
 import { startListingPublishCheckout } from "../../lib/listingPublishCheckout";
@@ -236,13 +236,14 @@ export function PostAdWizard({
     return () => cancelAnimationFrame(raf);
   }, [step]);
   const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
-  // Mirrors the web wizard's StepTracker — scroll reset + PageViews for in-wizard steps.
-  // Preview/success keep the route at /post, so SoftNavAppPageViews never sees them;
-  // synthetic `/post/preview` and `/post/success` match web's StepTracker pageviews.
+  // Mirrors the web wizard's StepTracker — scroll reset + a PageView for the in-wizard preview
+  // step, which keeps the route at /post so SoftNavAppPageViews never sees it. `/post/success` is
+  // NOT written from here — createListing sends this session's id, and the BFF records it itself
+  // once the listing actually goes live, which survives a dropped request that a fire-and-forget
+  // call from here would not.
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
     if (step === "review") void recordAppPageView("/post/preview");
-    else if (step === "success") void recordAppPageView("/post/success");
   }, [step]);
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
@@ -1076,6 +1077,10 @@ export function PostAdWizard({
       const listing = await createListing(
         {
           id: listingId,
+          // Lets the BFF record the /post/success trail entry itself once this listing actually
+          // goes live — see CreateListingInput.sessionId's own doc comment for why the client no
+          // longer reports its own success (a fire-and-forget request that can silently drop).
+          sessionId: getAnalyticsSessionId(),
           category,
           transactionType,
           price: Number(price),

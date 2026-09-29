@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import type { CreateListingInput, ListingDetailDto, RevealContactResponseDto, UpdateListingInput } from "@bhavano/types";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { ListingSlotCapError } from "@/lib/listingSlotErrors";
@@ -42,8 +43,13 @@ export async function createListingAction(input: CreateListingInput): Promise<Cr
     return { success: false, error: NEEDS_LOGIN_ERROR };
   }
 
+  // See CreateListingInput.sessionId's own doc comment: this lets the BFF record the
+  // /post/success trail entry itself once the listing actually goes live, instead of trusting a
+  // client-side fire-and-forget request (StepTracker used to send one; it no longer does).
+  const sessionId = (await cookies()).get("bhavano_sid")?.value;
+
   try {
-    const listing = await createListing(input, session.accessToken);
+    const listing = await createListing({ ...input, sessionId }, session.accessToken);
     return { success: true, listing };
   } catch (error) {
     if (error instanceof ListingSlotCapError) {
