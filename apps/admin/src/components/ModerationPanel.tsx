@@ -12,6 +12,7 @@ import {
   setListingStatusAction,
   setReviewedAction,
 } from "@/app/actions/admin";
+import { formatDateTime } from "@/lib/formatDateTime";
 import { SelectField } from "./SelectField";
 
 const LISTING_STATUSES: ListingStatus[] = ["active", "sold", "rented", "deactivated"];
@@ -24,6 +25,7 @@ export function ModerationPanel({
   publishState,
   messages,
   currentUserId,
+  ownerId,
 }: {
   listingId: string;
   status: ListingStatus;
@@ -33,6 +35,9 @@ export function ModerationPanel({
   publishState: ListingPublishState;
   messages: MessageDto[];
   currentUserId: string;
+  /** Messages from anyone other than the owner are staff messages and show whether the owner has
+   * read them. Falls back to "sent by the viewing admin" when the owner isn't known. */
+  ownerId?: string;
 }) {
   const router = useRouter();
   const [flagMessage, setFlagMessage] = useState("");
@@ -257,20 +262,45 @@ export function ModerationPanel({
           {messages.length === 0 && <p style={{ fontSize: 13, color: "var(--muted)" }}>No messages yet.</p>}
           {messages.map((m) => {
             const isMine = m.senderId === currentUserId;
+            const fromStaff = ownerId ? m.senderId !== ownerId : isMine;
             return (
               <div
                 key={m.id}
                 style={{
                   alignSelf: isMine ? "flex-end" : "flex-start",
-                  background: isMine ? "var(--green)" : "var(--surface-alt)",
-                  color: isMine ? "var(--on-green)" : "var(--text)",
-                  borderRadius: 10,
-                  padding: "8px 12px",
-                  fontSize: 13.5,
                   maxWidth: "80%",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: isMine ? "flex-end" : "flex-start",
+                  gap: 3,
                 }}
               >
-                {m.body}
+                <div
+                  style={{
+                    background: isMine ? "var(--green)" : "var(--surface-alt)",
+                    color: isMine ? "var(--on-green)" : "var(--text)",
+                    borderRadius: 10,
+                    padding: "8px 12px",
+                    fontSize: 13.5,
+                  }}
+                >
+                  {m.body ?? <em>Message deleted</em>}
+                </div>
+                {/* readAt is when the owner opened this thread, which marks every earlier staff
+                  * message read at once; it doesn't prove each one was read. */}
+                <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                  {formatDateTime(m.createdAt)}
+                  {fromStaff && (
+                    <>
+                      {" · "}
+                      {m.readAt ? (
+                        <span title="When the owner opened this conversation">Read {formatDateTime(m.readAt)}</span>
+                      ) : (
+                        <span style={{ fontWeight: 700 }}>Not read yet</span>
+                      )}
+                    </>
+                  )}
+                </span>
               </div>
             );
           })}

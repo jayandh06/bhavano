@@ -266,6 +266,7 @@ export default async function ListingModerationPage({
           publishState={listing.publishState}
           messages={messages}
           currentUserId={userId}
+          ownerId={owner?.id}
         />
 
         <div style={{ marginTop: 16 }}>

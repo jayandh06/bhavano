@@ -62,6 +62,14 @@ New sibling app mirroring `apps/web`'s structure (Server Components/Actions call
 - **Auth**: same NextAuth phone-OTP/Google config as `apps/web`, but after establishing a session, if `role !== 'admin'` immediately sign the user back out and show "Not authorized for admin access" — never render any admin page for a non-admin session.
 - **`/` (dashboard)**: queue of listings, default-filtered to `adminReviewed: false` (what needs attention), with tabs/filters for flagged/all.
 - **`/listings/[id]`**: full listing detail (reuse the same field rendering logic as `apps/web`'s detail page, duplicated rather than shared — this is a small, focused admin view and a shared `packages/ui` package isn't justified yet for one screen), an "Admin reviewed" toggle, "Flag & message" (opens a textarea for the discrepancy message), "Approve" button, and the moderation conversation thread rendered inline (reusing the same message-list/send-message pattern as `apps/web/src/app/messages/[id]/page.tsx`, duplicated for the same reason as above).
+  **Read status (added 2026-09-29):** each message in the "Conversation with owner" panel shows
+  when it was sent, in IST. Each staff message (any sender other than the listing owner) also shows
+  "Read <time>" or "Not read yet", taken from `Message.readAt`.
+  - `readAt` is set when the owner opens the thread (`POST /conversations/:id/read`), which marks
+    every earlier staff message read at the same moment. It means "opened", not proof that each
+    message was read.
+  - An admin viewing the thread never sets it.
+  - Boost announcement threads (`type: announcement`) aren't shown on this page.
 - No listing creation/deletion UI beyond flag/approve — admins moderate, they don't post on behalf of users.
 
 **Verification (Phase 2):** log in to the admin app with an allowlisted phone/email, confirm a non-admin session gets bounced; flag a listing with a message from the dashboard and confirm it's now hidden on the public site and the message appears in the owner's `/messages` on `apps/web`; edit the listing as the owner and confirm it reappears in the admin queue as needing re-review; approve it and confirm it's public again.
