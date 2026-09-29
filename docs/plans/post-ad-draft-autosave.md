@@ -24,9 +24,10 @@ survive all of these.
     category, transaction type, price, qualifier, price mode, title, city (id plus the city object,
     for a pin-resolved city missing from the page's list), area, pin, description, attributes and
     the boost choice. Saves are debounced by 400 ms.
-  - Photos are required, and `localStorage` can't hold them. They're saved as the `File` objects
-    themselves in IndexedDB (`bhavano-drafts` / `post-ad-photos`), and preview URLs are rebuilt on
-    restore.
+  - Photos are required, and `localStorage` can't hold them. They're saved in IndexedDB
+    (`bhavano-drafts` / `post-ad-photos`) as their bytes (`{ name, type, lastModified, data }`),
+    and preview URLs are rebuilt on restore. Storing the `File` objects themselves broke on
+    iPhones; see "Restored photos on iOS" below.
 - **Mobile** (`apps/mobile/src/lib/postAdDraft.ts`, `PostAdWizard.tsx`):
   - The same fields, plus `specs`, go into AsyncStorage.
   - Photos are kept as the image picker's cache URIs. On restore, any URI the OS has since cleared
@@ -80,6 +81,32 @@ visitor is the home page.
   own resets on their in-page Back buttons.
 - **Tests:** `apps/web/e2e/post-ad-preview-back.spec.ts` covers this, and fails without the fix.
 - **Mobile:** the app is unchanged; it handles Back separately.
+
+## Restored photos on iOS (web, 2026-09-29)
+
+- **What happened:** on 29 Sept an iPhone seller (Google app browser, Jaipur, Rent Out
+  Commercial) tapped "Post ad" three times after reloads that restored his draft. Each time the
+  button stayed on "Posting…" for good. The web server logged `Error: Unexpected end of form`
+  about 2 seconds after each tap, and no upload ever reached the BFF. Those three were the only
+  times that error appeared in the logs since the 20th.
+- **Why:** iOS WebKit can keep a `File` that was stored in IndexedDB as a reference to the photo
+  picker's temporary copy. Once iOS deletes that copy, the restored `File` still previews, but
+  uploading it sends a truncated multipart body. Next.js fails to parse the body before
+  `uploadPhotoAction` runs, so the server action rejects instead of returning `{ error }`.
+  `onSubmit` had no catch, so `pending` never reset.
+- **Fixes:**
+  - Draft photos are stored as bytes. A draft saved in the old format keeps only the photos that
+    can still be read. Any dropped photo is named in a notice beside the photo picker ("couldn't
+    be restored… add it again").
+  - `onSubmit` reads each photo into memory before uploading it. A photo that can't be read
+    fails by number, with "Remove it, add it again".
+  - `onSubmit` wraps the whole publish. A thrown server action resets the button and shows
+    "Your ad couldn't be sent…". It's also reported as `post_error [publish_exception]` with the
+    underlying message.
+- **Tests:** `apps/web/e2e/post-ad-draft-photo-restore.spec.ts` covers the reload, the restored
+  photo and the publish. The last step needs photo storage configured, so locally (no R2
+  credentials) it stops at the BFF's upload 500. Chromium can't reproduce the iOS file deletion
+  itself.
 
 ## Related
 

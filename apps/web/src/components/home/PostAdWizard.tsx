@@ -63,6 +63,7 @@ import {
 import { shrinkPhoto } from "@/lib/shrinkPhoto";
 import {
   clearPostAdDraft,
+  inMemoryCopy,
   loadPostAdDraft,
   savePostAdDraftFields,
   savePostAdDraftPhotos,
@@ -406,6 +407,15 @@ export function PostAdWizard({
         setAttributes(draft.attributes);
         setSelectedBoostPlan(draft.selectedBoostPlan);
         setPhotos(saved.photos.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })));
+        if (saved.droppedPhotos > 0) {
+          setPhotoNotice({
+            kind: "file",
+            text:
+              saved.droppedPhotos === 1
+                ? "1 photo from your saved ad couldn't be restored. Please add it again."
+                : `${saved.droppedPhotos} photos from your saved ad couldn't be restored. Please add them again.`,
+          });
+        }
         // The preview is only shown after the account check in onPreview, so resume one step back.
         setStep(draft.step === "review" ? "details" : draft.step);
         setDraftRestored(true);
@@ -995,6 +1005,19 @@ export function PostAdWizard({
    * function's own closure — photos included — would not have survived the round trip.
    */
   async function onSubmit() {
+    try {
+      await publish();
+    } catch (submitError) {
+      // A server action rejects rather than returning `{ error }` when the request itself fails
+      // (connection dropped, or a body Next.js can't parse). Without this the button stays on
+      // "Posting…" for good.
+      setPending(false);
+      reportPostError("publish_exception", submitError instanceof Error ? submitError.message : String(submitError));
+      setError("Your ad couldn't be sent. Check your internet connection and tap Post ad again.");
+    }
+  }
+
+  async function publish() {
     if (!category || !transactionType) return;
     if (askSellerType && !postedAs) {
       setError("Please tell us whether you're the owner or an agent.");
@@ -1039,8 +1062,18 @@ export function PostAdWizard({
     const uploadedPhotos: { photoNo: number; hash: string; ext: string }[] = [];
     for (let i = 0; i < photos.length; i++) {
       const photoNo = i + 1;
+      // Read up front so a photo whose file iOS has since deleted fails here, by number, instead of
+      // being sent as a truncated upload.
+      let file: File;
+      try {
+        file = await inMemoryCopy(photos[i].file);
+      } catch {
+        setPending(false);
+        setError(`Photo ${photoNo} can no longer be read. Remove it, add it again, then tap Post ad.`);
+        return;
+      }
       const formData = new FormData();
-      formData.set("file", photos[i].file);
+      formData.set("file", file);
       formData.set("listingId", listingId);
       formData.set("photoNo", String(photoNo));
       const uploadResult = await uploadPhotoAction(formData);
