@@ -51,9 +51,18 @@ with depth in the 11 ad cities (see `growth-beyond-google-ads.md` §3).
   - The wizard (web and mobile) asks "You are posting as Owner / Agent / broker" on the review
     step, and makes it required, only when the profile has no answer **and** the listing's own
     `fromBroker` is blank. The answer is sent as `CreateListingInput.postedAs`.
-  - On create, a blank `fromBroker` is filled from `postedAs`, else the profile (only in
-    categories that have the field). The profile is set from `postedAs`, or seeded from the
-    listing's `fromBroker` answer when the profile is still empty.
+  - Once the profile has an answer, the wizards pre-select `fromBroker` from it
+    (`fromBrokerDefault`), still editable for a one-off listing, so the field no longer looks
+    like a second copy of the question.
+  - While the profile is empty, the wizard sends `postedAs`: the `fromBroker` answer if given,
+    else the review-step answer. **Only `postedAs` saves to the profile**, never a bare
+    `fromBroker`: mobile builds before this change preset every Yes/No field, `fromBroker`
+    included, to "No", so a listing's "no" isn't proof of an owner. The mobile wizard no longer
+    presets `fromBroker`.
+  - On create, a blank `fromBroker` is still filled from `postedAs`, else the profile (only in
+    categories that have the field).
+  - Known gap: listings posted from older mobile builds with the preset "No" show "Owner". In
+    production on 2026-09-29: 444 listings blank, 15 "yes", 19 "no".
   - The label (`ListingCardDto.postedBy` / `postedByAgency`, formatted by `postedByLabel` in
     `@bhavano/types/sellerType`) prefers the listing's `fromBroker` answer, then the account's.
     The agency name is shown only when both agree it is an agent listing. Unanswered shows nothing.
