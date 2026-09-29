@@ -19,6 +19,7 @@ import type {
   TransactionType,
 } from "@bhavano/types";
 import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
+import { fromBrokerDefault, sellerTypeFromBroker } from "@bhavano/types/sellerType";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import {
@@ -122,7 +123,9 @@ function defaultAttributesFor(category: ListingCategory): Record<string, string 
     // empty — the common answer, and it stops a required multi-select blocking submission before
     // the seller has looked at it. Still fully deselectable.
     else if (field.type === "multi-select" && field.options?.[0]) defaults[field.key] = [field.options[0].value];
-    else if (field.options?.some((o) => o.value === "no") && field.options.length === 2) {
+    // Not "Posted by Broker / Agent": a preset "No" would label every agent's listing "Owner".
+    // It starts from the account's answer instead (fromBrokerDefault), or blank.
+    else if (field.key !== "fromBroker" && field.options?.some((o) => o.value === "no") && field.options.length === 2) {
       defaults[field.key] = "no";
     }
   }
@@ -272,7 +275,7 @@ export function PostAdWizard({
   // typed Record<string, unknown> on the wire, so an array round-trips as-is.
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>({});
   // Asked only while the profile has no answer and this listing's own "Posted by Broker / Agent"
-  // field is blank — the BFF saves either answer to the profile (resolveDeclaredSellerType).
+  // field is blank. Once the profile has an answer, that field is pre-selected from it instead.
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
   const askSellerType = !profile?.sellerType && !attributes.fromBroker;
   const [photoUris, setPhotoUris] = useState<string[]>([]);
@@ -571,7 +574,7 @@ export function PostAdWizard({
   function selectCategory(next: ListingCategory) {
     userStartedRef.current = true;
     setCategory(next);
-    setAttributes(defaultAttributesFor(next));
+    setAttributes({ ...defaultAttributesFor(next), ...fromBrokerDefault(next, profile?.sellerType ?? null) });
     // A category swap can invalidate "price per unit" (the new category might have no area field
     // at all, or a different one) — reset to the plain default.
     setPriceMode("total");
@@ -1091,7 +1094,7 @@ export function PostAdWizard({
           attributes: pruneHiddenAttributes(category, transactionType, attributes),
           lat: pin?.lat,
           lng: pin?.lng,
-          postedAs: askSellerType && postedAs ? postedAs : undefined,
+          postedAs: profile?.sellerType ? undefined : (sellerTypeFromBroker(attributes.fromBroker) ?? postedAs ?? undefined),
           ...(needsCheckout
             ? {
                 checkoutIntent: selectedBoostPlan
