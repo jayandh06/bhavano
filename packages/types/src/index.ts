@@ -1002,6 +1002,10 @@ export interface UserSummaryDto {
   sellerType: SellerType | null;
   agencyName: string | null;
   cityName: string | null;
+  /** Active and published listings right now. */
+  liveListings: number;
+  /** Enquiry conversations started on any of their listings, all time. */
+  enquiries: number;
   createdAt: string;
   welcomed: boolean;
   welcomedChannel: string | null;

@@ -138,6 +138,8 @@ const USER_ORDER_BY: Record<UserSort, Prisma.UserOrderByWithRelationInput[]> = {
   createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
   createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
   name_asc: [{ name: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
+  // Every listing ever posted, not just live ones — Prisma can't order by a filtered relation count.
+  listings_desc: [{ listings: { _count: 'desc' } }, { createdAt: 'desc' }, { id: 'asc' }],
 };
 
 function paymentOrderBy(
@@ -937,6 +939,12 @@ export class AdminService {
         include: {
           city: true,
           notificationLogs: { where: { kind: 'welcome' }, orderBy: { sentAt: 'desc' }, take: 1 },
+          _count: {
+            select: {
+              listings: { where: { status: 'active', publishState: 'live' } },
+              conversationsAsPoster: { where: { type: 'inquiry' } },
+            },
+          },
         },
         orderBy: USER_ORDER_BY[sort ?? 'createdAt_desc'],
         skip: offset ?? 0,
@@ -955,6 +963,8 @@ export class AdminService {
         sellerType: u.sellerType,
         agencyName: u.agencyName,
         cityName: u.city?.name ?? null,
+        liveListings: u._count.listings,
+        enquiries: u._count.conversationsAsPoster,
         createdAt: u.createdAt.toISOString(),
         welcomed: u.notificationLogs.length > 0,
         welcomedChannel: u.notificationLogs[0]?.channel ?? null,

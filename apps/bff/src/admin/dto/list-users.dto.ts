@@ -3,7 +3,7 @@ import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class
 import type { SellerType, UserRole } from '@bhavano/types';
 
 const USER_ROLES: UserRole[] = ['user', 'admin'];
-const USER_SORT_VALUES = ['createdAt_desc', 'createdAt_asc', 'name_asc'] as const;
+const USER_SORT_VALUES = ['createdAt_desc', 'createdAt_asc', 'name_asc', 'listings_desc'] as const;
 
 export type UserSort = (typeof USER_SORT_VALUES)[number];
 
