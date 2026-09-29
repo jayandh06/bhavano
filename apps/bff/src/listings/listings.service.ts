@@ -273,10 +273,10 @@ function fromBrokerAnswer(attributes: unknown): SellerType | null {
 
 /** Reconciles the two ways a poster says who they are: the per-listing `fromBroker` field (optional,
  * and mostly left blank) and the account's `User.sellerType` (asked once). A blank `fromBroker` is
- * filled from the account's answer so the label and the brokerage fields agree; a listing's
- * answer never overrides the account, since an agent may also post their own flat — it only seeds
- * an account that has no answer yet. `postedAs` is the wizard's explicit question and always
- * saves. See docs/plans/broker-paid-bundles.md, Phase 0. */
+ * filled from the account's answer so the label and the brokerage fields agree. Only `postedAs`
+ * (sent by the wizard while the account has no answer) saves to the account: a bare `fromBroker`
+ * never does, because older mobile builds preset every Yes/No field to "No", so a listing's "no"
+ * isn't proof its poster is an owner. See docs/plans/broker-paid-bundles.md, Phase 0. */
 export function resolveDeclaredSellerType(
   category: ListingCategory,
   attributes: Record<string, unknown>,
@@ -290,10 +290,9 @@ export function resolveDeclaredSellerType(
     hasField && !listingAnswer && effective
       ? { ...attributes, fromBroker: effective === 'agent' ? 'yes' : 'no' }
       : attributes;
-  const declared = postedAs ?? (profileSellerType === null ? listingAnswer : null);
   return {
     attributes: filled,
-    saveToProfile: declared && declared !== profileSellerType ? declared : null,
+    saveToProfile: postedAs && postedAs !== profileSellerType ? postedAs : null,
   };
 }
 

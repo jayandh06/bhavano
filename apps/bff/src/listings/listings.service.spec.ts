@@ -1725,8 +1725,14 @@ describe('resolveDeclaredSellerType', () => {
     expect(r.saveToProfile).toBeNull();
   });
 
-  it("seeds an unanswered profile from the listing's fromBroker", () => {
-    const r = resolveDeclaredSellerType('plot', { fromBroker: 'yes' }, undefined, null);
+  it("doesn't save a bare fromBroker to the profile — older mobile builds preset it to 'no'", () => {
+    const r = resolveDeclaredSellerType('plot', { fromBroker: 'no' }, undefined, null);
+    expect(r.attributes.fromBroker).toBe('no');
+    expect(r.saveToProfile).toBeNull();
+  });
+
+  it('keeps an answered fromBroker and saves the wizard answer derived from it', () => {
+    const r = resolveDeclaredSellerType('plot', { fromBroker: 'yes' }, 'agent', null);
     expect(r.attributes.fromBroker).toBe('yes');
     expect(r.saveToProfile).toBe('agent');
   });
