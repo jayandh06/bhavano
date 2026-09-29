@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchUserActivity } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 import { DeleteUserPanel } from "@/components/DeleteUserPanel";
+import { AgentStatusPanel } from "@/components/AgentStatusPanel";
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   desktop: "Desktop",
@@ -63,7 +64,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
           </div>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
             Posts as: {postedByLabel(user.sellerType, user.agencyName) ?? "not answered yet"}
-            {user.reraNumber && ` · RERA ${user.reraNumber}`}
+            {user.reraNumber && ` · RERA ${user.reraNumber}${user.reraVerifiedAt ? " ✓ verified" : ""}`}
           </div>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>
             Found via:{" "}
@@ -72,6 +73,15 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
               : "unknown (predates acquisition tracking)"}
           </div>
         </div>
+
+        <AgentStatusPanel
+          userId={id}
+          isAgent={user.sellerType === "agent"}
+          reraNumber={user.reraNumber}
+          reraVerifiedAt={user.reraVerifiedAt}
+          agentProUntil={user.agentProUntil}
+          proActive={user.agentProUntil !== null && new Date(user.agentProUntil) > new Date()}
+        />
 
         <DeleteUserPanel userId={id} canDelete={user.role !== "admin"} />
 

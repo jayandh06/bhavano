@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { ListingOwnerDto, SendWelcomeResponseDto, WelcomeChannel } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { deleteUser, searchUsers, sendWelcome } from "@/lib/bff";
+import { deleteUser, grantAgentPro, searchUsers, sendWelcome, setReraVerified } from "@/lib/bff";
 
 export type ActionResult = { success: true } | { success: false; error: string };
 
@@ -17,6 +17,29 @@ export async function deleteUserAction(userId: string): Promise<ActionResult> {
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to delete user" };
+  }
+}
+
+/** Founding-broker offer: free Agent Pro, stacked on any time the agent already has. */
+export async function grantFoundingBrokerProAction(userId: string, months: number): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await grantAgentPro(accessToken, userId, { months, reason: "founding_broker" });
+    revalidatePath(`/users/${userId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to grant Agent Pro" };
+  }
+}
+
+export async function setReraVerifiedAction(userId: string, verified: boolean): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await setReraVerified(accessToken, userId, verified);
+    revalidatePath(`/users/${userId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update RERA status" };
   }
 }
 

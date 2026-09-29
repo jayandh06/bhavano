@@ -295,6 +295,21 @@ export function deleteUser(accessToken: string, id: string): Promise<void> {
   return authedBffFetch(accessToken, `/admin/users/${id}`, { method: "DELETE" });
 }
 
+export function grantAgentPro(
+  accessToken: string,
+  id: string,
+  input: { months: number; reason: "founding_broker" },
+): Promise<{ agentProUntil: string }> {
+  return authedBffFetch(accessToken, `/admin/users/${id}/agent-pro-grant`, { method: "POST", body: JSON.stringify(input) });
+}
+
+export function setReraVerified(accessToken: string, id: string, verified: boolean): Promise<void> {
+  return authedBffFetch(accessToken, `/admin/users/${id}/rera-verified`, {
+    method: "PATCH",
+    body: JSON.stringify({ verified }),
+  });
+}
+
 export function setListingStatus(accessToken: string, id: string, status: ListingStatus): Promise<ListingDetailDto> {
   return authedBffFetch(accessToken, `/admin/listings/${id}/status`, {
     method: "PATCH",
