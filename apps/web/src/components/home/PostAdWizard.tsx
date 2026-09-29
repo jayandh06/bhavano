@@ -16,6 +16,7 @@ import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, fieldIsVisible } from "@bhavano/types/categoryFields";
+import { fromBrokerDefault, sellerTypeFromBroker } from "@bhavano/types/sellerType";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { listingPriceIssue } from "@bhavano/types/priceBounds";
@@ -298,8 +299,8 @@ export function PostAdWizard({
   const [attributes, setAttributes] = useState<
     Record<string, string | string[]>
   >({});
-  // An answered "Posted by Broker / Agent" field already says it; the BFF saves that to the
-  // profile itself (resolveDeclaredSellerType), so don't ask twice.
+  // An answered "Posted by Broker / Agent" field already says it, so don't ask twice. Once the
+  // profile has an answer, that field is pre-selected from it instead (fromBrokerDefault).
   const askSellerType = profileSellerType === null && !attributes.fromBroker;
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [preparingPhotos, setPreparingPhotos] = useState(false);
@@ -360,7 +361,7 @@ export function PostAdWizard({
   const draftSavingRef = useRef(false);
   const userStartedRef = useRef(false);
   const [draftRestored, setDraftRestored] = useState(false);
-  const presetRef = useRef({ category: presetCategory, transactionType: presetTransactionType });
+  const presetRef = useRef({ category: presetCategory, transactionType: presetTransactionType, sellerType: profileSellerType });
 
   useEffect(() => {
     let cancelled = false;
@@ -379,7 +380,7 @@ export function PostAdWizard({
               ? postable[0]
               : null;
         setCategory(presetCategory);
-        setAttributes(defaultAttributesFor(presetCategory));
+        setAttributes({ ...defaultAttributesFor(presetCategory), ...fromBrokerDefault(presetCategory, preset.sellerType) });
         setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
         setTransactionType(presetType);
         setPriceQualifier(presetType ? (getPriceQualifierOptions(presetCategory, presetType)[0]?.value ?? "") : "");
@@ -609,7 +610,7 @@ export function PostAdWizard({
   function selectCategory(next: ListingCategory) {
     userStartedRef.current = true;
     setCategory(next);
-    setAttributes(defaultAttributesFor(next));
+    setAttributes({ ...defaultAttributesFor(next), ...fromBrokerDefault(next, profileSellerType) });
     // A category swap can invalidate "price per unit" (the new category might have no area field
     // at all, or a different one) — reset to the plain default rather than risk submitting a
     // priceUnit that no longer matches anything.
@@ -1051,7 +1052,7 @@ export function PostAdWizard({
       attributes,
       lat: pin?.lat,
       lng: pin?.lng,
-      postedAs: askSellerType && postedAs ? postedAs : undefined,
+      postedAs: profileSellerType ? undefined : (sellerTypeFromBroker(attributes.fromBroker) ?? postedAs ?? undefined),
       ...(needsCheckout
         ? {
             checkoutIntent: selectedBoostPlan
