@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import type { City, UserProfileDto } from "@bhavano/types";
+import type { City, SellerType, UserProfileDto } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { LegalFooter } from "../../src/components/home/LegalFooter";
@@ -129,6 +129,9 @@ function ProfileFields({
   const [cityNoResults, setCityNoResults] = useState(false);
   const [showCityMap, setShowCityMap] = useState(false);
   const [newCityNote, setNewCityNote] = useState<string | null>(null);
+  const [sellerType, setSellerType] = useState<SellerType | null>(profile.sellerType);
+  const [agencyName, setAgencyName] = useState(profile.agencyName ?? "");
+  const [reraNumber, setReraNumber] = useState(profile.reraNumber ?? "");
   const [email, setEmail] = useState(profile.email ?? "");
   const [phoneInput, setPhoneInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
@@ -288,7 +291,17 @@ function ProfileFields({
       // No email here: an address only reaches the profile through the verified flow below,
       // mirroring how a phone only arrives through OTP. See
       // docs/plans/account-linking-phone-and-email.md.
-      await updateProfile(accessToken, { name: name.trim() || undefined, cityId });
+      await updateProfile(accessToken, {
+        name: name.trim() || undefined,
+        cityId,
+        ...(sellerType
+          ? {
+              sellerType,
+              agencyName: sellerType === "agent" ? agencyName : "",
+              reraNumber: sellerType === "agent" ? reraNumber : "",
+            }
+          : {}),
+      });
       await refreshProfile();
       setMessage({ type: "success", text: "Profile updated." });
     } catch (e) {
@@ -375,6 +388,54 @@ function ProfileFields({
       )}
       {newCityNote && (
         <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5, marginTop: 6 }}>{newCityNote}</Text>
+      )}
+
+      <Text style={[styles.label, { color: colors.muted }]}>I post as</Text>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        {(
+          [
+            ["owner", "Owner"],
+            ["agent", "Agent / broker"],
+          ] as const
+        ).map(([value, label]) => (
+          <Pressable
+            key={value}
+            onPress={() => setSellerType(value)}
+            style={{
+              borderWidth: 1,
+              borderRadius: 20,
+              paddingVertical: 8,
+              paddingHorizontal: 14,
+              borderColor: sellerType === value ? colors.green : colors.border,
+              backgroundColor: sellerType === value ? colors.surfaceAlt : "transparent",
+            }}
+          >
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={[styles.hint, { color: colors.muted }]}>Shown on your ads so buyers know who they&rsquo;re talking to.</Text>
+      {sellerType === "agent" && (
+        <>
+          <Text style={[styles.label, { color: colors.muted }]}>Agency name (optional)</Text>
+          <TextInput
+            value={agencyName}
+            onChangeText={setAgencyName}
+            maxLength={100}
+            placeholder="e.g. Sai Realty"
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+          />
+          <Text style={[styles.label, { color: colors.muted }]}>RERA number (optional)</Text>
+          <TextInput
+            value={reraNumber}
+            onChangeText={setReraNumber}
+            maxLength={40}
+            autoCapitalize="characters"
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+          />
+        </>
       )}
 
       <Text style={[styles.label, { color: colors.muted }]}>
