@@ -136,6 +136,10 @@
     "./requirementQuestions": {
       "types": "./dist/requirementQuestions.d.ts",
       "default": "./dist/requirementQuestions.js"
+    },
+    "./requirementFeed": {
+      "types": "./dist/requirementFeed.d.ts",
+      "default": "./dist/requirementFeed.js"
     }
   },
   "scripts": {

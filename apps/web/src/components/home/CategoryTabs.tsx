@@ -29,6 +29,8 @@ export function CategoryTabs({
   const pathname = usePathname();
   const toolsActive = pathname.startsWith("/tools");
   const plansActive = pathname.startsWith("/premium");
+  const requirementsActive = pathname.startsWith("/requirements");
+  const requirementsHref = cityName ? `/requirements/${slugify(cityName)}` : "/requirements";
   // No city selected means no ?city= to carry — /premium resolves its own default rather than
   // being handed the literal string "undefined".
   const plansHref = cityName ? `/premium?city=${slugify(cityName)}` : "/premium";
@@ -140,6 +142,16 @@ export function CategoryTabs({
         >
           <Icon name="sparkles" />
           Plans
+        </Link>
+        <Link
+          href={requirementsHref}
+          prefetch={false}
+          className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
+            requirementsActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
+          }`}
+        >
+          <Icon name="requirements" />
+          Requirements
         </Link>
       </HorizontalScroller>
 

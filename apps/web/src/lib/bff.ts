@@ -38,7 +38,6 @@ import type {
   PropertyTypeFilter,
   RevealContactResponseDto,
   SellerAttentionDto,
-  OwnerRequirementMatchDto,
   RefineRequirementInput,
   RequirementDto,
   ReverseGeocodeResultDto,
@@ -54,6 +53,7 @@ import type {
 import type { BoostDurationDays } from "@bhavano/types/boostPricing";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import type { CreateSupportTicketResponse } from "@bhavano/types/support";
+import type { RequirementFeedDto, RequirementFeedSummaryDto } from "@bhavano/types/requirementFeed";
 import type { LinkIdentifierResult } from "@bhavano/types";
 import { isListingSlotCapErrorBody, ListingSlotCapError } from "@/lib/listingSlotErrors";
 
@@ -311,9 +311,17 @@ export function closeMyRequirement(
   return authedBffFetch(accessToken, `/requirements/mine/${id}/${path}`, { method: "POST" });
 }
 
-/** Demand matching the viewer's own listings — what the owner match email links to. */
-export function fetchMatchingRequirements(accessToken: string): Promise<OwnerRequirementMatchDto[]> {
-  return authedBffFetch(accessToken, "/requirements/matching", { cache: "no-store" });
+/** The owner/agent Requirements tab. `query` is `encodeRequirementFeedQuery` output with city and
+ * area ids, not slugs. */
+export function fetchRequirementFeed(accessToken: string, query: Record<string, string>): Promise<RequirementFeedDto> {
+  const params = new URLSearchParams(query).toString();
+  return authedBffFetch(accessToken, `/requirements/feed${params ? `?${params}` : ""}`, { cache: "no-store" });
+}
+
+/** Counts only — public, so it can be cached briefly. */
+export function fetchRequirementFeedSummary(cityId?: string): Promise<RequirementFeedSummaryDto> {
+  const params = cityId ? `?${new URLSearchParams({ city: cityId }).toString()}` : "";
+  return bffFetch<RequirementFeedSummaryDto>(`/requirements/feed/summary${params}`, { next: { revalidate: 300 } });
 }
 
 export function fetchMyRequirements(accessToken: string): Promise<RequirementDto[]> {

@@ -1,6 +1,6 @@
 # Requirements tab for owners and agents
 
-Status: **plan, not built** (2026-09-29).
+Status: **Phase 1 (web, browse-only) built** (2026-09-29). Phases 2–4 are still plans.
 
 A new **Requirements** tab where owners and agents browse every open, usable requirement that
 seekers have posted, filtered by city and then by the fields that make sense for the chosen
@@ -128,7 +128,7 @@ Filters follow the capture flow's order and use the same config in
 
 | Filter | Source | Notes |
 |---|---|---|
-| City | `cityId` | Required. Default: the city of the viewer's most recent live listing, otherwise their profile city, otherwise the city with the most requirements. Each option shows a count. |
+| City | `cityId` | Taken from the path: `/requirements` is all cities and `/requirements/{city}` is one. The nav links open the city the visitor is browsing. Each city chip shows a count, and only cities with requirements are listed. |
 | Areas | `areaIds` (up to 5 per requirement) | Multi-select within the city. Matches if the requirement names any selected area. |
 | Intent | `REQUIREMENT_INTENTS` | Buy, Rent & Lease, PG, Furniture, Interiors. |
 | Posted within | `createdAt` | Any, 7 days, 30 days. |
@@ -206,26 +206,40 @@ spreading. Open decision 2 below.
 
 ## API
 
-- `GET /requirements/feed` (AuthGuard plus the owner-or-agent check; otherwise 403 with code
-  `NOT_OWNER_OR_AGENT`, which the client turns into the role question). Query params:
-  - location and type: `city`, `areas`, `intent`, `transactionType`, `category`;
+- `GET /requirements/feed` (AuthGuard). For a signed-in user who isn't an owner or agent it
+  returns 200 with `eligible: false` and no items, and the page shows the role question. Query
+  params:
+  - location and type: `city`, `areas`, `intent`, `txn`, `type`;
   - budget and size: `minBudget`, `maxBudget`, `bhk`, `minSqft`, `maxSqft`;
-  - details: `attr.<key>` (repeatable), `amenities`;
-  - timing and contact: `postedWithin`, `moveIn`, `openToCalls`;
-  - view: `matches`, `sort`, `cursor`.
+  - details: `attr_<key>` (comma-separated values), `amenities`;
+  - timing and contact: `posted` (7 or 30), `movein`, `calls=1`;
+  - view: `matches=1`, `sort=soonest`.
 
-  The response is `{ items: RequirementFeedCardDto[], total, facets }`. `facets` holds counts per
-  city, intent and category under the current filters, for the "(3)" badges and the empty states.
-- `GET /requirements/feed/summary?city=`: public, counts only, and cached for 5 minutes.
-- `RequirementFeedCardDto` goes in `packages/types`, and `dist/` must be rebuilt. It carries only
-  the card fields listed above: display labels resolved on the server (area names, attribute labels),
-  never seeker fields.
-- The service method is a Prisma query on `status`, `cityId`, `category`, `transactionType`,
-  `createdAt`. Array overlaps on `areaIds` and `bedroomOptions` use `hasSome`, with a raw
-  `jsonb ?|` for attributes. At about 100 rows no new index is needed. Add a GIN index on `areaIds`
-  and a composite `[status, cityId, category, createdAt]` when the table passes about 10k rows.
-- A rate limit on the feed endpoint (e.g. 60 requests a minute per user) keeps someone from scraping
-  the whole demand map.
+  The web page's URL uses the same parameter names, with slugs where the BFF takes ids (the city is
+  in the path, areas are slugs). Both ends go through `decodeRequirementFeedQuery` and
+  `encodeRequirementFeedQuery` in `packages/types/src/requirementFeed.ts`. Values that aren't
+  recognised are dropped rather than refused, so a stale shared link widens the list instead of
+  breaking the page.
+
+  The response is `{ eligible, items, total, hasListings, facets }`:
+  - `items` holds the first 50 cards, and `total` is the full match count. There's no cursor yet;
+    add one when a single filter view regularly passes 50.
+  - `facets.cities` counts under every filter except the place.
+  - `facets.areas` counts within the chosen city, under every filter except the areas.
+  - `facets.intents` and `facets.categories` count within the chosen place.
+- `GET /requirements/feed/summary?city=<id>`: public and counts only. The web caches it for 5
+  minutes.
+- The DTOs live in `packages/types/src/requirementFeed.ts` (a new subpath export), and `dist/` must
+  be rebuilt. The card carries only the card fields listed above, with display labels resolved on
+  the server (area names, attribute labels) and never seeker fields. The label is regenerated with
+  `formatRequirementLabel` rather than read from `searchLabel`.
+- `RequirementFeedService` loads every open, unexpired requirement (up to 2,000) and filters in
+  memory with `matchFeedFilters` (`requirement-feed.ts`). That keeps the rule that an unanswered
+  question still counts as a match in one tested function instead of a SQL builder. Move the
+  coarse filters (`status`, `cityId`, `category`, `transactionType`) into SQL, with a composite
+  index, when open requirements approach that cap.
+- Throttled to 60 requests a minute on both endpoints, so one account can't copy the whole demand
+  map.
 
 ## Phases
 
@@ -238,6 +252,13 @@ spreading. Open decision 2 below.
    - the "Post a matching ad" prefill.
 
    This can ship right away and needs nothing from the leads plan.
+
+   **Built (2026-09-29):**
+   - size is offered as sqft bands rather than free min/max inputs, so every filter is a plain link
+     and the page works fully server-rendered;
+   - the web no longer calls `GET /requirements/matching`; the BFF endpoint is left in place, unused;
+   - requirements that the old matching page showed without a property type no longer appear, per
+     decision 4.
 2. **Contact actions:** leads plan Phase 1 (`RequirementLead`, `requirement_lead` conversation type,
    send-listing, capped reveal, the seeker's "who has my number", withdraw and report). They're
    exposed on these cards and on the digest.

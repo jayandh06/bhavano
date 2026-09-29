@@ -276,7 +276,7 @@ export class NotificationsService {
       `${count === 1 ? 'Someone' : `${count} people`} searched Bhavano for something matching what you've listed, ` +
       `and didn't find it:\n\n${lines.map((line) => `• ${line}`).join('\n')}\n\n` +
       `If you have something suitable, list it at https://www.bhavano.com/post — ` +
-      `or see the full details at https://www.bhavano.com/requirements/matching.\n\n` +
+      `or see the full details at https://www.bhavano.com/requirements?matches=1.\n\n` +
       `You're getting this because you've listed in the same area and category. Nobody's contact ` +
       `details are shared either way.`;
 
