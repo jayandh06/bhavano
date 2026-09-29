@@ -278,6 +278,7 @@ export function PostAdWizard({
   // Asked only while the profile has no answer and this listing's own "Posted by Broker / Agent"
   // field is blank. Once the profile has an answer, that field is pre-selected from it instead.
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
+  const [sellerTypeMissing, setSellerTypeMissing] = useState(false);
   const askSellerType = !profile?.sellerType && !attributes.fromBroker;
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [videos, setVideos] = useState<SelectedVideo[]>([]);
@@ -1007,6 +1008,8 @@ export function PostAdWizard({
       activeToken = (await SecureStore.getItemAsync(TOKEN_KEY)) ?? undefined;
     }
     setPhotoNotice(null);
+    setError(null);
+    setSellerTypeMissing(false);
     if (!activeToken) {
       requireLogin({ onSuccess: () => setStep("review") });
       return;
@@ -1027,7 +1030,9 @@ export function PostAdWizard({
   async function onSubmit() {
     if (!category || !transactionType) return;
     if (askSellerType && !postedAs) {
-      setError("Please tell us whether you're the owner or an agent.");
+      setSellerTypeMissing(true);
+      setError("Tap Owner or Agent / broker above to post your ad.");
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
 
@@ -1151,7 +1156,20 @@ export function PostAdWizard({
   return (
     <>
     <View style={{ flex: 1 }}>
-    <ScreenHeader title="Post an Ad" onBack={prevStep ? () => setStep(prevStep) : undefined} />
+    <ScreenHeader
+      title="Post an Ad"
+      onBack={
+        prevStep
+          ? () => {
+              if (step === "review") {
+                setError(null);
+                setSellerTypeMissing(false);
+              }
+              setStep(prevStep);
+            }
+          : undefined
+      }
+    />
     <KeyboardAwareScrollView
       ref={scrollRef}
       style={{ flex: 1 }}
@@ -1552,6 +1570,52 @@ export function PostAdWizard({
 
       {step === "review" && category && transactionType && (
         <View style={{ gap: 12 }}>
+          {/* Above the card, not below it: the card fills a phone screen, and sellers who never
+            * scrolled to the question kept tapping Post ad into this error. */}
+          {askSellerType && (
+            <View
+              style={{
+                gap: 6,
+                padding: 12,
+                borderRadius: 12,
+                borderWidth: 2,
+                borderColor: sellerTypeMissing ? "#c0554b" : colors.border,
+                backgroundColor: sellerTypeMissing ? "#c0554b14" : "transparent",
+              }}
+            >
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Are you the owner or an agent?</Text>
+              <View style={styles.chipRow}>
+                {(
+                  [
+                    ["owner", "Owner"],
+                    ["agent", "Agent / broker"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    onPress={() => {
+                      setPostedAs(value);
+                      setSellerTypeMissing(false);
+                      setError(null);
+                    }}
+                    style={[
+                      styles.chip,
+                      {
+                        borderColor: postedAs === value ? colors.green : colors.border,
+                        backgroundColor: postedAs === value ? colors.surfaceAlt : "transparent",
+                      },
+                    ]}
+                  >
+                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={{ color: colors.muted, fontSize: 12 }}>
+                Shown on your ads so buyers know who they&rsquo;re talking to.
+              </Text>
+            </View>
+          )}
+
           {/* What the actual browse-grid ListingCard will look like once this is posted — same
             * photo/badge/price/title/location/specs a buyer sees, not a plain text summary, so a
             * mistake (wrong cover photo, an odd-reading price, a spec that didn't come through) is
@@ -1579,40 +1643,6 @@ export function PostAdWizard({
               platformFeeSettings={planPricingSettings.platformFee}
               showBoostOptions={showBoostOnReview}
             />
-          )}
-
-          {askSellerType && (
-            <View style={{ gap: 6 }}>
-              <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>You are posting as</Text>
-              <View style={styles.chipRow}>
-                {(
-                  [
-                    ["owner", "Owner"],
-                    ["agent", "Agent / broker"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <Pressable
-                    key={value}
-                    onPress={() => {
-                      setPostedAs(value);
-                      setError(null);
-                    }}
-                    style={[
-                      styles.chip,
-                      {
-                        borderColor: postedAs === value ? colors.green : colors.border,
-                        backgroundColor: postedAs === value ? colors.surfaceAlt : "transparent",
-                      },
-                    ]}
-                  >
-                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: "700" }}>{label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text style={{ color: colors.muted, fontSize: 12 }}>
-                Shown on your ads so buyers know who they&rsquo;re talking to.
-              </Text>
-            </View>
           )}
 
           {(error || publishCheckoutError) && (

@@ -285,6 +285,8 @@ export function PostAdWizard({
   const [listingId] = useState(() => crypto.randomUUID());
   const [step, setStep] = useState<Step>("category");
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
+  const [sellerTypeMissing, setSellerTypeMissing] = useState(false);
+  const sellerTypeRef = useRef<HTMLDivElement | null>(null);
   const [assistedSeller, setAssistedSeller] = useState<AssistedSeller>(EMPTY_ASSISTED_SELLER);
   const assistedMode = isAdmin && assistedSeller.enabled;
   // Held in state as well as taken as a prop: after a login at submit, the prop is still the
@@ -571,6 +573,8 @@ export function PostAdWizard({
   }, []);
 
   function backToDetails() {
+    setError(null);
+    setSellerTypeMissing(false);
     if (reviewHistoryEntryRef.current && window.history.state?.postAdReview) {
       window.history.back();
     } else {
@@ -1010,6 +1014,8 @@ export function PostAdWizard({
       setToken(activeToken);
     }
     setPhotoNotice(null);
+    setError(null);
+    setSellerTypeMissing(false);
     if (!activeToken) {
       pushDataLayerEvent("post_login_required", { step });
       requireLogin({ onSuccess: () => setStep("review") });
@@ -1043,7 +1049,9 @@ export function PostAdWizard({
   async function publish() {
     if (!category || !transactionType) return;
     if (askSellerType && !postedAs) {
-      setError("Please tell us whether you're the owner or an agent.");
+      setSellerTypeMissing(true);
+      setError("Tap Owner or Agent / broker above to post your ad.");
+      sellerTypeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     const assistedProblem = assistedMode ? assistedSellerProblem(assistedSeller) : null;
@@ -1684,6 +1692,43 @@ export function PostAdWizard({
         // only once there's a second thing (the boost selector) to sit beside the card — see
         // docs/plans/boost-instant-alerts-preview-selector.md.
         <div className={`mx-auto ${showPublishPanelOnReview ? "max-w-[680px]" : "max-w-[340px]"}`}>
+          {/* Above the card, not below it: on a phone the card fills the screen, and sellers who
+            * never scrolled to the question kept tapping Post ad into this error. */}
+          {askSellerType && (
+            <div
+              ref={sellerTypeRef}
+              className={`flex flex-col gap-2 mb-4 rounded-[12px] p-3 border-2 ${
+                sellerTypeMissing ? "border-[#b3413a] bg-[#fdf1f0]" : "border-border"
+              }`}
+            >
+              <span className="text-[14px] font-bold text-text">Are you the owner or an agent?</span>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["owner", "Owner"],
+                    ["agent", "Agent / broker"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setPostedAs(value);
+                      setSellerTypeMissing(false);
+                      setError(null);
+                    }}
+                    className={transactionButtonClass(postedAs === value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[12px] text-muted">
+                Shown on your ads so buyers know who they&rsquo;re talking to. You can change it in
+                your profile.
+              </span>
+            </div>
+          )}
           <div
             className={
               showPublishPanelOnReview
@@ -1725,35 +1770,6 @@ export function PostAdWizard({
           </div>
 
           <div className="flex flex-col gap-3 mt-3">
-          {askSellerType && (
-            <div className="flex flex-col gap-2">
-              <span className="text-[13px] font-bold text-text">You are posting as</span>
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    ["owner", "Owner"],
-                    ["agent", "Agent / broker"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setPostedAs(value);
-                      setError(null);
-                    }}
-                    className={transactionButtonClass(postedAs === value)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <span className="text-[12px] text-muted">
-                Shown on your ads so buyers know who they&rsquo;re talking to. You can change it in
-                your profile.
-              </span>
-            </div>
-          )}
           {slotCap ? (
             <ListingSlotCapPrompt slotCap={slotCap} />
           ) : error ? (
