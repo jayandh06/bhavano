@@ -76,6 +76,7 @@ import { PushService } from '../push/push.service';
 import { MessagingGateway } from '../messaging/messaging.gateway';
 import { STAFF_SENDER_LABEL } from '../messaging/messaging.service';
 import { boostMessagePath, buildBoostMessageBody, buildBoostMessageCard, type BoostMessageInput } from './boost-message';
+import { buildUserSearchOr } from './user-search';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
@@ -492,17 +493,11 @@ export class AdminService {
    * to a userId to filter listings/logins by. Empty/whitespace query short-circuits to no
    * results rather than returning an arbitrary page of users. */
   async searchUsers(q: string, limit: number): Promise<ListingOwnerDto[]> {
-    const query = q.trim();
-    if (!query) return [];
+    const or = buildUserSearchOr(q);
+    if (!or) return [];
 
     return this.prisma.user.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { phone: { contains: query } },
-          { email: { contains: query, mode: 'insensitive' } },
-        ],
-      },
+      where: { OR: or },
       select: { id: true, name: true, phone: true, email: true },
       orderBy: { name: 'asc' },
       take: limit,
@@ -914,6 +909,7 @@ export class AdminService {
    * set and zero real log rows). */
   async listUsers(query: ListUsersDto): Promise<AdminUsersPage> {
     const { offset, from, to, q, role, welcomed, sellerType, sort, limit } = query;
+    const searchOr = buildUserSearchOr(q);
 
     const where: Prisma.UserWhereInput = {
       deletedAt: null,
@@ -921,15 +917,7 @@ export class AdminService {
         ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
         : {}),
       ...(role ? { role } : {}),
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: q, mode: 'insensitive' } },
-              { phone: { contains: q } },
-              { email: { contains: q, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
+      ...(searchOr ? { OR: searchOr } : {}),
       ...(welcomed === 'yes' ? { notificationLogs: { some: { kind: 'welcome' } } } : {}),
       ...(welcomed === 'no' ? { notificationLogs: { none: { kind: 'welcome' } } } : {}),
       ...(sellerType ? { sellerType: sellerType === 'unset' ? null : sellerType } : {}),
