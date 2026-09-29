@@ -151,4 +151,12 @@ export class CreateRequirementDto {
   @IsOptional()
   @IsBoolean()
   contactConsent?: boolean;
+
+  /// The visitor's analytics session (web bhavano_sid / mobile's own uuid) — lets the server
+  /// record the /requirement/success page-view trail entry itself once this requirement is
+  /// actually saved, mirroring CreateListingDto.sessionId.
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  sessionId?: string;
 }

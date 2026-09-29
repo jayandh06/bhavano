@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { RequirementsService } from './requirements.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { NotificationsService } from '../notifications/notifications.service';
+import type { AnalyticsService } from '../analytics/analytics.service';
 import type { SavedSearchesService } from '../saved-searches/saved-searches.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -88,7 +89,7 @@ function make(options: { allowance?: { source: 'plus' | 'free'; freeRemaining: n
   } as unknown as SavedSearchesService;
 
   return {
-    service: new RequirementsService(prisma, notificationsService, savedSearchesService),
+    service: new RequirementsService(prisma, notificationsService, savedSearchesService, { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService),
     requirementCreate,
     requirementFindFirst,
     requirementUpdate,

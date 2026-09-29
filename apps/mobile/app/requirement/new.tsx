@@ -5,6 +5,7 @@ import type { RequirementAnswers, RequirementDto } from "@bhavano/types";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { BffError, createRequirement } from "../../src/lib/bffClient";
+import { getAnalyticsSessionId } from "../../src/lib/analyticsSession";
 import { finishRequirementDraft, pendingRequirementDraft } from "../../src/lib/requirementDraft";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import {
@@ -40,6 +41,9 @@ export default function NewRequirementScreen() {
         searchLabel: draft.label,
         landingPath: draft.criteria.landingPath,
         contactConsent: draft.contactConsent,
+        // Lets the BFF record a /requirement/success trail entry itself once this is actually
+        // saved — see CreateRequirementInput.sessionId's own doc comment.
+        sessionId: getAnalyticsSessionId(),
       });
     } catch (e) {
       throw new Error(e instanceof BffError ? e.userMessage : "Couldn't save that — try again");

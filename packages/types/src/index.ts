@@ -1542,6 +1542,10 @@ export interface RefineRequirementInput {
  * without a city, 1–5 areas, buy/rent and the property type, and writes `searchLabel` from the
  * answers (the page heading sent here is kept as `originalSearchLabel`). */
 export interface CreateRequirementInput {
+  /** The visitor's analytics session (web bhavano_sid cookie / mobile's own uuid) — lets the
+   * server record a /requirement/success page-view trail entry itself once this requirement is
+   * actually saved, mirroring CreateListingInput.sessionId. */
+  sessionId?: string;
   searchLabel: string;
   note?: string;
   moveInBy?: string;

@@ -15,6 +15,7 @@ import {
 import { Prisma, type Area, type City, type Requirement } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { CreateRequirementDto } from './dto/create-requirement.dto';
 import { RefineRequirementDto } from './dto/refine-requirement.dto';
@@ -165,6 +166,7 @@ export class RequirementsService {
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
     private readonly savedSearchesService: SavedSearchesService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   private async toDto(row: RequirementRow): Promise<RequirementDto> {
@@ -273,6 +275,17 @@ export class RequirementsService {
       },
       include: { city: true, area: true },
     });
+
+    // Mirrors ListingsService.runPostLiveSideEffects: the server, not the visitor's device,
+    // records that this actually happened — a fire-and-forget client-side page view can
+    // silently drop, which is exactly what a "did they actually finish" signal cannot afford.
+    // Absent for a caller with no browser/app session (there are none of those here today, but
+    // the field is optional the same way CreateListingInput.sessionId is).
+    if (dto.sessionId) {
+      this.analyticsService
+        .recordPageView({ sessionId: dto.sessionId, path: "/requirement/success" })
+        .catch(() => undefined);
+    }
 
     // Best-effort, like every other notification in the app: a failed send must not fail the
     // capture, which is the part that actually matters.

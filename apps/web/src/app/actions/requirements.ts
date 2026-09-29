@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import type { CreateRequirementInput, RefineRequirementInput, RequirementDto, UpdateMyRequirementInput } from "@bhavano/types";
 import { auth } from "@/auth";
@@ -26,8 +27,11 @@ export async function createRequirementAction(input: CreateRequirementInput): Pr
     return { success: false, needsLogin: true };
   }
 
+  // See CreateRequirementInput.sessionId's own doc comment: lets the BFF record a
+  // /requirement/success trail entry itself once this is actually saved.
+  const sessionId = (await cookies()).get("bhavano_sid")?.value;
   try {
-    return { success: true, requirement: await createRequirement(session.accessToken, input) };
+    return { success: true, requirement: await createRequirement(session.accessToken, { ...input, sessionId }) };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Could not save that just now" };
   }
