@@ -16,10 +16,17 @@ import type {
 import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
-import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, fieldIsVisible } from "@bhavano/types/categoryFields";
+import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, listingAttributesIssue } from "@bhavano/types/categoryFields";
 import { fromBrokerDefault, sellerTypeFromBroker } from "@bhavano/types/sellerType";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
-import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import {
+  AREA_NAME_MAX_LENGTH,
+  clampPrice,
+  DESCRIPTION_MAX_LENGTH,
+  maxPriceFor,
+  TITLE_MAX_LENGTH,
+  TITLE_MIN_LENGTH,
+} from "@bhavano/types/listingLimits";
 import { listingPriceIssue } from "@bhavano/types/priceBounds";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
@@ -765,7 +772,16 @@ export function PostAdWizard({
         });
         continue;
       }
-      const file = await shrinkPhoto(picked);
+      // A photo small enough to skip shrinking is still the picker's File, which only points at
+      // the phone's copy; that copy can vanish before Post ad (29 Sept, Delhi: "Photo 1 can no
+      // longer be read" a minute after the preview). Holding the bytes from the start avoids that.
+      let file: File;
+      try {
+        file = await inMemoryCopy(await shrinkPhoto(picked));
+      } catch {
+        setPhotoNotice({ kind: "file", text: `"${picked.name}" couldn't be read. Try picking it again.` });
+        continue;
+      }
       if (file.size > MAX_PHOTO_BYTES) {
         setPhotoNotice({ kind: "file", text: photoTooLargeMessage(picked.name) });
         continue;
@@ -946,12 +962,6 @@ export function PostAdWizard({
     }
   }
 
-  const visibleFields = category
-    ? CATEGORY_FIELD_CONFIG[category].filter((field) =>
-        fieldIsVisible(field, transactionType!, attributes),
-      )
-    : [];
-
   // "Whole price vs price per unit" is only offered for a sell/lease listing whose category has
   // an area field — see priceMode's own comment.
   const priceUnitAreaField =
@@ -959,16 +969,6 @@ export function PostAdWizard({
       ? CATEGORY_FIELD_CONFIG[category].find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
-  // Only currently-visible required fields block submission — a required field hidden behind
-  // an unmet `dependsOn` (none today, but the config allows it) can't be filled in anyway.
-  const requiredAttributesFilled = visibleFields.every((field) => {
-    if (!field.required) return true;
-    const value = attributes[field.key];
-    return Array.isArray(value)
-      ? value.length > 0
-      : (value ?? "").length > 0;
-  });
-
   // 0 is a real, submittable price ("Contact for price") for pg/coworking — see
   // PRICE_ON_REQUEST_CATEGORIES's own doc comment. Every other category still needs a real one.
   const priceOnRequestAllowed = !!category && PRICE_ON_REQUEST_CATEGORIES.has(category);
@@ -985,15 +985,30 @@ export function PostAdWizard({
           pricedPerUnit ? { price: Number(price), area: priceArea, unit: currentAreaUnit } : undefined,
         )
       : null;
-  const priceValid = (Number(price) > 0 || priceOnRequestAllowed) && !priceIssue;
-  const detailsValid =
-    priceValid &&
-    title.length > 0 &&
-    areaQuery.trim().length > 0 &&
-    !!cityId &&
-    photos.length > 0 &&
-    !preparingMedia &&
-    requiredAttributesFilled;
+  // Everything the BFF would reject on Post ad, checked here instead, in form order, so the
+  // seller fixes it beside the field rather than meeting it on the preview. `missing` is just
+  // not filled in yet (a muted hint); anything else is a value that has to change (red).
+  const detailsIssue: { text: string; missing: boolean } | null = (() => {
+    if (title.trim().length === 0) return { text: "Add a title", missing: true };
+    if (title.trim().length < TITLE_MIN_LENGTH)
+      return { text: `Title needs at least ${TITLE_MIN_LENGTH} characters`, missing: false };
+    if (!cityId) return { text: "Pick a city", missing: true };
+    if (areaQuery.trim().length === 0) return { text: "Add the area / locality", missing: true };
+    if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
+      return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
+    if (category && transactionType) {
+      const attributeIssue = listingAttributesIssue(category, transactionType, attributes);
+      if (attributeIssue) return { text: attributeIssue, missing: attributeIssue.endsWith(" is required") };
+    }
+    if (!(Number(price) > 0) && !priceOnRequestAllowed) return { text: "Add a price", missing: true };
+    if (priceIssue) return { text: priceIssue, missing: false };
+    if (photos.length === 0) return { text: "Add at least one photo", missing: true };
+    if (askSellerType && !postedAs) return { text: "Choose Owner or Agent / broker", missing: true };
+    const assistedProblem = assistedMode ? assistedSellerProblem(assistedSeller) : null;
+    if (assistedProblem) return { text: assistedProblem, missing: false };
+    return null;
+  })();
+  const detailsValid = !detailsIssue && !preparingMedia;
 
   /**
    * "Preview Ad" — where the account is first asked for.
@@ -1049,9 +1064,9 @@ export function PostAdWizard({
   async function publish() {
     if (!category || !transactionType) return;
     if (askSellerType && !postedAs) {
+      backToDetails();
       setSellerTypeMissing(true);
-      setError("Tap Owner or Agent / broker above to post your ad.");
-      sellerTypeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => sellerTypeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
       return;
     }
     const assistedProblem = assistedMode ? assistedSellerProblem(assistedSeller) : null;
@@ -1460,7 +1475,8 @@ export function PostAdWizard({
             <label className={labelClass}>Description</label>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
+              maxLength={DESCRIPTION_MAX_LENGTH}
               rows={5}
               placeholder="Describe the place in your own words — the layout, what the neighbourhood is like, what's nearby, why someone would want to live here."
               className={`${fieldClass} resize-y min-h-[120px] max-w-[720px]`}
@@ -1659,49 +1675,16 @@ export function PostAdWizard({
             )}
           </div>
 
-          <div className="flex gap-2.5 max-w-[720px]">
-            <button
-              onClick={() =>
-                setStep(
-                  POSTABLE_TRANSACTION_TYPES[category].length === 1
-                    ? "category"
-                    : "transactionType",
-                )
-              }
-              className={secondaryButtonClass}
-            >
-              ← Back
-            </button>
-            <button
-              onClick={() => void onPreview()}
-              disabled={!detailsValid}
-              className={`ml-auto ${primaryButtonClass}`}
-            >
-              {preparingMedia ? "Preparing media…" : "Preview Ad"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === "review" && category && transactionType && (
-        // max-w matches ListingPreviewCard's own cap when there's nothing beside it: the wizard's
-        // other steps fill this container's full ~1200px desktop width, but the card below is
-        // only ever 340px wide — without this, the Back/Post ad row (and the text between them)
-        // stretched to that full width too, leaving "Post ad" floating in empty space far to the
-        // right of the card instead of sitting at its right edge. Widened, and laid out as a row,
-        // only once there's a second thing (the boost selector) to sit beside the card — see
-        // docs/plans/boost-instant-alerts-preview-selector.md.
-        <div className={`mx-auto ${showPublishPanelOnReview ? "max-w-[680px]" : "max-w-[340px]"}`}>
-          {/* Above the card, not below it: on a phone the card fills the screen, and sellers who
-            * never scrolled to the question kept tapping Post ad into this error. */}
+          {/* Asked here, before Preview, not on the preview itself: there it sat under the ad card
+            * and sellers kept tapping Post ad straight into "Tap Owner or Agent". */}
           {askSellerType && (
             <div
               ref={sellerTypeRef}
-              className={`flex flex-col gap-2 mb-4 rounded-[12px] p-3 border-2 ${
+              className={`flex flex-col gap-2 max-w-[720px] rounded-[12px] p-3 border-2 ${
                 sellerTypeMissing ? "border-[#b3413a] bg-[#fdf1f0]" : "border-border"
               }`}
             >
-              <span className="text-[14px] font-bold text-text">Are you the owner or an agent?</span>
+              <RequiredLabel text="Are you the owner or an agent?" />
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -1729,6 +1712,47 @@ export function PostAdWizard({
               </span>
             </div>
           )}
+
+          <div className="flex gap-2.5 max-w-[720px]">
+            <button
+              onClick={() =>
+                setStep(
+                  POSTABLE_TRANSACTION_TYPES[category].length === 1
+                    ? "category"
+                    : "transactionType",
+                )
+              }
+              className={secondaryButtonClass}
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() => void onPreview()}
+              disabled={!detailsValid}
+              className={`ml-auto ${primaryButtonClass}`}
+            >
+              {preparingMedia ? "Preparing media…" : "Preview Ad"}
+            </button>
+          </div>
+          {detailsIssue && !preparingMedia && (
+            <p
+              className={`m-0 -mt-2 max-w-[720px] text-right text-[13px] ${detailsIssue.missing ? "text-muted" : "text-[#b3413a] font-bold"}`}
+            >
+              To preview: {detailsIssue.text}
+            </p>
+          )}
+        </div>
+      )}
+
+      {step === "review" && category && transactionType && (
+        // max-w matches ListingPreviewCard's own cap when there's nothing beside it: the wizard's
+        // other steps fill this container's full ~1200px desktop width, but the card below is
+        // only ever 340px wide — without this, the Back/Post ad row (and the text between them)
+        // stretched to that full width too, leaving "Post ad" floating in empty space far to the
+        // right of the card instead of sitting at its right edge. Widened, and laid out as a row,
+        // only once there's a second thing (the boost selector) to sit beside the card — see
+        // docs/plans/boost-instant-alerts-preview-selector.md.
+        <div className={`mx-auto ${showPublishPanelOnReview ? "max-w-[680px]" : "max-w-[340px]"}`}>
           <div
             className={
               showPublishPanelOnReview

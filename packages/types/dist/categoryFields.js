@@ -4,6 +4,7 @@ exports.AMENITY_KEYS = exports.CATEGORY_FIELD_CONFIG = exports.SECTION_ORDER = e
 exports.fieldIsVisible = fieldIsVisible;
 exports.groupFieldsBySection = groupFieldsBySection;
 exports.pruneHiddenAttributes = pruneHiddenAttributes;
+exports.listingAttributesIssue = listingAttributesIssue;
 exports.defaultAttributesFor = defaultAttributesFor;
 exports.amenityFieldsFor = amenityFieldsFor;
 exports.SECTION_LABELS = {
@@ -98,6 +99,55 @@ function pruneHiddenAttributes(category, transactionType, attributes) {
 /** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
  * of resetting to an empty object so a stepper has a number to increment from and the form opens
  * with honest answers rather than blanks the poster has to fill in to say "none". */
+const CONDITIONAL_FEE_KEYS = ["brokerageFeeApplicable", "maintenanceFeeApplicable"];
+/**
+ * The first reason the BFF's `assertValidAttributes` would reject these attributes, in its own
+ * words, or null. The post-ad forms use it to keep Preview disabled instead of letting the seller
+ * reach Post ad and fail there ("Total floors in building must be a whole number of at least 1").
+ * Only visible fields are checked; hidden ones are pruned before submit. Keep in step with
+ * ListingsService.assertValidAttributes / assertConditionalFee.
+ */
+function listingAttributesIssue(category, transactionType, attributes) {
+    const fields = exports.CATEGORY_FIELD_CONFIG[category];
+    for (const field of fields) {
+        if (!fieldIsVisible(field, transactionType, attributes))
+            continue;
+        const value = attributes[field.key];
+        if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) {
+            if (field.required)
+                return `${field.label} is required`;
+            continue;
+        }
+        if (field.type === "number" || field.type === "area") {
+            const numberValue = typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+            const min = field.min ?? 0;
+            if (field.type === "area" ? !(Number.isFinite(numberValue) && numberValue >= min) : !(Number.isInteger(numberValue) && numberValue >= min)) {
+                return field.type === "area"
+                    ? `${field.label} must be a number of at least ${min}`
+                    : `${field.label} must be a whole number of at least ${min}`;
+            }
+        }
+        else if (field.type === "select" || field.type === "multi-select") {
+            const allowed = new Set(field.options?.map((option) => option.value));
+            const picked = Array.isArray(value) ? value : [value];
+            if (picked.some((item) => !allowed.has(item)))
+                return `Pick ${field.label} again`;
+        }
+    }
+    for (const applicableKey of CONDITIONAL_FEE_KEYS) {
+        if (attributes[applicableKey] !== "yes")
+            continue;
+        const amountField = fields.find((field) => field.dependsOn?.key === applicableKey &&
+            field.dependsOn.value === "yes" &&
+            (!field.transactionTypes || field.transactionTypes.includes(transactionType)));
+        if (!amountField)
+            continue;
+        const amount = attributes[amountField.key];
+        if (typeof amount !== "string" || amount.trim() === "")
+            return `${amountField.label} is required`;
+    }
+    return null;
+}
 function defaultAttributesFor(category) {
     const out = {};
     for (const field of exports.CATEGORY_FIELD_CONFIG[category]) {

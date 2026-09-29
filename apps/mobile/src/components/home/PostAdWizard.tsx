@@ -26,13 +26,20 @@ import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
   groupFieldsBySection,
+  listingAttributesIssue,
   pruneHiddenAttributes,
   SECTION_LABELS,
   SECTION_ORDER,
   type FieldSection,
 } from "@bhavano/types/categoryFields";
 import { POST_CATEGORIES, POST_CATEGORY_GROUPS } from "@bhavano/types/postCategories";
-import { clampPrice, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import {
+  AREA_NAME_MAX_LENGTH,
+  clampPrice,
+  DESCRIPTION_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
+  TITLE_MIN_LENGTH,
+} from "@bhavano/types/listingLimits";
 import { listingPriceIssue } from "@bhavano/types/priceBounds";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
@@ -118,7 +125,11 @@ function maxCountFor(field: FieldConfig): number {
 function defaultAttributesFor(category: ListingCategory): Record<string, string | string[]> {
   const defaults: Record<string, string | string[]> = {};
   for (const field of CATEGORY_FIELD_CONFIG[category]) {
-    if (isCounter(field)) defaults[field.key] = "0";
+    // Not a counter whose minimum is above 0 (total floors): a seeded "0" is below it, and the BFF
+    // rejected every post that left it untouched. Those start blank instead.
+    if (isCounter(field)) {
+      if ((field.min ?? 0) === 0) defaults[field.key] = "0";
+    }
     // Multi-selects open on their first option (Family, for preferred tenant type) rather than
     // empty — the common answer, and it stops a required multi-select blocking submission before
     // the seller has looked at it. Still fully deselectable.
@@ -134,7 +145,7 @@ function defaultAttributesFor(category: ListingCategory): Record<string, string 
 
 /** Keyboards can be bypassed — paste, autofill, and hardware keyboards all reach a number-pad
  * field — so digits are enforced on the value, not just requested via keyboardType. Mirrors the
- * web wizard's sanitizeNonNegative + clampDigits. */
+ * web wizard's sanitizeWholeNumber + clampDigits. */
 function digitsOnly(value: string): string {
   return value.replace(/[^0-9]/g, "");
 }
@@ -270,7 +281,7 @@ export function PostAdWizard({
   const [areaId, setAreaId] = useState<string | null>(null);
   const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [specs, setSpecs] = useState("");
+  const [description, setDescription] = useState("");
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   // string[] for multi-select fields (preferredTenantTypes); the attributes column is JSONB and
   // typed Record<string, unknown> on the wire, so an array round-trips as-is.
@@ -353,7 +364,7 @@ export function PostAdWizard({
         if (draft.cityId) setCityId(draft.cityId);
         setAreaQuery(draft.areaQuery);
         setAreaId(draft.areaId);
-        setSpecs(draft.specs);
+        setDescription(draft.description ?? "");
         setPin(draft.pin);
         setAttributes(draft.attributes);
         setPhotoUris(draft.photoUris);
@@ -387,7 +398,7 @@ export function PostAdWizard({
         city: cityOptions.find((c) => c.id === cityId) ?? null,
         areaQuery,
         areaId,
-        specs,
+        description,
         pin,
         attributes,
         photoUris,
@@ -407,7 +418,7 @@ export function PostAdWizard({
     cityOptions,
     areaQuery,
     areaId,
-    specs,
+    description,
     pin,
     attributes,
     photoUris,
@@ -426,7 +437,7 @@ export function PostAdWizard({
     setCityId(defaultCityId ?? cities[0]?.id ?? "");
     setAreaQuery("");
     setAreaId(null);
-    setSpecs("");
+    setDescription("");
     setPin(null);
     setAttributes({});
     setSelectedBoostPlan(null);
@@ -703,15 +714,19 @@ export function PostAdWizard({
     setAreaSuggestions([]);
   }
 
-  function countOf(key: string): number {
-    const raw = attributes[key];
-    return typeof raw === "string" ? Number(raw) || 0 : 0;
+  function countLabel(field: FieldConfig): string {
+    const raw = attributes[field.key];
+    if (typeof raw !== "string" || raw === "") return (field.min ?? 0) > 0 ? "-" : "0";
+    return String(Number(raw) || 0);
   }
 
   function bumpCount(field: FieldConfig, delta: number) {
     setAttributes((prev) => {
-      const current = typeof prev[field.key] === "string" ? Number(prev[field.key]) || 0 : 0;
-      const next = Math.min(maxCountFor(field), Math.max(0, current + delta));
+      const raw = prev[field.key];
+      const min = field.min ?? 0;
+      if ((typeof raw !== "string" || raw === "") && delta < 0) return prev;
+      const current = typeof raw === "string" ? Number(raw) || 0 : 0;
+      const next = Math.min(maxCountFor(field), Math.max(min, current + delta));
       return { ...prev, [field.key]: String(next) };
     });
   }
@@ -775,7 +790,7 @@ export function PostAdWizard({
               <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>-</Text>
             </Pressable>
             <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700", flex: 1, textAlign: "center" }}>
-              {countOf(field.key)}
+              {countLabel(field)}
             </Text>
             <Pressable
               onPress={() => bumpCount(field, 1)}
@@ -975,26 +990,27 @@ export function PostAdWizard({
         (a, b) => orderIndex(a.section) - orderIndex(b.section),
       );
 
-  // Only currently-visible required fields block submission — one hidden behind an unmet gate
-  // can't be filled in anyway.
-  const requiredAttributesFilled = category
-    ? visibleFields.every((field) => {
-        if (!field.required) return true;
-        const value = attributes[field.key];
-        // An empty multi-select is [] rather than "", and [].length works the same — but a bare
-        // `?? ""` would have turned the array into a string and passed on "family,company".
-        return Array.isArray(value) ? value.length > 0 : (value ?? "").length > 0;
-      })
-    : true;
-
-  const detailsValid =
-    priceIsValid(price, category) &&
-    !priceIssue &&
-    title.length > 0 &&
-    areaQuery.trim().length > 0 &&
-    !!cityId &&
-    photoUris.length > 0 &&
-    requiredAttributesFilled;
+  // Everything the BFF would reject on Post ad, checked here instead, in form order — same list
+  // as the web wizard's. `missing` is just not filled in yet; anything else has to change.
+  const detailsIssue: { text: string; missing: boolean } | null = (() => {
+    if (title.trim().length === 0) return { text: "Add a title", missing: true };
+    if (title.trim().length < TITLE_MIN_LENGTH)
+      return { text: `Title needs at least ${TITLE_MIN_LENGTH} characters`, missing: false };
+    if (!cityId) return { text: "Pick a city", missing: true };
+    if (areaQuery.trim().length === 0) return { text: "Add the area / locality", missing: true };
+    if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
+      return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
+    if (category && transactionType) {
+      const attributeIssue = listingAttributesIssue(category, transactionType, attributes);
+      if (attributeIssue) return { text: attributeIssue, missing: attributeIssue.endsWith(" is required") };
+    }
+    if (!priceIsValid(price, category)) return { text: "Add a price", missing: true };
+    if (priceIssue) return { text: priceIssue, missing: false };
+    if (photoUris.length === 0) return { text: "Add at least one photo", missing: true };
+    if (askSellerType && !postedAs) return { text: "Choose Owner or Agent / broker", missing: true };
+    return null;
+  })();
+  const detailsValid = !detailsIssue;
 
   /**
    * "Preview Ad" — where the account is first asked for, matching the website's own
@@ -1030,9 +1046,9 @@ export function PostAdWizard({
   async function onSubmit() {
     if (!category || !transactionType) return;
     if (askSellerType && !postedAs) {
+      setError(null);
       setSellerTypeMissing(true);
-      setError("Tap Owner or Agent / broker above to post your ad.");
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      setStep("details");
       return;
     }
 
@@ -1095,10 +1111,7 @@ export function PostAdWizard({
           areaId: areaId ?? undefined,
           areaName: areaId ? undefined : areaQuery.trim(),
           cityId,
-          specs: specs
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
+          description: description.trim() || undefined,
           photos: uploadedPhotos,
           videos: uploadedVideos.length > 0 ? uploadedVideos : undefined,
           attributes: pruneHiddenAttributes(category, transactionType, attributes),
@@ -1388,14 +1401,23 @@ export function PostAdWizard({
             </Text>
           )}
 
-          <Text style={[styles.label, { color: colors.textSoft }]}>Specs (comma-separated, shown on the card)</Text>
+          {/* No Specs box, as on the website: the card's chips come from the category fields below
+            * (deriveCardSpecs), so a typed "3 Beds" only repeated them in another spelling. */}
+          <Text style={[styles.label, { color: colors.textSoft }]}>Description</Text>
           <TextInput
-            value={specs}
-            onChangeText={setSpecs}
-            placeholder="3 Beds, 1450 sqft"
+            value={description}
+            onChangeText={(v) => setDescription(v.slice(0, DESCRIPTION_MAX_LENGTH))}
+            maxLength={DESCRIPTION_MAX_LENGTH}
+            multiline
+            numberOfLines={5}
+            textAlignVertical="top"
+            placeholder="Describe the place in your own words — the layout, the neighbourhood, what's nearby."
             placeholderTextColor={colors.muted}
-            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+            style={[styles.input, { minHeight: 110, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
+          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
+            Optional, but ads with a description get more responses.
+          </Text>
 
           <View style={[styles.divider, { borderColor: colors.border }]}>
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
@@ -1556,26 +1578,13 @@ export function PostAdWizard({
 
           {error && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{error}</Text>}
 
-          <View style={styles.navRow}>
-            <Pressable
-              onPress={() => void onPreview()}
-              disabled={!detailsValid}
-              style={[styles.reviewButton, { backgroundColor: colors.green, opacity: detailsValid ? 1 : 0.5 }]}
-            >
-              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Preview Ad</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
-
-      {step === "review" && category && transactionType && (
-        <View style={{ gap: 12 }}>
-          {/* Above the card, not below it: the card fills a phone screen, and sellers who never
-            * scrolled to the question kept tapping Post ad into this error. */}
+          {/* Asked here, before Preview, not on the preview itself: there it sat under the ad card
+            * and sellers kept tapping Post ad straight into the error. */}
           {askSellerType && (
             <View
               style={{
                 gap: 6,
+                marginTop: 12,
                 padding: 12,
                 borderRadius: 12,
                 borderWidth: 2,
@@ -1583,7 +1592,7 @@ export function PostAdWizard({
                 backgroundColor: sellerTypeMissing ? "#c0554b14" : "transparent",
               }}
             >
-              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Are you the owner or an agent?</Text>
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Are you the owner or an agent? *</Text>
               <View style={styles.chipRow}>
                 {(
                   [
@@ -1616,6 +1625,33 @@ export function PostAdWizard({
             </View>
           )}
 
+          <View style={styles.navRow}>
+            <Pressable
+              onPress={() => void onPreview()}
+              disabled={!detailsValid}
+              style={[styles.reviewButton, { backgroundColor: colors.green, opacity: detailsValid ? 1 : 0.5 }]}
+            >
+              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Preview Ad</Text>
+            </Pressable>
+          </View>
+          {detailsIssue && (
+            <Text
+              style={{
+                color: detailsIssue.missing ? colors.muted : "#c0554b",
+                fontWeight: detailsIssue.missing ? "400" : "700",
+                fontSize: 13,
+                textAlign: "right",
+                marginTop: 6,
+              }}
+            >
+              To preview: {detailsIssue.text}
+            </Text>
+          )}
+        </View>
+      )}
+
+      {step === "review" && category && transactionType && (
+        <View style={{ gap: 12 }}>
           {/* What the actual browse-grid ListingCard will look like once this is posted — same
             * photo/badge/price/title/location/specs a buyer sees, not a plain text summary, so a
             * mistake (wrong cover photo, an odd-reading price, a spec that didn't come through) is

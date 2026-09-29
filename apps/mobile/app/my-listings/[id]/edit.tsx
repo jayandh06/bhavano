@@ -7,7 +7,7 @@ import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
-import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { clampPrice, DESCRIPTION_MAX_LENGTH, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { MAX_PHOTOS } from "@bhavano/types/photoLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
@@ -260,7 +260,8 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
       <Text style={[styles.label, { color: colors.textSoft }]}>Description</Text>
       <TextInput
         value={description}
-        onChangeText={setDescription}
+        onChangeText={(v) => setDescription(v.slice(0, DESCRIPTION_MAX_LENGTH))}
+        maxLength={DESCRIPTION_MAX_LENGTH}
         multiline
         numberOfLines={5}
         placeholder="Describe the place in your own words — the layout, the neighbourhood, what's nearby."

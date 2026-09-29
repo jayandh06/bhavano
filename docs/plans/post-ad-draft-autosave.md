@@ -29,7 +29,8 @@ survive all of these.
     and preview URLs are rebuilt on restore. Storing the `File` objects themselves broke on
     iPhones; see "Restored photos on iOS" below.
 - **Mobile** (`apps/mobile/src/lib/postAdDraft.ts`, `PostAdWizard.tsx`):
-  - The same fields, plus `specs`, go into AsyncStorage.
+  - The same fields, including `description`, go into AsyncStorage. (Drafts from before 29 Sept
+    held a `specs` box's text instead; the app's form now has a Description box like the web's.)
   - Photos are kept as the image picker's cache URIs. On restore, any URI the OS has since cleared
     (checked with `Image.getSize`) is dropped.
 - **Both apps:**
@@ -100,6 +101,9 @@ visitor is the home page.
     be restored… add it again").
   - `onSubmit` reads each photo into memory before uploading it. A photo that can't be read
     fails by number, with "Remove it, add it again".
+  - Since 29 Sept, photos are also read into memory when they're picked, not only at upload. A
+    Delhi seller's unshrunk photo became unreadable a minute after the preview; holding the bytes
+    from the start avoids it, and the upload-time check stays as the backstop.
   - `onSubmit` wraps the whole publish. A thrown server action resets the button and shows
     "Your ad couldn't be sent…". It's also reported as `post_error [publish_exception]` with the
     underlying message.

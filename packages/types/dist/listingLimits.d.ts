@@ -10,6 +10,12 @@ import type { TransactionType } from "./index";
 /** Titles render as one line on a listing card. 150 is generous for that and short enough that
  * the whole thing stays readable without truncation. */
 export declare const TITLE_MAX_LENGTH = 150;
+/** The BFF rejects shorter titles. */
+export declare const TITLE_MIN_LENGTH = 3;
+/** Generous for a classified ad, and still bounded: the column is TEXT. */
+export declare const DESCRIPTION_MAX_LENGTH = 4000;
+/** A typed (not picked) area / locality name. */
+export declare const AREA_NAME_MAX_LENGTH = 120;
 /** Days before expiry when renew affordance appears on My listings — shared with seller-attention counts. */
 export declare const LISTING_RENEW_ATTENTION_WINDOW_DAYS = 7;
 /** ₹20 crore. */

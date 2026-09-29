@@ -17,6 +17,12 @@ import {
 } from 'class-validator';
 import type { ListingCategory, SellerType, TransactionType } from '@bhavano/types';
 import type { AreaUnit } from '@bhavano/types/areaUnit';
+import {
+  AREA_NAME_MAX_LENGTH,
+  DESCRIPTION_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
+  TITLE_MIN_LENGTH,
+} from '@bhavano/types/listingLimits';
 
 const SELLER_TYPES: SellerType[] = ['owner', 'agent'];
 
@@ -99,8 +105,8 @@ export class CreateListingDto {
   priceUnit?: AreaUnit;
 
   @IsString()
-  @MinLength(3)
-  @MaxLength(120)
+  @MinLength(TITLE_MIN_LENGTH)
+  @MaxLength(TITLE_MAX_LENGTH)
   title!: string;
 
   @IsOptional()
@@ -110,7 +116,7 @@ export class CreateListingDto {
   @IsOptional()
   @IsString()
   @MinLength(1)
-  @MaxLength(120)
+  @MaxLength(AREA_NAME_MAX_LENGTH)
   areaName?: string;
 
   @IsString()
@@ -125,7 +131,7 @@ export class CreateListingDto {
   // limit here a single listing could carry a novel.
   @IsOptional()
   @IsString()
-  @MaxLength(4000)
+  @MaxLength(DESCRIPTION_MAX_LENGTH)
   description?: string;
 
   @IsArray()

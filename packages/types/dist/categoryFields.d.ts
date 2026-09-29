@@ -89,9 +89,14 @@ export declare function groupFieldsBySection<F extends {
  * so a hidden field's stale value can't linger and reappear if a descendant field depends on
  * it. Iterates to a fixpoint since hiding one field can cascade to hide the next. */
 export declare function pruneHiddenAttributes(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>): Record<string, string | string[]>;
-/** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
- * of resetting to an empty object so a stepper has a number to increment from and the form opens
- * with honest answers rather than blanks the poster has to fill in to say "none". */
+/**
+ * The first reason the BFF's `assertValidAttributes` would reject these attributes, in its own
+ * words, or null. The post-ad forms use it to keep Preview disabled instead of letting the seller
+ * reach Post ad and fail there ("Total floors in building must be a whole number of at least 1").
+ * Only visible fields are checked; hidden ones are pruned before submit. Keep in step with
+ * ListingsService.assertValidAttributes / assertConditionalFee.
+ */
+export declare function listingAttributesIssue(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>): string | null;
 export declare function defaultAttributesFor(category: ListingCategory): Record<string, string>;
 /** One field-def list per category — the single source of truth for both the posting
  * wizard's dynamic step-3 form and the `attributes` JSONB column it maps onto. Adding a

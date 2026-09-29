@@ -48,9 +48,11 @@ with depth in the 11 ad cities (see `growth-beyond-google-ads.md` §3).
   `20260928230000_user_seller_type`. Setting "owner" clears agency and RERA.
 - **Reconciled with the existing `fromBroker` field** rather than asking twice
   (`resolveDeclaredSellerType` in `listings.service.ts`):
-  - The wizard (web and mobile) asks "You are posting as Owner / Agent / broker" on the review
-    step, and makes it required, only when the profile has no answer **and** the listing's own
-    `fromBroker` is blank. The answer is sent as `CreateListingInput.postedAs`.
+  - The wizard (web and mobile) asks "Are you the owner or an agent?" on the details step, above
+    Preview, and keeps Preview disabled until it's answered, only when the profile has no answer
+    **and** the listing's own `fromBroker` is blank. The answer is sent as
+    `CreateListingInput.postedAs`. (Until 29 Sept it was asked on the preview, under the ad card,
+    where sellers missed it and tapped Post ad into an error.)
   - Once the profile has an answer, the wizards pre-select `fromBroker` from it
     (`fromBrokerDefault`), still editable for a one-off listing, so the field no longer looks
     like a second copy of the question.

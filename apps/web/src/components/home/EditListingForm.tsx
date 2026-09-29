@@ -7,7 +7,7 @@ import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFi
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { updateListingAction } from "@/app/actions/listings";
-import { clampPrice, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import { clampPrice, DESCRIPTION_MAX_LENGTH, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass, primaryButtonClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
 import { PriceWordsHint } from "./PriceWithWords";
@@ -163,7 +163,8 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
         <label className={labelClass}>Description</label>
         <textarea
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
+          maxLength={DESCRIPTION_MAX_LENGTH}
           rows={5}
           placeholder="Describe the place in your own words — the layout, the neighbourhood, what's nearby."
           className={`${fieldClass} resize-y min-h-[120px] max-w-[720px]`}

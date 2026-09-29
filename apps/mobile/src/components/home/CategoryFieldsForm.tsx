@@ -100,15 +100,20 @@ export function CategoryFieldsForm({
     (a, b) => orderIndex(a.section) - orderIndex(b.section),
   );
 
-  function countOf(key: string): number {
-    const raw = attributes[key];
-    return typeof raw === "string" ? Number(raw) || 0 : 0;
+  function countLabel(field: FieldConfig): string {
+    const raw = attributes[field.key];
+    if (typeof raw !== "string" || raw === "") return (field.min ?? 0) > 0 ? "-" : "0";
+    return String(Number(raw) || 0);
   }
 
+  // Never below the field's own minimum: "0" total floors fails the BFF's "at least 1" check.
   function bumpCount(field: FieldConfig, delta: number) {
     onAttributesChange((prev) => {
-      const current = typeof prev[field.key] === "string" ? Number(prev[field.key]) || 0 : 0;
-      const next = Math.min(maxCountFor(field), Math.max(0, current + delta));
+      const raw = prev[field.key];
+      const min = field.min ?? 0;
+      if ((typeof raw !== "string" || raw === "") && delta < 0) return prev;
+      const current = typeof raw === "string" ? Number(raw) || 0 : 0;
+      const next = Math.min(maxCountFor(field), Math.max(min, current + delta));
       return { ...prev, [field.key]: String(next) };
     });
   }
@@ -169,7 +174,7 @@ export function CategoryFieldsForm({
               <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>−</Text>
             </Pressable>
             <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700", flex: 1, textAlign: "center" }}>
-              {countOf(field.key)}
+              {countLabel(field)}
             </Text>
             <Pressable
               onPress={() => bumpCount(field, 1)}

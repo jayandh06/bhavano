@@ -13,6 +13,12 @@ import {
 } from 'class-validator';
 import type { ListingCategory, ListingStatus, TransactionType } from '@bhavano/types';
 import type { AreaUnit } from '@bhavano/types/areaUnit';
+import {
+  AREA_NAME_MAX_LENGTH,
+  DESCRIPTION_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
+  TITLE_MIN_LENGTH,
+} from '@bhavano/types/listingLimits';
 
 const AREA_UNITS: AreaUnit[] = ['sqft', 'sqm', 'acre', 'hectare', 'cent'];
 const LISTING_STATUSES: ListingStatus[] = ['active', 'sold', 'rented', 'deactivated'];
@@ -52,8 +58,8 @@ export class UpdateListingDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(3)
-  @MaxLength(120)
+  @MinLength(TITLE_MIN_LENGTH)
+  @MaxLength(TITLE_MAX_LENGTH)
   title?: string;
 
   @IsOptional()
@@ -63,7 +69,7 @@ export class UpdateListingDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(4000)
+  @MaxLength(DESCRIPTION_MAX_LENGTH)
   description?: string;
 
   @IsOptional()
@@ -101,7 +107,7 @@ export class AdminUpdateListingDto extends UpdateListingDto {
   @IsOptional()
   @IsString()
   @MinLength(1)
-  @MaxLength(120)
+  @MaxLength(AREA_NAME_MAX_LENGTH)
   areaName?: string;
 
   @IsOptional()

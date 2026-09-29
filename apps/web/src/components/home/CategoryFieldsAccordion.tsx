@@ -21,8 +21,16 @@ import { Icon, isIconName } from "./Icon";
 const stepperButtonClass =
   "w-8 flex-1 flex items-center justify-center border-0 bg-surface-alt text-text-soft text-[9px] leading-none cursor-pointer hover:text-green disabled:opacity-35 disabled:cursor-default disabled:hover:text-text-soft";
 
-function sanitizeNonNegative(value: string): string {
-  return value.replace(/-/g, "");
+/** `number` fields are whole counts (the BFF rejects anything else), so a sign or a decimal part
+ * is dropped as it's typed rather than rejected on Post ad. */
+function sanitizeWholeNumber(value: string): string {
+  return value.replace(/[.,].*$/, "").replace(/\D/g, "");
+}
+
+/** The browser's `min` doesn't stop anyone typing below it: "0" total floors reached the BFF's
+ * "at least 1" check and failed the post. Raised to the minimum when the box is left instead. */
+function raiseToMin(value: string | string[] | undefined, min: number, onChange: (value: string) => void) {
+  if (typeof value === "string" && value !== "" && Number(value) < min) onChange(String(min));
 }
 
 /** Truncates to at most `maxDigits` characters — HTML's `maxlength` doesn't apply to
@@ -153,7 +161,7 @@ function CategoryFieldInput({
         inputMode="decimal"
         min={field.min ?? 0}
         value={typeof value === "string" ? value : ""}
-        onChange={(e) => onChange(sanitizeNonNegative(e.target.value))}
+        onChange={(e) => onChange(e.target.value.replace(/-/g, ""))}
         placeholder={field.placeholder}
         className={fieldClass}
       />
@@ -217,7 +225,8 @@ function CategoryFieldInput({
           min={min}
           max={maxValue}
           value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(clampDigits(sanitizeNonNegative(e.target.value), field.maxDigits))}
+          onChange={(e) => onChange(clampDigits(sanitizeWholeNumber(e.target.value), field.maxDigits))}
+          onBlur={() => raiseToMin(value, min, onChange)}
           aria-label={field.label}
           className="w-14 px-2 py-3 text-base sm:text-sm text-center bg-transparent text-text outline-none border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
@@ -263,10 +272,11 @@ function CategoryFieldInput({
       onChange={(e) =>
         onChange(
           field.type === "number"
-            ? clampDigits(sanitizeNonNegative(e.target.value), field.maxDigits)
+            ? clampDigits(sanitizeWholeNumber(e.target.value), field.maxDigits)
             : e.target.value,
         )
       }
+      onBlur={field.type === "number" ? () => raiseToMin(value, field.min ?? 0, onChange) : undefined}
       placeholder={field.placeholder}
       className={className}
     />

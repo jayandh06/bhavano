@@ -22,7 +22,8 @@ export interface PostAdDraft {
   city: City | null;
   areaQuery: string;
   areaId: string | null;
-  specs: string;
+  /** Absent in drafts saved while the form still had a Specs box instead. */
+  description?: string;
   pin: { lat: number; lng: number } | null;
   attributes: Record<string, string | string[]>;
   photoUris: string[];
