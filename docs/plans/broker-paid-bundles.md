@@ -70,7 +70,9 @@ with depth in the 11 ad cities (see `growth-beyond-google-ads.md` §3).
   mobile app has no profile editor for it yet; mobile users answer in the post wizard.
 - Labels on web and mobile cards, detail pages and the `/agent/[userId]` storefront.
 - Admin: "Posts as" column and filter (Owner / Agent / Not answered) on Users, and seller type,
-  agency and RERA on the user page. Agents' listing counts and enquiries are not built yet.
+  agency and RERA on the user page. The Users list also shows each user's live ads and
+  enquiries (all-time enquiry conversations on their listings), with a "Most listings" sort —
+  combine with the Agent filter to pick founding brokers (Phase 1).
 - Resolves open decision 1: required, but asked only once per account.
 
 ### Phase 1: founding-broker programme (no payment code)
