@@ -487,6 +487,64 @@ export function PostAdWizard({
     setStep("category");
   }
 
+  /**
+   * The phone's Back button on the preview returns to the form instead of leaving `/post`.
+   *
+   * The steps are component state, not URLs, so without a history entry of its own the preview's
+   * "previous page" is whatever came before `/post` — for an ad visitor, the home page. On
+   * 29 Sept a seller who had filled in the whole form and signed in pressed Back on the preview and
+   * landed on `/` with nothing posted; 9 of ~100 web preview views had gone the same way.
+   *
+   * Only the preview gets an entry. Earlier steps have their own resets on the in-page Back buttons
+   * (category, transaction type), which a popstate would have to duplicate. Next.js' patched
+   * pushState copies its router state into the entry, so popping back to `/post` restores the same
+   * tree without a remount or reload.
+   */
+  const reviewHistoryEntryRef = useRef(false);
+  const stepRef = useRef(step);
+  const pendingRef = useRef(pending);
+  useEffect(() => {
+    stepRef.current = step;
+    pendingRef.current = pending;
+  }, [step, pending]);
+
+  useEffect(() => {
+    if (step !== "review" || reviewHistoryEntryRef.current) return;
+    window.history.pushState({ postAdReview: true }, "");
+    reviewHistoryEntryRef.current = true;
+  }, [step]);
+
+  useEffect(() => {
+    // A reload on the preview keeps its history entry but resumes on the details step, so
+    // re-adopt the entry rather than leave a Back press that does nothing.
+    if (window.history.state?.postAdReview) reviewHistoryEntryRef.current = true;
+    function onPopState(event: PopStateEvent) {
+      if (!reviewHistoryEntryRef.current || event.state?.postAdReview) return;
+      reviewHistoryEntryRef.current = false;
+      if (stepRef.current !== "review") {
+        // Left the preview without popping it (posted, or started over): this entry now only
+        // duplicates `/post`, so continue to where Back would have gone without it.
+        window.history.back();
+      } else if (pendingRef.current) {
+        // Mid-upload: stay on the preview, where the progress and any error are shown.
+        window.history.pushState({ postAdReview: true }, "");
+        reviewHistoryEntryRef.current = true;
+      } else {
+        setStep("details");
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  function backToDetails() {
+    if (reviewHistoryEntryRef.current && window.history.state?.postAdReview) {
+      window.history.back();
+    } else {
+      setStep("details");
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     fetchPostAdPlanPricingAction()
@@ -1628,7 +1686,7 @@ export function PostAdWizard({
 
           <div className="flex gap-2.5">
             <button
-              onClick={() => setStep("details")}
+              onClick={backToDetails}
               className={secondaryButtonClass}
             >
               ← Back

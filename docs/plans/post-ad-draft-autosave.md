@@ -57,6 +57,30 @@ survive all of these.
   starts fresh. A server draft would need a login before the form, and the post flow deliberately
   asks for an account only at the preview step.
 
+## Back button on the preview (web, 2026-09-29)
+
+The wizard's steps are component state, so the preview had no history entry of its own. The
+browser or phone Back button on it left `/post` for whatever page came before, which for an ad
+visitor is the home page.
+
+- **What happened:** on 29 Sept a Google Ads visitor filled in the whole form, signed up by OTP
+  at "Preview Ad", pressed Back 11 seconds after the preview opened, and landed on `/` with
+  nothing posted.
+- **How often:** of ~100 web preview views since 24 Sept, 9 were followed by `/`, and only 2 of
+  those visitors posted within a day.
+- **The fix:** `PostAdWizard` now pushes a history entry when the preview opens, and a popstate
+  listener returns to the details step.
+  - The in-page "← Back" button pops that entry rather than calling `setStep` directly, so the
+    history stays in step with the screen.
+  - If the preview is left without popping (posted, or started over), the next Back skips the
+    now-duplicate entry.
+  - A Back press during an upload keeps the preview open.
+  - After a reload on the preview, the surviving entry is re-adopted on mount.
+- **Scope:** only the preview gets an entry. The category and transaction-type steps have their
+  own resets on their in-page Back buttons.
+- **Tests:** `apps/web/e2e/post-ad-preview-back.spec.ts` covers this, and fails without the fix.
+- **Mobile:** the app is unchanged; it handles Back separately.
+
 ## Related
 
 - The deploy itself is still what triggers the reload. Deploying outside peak ad hours (IST
