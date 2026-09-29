@@ -18,6 +18,8 @@ export interface AppliedFilters {
   minPrice?: number;
   maxPrice?: number;
   furnished?: "unfurnished" | "semi" | "furnished";
+  /** Buy / Rent & Lease only — listings labelled Owner. */
+  ownersOnly?: boolean;
   /** Each tab's own facet — property type for Buy/Rent & Lease, sharing type for PG, condition
    * for Furniture, service type for Interiors (see `HomeTab.subFilter` in categories.ts). These
    * used to live in `CategoryChips`' own scrolling sub-chip row, which navigated immediately on
@@ -38,6 +40,7 @@ export function activeFilterCount(f: AppliedFilters): number {
     (f.bedrooms.length > 0 ? 1 : 0) +
     (f.minPrice !== undefined || f.maxPrice !== undefined ? 1 : 0) +
     (f.furnished ? 1 : 0) +
+    (f.ownersOnly ? 1 : 0) +
     (f.propertyType || f.sharingType || f.condition || f.serviceType ? 1 : 0)
   );
 }
@@ -117,6 +120,7 @@ export const FilterSheet = forwardRef<
   }
 
   const showBhkAndFurnished = staged.propertyType === "house" || staged.propertyType === "apartment";
+  const showOwnersOnly = category === "buy" || category === "rentLease";
 
   // Free min/max entry, not fixed brackets — matches web's own price filter (BrowseFilterBar.tsx's
   // CustomPriceRange), which dropped brackets there for the same reason: a fixed set of ranges
@@ -452,6 +456,25 @@ export const FilterSheet = forwardRef<
                 <Pressable key={value ?? "any"} onPress={() => selectFurnished(value)} style={chipStyle(staged.furnished === value, colors)}>
                   <Text style={{ fontSize: 13, color: staged.furnished === value ? colors.green : colors.text }}>
                     {value === undefined ? "Any" : value === "unfurnished" ? "Unfurnished" : value === "semi" ? "Semi-furnished" : "Furnished"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {showOwnersOnly && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>POSTED BY</Text>
+            <View style={styles.wrapRow}>
+              {([false, true] as const).map((value) => (
+                <Pressable
+                  key={String(value)}
+                  onPress={() => setStaged((prev) => ({ ...prev, ownersOnly: value || undefined }))}
+                  style={chipStyle(!!staged.ownersOnly === value, colors)}
+                >
+                  <Text style={{ fontSize: 13, color: !!staged.ownersOnly === value ? colors.green : colors.text }}>
+                    {value ? "Owners only" : "Anyone"}
                   </Text>
                 </Pressable>
               ))}

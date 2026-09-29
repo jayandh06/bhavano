@@ -186,7 +186,7 @@ export default function ListingDetailScreen() {
         <Icon name="pin" size={12} color={colors.muted} />
         <Text style={{ fontSize: 13, color: colors.muted }}>
           {listing.area}, {listing.cityName}
-          {listing.postedBy && ` · ${postedByLabel(listing.postedBy, listing.postedByAgency)}`}
+          {listing.postedBy && ` · ${postedByLabel(listing.postedBy, listing.postedByAgency, listing.postedByReraVerified)}`}
         </Text>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginTop: 6 }}>

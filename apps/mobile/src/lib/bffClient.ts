@@ -147,6 +147,8 @@ export interface ListingsQuery {
   /** Multi-select BHK filter — one or more bedroom-count buckets (5 = "5+"). */
   bedrooms?: number[];
   furnished?: "unfurnished" | "semi" | "furnished";
+  /** "Owners only" — listings labelled Owner. */
+  postedBy?: "owner";
   /** Append-style infinite-scroll cursor — pass back the previous page's `nextCursor`. */
   cursor?: string;
   limit?: number;
@@ -167,6 +169,7 @@ export function fetchListings(query: ListingsQuery, accessToken?: string | null)
   if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
   if (query.bedrooms && query.bedrooms.length > 0) params.set("bedrooms", query.bedrooms.join(","));
   if (query.furnished) params.set("furnished", query.furnished);
+  if (query.postedBy) params.set("postedBy", query.postedBy);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit) params.set("limit", String(query.limit));
   if (query.sort) params.set("sort", query.sort);

@@ -435,6 +435,11 @@ function ProfileFields({
             placeholderTextColor={colors.muted}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
+          <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
+            {profile.reraVerified && reraNumber.trim() === (profile.reraNumber ?? "")
+              ? "✓ Verified by Bhavano — shown on your listings. Changing it removes the badge until we check again."
+              : "We check RERA numbers and add a “RERA verified” badge to your listings."}
+          </Text>
         </>
       )}
 
