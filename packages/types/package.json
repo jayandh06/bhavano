@@ -129,6 +129,10 @@
       "types": "./dist/messageFormat.d.ts",
       "default": "./dist/messageFormat.js"
     },
+    "./conversationTag": {
+      "types": "./dist/conversationTag.d.ts",
+      "default": "./dist/conversationTag.js"
+    },
     "./unreadCount": {
       "types": "./dist/unreadCount.d.ts",
       "default": "./dist/unreadCount.js"

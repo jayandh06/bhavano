@@ -27,7 +27,8 @@ function conversation(posterId: string, inquirerId: string, premiumUntil: Date |
     poster: { id: posterId, name: 'Poster', phone: null },
     inquirer: { id: inquirerId, name: 'Inquirer', phone: null, premiumUntil },
     type,
-    messages: [],
+    createdAt: past(48),
+    messages: [] as { createdAt: Date }[],
   };
 }
 
@@ -77,6 +78,28 @@ describe('MessagingService.listConversations — unified inquiry + moderation in
     expect(result.type).toBe('moderation');
     expect(result.otherPartyName).toBe('Bhavano Admin');
     expect(result.otherPartyIsVerifiedBuyer).toBe(false);
+  });
+
+  it('puts the thread with the newest message first, whenever the thread itself started', async () => {
+    const message = (id: string, createdAt: Date) => ({
+      id,
+      conversationId: id,
+      senderId: 'owner1',
+      body: 'hi',
+      card: null,
+      readAt: null,
+      deletedAt: null,
+      createdAt,
+    });
+    const newerThread = { ...conversation('owner1', 'admin1', null, 'announcement'), id: 'boost', createdAt: past(2) };
+    newerThread.messages = [message('boost', past(2))];
+    const olderThread = { ...conversation('owner1', 'admin1', null, 'moderation'), id: 'review', createdAt: past(24) };
+    olderThread.messages = [message('review', past(1))];
+    const { service } = makeService([newerThread, olderThread]);
+
+    const result = await service.listConversations('admin1');
+
+    expect(result.map((c) => c.id)).toEqual(['review', 'boost']);
   });
 });
 

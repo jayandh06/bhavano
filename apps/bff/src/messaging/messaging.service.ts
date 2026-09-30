@@ -213,6 +213,11 @@ export class MessagingService {
       },
       orderBy: { createdAt: 'desc' },
     });
+    // Newest activity first, so a reply on an old thread comes back to the top. There's no
+    // last-message column to order by in the query, and the inbox isn't paginated.
+    const latestAt = (c: (typeof conversations)[number]) =>
+      (c.messages[0]?.createdAt ?? c.createdAt).getTime();
+    conversations.sort((a, b) => latestAt(b) - latestAt(a));
 
     return Promise.all(
       conversations.map(async (c) => {

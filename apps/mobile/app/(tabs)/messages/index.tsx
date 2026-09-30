@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { formatUnreadCount } from "@bhavano/types/unreadCount";
+import { staffThreadTag } from "@bhavano/types/conversationTag";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../../src/context/HomeSheetsProvider";
 import { useConversationsQuery } from "../../../src/lib/queries";
@@ -95,13 +96,13 @@ export default function MessagesScreen() {
                   {/* The other participant's name/phone never renders here — this app makes its
                       money on a *paid* contact reveal, so a free-to-read messages list can't be
                       the place that hands out who someone is. The listing is what the thread is
-                      about either way. Moderation threads get a "From Bhavano" cue so staff
-                      notes aren't mistaken for a buyer inquiry. */}
+                      about either way. Staff threads get a tag (Listing review / Boost offer) so
+                      they aren't mistaken for a buyer inquiry, or for each other. */}
                   <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
                     <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }} numberOfLines={1}>
                       {item.listingTitle}
                     </Text>
-                    {(item.type === "moderation" || item.type === "announcement") && (
+                    {staffThreadTag(item.type) && (
                       <Text
                         style={{
                           fontSize: 10.5,
@@ -115,7 +116,7 @@ export default function MessagesScreen() {
                           overflow: "hidden",
                         }}
                       >
-                        From Bhavano
+                        {staffThreadTag(item.type)}
                       </Text>
                     )}
                   </View>

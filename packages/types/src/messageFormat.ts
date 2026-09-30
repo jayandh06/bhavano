@@ -1,8 +1,11 @@
 export type MessageSegment = { type: "text"; value: string } | { type: "url"; value: string };
 
-// http(s):// or bare www. only — no other scheme (e.g. javascript:) ever matches, so a
-// segment can be dropped straight into an <a href> or Linking.openURL with no sanitizing.
-const URL_REGEX = /(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/gi;
+// An HTML link (its href is what's shown and opened; the label is dropped so it can't dress a
+// link up as something else), then http(s)://, bare www., and bare bhavano.com links. No other
+// scheme (e.g. javascript:) ever matches, so a segment can be dropped straight into an <a href>
+// or Linking.openURL with no sanitizing.
+const URL_REGEX =
+  /<a\s[^>]*?href\s*=\s*["'](https?:\/\/[^"'\s<>]+)["'][^>]*>[\s\S]*?<\/a>|https?:\/\/[^\s<>"]+|www\.[^\s<>"]+|(?:[a-z0-9-]+\.)*bhavano\.com(?![\w-]|\.\w)(?:[/?#][^\s<>"]*)?/gi;
 
 /** Trims sentence punctuation a URL regex swept up along with the link (a period ending
  * the sentence, a closing paren that was never opened) so the link doesn't include text
@@ -37,18 +40,32 @@ export function segmentMessageBody(body: string): MessageSegment[] {
   URL_REGEX.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = URL_REGEX.exec(body))) {
-    const url = trimTrailingPunctuation(match[0]);
+    const anchorHref = match[1];
+    // A bare domain glued to a preceding word or email user (support@bhavano.com,
+    // notbhavano.com) isn't a link.
+    const bareDomain = !/^(?:<|https?:\/\/|www\.)/i.test(match[0]);
+    if (bareDomain && match.index > 0 && /[\w@.-]/.test(body[match.index - 1])) continue;
+    const url = anchorHref ?? trimTrailingPunctuation(match[0]);
     if (!url) continue;
     if (match.index > lastIndex) segments.push({ type: "text", value: body.slice(lastIndex, match.index) });
     segments.push({ type: "url", value: url });
-    lastIndex = match.index + url.length;
+    lastIndex = match.index + (anchorHref ? match[0].length : url.length);
   }
   if (lastIndex < body.length) segments.push({ type: "text", value: body.slice(lastIndex) });
   return segments;
 }
 
-/** A `www.`-prefixed segment has no scheme to open — this adds one. An already-absolute
+/** A `www.` or bare-domain segment has no scheme to open — this adds one. An already-absolute
  * URL is returned unchanged. Only for use at click/tap time; the displayed text stays as typed. */
 export function normalizeUrlForOpening(url: string): string {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+/** The path (with query and hash) of a link to Bhavano's own site, or null for any other site,
+ * so the web and app can open it in place instead of in a new browser tab. */
+export function bhavanoSitePath(url: string): string | null {
+  const match = /^(?:https?:\/\/)?(?:www\.)?bhavano\.com(?=$|[/?#])(.*)$/i.exec(url);
+  if (!match) return null;
+  const rest = match[1];
+  return rest.startsWith("/") ? rest : `/${rest}`;
 }

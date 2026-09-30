@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatUnreadCount } from "@bhavano/types/unreadCount";
+import { staffThreadTag } from "@bhavano/types/conversationTag";
 import { auth } from "@/auth";
 import { BffAuthError, fetchConversations } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
@@ -86,9 +87,9 @@ async function ConversationList({ accessToken }: { accessToken: string }) {
                 * hands out who someone is. The listing is what the thread is about either way. */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold text-sm">{c.listingTitle}</span>
-                {(c.type === "moderation" || c.type === "announcement") && (
+                {staffThreadTag(c.type) && (
                   <span className="text-[10.5px] font-bold text-muted border border-border rounded-md px-1.5 py-[1px] whitespace-nowrap">
-                    From Bhavano
+                    {staffThreadTag(c.type)}
                   </span>
                 )}
                 {c.otherPartyIsVerifiedBuyer && (

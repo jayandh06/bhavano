@@ -1,5 +1,28 @@
 # Chat message formatting: preserve newlines, linkify URLs
 
+> **Update (2026-09-30): more link forms, and Bhavano links open in place.** Staff messages
+> write the site as plain `bhavano.com/my-listings`, which the original regex (`http(s)://` and
+> `www.` only) left as text. `segmentMessageBody` now also links:
+>
+> - **Bare `bhavano.com` addresses**, with or without a subdomain and path. They aren't linked
+>   when glued to a preceding word or email user (`support@bhavano.com`, `notbhavano.com`), or
+>   when the domain carries on (`bhavano.community`, `bhavano.com.au`). Other bare domains still
+>   aren't linked, to avoid false positives.
+> - **HTML links** (`<a href="https://…">label</a>`, http(s) only). They become a URL segment
+>   that shows the real href; the label and tags are dropped, so a link can't be disguised.
+>
+> `bhavanoSitePath(url)` returns the path for a link to our own site:
+>
+> - **Web** renders these as a Next `<Link>` in the same tab.
+> - **App** opens the matching screen when one exists (`APP_SCREEN_FOR_SITE_PATH` in the mobile
+>   `MessageBody`, e.g. `/my-listings` and `/favourites` → `/saved`). Other paths open in the
+>   browser.
+> - **Admin app** still opens every link in a new tab, since bhavano.com is a different app
+>   there.
+>
+> Tests live in `apps/bff/src/messaging/message-format.spec.ts`. The section below is the
+> original design.
+
 ## Context
 
 Bhavano's chat messages (both the mobile app and the web app) render `MessageDto.body`
