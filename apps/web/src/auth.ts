@@ -52,6 +52,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       },
     }),
+    // Google One Tap hands the page a Google ID token directly, with no OAuth redirect, so it
+    // can't go through the Google provider below. The BFF verifies the token itself (its `aud`
+    // is this same web client ID).
+    Credentials({
+      id: "google-one-tap",
+      name: "Google One Tap",
+      credentials: { credential: { label: "Credential", type: "text" } },
+      async authorize(credentials) {
+        const credential = credentials?.credential as string | undefined;
+        if (!credential) return null;
+        const session = await loginWithGoogle(credential);
+        return {
+          id: session.user.id,
+          name: session.user.name ?? session.user.email,
+          email: session.user.email,
+          accessToken: session.accessToken,
+          isNewUser: session.isNewUser,
+        };
+      },
+    }),
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,

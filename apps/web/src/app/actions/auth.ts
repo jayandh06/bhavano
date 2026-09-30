@@ -53,6 +53,19 @@ export async function signInWithGoogleAction(redirectTo?: string): Promise<void>
   await signIn("google", safe ? { redirectTo: safe } : undefined);
 }
 
+/** Google One Tap: `credential` is the Google ID token GIS handed the page. */
+export async function signInWithGoogleOneTapAction(
+  credential: string,
+): Promise<{ success: boolean; isNewUser?: boolean; email?: string }> {
+  try {
+    await signIn("google-one-tap", { credential, redirect: false });
+    const session = await auth();
+    return { success: true, isNewUser: session?.isNewUser, email: session?.user?.email ?? undefined };
+  } catch {
+    return { success: false };
+  }
+}
+
 /** The current session's BFF access token, if any.
  *
  * For the posting wizard, which now renders logged out and only asks for a login at submit: the

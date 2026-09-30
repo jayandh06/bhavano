@@ -1704,6 +1704,23 @@ model SavedSearchSetting {
   updatedAt         DateTime @updatedAt
 }
 
+/** Singleton settings row for the dismissible login ask on listing detail — same id convention
+ * as ContactRevealSetting. The listing page itself is never gated (SEO and Ads landing pages);
+ * these only tune when the ask appears. See docs/plans/listing-detail-login-nudge.md. */
+model LoginNudgeSetting {
+  id                        String   @id
+  webOneTapEnabled          Boolean  @default(false)
+  webPromptEnabled          Boolean  @default(true)
+  webPromptAfterDetailViews Int      @default(2)
+  webPromptDelaySeconds     Int      @default(10)
+  excludeAdAndSearchLanding Boolean  @default(true)
+  webPromptRolloutPercent   Int      @default(50)
+  appPromptEnabled          Boolean  @default(true)
+  appPromptAfterDetailViews Int      @default(1)
+  dismissCooldownDays       Int      @default(7)
+  updatedAt                 DateTime @updatedAt
+}
+
 /**
  * One search a real visitor ran, with what they asked for and how many results they got.
  *

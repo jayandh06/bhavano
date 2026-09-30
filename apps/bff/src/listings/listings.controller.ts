@@ -14,7 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { ContactRevealSettingsDto, ListingClaimPreviewDto, ListingDetailDto, ListingInterestPage, ListingMetaDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RecordListingInterestResponseDto, RevealContactResponseDto } from '@bhavano/types';
+import type { ContactRevealSettingsDto, PublicLoginNudgeDto, ListingClaimPreviewDto, ListingDetailDto, ListingInterestPage, ListingMetaDto, ListingSitemapEntry, ListingsPage, PopularSearchDto, RecordListingInterestResponseDto, RevealContactResponseDto } from '@bhavano/types';
 import { VIDEO_LIMITS } from '@bhavano/types/videoLimits';
 import { AuthGuard, OptionalAuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -29,6 +29,7 @@ import { R2StorageService } from '../storage/r2-storage.service';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import { ListingsService } from './listings.service';
 import { ListingPhotosService } from './listing-photos.service';
+import { LoginNudgeService } from './login-nudge.service';
 import { parseTrackingAuthorized } from '../ads/tracking-authorized';
 import { ListListingsDto } from './dto/list-listings.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
@@ -43,6 +44,7 @@ export class ListingsController {
     private readonly storage: R2StorageService,
     private readonly listingPhotos: ListingPhotosService,
     private readonly contactRevealService: ContactRevealService,
+    private readonly loginNudge: LoginNudgeService,
   ) {}
 
   @Get()
@@ -71,6 +73,13 @@ export class ListingsController {
   @Get('contact-reveal-settings')
   contactRevealSettings(): Promise<ContactRevealSettingsDto> {
     return this.contactRevealService.getSettings();
+  }
+
+  // Also registered before ":id". Public: web and app read it to decide when to show the
+  // dismissible login ask on listing detail.
+  @Get('login-nudge-settings')
+  loginNudgeSettings(): Promise<PublicLoginNudgeDto> {
+    return this.loginNudge.getPublic();
   }
 
   @Get(':id')

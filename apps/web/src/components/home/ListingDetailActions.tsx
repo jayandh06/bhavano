@@ -7,10 +7,12 @@ import { useBuyCredits } from "./BuyCreditsProvider";
 import { toggleFavouriteAction, revealContactAction } from "@/app/actions/listings";
 import { hasSessionAction } from "@/app/actions/auth";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { ownerEnquiryText, whatsAppChatUrl } from "@bhavano/types/whatsapp";
 import { Icon } from "./Icon";
 
 export function ListingDetailActions({
   listingId,
+  listingTitle,
   initialIsFavourited,
   initialLikeCount,
   isOwner,
@@ -24,6 +26,8 @@ export function ListingDetailActions({
   creditPackPriceRupees,
 }: {
   listingId: string;
+  /** Pre-fills the WhatsApp message once contact is revealed. */
+  listingTitle: string;
   initialIsFavourited: boolean;
   initialLikeCount: number;
   /** The poster's own view. Contact is hidden — it would start a conversation with yourself,
@@ -55,6 +59,7 @@ export function ListingDetailActions({
   const [revealPending, setRevealPending] = useState(false);
   const [revealError, setRevealError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
+  const whatsAppHref = ownerPhone ? whatsAppChatUrl(ownerPhone, ownerEnquiryText(listingTitle)) : null;
 
   async function onToggleFavourite() {
     const result = await toggleFavouriteAction(listingId);
@@ -172,6 +177,17 @@ export function ListingDetailActions({
           {ownerPhone && (
             <a href={`tel:${ownerPhone}`} className="flex items-center gap-2 text-[13px] font-bold text-text no-underline">
               <Icon name="phone" className="text-green" /> {ownerPhone}
+            </a>
+          )}
+          {whatsAppHref && (
+            <a
+              href={whatsAppHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => pushDataLayerEvent("contact_owner_whatsapp", { listing_id: listingId })}
+              className="flex items-center gap-2 text-[13px] font-bold text-text no-underline"
+            >
+              💬 WhatsApp the owner
             </a>
           )}
           {ownerEmail && (

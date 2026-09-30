@@ -38,6 +38,7 @@ import type {
   UpdateMyRequirementInput,
   UpdateProfileInput,
   UserProfileDto,
+  PublicLoginNudgeDto,
 } from "@bhavano/types";
 import { isTrackingAuthorized } from "./trackingConsent";
 
@@ -191,6 +192,10 @@ export function fetchListings(query: ListingsQuery, accessToken?: string | null)
   if (query.sort) params.set("sort", query.sort);
   const path = `/listings?${params.toString()}`;
   return accessToken ? authedBffFetch(accessToken, path) : bffFetch<ListingsPage>(path);
+}
+
+export function fetchLoginNudgeSettings(): Promise<PublicLoginNudgeDto> {
+  return bffFetch<PublicLoginNudgeDto>("/listings/login-nudge-settings");
 }
 
 export function fetchCities(q?: string, all?: boolean): Promise<City[]> {

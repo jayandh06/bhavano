@@ -11,6 +11,7 @@ import type {
   ClaimVerificationSendDto,
   CampaignSendsPage,
   ContactRevealSettingsDto,
+  LoginNudgeSettingsDto,
   DiscountCodeDto,
   FetchedPairDto,
   PlacesFetchLogPage,
@@ -76,6 +77,8 @@ import { SetDiscountCodeActiveDto } from './dto/set-discount-code-active.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
 import { RotatePhotoDto } from '../listings/dto/rotate-photo.dto';
 import { ListingPhotosService } from '../listings/listing-photos.service';
+import { LoginNudgeService } from '../listings/login-nudge.service';
+import { UpdateLoginNudgeSettingsDto } from './dto/update-login-nudge-settings.dto';
 import {
   CreateOutreachCampaignDto,
   CreateOutreachContactDto,
@@ -101,6 +104,7 @@ export class AdminController {
     private readonly outreachService: OutreachService,
     private readonly outreachCampaignJob: OutreachCampaignJob,
     private readonly listingPhotos: ListingPhotosService,
+    private readonly loginNudge: LoginNudgeService,
   ) {}
 
   @Get('listings')
@@ -391,6 +395,16 @@ export class AdminController {
   @Patch('contact-reveal-settings')
   updateContactRevealSettings(@Body() dto: UpdateContactRevealSettingsDto): Promise<ContactRevealSettingsDto> {
     return this.adminService.updateContactRevealSettings(dto);
+  }
+
+  @Get('login-nudge-settings')
+  getLoginNudgeSettings(): Promise<LoginNudgeSettingsDto> {
+    return this.loginNudge.getSettings();
+  }
+
+  @Patch('login-nudge-settings')
+  updateLoginNudgeSettings(@Body() dto: UpdateLoginNudgeSettingsDto): Promise<LoginNudgeSettingsDto> {
+    return this.loginNudge.updateSettings(dto);
   }
 
   @Get('boost-pricing')

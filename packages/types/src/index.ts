@@ -1275,6 +1275,39 @@ export interface ContactRevealSettingsDto {
 
 export type UpdateContactRevealSettingsInput = ContactRevealSettingsDto;
 
+/** Admin-editable login nudge on listing detail — singleton row, same convention as
+ * ContactRevealSettingsDto. The listing itself is never gated; these only decide when a
+ * dismissible login ask appears. See docs/plans/listing-detail-login-nudge.md. */
+export interface LoginNudgeSettingsDto {
+  /** Google One Tap corner prompt on listing detail (web). */
+  webOneTapEnabled: boolean;
+  /** Dismissible bottom card on listing detail (web). */
+  webPromptEnabled: boolean;
+  /** Show from the Nth listing detail opened in a browser session. Never below 2, so a visitor
+   * landing from search or an ad never gets it on the page they arrived on. */
+  webPromptAfterDetailViews: number;
+  webPromptDelaySeconds: number;
+  /** Suppress the web card for the whole visit when it began with an ad click or a search-engine
+   * referral. */
+  excludeAdAndSearchLanding: boolean;
+  /** Share (0–100) of anonymous web visitors who can see the card, bucketed by viewer key. */
+  webPromptRolloutPercent: number;
+  /** Login sheet with Skip on listing detail (app). */
+  appPromptEnabled: boolean;
+  /** Show from the Nth listing opened in the app. */
+  appPromptAfterDetailViews: number;
+  /** Quiet period after "Not now" / "Skip", on both web and app. */
+  dismissCooldownDays: number;
+}
+
+export type UpdateLoginNudgeSettingsInput = LoginNudgeSettingsDto;
+
+/** What web and app read: the nudge settings plus the free-reveal allowance the prompt offers as
+ * the reason to log in. */
+export interface PublicLoginNudgeDto extends LoginNudgeSettingsDto {
+  freeRevealsPerUser: number;
+}
+
 /** A user's own current standing — free reveals left this account has never used, plus the sum
  * of `creditsRemaining` across every non-expired purchased batch. Derived fresh from
  * ContactReveal/ContactRevealCreditBatch rows on every request (ContactRevealService.

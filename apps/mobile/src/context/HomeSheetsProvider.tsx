@@ -82,8 +82,13 @@ interface HomeSheetsContextValue {
   setCity: (city: City) => void;
   openLocationPicker: () => void;
   /** `onSuccess` resumes whatever the login interrupted, in place — same pattern as web's
-   * AuthGateProvider. */
-  requireLogin: (options?: { onSuccess?: () => void }) => void;
+   * AuthGateProvider. `skippable` is for an unprompted ask (the listing-detail login nudge): it
+   * adds a reason line and a Skip button, and `onSkip` runs if the sheet closes without a login,
+   * by Skip or by swiping it away. */
+  requireLogin: (options?: { onSuccess?: () => void; skippable?: { reason: string; onSkip: () => void } }) => void;
+  /** False until the stored session has been read on launch. `isLoggedIn` is false before that
+   * even for a logged-in user, so anything that prompts on its own should wait for this. */
+  sessionReady: boolean;
   /** Publish-time check. Resolves `true` when the account already has a verified phone (carry on),
    * `false` when it opened a phone-OTP sheet instead - `onSuccess` then resumes once the number is
    * verified, so the caller should just return. Login no longer collects a phone
@@ -148,6 +153,7 @@ export function HomeSheetsProvider({
   /** Guards the one-time startup resolution below against re-running when `popularCities` lands. */
   const resolvedInitialCity = useRef(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [sessionReady, setSessionReady] = useState(Platform.OS === "web");
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfileDto | null>(null);
   const [showToast, setShowToast] = useState(false);
@@ -221,6 +227,7 @@ export function HomeSheetsProvider({
       }
       setIsLoggedIn(!!token);
       setAccessToken(token);
+      setSessionReady(true);
       // Cold start while already logged in — make sure this device's push token is on file (the
       // OS can rotate it, and the user may have toggled the permission in Settings).
       if (token) {
@@ -339,6 +346,10 @@ export function HomeSheetsProvider({
   }, [refreshProfile]);
 
   const onSuccessRef = useRef<(() => void) | undefined>(undefined);
+  /** Set only by a `skippable` requireLogin; cleared on login so closing the sheet afterwards
+   * doesn't count as a skip. */
+  const onSkipRef = useRef<(() => void) | undefined>(undefined);
+  const [skipReason, setSkipReason] = useState<string | null>(null);
   /** True when basics was opened for an already-signed-in cold start, not a fresh login. */
   const quietBasicsRef = useRef(false);
   /** True while the basics sheet is being used only to verify a phone at Publish. A ref beside the
@@ -347,9 +358,11 @@ export function HomeSheetsProvider({
   const [verifyPhoneMode, setVerifyPhoneMode] = useState(false);
   const sessionBasicsCheckedRef = useRef(false);
 
-  const requireLogin = useCallback((options?: { onSuccess?: () => void }) => {
+  const requireLogin = useCallback((options?: { onSuccess?: () => void; skippable?: { reason: string; onSkip: () => void } }) => {
     if (isLoggedIn) return;
     onSuccessRef.current = options?.onSuccess;
+    onSkipRef.current = options?.skippable?.onSkip;
+    setSkipReason(options?.skippable?.reason ?? null);
     quietBasicsRef.current = false;
     setLoginStep("choose");
     setPhone("");
@@ -465,6 +478,8 @@ export function HomeSheetsProvider({
   }
 
   async function onLoginSuccess(accessToken: string) {
+    onSkipRef.current = undefined;
+    setSkipReason(null);
     if (Platform.OS !== "web") await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
     setIsLoggedIn(true);
     setAccessToken(accessToken);
@@ -652,8 +667,8 @@ export function HomeSheetsProvider({
   const userId = useMemo(() => (accessToken ? decodeUserId(accessToken) : null), [accessToken]);
 
   const value = useMemo(
-    () => ({ city, setCity, openLocationPicker, requireLogin, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile }),
-    [city, setCity, openLocationPicker, requireLogin, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile],
+    () => ({ city, setCity, openLocationPicker, requireLogin, sessionReady, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile }),
+    [city, setCity, openLocationPicker, requireLogin, sessionReady, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile],
   );
 
   return (
@@ -780,11 +795,18 @@ export function HomeSheetsProvider({
         * gorhom handles automatically, Android needs the window's own resize mode set). */}
       <BottomSheetModal
         ref={loginSheetRef}
-        snapPoints={loginStep === "basics" ? ["85%"] : ["55%"]}
+        snapPoints={loginStep === "basics" ? ["85%"] : skipReason ? ["65%"] : ["55%"]}
         // Name is mandatory — don't swipe away an incomplete profile.
         // City-only gaps may dismiss (canDismissBasics).
         enablePanDownToClose={loginStep !== "basics" || verifyPhoneMode || canDismissBasics(basicsInitial)}
         onDismiss={() => {
+          const onSkip = onSkipRef.current;
+          onSkipRef.current = undefined;
+          if (onSkip) {
+            onSuccessRef.current = undefined;
+            setSkipReason(null);
+            onSkip();
+          }
           // Swiped/cancelled out of the Publish-time phone check: drop the pending resume so it
           // cannot fire later (a completed check clears these itself before dismissing).
           if (!verifyPhoneRef.current) return;
@@ -853,7 +875,12 @@ export function HomeSheetsProvider({
         >
           {loginStep === "choose" && (
             <>
-              <Text style={[styles.sheetTitle, { color: colors.text }]}>Log in to continue</Text>
+              <Text style={[styles.sheetTitle, { color: colors.text }, skipReason ? { marginBottom: 6 } : null]}>
+                {skipReason ? "Log in to hear back from owners faster" : "Log in to continue"}
+              </Text>
+              {skipReason && (
+                <Text style={{ fontSize: 13, color: colors.textSoft, marginBottom: 16, lineHeight: 19 }}>{skipReason}</Text>
+              )}
               <Pressable onPress={() => setLoginStep("phone")} style={[styles.primaryButton, { backgroundColor: colors.green }]}>
                 <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Continue with Phone OTP</Text>
               </Pressable>
@@ -896,6 +923,11 @@ export function HomeSheetsProvider({
                 .
               </Text>
               {error && <Text style={styles.errorText}>{error}</Text>}
+              {skipReason && (
+                <Pressable onPress={() => loginSheetRef.current?.dismiss()} style={{ alignSelf: "center", paddingVertical: 10, paddingHorizontal: 16 }}>
+                  <Text style={{ color: colors.textSoft, fontWeight: "700", fontSize: 14 }}>Skip for now</Text>
+                </Pressable>
+              )}
             </>
           )}
 

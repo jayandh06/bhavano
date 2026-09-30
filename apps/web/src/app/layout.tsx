@@ -4,6 +4,7 @@ import Script from "next/script";
 import { ThemeProvider } from "next-themes";
 import { LEGAL_ENTITY, entityAddressLines } from "@bhavano/types/legalEntity";
 import { AuthGateProvider } from "@/components/home/AuthGateProvider";
+import { VisitEntryRecorder } from "@/components/home/VisitEntryRecorder";
 import { BuyCreditsProvider } from "@/components/home/BuyCreditsProvider";
 import { BoostProvider } from "@/components/home/BoostProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
@@ -112,6 +113,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <BuyCreditsProvider>
               <BoostProvider>
                 <JsConfirmation />
+                <VisitEntryRecorder />
                 <SoftNavPageViews />
                 <SignupConversionTracker />
                 <ProfileCompletionBanner />

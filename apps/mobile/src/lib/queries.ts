@@ -9,6 +9,7 @@ import {
   fetchConversations,
   fetchFavourites,
   fetchListingById,
+  fetchLoginNudgeSettings,
   fetchListings,
   fetchMessages,
   fetchMyListing,
@@ -38,6 +39,16 @@ export function useListingQuery(id: string, accessToken?: string | null) {
   return useQuery({
     queryKey: ["listing", id, accessToken],
     queryFn: () => fetchListingById(id, accessToken),
+  });
+}
+
+/** Admin-tuned, rarely changes: fetched once and reused for every listing opened. */
+export function useLoginNudgeSettingsQuery(enabled: boolean) {
+  return useQuery({
+    queryKey: ["login-nudge-settings"],
+    queryFn: fetchLoginNudgeSettings,
+    enabled,
+    staleTime: 10 * 60 * 1000,
   });
 }
 

@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { postedByLabel } from "@bhavano/types/sellerType";
+import { ownerEnquiryText, whatsAppChatUrl } from "@bhavano/types/whatsapp";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
 import { BffError, recordListingInterest, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
 import { getOrCreateViewerKey } from "../../src/lib/viewerKey";
+import { useListingLoginNudge } from "../../src/lib/useListingLoginNudge";
 import { Icon } from "../../src/components/Icon";
 import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
 import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
@@ -25,7 +27,7 @@ function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 }
 
-// TEMP(auth-gate): viewing listing details is open without login for now.
+// Listing details stay open without login; useListingLoginNudge asks, with a Skip.
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useAppTheme();
@@ -37,6 +39,7 @@ export default function ListingDetailScreen() {
   // falls back to Home instead of leaving the header's arrow broken.
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const { data: listing, isLoading, refetch, isRefetching } = useListingQuery(id, accessToken);
+  useListingLoginNudge(listing);
   const [isFavourited, setIsFavourited] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [contactRevealed, setContactRevealed] = useState(false);
@@ -45,6 +48,7 @@ export default function ListingDetailScreen() {
   const [revealPending, setRevealPending] = useState(false);
   const [revealError, setRevealError] = useState<string | null>(null);
   const [insufficientCredits, setInsufficientCredits] = useState(false);
+  const whatsAppHref = ownerPhone && listing ? whatsAppChatUrl(ownerPhone, ownerEnquiryText(listing.title)) : null;
 
   useEffect(() => {
     if (listing) {
@@ -293,8 +297,19 @@ export default function ListingDetailScreen() {
           {!listing.isOwner && contactRevealed && (ownerPhone || ownerEmail) && (
             <View style={[styles.contactBox, { borderColor: colors.border }]}>
               {ownerPhone && (
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: ownerEmail ? 6 : 0 }}>
+                <Text
+                  onPress={() => void Linking.openURL(`tel:${ownerPhone}`).catch(() => undefined)}
+                  style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 6 }}
+                >
                   📞 {ownerPhone}
+                </Text>
+              )}
+              {whatsAppHref && (
+                <Text
+                  onPress={() => void Linking.openURL(whatsAppHref).catch(() => undefined)}
+                  style={{ fontSize: 13, fontWeight: "700", color: colors.green, marginBottom: ownerEmail ? 6 : 0 }}
+                >
+                  💬 WhatsApp the owner
                 </Text>
               )}
               {ownerEmail && (

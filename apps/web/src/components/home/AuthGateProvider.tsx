@@ -8,6 +8,7 @@ import {
   hasSessionAction,
   sendOtpAction,
   signInWithGoogleAction,
+  signInWithGoogleOneTapAction,
   signOutAction,
   verifyOtpAction,
 } from "@/app/actions/auth";
@@ -53,6 +54,10 @@ interface AuthGateContextValue {
    * Login no longer collects a phone (docs/plans/post-login-name-and-city.md), so a Google/Apple
    * account reaches Publish without one. */
   requireVerifiedPhone: (options: { onSuccess: () => void }) => void;
+  /** Finishes a Google One Tap sign-in: `credential` is the ID token GIS handed the page. Runs the
+   * same post-login steps as the dialog (signup conversion, name/city prompt, `onSuccess`).
+   * Resolves false when the BFF rejected the token. */
+  completeGoogleOneTap: (credential: string, onSuccess?: () => void) => Promise<boolean>;
 }
 
 const AuthGateContext = createContext<AuthGateContextValue | null>(null);
@@ -339,6 +344,23 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function completeGoogleOneTap(credential: string, onSuccess?: () => void): Promise<boolean> {
+    const result = await signInWithGoogleOneTapAction(credential);
+    if (!result.success) return false;
+    // Same sessionStorage key as trackGoogleSignup, so a later reload can't count it again.
+    if (result.isNewUser && !sessionStorage.getItem(GOOGLE_SIGNUP_TRACKED_KEY)) {
+      pushDataLayerEvent("signup_complete", {
+        method: "google",
+        ...(result.email ? { user_data: { email: result.email } } : {}),
+      });
+      sessionStorage.setItem(GOOGLE_SIGNUP_TRACKED_KEY, "1");
+    }
+    onSuccessRef.current = onSuccess;
+    quietBasicsRef.current = false;
+    await finishAuthOrPromptBasics();
+    return true;
+  }
+
   /**
    * Google sign-in in a child window, so this page never unloads.
    *
@@ -422,7 +444,9 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthGateContext.Provider value={{ requireLogin, requireVerifiedPhone: (o) => void requireVerifiedPhone(o) }}>
+    <AuthGateContext.Provider
+      value={{ requireLogin, requireVerifiedPhone: (o) => void requireVerifiedPhone(o), completeGoogleOneTap }}
+    >
       {children}
 
       {showLoginModal && (

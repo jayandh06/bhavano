@@ -18,6 +18,7 @@ import type {
   ClaimSource,
   ClientErrorInput,
   ContactRevealSettingsDto,
+  LoginNudgeSettingsDto,
   ConversationSummaryDto,
   CreateDiscountCodeInput,
   DeviceType,
@@ -655,6 +656,17 @@ export function updateContactRevealSettings(
   input: ContactRevealSettingsDto,
 ): Promise<ContactRevealSettingsDto> {
   return authedBffFetch(accessToken, "/admin/contact-reveal-settings", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function fetchLoginNudgeSettings(accessToken: string): Promise<LoginNudgeSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/login-nudge-settings", { cache: "no-store" });
+}
+
+export function updateLoginNudgeSettings(
+  accessToken: string,
+  input: LoginNudgeSettingsDto,
+): Promise<LoginNudgeSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/login-nudge-settings", { method: "PATCH", body: JSON.stringify(input) });
 }
 
 export function fetchBoostPricingSettings(accessToken: string): Promise<BoostPriceSettings> {

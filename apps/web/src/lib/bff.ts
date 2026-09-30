@@ -19,6 +19,7 @@ import type {
   ClientErrorInput,
   ContactRevealBalanceDto,
   ContactRevealSettingsDto,
+  PublicLoginNudgeDto,
   ConversationDetailDto,
   ConversationSummaryDto,
   CreateBoostOrderResponseDto,
@@ -345,6 +346,11 @@ export function fetchAreas(cityId: string, q?: string, all?: boolean): Promise<A
 // ListingCardDto/ListingDetailDto instead (see those types' own doc comments).
 export function fetchContactRevealSettings(): Promise<ContactRevealSettingsDto> {
   return bffFetch<ContactRevealSettingsDto>("/listings/contact-reveal-settings", { cache: "no-store" });
+}
+
+/** Read on every logged-out listing view, so cached briefly; an admin change lands within a minute. */
+export function fetchLoginNudgeSettings(): Promise<PublicLoginNudgeDto> {
+  return bffFetch<PublicLoginNudgeDto>("/listings/login-nudge-settings", { next: { revalidate: 60 } });
 }
 
 /** Public — current boost/subscription pricing, admin-editable (see

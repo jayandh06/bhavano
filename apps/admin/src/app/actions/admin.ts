@@ -8,6 +8,7 @@ import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import type {
   AdminUpdateListingInput,
   ContactRevealSettingsDto,
+  LoginNudgeSettingsDto,
   RequirementStatus,
   SavedSearchSettingsDto,
   ListingDetailDto,
@@ -40,6 +41,7 @@ import {
   setReviewed,
   updateBoostPricingSettings,
   updateContactRevealSettings,
+  updateLoginNudgeSettings,
   updateRequirement,
   updateSavedSearchSettings,
   updateInstantAlertsPricingSettings,
@@ -246,6 +248,17 @@ export async function updateContactRevealSettingsAction(input: ContactRevealSett
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update contact-reveal settings" };
+  }
+}
+
+export async function updateLoginNudgeSettingsAction(input: LoginNudgeSettingsDto): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateLoginNudgeSettings(accessToken, input);
+    revalidatePath("/settings/login-nudge");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update login prompt settings" };
   }
 }
 

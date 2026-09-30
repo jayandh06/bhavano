@@ -14,6 +14,8 @@ import { ListingDetailActions } from "./ListingDetailActions";
 import { ListingMediaGallery } from "./ListingMediaGallery";
 import { ListingPrice } from "./PriceWithWords";
 import { ViewTracker } from "./ViewTracker";
+import { ListingLoginNudge } from "./ListingLoginNudge";
+import { fetchLoginNudgeSettings } from "@/lib/bff";
 import { Icon, isIconName } from "./Icon";
 
 /** A plain cached image, not the interactive Maps JavaScript API — this page is by far the
@@ -93,6 +95,8 @@ export async function ListingDetailView({
   // nobody is being shown ads near anywhere. The listing's own location is stated in the body,
   // under the title, where it belongs.
   const viewerCity = await resolveDefaultCity(allCities);
+  // Best-effort: a failed settings read costs the login ask on this view, never the listing.
+  const loginNudge = !accessToken && !listing.isOwner ? await fetchLoginNudgeSettings().catch(() => null) : null;
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -107,6 +111,9 @@ export async function ListingDetailView({
         areaName={listing.area}
       />
       <ViewTracker listingId={listing.id} recordInterest={!!accessToken && !listing.isOwner} />
+      {loginNudge && (
+        <ListingLoginNudge listingId={listing.id} settings={loginNudge} googleClientId={process.env.GOOGLE_CLIENT_ID} />
+      )}
       {/* 1280px, the same container as the header above it and every browse page — this was the
         * one page at 880, which read as the content being indented relative to its own header.
         *
@@ -265,6 +272,7 @@ export async function ListingDetailView({
             ) : (
               <ListingDetailActions
                 listingId={listing.id}
+                listingTitle={listing.title}
                 initialIsFavourited={listing.isFavourited}
                 initialLikeCount={listing.likeCount}
                 isOwner={listing.isOwner}
