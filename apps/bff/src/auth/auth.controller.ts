@@ -122,6 +122,15 @@ export class AuthController {
     return this.authService.linkPhone(user.id, dto.phone, dto.code);
   }
 
+  /** Renews a still-valid session; clients call it once their token is a day old. */
+  @Post('refresh')
+  @HttpCode(200)
+  @UseGuards(AuthGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  refresh(@CurrentUser() user: RequestUser): Promise<AuthSession> {
+    return this.authService.refresh(user.id);
+  }
+
   /** No server-side session to end (JWTs are stateless/short-lived) — this exists purely to give
    * the BFF a logout signal to log, since apps/web|admin's own signOutAction otherwise clears the
    * NextAuth cookie without ever calling the BFF. See docs/plans/bff-loki-grafana-logging.md. */

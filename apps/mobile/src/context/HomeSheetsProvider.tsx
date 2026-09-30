@@ -33,6 +33,7 @@ import {
   loginWithApple,
   loginWithGoogle,
   logout as bffLogout,
+  refreshSession,
   reverseGeocodeGoogle,
   sendOtp,
   setUnauthorizedHandler,
@@ -72,6 +73,18 @@ function isTokenExpired(token: string): boolean {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now();
+  } catch {
+    return false;
+  }
+}
+
+/** Whether a still-valid token should be renewed: once it's a day old, or halfway through its life
+ * if sooner (admin tokens last a day). Mirrors the web's isAccessTokenDueForRenewal. */
+function isTokenDueForRenewal(token: string): boolean {
+  try {
+    const { iat, exp } = JSON.parse(atob(token.split('.')[1])) as { iat?: number; exp?: number };
+    if (typeof iat !== 'number' || typeof exp !== 'number' || exp * 1000 <= Date.now()) return false;
+    return Date.now() - iat * 1000 > Math.min(24 * 60 * 60 * 1000, ((exp - iat) * 1000) / 2);
   } catch {
     return false;
   }
@@ -206,15 +219,33 @@ export function HomeSheetsProvider({
     return () => setUnauthorizedHandler(null);
   }, [endDeadSession]);
 
-  // The app can sit in the background for days, well past the token's 24h TTL. Catch that on the
-  // way back in, before the first screen fires requests that would all come back 401.
+  /** Swaps a day-old token for a fresh one, so someone who keeps opening the app stays logged in
+   * (see docs/plans/more-login-conversion.md). A failure keeps the current, still-valid token. */
+  const renewSessionIfDue = useCallback(async (token: string) => {
+    if (!isTokenDueForRenewal(token)) return;
+    try {
+      const { accessToken: renewed } = await refreshSession(token);
+      if (token !== accessTokenRef.current) return;
+      accessTokenRef.current = renewed;
+      setAccessToken(renewed);
+      if (Platform.OS !== "web") await SecureStore.setItemAsync(TOKEN_KEY, renewed);
+    } catch {
+      // A 401 already ended the session through the unauthorized handler; anything else retries
+      // next time the app comes forward.
+    }
+  }, []);
+
+  // The app can sit in the background for days, past the token's expiry. Catch that on the way
+  // back in, before the first screen fires requests that would all come back 401.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       const token = accessTokenRef.current;
-      if (state === "active" && token && isTokenExpired(token)) void endDeadSession(token);
+      if (state !== "active" || !token) return;
+      if (isTokenExpired(token)) void endDeadSession(token);
+      else void renewSessionIfDue(token);
     });
     return () => sub.remove();
-  }, [endDeadSession]);
+  }, [endDeadSession, renewSessionIfDue]);
 
   useEffect(() => {
     // expo-secure-store has no web implementation — the browser preview simply starts logged out.
@@ -234,9 +265,10 @@ export function HomeSheetsProvider({
         registerForPushAsync(token).then((t) => {
           if (t) pushTokenRef.current = t;
         });
+        void renewSessionIfDue(token);
       }
     });
-  }, []);
+  }, [renewSessionIfDue]);
 
   /**
    * Which city to open on: the city this user last picked, remembered across launches, else all

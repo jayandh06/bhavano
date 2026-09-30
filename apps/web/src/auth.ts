@@ -1,7 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { loginWithGoogle, verifyOtp } from "@/lib/bff";
+import { loginWithGoogle, refreshSession, verifyOtp } from "@/lib/bff";
+import { isAccessTokenDueForRenewal } from "@/lib/session";
 
 declare module "next-auth" {
   interface Session {
@@ -26,7 +27,7 @@ declare module "next-auth" {
 // version in this workspace — avoid importing it and just extend the token shape locally.
 type TokenWithAccessToken = { sub?: string; accessToken?: string; isNewUser?: boolean; provider?: string };
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   session: { strategy: "jwt" },
   providers: [
     Credentials({
@@ -78,8 +79,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       const t = token as TokenWithAccessToken;
+
+      // Only on an explicit update (renewSessionAction): a server component's auth() call runs this
+      // callback too, but can't write the renewed token back to the cookie.
+      if (trigger === "update") {
+        if (t.accessToken && isAccessTokenDueForRenewal(t.accessToken)) {
+          try {
+            t.accessToken = (await refreshSession(t.accessToken)).accessToken;
+          } catch {
+            // Keep the current token; it's still valid, and the next visit tries again.
+          }
+        }
+        return token;
+      }
       // `account` is only present on the actual sign-in call, not on later token reads/refreshes —
       // recorded here so it survives on the token for every subsequent request in the session.
       if (account?.provider) t.provider = account.provider;

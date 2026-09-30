@@ -115,8 +115,8 @@ let unauthorizedHandler: ((accessToken: string) => void) | null = null;
 
 /** Registered by HomeSheetsProvider to end the session when any authed call is rejected with a
  * 401. Every 401 the BFF sends on an authed route means the session is over (bad or expired JWT,
- * or a deleted account), and the token has a 24h TTL with no refresh — so an app left open past
- * that kept a dead token and every screen quietly rendered empty. The handler gets the token that
+ * or a deleted account) — without this, an app left open past the token's expiry kept a dead token
+ * and every screen quietly rendered empty. The handler gets the token that
  * was rejected, so a slow request from before a fresh login can't sign the new session out. */
 export function setUnauthorizedHandler(handler: ((accessToken: string) => void) | null): void {
   unauthorizedHandler = handler;
@@ -508,6 +508,12 @@ export function loginWithApple(
     method: "POST",
     body: JSON.stringify({ identityToken, fullName, viewerKey, sessionId }),
   });
+}
+
+/** A fresh token for a still-valid one (see docs/plans/more-login-conversion.md). A 401 here
+ * means the account can't renew (deleted), and ends the session like any other 401. */
+export function refreshSession(accessToken: string): Promise<{ accessToken: string }> {
+  return authedBffFetch(accessToken, "/auth/refresh", { method: "POST" });
 }
 
 /** Purely a signal for the BFF to log — JWTs are stateless and short-lived, so there is no

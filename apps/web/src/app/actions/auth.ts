@@ -4,7 +4,7 @@ import { signIn, signOut } from "@/auth";
 import type { LinkIdentifierResult, UserProfileDto } from "@bhavano/types";
 import { fetchProfile, linkPhone, logout, sendOtp } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
-import { auth } from "@/auth";
+import { auth, unstable_update } from "@/auth";
 
 export async function sendOtpAction(phone: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -85,6 +85,14 @@ export async function getAccessTokenAction(): Promise<string | undefined> {
 export async function hasSessionAction(): Promise<boolean> {
   const session = await auth();
   return isAccessTokenValid(session?.accessToken);
+}
+
+/** Renews the session's BFF token once it's a day old (the jwt callback decides), so an active
+ * visitor never hits the token's expiry. Called by SessionKeepAlive. */
+export async function renewSessionAction(): Promise<void> {
+  const session = await auth();
+  if (!isAccessTokenValid(session?.accessToken)) return;
+  await unstable_update({}).catch(() => undefined);
 }
 
 /** Google sign-in is a full-page redirect through NextAuth — there's no synchronous "it just

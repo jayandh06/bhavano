@@ -1,4 +1,4 @@
-/** NextAuth's own session cookie lives far longer than the BFF's 1h-TTL access token embedded
+/** NextAuth's own session cookie can outlive the BFF access token embedded
  * inside it, so a session can still look "logged in" (cookie valid, `session.user.name` present)
  * for hours after the embedded token has actually expired server-side. Pages already handle this
  * on the content side (catching `BffAuthError` and showing a login prompt — see
@@ -7,14 +7,25 @@
  * token's own `exp` claim here — no signature verification needed, this only decides what the
  * header displays, the BFF is still the one actually enforcing auth on every real request — lets
  * the header agree with the page content instead of contradicting it. */
-function decodeJwtExpiryMs(token: string): number | null {
+function decodeJwtClaimMs(token: string, claim: "exp" | "iat"): number | null {
   try {
     const payload = token.split(".")[1];
-    const json = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { exp?: number };
-    return typeof json.exp === "number" ? json.exp * 1000 : null;
+    const json = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, unknown>;
+    const value = json[claim];
+    return typeof value === "number" ? value * 1000 : null;
   } catch {
     return null;
   }
+}
+
+/** Whether a still-valid token should be swapped for a fresh one: once it's a day old, or halfway
+ * through its life if that's sooner (admin tokens only last a day). */
+export function isAccessTokenDueForRenewal(accessToken?: string | null): boolean {
+  if (!isAccessTokenValid(accessToken)) return false;
+  const issuedAt = decodeJwtClaimMs(accessToken, "iat");
+  const expiresAt = decodeJwtClaimMs(accessToken, "exp");
+  if (issuedAt === null || expiresAt === null) return false;
+  return Date.now() - issuedAt > Math.min(24 * 60 * 60 * 1000, (expiresAt - issuedAt) / 2);
 }
 
 /** Whether the BFF token was issued to an admin (its `role` claim). Display only, like the expiry
@@ -35,7 +46,7 @@ export function isAdminAccessToken(accessToken?: string | null): boolean {
  * straight into a function expecting a required `string` (e.g. `uploadPhoto`). */
 export function isAccessTokenValid(accessToken?: string | null): accessToken is string {
   if (!accessToken) return false;
-  const expiresAtMs = decodeJwtExpiryMs(accessToken);
+  const expiresAtMs = decodeJwtClaimMs(accessToken, "exp");
   return expiresAtMs !== null && expiresAtMs > Date.now();
 }
 

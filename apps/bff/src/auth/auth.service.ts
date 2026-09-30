@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -22,7 +22,11 @@ import {
   NEW_REGISTRATION_CONVERSION_ACTION_ID,
 } from '../ads/google-ads-conversion.provider';
 
-const ACCESS_TOKEN_TTL = '24h';
+/** Users stay logged in while they keep coming back: clients renew through `refresh` once a token
+ * is a day old, so only 30 idle days end a session. Admins stay short because the guards trust
+ * the token's `role` claim without a DB read. See docs/plans/more-login-conversion.md. */
+const USER_TOKEN_TTL = '30d';
+const ADMIN_TOKEN_TTL = '24h';
 
 /** Visit context passed up from the web app at signup — see AuthService.verifyOtp /
  * loginWithGoogle. All fields optional since anonymous/API callers (e.g. dev-login) never send
@@ -467,8 +471,8 @@ export class AuthService {
     return this.prisma.loginEvent.create({ data: { userId, method, sessionId } });
   }
 
-  /** No token invalidation happens here — JWTs are short-lived (1h) and stateless by design, so
-   * there's nothing server-side to revoke. This exists purely so the BFF has *any* visibility
+  /** No token invalidation happens here — JWTs are stateless by design, so there's nothing
+   * server-side to revoke. This exists purely so the BFF has *any* visibility
    * into logout at all, since it's otherwise a frontend-only NextAuth event the BFF never sees. */
   logout(userId: string): void {
     this.logger.info({ event: 'logout', userId }, 'User logged out');
@@ -498,9 +502,18 @@ export class AuthService {
       { sub: user.id, role: user.role },
       secret ?? 'dev-only-change-me',
       {
-        expiresIn: ACCESS_TOKEN_TTL,
+        expiresIn: user.role === 'admin' ? ADMIN_TOKEN_TTL : USER_TOKEN_TTL,
       },
     );
     return { user: toAuthUser(user), accessToken, isNewUser };
+  }
+
+  /** A fresh token for a still-valid one, re-read from the DB so a deleted account can't renew
+   * and a role change or account merge takes effect. */
+  async refresh(userId: string): Promise<AuthSession> {
+    const activeId = await this.accountMerge.resolveActiveUserId(userId);
+    const user = await this.prisma.user.findUnique({ where: { id: activeId } });
+    if (!user || user.deletedAt) throw new UnauthorizedException('Session ended');
+    return this.issueSession(user);
   }
 }
