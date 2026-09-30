@@ -27,6 +27,8 @@ export interface PostAdDraft {
 }
 
 const FIELDS_KEY = "bhavano:post-ad-draft";
+/** sessionStorage, so it survives a reload of this tab but not a new tab or a later visit. */
+const TAB_KEY = "bhavano:post-ad-draft-tab";
 const DB_NAME = "bhavano-drafts";
 const STORE = "post-ad-photos";
 const PHOTOS_KEY = "photos";
@@ -78,7 +80,34 @@ async function restorePhoto(stored: StoredPhoto | File): Promise<File | null> {
   return new File([stored.data], stored.name, { type: stored.type, lastModified: stored.lastModified });
 }
 
-export async function loadPostAdDraft(): Promise<{ draft: PostAdDraft; photos: File[]; droppedPhotos: number } | null> {
+/**
+ * Whether the saved draft was being written in this tab when the page last unloaded — a reload
+ * mid-post (a sign-in landing on a new deploy, a discarded tab, pull-to-refresh), which resumes
+ * where the seller was. Otherwise it's a new visit, and the seller chooses whether to continue.
+ */
+export function draftBelongsToThisTab(): boolean {
+  try {
+    return sessionStorage.getItem(TAB_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Called when the form is left without a reload, so coming back to it counts as a new visit. */
+export function releaseDraftFromThisTab(): void {
+  try {
+    sessionStorage.removeItem(TAB_KEY);
+  } catch {
+    // Storage unavailable.
+  }
+}
+
+export async function loadPostAdDraft(): Promise<{
+  draft: PostAdDraft;
+  savedAt: number;
+  photos: File[];
+  droppedPhotos: number;
+} | null> {
   try {
     const raw = localStorage.getItem(FIELDS_KEY);
     if (!raw) return null;
@@ -92,7 +121,7 @@ export async function loadPostAdDraft(): Promise<{ draft: PostAdDraft; photos: F
     );
     const restored = await Promise.all((stored ?? []).map(restorePhoto));
     const photos = restored.filter((photo): photo is File => photo !== null);
-    return { draft: saved.draft, photos, droppedPhotos: restored.length - photos.length };
+    return { draft: saved.draft, savedAt: saved.savedAt, photos, droppedPhotos: restored.length - photos.length };
   } catch {
     return null;
   }
@@ -101,6 +130,7 @@ export async function loadPostAdDraft(): Promise<{ draft: PostAdDraft; photos: F
 export function savePostAdDraftFields(draft: PostAdDraft): void {
   try {
     localStorage.setItem(FIELDS_KEY, JSON.stringify({ savedAt: Date.now(), draft }));
+    sessionStorage.setItem(TAB_KEY, "1");
   } catch {
     // Storage full or disabled (private mode) — the form still works, it just isn't kept.
   }
@@ -129,6 +159,7 @@ export async function savePostAdDraftPhotos(files: File[]): Promise<void> {
 
 export async function clearPostAdDraft(): Promise<void> {
   photoSaveSeq++;
+  releaseDraftFromThisTab();
   try {
     localStorage.removeItem(FIELDS_KEY);
     await withStore("readwrite", (store) => store.delete(PHOTOS_KEY));

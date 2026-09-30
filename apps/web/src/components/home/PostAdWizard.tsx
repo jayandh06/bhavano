@@ -70,6 +70,7 @@ import { buildListingPath } from "@/lib/listingPath";
 import {
   fieldClass,
   labelClass,
+  outlineButtonClass,
   primaryButtonClass,
   secondaryButtonClass,
 } from "@/lib/formStyles";
@@ -83,8 +84,10 @@ import {
 import { shrinkPhoto } from "@/lib/shrinkPhoto";
 import {
   clearPostAdDraft,
+  draftBelongsToThisTab,
   inMemoryCopy,
   loadPostAdDraft,
+  releaseDraftFromThisTab,
   savePostAdDraftFields,
   savePostAdDraftPhotos,
 } from "@/lib/postAdDraft";
@@ -164,6 +167,15 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 };
 
 type Step = "category" | "transactionType" | "details" | "review" | "success";
+
+type SavedDraft = NonNullable<Awaited<ReturnType<typeof loadPostAdDraft>>>;
+
+/** "saved today" / "saved yesterday" / "saved 3 days ago" (drafts expire after 7 days). */
+function draftAgeLabel(savedAt: number): string {
+  const startOfDay = (time: number) => new Date(time).setHours(0, 0, 0, 0);
+  const days = Math.round((startOfDay(Date.now()) - startOfDay(savedAt)) / 86_400_000);
+  return days <= 0 ? "saved today" : days === 1 ? "saved yesterday" : `saved ${days} days ago`;
+}
 
 /** Records a failure at the Preview/Publish step — as a `post_error` dataLayer event and as a
  * `/post/error?...` trail entry in admin's Page visits, so "reached the preview, never posted" can
@@ -393,70 +405,113 @@ export function PostAdWizard({
   const draftSavingRef = useRef(false);
   const userStartedRef = useRef(false);
   const [draftRestored, setDraftRestored] = useState(false);
+  // A draft from an earlier visit waits here, on the category step, until the seller chooses to
+  // continue it or start a new ad. Resuming it unasked dropped people mid-form in an ad they
+  // didn't recognise as the one they'd abandoned.
+  const [offeredDraft, setOfferedDraft] = useState<SavedDraft | null>(null);
+  // Read once, before anything this mount saves re-marks the tab.
+  const [draftFromThisTab] = useState(() => typeof window !== "undefined" && draftBelongsToThisTab());
   const presetRef = useRef({ category: presetCategory, transactionType: presetTransactionType, sellerType: profileSellerType });
+
+  /** Same state selectCategory/selectTransactionType would leave behind; an invalid pair (lease on
+   * a plot) falls back to asking, as a hand-picked category would. */
+  function applyPreset() {
+    const preset = presetRef.current;
+    if (!preset.category) return;
+    const presetCategory = preset.category;
+    const postable = POSTABLE_TRANSACTION_TYPES[presetCategory];
+    const presetType =
+      preset.transactionType && postable.includes(preset.transactionType)
+        ? preset.transactionType
+        : postable.length === 1
+          ? postable[0]
+          : null;
+    setCategory(presetCategory);
+    setAttributes({ ...defaultAttributesFor(presetCategory), ...fromBrokerDefault(presetCategory, preset.sellerType) });
+    setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
+    setTransactionType(presetType);
+    setPriceQualifier(presetType ? (getPriceQualifierOptions(presetCategory, presetType)[0]?.value ?? "") : "");
+    setStep(presetType ? "details" : "transactionType");
+  }
+
+  function applyDraft(saved: SavedDraft) {
+    const { draft } = saved;
+    const savedCity = draft.city;
+    if (savedCity) {
+      setCities((prev) => (prev.some((c) => c.id === savedCity.id) ? prev : [...prev, savedCity]));
+    }
+    setCategory(draft.category);
+    setTransactionType(draft.transactionType);
+    setPrice(draft.price);
+    setPriceQualifier(draft.priceQualifier);
+    setPriceMode(draft.priceMode);
+    setTitle(draft.title);
+    if (draft.cityId) setCityId(draft.cityId);
+    setAreaQuery(draft.areaQuery);
+    setAreaId(draft.areaId);
+    setPin(draft.pin);
+    setDescription(draft.description);
+    setAttributes(draft.attributes);
+    setSelectedBoostPlan(draft.selectedBoostPlan);
+    setPhotos(saved.photos.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })));
+    if (saved.droppedPhotos > 0) {
+      setPhotoNotice({
+        kind: "file",
+        text:
+          saved.droppedPhotos === 1
+            ? "1 photo from your saved ad couldn't be restored. Please add it again."
+            : `${saved.droppedPhotos} photos from your saved ad couldn't be restored. Please add them again.`,
+      });
+    }
+    // The preview is only shown after the account check in onPreview, so resume one step back.
+    setStep(draft.step === "review" ? "details" : draft.step);
+  }
 
   useEffect(() => {
     let cancelled = false;
     void loadPostAdDraft().then((saved) => {
       if (cancelled) return;
-      const preset = presetRef.current;
-      if (!saved && preset.category && !userStartedRef.current) {
-        // Same state selectCategory/selectTransactionType would leave behind; an invalid pair
-        // (lease on a plot) falls back to asking, as a hand-picked category would.
-        const presetCategory = preset.category;
-        const postable = POSTABLE_TRANSACTION_TYPES[presetCategory];
-        const presetType =
-          preset.transactionType && postable.includes(preset.transactionType)
-            ? preset.transactionType
-            : postable.length === 1
-              ? postable[0]
-              : null;
-        setCategory(presetCategory);
-        setAttributes({ ...defaultAttributesFor(presetCategory), ...fromBrokerDefault(presetCategory, preset.sellerType) });
-        setSelectedBoostPlan({ duration: 15, includeInstantAlerts: true });
-        setTransactionType(presetType);
-        setPriceQualifier(presetType ? (getPriceQualifierOptions(presetCategory, presetType)[0]?.value ?? "") : "");
-        setStep(presetType ? "details" : "transactionType");
-      }
-      if (saved && !userStartedRef.current) {
-        const { draft } = saved;
-        const savedCity = draft.city;
-        if (savedCity) {
-          setCities((prev) => (prev.some((c) => c.id === savedCity.id) ? prev : [...prev, savedCity]));
+      if (!userStartedRef.current) {
+        if (!saved) {
+          applyPreset();
+        } else if (draftFromThisTab) {
+          applyDraft(saved);
+          setDraftRestored(true);
+        } else {
+          setOfferedDraft(saved);
         }
-        setCategory(draft.category);
-        setTransactionType(draft.transactionType);
-        setPrice(draft.price);
-        setPriceQualifier(draft.priceQualifier);
-        setPriceMode(draft.priceMode);
-        setTitle(draft.title);
-        if (draft.cityId) setCityId(draft.cityId);
-        setAreaQuery(draft.areaQuery);
-        setAreaId(draft.areaId);
-        setPin(draft.pin);
-        setDescription(draft.description);
-        setAttributes(draft.attributes);
-        setSelectedBoostPlan(draft.selectedBoostPlan);
-        setPhotos(saved.photos.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })));
-        if (saved.droppedPhotos > 0) {
-          setPhotoNotice({
-            kind: "file",
-            text:
-              saved.droppedPhotos === 1
-                ? "1 photo from your saved ad couldn't be restored. Please add it again."
-                : `${saved.droppedPhotos} photos from your saved ad couldn't be restored. Please add them again.`,
-          });
-        }
-        // The preview is only shown after the account check in onPreview, so resume one step back.
-        setStep(draft.step === "review" ? "details" : draft.step);
-        setDraftRestored(true);
       }
       draftSavingRef.current = true;
     });
     return () => {
       cancelled = true;
     };
+    // Runs once on mount; the helpers only call state setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Leaving /post in-app (no reload) makes a return to it a new visit, which offers the draft.
+  useEffect(() => () => releaseDraftFromThisTab(), []);
+
+  function continueOfferedDraft() {
+    if (!offeredDraft) return;
+    userStartedRef.current = true;
+    applyDraft(offeredDraft);
+    setOfferedDraft(null);
+  }
+
+  /** Only one draft is kept per device, and the new ad's autosave would replace it anyway —
+   * cleared now so its photos can't come back attached to the new ad after a reload. */
+  function discardOfferedDraft() {
+    if (!offeredDraft) return;
+    setOfferedDraft(null);
+    void clearPostAdDraft();
+  }
+
+  function startNewInsteadOfDraft() {
+    discardOfferedDraft();
+    applyPreset();
+  }
 
   // Off while posting for someone else: one seller's ad must never come back as the admin's own
   // next post.
@@ -713,6 +768,7 @@ export function PostAdWizard({
 
   function selectCategory(next: ListingCategory) {
     userStartedRef.current = true;
+    discardOfferedDraft();
     setCategory(next);
     setAttributes({ ...defaultAttributesFor(next), ...fromBrokerDefault(next, profileSellerType) });
     // A category swap can invalidate "price per unit" (the new category might have no area field
@@ -1334,6 +1390,39 @@ export function PostAdWizard({
 
       {step === "category" && (
         <div className="flex flex-col gap-6">
+          {offeredDraft && (
+            <div
+              role="region"
+              aria-label="Unfinished ad"
+              className="rounded-xl border-2 border-[color:var(--gold)] bg-[color:var(--gold)]/10 px-4 py-3.5 text-text"
+            >
+              <div className="font-lora font-bold text-[15px] mb-1">You have an unfinished ad on this device</div>
+              <p className="m-0 text-[13px] text-text-soft">
+                {[
+                  POST_CATEGORIES.find((c) => c.value === offeredDraft.draft.category)?.label,
+                  offeredDraft.draft.transactionType ? TRANSACTION_TYPE_LABELS[offeredDraft.draft.transactionType] : null,
+                  offeredDraft.draft.title.trim() ? `“${offeredDraft.draft.title.trim()}”` : null,
+                  offeredDraft.photos.length > 0
+                    ? `${offeredDraft.photos.length} photo${offeredDraft.photos.length === 1 ? "" : "s"}`
+                    : null,
+                  draftAgeLabel(offeredDraft.savedAt),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={continueOfferedDraft} className={primaryButtonClass}>
+                  Continue this ad
+                </button>
+                <button type="button" onClick={startNewInsteadOfDraft} className={outlineButtonClass}>
+                  Start a new ad
+                </button>
+              </div>
+              <p className="m-0 mt-2 text-[12px] text-muted">
+                Picking a category below also starts a new ad and discards this one.
+              </p>
+            </div>
+          )}
           {POST_CATEGORY_GROUPS.map((group) => (
             <div key={group.title}>
               <h3 className="text-[13px] font-bold text-text-soft uppercase tracking-wide m-0 mb-2.5">{group.title}</h3>

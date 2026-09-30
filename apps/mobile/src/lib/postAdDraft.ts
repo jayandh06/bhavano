@@ -32,6 +32,19 @@ export interface PostAdDraft {
 
 const KEY = "bhavano:post-ad-draft";
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+/** How recent a draft found at app start must be to count as the app having been killed mid-post
+ * (switching out to read the OTP) rather than a later visit. */
+const RESUME_WINDOW_MS = 10 * 60 * 1000;
+
+// The app has no tabs to tell a restart mid-post from a later visit (the website uses
+// sessionStorage), so: leaving the form while the app keeps running marks it left, and after a
+// restart only a draft saved in the last few minutes resumes by itself.
+let leftFormThisRun = false;
+
+/** Called when the form closes without the listing being posted. */
+export function markPostAdDraftLeft(): void {
+  leftFormThisRun = true;
+}
 
 function fileStillThere(uri: string): Promise<boolean> {
   return new Promise((resolve) =>
@@ -43,7 +56,8 @@ function fileStillThere(uri: string): Promise<boolean> {
   );
 }
 
-export async function loadPostAdDraft(): Promise<PostAdDraft | null> {
+/** `resume`: pick up where the seller was, unasked. Otherwise offer the draft as a choice. */
+export async function loadPostAdDraft(): Promise<{ draft: PostAdDraft; savedAt: number; resume: boolean } | null> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     if (!raw) return null;
@@ -53,13 +67,18 @@ export async function loadPostAdDraft(): Promise<PostAdDraft | null> {
       return null;
     }
     const present = await Promise.all(saved.draft.photoUris.map(fileStillThere));
-    return { ...saved.draft, photoUris: saved.draft.photoUris.filter((_, i) => present[i]) };
+    return {
+      draft: { ...saved.draft, photoUris: saved.draft.photoUris.filter((_, i) => present[i]) },
+      savedAt: saved.savedAt,
+      resume: !leftFormThisRun && Date.now() - saved.savedAt < RESUME_WINDOW_MS,
+    };
   } catch {
     return null;
   }
 }
 
 export async function savePostAdDraft(draft: PostAdDraft): Promise<void> {
+  leftFormThisRun = false;
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify({ savedAt: Date.now(), draft }));
   } catch {

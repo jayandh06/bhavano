@@ -64,7 +64,13 @@ import {
   uploadVideo,
 } from "../../lib/bffClient";
 import { getAnalyticsSessionId, recordAppPageView } from "../../lib/analyticsSession";
-import { clearPostAdDraft, loadPostAdDraft, savePostAdDraft } from "../../lib/postAdDraft";
+import {
+  clearPostAdDraft,
+  loadPostAdDraft,
+  markPostAdDraftLeft,
+  savePostAdDraft,
+  type PostAdDraft,
+} from "../../lib/postAdDraft";
 import { startBoostCheckout } from "../../lib/boostCheckout";
 import { startListingPublishCheckout } from "../../lib/listingPublishCheckout";
 import { listingPublishRequiresCheckout } from "@bhavano/types/listingPublishPricing";
@@ -85,6 +91,15 @@ import { appWebUrl } from "../../lib/appWebUrl";
 import { priceSuffix } from "../../lib/boostPriceDisplay";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
+
+type SavedDraft = NonNullable<Awaited<ReturnType<typeof loadPostAdDraft>>>;
+
+/** "saved today" / "saved yesterday" / "saved 3 days ago" (drafts expire after 7 days). */
+function draftAgeLabel(savedAt: number): string {
+  const startOfDay = (time: number) => new Date(time).setHours(0, 0, 0, 0);
+  const days = Math.round((startOfDay(Date.now()) - startOfDay(savedAt)) / 86_400_000);
+  return days <= 0 ? "saved today" : days === 1 ? "saved yesterday" : `saved ${days} days ago`;
+}
 
 // Mirrors the website's identical success-screen pitch (PostAdWizard.tsx's own "Reach more
 // buyers, faster" card) — same four benefits, same icons.
@@ -359,33 +374,44 @@ export function PostAdWizard({
   const draftSavingRef = useRef(false);
   const userStartedRef = useRef(false);
   const [draftRestored, setDraftRestored] = useState(false);
+  // A draft from an earlier visit waits on the category step until the seller chooses to continue
+  // it or start a new ad — resuming it unasked dropped people mid-form without realising why.
+  const [offeredDraft, setOfferedDraft] = useState<SavedDraft | null>(null);
+
+  function applyDraft(draft: PostAdDraft) {
+    const savedCity = draft.city;
+    if (savedCity && !cities.some((c) => c.id === savedCity.id)) {
+      setPinResolvedCities((prev) => (prev.some((c) => c.id === savedCity.id) ? prev : [...prev, savedCity]));
+    }
+    setCategory(draft.category);
+    setTransactionType(draft.transactionType);
+    setPrice(draft.price);
+    setPriceQualifier(draft.priceQualifier);
+    setPriceMode(draft.priceMode);
+    setTitle(draft.title);
+    if (draft.cityId) setCityId(draft.cityId);
+    setAreaQuery(draft.areaQuery);
+    setAreaId(draft.areaId);
+    setDescription(draft.description ?? "");
+    setPin(draft.pin);
+    setAttributes(draft.attributes);
+    setPhotoUris(draft.photoUris);
+    setSelectedBoostPlan(draft.selectedBoostPlan);
+    // The preview is only shown after the account check in onPreview, so resume one step back.
+    setStep(draft.step === "review" ? "details" : draft.step);
+  }
 
   useEffect(() => {
     let cancelled = false;
-    void loadPostAdDraft().then((draft) => {
+    void loadPostAdDraft().then((saved) => {
       if (cancelled) return;
-      if (draft && !userStartedRef.current) {
-        const savedCity = draft.city;
-        if (savedCity && !cities.some((c) => c.id === savedCity.id)) {
-          setPinResolvedCities((prev) => (prev.some((c) => c.id === savedCity.id) ? prev : [...prev, savedCity]));
+      if (saved && !userStartedRef.current) {
+        if (saved.resume) {
+          applyDraft(saved.draft);
+          setDraftRestored(true);
+        } else {
+          setOfferedDraft(saved);
         }
-        setCategory(draft.category);
-        setTransactionType(draft.transactionType);
-        setPrice(draft.price);
-        setPriceQualifier(draft.priceQualifier);
-        setPriceMode(draft.priceMode);
-        setTitle(draft.title);
-        if (draft.cityId) setCityId(draft.cityId);
-        setAreaQuery(draft.areaQuery);
-        setAreaId(draft.areaId);
-        setDescription(draft.description ?? "");
-        setPin(draft.pin);
-        setAttributes(draft.attributes);
-        setPhotoUris(draft.photoUris);
-        setSelectedBoostPlan(draft.selectedBoostPlan);
-        // The preview is only shown after the account check in onPreview, so resume one step back.
-        setStep(draft.step === "review" ? "details" : draft.step);
-        setDraftRestored(true);
       }
       draftSavingRef.current = true;
     });
@@ -395,6 +421,23 @@ export function PostAdWizard({
     // Runs once on mount; `cities` is only read to decide where a restored city goes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => () => markPostAdDraftLeft(), []);
+
+  function continueOfferedDraft() {
+    if (!offeredDraft) return;
+    userStartedRef.current = true;
+    applyDraft(offeredDraft.draft);
+    setOfferedDraft(null);
+  }
+
+  /** Only one draft is kept, and the new ad's autosave would replace it anyway — cleared now so
+   * its photos can't come back attached to the new ad. */
+  function discardOfferedDraft() {
+    if (!offeredDraft) return;
+    setOfferedDraft(null);
+    void clearPostAdDraft();
+  }
 
   useEffect(() => {
     if (!draftSavingRef.current || !category || step === "success") return;
@@ -600,6 +643,7 @@ export function PostAdWizard({
 
   function selectCategory(next: ListingCategory) {
     userStartedRef.current = true;
+    discardOfferedDraft();
     setCategory(next);
     setAttributes({ ...defaultAttributesFor(next), ...fromBrokerDefault(next, profile?.sellerType ?? null) });
     // A category swap can invalidate "price per unit" (the new category might have no area field
@@ -1273,6 +1317,60 @@ export function PostAdWizard({
 
       {step === "category" && (
         <View style={{ gap: 22 }}>
+          {offeredDraft && (
+            <View
+              accessibilityLabel="Unfinished ad"
+              style={{
+                gap: 6,
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderRadius: 12,
+                borderWidth: 2,
+                borderColor: colors.gold,
+                backgroundColor: colors.surfaceAlt,
+              }}
+            >
+              <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>
+                You have an unfinished ad on this device
+              </Text>
+              <Text style={{ color: colors.textSoft, fontSize: 13 }}>
+                {[
+                  POST_CATEGORIES.find((c) => c.value === offeredDraft.draft.category)?.label,
+                  offeredDraft.draft.transactionType ? TRANSACTION_TYPE_LABELS[offeredDraft.draft.transactionType] : null,
+                  offeredDraft.draft.title.trim() ? `“${offeredDraft.draft.title.trim()}”` : null,
+                  offeredDraft.draft.photoUris.length > 0
+                    ? `${offeredDraft.draft.photoUris.length} photo${offeredDraft.draft.photoUris.length === 1 ? "" : "s"}`
+                    : null,
+                  draftAgeLabel(offeredDraft.savedAt),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+                <Pressable
+                  onPress={continueOfferedDraft}
+                  style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: colors.green }}
+                >
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13.5 }}>Continue this ad</Text>
+                </Pressable>
+                <Pressable
+                  onPress={discardOfferedDraft}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    borderWidth: 1.5,
+                    borderColor: colors.green,
+                  }}
+                >
+                  <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>Start a new ad</Text>
+                </Pressable>
+              </View>
+              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                Picking a category below also starts a new ad and discards this one.
+              </Text>
+            </View>
+          )}
           {POST_CATEGORY_GROUPS.map((group) => (
             <View key={group.title} style={{ gap: 10 }}>
               <Text style={[styles.groupHeading, { color: colors.textSoft }]}>{group.title.toUpperCase()}</Text>

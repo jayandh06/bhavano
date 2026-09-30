@@ -39,8 +39,21 @@ survive all of these.
   - If the seller picks a category before the restore resolves, the restore is skipped.
   - A draft saved on the preview step resumes on the details step, because the preview is only
     shown after the account check in `onPreview`.
-  - A banner reads "We restored the ad you were writing", with a **Start over** button that clears
-    the draft and resets the form.
+  - Restores are no longer silent (2026-09-30). Sellers who came back later were confused to land
+    straight on the details step. Now a returning seller stays on the category step, above a card
+    reading "You have an unfinished ad on this device". The card sums up the draft (category,
+    transaction type, title, photo count, when it was saved).
+    - **Continue this ad** restores the draft and jumps to its step.
+    - **Start a new ad**, or picking a category below the card, deletes the draft. There is only
+      one draft slot.
+  - A reload mid-ad still resumes silently, with the "We restored the ad you were writing" banner
+    and its **Start over** button.
+    - Web: a `sessionStorage` marker (`bhavano:post-ad-draft-tab`) is set on save and cleared when
+      the wizard unmounts, so only a reload of the same tab counts as a reload.
+    - Mobile: there's no tab, so the app counts it as a reload when the draft was saved in the last
+      10 minutes and the seller hasn't left the post-ad screen in this app run (`leftFormThisRun`).
+    - Anything else gets the card.
+  - Test: `apps/web/e2e/post-ad-draft-offer.spec.ts`.
   - The draft is cleared once `createListing` succeeds, even when payment is still pending, so
     retrying payment can never try to create the same listing id again. Saving stops at that point.
   - Drafts older than 7 days are discarded.
