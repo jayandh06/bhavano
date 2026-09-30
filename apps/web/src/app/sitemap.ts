@@ -67,6 +67,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/privacy",
     "/premium",
     "/tools",
+    "/tools/emi-calculator",
+    "/tools/down-payment-calculator",
+    "/tools/home-loan-eligibility-calculator",
+    "/tools/rent-vs-buy-calculator",
+    "/tools/rent-affordability-calculator",
+    "/tools/area-unit-converter",
     "/cities",
   ].map((path) => ({ url: `${SITE_URL}${path}`, lastModified: new Date() }));
 
