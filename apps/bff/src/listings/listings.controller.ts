@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Headers,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -36,6 +37,7 @@ import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { RecordViewDto } from './dto/record-view.dto';
 import { RotatePhotoDto } from './dto/rotate-photo.dto';
+import { ImportFavouritesDto, SetFavouriteDto } from './dto/favourite.dto';
 
 @Controller('listings')
 export class ListingsController {
@@ -203,8 +205,20 @@ export class ListingsController {
   toggleFavourite(
     @Param('id') id: string,
     @CurrentUser() user: RequestUser,
+    @Body() dto: SetFavouriteDto,
   ): Promise<{ favourited: boolean; likeCount: number }> {
-    return this.listingsService.toggleFavourite(id, user.id);
+    return this.listingsService.toggleFavourite(id, user.id, dto?.favourite);
+  }
+
+  /** Listings saved on the device before login; see docs/plans/more-login-conversion.md. */
+  @Post('favourites/import')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  importFavourites(
+    @Body() dto: ImportFavouritesDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<{ saved: number }> {
+    return this.listingsService.importFavourites(user.id, dto.listingIds);
   }
 
   /** Spends a free reveal or a credit (whichever applies) and permanently unlocks this listing's

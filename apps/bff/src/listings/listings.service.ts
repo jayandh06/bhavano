@@ -2533,13 +2533,25 @@ export class ListingsService {
     });
   }
 
+  /** Flips the favourite, or with `desired` sets it: a save resumed after login, or synced from the
+   * device, must never un-save a listing already saved on another device. */
   async toggleFavourite(
     listingId: string,
     userId: string,
+    desired?: boolean,
   ): Promise<{ favourited: boolean; likeCount: number }> {
     const existing = await this.prisma.favourite.findUnique({
       where: { listingId_userId: { listingId, userId } },
     });
+
+    if (desired !== undefined && desired === !!existing) {
+      const listing = await this.prisma.listing.findUnique({
+        where: { id: listingId },
+        select: { likeCount: true },
+      });
+      if (!listing) throw new NotFoundException('Listing not found');
+      return { favourited: desired, likeCount: listing.likeCount };
+    }
 
     if (existing) {
       await this.prisma.favourite.delete({ where: { id: existing.id } });
@@ -2573,6 +2585,27 @@ export class ListingsService {
     }
 
     return { favourited: true, likeCount: listing.likeCount };
+  }
+
+  /** Saves the listings a visitor saved on their device before logging in. Skips ones that no
+   * longer exist and the user's own; already-saved ones stay saved. Returns how many are saved. */
+  async importFavourites(userId: string, listingIds: string[]): Promise<{ saved: number }> {
+    const listings = await this.prisma.listing.findMany({
+      where: { id: { in: [...new Set(listingIds)] }, ownerId: { not: userId } },
+      select: { id: true },
+    });
+    let saved = 0;
+    for (const { id } of listings) {
+      try {
+        await this.toggleFavourite(id, userId, true);
+        saved++;
+      } catch (err: unknown) {
+        this.logger.warn(
+          `Failed to import device save ${id} for ${userId}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+    return { saved };
   }
 
   private async notifyOwnerOfLike(

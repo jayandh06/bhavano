@@ -129,6 +129,10 @@
       "types": "./dist/messageFormat.d.ts",
       "default": "./dist/messageFormat.js"
     },
+    "./guestSaves": {
+      "types": "./dist/guestSaves.d.ts",
+      "default": "./dist/guestSaves.js"
+    },
     "./conversationTag": {
       "types": "./dist/conversationTag.d.ts",
       "default": "./dist/conversationTag.js"
