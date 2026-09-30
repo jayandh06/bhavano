@@ -13,6 +13,7 @@ import {
   setReviewedAction,
 } from "@/app/actions/admin";
 import { formatDateTime } from "@/lib/formatDateTime";
+import { MessageBody } from "./MessageBody";
 import { SelectField } from "./SelectField";
 
 const LISTING_STATUSES: ListingStatus[] = ["active", "sold", "rented", "deactivated"];
@@ -282,9 +283,13 @@ export function ModerationPanel({
                     borderRadius: 10,
                     padding: "8px 12px",
                     fontSize: 13.5,
+                    // Embedded "\n" is invisible by default — pre-line is what actually turns it
+                    // into a line break, same as web's MessageThread bubble.
+                    whiteSpace: "pre-line",
+                    overflowWrap: "break-word",
                   }}
                 >
-                  {m.body ?? <em>Message deleted</em>}
+                  {m.body ? <MessageBody body={m.body} /> : <em>Message deleted</em>}
                 </div>
                 {/* readAt is when the owner opened this thread, which marks every earlier staff
                   * message read at once; it doesn't prove each one was read. */}
@@ -305,12 +310,18 @@ export function ModerationPanel({
             );
           })}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+          {/* A <textarea>, not the <input> this replaced — an <input> can't hold a newline at
+              all, so a multi-line reply was never possible regardless of any key handling. No
+              onKeyDown to intercept Return: a textarea already wraps to a new line on its own
+              (it only submits on Enter inside a <form>, which this isn't), which is exactly the
+              "Return wraps, doesn't send" behaviour wanted — Send is the only way to send. */}
+          <textarea
             value={reply}
             onChange={(e) => setReply(e.target.value)}
             placeholder="Send a message to the owner…"
-            style={inputStyle}
+            rows={2}
+            style={{ ...textareaStyle, flex: 1 }}
           />
           <button onClick={onSendReply} disabled={pending || !reply.trim()} style={primaryButtonStyle}>
             Send
