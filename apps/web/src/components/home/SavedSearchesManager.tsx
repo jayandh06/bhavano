@@ -8,6 +8,7 @@ import { createSavedSearchAction, deleteSavedSearchAction } from "@/app/actions/
 import { listAllAreasAction } from "@/app/actions/locations";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { fieldClass, labelClass, outlineButtonClass, primaryButtonClass, secondaryButtonClass } from "@/lib/formStyles";
+import { SelectField } from "./SelectField";
 
 const ADD_NEW_AREA_VALUE = "__new__";
 
@@ -177,46 +178,45 @@ export function SavedSearchesManager({
           <div className="flex gap-3">
             <div className="flex-1">
               <label className={labelClass}>Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className={fieldClass}>
+              <SelectField value={category} onChange={(e) => setCategory(e.target.value)}>
                 <option value="">Any category</option>
                 {CATEGORY_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </div>
             <div className="flex-1">
               <label className={labelClass}>Transaction type</label>
-              <select value={transactionType} onChange={(e) => setTransactionType(e.target.value)} className={fieldClass}>
+              <SelectField value={transactionType} onChange={(e) => setTransactionType(e.target.value)}>
                 <option value="">Any type</option>
                 {TRANSACTION_TYPE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </div>
           </div>
           <div>
             <label className={labelClass}>City</label>
-            <select value={cityId} onChange={(e) => onCityChange(e.target.value)} className={fieldClass}>
+            <SelectField value={cityId} onChange={(e) => onCityChange(e.target.value)}>
               <option value="">Any city</option>
               {cities.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </div>
 
           {cityId && (
             <div>
               <label className={labelClass}>Area / locality</label>
-              <select
+              <SelectField
                 value={addingNewArea ? ADD_NEW_AREA_VALUE : areaId}
                 onChange={(e) => onAreaSelectChange(e.target.value)}
-                className={fieldClass}
               >
                 <option value="">Any area</option>
                 {areas.map((a) => (
@@ -225,7 +225,7 @@ export function SavedSearchesManager({
                   </option>
                 ))}
                 <option value={ADD_NEW_AREA_VALUE}>+ Add new area…</option>
-              </select>
+              </SelectField>
               {addingNewArea && (
                 <input
                   value={newAreaName}
