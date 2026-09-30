@@ -1299,11 +1299,15 @@ export interface SavedSearchDto {
     transactionType?: TransactionType;
     cityId?: string;
     cityName?: string;
-    areaId?: string;
-    areaName?: string;
+    /** Up to `MAX_REQUIREMENT_AREAS` (`@bhavano/types/requirementQuestions`) — empty means the whole
+     * city, same convention as `RequirementDto.areaIds`. */
+    areaIds: string[];
+    /** Names in the same order as `areaIds`. */
+    areaNames: string[];
     minPrice?: number;
     maxPrice?: number;
-    bedrooms?: number;
+    /** BHK buckets, 5 = "5+" — same convention as `RequirementDto.bedroomOptions`. Empty means any. */
+    bedroomOptions: number[];
     createdAt: string;
 }
 /** Whether this user can create another saved-search alert right now, and which bucket it would
@@ -1515,13 +1519,17 @@ export interface CreateSavedSearchInput {
     category?: ListingCategory;
     transactionType?: TransactionType;
     cityId?: string;
-    areaId?: string;
+    /** Up to `MAX_REQUIREMENT_AREAS` existing area ids. Composed with `areaName` below, not replaced
+     * by it — picking three areas and then typing a fourth, new one is one alert for all four. */
+    areaIds?: string[];
     /** A typed area name not found in the existing list — resolved (case-insensitive match, or
-     * created) the same way posting a new ad does. Ignored if areaId is also set. */
+     * created) the same way posting a new ad does, then added to `areaIds` (capped at
+     * `MAX_REQUIREMENT_AREAS` in total). */
     areaName?: string;
     minPrice?: number;
     maxPrice?: number;
-    bedrooms?: number;
+    /** BHK buckets, 5 = "5+". */
+    bedroomOptions?: number[];
 }
 export type ContactSource = "google_maps" | "scrape" | "manual_upload" | "referral";
 export type ContactStatus = "new" | "enriched" | "contacted" | "engaged" | "converted" | "invalid" | "bounced";

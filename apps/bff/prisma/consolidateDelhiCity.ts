@@ -71,7 +71,18 @@ async function mergeOrReparentArea(oldArea: { id: string; name: string }): Promi
 
   await prisma.listing.updateMany({ where: { areaId: oldArea.id }, data: { areaId: existing.id } });
   await prisma.outreachContact.updateMany({ where: { areaId: oldArea.id }, data: { areaId: existing.id } });
-  await prisma.savedSearch.updateMany({ where: { areaId: oldArea.id }, data: { areaId: existing.id } });
+  // SavedSearch.areaIds is an array (2026-09-30, multi-area alerts) — no updateMany equivalent of
+  // "replace this one id inside the array", so each matching row is read and rewritten.
+  const savedSearches = await prisma.savedSearch.findMany({
+    where: { areaIds: { has: oldArea.id } },
+    select: { id: true, areaIds: true },
+  });
+  for (const s of savedSearches) {
+    await prisma.savedSearch.update({
+      where: { id: s.id },
+      data: { areaIds: [...new Set(s.areaIds.map((id) => (id === oldArea.id ? existing.id : id)))] },
+    });
+  }
   await prisma.placesFetchLog.updateMany({ where: { areaId: oldArea.id }, data: { areaId: existing.id } });
   await prisma.area.delete({ where: { id: oldArea.id } });
   console.log(`  [merged]     "${oldArea.name}" -> existing New Delhi area ${existing.id}`);
@@ -165,7 +176,7 @@ async function main() {
       const [listings, contacts, savedSearches, placesFetchLogs] = await Promise.all([
         prisma.listing.count({ where: { areaId: area.id } }),
         prisma.outreachContact.count({ where: { areaId: area.id } }),
-        prisma.savedSearch.count({ where: { areaId: area.id } }),
+        prisma.savedSearch.count({ where: { areaIds: { has: area.id } } }),
         prisma.placesFetchLog.count({ where: { areaId: area.id } }),
       ]);
       if (listings + contacts + savedSearches + placesFetchLogs > 0) {

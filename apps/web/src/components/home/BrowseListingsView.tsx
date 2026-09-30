@@ -18,6 +18,7 @@ import { hasAssetFilter } from "@/lib/assetFilters";
 import { BhkFilter } from "./BhkFilter";
 import { BrowseFilterBar } from "./BrowseFilterBar";
 import { OwnersOnlyToggle } from "./OwnersOnlyToggle";
+import { SaveSearchButton } from "./SaveSearchButton";
 import { SortDropdown } from "./SortDropdown";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
@@ -247,6 +248,21 @@ export async function BrowseListingsView({
               {(activeIntent === "buy" || activeIntent === "rentLease") && (
                 <OwnersOnlyToggle active={query.postedBy === "owner"} />
               )}
+              {/* Renders nothing until city + a full price range are set (same mandatory fields as
+                * the standalone /saved-searches form) — see
+                * docs/plans/saved-search-multi-area-and-mandatory-fields.md. Placed last so it
+                * only appears once the filters ahead of it have actually narrowed the search. */}
+              <SaveSearchButton
+                criteria={{
+                  cityId: query.cityId,
+                  areaIds: query.areaIds,
+                  category: query.category,
+                  transactionType: query.transactionType,
+                  minPrice: query.minPrice,
+                  maxPrice: query.maxPrice,
+                  bedroomOptions: query.bedrooms,
+                }}
+              />
             </div>
           </div>
         )}

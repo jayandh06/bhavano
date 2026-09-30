@@ -57,10 +57,21 @@ function chooseParent(curated: CityRow[], lat: number, lng: number): { city: Cit
 
 async function repointArea(tx: Db, fromId: string, toId: string): Promise<void> {
   await tx.listing.updateMany({ where: { areaId: fromId }, data: { areaId: toId } });
-  await tx.savedSearch.updateMany({ where: { areaId: fromId }, data: { areaId: toId } });
   await tx.requirement.updateMany({ where: { areaId: fromId }, data: { areaId: toId } });
   await tx.outreachContact.updateMany({ where: { areaId: fromId }, data: { areaId: toId } });
   await tx.placesFetchLog.updateMany({ where: { areaId: fromId }, data: { areaId: toId } });
+  // SavedSearch.areaIds is an array too (2026-09-30, multi-area alerts) — same read-then-rewrite
+  // as searchEvent below, no updateMany equivalent of "replace this one id inside the array".
+  const savedSearches = await tx.savedSearch.findMany({
+    where: { areaIds: { has: fromId } },
+    select: { id: true, areaIds: true },
+  });
+  for (const s of savedSearches) {
+    await tx.savedSearch.update({
+      where: { id: s.id },
+      data: { areaIds: [...new Set(s.areaIds.map((id) => (id === fromId ? toId : id)))] },
+    });
+  }
   const events = await tx.searchEvent.findMany({
     where: { areaIds: { has: fromId } },
     select: { id: true, areaIds: true },

@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SavedSearchesService } from './saved-searches.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -9,7 +9,14 @@ const HOUR_MS = 60 * 60 * 1000;
 const future = (hours = 1) => new Date(Date.now() + hours * HOUR_MS);
 const past = (hours = 1) => new Date(Date.now() - hours * HOUR_MS);
 
-function makeService(options: { freeUsed?: number; freeAlertsPerUser?: number } = {}) {
+function makeService(
+  options: {
+    freeUsed?: number;
+    freeAlertsPerUser?: number;
+    areas?: { id: string; name: string }[];
+    ensureArea?: jest.Mock;
+  } = {},
+) {
   const prisma = {
     user: { findUnique: jest.fn() },
     savedSearch: {
@@ -25,9 +32,12 @@ function makeService(options: { freeUsed?: number; freeAlertsPerUser?: number } 
       create: jest.fn(),
       upsert: jest.fn(),
     },
+    // toDto resolves area *names* for whatever ids a row's areaIds carries — no rows here need a
+    // real name, so an empty result (and "(deleted area)" for any id it can't find) is fine.
+    area: { findMany: jest.fn().mockResolvedValue(options.areas ?? []) },
   } as unknown as PrismaService;
   const notificationsService = { notifySavedSearchMatch: jest.fn() } as unknown as NotificationsService;
-  const locationsService = {} as LocationsService;
+  const locationsService = { ensureArea: options.ensureArea ?? jest.fn() } as unknown as LocationsService;
 
   const service = new SavedSearchesService(prisma, notificationsService, locationsService);
   return { service, prisma, notificationsService };
@@ -44,7 +54,7 @@ describe('SavedSearchesService', () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue({ premiumUntil: null });
       (prisma.savedSearch.create as jest.Mock).mockResolvedValue({
         id: 's1', name: 'x', category: null, transactionType: null, cityId: null, city: null,
-        areaId: null, area: null, minPrice: null, maxPrice: null, bedrooms: null, createdAt: new Date(),
+        areaIds: [], minPrice: null, maxPrice: null, bedroomOptions: [], createdAt: new Date(),
       });
 
       await service.create('u1', { name: 'x' } as any);
@@ -76,7 +86,7 @@ describe('SavedSearchesService', () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue({ premiumUntil: future() });
       (prisma.savedSearch.create as jest.Mock).mockResolvedValue({
         id: 's1', name: 'x', category: null, transactionType: null, cityId: null, city: null,
-        areaId: null, area: null, minPrice: null, maxPrice: null, bedrooms: null, createdAt: new Date(),
+        areaIds: [], minPrice: null, maxPrice: null, bedroomOptions: [], createdAt: new Date(),
       });
 
       await service.create('u1', { name: 'x' } as any);
@@ -105,11 +115,10 @@ describe('SavedSearchesService', () => {
         transactionType: null,
         cityId: null,
         city: null,
-        areaId: null,
-        area: null,
+        areaIds: [],
         minPrice: null,
         maxPrice: null,
-        bedrooms: null,
+        bedroomOptions: [],
         createdAt: new Date(),
       });
       const result = await service.create('u1', { name: 'My search' } as any);
@@ -151,9 +160,9 @@ describe('SavedSearchesService', () => {
     it('notifies only the candidates whose saved bedrooms filter matches the listing', async () => {
       const { service, prisma, notificationsService } = makeService();
       (prisma.savedSearch.findMany as jest.Mock).mockResolvedValue([
-        { id: 'sA', bedrooms: 2, user: { id: 'buyerA', name: 'A', email: 'a@x.com', phone: null } },
-        { id: 'sB', bedrooms: 3, user: { id: 'buyerB', name: 'B', email: 'b@x.com', phone: null } },
-        { id: 'sC', bedrooms: null, user: { id: 'buyerC', name: 'C', email: 'c@x.com', phone: null } },
+        { id: 'sA', bedroomOptions: [2], user: { id: 'buyerA', name: 'A', email: 'a@x.com', phone: null } },
+        { id: 'sB', bedroomOptions: [3], user: { id: 'buyerB', name: 'B', email: 'b@x.com', phone: null } },
+        { id: 'sC', bedroomOptions: [], user: { id: 'buyerC', name: 'C', email: 'c@x.com', phone: null } },
       ]);
       await service.notifyMatchingBuyers(listing);
 
@@ -171,6 +180,97 @@ describe('SavedSearchesService', () => {
       await service.notifyMatchingBuyers(listing);
       expect(notificationsService.notifySavedSearchMatch).not.toHaveBeenCalled();
       expect(prisma.savedSearch.update).not.toHaveBeenCalled();
+    });
+
+    /** The top bucket means "N or more", not exactly N — same convention as the browse filter's
+     * own BHK buckets (ListingsService.list()). A 6-bedroom listing must still find a seeker whose
+     * alert says "5+", or the biggest homes would never match anyone's alert at all. */
+    it('treats the top bucket (5) as "5 or more", not exactly 5', async () => {
+      const { service, prisma, notificationsService } = makeService();
+      const bigListing = { ...listing, attributes: { bedrooms: 6 } } as unknown as Listing & { city: City; area: Area };
+      (prisma.savedSearch.findMany as jest.Mock).mockResolvedValue([
+        { id: 'sBig', bedroomOptions: [5], user: { id: 'buyerBig', name: 'Big', email: 'b@x.com', phone: null } },
+        { id: 'sExact5', bedroomOptions: [5], user: { id: 'buyerExact', name: 'E', email: 'e@x.com', phone: null } },
+      ]);
+      await service.notifyMatchingBuyers(bigListing);
+      // Both rows say "5", and both should match a 6-bedroom listing — there is only one bucket
+      // ("5+"), not a separate "exactly 5" vs "6 or more".
+      expect(notificationsService.notifySavedSearchMatch).toHaveBeenCalledTimes(2);
+    });
+
+    it('never matches when the listing category has no bedroom count at all', async () => {
+      const { service, prisma, notificationsService } = makeService();
+      const plot = { ...listing, attributes: {} } as unknown as Listing & { city: City; area: Area };
+      (prisma.savedSearch.findMany as jest.Mock).mockResolvedValue([
+        { id: 's2bhk', bedroomOptions: [2], user: { id: 'buyer2bhk', name: 'X', email: 'x@x.com', phone: null } },
+        { id: 'sAny', bedroomOptions: [], user: { id: 'buyerAny', name: 'Y', email: 'y@x.com', phone: null } },
+      ]);
+      await service.notifyMatchingBuyers(plot);
+      // "Any" still matches (it never asked about bedrooms); a specific bucket cannot, since
+      // there is nothing to compare it against.
+      const notified = (notificationsService.notifySavedSearchMatch as jest.Mock).mock.calls.map(([u]: [{ id: string }]) => u.id);
+      expect(notified).toEqual(['buyerAny']);
+    });
+  });
+
+  describe('create — price range and multi-area', () => {
+    it('rejects minPrice greater than maxPrice', async () => {
+      const { service, prisma } = makeService();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ premiumUntil: null });
+      await expect(
+        service.create('u1', { name: 'x', minPrice: 50000, maxPrice: 20000 } as any),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.savedSearch.create).not.toHaveBeenCalled();
+    });
+
+    it('composes areaIds with a newly typed areaName rather than replacing it', async () => {
+      const ensureArea = jest.fn().mockResolvedValue({ id: 'a3' });
+      const { service, prisma } = makeService({ ensureArea });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ premiumUntil: null });
+      (prisma.savedSearch.create as jest.Mock).mockResolvedValue({
+        id: 's1', name: 'x', category: null, transactionType: null, cityId: 'c1', city: { name: 'Bengaluru' },
+        areaIds: ['a1', 'a2', 'a3'], minPrice: null, maxPrice: null, bedroomOptions: [], createdAt: new Date(),
+      });
+
+      await service.create('u1', { name: 'x', cityId: 'c1', areaIds: ['a1', 'a2'], areaName: 'New Layout' } as any);
+
+      expect(ensureArea).toHaveBeenCalledWith('c1', 'New Layout');
+      expect((prisma.savedSearch.create as jest.Mock).mock.calls[0][0].data.areaIds).toEqual(['a1', 'a2', 'a3']);
+    });
+
+    it('caps the combined area list at MAX_REQUIREMENT_AREAS', async () => {
+      const ensureArea = jest.fn().mockResolvedValue({ id: 'a6' });
+      const { service, prisma } = makeService({ ensureArea });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ premiumUntil: null });
+      (prisma.savedSearch.create as jest.Mock).mockResolvedValue({
+        id: 's1', name: 'x', category: null, transactionType: null, cityId: 'c1', city: null,
+        areaIds: ['a1', 'a2', 'a3', 'a4', 'a5'], minPrice: null, maxPrice: null, bedroomOptions: [], createdAt: new Date(),
+      });
+
+      await service.create('u1', {
+        name: 'x',
+        cityId: 'c1',
+        areaIds: ['a1', 'a2', 'a3', 'a4', 'a5'],
+        areaName: 'One Too Many',
+      } as any);
+
+      expect((prisma.savedSearch.create as jest.Mock).mock.calls[0][0].data.areaIds).toEqual([
+        'a1', 'a2', 'a3', 'a4', 'a5',
+      ]);
+    });
+
+    it('resolves every area\'s name for a multi-area result', async () => {
+      const { service, prisma } = makeService({ areas: [{ id: 'a1', name: 'Koramangala' }, { id: 'a2', name: 'Indiranagar' }] });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ premiumUntil: null });
+      (prisma.savedSearch.create as jest.Mock).mockResolvedValue({
+        id: 's1', name: 'x', category: null, transactionType: null, cityId: 'c1', city: { name: 'Bengaluru' },
+        areaIds: ['a1', 'a2'], minPrice: 10000, maxPrice: 20000, bedroomOptions: [2, 3], createdAt: new Date(),
+      });
+
+      const result = await service.create('u1', { name: 'x', cityId: 'c1', areaIds: ['a1', 'a2'] } as any);
+
+      expect(result.areaNames).toEqual(['Koramangala', 'Indiranagar']);
+      expect(result.bedroomOptions).toEqual([2, 3]);
     });
   });
 });

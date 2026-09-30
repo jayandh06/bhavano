@@ -45,7 +45,7 @@ function distanceKm(aLat: number, aLng: number, bLat: number, bLng: number): num
 async function referenceCount(areaId: string): Promise<number> {
   const counts = await Promise.all([
     prisma.listing.count({ where: { areaId } }),
-    prisma.savedSearch.count({ where: { areaId } }),
+    prisma.savedSearch.count({ where: { areaIds: { has: areaId } } }),
     prisma.outreachContact.count({ where: { areaId } }),
     prisma.placesFetchLog.count({ where: { areaId } }),
     prisma.requirement.count({ where: { areaId } }),

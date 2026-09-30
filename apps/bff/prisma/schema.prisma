@@ -266,7 +266,6 @@ model Area {
   lng      Float?
   source   String    @default("curated")
   listings Listing[]
-  savedSearches SavedSearch[]
   requirements Requirement[]
   outreachContacts OutreachContact[]
   placesFetchLogs PlacesFetchLog[]
@@ -590,13 +589,21 @@ model SavedSearch {
   name            String
   category        ListingCategory?
   transactionType TransactionType?
+  /** Kept nullable in the DB — a value pre-dating the 2026-09-30 "city and price are mandatory"
+   * rule (or one written by `RequirementsService.alertCriteria`, which deliberately stays looser
+   * than what a human fills in on the form) still has to be representable. The rule itself lives
+   * in the create DTO/web form, not a DB constraint. */
   cityId          String?
   city            City?            @relation(fields: [cityId], references: [id])
-  areaId          String?
-  area            Area?            @relation(fields: [areaId], references: [id])
+  /** Up to MAX_REQUIREMENT_AREAS (`@bhavano/types/requirementQuestions`) — same array-of-ids
+   * convention as `Requirement.areaIds`/`SearchEvent.areaIds`, replacing the single `areaId` this
+   * used to carry. Empty = the whole city. */
+  areaIds         String[]         @default([])
   minPrice        Int?
   maxPrice        Int?
-  bedrooms        Int?
+  /** BHK buckets, 5 = "5+" — same convention as `Requirement.bedroomOptions`, replacing the single
+   * `bedrooms` value this used to carry. Empty = any. */
+  bedroomOptions  Int[]            @default([])
   createdAt       DateTime         @default(now())
   lastNotifiedAt  DateTime?
   requirements    Requirement[]

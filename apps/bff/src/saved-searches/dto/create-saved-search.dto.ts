@@ -1,6 +1,8 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import { ArrayMaxSize, IsIn, IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
 import type { ListingCategory, TransactionType } from '@bhavano/types';
+import { MAX_REQUIREMENT_AREAS } from '@bhavano/types/requirementQuestions';
+import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 
 const LISTING_CATEGORIES: ListingCategory[] = [
   'house',
@@ -33,9 +35,13 @@ export class CreateSavedSearchDto {
   @IsString()
   cityId?: string;
 
+  /** Existing area ids — composed with `areaName` below, not replaced by it. Capped here at the
+   * same `MAX_REQUIREMENT_AREAS` the paired `Requirement` model uses; `create()` re-caps after
+   * merging in `areaName`, since that step can push the total past what this alone can check. */
   @IsOptional()
-  @IsString()
-  areaId?: string;
+  @ArrayMaxSize(MAX_REQUIREMENT_AREAS)
+  @IsString({ each: true })
+  areaIds?: string[];
 
   @IsOptional()
   @IsString()
@@ -53,9 +59,11 @@ export class CreateSavedSearchDto {
   @Min(0)
   maxPrice?: number;
 
+  /** BHK buckets, 5 = "5+" — see `bedroomLabel` (`@bhavano/types/bedrooms`). */
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  bedrooms?: number;
+  @ArrayMaxSize(MAX_BEDROOMS)
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Max(MAX_BEDROOMS, { each: true })
+  bedroomOptions?: number[];
 }

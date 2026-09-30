@@ -259,8 +259,9 @@ describe('RequirementsService.create', () => {
       bedrooms: 2,
       attributes: { furnished: ['semi'] },
     });
-    // The alert holds one area and one count: several become "any" — broader, never narrower.
-    expect(savedSearchCreate.mock.calls[0][1]).toMatchObject({ areaId: undefined, bedrooms: undefined });
+    // The alert now carries the same full areaIds/bedroomOptions the requirement does (2026-09-30
+    // — SavedSearch stopped narrowing to one of each once it gained its own array columns).
+    expect(savedSearchCreate.mock.calls[0][1]).toMatchObject({ areaIds: ['a1', 'a2'], bedroomOptions: [2, 3] });
     expect(result.areaNames).toEqual(['Area a1', 'Area a2']);
     expect(result.isLeadReady).toBe(true);
   });
@@ -444,14 +445,14 @@ describe('RequirementsService.refineMine', () => {
     expect(data.attributes).toBe(Prisma.DbNull);
   });
 
-  it('brings the paired alert along, broadening several areas to "any"', async () => {
+  it('brings the paired alert along with the full areaIds/bedroomOptions, not narrowed to one of each', async () => {
     const { service, savedSearchUpdate } = setup();
 
     await service.refineMine('u1', 'r1', { areaIds: ['a1', 'a2'], maxPrice: 30000 });
 
     expect(savedSearchUpdate.mock.calls[0][0]).toMatchObject({
       where: { id: 'ss1' },
-      data: { areaId: null, maxPrice: 30000, bedrooms: 2, category: 'house', transactionType: 'rent' },
+      data: { areaIds: ['a1', 'a2'], maxPrice: 30000, bedroomOptions: [2], category: 'house', transactionType: 'rent' },
     });
   });
 

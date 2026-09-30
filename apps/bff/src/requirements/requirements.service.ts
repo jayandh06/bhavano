@@ -66,10 +66,13 @@ export function canRefine(row: Requirement): boolean {
 }
 
 /**
- * What the paired `SavedSearch` alert can honour. It holds one area and one bedroom count, so one
- * of each is kept and several become "any" — broader than asked, never narrower, since an alert
- * that silently misses matches is worse than one that sends a near miss. Lists land on
- * `SavedSearch` in Phase C of docs/plans/requirement-refinement-questions.md.
+ * What the paired `SavedSearch` alert should be told. Used to collapse `Requirement`'s multi-area/
+ * multi-bedroom criteria onto `SavedSearch`'s single area and single bedroom count — that
+ * limitation is gone as of 2026-09-30 (SavedSearch now carries `areaIds`/`bedroomOptions` arrays
+ * too, see docs/plans/saved-search-multi-area-and-mandatory-fields.md), so this now passes
+ * everything through unchanged rather than narrowing it. Kept as its own function only because the
+ * field-by-field `?? undefined` mapping is still worth naming and sharing between the two call
+ * sites (create and refine).
  */
 function alertCriteria(c: {
   category?: ListingCategory | null;
@@ -84,10 +87,10 @@ function alertCriteria(c: {
     category: c.category ?? undefined,
     transactionType: c.transactionType ?? undefined,
     cityId: c.cityId ?? undefined,
-    areaId: c.areaIds.length === 1 ? c.areaIds[0] : undefined,
+    areaIds: c.areaIds,
     minPrice: c.minPrice ?? undefined,
     maxPrice: c.maxPrice ?? undefined,
-    bedrooms: c.bedroomOptions.length === 1 ? c.bedroomOptions[0] : undefined,
+    bedroomOptions: c.bedroomOptions,
   };
 }
 
@@ -470,10 +473,19 @@ export class RequirementsService {
     });
 
     if (row.savedSearchId) {
+      // areaIds/bedroomOptions are plain arrays, never undefined, so they never need nullable()'s
+      // undefined->null coercion — and Prisma's array-field update type doesn't accept `null`
+      // anyway (an array column is never nulled, only set to `[]`). Split out and passed through
+      // as-is; everything else in alertCriteria's result is a genuinely nullable scalar.
+      const { areaIds: nextAreaIds, bedroomOptions: nextBedroomOptions, ...scalarCriteria } = alertCriteria({
+        ...criteria,
+        areaIds,
+        bedroomOptions,
+      });
       await this.prisma.savedSearch
         .update({
           where: { id: row.savedSearchId },
-          data: { name: searchLabel, ...nullable(alertCriteria({ ...criteria, areaIds, bedroomOptions })) },
+          data: { name: searchLabel, areaIds: nextAreaIds, bedroomOptions: nextBedroomOptions, ...nullable(scalarCriteria) },
         })
         .catch((error: unknown) => {
           this.logger.warn(`Requirement ${id} refined but its alert could not follow: ${String(error)}`);

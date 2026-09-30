@@ -1,6 +1,8 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Area, City, Listing, SavedSearch } from '@prisma/client';
 import type { SavedSearchDto } from '@bhavano/types';
+import { MAX_REQUIREMENT_AREAS } from '@bhavano/types/requirementQuestions';
+import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { LocationsService } from '../locations/locations.service';
@@ -9,7 +11,7 @@ import { CreateSavedSearchDto } from './dto/create-saved-search.dto';
 /** Same single-row convention as CONTACT_REVEAL_SETTINGS_ID. */
 export const SAVED_SEARCH_SETTINGS_ID = 'saved-search-settings';
 
-function toDto(saved: SavedSearch & { city: City | null; area: Area | null }): SavedSearchDto {
+function toDto(saved: SavedSearch & { city: City | null }, areaNames: Map<string, string>): SavedSearchDto {
   return {
     id: saved.id,
     name: saved.name,
@@ -17,13 +19,25 @@ function toDto(saved: SavedSearch & { city: City | null; area: Area | null }): S
     transactionType: saved.transactionType ?? undefined,
     cityId: saved.cityId ?? undefined,
     cityName: saved.city?.name,
-    areaId: saved.areaId ?? undefined,
-    areaName: saved.area?.name,
+    areaIds: saved.areaIds,
+    areaNames: saved.areaIds.map((id) => areaNames.get(id) ?? '(deleted area)'),
     minPrice: saved.minPrice ?? undefined,
     maxPrice: saved.maxPrice ?? undefined,
-    bedrooms: saved.bedrooms ?? undefined,
+    bedroomOptions: saved.bedroomOptions,
     createdAt: saved.createdAt.toISOString(),
   };
+}
+
+/** A listing's bedroom count matches an alert's bucket set exactly the way the browse filter's
+ * own BHK buckets do (`ListingsService.list()`): the top bucket is "N or more", every other bucket
+ * is exact. An empty bucket set means "any" — matches regardless of whether the listing even has a
+ * bedroom count (a plot has none). */
+function bedroomsMatch(bedroomOptions: number[], listingBedrooms: number | undefined): boolean {
+  if (bedroomOptions.length === 0) return true;
+  if (listingBedrooms === undefined) return false;
+  return bedroomOptions.some((bucket) =>
+    bucket >= MAX_BEDROOMS ? listingBedrooms >= MAX_BEDROOMS : listingBedrooms === bucket,
+  );
 }
 
 @Injectable()
@@ -77,33 +91,67 @@ export class SavedSearchesService {
     if (!allowance) {
       throw new ForbiddenException('Bhavano Plus is required for more saved search alerts');
     }
-
-    const { areaName, ...rest } = dto;
-    if (areaName && !rest.areaId) {
-      if (!rest.cityId) throw new BadRequestException('cityId is required to add a new area');
-      rest.areaId = (await this.locationsService.ensureArea(rest.cityId, areaName)).id;
+    if (
+      dto.minPrice !== undefined &&
+      dto.maxPrice !== undefined &&
+      dto.minPrice > dto.maxPrice
+    ) {
+      throw new BadRequestException('minPrice cannot be greater than maxPrice');
     }
 
+    // areaName composes with areaIds rather than replacing it — picking three existing areas and
+    // then typing a fourth, new one is one alert covering all four, capped at the same limit
+    // Requirement.areaIds uses (MAX_REQUIREMENT_AREAS), since the DTO's own per-field cap can't see
+    // the combined total.
+    let areaIds = dto.areaIds ?? [];
+    if (dto.areaName) {
+      if (!dto.cityId) throw new BadRequestException('cityId is required to add a new area');
+      const area = await this.locationsService.ensureArea(dto.cityId, dto.areaName);
+      areaIds = [...new Set([...areaIds, area.id])];
+    }
+    areaIds = areaIds.slice(0, MAX_REQUIREMENT_AREAS);
+
     const saved = await this.prisma.savedSearch.create({
-      data: { userId, ...rest, source: allowance.source },
-      include: { city: true, area: true },
+      data: {
+        userId,
+        name: dto.name,
+        category: dto.category,
+        transactionType: dto.transactionType,
+        cityId: dto.cityId,
+        areaIds,
+        minPrice: dto.minPrice,
+        maxPrice: dto.maxPrice,
+        bedroomOptions: dto.bedroomOptions ?? [],
+        source: allowance.source,
+      },
+      include: { city: true },
     });
-    return toDto(saved);
+    return toDto(saved, await this.areaNamesFor(saved.areaIds));
   }
 
   async list(userId: string): Promise<SavedSearchDto[]> {
     const rows = await this.prisma.savedSearch.findMany({
       where: { userId },
-      include: { city: true, area: true },
+      include: { city: true },
       orderBy: { createdAt: 'desc' },
     });
-    return rows.map(toDto);
+    const areaNames = await this.areaNamesFor(rows.flatMap((r) => r.areaIds));
+    return rows.map((row) => toDto(row, areaNames));
   }
 
   async remove(id: string, userId: string): Promise<void> {
     const existing = await this.prisma.savedSearch.findUnique({ where: { id } });
     if (!existing || existing.userId !== userId) throw new NotFoundException('Saved search not found');
     await this.prisma.savedSearch.delete({ where: { id } });
+  }
+
+  /** Names for every area id any of these rows names, in one query — `areaIds` has no relation.
+   * Same pattern as RequirementsService's own `areaNamesFor`. */
+  private async areaNamesFor(ids: string[]): Promise<Map<string, string>> {
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length === 0) return new Map();
+    const areas = await this.prisma.area.findMany({ where: { id: { in: uniqueIds } }, select: { id: true, name: true } });
+    return new Map(areas.map((area) => [area.id, area.name]));
   }
 
   /** Fire-and-forget from ListingsService.create() right after a new listing is created —
@@ -128,7 +176,9 @@ export class SavedSearchesService {
           { OR: [{ category: null }, { category: listing.category }] },
           { OR: [{ transactionType: null }, { transactionType: listing.transactionType }] },
           { OR: [{ cityId: null }, { cityId: listing.cityId }] },
-          { OR: [{ areaId: null }, { areaId: listing.areaId }] },
+          // Empty areaIds means "whole city"; otherwise the listing's own area has to be one of
+          // the ones named — same `has` semantics as ListingsService's own area-array filter.
+          { OR: [{ areaIds: { isEmpty: true } }, { areaIds: { has: listing.areaId } }] },
           { OR: [{ minPrice: null }, { minPrice: { lte: listing.price } }] },
           { OR: [{ maxPrice: null }, { maxPrice: { gte: listing.price } }] },
         ],
@@ -138,10 +188,11 @@ export class SavedSearchesService {
     if (candidates.length === 0) return;
 
     // Bedrooms lives in the listing's `attributes` JSONB, not a plain column shared across every
-    // category — checked in-memory rather than in the query above.
+    // category, and bucket matching (5 = "5 or more") needs real comparison logic a Prisma `where`
+    // can't express in one pass — checked in-memory rather than in the query above.
     const attributes = listing.attributes as Record<string, unknown>;
     const listingBedrooms = typeof attributes.bedrooms === 'number' ? attributes.bedrooms : undefined;
-    const matches = candidates.filter((s) => s.bedrooms == null || s.bedrooms === listingBedrooms);
+    const matches = candidates.filter((s) => bedroomsMatch(s.bedroomOptions, listingBedrooms));
     if (matches.length === 0) return;
 
     await Promise.all(
