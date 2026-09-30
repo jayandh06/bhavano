@@ -71,7 +71,11 @@ async function SavedSearchesGate({ accessToken }: { accessToken: string }) {
     );
   }
 
-  const [searches, cities] = await Promise.all([fetchSavedSearches(accessToken), fetchCities(undefined, true)]);
+  const [searches, allCities] = await Promise.all([fetchSavedSearches(accessToken), fetchCities(undefined, true)]);
+  // Only the 37 ad-targeted cities (see docs/plans/serve-only-ad-targeted-cities.md) — same
+  // `isServed` filter every other city picker in the app already applies (LocationPicker, /cities).
+  // An alert for a city we don't actually advertise in has very little to ever match.
+  const cities = allCities.filter((city) => city.isServed);
   return (
     <SavedSearchesManager
       initial={searches}
