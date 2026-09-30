@@ -39,9 +39,12 @@ param(
   # Releases of each image left on the server after a deploy: the live one plus a rollback.
   [ValidateRange(1, 10)]
   [int] $KeepReleases = 2,
-  # A bff image unpacks to about 1.3 GB; loading with less than this free risks a half-extracted image.
+  # A bff image unpacks to about 1.3 GB; loading with less than this free risks a half-extracted
+  # image. 2 (the old default) is also the exact floor video-upload.guard-rails.ts refuses uploads
+  # at, so a deploy that left the disk at 2 GB left zero margin before a real user hit that error —
+  # confirmed live 2026-09-30. 5 matches docs/deployment.md's/the prod-host runbook's own guidance.
   [ValidateRange(1, 20)]
-  [int] $MinFreeGB = 2
+  [int] $MinFreeGB = 5
 )
 
 $ErrorActionPreference = "Stop"

@@ -7,6 +7,7 @@
 # Optional:
 #   BHAVANO_EC2_USER (ubuntu)  BHAVANO_EC2_SSH_KEY  BHAVANO_REMOTE_DIR (~/bhavano)
 #   BHAVANO_ENV_FILE (.env.prod.build)  SERVICES (web,bff,admin)
+#   BHAVANO_KEEP_RELEASES (2)  BHAVANO_MIN_FREE_GB (5)
 #
 # Usage:
 #   export BHAVANO_EC2_HOST=1.2.3.4
@@ -27,6 +28,13 @@ REMOTE_DIR="${BHAVANO_REMOTE_DIR:-~/bhavano}"
 ENV_FILE="${BHAVANO_ENV_FILE:-.env.prod.build}"
 PLATFORM="${BHAVANO_PLATFORM:-linux/arm64}"
 PROJECT="${COMPOSE_PROJECT_NAME:-bhavano}"
+# Releases of each image left on the server after a deploy: the live one plus a rollback — same
+# default and reasoning as deploy-local-to-ec2.ps1's -KeepReleases.
+KEEP_RELEASES="${BHAVANO_KEEP_RELEASES:-2}"
+# 5, not 2: 2 is the exact floor video-upload.guard-rails.ts refuses uploads at, so a deploy that
+# left the disk at 2 GB left zero margin before a real user hit that error — confirmed live
+# 2026-09-30. Matches the .ps1 script and docs/deployment.md's own guidance.
+MIN_FREE_GB="${BHAVANO_MIN_FREE_GB:-5}"
 SKIP_PULL=0
 SKIP_MIGRATE=0
 BUILD_ONLY=0
@@ -142,11 +150,38 @@ REMOTE_DIR='$REMOTE_DIR'
 TAR=~/$TAR
 SERVICES='$SVC_LIST'
 DO_MIGRATE='$DO_MIGRATE'
+KEEP_RELEASES=$KEEP_RELEASES
+MIN_FREE_KB=$((MIN_FREE_GB * 1024 * 1024))
+
+# Drops all but the newest KEEP_RELEASES timestamped tags of every app image. A tag still used by a
+# running container only loses its name; the container keeps running. Same as
+# deploy-local-to-ec2.ps1's prune_old_releases — kept in sync with it by hand.
+prune_old_releases() {
+  for svc in web bff admin; do
+    docker images --format '{{.Tag}}' "\${PROJECT}-\${svc}" | grep -E '^[0-9]{14}_' | sort -r | \
+      tail -n +\$((KEEP_RELEASES + 1)) | while read -r old; do
+        docker rmi "\${PROJECT}-\${svc}:\${old}" >/dev/null && echo "    removed \${PROJECT}-\${svc}:\${old}"
+      done || true
+  done
+  docker image prune -f >/dev/null || true
+}
 
 echo '==> git pull on EC2'
 # A quoted "~/bhavano" is not tilde-expanded, so expand a leading ~ by hand.
 cd "\${REMOTE_DIR/#\~/\$HOME}"
 git pull --ff-only
+
+echo '==> free disk before load'
+prune_old_releases
+FREE_KB=\$(df --output=avail -k / | tail -1)
+echo "    \$((FREE_KB / 1024)) MB free"
+# docker load can report success while failing to unpack layers on a full disk, and retagging
+# :latest onto a half-extracted image breaks the next restart. Stop here instead.
+if (( FREE_KB < MIN_FREE_KB )); then
+  echo "Not enough disk on the server (need ${MIN_FREE_GB} GB free). Nothing was changed." >&2
+  rm -f "\$TAR"
+  exit 1
+fi
 
 echo '==> docker load'
 gunzip -c "\$TAR" | docker load
@@ -170,6 +205,11 @@ if [[ "\$DO_MIGRATE" == "1" ]] && echo "\$SERVICES" | grep -qw bff; then
 fi
 
 rm -f "\$TAR"
+
+echo "==> keeping the newest \$KEEP_RELEASES releases of each image"
+prune_old_releases
+df -h / | tail -1
+
 echo '==> done'
 docker compose -f docker-compose.prod.yml ps
 EOF

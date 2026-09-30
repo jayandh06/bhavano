@@ -571,12 +571,20 @@ rm ~/bhavano-images-$TAG.tar.gz
 docker image prune -f
 ```
 
-`scripts/deploy-local-to-ec2.ps1` does this cleanup itself. After a successful `up` it keeps only the
+Both `scripts/deploy-local-to-ec2.ps1` and `deploy-local-to-ec2.sh` do this cleanup themselves —
+before `docker load` (so there's room for the incoming image) and again after a successful `up`
+(so the release this deploy just replaced doesn't linger until the next run). Each keeps only the
 newest two timestamped tags of each `bhavano-<svc>` image (the live release plus one rollback;
-change with `-KeepReleases`). Each release is about 1.6 GB (bff about 1.3 GB, web about 0.3 GB), and
-the 29 GB disk can't hold more than a few. Before `docker load` it also stops with "Not enough disk"
-if less than `-MinFreeGB` (default 2) is free. On a full disk `docker load` can report success while
-leaving layers unpacked; retagging `:latest` onto that image breaks the next container restart.
+change with `-KeepReleases` / `BHAVANO_KEEP_RELEASES`). Each release is about 1.6 GB (bff about
+1.3 GB, web about 0.3 GB), and the 29 GB disk can't hold more than a few.
+
+Before `docker load`, both also stop with "Not enough disk" if less than `-MinFreeGB` /
+`BHAVANO_MIN_FREE_GB` (default **5**, raised from 2 on 2026-09-30) is free. On a full disk
+`docker load` can report success while leaving layers unpacked; retagging `:latest` onto that
+image breaks the next container restart. 5 GB, not 2: 2 GB is the exact floor
+`video-upload.guard-rails.ts`'s `assertDiskSpaceAvailable` refuses uploads at, so a deploy that
+left the disk at the old default's 2 GB left zero margin before a real user's video upload hit
+that same guard rail in production — don't lower this back to 2.
 
 To roll back, retag the kept previous release and recreate:
 
