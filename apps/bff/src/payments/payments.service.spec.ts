@@ -18,6 +18,8 @@ function make(overrides: { user?: Record<string, unknown> | null } = {}) {
   const uploadClickConversion = jest.fn().mockResolvedValue(undefined);
   const prisma = {
     payment: { findUnique: jest.fn(), update: jest.fn() },
+    discountCode: { findUnique: jest.fn() },
+    discountCodeRedemption: { count: jest.fn().mockResolvedValue(0) },
     user: {
       findUnique: jest.fn().mockResolvedValue(
         'user' in overrides
@@ -133,5 +135,99 @@ describe('PaymentsService — purchase conversion upload', () => {
     uploadClickConversion.mockRejectedValueOnce(new Error('Ads API down'));
 
     await expect(report(service, PAID)).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * Every create*Order method (createBoostOrder, createListingPublishOrder,
+ * createInstantAlertsOrder, createSubscriptionOrder, createContactRevealCreditsOrder) passes its
+ * discountCode through resolveDiscountCodeSafely rather than the throwing resolveDiscountCode
+ * directly. This is the regression case: every current caller auto-applies ACTIVE_PROMO_CODE
+ * (packages/types/src/promoCode.ts) on every checkout, not just when a buyer typed one in, so once
+ * that code expires or is deactivated, an unguarded resolveDiscountCode call turns "no discount
+ * available" into "reject the entire purchase" — which is exactly what happened when BHAVANO-SEP
+ * expired. resolveDiscountCode itself is still private and untouched; this only pins the wrapper's
+ * degrade-not-throw contract, since that's what every checkout path now actually depends on.
+ */
+const resolveSafely = (service: PaymentsService, code: string | undefined, userId = 'u1') =>
+  (
+    service as unknown as {
+      resolveDiscountCodeSafely: (c: string | undefined, u: string) => Promise<{ id: string; discountPercent: number } | null>;
+    }
+  ).resolveDiscountCodeSafely(code, userId);
+
+describe('PaymentsService — resolveDiscountCodeSafely', () => {
+  it('resolves an active, unexpired code normally', async () => {
+    const { service, prisma } = make();
+    (prisma.discountCode.findUnique as jest.Mock).mockResolvedValue({
+      id: 'dc1',
+      code: 'BHAVANO-SEP',
+      active: true,
+      expiresAt: null,
+      maxRedemptions: null,
+      maxRedemptionsPerUser: 1,
+      discountPercent: 50,
+    });
+
+    await expect(resolveSafely(service, 'BHAVANO-SEP')).resolves.toEqual({ id: 'dc1', discountPercent: 50 });
+  });
+
+  it('degrades to no discount, not a thrown error, once the code has expired', async () => {
+    const { service, prisma } = make();
+    (prisma.discountCode.findUnique as jest.Mock).mockResolvedValue({
+      id: 'dc1',
+      code: 'BHAVANO-SEP',
+      active: true,
+      expiresAt: new Date(Date.now() - 60_000), // a minute in the past, whenever this test runs
+      maxRedemptions: null,
+      maxRedemptionsPerUser: 1,
+      discountPercent: 50,
+    });
+
+    await expect(resolveSafely(service, 'BHAVANO-SEP')).resolves.toBeNull();
+  });
+
+  it('degrades to no discount when the code has been deactivated', async () => {
+    const { service, prisma } = make();
+    (prisma.discountCode.findUnique as jest.Mock).mockResolvedValue({
+      id: 'dc1',
+      code: 'BHAVANO-SEP',
+      active: false,
+      expiresAt: null,
+      maxRedemptions: null,
+      maxRedemptionsPerUser: 1,
+      discountPercent: 50,
+    });
+
+    await expect(resolveSafely(service, 'BHAVANO-SEP')).resolves.toBeNull();
+  });
+
+  it('degrades to no discount for a code that does not exist at all', async () => {
+    const { service, prisma } = make();
+    (prisma.discountCode.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await expect(resolveSafely(service, 'NOT-A-REAL-CODE')).resolves.toBeNull();
+  });
+
+  it('degrades to no discount once the redemption cap is reached', async () => {
+    const { service, prisma } = make();
+    (prisma.discountCode.findUnique as jest.Mock).mockResolvedValue({
+      id: 'dc1',
+      code: 'BHAVANO-SEP',
+      active: true,
+      expiresAt: null,
+      maxRedemptions: 100,
+      maxRedemptionsPerUser: 1,
+      discountPercent: 50,
+    });
+    (prisma.discountCodeRedemption.count as jest.Mock).mockResolvedValue(100);
+
+    await expect(resolveSafely(service, 'BHAVANO-SEP')).resolves.toBeNull();
+  });
+
+  it('returns null with no code passed, same as resolveDiscountCode', async () => {
+    const { service } = make();
+
+    await expect(resolveSafely(service, undefined)).resolves.toBeNull();
   });
 });

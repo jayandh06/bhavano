@@ -405,6 +405,11 @@ describe('AdminService.sendBoostPromotion', () => {
   });
 
   it('quotes the discounted price, the original, and the end date while the promo is live', async () => {
+    // A week out from whenever this test actually runs, not a fixed calendar date — a hardcoded
+    // "still live" expiresAt is exactly the bug this suite is meant to catch: BHAVANO-SEP's own
+    // fixed expiresAt passing at midnight broke this same assertion the moment the real clock
+    // caught up to it, independent of anything under test.
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const { service, notificationsService } = makeService({
       listing: { findMany: jest.fn().mockResolvedValue([listingRow()]) },
       discountCode: {
@@ -413,7 +418,7 @@ describe('AdminService.sendBoostPromotion', () => {
           code: ACTIVE_PROMO_CODE,
           discountPercent: 50,
           active: true,
-          expiresAt: new Date('2026-09-30T18:29:59Z'),
+          expiresAt,
         }),
       },
     });
@@ -433,8 +438,13 @@ describe('AdminService.sendBoostPromotion', () => {
           discountPercent: 50,
           boostBasePrice: 199,
           bundleBasePrice: 224,
-          // IST, so the UTC 18:29:59 instant is still the 30th and not the 1st.
-          endsOn: '30 September',
+          // Same Intl.DateTimeFormat('en-IN', ..., timeZone: 'Asia/Kolkata') the service's own
+          // formatOfferEnd uses — derived here rather than hardcoded, so this can't go stale again.
+          endsOn: new Intl.DateTimeFormat('en-IN', {
+            day: 'numeric',
+            month: 'long',
+            timeZone: 'Asia/Kolkata',
+          }).format(expiresAt),
         },
       },
     );

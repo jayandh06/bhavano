@@ -341,6 +341,26 @@ export class PaymentsService {
     return { id: discountCode.id, discountPercent: discountCode.discountPercent };
   }
 
+  /** resolveDiscountCode throws on a bad code by design (see its own doc comment) -- the right
+   * behaviour for a buyer who typed one in. But every current caller instead passes
+   * ACTIVE_PROMO_CODE automatically, on every checkout, whether or not the buyer asked for a
+   * discount (packages/types/src/promoCode.ts). Once that code expires or is deactivated, an
+   * unguarded resolveDiscountCode call turns "no discount available" into "reject the entire
+   * purchase" -- every create*Order method hit this the moment BHAVANO-SEP expired. This is what
+   * every one of them should call instead: an auto-applied code going stale must never block a
+   * purchase the buyer never explicitly requested a discount for. previewBoostPricing already
+   * degraded this way inline; this is that same behaviour, shared. */
+  private async resolveDiscountCodeSafely(
+    code: string | undefined,
+    userId: string,
+  ): Promise<{ id: string; discountPercent: number } | null> {
+    try {
+      return await this.resolveDiscountCode(code, userId);
+    } catch {
+      return null;
+    }
+  }
+
   private applyDiscount(amountPaise: number, discountPercent: number | undefined): number {
     if (!discountPercent) return amountPaise;
     return Math.round((amountPaise * (100 - discountPercent)) / 100);
@@ -405,7 +425,7 @@ export class PaymentsService {
       (await this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } })) ??
       DEFAULT_BOOST_PRICE_SETTINGS;
     this.assertBoostDurationOffered(boostDays, boostPriceSettings);
-    const discount = await this.resolveDiscountCode(discountCode, userId);
+    const discount = await this.resolveDiscountCodeSafely(discountCode, userId);
     const baseRupees = boostPriceFor(listing.category, boostDays, boostPriceSettings);
     const amountInPaise = this.applyDiscount(baseRupees * 100, discount?.discountPercent);
 
@@ -451,11 +471,9 @@ export class PaymentsService {
 
   /** Every price the post-ad success screen's Boost picker needs, in one call —
    * rupees, not paise (display only; `createBoostOrder` is the source of truth for what actually
-   * gets charged). `discountCode` is resolved the same way `createBoostOrder` does, except a
-   * bad/expired/exhausted code degrades to "no discount" here rather than throwing: this is a
-   * preview a page renders on load, not a checkout the seller explicitly submitted, so an
-   * auto-applied promo that's gone stale should just silently fall back to full price instead of
-   * failing the whole screen. */
+   * gets charged). `discountCode` is resolved via resolveDiscountCodeSafely, same as every
+   * create*Order method — a bad/expired/exhausted code degrades to "no discount" rather than
+   * throwing, since this and every other caller only ever passes the auto-applied ACTIVE_PROMO_CODE. */
   async previewBoostPricing(userId: string, category: ListingCategory, discountCode?: string): Promise<BoostPricingPreviewDto> {
     const [boostPriceSettingsRow, owner] = await Promise.all([
       this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } }),
@@ -463,13 +481,8 @@ export class PaymentsService {
     ]);
     const boostPriceSettings = boostPriceSettingsRow ?? DEFAULT_BOOST_PRICE_SETTINGS;
 
-    let discountPercent: number | undefined;
-    try {
-      const discount = await this.resolveDiscountCode(discountCode, userId);
-      discountPercent = discount?.discountPercent;
-    } catch {
-      discountPercent = undefined;
-    }
+    const discount = await this.resolveDiscountCodeSafely(discountCode, userId);
+    const discountPercent = discount?.discountPercent;
 
     // Same free-credit check createBoostOrder makes, so this preview never shows a price the
     // actual checkout wouldn't charge — it only ever applies to the 7-day option.
@@ -520,7 +533,7 @@ export class PaymentsService {
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
     if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
 
-    const discount = await this.resolveDiscountCode(discountCode, userId);
+    const discount = await this.resolveDiscountCodeSafely(discountCode, userId);
     const instantAlertsPriceSettings =
       (await this.prisma.instantAlertsPriceSetting.findUnique({ where: { id: INSTANT_ALERTS_PRICE_SETTINGS_ID } })) ??
       DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS;
@@ -585,7 +598,7 @@ export class PaymentsService {
       throw new BadRequestException('Nothing to charge for this listing');
     }
 
-    const discount = await this.resolveDiscountCode(discountCode, userId);
+    const discount = await this.resolveDiscountCodeSafely(discountCode, userId);
 
     let proCreditRedeem:
       | { id: string }
@@ -748,7 +761,7 @@ export class PaymentsService {
     }
 
     const units = tier === 'agentPro' ? Math.max(1, Math.min(agentProUnits, 20)) : 1;
-    const discount = await this.resolveDiscountCode(discountCode, userId);
+    const discount = await this.resolveDiscountCodeSafely(discountCode, userId);
     const subscriptionPlanSettings =
       (await this.prisma.subscriptionPlanSetting.findUnique({ where: { id: SUBSCRIPTION_PLAN_SETTINGS_ID } })) ??
       DEFAULT_SUBSCRIPTION_PLAN_SETTINGS;
@@ -802,7 +815,7 @@ export class PaymentsService {
       (await this.prisma.contactRevealSetting.findUnique({ where: { id: CONTACT_REVEAL_SETTINGS_ID } })) ??
       DEFAULT_CONTACT_REVEAL_SETTINGS;
 
-    const discount = await this.resolveDiscountCode(discountCode, userId);
+    const discount = await this.resolveDiscountCodeSafely(discountCode, userId);
     const amountInPaise = this.applyDiscount(settings.creditPackPriceRupees * 100, discount?.discountPercent);
 
     const order = await this.getRazorpay().orders.create({
