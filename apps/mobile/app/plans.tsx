@@ -156,7 +156,7 @@ export default function PlansScreen() {
             style={[styles.outlineCta, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
           >
             <View style={styles.ctaRow}>
-              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>Post a free ad</Text>
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13.5 }}>Post an ad</Text>
               <Icon name="chevronRight" size={13} color={colors.green} />
             </View>
           </Pressable>

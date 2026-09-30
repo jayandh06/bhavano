@@ -30,7 +30,7 @@ test.describe("post-ad preview back button", () => {
     await page.goto("/");
     // Retried: the email nudge can open mid-click and swallow it.
     await expect(async () => {
-      await page.getByRole("link", { name: "+ Post free ad" }).click();
+      await page.getByRole("link", { name: "+ Post ad" }).click();
       await expect(page).toHaveURL(/\/post/, { timeout: 10_000 });
     }).toPass({ timeout: 60_000 });
     await fillStorageDetails(page);

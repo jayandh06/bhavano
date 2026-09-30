@@ -180,7 +180,7 @@ export function Header({
               <span className="sm:hidden inline-flex items-center gap-1.5">
                 <Icon name="postAd" /> Post ad
               </span>
-              <span className="hidden sm:inline">+ Post free ad</span>
+              <span className="hidden sm:inline">+ Post ad</span>
             </Link>
           </div>
         </div>

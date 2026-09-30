@@ -27,7 +27,7 @@ const GETTING_STARTED: Faq[] = [
 
 const POSTING: Faq[] = [
   {
-    q: "How do I post a free ad?",
+    q: "How do I post an ad?",
     a: (
       <>
         Tap <Bold>Post ad</Bold>, pick a category, then a transaction type (buy/sell/rent/lease, where applicable),

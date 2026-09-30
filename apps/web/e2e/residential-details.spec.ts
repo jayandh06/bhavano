@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 async function openResidentialDetails(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByRole("link", { name: "+ Post free ad" }).click();
+  await page.getByRole("link", { name: "+ Post ad" }).click();
   await page.getByRole("button", { name: "House" }).click();
   await page.getByRole("button", { name: "Buy" }).click();
   await expect(page.getByText("Amenities")).toBeVisible();

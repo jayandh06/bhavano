@@ -187,7 +187,7 @@ export function PlanComparisonTable({
               <tr className="border-t border-border bg-surface-alt">
                 <td className="p-3 sticky left-0 z-10 bg-surface-alt border-r border-border" />
                 <CtaCell isCurrent={sellerPlan === "free"}>
-                  <ChooseLink href="/post" label="Post a free ad" />
+                  <ChooseLink href="/post" label="Post an ad" />
                 </CtaCell>
                 <CtaCell isCurrent={sellerPlan === "pack"}>
                   <ChooseLink href="#seller-slots" label="Choose Seller pack" />

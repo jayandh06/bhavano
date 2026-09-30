@@ -34,7 +34,7 @@ export interface AdLandingIntent {
 }
 
 export const AD_LANDING_INTENTS: Record<AdLandingIntentKey, AdLandingIntent> = {
-  generic: { headline: "Post your property — no brokerage", button: "Post free ad" },
+  generic: { headline: "Post your property — no brokerage", button: "Post ad" },
   sell_property: { headline: "Sell your property — no brokerage", button: "Post my property" },
   sell_apartment: {
     headline: "Sell your flat — post it in 2 minutes",

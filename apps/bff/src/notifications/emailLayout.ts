@@ -144,7 +144,7 @@ export function renderEmail(input: EmailLayoutInput): string {
           <td style="padding:20px 32px 28px;border-top:1px solid ${BORDER};font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
             <p style="margin:0 0 10px;font-size:13px;line-height:1.6;color:${MUTED};">
               <a href="${site}" style="color:${GREEN};text-decoration:none;font-weight:bold;">Browse listings</a> &nbsp;·&nbsp;
-              <a href="${site}/post" style="color:${GREEN};text-decoration:none;font-weight:bold;">Post a free ad</a> &nbsp;·&nbsp;
+              <a href="${site}/post" style="color:${GREEN};text-decoration:none;font-weight:bold;">Post an ad</a> &nbsp;·&nbsp;
               <a href="${site}/help" style="color:${GREEN};text-decoration:none;font-weight:bold;">Help</a>
             </p>
             <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED};">

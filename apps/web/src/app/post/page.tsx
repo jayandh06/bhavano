@@ -64,7 +64,7 @@ export default async function PostAdPage({
         <Link href="/" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to listings
         </Link>
-        <h1 className="font-lora text-2xl font-semibold m-0 mb-5">Post a free ad</h1>
+        <h1 className="font-lora text-2xl font-semibold m-0 mb-5">Post an ad</h1>
         {/* The wizard fills the container; only the login prompt is left out of it, since a
           * one-line prompt and its button want the middle of the page rather than a left edge.
           * The wizard was capped at 780px when it was centred, which left a third of a desktop

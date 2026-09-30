@@ -12,7 +12,7 @@ import { selectCity } from "./support/selectCity";
  * confirming both tests below go red. */
 
 async function openPostAdWizardDetailsStep(page: import("@playwright/test").Page) {
-  await page.getByRole("link", { name: "+ Post free ad" }).click();
+  await page.getByRole("link", { name: "+ Post ad" }).click();
   await expect(page).toHaveURL(/\/post\?city=/);
   // "PG / Hostel" is rent-only (see packages/types/src/postingRules.ts), so picking it skips
   // the transaction-type step and lands straight on "details", where the City <select> lives.

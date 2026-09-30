@@ -70,7 +70,7 @@ export function PremiumPlansView({
             href="/post"
             className="inline-block text-[13px] font-bold text-green border-[1.5px] border-border rounded-[10px] px-4 py-2.5 bg-surface-alt"
           >
-            Post a free ad →
+            Post an ad →
           </Link>
         </section>
 

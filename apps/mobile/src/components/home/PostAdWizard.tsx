@@ -1285,7 +1285,7 @@ export function PostAdWizard({
       )}
 
       {draftRestored && step !== "success" && (
-        // Deliberately loud: someone who tapped "Post free ad" and landed mid-form, possibly in a
+        // Deliberately loud: someone who tapped "Post ad" and landed mid-form, possibly in a
         // category they did not choose today, has to understand why before they publish into it.
         <View
           accessibilityRole="alert"

@@ -164,7 +164,7 @@ export async function Footer({
             * another city's page bakes in the wrong city (see Header.tsx's note). */}
           <div className="flex flex-col gap-2 text-[13px]">
             <Link href={currentCityName ? `/post?city=${slugify(currentCityName)}` : "/post"} prefetch={false}>
-              Post a free ad
+              Post an ad
             </Link>
             <Link href="/tools" prefetch={false}>Tools</Link>
             <Link href="/help" prefetch={false}>Help centre</Link>
