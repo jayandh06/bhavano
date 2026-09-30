@@ -55,10 +55,30 @@ Related: [`monetization-boosted-listings-premium-tiers.md`](monetization-boosted
   to need both to be skipped). **The WhatsApp promo text is an MSG91-approved template whose wording
   cannot be changed from here** and still names Instant Alerts.
 
+## Switching durations on and off (2026-09-30)
+
+Admin → Plans → Boost pricing has a "Durations offered in the Boost card" section with a switch per
+duration (`BoostPriceSetting.boost7dEnabled` / `boost15dEnabled` / `boost30dEnabled`, all default on).
+
+- **Pickers** (web `BoostBundlePicker` / `BoostPlanSelector`, mobile `BoostBundleCard` /
+  `BoostPlanSelector` / `BoostModal`) render `offeredBoostDurations(pricing)`, which reads
+  `BoostPricingPreviewDto.enabledDurations`. A response without that field (a BFF older than the
+  toggles) offers all three, and a settings flag that's missing counts as on.
+- **Pre-selection:** 15 days when offered, else the shortest one on offer (`defaultBoostDuration`).
+  The wizard still pre-fills 15 before prices load, so the preview-step selector moves a switched-off
+  choice onto the default. The post-ad card falls back the same way.
+- **"Save ₹X vs the 7-day price"** only shows while the 7-day option is on screen.
+- **Server:** `createBoostOrder` and `createListingPublishOrder` reject a switched-off duration
+  ("The N-day boost isn't offered right now"). The Agent Pro free monthly 7-day credit is exempt: it
+  still redeems, and `previewBoostPricing` keeps 7 in `enabledDurations` while that credit is unused.
+  Saving with all three off is refused ("Keep at least one boost duration switched on").
+- **Admin promotion message:** the email/WhatsApp/in-app offer quotes the shortest enabled duration
+  instead of a fixed 7 days. The "30 days is better value" line only appears when 30 is on and isn't
+  already the quoted duration.
+
 ## Rollback
 
-- Prices: set the three `…30d` fields back or simply stop selling it by hiding the row — it is
-  driven by the shared `BOOST_DURATIONS` list in `packages/types/src/boostPricing.ts`.
+- Prices: set the three `…30d` fields back, or stop selling 30 days with its switch in admin → Plans.
 - Alerts: restoring the paid add-on means re-adding the checkbox and the `+alerts price` term in
   `createBoostOrder` / `createListingPublishOrder`; the price row and endpoint were left in place for
   that reason.

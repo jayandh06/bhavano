@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import { enabledBoostDurations, type BoostPriceSettings } from "@bhavano/types/boostPricing";
 import { updateBoostPricingAction } from "@/app/actions/admin";
 
 export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSettings }) {
@@ -27,6 +27,9 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
     String(initial.furnitureInteriorsBoostPrice30d),
   );
   const [showSelectorOnPreview, setShowSelectorOnPreview] = useState(initial.showSelectorOnPreview);
+  const [boost7dEnabled, setBoost7dEnabled] = useState(initial.boost7dEnabled);
+  const [boost15dEnabled, setBoost15dEnabled] = useState(initial.boost15dEnabled);
+  const [boost30dEnabled, setBoost30dEnabled] = useState(initial.boost30dEnabled);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -41,10 +44,17 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
     furnitureInteriorsBoostPrice15d: Number(furnitureInteriorsBoostPrice15d),
     furnitureInteriorsBoostPrice30d: Number(furnitureInteriorsBoostPrice30d),
   };
-  const parsed: BoostPriceSettings = { ...prices, showSelectorOnPreview };
-  // Only the price fields need this check — showSelectorOnPreview is a boolean, not a positive
-  // integer, so it can't be folded into the same Object.values(...).every(...) sweep.
-  const valid = Object.values(prices).every((n) => Number.isInteger(n) && n > 0);
+  const parsed: BoostPriceSettings = {
+    ...prices,
+    showSelectorOnPreview,
+    boost7dEnabled,
+    boost15dEnabled,
+    boost30dEnabled,
+  };
+  const anyDurationOn = enabledBoostDurations(parsed).length > 0;
+  // Only the price fields need this check — the toggles are booleans, not positive integers, so
+  // they can't be folded into the same Object.values(...).every(...) sweep.
+  const valid = Object.values(prices).every((n) => Number.isInteger(n) && n > 0) && anyDurationOn;
 
   async function onSave() {
     setSaving(true);
@@ -58,6 +68,24 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Durations offered in the Boost card</div>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 12 }}>
+          Unchecked durations are hidden from every boost picker (web and app) and can&apos;t be bought.
+          An Agent Pro member with an unused free monthly boost still sees the 7-day option.
+        </div>
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          <DurationToggle label="7-day boost" checked={boost7dEnabled} onChange={setBoost7dEnabled} />
+          <DurationToggle label="15-day boost" checked={boost15dEnabled} onChange={setBoost15dEnabled} />
+          <DurationToggle label="30-day boost" checked={boost30dEnabled} onChange={setBoost30dEnabled} />
+        </div>
+        {!anyDurationOn && (
+          <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 10 }}>
+            Keep at least one duration switched on.
+          </div>
+        )}
+      </div>
+
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>House / Apartment / Villa / Plot / Commercial</div>
         <div style={{ display: "flex", gap: 12 }}>
@@ -154,6 +182,23 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
         {saving ? "Saving…" : "Save boost prices"}
       </button>
     </div>
+  );
+}
+
+function DurationToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      {label}
+    </label>
   );
 }
 

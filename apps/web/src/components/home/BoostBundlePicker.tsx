@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
-import { BOOST_DURATIONS, boostOptionFor, boostSavings, type BoostDurationDays } from "@bhavano/types/boostPricing";
+import {
+  boostOptionFor,
+  boostSavings,
+  defaultBoostDuration,
+  offeredBoostDurations,
+  type BoostDurationDays,
+} from "@bhavano/types/boostPricing";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { previewBoostPricingAction } from "@/app/actions/payments";
@@ -103,13 +109,22 @@ export function BoostBundlePicker({
     return () => window.removeEventListener("focus", onFocus);
   }, [pricing]);
 
-  const option = pricing ? boostOptionFor(pricing, duration) : undefined;
+  const offered = offeredBoostDurations(pricing);
+  // A duration admin has switched off falls back to the default rather than staying selected.
+  const effectiveDuration = offered.includes(duration) ? duration : defaultBoostDuration(offered);
+  const option = pricing ? boostOptionFor(pricing, effectiveDuration) : undefined;
 
   async function onPay() {
     setPending(true);
     setError(null);
 
-    const result = await startBoostCheckout({ listingId, category, duration, includeInstantAlerts: true, source });
+    const result = await startBoostCheckout({
+      listingId,
+      category,
+      duration: effectiveDuration,
+      includeInstantAlerts: true,
+      source,
+    });
     setPending(false);
 
     if (result.outcome === "activated") {
@@ -158,9 +173,10 @@ export function BoostBundlePicker({
       </ul>
 
       <div className="flex flex-col gap-2.5">
-        {BOOST_DURATIONS.map((days) => {
+        {offered.map((days) => {
           const opt = pricing ? boostOptionFor(pricing, days) : undefined;
-          const saving = pricing && days !== 7 ? boostSavings(pricing, days) : null;
+          // Quoted against the 7-day price, so only while that option is on screen too.
+          const saving = pricing && days !== 7 && offered.includes(7) ? boostSavings(pricing, days) : null;
           return (
             <button
               key={days}
@@ -168,7 +184,7 @@ export function BoostBundlePicker({
               onClick={() => setDuration(days)}
               disabled={pending}
               className={`flex justify-between items-center gap-3 border-[1.5px] rounded-[10px] px-4 py-3 text-sm font-bold cursor-pointer disabled:opacity-50 ${
-                duration === days ? "border-green bg-green/10 text-text" : "border-border bg-surface-alt text-text"
+                effectiveDuration === days ? "border-green bg-green/10 text-text" : "border-border bg-surface-alt text-text"
               }`}
             >
               <span className="flex flex-col items-start gap-0.5 text-left">

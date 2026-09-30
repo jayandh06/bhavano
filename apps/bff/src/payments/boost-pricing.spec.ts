@@ -8,6 +8,9 @@ import {
   boostPriceFor,
   boostSavings,
   buildDisplayBoostPricing,
+  defaultBoostDuration,
+  enabledBoostDurations,
+  offeredBoostDurations,
   type BoostPriceSettings,
 } from '@bhavano/types/boostPricing';
 
@@ -23,6 +26,9 @@ const LIVE: BoostPriceSettings = {
   furnitureInteriorsBoostPrice15d: 89,
   furnitureInteriorsBoostPrice30d: 149,
   showSelectorOnPreview: false,
+  boost7dEnabled: true,
+  boost15dEnabled: true,
+  boost30dEnabled: true,
 };
 
 describe('boostPriceFor — three durations', () => {
@@ -67,6 +73,26 @@ describe('buildDisplayBoostPricing — Instant Alerts is part of the boost', () 
     expect(pricing.boost7WithInstantAlerts).toEqual(pricing.boost7);
     expect(pricing.boost15WithInstantAlerts).toEqual(pricing.boost15);
     expect(pricing.boost30.amount).toBe(299);
+  });
+});
+
+describe('boost durations admin can switch off', () => {
+  it('offers only the durations that are on, shortest first', () => {
+    expect(enabledBoostDurations(LIVE)).toEqual([7, 15, 30]);
+    expect(enabledBoostDurations({ ...LIVE, boost7dEnabled: false })).toEqual([15, 30]);
+    expect(buildDisplayBoostPricing('apartment', { ...LIVE, boost15dEnabled: false }).enabledDurations).toEqual([7, 30]);
+  });
+
+  it('treats a flag missing from an older server as on', () => {
+    expect(enabledBoostDurations({})).toEqual([7, 15, 30]);
+    expect(offeredBoostDurations({})).toEqual([7, 15, 30]);
+    expect(offeredBoostDurations(null)).toEqual([7, 15, 30]);
+  });
+
+  it('pre-selects 15 days when offered, else the shortest duration on offer', () => {
+    expect(defaultBoostDuration([7, 15, 30])).toBe(15);
+    expect(defaultBoostDuration([7, 30])).toBe(7);
+    expect(defaultBoostDuration([30])).toBe(30);
   });
 });
 
@@ -137,6 +163,13 @@ describe('PaymentsService.createBoostOrder — 30 days, alerts included', () => 
       data: expect.objectContaining({ source: 'admin_boost_message' }),
     });
   });
+
+  it('refuses a duration admin has switched off, before creating any order', async () => {
+    const { service, razorpayCreate } = makePayments({ settings: { ...LIVE, boost30dEnabled: false } });
+
+    await expect(service.createBoostOrder('u1', 'l1', 30)).rejects.toThrow("The 30-day boost isn't offered right now");
+    expect(razorpayCreate).not.toHaveBeenCalled();
+  });
 });
 
 describe('PaymentsService.previewBoostPricing — 30 days', () => {
@@ -146,6 +179,23 @@ describe('PaymentsService.previewBoostPricing — 30 days', () => {
     expect(preview.boost30.amount).toBe(299);
     expect(preview.boost7WithInstantAlerts.amount).toBe(preview.boost7.amount);
     expect(preview.boost15WithInstantAlerts.amount).toBe(preview.boost15.amount);
+  });
+
+  it('lists only the durations that are on', async () => {
+    const { service } = makePayments({ settings: { ...LIVE, boost7dEnabled: false } });
+    const preview = await service.previewBoostPricing('u1', 'apartment');
+    expect(preview.enabledDurations).toEqual([15, 30]);
+  });
+
+  it("keeps 7 days on offer for an Agent Pro's unused free credit even when it is off", async () => {
+    const { service, prisma } = makePayments({
+      agentProUntil: new Date(Date.now() + 86_400_000),
+      settings: { ...LIVE, boost7dEnabled: false },
+    });
+    (prisma.proBoostCredit.findUnique as jest.Mock).mockResolvedValue({ redeemedAt: null });
+    const preview = await service.previewBoostPricing('u1', 'apartment');
+    expect(preview.enabledDurations).toEqual([7, 15, 30]);
+    expect(preview.boost7.free).toBe(true);
   });
 });
 

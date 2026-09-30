@@ -39,4 +39,13 @@ export class UpdateBoostPricingDto {
 
   @IsBoolean()
   showSelectorOnPreview!: boolean;
+
+  @IsBoolean()
+  boost7dEnabled!: boolean;
+
+  @IsBoolean()
+  boost15dEnabled!: boolean;
+
+  @IsBoolean()
+  boost30dEnabled!: boolean;
 }

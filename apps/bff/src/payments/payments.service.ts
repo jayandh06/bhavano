@@ -20,7 +20,13 @@ import type {
   PaymentHistoryPage,
   SubscriptionTier,
 } from '@bhavano/types';
-import { boostPriceFor, type BoostDurationDays } from '@bhavano/types/boostPricing';
+import {
+  BOOST_DURATIONS,
+  boostPriceFor,
+  enabledBoostDurations,
+  type BoostDurationDays,
+  type BoostPriceSettings,
+} from '@bhavano/types/boostPricing';
 import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
 import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
 import { PrismaService } from '../prisma/prisma.service';
@@ -395,10 +401,11 @@ export class PaymentsService {
       }
     }
 
-    const discount = await this.resolveDiscountCode(discountCode, userId);
     const boostPriceSettings =
       (await this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } })) ??
       DEFAULT_BOOST_PRICE_SETTINGS;
+    this.assertBoostDurationOffered(boostDays, boostPriceSettings);
+    const discount = await this.resolveDiscountCode(discountCode, userId);
     const baseRupees = boostPriceFor(listing.category, boostDays, boostPriceSettings);
     const amountInPaise = this.applyDiscount(baseRupees * 100, discount?.discountPercent);
 
@@ -432,6 +439,14 @@ export class PaymentsService {
       amount: amountInPaise,
       currency: 'INR',
     };
+  }
+
+  /** A duration switched off in admin → Plans can't be bought. Runs after the Agent Pro free-credit
+   * path, which still redeems its 7-day boost when 7 days is off for everyone else. */
+  private assertBoostDurationOffered(boostDays: BoostDurationDays, settings: BoostPriceSettings): void {
+    if (!enabledBoostDurations(settings).includes(boostDays)) {
+      throw new BadRequestException(`The ${boostDays}-day boost isn't offered right now. Please pick another option.`);
+    }
   }
 
   /** Every price the post-ad success screen's Boost picker needs, in one call —
@@ -486,6 +501,9 @@ export class PaymentsService {
       boost7WithInstantAlerts: option(boost7Rupees, hasFreeBoostCredit),
       boost15WithInstantAlerts: option(boost15Rupees, false),
       showSelectorOnPreview: boostPriceSettings.showSelectorOnPreview,
+      enabledDurations: BOOST_DURATIONS.filter(
+        (days) => enabledBoostDurations(boostPriceSettings).includes(days) || (days === 7 && hasFreeBoostCredit),
+      ),
     };
   }
 
@@ -588,6 +606,9 @@ export class PaymentsService {
           boostRupees = 0;
         }
       }
+    }
+    if (boostDays && !proCreditRedeem) {
+      this.assertBoostDurationOffered(boostDays, boostPriceSettings ?? DEFAULT_BOOST_PRICE_SETTINGS);
     }
 
     // Promo codes apply to Boost only — platform fee is always charged in full.

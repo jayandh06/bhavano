@@ -935,6 +935,10 @@ model BoostPriceSetting {
   /// Where the Boost/Instant Alerts picker appears: false (default) = post-ad upsell only
   /// (today's behavior); true = on the ad-preview step instead. Mutually exclusive.
   showSelectorOnPreview           Boolean  @default(false)
+  /// Which durations the boost pickers offer (and checkout accepts). At least one stays on.
+  boost7dEnabled                  Boolean  @default(true)
+  boost15dEnabled                 Boolean  @default(true)
+  boost30dEnabled                 Boolean  @default(true)
   updatedAt                       DateTime @updatedAt
 }
 

@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DEFAULT_BOOST_PRICE_SETTINGS = exports.BOOST_DURATIONS = void 0;
+exports.enabledBoostDurations = enabledBoostDurations;
+exports.offeredBoostDurations = offeredBoostDurations;
+exports.defaultBoostDuration = defaultBoostDuration;
 exports.boostPriceFor = boostPriceFor;
 exports.boostOptionFor = boostOptionFor;
 exports.boostSavings = boostSavings;
@@ -23,7 +26,26 @@ exports.DEFAULT_BOOST_PRICE_SETTINGS = {
     furnitureInteriorsBoostPrice15d: 89,
     furnitureInteriorsBoostPrice30d: 149,
     showSelectorOnPreview: false,
+    boost7dEnabled: true,
+    boost15dEnabled: true,
+    boost30dEnabled: true,
 };
+/** The durations admin has switched on, shortest first. A flag missing from a response sent by a
+ * server older than these toggles counts as on. */
+function enabledBoostDurations(settings) {
+    return exports.BOOST_DURATIONS.filter((days) => (days === 7 ? settings.boost7dEnabled : days === 15 ? settings.boost15dEnabled : settings.boost30dEnabled) !==
+        false);
+}
+/** What a picker shows. A response from before `enabledDurations` existed offers all three. */
+function offeredBoostDurations(pricing) {
+    const enabled = pricing?.enabledDurations;
+    return enabled && enabled.length > 0 ? enabled : exports.BOOST_DURATIONS;
+}
+/** The pre-selected duration: 15 days (cheaper per day than 7, see
+ * docs/plans/boost-30-day-and-included-alerts.md) when offered, else the first one offered. */
+function defaultBoostDuration(offered) {
+    return offered.includes(15) ? 15 : (offered[0] ?? 15);
+}
 const PROPERTY_CATEGORIES = new Set(["house", "apartment", "villa", "plot", "commercial"]);
 const MID_VALUE_CATEGORIES = new Set(["coworking", "pg", "storage"]);
 // furniture/interiors fall through to the remaining low-value tier below.
@@ -96,5 +118,6 @@ function buildDisplayBoostPricing(category, boostSettings, discountPercent) {
         boost7WithInstantAlerts: option(boost7),
         boost15WithInstantAlerts: option(boost15),
         showSelectorOnPreview: boostSettings.showSelectorOnPreview,
+        enabledDurations: enabledBoostDurations(boostSettings),
     };
 }

@@ -3,9 +3,9 @@ import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
 import RazorpayCheckout from "react-native-razorpay";
 import type { ListingCategory } from "@bhavano/types";
 import {
-  BOOST_DURATIONS,
   boostPriceFor,
   DEFAULT_BOOST_PRICE_SETTINGS,
+  enabledBoostDurations,
   type BoostDurationDays,
   type BoostPriceSettings,
 } from "@bhavano/types/boostPricing";
@@ -118,7 +118,7 @@ export function BoostModal({
             — no one stays #1 forever.
           </Text>
           <View style={{ gap: 10 }}>
-            {BOOST_DURATIONS.map((days) => (
+            {enabledBoostDurations(boostPriceSettings).map((days) => (
               <Pressable
                 key={days}
                 onPress={() => onSelectDuration(days)}

@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
-import { BOOST_DURATIONS, boostOptionFor, boostSavings, type BoostDurationDays } from "@bhavano/types/boostPricing";
+import {
+  boostOptionFor,
+  boostSavings,
+  defaultBoostDuration,
+  offeredBoostDurations,
+  type BoostDurationDays,
+} from "@bhavano/types/boostPricing";
 import { ACTIVE_PROMO_CODE, discountPercentFor } from "@bhavano/types/promoCode";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -68,7 +74,10 @@ export function BoostBundleCard({
     };
   }, [accessToken, category]);
 
-  const option = pricing ? boostOptionFor(pricing, duration) : undefined;
+  const offered = offeredBoostDurations(pricing);
+  // A duration admin has switched off falls back to the default rather than staying selected.
+  const effectiveDuration = offered.includes(duration) ? duration : defaultBoostDuration(offered);
+  const option = pricing ? boostOptionFor(pricing, effectiveDuration) : undefined;
 
   async function onPay() {
     setPending(true);
@@ -76,7 +85,7 @@ export function BoostBundleCard({
     const result = await startBoostCheckout({
       accessToken,
       listingId,
-      duration,
+      duration: effectiveDuration,
       includeInstantAlerts: true,
       discountCode: ACTIVE_PROMO_CODE,
       source,
@@ -129,9 +138,10 @@ export function BoostBundleCard({
       </View>
 
       <View style={{ gap: 8 }}>
-{BOOST_DURATIONS.map((days) => {
+        {offered.map((days) => {
           const opt = pricing ? boostOptionFor(pricing, days) : undefined;
-          const saving = pricing && days !== 7 ? boostSavings(pricing, days) : null;
+          // Quoted against the 7-day price, so only while that option is on screen too.
+          const saving = pricing && days !== 7 && offered.includes(7) ? boostSavings(pricing, days) : null;
           return (
             <Pressable
               key={days}
@@ -140,8 +150,8 @@ export function BoostBundleCard({
               style={[
                 styles.optionButton,
                 {
-                  borderColor: duration === days ? colors.green : colors.border,
-                  backgroundColor: duration === days ? `${colors.green}1a` : colors.surface,
+                  borderColor: effectiveDuration === days ? colors.green : colors.border,
+                  backgroundColor: effectiveDuration === days ? `${colors.green}1a` : colors.surface,
                   opacity: pending ? 0.5 : 1,
                 },
               ]}

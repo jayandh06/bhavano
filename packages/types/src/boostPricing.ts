@@ -27,6 +27,11 @@ export interface BoostPriceSettings {
    * posting — the two placements are mutually exclusive, never both at once. See
    * docs/plans/boost-instant-alerts-preview-selector.md. */
   showSelectorOnPreview: boolean;
+  /** Whether each duration is offered in the boost pickers (and accepted at checkout). At least
+   * one stays on. See `enabledBoostDurations`. */
+  boost7dEnabled: boolean;
+  boost15dEnabled: boolean;
+  boost30dEnabled: boolean;
 }
 
 /** Bundled into this shared package (not just the BFF) since `boostPriceFor` below is also
@@ -44,7 +49,36 @@ export const DEFAULT_BOOST_PRICE_SETTINGS: BoostPriceSettings = {
   furnitureInteriorsBoostPrice15d: 89,
   furnitureInteriorsBoostPrice30d: 149,
   showSelectorOnPreview: false,
+  boost7dEnabled: true,
+  boost15dEnabled: true,
+  boost30dEnabled: true,
 };
+
+/** The durations admin has switched on, shortest first. A flag missing from a response sent by a
+ * server older than these toggles counts as on. */
+export function enabledBoostDurations(
+  settings: Partial<Pick<BoostPriceSettings, "boost7dEnabled" | "boost15dEnabled" | "boost30dEnabled">>,
+): BoostDurationDays[] {
+  return BOOST_DURATIONS.filter(
+    (days) =>
+      (days === 7 ? settings.boost7dEnabled : days === 15 ? settings.boost15dEnabled : settings.boost30dEnabled) !==
+      false,
+  );
+}
+
+/** What a picker shows. A response from before `enabledDurations` existed offers all three. */
+export function offeredBoostDurations(
+  pricing: Pick<BoostPricingPreviewDto, "enabledDurations"> | null | undefined,
+): readonly BoostDurationDays[] {
+  const enabled = pricing?.enabledDurations;
+  return enabled && enabled.length > 0 ? enabled : BOOST_DURATIONS;
+}
+
+/** The pre-selected duration: 15 days (cheaper per day than 7, see
+ * docs/plans/boost-30-day-and-included-alerts.md) when offered, else the first one offered. */
+export function defaultBoostDuration(offered: readonly BoostDurationDays[]): BoostDurationDays {
+  return offered.includes(15) ? 15 : (offered[0] ?? 15);
+}
 
 const PROPERTY_CATEGORIES = new Set<ListingCategory>(["house", "apartment", "villa", "plot", "commercial"]);
 const MID_VALUE_CATEGORIES = new Set<ListingCategory>(["coworking", "pg", "storage"]);
@@ -135,5 +169,6 @@ export function buildDisplayBoostPricing(
     boost7WithInstantAlerts: option(boost7),
     boost15WithInstantAlerts: option(boost15),
     showSelectorOnPreview: boostSettings.showSelectorOnPreview,
+    enabledDurations: enabledBoostDurations(boostSettings),
   };
 }

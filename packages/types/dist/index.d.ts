@@ -1059,6 +1059,9 @@ export interface BoostPricingPreviewDto {
     /** @deprecated See `boost7WithInstantAlerts`. */
     boost15WithInstantAlerts: BoostPricingOptionDto;
     showSelectorOnPreview: boolean;
+    /** Durations to offer, shortest first (admin → Plans). Read through `offeredBoostDurations`,
+     * which also covers a response from a server that predates this field. */
+    enabledDurations?: BoostDurationDays[];
 }
 /** A boost/instant-alerts choice made ahead of time on the ad-preview step — `null` means the
  * advertiser skipped it (still fully optional). Carried in wizard state from the moment it's

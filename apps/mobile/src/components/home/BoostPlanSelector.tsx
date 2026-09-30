@@ -1,6 +1,7 @@
+import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { BoostPlanSelection, BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
-import { BOOST_DURATIONS, boostOptionFor, boostSavings } from "@bhavano/types/boostPricing";
+import { boostOptionFor, boostSavings, defaultBoostDuration, offeredBoostDurations } from "@bhavano/types/boostPricing";
 import { listingPublishCheckoutTotalRupees } from "@bhavano/types/listingPublishPricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import { platformFeeFor } from "@bhavano/types/platformFeePricing";
@@ -37,7 +38,17 @@ export function BoostPlanSelector({
   showBoostOptions?: boolean;
 }) {
   const { colors } = useAppTheme();
-  const effective: BoostPlanSelection = value ?? { duration: 15, includeInstantAlerts: true };
+  const offered = offeredBoostDurations(pricing);
+  const effective: BoostPlanSelection =
+    value && offered.includes(value.duration)
+      ? value
+      : { duration: defaultBoostDuration(offered), includeInstantAlerts: true };
+
+  // The wizard pre-fills 15 days before the prices (and so the offered durations) arrive; if admin
+  // has switched that one off, move the choice the wizard will check out with onto one on offer.
+  useEffect(() => {
+    if (value && !offered.includes(value.duration)) onChange({ ...value, duration: defaultBoostDuration(offered) });
+  }, [value, offered, onChange]);
   const platformFeeRupees =
     platformFeeSettings &&
     !platformFeeSettings.allowLivePublishWithPendingPayment &&
@@ -101,9 +112,10 @@ export function BoostPlanSelector({
       </View>
 
       <View style={{ gap: 8 }}>
-{BOOST_DURATIONS.map((days) => {
+        {offered.map((days) => {
           const opt = boostOptionFor(pricing, days);
-          const saving = days !== 7 ? boostSavings(pricing, days) : null;
+          // Quoted against the 7-day price, so only while that option is on screen too.
+          const saving = days !== 7 && offered.includes(7) ? boostSavings(pricing, days) : null;
           return (
             <Pressable
               key={days}

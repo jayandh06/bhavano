@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import type { BoostPriceSettings } from '@bhavano/types/boostPricing';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { enabledBoostDurations, type BoostPriceSettings } from '@bhavano/types/boostPricing';
 import { PrismaService } from '../prisma/prisma.service';
 import { BOOST_PRICE_SETTINGS_ID, DEFAULT_BOOST_PRICE_SETTINGS } from './plans.constants';
 
@@ -17,6 +17,9 @@ export class BoostPricingSettingsService {
   }
 
   async updateSettings(input: BoostPriceSettings): Promise<BoostPriceSettings> {
+    if (enabledBoostDurations(input).length === 0) {
+      throw new BadRequestException('Keep at least one boost duration switched on');
+    }
     return this.prisma.boostPriceSetting.upsert({
       where: { id: BOOST_PRICE_SETTINGS_ID },
       update: input,

@@ -38,7 +38,12 @@ import type {
   WelcomeChannel,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
-import { boostPriceFor, type BoostDurationDays } from '@bhavano/types/boostPricing';
+import {
+  boostPriceFor,
+  enabledBoostDurations,
+  type BoostDurationDays,
+  type BoostPriceSettings,
+} from '@bhavano/types/boostPricing';
 import { ACTIVE_PROMO_CODE, promoPriceFor } from '@bhavano/types/promoCode';
 import { ListingsService } from '../listings/listings.service';
 import { MessagingService } from '../messaging/messaging.service';
@@ -250,9 +255,11 @@ const PROMO_COOLDOWN_DAYS = 14;
 /** `ListingNotificationLog.channel` for a message delivered inside the app (an announcement thread). */
 const IN_APP_CHANNEL = 'in_app';
 
-/** The duration quoted in the message — the cheaper of the two, as the entry price. The dialog
- * the link opens offers both. */
-const PROMO_BOOST_DAYS: BoostDurationDays = 7;
+/** The duration quoted in the message: the shortest one offered, as the entry price. The dialog
+ * the link opens offers the rest. */
+function promoBoostDays(settings: BoostPriceSettings): BoostDurationDays {
+  return enabledBoostDurations(settings)[0] ?? 7;
+}
 
 @Injectable()
 export class AdminService {
@@ -1207,6 +1214,7 @@ export class AdminService {
       promo && promo.active && (promo.expiresAt === null || promo.expiresAt.getTime() > now)
         ? promo.discountPercent
         : undefined;
+    const promoDays = promoBoostDays(boostPrices);
 
     const results: SendPostedNotificationResultDto[] = [];
     for (const listingId of listingIds) {
@@ -1238,7 +1246,7 @@ export class AdminService {
         continue;
       }
 
-      const boostBasePrice = boostPriceFor(listing.category, PROMO_BOOST_DAYS, boostPrices);
+      const boostBasePrice = boostPriceFor(listing.category, promoDays, boostPrices);
       const bundleBasePrice = boostBasePrice + alertsPrices.instantAlertsPrice;
       const promoOffer = offerPercent
         ? {
@@ -1254,12 +1262,15 @@ export class AdminService {
         const boostLink = `${site}${boostMessagePath(listing.id)}`;
         try {
           const longBase = boostPriceFor(listing.category, 30, boostPrices);
+          const quoteLonger = promoDays !== 30 && enabledBoostDurations(boostPrices).includes(30);
           await this.sendInAppBoostMessage(opts.adminId!, listing, {
             title: listing.title,
             location: `${listing.area.name}, ${listing.city.name}`,
             boostPrice: offerPercent ? promoPriceFor(boostBasePrice, offerPercent) : boostBasePrice,
-            boostDays: PROMO_BOOST_DAYS,
-            longer: { days: 30, price: offerPercent ? promoPriceFor(longBase, offerPercent) : longBase },
+            boostDays: promoDays,
+            ...(quoteLonger
+              ? { longer: { days: 30, price: offerPercent ? promoPriceFor(longBase, offerPercent) : longBase } }
+              : {}),
             offer: promoOffer,
             boostLink,
           });
@@ -1286,7 +1297,7 @@ export class AdminService {
           // in the message is the figure on the screen the buttons open.
           boostPrice: offerPercent ? promoPriceFor(boostBasePrice, offerPercent) : boostBasePrice,
           bundlePrice: offerPercent ? promoPriceFor(bundleBasePrice, offerPercent) : bundleBasePrice,
-          boostDays: PROMO_BOOST_DAYS,
+          boostDays: promoDays,
           alertsPrice: alertsPrices.instantAlertsPrice,
           ...(offerPercent
             ? {

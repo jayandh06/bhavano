@@ -23,12 +23,25 @@ export interface BoostPriceSettings {
      * posting — the two placements are mutually exclusive, never both at once. See
      * docs/plans/boost-instant-alerts-preview-selector.md. */
     showSelectorOnPreview: boolean;
+    /** Whether each duration is offered in the boost pickers (and accepted at checkout). At least
+     * one stays on. See `enabledBoostDurations`. */
+    boost7dEnabled: boolean;
+    boost15dEnabled: boolean;
+    boost30dEnabled: boolean;
 }
 /** Bundled into this shared package (not just the BFF) since `boostPriceFor` below is also
  * called client-side, purely for display, before any live-settings fetch resolves — see
  * BoostProvider.tsx (web) / BoostModal.tsx (mobile). The BFF's own DB-row fallback (when no
  * settings have ever been saved) reuses this exact same constant rather than redefining it. */
 export declare const DEFAULT_BOOST_PRICE_SETTINGS: BoostPriceSettings;
+/** The durations admin has switched on, shortest first. A flag missing from a response sent by a
+ * server older than these toggles counts as on. */
+export declare function enabledBoostDurations(settings: Partial<Pick<BoostPriceSettings, "boost7dEnabled" | "boost15dEnabled" | "boost30dEnabled">>): BoostDurationDays[];
+/** What a picker shows. A response from before `enabledDurations` existed offers all three. */
+export declare function offeredBoostDurations(pricing: Pick<BoostPricingPreviewDto, "enabledDurations"> | null | undefined): readonly BoostDurationDays[];
+/** The pre-selected duration: 15 days (cheaper per day than 7, see
+ * docs/plans/boost-30-day-and-included-alerts.md) when offered, else the first one offered. */
+export declare function defaultBoostDuration(offered: readonly BoostDurationDays[]): BoostDurationDays;
 export declare function boostPriceFor(category: ListingCategory, days: BoostDurationDays, settings?: BoostPriceSettings): number;
 /** The option for one duration — so a picker can index by the duration it is showing instead of
  * spelling out `boost7` / `boost15` / `boost30` at every use. */
