@@ -394,12 +394,14 @@ function FieldRunBlock({
   attributes,
   onChange,
   onUnitChange,
+  fieldNote,
 }: {
   run: FieldRun;
   section: FieldSection | "other";
   attributes: Record<string, string | string[]>;
   onChange: (field: FieldDef, value: string | string[]) => void;
   onUnitChange: (field: FieldDef, unit: string) => void;
+  fieldNote?: { key: string; text: string } | null;
 }) {
   const toggleFields = run.fields.filter(isYesNoField);
   const otherFields = run.fields.filter((field) => !isYesNoField(field));
@@ -445,6 +447,7 @@ function FieldRunBlock({
                     field={field}
                     value={attributes[field.key]}
                     onChange={(value) => onChange(field, value)}
+                    note={fieldNote?.key === field.key ? fieldNote.text : undefined}
                   />
                 </div>
                 {isMultiUnitArea && (
@@ -471,10 +474,12 @@ function CategoryField({
   field,
   value,
   onChange,
+  note,
 }: {
   field: FieldDef;
   value: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
+  note?: string;
 }) {
   const labelText = (
     <>
@@ -504,6 +509,7 @@ function CategoryField({
         {labelText}
       </label>
       <CategoryFieldInput field={field} value={value} onChange={onChange} />
+      {note && <p className="text-xs text-muted mt-1 mb-0">{note}</p>}
     </div>
   );
 }
@@ -549,6 +555,7 @@ export function CategoryFieldsAccordion({
   attributes,
   onAttributesChange,
   sectionExtras,
+  fieldNote,
 }: {
   category: ListingCategory;
   transactionType: TransactionType;
@@ -562,6 +569,8 @@ export function CategoryFieldsAccordion({
    * e.g. the wizard folds its (non-category-specific) Price/Price Qualifier inputs into the
    * top of "pricing" this way rather than duplicating the section-box chrome for them. */
   sectionExtras?: Partial<Record<FieldSection, ReactNode>>;
+  /** A muted line under one field's input — e.g. what a brokerage % comes to in rupees. */
+  fieldNote?: { key: string; text: string } | null;
 }) {
   const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) =>
     fieldIsVisible(field, transactionType, attributes),
@@ -631,6 +640,7 @@ export function CategoryFieldsAccordion({
                     attributes={attributes}
                     onChange={setFieldValue}
                     onUnitChange={setFieldUnit}
+                    fieldNote={fieldNote}
                   />
                 ))}
               </div>

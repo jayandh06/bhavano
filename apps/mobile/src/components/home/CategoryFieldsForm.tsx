@@ -72,12 +72,15 @@ export function CategoryFieldsForm({
   attributes,
   onAttributesChange,
   sectionExtras,
+  fieldNote,
 }: {
   category: ListingCategory;
   transactionType: TransactionType;
   attributes: Attributes;
   onAttributesChange: (updater: (prev: Attributes) => Attributes) => void;
   sectionExtras?: Partial<Record<FieldSection, ReactNode>>;
+  /** A muted line under one field's input — e.g. what a brokerage % comes to in rupees. */
+  fieldNote?: { key: string; text: string } | null;
 }) {
   const { colors } = useAppTheme();
   const optionSheetRef = useRef<BottomSheetModal>(null);
@@ -234,6 +237,9 @@ export function CategoryFieldsForm({
             placeholderTextColor={colors.muted}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
+        )}
+        {fieldNote?.key === field.key && (
+          <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 4 }}>{fieldNote.text}</Text>
         )}
       </View>,
     ];

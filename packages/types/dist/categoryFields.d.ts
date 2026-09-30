@@ -70,6 +70,14 @@ export interface FieldDef {
         key: string;
         value: string;
     };
+    /** A second gate that only applies on the listed transaction types — e.g. the brokerage ₹
+     * amount waits for "Fixed amount" on a sale, but on rent/lease (fixed amount only, no type
+     * question) it follows "Has brokerage fee" alone. */
+    alsoDependsOn?: {
+        key: string;
+        value: string;
+        transactionTypes: TransactionType[];
+    };
     /** Must be filled in before the listing can be posted/saved — enforced in both the
      * posting wizard/edit form (disables submit) and the BFF (`ListingsService`). */
     required?: boolean;
@@ -77,7 +85,7 @@ export interface FieldDef {
 /** Single source of truth for whether a field should be shown, given the current transaction
  * type and in-progress attribute values — used by the posting wizard, the edit form, and the
  * listing detail page so all three agree on what's visible. */
-export declare function fieldIsVisible(field: FieldDef, transactionType: TransactionType, attributes: Record<string, string | string[]>): boolean;
+export declare function fieldIsVisible(field: FieldDef, transactionType: TransactionType, attributes: Record<string, unknown>): boolean;
 /** Groups an already-visibility-filtered field list into sections, ordered per
  * `SECTION_ORDER` (fields without a `section` land in a trailing "other" bucket). Generic so
  * it works over plain `FieldDef`s (the forms) or `{ section, ... }` display tuples (the
@@ -104,10 +112,11 @@ export declare function numberFieldIssue(field: FieldDef, value: unknown): strin
  * The first reason the BFF's `assertValidAttributes` would reject these attributes, in its own
  * words, or null. The post-ad forms use it to keep Preview disabled instead of letting the seller
  * reach Post ad and fail there ("Total floors in building must be a whole number of at least 1").
- * Only visible fields are checked; hidden ones are pruned before submit. Keep in step with
- * ListingsService.assertValidAttributes / assertConditionalFee.
+ * Only visible fields are checked; hidden ones are pruned before submit. `price` (the total, or
+ * the monthly rent) adds the brokerage-against-price limits. Keep in step with
+ * ListingsService.assertValidAttributes / assertConditionalFee / assertBrokerageFitsPrice.
  */
-export declare function listingAttributesIssue(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>): string | null;
+export declare function listingAttributesIssue(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, price?: number | null): string | null;
 /** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
  * of resetting to an empty object so a stepper has a number to increment from and the form opens
  * with honest answers rather than blanks the poster has to fill in to say "none". */
@@ -115,10 +124,30 @@ export declare function defaultAttributesFor(category: ListingCategory): Record<
 export declare const BROKERAGE_FEE_FIXED = "fixed";
 export declare const BROKERAGE_FEE_PERCENT = "percent";
 /**
- * Fills in `brokerageFeeType` for a payload that says a brokerage fee applies but predates the
- * type question (an old app build, or a listing stored before it) — picked from whichever amount
- * is present. Leaves the attributes untouched when the type is already set or can't be told.
+ * Brokerage in the shape the fields above expect. A sale payload from before the type question
+ * (an old app build, or a listing stored before it) gets `brokerageFeeType` from whichever amount
+ * it holds; rent/lease drops the type, since those are always a ₹ amount now.
  */
+export declare function normalizeBrokerageAttributes(transactionType: TransactionType, attributes: Record<string, unknown>): Record<string, unknown>;
+/**
+ * Why the brokerage ₹ amount is out of line with the listing's price, or null. Sits on top of the
+ * fields' own min/max (which already hold the % to 0.25–5): a sale's fee is ₹1,000 up to 5% of the
+ * price, a rent/lease fee up to 2 months' rent. `price` is the listing's total — the monthly rent
+ * for rent/lease — and a missing or zero price skips the ceiling. Shared by the forms and the BFF.
+ * See docs/plans/residential-rent-buy-details.md.
+ */
+export declare function brokerageFeeIssue(transactionType: TransactionType, price: number | null | undefined, attributes: Record<string, unknown>): string | null;
+/**
+ * A line shown under the brokerage amount while it is being typed: what a % comes to in rupees
+ * ("≈ ₹1,30,000 of ₹65,00,000"), or the most a ₹ amount may be. Null with no price to go on.
+ */
+export declare function brokerageFeeNote(transactionType: TransactionType, price: number | null | undefined, attributes: Record<string, unknown>): {
+    key: string;
+    text: string;
+} | null;
+/** Fills in `brokerageFeeType` for a sale payload from before the type question — picked from
+ * whichever amount is present. Leaves the attributes untouched when the type is already set or
+ * can't be told. */
 export declare function inferBrokerageFeeType(attributes: Record<string, unknown>): Record<string, unknown>;
 /** One field-def list per category — the single source of truth for both the posting
  * wizard's dynamic step-3 form and the `attributes` JSONB column it maps onto. Adding a

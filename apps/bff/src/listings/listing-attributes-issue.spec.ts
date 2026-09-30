@@ -55,17 +55,30 @@ const cases: [
   ['decimal bedrooms', 'apartment', 'rent', { ...base, bedrooms: '2.5' }],
   ['missing bedrooms', 'apartment', 'rent', { ...base, bedrooms: '' }],
   ['bad floor option', 'apartment', 'rent', { ...base, floor: 'penthouse' }],
-  ['brokerage yes without type', 'apartment', 'rent', broker],
+  ['rent brokerage without amount', 'apartment', 'rent', broker],
+  [
+    'rent brokerage with amount',
+    'apartment',
+    'rent',
+    { ...broker, brokerageFee: '5000' },
+  ],
+  [
+    'rent brokerage under ₹500',
+    'apartment',
+    'rent',
+    { ...broker, brokerageFee: '400' },
+  ],
+  ['sale brokerage without type', 'apartment', 'sell', broker],
   [
     'fixed brokerage without amount',
     'apartment',
-    'rent',
+    'sell',
     { ...broker, brokerageFeeType: 'fixed' },
   ],
   [
     'fixed brokerage with amount',
     'apartment',
-    'rent',
+    'sell',
     { ...broker, brokerageFeeType: 'fixed', brokerageFee: '5000' },
   ],
   [
@@ -95,15 +108,21 @@ const cases: [
     },
   ],
   [
-    'percent brokerage over 100',
+    'percent brokerage over 5',
     'commercial',
     'sell',
     {
       fromBroker: 'yes',
       brokerageFeeApplicable: 'yes',
       brokerageFeeType: 'percent',
-      brokerageCommissionPercent: '101',
+      brokerageCommissionPercent: '6',
     },
+  ],
+  [
+    'percent brokerage under 0.25',
+    'apartment',
+    'sell',
+    { ...broker, brokerageFeeType: 'percent', brokerageCommissionPercent: '0.2' },
   ],
 ];
 
@@ -137,7 +156,7 @@ describe('listingAttributesIssue', () => {
       brokerageCommissionPercent: '150',
     };
     expect(listingAttributesIssue('apartment', 'sell', percent)).toBe(
-      'Brokerage Fee (%) must be between 0.1 and 100, up to 2 decimal places',
+      'Brokerage Fee (%) must be between 0.25 and 5, up to 2 decimal places',
     );
     expect(serverIssue('apartment', 'sell', percent)).toBe(
       listingAttributesIssue('apartment', 'sell', percent),
@@ -159,5 +178,14 @@ describe('listingAttributesIssue', () => {
         brokerageCommissionPercent: '1.5',
       }),
     ).toBeNull();
+  });
+
+  it('holds the ₹ amount to the price when one is given', () => {
+    const rent = { ...base, fromBroker: 'yes', brokerageFeeApplicable: 'yes', brokerageFee: '50000' };
+    expect(listingAttributesIssue('apartment', 'rent', rent)).toBeNull();
+    expect(listingAttributesIssue('apartment', 'rent', rent, 25_000)).toBeNull();
+    expect(listingAttributesIssue('apartment', 'rent', rent, 20_000)).toBe(
+      "Brokerage Fee (₹) can be at most ₹40,000 (2 months' rent)",
+    );
   });
 });

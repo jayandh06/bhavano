@@ -42,9 +42,9 @@ Apartment, and Villa:
 | `preferredTenantTypes`     | Preferred tenant type       | multi-select or normalized string array | Rent/Lease only            | Any of Family, Company, Bachelor; at least one when supplied                                     |
 | `fromBroker`               | Posted by Broker / Agent    | select                                  | No                         | Yes / No                                                                                         |
 | `brokerageFeeApplicable`   | Has brokerage fee           | select                                  | No                         | Yes / No; shown when `fromBroker` is Yes, any transaction type                                   |
-| `brokerageFeeType`         | Brokerage fee type          | select                                  | When applicable is Yes     | `fixed` (Fixed amount) / `percent` (% of total value); any transaction type                      |
-| `brokerageFee`             | Brokerage Fee (₹)           | number                                  | When type is `fixed`       | Whole rupees, ≥ 1, up to 9 digits                                                                |
-| `brokerageCommissionPercent` | Brokerage Fee (%)         | number (`decimal`)                      | When type is `percent`     | 0.1–100, up to 2 decimal places                                                                  |
+| `brokerageFeeType`         | Brokerage fee type          | select                                  | Sell, when applicable is Yes | `fixed` (Fixed amount) / `percent` (% of sale price); sell only                                |
+| `brokerageFee`             | Brokerage Fee (₹)           | number                                  | Sell: type `fixed`; rent/lease: applicable Yes | Whole rupees. Sell: ₹1,000 to 5% of the price. Rent/lease: ₹500 to 2× the monthly price |
+| `brokerageCommissionPercent` | Brokerage Fee (%)         | number (`decimal`)                      | Sell, type `percent`       | 0.25–5, up to 2 decimal places                                                                   |
 | `maintenanceFeeApplicable` | Monthly maintenance fee     | select                                  | No                         | Yes / No                                                                                         |
 | `monthlyMaintenanceFee`    | Monthly maintenance fee (₹) | number                                  | Conditional                | Non-negative amount; required when applicable is Yes                                             |
 | `gasPipeline`              | Gas pipeline                | select                                  | No                         | Yes / No                                                                                         |
@@ -57,7 +57,9 @@ Apartment, and Villa:
   attribute validation) only when the attributes were actually edited. Touching any detail field
   means completing the new required ones.
 - Brokerage used to be ₹ for rent/lease and % for sell. The broker now picks
-  `brokerageFeeType` first, on any transaction type, and only that type's amount field shows.
+  `brokerageFeeType` first and only that type's amount field shows. This first shipped on every
+  transaction type; the same day it was narrowed to sales, with rent/lease back to a ₹ amount
+  only (see "Brokerage limits against the price" below).
   The fields are one shared `BROKERAGE_FIELDS` block used by residential, plot and commercial,
   and the amount fields are plain `required` fields gated by `dependsOn`. The BFF's
   `assertConditionalFee` now only covers maintenance.
@@ -68,6 +70,40 @@ Apartment, and Villa:
   `inferBrokerageFeeType` on create/update. Migration `20260930060000_brokerage_fee_type`
   backfilled the 7 stored listings. The detail pages hide the type row, since the amount's
   label already says it.
+
+### Brokerage limits against the price (30 Sept 2026)
+
+The first version only capped the ₹ amount at 9 digits and the % at 100. A ₹6.5 lakh house went
+live with a 99% fee. In production the 3 rentals charged about one month's rent and the other
+sales 1–2%. The limits leave room above those norms and reject typos:
+
+- **Sell, fixed:** ₹1,000 up to 5% of the sale price (the total, per-unit prices multiplied out).
+- **Sell, %:** 0.25–5, up to 2 decimal places. These are the field's own `min`/`max`.
+- **Rent/lease:** a ₹ amount only, ₹500 up to 2× the monthly price. Brokers quote rent brokerage
+  in months, and "% of total value" had no clear meaning for a rental, so there's no fee type
+  question on rent/lease. `brokerageFeeType` and the % field are `transactionTypes: ["sell"]`.
+  The ₹ field shows on "Has brokerage fee" alone there, via the new `FieldDef.alsoDependsOn` (a
+  second gate that only applies on the listed transaction types, here "Fixed amount" on a sale).
+- **Price on request:** with no price, only the static field range applies. It can't come up
+  today, since pg/coworking have no brokerage fields.
+
+Code:
+- The shared `brokerageFeeIssue(transactionType, price, attributes)` holds the price-dependent
+  rules. `listingAttributesIssue` takes an optional `price` and calls it. The BFF calls it in
+  `assertBrokerageFitsPrice` once the price is resolved. On create it always runs. On edit it runs
+  only when the edit sends attributes or changes the price, so a title fix on a listing with an
+  old out-of-range fee still saves. The edit forms mirror that.
+- `brokerageFeeNote` puts a line under the amount: "≈ ₹1,30,000 of ₹65,00,000" for a %, or
+  "Up to ₹47,000 (2 months' rent)" for a ₹ amount. It shows in the web/admin/mobile post and edit
+  forms (the `fieldNote` prop).
+- `normalizeBrokerageAttributes` replaces the create/update call to `inferBrokerageFeeType`. It
+  still infers the type for sale payloads, and drops it from rent/lease payloads (old app builds).
+  Migration `20260930080000_rent_brokerage_fixed_only` removed it from the 3 stored rentals. No
+  stored rental held a %.
+- An old app build that sends a % on a rental gets "Brokerage Fee (₹) is required" until it
+  updates.
+- The one stored sale outside the limits (99% on ₹6.5 lakh) stays live. Its owner has to correct
+  the fee the next time they change the price or any detail field.
 
 Add two grouped UI sections to the same residential configuration:
 

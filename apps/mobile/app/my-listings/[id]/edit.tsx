@@ -4,7 +4,12 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
-import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
+import {
+  brokerageFeeIssue,
+  brokerageFeeNote,
+  CATEGORY_FIELD_CONFIG,
+  fieldIsVisible,
+} from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { clampPrice, DESCRIPTION_MAX_LENGTH, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
@@ -111,8 +116,14 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
     const value = attributes[field.key];
     return Array.isArray(value) ? value.length > 0 : (value ?? "").length > 0;
   });
+  const priceArea = priceUnitAreaField ? Number(attributes[priceUnitAreaField.key]) : NaN;
+  const totalPrice =
+    priceMode === "perUnit" && priceUnitAreaField ? (priceArea > 0 ? Math.round(priceValue * priceArea) : null) : priceValue;
+  const brokerageIssue = brokerageFeeIssue(listing.transactionType, totalPrice, attributes);
+  const brokerageNote = brokerageFeeNote(listing.transactionType, totalPrice, attributes);
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(listing.category);
-  const valid = (priceValue > 0 || priceOnRequestAllowed) && title.trim().length > 0 && requiredAttributesFilled;
+  const valid =
+    (priceValue > 0 || priceOnRequestAllowed) && title.trim().length > 0 && requiredAttributesFilled && !brokerageIssue;
 
   const priceQualifierOptions = getPriceQualifierOptions(listing.category, listing.transactionType);
   const priceQualifierChoices = priceQualifierOptions.some((opt) => opt.value === priceQualifier)
@@ -278,6 +289,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
           transactionType={listing.transactionType}
           attributes={attributes}
           onAttributesChange={setAttributes}
+          fieldNote={brokerageNote}
           sectionExtras={{
             // Folded into the top of the "Pricing & fees" box CategoryFieldsForm itself renders
             // for the category's own pricing fields (brokerage, maintenance), rather than left to
@@ -470,6 +482,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         </Text>
       )}
 
+      {brokerageIssue && <Text style={{ color: "#b3413a", fontSize: 13, marginTop: 12 }}>{brokerageIssue}</Text>}
       <Pressable
         onPress={onSave}
         disabled={saving || !valid}

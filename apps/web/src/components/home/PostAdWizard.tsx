@@ -16,7 +16,14 @@ import type {
 import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
-import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, listingAttributesIssue } from "@bhavano/types/categoryFields";
+import {
+  brokerageFeeIssue,
+  brokerageFeeNote,
+  CATEGORY_FIELD_CONFIG,
+  defaultAttributesFor,
+  listingAttributesIssue,
+  pruneHiddenAttributes,
+} from "@bhavano/types/categoryFields";
 import { fromBrokerDefault, hasFromBrokerField, sellerTypeFromBroker } from "@bhavano/types/sellerType";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import {
@@ -1034,6 +1041,14 @@ export function PostAdWizard({
   // before any photo upload, not after pressing Publish.
   const pricedPerUnit = priceMode === "perUnit" && !!priceUnitAreaField;
   const priceArea = priceUnitAreaField ? Number(attributes[priceUnitAreaField.key]) : NaN;
+  // The listing's total (per-unit prices multiplied out), which the brokerage limits scale with.
+  const totalPrice =
+    price === "" || (pricedPerUnit && !(priceArea > 0))
+      ? null
+      : pricedPerUnit
+        ? Math.round(Number(price) * priceArea)
+        : Number(price);
+  const brokerageNote = transactionType ? brokerageFeeNote(transactionType, totalPrice, attributes) : null;
   const priceIssue =
     category && transactionType && price !== "" && (!pricedPerUnit || priceArea > 0)
       ? listingPriceIssue(
@@ -1063,6 +1078,8 @@ export function PostAdWizard({
       return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
     if (!(Number(price) > 0) && !priceOnRequestAllowed) return { text: "Add a price", missing: true };
     if (priceIssue) return { text: priceIssue, missing: false };
+    const brokerageIssue = transactionType ? brokerageFeeIssue(transactionType, totalPrice, attributes) : null;
+    if (brokerageIssue) return { text: brokerageIssue, missing: false };
     if (photos.length === 0) return { text: "Add at least one photo", missing: true };
     if (askSellerType && !postedAs) return { text: "Choose Owner or Agent / broker", missing: true };
     const assistedProblem = assistedMode ? assistedSellerProblem(assistedSeller) : null;
@@ -1253,7 +1270,7 @@ export function PostAdWizard({
       description: description.trim() || undefined,
       photos: uploadedPhotos,
       videos: uploadedVideos.length > 0 ? uploadedVideos : undefined,
-      attributes,
+      attributes: pruneHiddenAttributes(category, transactionType, attributes),
       lat: pin?.lat,
       lng: pin?.lng,
       postedAs: profileSellerType ? undefined : (sellerTypeFromBroker(attributes.fromBroker) ?? postedAs ?? undefined),
@@ -1593,6 +1610,7 @@ export function PostAdWizard({
               transactionType={transactionType}
               attributes={attributes}
               onAttributesChange={setAttributes}
+              fieldNote={brokerageNote}
               sectionExtras={{
                 pricing: (
                   <div className="flex flex-col gap-3">

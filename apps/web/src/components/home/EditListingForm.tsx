@@ -3,7 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
-import { CATEGORY_FIELD_CONFIG, listingAttributesIssue } from "@bhavano/types/categoryFields";
+import {
+  brokerageFeeIssue,
+  brokerageFeeNote,
+  CATEGORY_FIELD_CONFIG,
+  listingAttributesIssue,
+} from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { updateListingAction } from "@/app/actions/listings";
@@ -50,14 +55,14 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
   const router = useRouter();
   const isPendingPublish = listing.publishState === "pending_checkout";
   const [title, setTitle] = useState(listing.title);
-  const [price, setPrice] = useState(
-    String(listing.price).replace(/[^0-9]/g, ""),
-  );
+  const [initialPrice] = useState(() => String(listing.price).replace(/[^0-9]/g, ""));
+  const [price, setPrice] = useState(initialPrice);
   const [priceQualifier, setPriceQualifier] = useState(listing.priceQualifier);
   // "Whole price vs price per unit" — see PostAdWizard.tsx's identical toggle for the full
   // reasoning. Category/transactionType are fixed in this form (only admin editing can change
   // them), so unlike the wizard, no reset-on-change is needed here.
-  const [priceMode, setPriceMode] = useState<"total" | "perUnit">(listing.priceUnit ? "perUnit" : "total");
+  const initialPriceMode = listing.priceUnit ? "perUnit" : "total";
+  const [priceMode, setPriceMode] = useState<"total" | "perUnit">(initialPriceMode);
   const [description, setDescription] = useState(listing.description ?? "");
   const [initialAttributes] = useState(() => attributesToStrings(listing.attributes));
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>(initialAttributes);
@@ -78,9 +83,22 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
   // Attributes are only sent (and so only checked) once edited: a listing posted before a field
   // became required can still have its price or status changed without filling that field in.
   const attributesChanged = JSON.stringify(attributes) !== JSON.stringify(initialAttributes);
+  const priceArea = priceUnitAreaField ? Number(attributes[priceUnitAreaField.key]) : NaN;
+  const totalPrice =
+    priceMode === "perUnit" && priceUnitAreaField
+      ? priceArea > 0
+        ? Math.round(priceValue * priceArea)
+        : null
+      : priceValue;
+  // The brokerage limits scale with the price, so a price change re-checks them too — same rule
+  // as the BFF's applyUpdate.
+  const priceChanged = price !== initialPrice || priceMode !== initialPriceMode;
   const attributesIssue = attributesChanged
-    ? listingAttributesIssue(listing.category, listing.transactionType, attributes)
-    : null;
+    ? listingAttributesIssue(listing.category, listing.transactionType, attributes, totalPrice)
+    : priceChanged
+      ? brokerageFeeIssue(listing.transactionType, totalPrice, attributes)
+      : null;
+  const brokerageNote = brokerageFeeNote(listing.transactionType, totalPrice, attributes);
   // 0 is a real, submittable price ("Contact for price") for pg/coworking — see
   // PRICE_ON_REQUEST_CATEGORIES's own doc comment. Every other category still needs a real one.
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(listing.category);
@@ -176,6 +194,7 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
           transactionType={listing.transactionType}
           attributes={attributes}
           onAttributesChange={setAttributes}
+          fieldNote={brokerageNote}
           sectionExtras={{
             pricing: (
               <div className="flex flex-col gap-3">

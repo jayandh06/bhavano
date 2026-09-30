@@ -29,6 +29,8 @@ import {
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import {
+  brokerageFeeIssue,
+  brokerageFeeNote,
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
   groupFieldsBySection,
@@ -918,6 +920,9 @@ export function PostAdWizard({
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
         )}
+        {brokerageNote?.key === field.key && (
+          <Text style={{ color: colors.muted, fontSize: 11.5, marginTop: 4 }}>{brokerageNote.text}</Text>
+        )}
       </View>,
     ];
 
@@ -1007,8 +1012,7 @@ export function PostAdWizard({
 
   /** Mirrors the desktop wizard: a field appears only when it applies to this transaction type
    * and its `dependsOn` gate is satisfied. Without this mobile showed both brokerage amount
-   * fields at once — the ₹ one is rent/lease-only, the % one sell-only — and showed them even
-   * when "Has brokerage fee" was No. */
+   * fields at once and showed them even when "Has brokerage fee" was No. */
   const visibleFields =
     category && transactionType
       ? CATEGORY_FIELD_CONFIG[category].filter((field) => fieldIsVisible(field, transactionType, attributes))
@@ -1025,6 +1029,14 @@ export function PostAdWizard({
   // before any photo upload, not after tapping Post.
   const pricedPerUnit = priceMode === "perUnit" && !!priceUnitAreaField;
   const priceArea = priceUnitAreaField ? Number(attributes[priceUnitAreaField.key]) : NaN;
+  // The listing's total (per-unit prices multiplied out), which the brokerage limits scale with.
+  const totalPrice =
+    price === "" || (pricedPerUnit && !(priceArea > 0))
+      ? null
+      : pricedPerUnit
+        ? Math.round(Number(price) * priceArea)
+        : Number(price);
+  const brokerageNote = transactionType ? brokerageFeeNote(transactionType, totalPrice, attributes) : null;
   const priceIssue =
     category && transactionType && price !== "" && (!pricedPerUnit || priceArea > 0)
       ? listingPriceIssue(
@@ -1071,6 +1083,8 @@ export function PostAdWizard({
       return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
     if (!priceIsValid(price, category)) return { text: "Add a price", missing: true };
     if (priceIssue) return { text: priceIssue, missing: false };
+    const brokerageIssue = transactionType ? brokerageFeeIssue(transactionType, totalPrice, attributes) : null;
+    if (brokerageIssue) return { text: brokerageIssue, missing: false };
     if (photoUris.length === 0) return { text: "Add at least one photo", missing: true };
     if (askSellerType && !postedAs) return { text: "Choose Owner or Agent / broker", missing: true };
     return null;

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { Area, City, ListingDetailDto, ListingCategory, ListingStatus, TransactionType } from "@bhavano/types";
 import {
   CATEGORY_FIELD_CONFIG,
+  brokerageFeeIssue,
+  brokerageFeeNote,
   defaultAttributesFor,
   fieldIsVisible,
   groupFieldsBySection,
@@ -326,12 +328,14 @@ function CategoryField({
   onChange,
   unitValue,
   onUnitChange,
+  note,
 }: {
   field: FieldDef;
   value: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
   unitValue?: string;
   onUnitChange?: (unit: string) => void;
+  note?: string;
 }) {
   if (isYesNoField(field)) {
     return (
@@ -351,6 +355,7 @@ function CategoryField({
         {field.required && <span style={{ color: "var(--danger)" }}> *</span>}
       </label>
       <CategoryFieldInput field={field} value={value} onChange={onChange} unitValue={unitValue} onUnitChange={onUnitChange} />
+      {note && <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>{note}</p>}
     </div>
   );
 }
@@ -412,11 +417,13 @@ function FieldRunBlock({
   attributes,
   onChange,
   onUnitChange,
+  fieldNote,
 }: {
   run: FieldRun;
   attributes: Record<string, string | string[]>;
   onChange: (field: FieldDef, value: string | string[]) => void;
   onUnitChange: (field: FieldDef, unit: string) => void;
+  fieldNote?: { key: string; text: string } | null;
 }) {
   const toggleFields = run.fields.filter(isYesNoField);
   const otherFields = run.fields.filter((field) => !isYesNoField(field));
@@ -444,6 +451,7 @@ function FieldRunBlock({
                 onChange={(value) => onChange(field, value)}
                 unitValue={unitOf(field)}
                 onUnitChange={(unit) => onUnitChange(field, unit)}
+                note={fieldNote?.key === field.key ? fieldNote.text : undefined}
               />
             </div>
           ))}
@@ -467,11 +475,13 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
   const [status, setStatus] = useState(listing.status);
 
   const [title, setTitle] = useState(listing.title);
-  const [price, setPrice] = useState(String(parseRawPrice(listing.price, listing.priceOnRequest)));
+  const [initialPrice] = useState(() => String(parseRawPrice(listing.price, listing.priceOnRequest)));
+  const [price, setPrice] = useState(initialPrice);
   const [priceQualifier, setPriceQualifier] = useState(listing.priceQualifier);
   // "Whole price vs price per unit" — see web's identical toggle in PostAdWizard.tsx/
   // EditListingForm.tsx for the full reasoning.
-  const [priceMode, setPriceMode] = useState<"total" | "perUnit">(listing.priceUnit ? "perUnit" : "total");
+  const initialPriceMode = listing.priceUnit ? "perUnit" : "total";
+  const [priceMode, setPriceMode] = useState<"total" | "perUnit">(initialPriceMode);
   const [description, setDescription] = useState(listing.description ?? "");
   const [specsValue, setSpecsValue] = useState(listing.specs.join(", "));
   const [initialAttributes] = useState(() => attributesToStrings(listing.attributes));
@@ -591,7 +601,18 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
   // Only sent (and so only checked) once edited, so a listing posted before a field became
   // required can still be retitled or moved without the admin inventing that field's answer.
   const attributesChanged = JSON.stringify(attributes) !== JSON.stringify(initialAttributes);
-  const attributesIssue = attributesChanged ? listingAttributesIssue(category, transactionType, attributes) : null;
+  const priceArea = priceUnitAreaField ? Number(attributes[priceUnitAreaField.key]) : NaN;
+  const totalPrice =
+    priceMode === "perUnit" && priceUnitAreaField ? (priceArea > 0 ? Math.round(priceValue * priceArea) : null) : priceValue;
+  // The brokerage limits scale with the price, so a price change re-checks them too — same rule
+  // as the BFF's applyUpdate.
+  const priceChanged = price !== initialPrice || priceMode !== initialPriceMode;
+  const attributesIssue = attributesChanged
+    ? listingAttributesIssue(category, transactionType, attributes, totalPrice)
+    : priceChanged
+      ? brokerageFeeIssue(transactionType, totalPrice, attributes)
+      : null;
+  const brokerageNote = brokerageFeeNote(transactionType, totalPrice, attributes);
   const valid =
     (priceValue > 0 || priceOnRequestAllowed) &&
     title.trim().length > 0 &&
@@ -891,7 +912,14 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
               </div>
             )}
             {groupFieldsByChain(section.fields).map((run) => (
-              <FieldRunBlock key={run.fields[0].key} run={run} attributes={attributes} onChange={setFieldValue} onUnitChange={setFieldUnit} />
+              <FieldRunBlock
+                key={run.fields[0].key}
+                run={run}
+                attributes={attributes}
+                onChange={setFieldValue}
+                onUnitChange={setFieldUnit}
+                fieldNote={brokerageNote}
+              />
             ))}
           </div>
         </details>

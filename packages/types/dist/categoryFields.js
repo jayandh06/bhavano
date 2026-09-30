@@ -7,8 +7,12 @@ exports.pruneHiddenAttributes = pruneHiddenAttributes;
 exports.numberFieldIssue = numberFieldIssue;
 exports.listingAttributesIssue = listingAttributesIssue;
 exports.defaultAttributesFor = defaultAttributesFor;
+exports.normalizeBrokerageAttributes = normalizeBrokerageAttributes;
+exports.brokerageFeeIssue = brokerageFeeIssue;
+exports.brokerageFeeNote = brokerageFeeNote;
 exports.inferBrokerageFeeType = inferBrokerageFeeType;
 exports.amenityFieldsFor = amenityFieldsFor;
+const priceWords_1 = require("./priceWords");
 exports.SECTION_LABELS = {
     basics: "Property details",
     pricing: "Pricing & fees",
@@ -48,7 +52,10 @@ function fieldIsVisible(field, transactionType, attributes) {
     return ((!field.transactionTypes ||
         field.transactionTypes.includes(transactionType)) &&
         (!field.dependsOn ||
-            attributes[field.dependsOn.key] === field.dependsOn.value));
+            attributes[field.dependsOn.key] === field.dependsOn.value) &&
+        (!field.alsoDependsOn ||
+            !field.alsoDependsOn.transactionTypes.includes(transactionType) ||
+            attributes[field.alsoDependsOn.key] === field.alsoDependsOn.value));
 }
 /** Groups an already-visibility-filtered field list into sections, ordered per
  * `SECTION_ORDER` (fields without a `section` land in a trailing "other" bucket). Generic so
@@ -133,10 +140,11 @@ const CONDITIONAL_FEE_KEYS = ["maintenanceFeeApplicable"];
  * The first reason the BFF's `assertValidAttributes` would reject these attributes, in its own
  * words, or null. The post-ad forms use it to keep Preview disabled instead of letting the seller
  * reach Post ad and fail there ("Total floors in building must be a whole number of at least 1").
- * Only visible fields are checked; hidden ones are pruned before submit. Keep in step with
- * ListingsService.assertValidAttributes / assertConditionalFee.
+ * Only visible fields are checked; hidden ones are pruned before submit. `price` (the total, or
+ * the monthly rent) adds the brokerage-against-price limits. Keep in step with
+ * ListingsService.assertValidAttributes / assertConditionalFee / assertBrokerageFitsPrice.
  */
-function listingAttributesIssue(category, transactionType, attributes) {
+function listingAttributesIssue(category, transactionType, attributes, price) {
     const fields = exports.CATEGORY_FIELD_CONFIG[category];
     for (const field of fields) {
         if (!fieldIsVisible(field, transactionType, attributes))
@@ -171,7 +179,7 @@ function listingAttributesIssue(category, transactionType, attributes) {
         if (typeof amount !== "string" || amount.trim() === "")
             return `${amountField.label} is required`;
     }
-    return null;
+    return brokerageFeeIssue(transactionType, price, attributes);
 }
 /** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
  * of resetting to an empty object so a stepper has a number to increment from and the form opens
@@ -203,13 +211,19 @@ const RESIDENTIAL_FLOOR_OPTIONS = [
 ];
 exports.BROKERAGE_FEE_FIXED = "fixed";
 exports.BROKERAGE_FEE_PERCENT = "percent";
+const BROKERAGE_SELL_MAX_PERCENT = 5;
+const BROKERAGE_SELL_MIN_RUPEES = 1_000;
+const BROKERAGE_RENT_MAX_MONTHS = 2;
+const BROKERAGE_RENT_MIN_RUPEES = 500;
 /**
  * The brokerage block every broker-capable category (residential, plot, commercial) shares, after
- * its own `fromBroker` field. A broker picks how the fee is quoted before entering it — a flat ₹
- * amount or a % of the total value — on any transaction type, so each quoting style keeps its own
- * key and neither the BFF nor the detail page has to guess whether a stored number means ₹ or %.
- * Listings stored before `brokerageFeeType` existed get it inferred from whichever amount they
- * hold (`inferBrokerageFeeType`).
+ * its own `fromBroker` field. On a sale the broker picks how the fee is quoted before entering it
+ * — a flat ₹ amount or a % of the sale price — and each quoting style keeps its own key, so
+ * neither the BFF nor the detail page has to guess whether a stored number means ₹ or %. Rent and
+ * lease brokerage is quoted in months of rent, never as a %, so there it is a ₹ amount with no
+ * type question. The ranges that depend on the listing's price live in `brokerageFeeIssue`.
+ * Sale listings stored before `brokerageFeeType` existed get it inferred from whichever amount
+ * they hold (`normalizeBrokerageAttributes`).
  */
 const BROKERAGE_FIELDS = [
     {
@@ -228,10 +242,11 @@ const BROKERAGE_FIELDS = [
         label: "Brokerage fee type",
         type: "select",
         section: "pricing",
+        transactionTypes: ["sell"],
         dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
         options: [
             { value: exports.BROKERAGE_FEE_FIXED, label: "Fixed amount" },
-            { value: exports.BROKERAGE_FEE_PERCENT, label: "% of total value" },
+            { value: exports.BROKERAGE_FEE_PERCENT, label: "% of sale price" },
         ],
         required: true,
     },
@@ -239,10 +254,11 @@ const BROKERAGE_FIELDS = [
         key: "brokerageFee",
         label: "Brokerage Fee (₹)",
         type: "number",
-        min: 1,
+        min: BROKERAGE_RENT_MIN_RUPEES,
         maxDigits: 9,
         section: "pricing",
-        dependsOn: { key: "brokerageFeeType", value: exports.BROKERAGE_FEE_FIXED },
+        dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
+        alsoDependsOn: { key: "brokerageFeeType", value: exports.BROKERAGE_FEE_FIXED, transactionTypes: ["sell"] },
         required: true,
     },
     {
@@ -250,18 +266,85 @@ const BROKERAGE_FIELDS = [
         label: "Brokerage Fee (%)",
         type: "number",
         decimal: true,
-        min: 0.1,
-        max: 100,
+        min: 0.25,
+        max: BROKERAGE_SELL_MAX_PERCENT,
         section: "pricing",
+        transactionTypes: ["sell"],
         dependsOn: { key: "brokerageFeeType", value: exports.BROKERAGE_FEE_PERCENT },
         required: true,
     },
 ];
 /**
- * Fills in `brokerageFeeType` for a payload that says a brokerage fee applies but predates the
- * type question (an old app build, or a listing stored before it) — picked from whichever amount
- * is present. Leaves the attributes untouched when the type is already set or can't be told.
+ * Brokerage in the shape the fields above expect. A sale payload from before the type question
+ * (an old app build, or a listing stored before it) gets `brokerageFeeType` from whichever amount
+ * it holds; rent/lease drops the type, since those are always a ₹ amount now.
  */
+function normalizeBrokerageAttributes(transactionType, attributes) {
+    if (transactionType === "sell")
+        return inferBrokerageFeeType(attributes);
+    if (!("brokerageFeeType" in attributes))
+        return attributes;
+    const rest = { ...attributes };
+    delete rest.brokerageFeeType;
+    return rest;
+}
+/** Whole rupees the fixed brokerage may reach: 5% of the sale price, or 2 months of rent. */
+function brokerageFeeCap(transactionType, price) {
+    return transactionType === "sell"
+        ? { rupees: Math.floor((price * BROKERAGE_SELL_MAX_PERCENT) / 100), basis: `${BROKERAGE_SELL_MAX_PERCENT}% of the price` }
+        : { rupees: price * BROKERAGE_RENT_MAX_MONTHS, basis: `${BROKERAGE_RENT_MAX_MONTHS} months' rent` };
+}
+function brokerageUsesFixedAmount(transactionType, attributes) {
+    return transactionType !== "sell" || attributes.brokerageFeeType === exports.BROKERAGE_FEE_FIXED;
+}
+/**
+ * Why the brokerage ₹ amount is out of line with the listing's price, or null. Sits on top of the
+ * fields' own min/max (which already hold the % to 0.25–5): a sale's fee is ₹1,000 up to 5% of the
+ * price, a rent/lease fee up to 2 months' rent. `price` is the listing's total — the monthly rent
+ * for rent/lease — and a missing or zero price skips the ceiling. Shared by the forms and the BFF.
+ * See docs/plans/residential-rent-buy-details.md.
+ */
+function brokerageFeeIssue(transactionType, price, attributes) {
+    if (attributes.brokerageFeeApplicable !== "yes" || !brokerageUsesFixedAmount(transactionType, attributes)) {
+        return null;
+    }
+    if (!isFilled(attributes.brokerageFee))
+        return null;
+    const fee = Number(attributes.brokerageFee);
+    if (!Number.isFinite(fee))
+        return null;
+    if (transactionType === "sell" && fee < BROKERAGE_SELL_MIN_RUPEES) {
+        return `Brokerage Fee (₹) must be at least ₹${(0, priceWords_1.groupInr)(BROKERAGE_SELL_MIN_RUPEES)} on a sale`;
+    }
+    if (!price || price <= 0)
+        return null;
+    const cap = brokerageFeeCap(transactionType, price);
+    return fee > cap.rupees ? `Brokerage Fee (₹) can be at most ₹${(0, priceWords_1.groupInr)(cap.rupees)} (${cap.basis})` : null;
+}
+/**
+ * A line shown under the brokerage amount while it is being typed: what a % comes to in rupees
+ * ("≈ ₹1,30,000 of ₹65,00,000"), or the most a ₹ amount may be. Null with no price to go on.
+ */
+function brokerageFeeNote(transactionType, price, attributes) {
+    if (attributes.brokerageFeeApplicable !== "yes" || !price || price <= 0)
+        return null;
+    if (brokerageUsesFixedAmount(transactionType, attributes)) {
+        const cap = brokerageFeeCap(transactionType, price);
+        return { key: "brokerageFee", text: `Up to ₹${(0, priceWords_1.groupInr)(cap.rupees)} (${cap.basis})` };
+    }
+    if (attributes.brokerageFeeType !== exports.BROKERAGE_FEE_PERCENT)
+        return null;
+    const percent = Number(attributes.brokerageCommissionPercent);
+    if (!isFilled(attributes.brokerageCommissionPercent) || !Number.isFinite(percent))
+        return null;
+    return {
+        key: "brokerageCommissionPercent",
+        text: `≈ ₹${(0, priceWords_1.groupInr)((price * percent) / 100)} of ₹${(0, priceWords_1.groupInr)(price)}`,
+    };
+}
+/** Fills in `brokerageFeeType` for a sale payload from before the type question — picked from
+ * whichever amount is present. Leaves the attributes untouched when the type is already set or
+ * can't be told. */
 function inferBrokerageFeeType(attributes) {
     if (attributes.brokerageFeeApplicable !== "yes" || isFilled(attributes.brokerageFeeType)) {
         return attributes;

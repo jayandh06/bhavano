@@ -13,7 +13,11 @@ import { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provid
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import type { AnalyticsService } from '../analytics/analytics.service';
 import { ConfigService } from '@nestjs/config';
-import { inferBrokerageFeeType } from '@bhavano/types/categoryFields';
+import {
+  brokerageFeeIssue,
+  brokerageFeeNote,
+  normalizeBrokerageAttributes,
+} from '@bhavano/types/categoryFields';
 import type { Prisma } from '@prisma/client';
 
 // computeDHash calls sharp on a real image buffer — stubbed so addPhoto's own logic (cap,
@@ -595,7 +599,6 @@ describe('ListingsService', () => {
       priceNegotiable: 'no',
       fromBroker: 'yes',
       brokerageFeeApplicable: 'yes',
-      brokerageFeeType: 'fixed',
       brokerageFee: '10000',
       maintenanceFeeApplicable: 'yes',
       monthlyMaintenanceFee: '2500',
@@ -681,14 +684,14 @@ describe('ListingsService', () => {
       ).not.toThrow();
     });
 
-    // Brokerage is quoted either way on any transaction type: the poster first picks a fixed ₹
-    // amount or a % of the total value, and only that type's amount field applies.
+    // On a sale the poster first picks a fixed ₹ amount or a % of the sale price, and only that
+    // type's amount field applies. Rent/lease brokerage is a ₹ amount with no type question.
     it.each([
-      ['house', 'sell', 'fixed', { brokerageFee: '200000' }],
-      ['house', 'sell', 'percent', { brokerageCommissionPercent: '1.5' }],
-      ['apartment', 'rent', 'fixed', { brokerageFee: '5000' }],
-      ['apartment', 'rent', 'percent', { brokerageCommissionPercent: '8.33' }],
-    ] as const)('accepts a %s %s listing with %s brokerage', (category, transactionType, type, amount) => {
+      ['house', 'sell', { brokerageFeeType: 'fixed', brokerageFee: '200000' }],
+      ['house', 'sell', { brokerageFeeType: 'percent', brokerageCommissionPercent: '1.5' }],
+      ['apartment', 'rent', { brokerageFee: '5000' }],
+      ['apartment', 'lease', { brokerageFee: '5000' }],
+    ] as const)('accepts a %s %s listing with brokerage %j', (category, transactionType, brokerage) => {
       const { service } = makeService();
       expect(() =>
         (service as any).assertValidAttributes(category, transactionType, {
@@ -698,8 +701,7 @@ describe('ListingsService', () => {
           ...residentialBasics,
           fromBroker: 'yes',
           brokerageFeeApplicable: 'yes',
-          brokerageFeeType: type,
-          ...amount,
+          ...brokerage,
         }),
       ).not.toThrow();
     });
@@ -726,14 +728,17 @@ describe('ListingsService', () => {
         (service as any).assertValidAttributes('house', 'sell', { ...brokered, brokerageFeeType: 'fixed' }),
       ).toThrow('Brokerage Fee (₹) is required');
       expect(() =>
-        (service as any).assertValidAttributes('apartment', 'rent', { ...brokered, brokerageFeeType: 'percent' }),
+        (service as any).assertValidAttributes('house', 'sell', { ...brokered, brokerageFeeType: 'percent' }),
       ).toThrow('Brokerage Fee (%) is required');
+      expect(() => (service as any).assertValidAttributes('apartment', 'rent', brokered)).toThrow(
+        'Brokerage Fee (₹) is required',
+      );
     });
 
     it('rejects an amount of the brokerage type that was not chosen', () => {
       const { service } = makeService();
       expect(() =>
-        (service as any).assertValidAttributes('apartment', 'rent', {
+        (service as any).assertValidAttributes('house', 'sell', {
           ...brokered,
           brokerageFeeType: 'percent',
           brokerageCommissionPercent: '2',
@@ -742,7 +747,18 @@ describe('ListingsService', () => {
       ).toThrow('Brokerage Fee (₹) is not applicable');
     });
 
-    it.each(['0', '100.5', '1.125', 'two'])('rejects a brokerage percentage of %s', (percent) => {
+    it('rejects a percentage on a rental — rent brokerage is a ₹ amount only', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('apartment', 'rent', {
+          ...brokered,
+          brokerageFee: '5000',
+          brokerageCommissionPercent: '8.33',
+        }),
+      ).toThrow('Brokerage Fee (%) is not applicable');
+    });
+
+    it.each(['0', '0.2', '5.5', '100', '1.125', 'two'])('rejects a brokerage percentage of %s', (percent) => {
       const { service } = makeService();
       expect(() =>
         (service as any).assertValidAttributes('house', 'sell', {
@@ -750,31 +766,91 @@ describe('ListingsService', () => {
           brokerageFeeType: 'percent',
           brokerageCommissionPercent: percent,
         }),
-      ).toThrow('Brokerage Fee (%) must be between 0.1 and 100, up to 2 decimal places');
+      ).toThrow('Brokerage Fee (%) must be between 0.25 and 5, up to 2 decimal places');
     });
 
-    it('rejects a fixed brokerage fee that is not a whole rupee amount', () => {
+    it('rejects a fixed brokerage fee that is not a whole rupee amount, or under ₹500', () => {
       const { service } = makeService();
-      expect(() =>
-        (service as any).assertValidAttributes('house', 'sell', {
-          ...brokered,
-          brokerageFeeType: 'fixed',
-          brokerageFee: '5000.5',
-        }),
-      ).toThrow('Brokerage Fee (₹) must be a whole number of at least 1');
+      for (const fee of ['5000.5', '499']) {
+        expect(() =>
+          (service as any).assertValidAttributes('house', 'sell', {
+            ...brokered,
+            brokerageFeeType: 'fixed',
+            brokerageFee: fee,
+          }),
+        ).toThrow('Brokerage Fee (₹) must be a whole number of at least 500');
+      }
     });
 
-    it('infers the brokerage type for a payload from before the type question', () => {
-      expect(inferBrokerageFeeType({ brokerageFeeApplicable: 'yes', brokerageFee: '5000' })).toMatchObject({
-        brokerageFeeType: 'fixed',
-      });
+    it('infers the brokerage type for a sale payload from before the type question', () => {
       expect(
-        inferBrokerageFeeType({ brokerageFeeApplicable: 'yes', brokerageCommissionPercent: 2 }),
+        normalizeBrokerageAttributes('sell', { brokerageFeeApplicable: 'yes', brokerageFee: '5000' }),
+      ).toMatchObject({ brokerageFeeType: 'fixed' });
+      expect(
+        normalizeBrokerageAttributes('sell', { brokerageFeeApplicable: 'yes', brokerageCommissionPercent: 2 }),
       ).toMatchObject({ brokerageFeeType: 'percent' });
       const chosen = { brokerageFeeApplicable: 'yes', brokerageFeeType: 'percent', brokerageFee: '5000' };
-      expect(inferBrokerageFeeType(chosen)).toBe(chosen);
+      expect(normalizeBrokerageAttributes('sell', chosen)).toBe(chosen);
       const none = { brokerageFeeApplicable: 'no' };
-      expect(inferBrokerageFeeType(none)).toBe(none);
+      expect(normalizeBrokerageAttributes('sell', none)).toBe(none);
+    });
+
+    it('drops the brokerage type from a rent/lease payload (an old app build, or a stored listing)', () => {
+      expect(
+        normalizeBrokerageAttributes('rent', {
+          brokerageFeeApplicable: 'yes',
+          brokerageFeeType: 'fixed',
+          brokerageFee: '5000',
+        }),
+      ).toEqual({ brokerageFeeApplicable: 'yes', brokerageFee: '5000' });
+    });
+
+    describe('brokerage against the price', () => {
+      const saleFixed = { brokerageFeeApplicable: 'yes', brokerageFeeType: 'fixed' };
+
+      it('caps a sale at 5% of the price and floors it at ₹1,000', () => {
+        expect(brokerageFeeIssue('sell', 5_000_000, { ...saleFixed, brokerageFee: '250000' })).toBeNull();
+        expect(brokerageFeeIssue('sell', 5_000_000, { ...saleFixed, brokerageFee: '250001' })).toBe(
+          'Brokerage Fee (₹) can be at most ₹2,50,000 (5% of the price)',
+        );
+        expect(brokerageFeeIssue('sell', 5_000_000, { ...saleFixed, brokerageFee: 999 })).toBe(
+          'Brokerage Fee (₹) must be at least ₹1,000 on a sale',
+        );
+      });
+
+      it('caps rent and lease at 2 months of the monthly price', () => {
+        const rent = { brokerageFeeApplicable: 'yes', brokerageFee: '47000' };
+        expect(brokerageFeeIssue('rent', 23_500, rent)).toBeNull();
+        expect(brokerageFeeIssue('lease', 23_500, { ...rent, brokerageFee: 47_001 })).toBe(
+          "Brokerage Fee (₹) can be at most ₹47,000 (2 months' rent)",
+        );
+      });
+
+      it('leaves a % to the field range, and skips the ceiling without a price', () => {
+        expect(
+          brokerageFeeIssue('sell', 650_000, {
+            brokerageFeeApplicable: 'yes',
+            brokerageFeeType: 'percent',
+            brokerageCommissionPercent: '5',
+          }),
+        ).toBeNull();
+        expect(brokerageFeeIssue('rent', 0, { brokerageFeeApplicable: 'yes', brokerageFee: '900000' })).toBeNull();
+      });
+
+      it('shows what a % comes to, and the most a ₹ amount may be', () => {
+        expect(
+          brokerageFeeNote('sell', 6_500_000, {
+            brokerageFeeApplicable: 'yes',
+            brokerageFeeType: 'percent',
+            brokerageCommissionPercent: '2',
+          }),
+        ).toEqual({ key: 'brokerageCommissionPercent', text: '≈ ₹1,30,000 of ₹65,00,000' });
+        expect(brokerageFeeNote('rent', 23_500, { brokerageFeeApplicable: 'yes' })).toEqual({
+          key: 'brokerageFee',
+          text: "Up to ₹47,000 (2 months' rent)",
+        });
+        expect(brokerageFeeNote('sell', 6_500_000, { brokerageFeeApplicable: 'yes' })).toBeNull();
+      });
     });
 
     it('accepts a plot sale with either brokerage type', () => {
@@ -799,14 +875,20 @@ describe('ListingsService', () => {
       );
     });
 
-    it('accepts a commercial listing with either brokerage type on any transaction', () => {
+    it('accepts commercial brokerage: a ₹ amount on rent, either type on a sale', () => {
       const { service } = makeService();
       const commercial = { sqft: '1200', purpose: 'office', fromBroker: 'yes', brokerageFeeApplicable: 'yes' };
       expect(() =>
         (service as any).assertValidAttributes('commercial', 'rent', {
           ...commercial,
+          brokerageFee: '100000',
+        }),
+      ).not.toThrow();
+      expect(() =>
+        (service as any).assertValidAttributes('commercial', 'sell', {
+          ...commercial,
           brokerageFeeType: 'percent',
-          brokerageCommissionPercent: '8.33',
+          brokerageCommissionPercent: '2',
         }),
       ).not.toThrow();
       expect(() =>
@@ -1551,6 +1633,64 @@ describe('ListingsService.update — writes a ListingEditLog diff', () => {
     await service.update('l1', 'owner1', { price: 5000, title: 'Same title' } as never).catch(() => undefined);
 
     expect(prisma.listingEditLog.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('ListingsService.update — brokerage against the price', () => {
+  // The 99% brokerage on a ₹6.5 lakh house that prompted these limits.
+  const stored = {
+    id: 'l1',
+    ownerId: 'owner1',
+    category: 'house',
+    transactionType: 'sell',
+    price: 650_000,
+    priceUnit: null,
+    priceQualifier: '',
+    title: 'House for sale',
+    specs: [],
+    description: null,
+    attributes: {
+      bedrooms: 2,
+      bathrooms: 1,
+      carpetAreaSqft: 900,
+      floor: 'ground',
+      totalFloors: 1,
+      entranceFacing: 'east',
+      fromBroker: 'yes',
+      brokerageFeeApplicable: 'yes',
+      brokerageFeeType: 'fixed',
+      brokerageFee: 500_000,
+    },
+    status: 'active',
+    moderationState: 'approved',
+  };
+
+  function serviceWith(row: Record<string, unknown>) {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue(row);
+    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+    return { service, prisma };
+  }
+
+  it('lets an unrelated edit through on a fee stored before the limits', async () => {
+    const { service, prisma } = serviceWith(stored);
+    await service.update('l1', 'owner1', { title: 'House for sale, 2 BHK' } as never).catch(() => undefined);
+    expect(prisma.listing.update).toHaveBeenCalled();
+  });
+
+  it('re-checks the stored fee when the price changes', async () => {
+    const { service, prisma } = serviceWith(stored);
+    await expect(service.update('l1', 'owner1', { price: 700_000 } as never)).rejects.toThrow(
+      'Brokerage Fee (₹) can be at most ₹35,000 (5% of the price)',
+    );
+    expect(prisma.listing.update).not.toHaveBeenCalled();
+  });
+
+  it('checks a fee sent in the edit against the stored price', async () => {
+    const { service } = serviceWith(stored);
+    await expect(
+      service.update('l1', 'owner1', { attributes: { ...stored.attributes, brokerageFee: '40000' } } as never),
+    ).rejects.toThrow('Brokerage Fee (₹) can be at most ₹32,500 (5% of the price)');
   });
 });
 

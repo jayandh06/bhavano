@@ -44,9 +44,11 @@ import { categoryImagePlaceholder } from '@bhavano/types/tokens';
 import { slugify } from '@bhavano/types/slugify';
 import { deriveTag } from '@bhavano/types/listingTag';
 import {
+  brokerageFeeIssue,
   CATEGORY_FIELD_CONFIG,
   defaultAttributesFor,
-  inferBrokerageFeeType,
+  fieldIsVisible,
+  normalizeBrokerageAttributes,
   numberFieldIssue,
   type FieldDef,
 } from '@bhavano/types/categoryFields';
@@ -1324,7 +1326,7 @@ export class ListingsService {
       throw new UnauthorizedException('This account was deleted');
     }
     await this.listingSlotsService.assertCanPublish(ownerId);
-    const inputAttributes = inferBrokerageFeeType(input.attributes ?? {});
+    const inputAttributes = normalizeBrokerageAttributes(input.transactionType, input.attributes ?? {});
     this.assertValidAttributes(
       input.category,
       input.transactionType,
@@ -1353,6 +1355,7 @@ export class ListingsService {
     );
     this.assertValidPrice(input.category, resolvedPrice.price);
     this.assertPriceInRange(input.category, input.transactionType, input.price, resolvedPrice);
+    this.assertBrokerageFitsPrice(input.transactionType, resolvedPrice.price, attributes);
 
     const moderation = await this.moderationService.moderate({ ...input, price: resolvedPrice.price });
     if (!moderation.ok) throw new BadRequestException(moderation.reason);
@@ -2029,7 +2032,7 @@ export class ListingsService {
     // posting wizard does on a category change, unless the caller already sent a fresh attributes
     // object for the new category in the same request.
     const rawAttributes = dto.attributes
-      ? inferBrokerageFeeType(dto.attributes)
+      ? normalizeBrokerageAttributes(nextTransactionType, dto.attributes)
       : categoryOrTxnChanged
         ? defaultAttributesFor(nextCategory)
         : undefined;
@@ -2087,6 +2090,15 @@ export class ListingsService {
     }
     if (dto.price !== undefined && resolvedPrice && resolvedPrice.price !== existing.price) {
       this.assertPriceInRange(nextCategory, nextTransactionType, dto.price, resolvedPrice);
+    }
+    // Only when this edit touches the fee or the price, so an unrelated edit (a title fix) isn't
+    // blocked by a fee stored before these limits existed.
+    if (attributesToValidate !== undefined || (resolvedPrice && resolvedPrice.price !== existing.price)) {
+      this.assertBrokerageFitsPrice(
+        nextTransactionType,
+        resolvedPrice?.price ?? existing.price,
+        attributesToValidate ?? ((existing.attributes as Record<string, unknown> | null) ?? {}),
+      );
     }
 
     // City/area resolution — admin-only, and only when at least one of the three is present.
@@ -2888,13 +2900,7 @@ export class ListingsService {
   ): void {
     for (const field of CATEGORY_FIELD_CONFIG[category]) {
       const value = attributes[field.key];
-      const appliesToTransaction =
-        !field.transactionTypes ||
-        field.transactionTypes.includes(transactionType);
-      const meetsDependency =
-        !field.dependsOn ||
-        attributes[field.dependsOn.key] === field.dependsOn.value;
-      if (!appliesToTransaction || !meetsDependency) {
+      if (!fieldIsVisible(field, transactionType, attributes)) {
         if (value !== undefined)
           throw new BadRequestException(`${field.label} is not applicable`);
         continue;
@@ -2947,7 +2953,8 @@ export class ListingsService {
     }
 
     // Brokerage needs no call here: its type and amount fields are plain `required` fields gated
-    // by `dependsOn`, which the loop above already enforces.
+    // by `dependsOn`, which the loop above already enforces. Its limits against the price are
+    // assertBrokerageFitsPrice, once the price is resolved.
     this.assertConditionalFee(
       category,
       transactionType,
@@ -2955,6 +2962,16 @@ export class ListingsService {
       'maintenanceFeeApplicable',
       'Monthly maintenance fee',
     );
+  }
+
+  /** `price` is the resolved total (per-unit prices already multiplied out), monthly for rent/lease. */
+  private assertBrokerageFitsPrice(
+    transactionType: TransactionType,
+    price: number,
+    attributes: Record<string, unknown>,
+  ): void {
+    const issue = brokerageFeeIssue(transactionType, price, attributes);
+    if (issue) throw new BadRequestException(issue);
   }
 
   /** Requires the amount behind a yes/no fee toggle (the field whose `dependsOn` is
