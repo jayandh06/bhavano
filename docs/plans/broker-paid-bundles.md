@@ -48,11 +48,18 @@ with depth in the 11 ad cities (see `growth-beyond-google-ads.md` §3).
   `20260928230000_user_seller_type`. Setting "owner" clears agency and RERA.
 - **Reconciled with the existing `fromBroker` field** rather than asking twice
   (`resolveDeclaredSellerType` in `listings.service.ts`):
-  - The wizard (web and mobile) asks "Are you the owner or an agent?" on the details step, above
-    Preview, and keeps Preview disabled until it's answered, only when the profile has no answer
-    **and** the listing's own `fromBroker` is blank. The answer is sent as
-    `CreateListingInput.postedAs`. (Until 29 Sept it was asked on the preview, under the ad card,
-    where sellers missed it and tapped Post ad into an error.)
+  - Asked once, and Preview stays disabled until it's answered (`hasFromBrokerField`):
+    - **Categories with `fromBroker`** (house, apartment, villa, plot, commercial): that field is
+      the question. The post and edit forms show it as "Posted by: Owner | Broker / Agent"
+      (`POSTED_BY_FORM_OPTIONS`), with neither selected until the seller picks one.
+    - **Categories without it** (PG, coworking, storage, …): the wizard shows "Are you the owner
+      or an agent?" above Preview, only while the profile has no answer.
+    - The answer is sent as `CreateListingInput.postedAs`.
+  - History: until 29 Sept the separate question sat on the preview, under the ad card, where
+    sellers missed it and tapped Post ad into an error. Until 30 Sept `fromBroker` was an on/off
+    switch and the question hid whenever the field had any value. Switching it on and off again
+    saved "no", which silently answered "owner" and never brought the question back, although
+    the switch looked untouched.
   - Once the profile has an answer, the wizards pre-select `fromBroker` from it
     (`fromBrokerDefault`), still editable for a one-off listing, so the field no longer looks
     like a second copy of the question.

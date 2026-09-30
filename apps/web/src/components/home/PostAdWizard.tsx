@@ -17,7 +17,7 @@ import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, listingAttributesIssue } from "@bhavano/types/categoryFields";
-import { fromBrokerDefault, sellerTypeFromBroker } from "@bhavano/types/sellerType";
+import { fromBrokerDefault, hasFromBrokerField, sellerTypeFromBroker } from "@bhavano/types/sellerType";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import {
   AREA_NAME_MAX_LENGTH,
@@ -329,9 +329,11 @@ export function PostAdWizard({
   const [attributes, setAttributes] = useState<
     Record<string, string | string[]>
   >({});
-  // An answered "Posted by Broker / Agent" field already says it, so don't ask twice. Once the
-  // profile has an answer, that field is pre-selected from it instead (fromBrokerDefault).
-  const askSellerType = profileSellerType === null && !attributes.fromBroker && !assistedMode;
+  // Where the category has a "Posted by" field, that field is the question (required below in
+  // detailsIssue, pre-selected from the profile by fromBrokerDefault). The separate question is
+  // only for categories without one, and only while the profile has no answer.
+  const categoryHasPostedBy = !!category && hasFromBrokerField(category);
+  const askSellerType = profileSellerType === null && !categoryHasPostedBy && !assistedMode;
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [preparingPhotos, setPreparingPhotos] = useState(false);
   const [preparingVideos, setPreparingVideos] = useState(false);
@@ -1000,6 +1002,9 @@ export function PostAdWizard({
       const attributeIssue = listingAttributesIssue(category, transactionType, attributes);
       if (attributeIssue) return { text: attributeIssue, missing: attributeIssue.endsWith(" is required") };
     }
+    // The assisted panel's own Owner/Agent answer overrides this field on submit.
+    if (categoryHasPostedBy && !assistedMode && !sellerTypeFromBroker(attributes.fromBroker))
+      return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
     if (!(Number(price) > 0) && !priceOnRequestAllowed) return { text: "Add a price", missing: true };
     if (priceIssue) return { text: priceIssue, missing: false };
     if (photos.length === 0) return { text: "Add at least one photo", missing: true };

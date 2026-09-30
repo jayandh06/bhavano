@@ -10,6 +10,7 @@ import {
   type FieldSection,
 } from "@bhavano/types/categoryFields";
 import { AREA_UNIT_LABELS, type AreaUnit } from "@bhavano/types/areaUnit";
+import { POSTED_BY_FORM_LABEL, POSTED_BY_FORM_OPTIONS } from "@bhavano/types/sellerType";
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
@@ -152,7 +153,7 @@ export function CategoryFieldsForm({
     const cells: ReactNode[] = [
       <View key={field.key} style={styles.attrCell}>
         <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
-          {field.label}
+          {field.key === "fromBroker" ? POSTED_BY_FORM_LABEL : field.label}
           {field.required ? " *" : ""}
         </Text>
         {field.type === "area" ? (
@@ -186,7 +187,7 @@ export function CategoryFieldsForm({
           </View>
         ) : segmented ? (
           <View style={[styles.segmented, { borderColor: colors.border }]}>
-            {field.options?.map((opt, i) => {
+            {(field.key === "fromBroker" ? POSTED_BY_FORM_OPTIONS : (field.options ?? [])).map((opt, i) => {
               const selected = attributes[field.key] === opt.value;
               return (
                 <Pressable

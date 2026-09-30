@@ -19,7 +19,13 @@ import type {
   TransactionType,
 } from "@bhavano/types";
 import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
-import { fromBrokerDefault, sellerTypeFromBroker } from "@bhavano/types/sellerType";
+import {
+  fromBrokerDefault,
+  hasFromBrokerField,
+  POSTED_BY_FORM_LABEL,
+  POSTED_BY_FORM_OPTIONS,
+  sellerTypeFromBroker,
+} from "@bhavano/types/sellerType";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import {
@@ -290,7 +296,8 @@ export function PostAdWizard({
   // field is blank. Once the profile has an answer, that field is pre-selected from it instead.
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
   const [sellerTypeMissing, setSellerTypeMissing] = useState(false);
-  const askSellerType = !profile?.sellerType && !attributes.fromBroker;
+  const categoryHasPostedBy = !!category && hasFromBrokerField(category);
+  const askSellerType = !profile?.sellerType && !categoryHasPostedBy;
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [videos, setVideos] = useState<SelectedVideo[]>([]);
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -765,7 +772,7 @@ export function PostAdWizard({
     const cells: ReactNode[] = [
       <View key={field.key} style={styles.attrCell}>
         <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
-          {field.label}
+          {field.key === "fromBroker" ? POSTED_BY_FORM_LABEL : field.label}
           {field.required ? " *" : ""}
         </Text>
         {field.type === "area" ? (
@@ -802,7 +809,7 @@ export function PostAdWizard({
           </View>
         ) : segmented ? (
           <View style={[styles.segmented, { borderColor: colors.border }]}>
-            {field.options?.map((opt, i) => {
+            {(field.key === "fromBroker" ? POSTED_BY_FORM_OPTIONS : (field.options ?? [])).map((opt, i) => {
               const selected = attributes[field.key] === opt.value;
               return (
                 <Pressable
@@ -1004,6 +1011,8 @@ export function PostAdWizard({
       const attributeIssue = listingAttributesIssue(category, transactionType, attributes);
       if (attributeIssue) return { text: attributeIssue, missing: attributeIssue.endsWith(" is required") };
     }
+    if (categoryHasPostedBy && !sellerTypeFromBroker(attributes.fromBroker))
+      return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
     if (!priceIsValid(price, category)) return { text: "Add a price", missing: true };
     if (priceIssue) return { text: priceIssue, missing: false };
     if (photoUris.length === 0) return { text: "Add at least one photo", missing: true };

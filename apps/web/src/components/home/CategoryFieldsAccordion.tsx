@@ -10,6 +10,7 @@ import {
   SECTION_ORDER,
 } from "@bhavano/types/categoryFields";
 import { clampDigits } from "@bhavano/types/listingLimits";
+import { POSTED_BY_FORM_LABEL, POSTED_BY_FORM_OPTIONS } from "@bhavano/types/sellerType";
 import { AREA_UNIT_LABELS, type AreaUnit } from "@bhavano/types/areaUnit";
 import { fieldClass, labelClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
@@ -107,6 +108,7 @@ function CheckboxDropdown({
 /** A `select` field is really a Yes/No question if its only two options are exactly
  * "yes"/"no" — those render as a toggle switch instead of a dropdown. */
 function isYesNoField(field: FieldDef): boolean {
+  if (field.key === "fromBroker") return false;
   if (field.type !== "select" || field.options?.length !== 2) return false;
   const values = new Set(field.options.map((opt: FieldOption) => opt.value));
   return values.has("yes") && values.has("no");
@@ -140,6 +142,29 @@ function YesNoToggle({
   );
 }
 
+/** "Posted by" as two named answers rather than a switch. A switch reads the same untouched and
+ * switched off, but only the second one is an answer ("owner"), so sellers couldn't tell whether
+ * they had said anything. Neither button is selected until they choose. */
+function PostedByButtons({ value, onChange }: { value: string | string[] | undefined; onChange: (value: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {POSTED_BY_FORM_OPTIONS.map(({ value: optionValue, label }) => (
+        <button
+          key={optionValue}
+          type="button"
+          aria-pressed={value === optionValue}
+          onClick={() => onChange(optionValue)}
+          className={`text-center border-[1.5px] rounded-[10px] px-4 py-2.5 text-sm font-bold text-text cursor-pointer min-w-[112px] ${
+            value === optionValue ? "border-green bg-surface-alt" : "border-border bg-surface"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Renders one field's input control — the same switch every category-field form in the app
  * needs (toggle / multi-select / select / number / text), factored out so it isn't copy-pasted
  * per consumer of `CATEGORY_FIELD_CONFIG`. */
@@ -167,6 +192,8 @@ function CategoryFieldInput({
       />
     );
   }
+
+  if (field.key === "fromBroker") return <PostedByButtons value={value} onChange={onChange} />;
 
   if (isYesNoField(field)) {
     return (
@@ -381,7 +408,7 @@ function FieldRunBlock({
               <Fragment key={field.key}>
                 <div
                   className={
-                    field.type === "multi-select" || (field.type === "text" && !field.compact)
+                    field.type === "multi-select" || field.key === "fromBroker" || (field.type === "text" && !field.compact)
                       ? "col-span-full"
                       : undefined
                   }
@@ -424,7 +451,7 @@ function CategoryField({
   const labelText = (
     <>
       {isIconName(field.iconName) && <Icon name={field.iconName} className="mr-1.5 text-muted" />}
-      {field.label}
+      {field.key === "fromBroker" ? POSTED_BY_FORM_LABEL : field.label}
       {field.required && <span className="text-[#b3413a]"> *</span>}
     </>
   );
