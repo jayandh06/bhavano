@@ -110,8 +110,24 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-function authedBffFetch<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
-  return bffFetch<T>(path, { ...init, headers: { Authorization: `Bearer ${accessToken}`, ...init?.headers } });
+let unauthorizedHandler: ((accessToken: string) => void) | null = null;
+
+/** Registered by HomeSheetsProvider to end the session when any authed call is rejected with a
+ * 401. Every 401 the BFF sends on an authed route means the session is over (bad or expired JWT,
+ * or a deleted account), and the token has a 24h TTL with no refresh — so an app left open past
+ * that kept a dead token and every screen quietly rendered empty. The handler gets the token that
+ * was rejected, so a slow request from before a fresh login can't sign the new session out. */
+export function setUnauthorizedHandler(handler: ((accessToken: string) => void) | null): void {
+  unauthorizedHandler = handler;
+}
+
+async function authedBffFetch<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
+  try {
+    return await bffFetch<T>(path, { ...init, headers: { Authorization: `Bearer ${accessToken}`, ...init?.headers } });
+  } catch (e) {
+    if (e instanceof BffError && e.status === 401) unauthorizedHandler?.(accessToken);
+    throw e;
+  }
 }
 
 /** Reports a UI crash to the BFF's Loki-backed logging — called by ErrorBoundary's

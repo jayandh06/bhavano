@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ActivityIndicator, Keyboard, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Keyboard, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   BottomSheetModal,
   BottomSheetScrollView,
@@ -35,6 +35,7 @@ import {
   logout as bffLogout,
   reverseGeocodeGoogle,
   sendOtp,
+  setUnauthorizedHandler,
   verifyOtp,
 } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
@@ -62,6 +63,17 @@ function decodeUserId(token: string): string | null {
     return typeof payload.sub === 'string' ? payload.sub : null;
   } catch {
     return null;
+  }
+}
+
+/** Whether the JWT's own `exp` has passed — same unverified decode as {@link decodeUserId}. A token
+ * with no readable `exp` counts as live; the BFF's 401 still catches it on first use. */
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now();
+  } catch {
+    return false;
   }
 }
 
@@ -169,10 +181,44 @@ export function HomeSheetsProvider({
    * access token is still valid (the DELETE is authed). */
   const pushTokenRef = useRef<string | null>(null);
 
+  const accessTokenRef = useRef<string | null>(null);
+  accessTokenRef.current = accessToken;
+
+  /** Ends a session the BFF no longer accepts. Only when `token` is still the current one — a
+   * rejection that arrives after the user has already logged in again is about the old token. */
+  const endDeadSession = useCallback(async (token: string) => {
+    if (token !== accessTokenRef.current) return;
+    accessTokenRef.current = null;
+    setIsLoggedIn(false);
+    setAccessToken(null);
+    setProfile(null);
+    if (Platform.OS !== "web") await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler((token) => void endDeadSession(token));
+    return () => setUnauthorizedHandler(null);
+  }, [endDeadSession]);
+
+  // The app can sit in the background for days, well past the token's 24h TTL. Catch that on the
+  // way back in, before the first screen fires requests that would all come back 401.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      const token = accessTokenRef.current;
+      if (state === "active" && token && isTokenExpired(token)) void endDeadSession(token);
+    });
+    return () => sub.remove();
+  }, [endDeadSession]);
+
   useEffect(() => {
     // expo-secure-store has no web implementation — the browser preview simply starts logged out.
     if (Platform.OS === "web") return;
-    SecureStore.getItemAsync(TOKEN_KEY).then((token) => {
+    SecureStore.getItemAsync(TOKEN_KEY).then((stored) => {
+      let token = stored;
+      if (token && isTokenExpired(token)) {
+        token = null;
+        SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+      }
       setIsLoggedIn(!!token);
       setAccessToken(token);
       // Cold start while already logged in — make sure this device's push token is on file (the
@@ -284,14 +330,9 @@ export function HomeSheetsProvider({
       // "logged in" with no profile: the Account tab spins forever and the login sheet is
       // unreachable. So end the session here and let the user log in again. Other errors
       // (offline, 5xx) are transient — leave the session intact.
-      if (e instanceof BffError && (e.status === 401 || e.status === 403)) {
-        setIsLoggedIn(false);
-        setAccessToken(null);
-        setProfile(null);
-        if (Platform.OS !== "web") await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
-      }
+      if (e instanceof BffError && (e.status === 401 || e.status === 403)) await endDeadSession(accessToken);
     }
-  }, [accessToken]);
+  }, [accessToken, endDeadSession]);
 
   useEffect(() => {
     refreshProfile();
