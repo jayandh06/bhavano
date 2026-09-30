@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Area, City, ListingDetailDto } from "@bhavano/types";
 import { postedByLabel } from "@bhavano/types/sellerType";
+import { toGuestSave } from "@bhavano/types/guestSaves";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
@@ -273,6 +274,7 @@ export async function ListingDetailView({
               <ListingDetailActions
                 listingId={listing.id}
                 listingTitle={listing.title}
+                guestSave={toGuestSave(listing)}
                 initialIsFavourited={listing.isFavourited}
                 initialLikeCount={listing.likeCount}
                 isOwner={listing.isOwner}

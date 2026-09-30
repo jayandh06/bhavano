@@ -5,7 +5,8 @@ import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { Footer } from "@/components/home/Footer";
 import { ListingCard } from "@/components/home/ListingCard";
 import { PageHeader } from "@/components/home/PageHeader";
-import { RequireLoginPrompt } from "@/components/home/RequireLoginPrompt";
+import { GuestFavourites } from "@/components/home/GuestFavourites";
+import { sessionAccessToken } from "@/lib/session";
 
 export default async function FavouritesPage({
   searchParams,
@@ -15,6 +16,7 @@ export default async function FavouritesPage({
   const sp = await searchParams;
   const citySlug = typeof sp.city === "string" ? sp.city : undefined;
   const [session, { city, cityAreas, allCities }] = await Promise.all([auth(), resolvePageCityContext(citySlug)]);
+  const accessToken = sessionAccessToken(session);
 
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
@@ -25,11 +27,7 @@ export default async function FavouritesPage({
         </Link>
         <h1 className="font-lora text-[26px] font-semibold m-0 mb-5">Your favourites</h1>
 
-        {!session?.accessToken ? (
-          <RequireLoginPrompt message="Log in to see the listings you've favourited." />
-        ) : (
-          <FavouritesGrid accessToken={session.accessToken} />
-        )}
+        {accessToken ? <FavouritesGrid accessToken={accessToken} /> : <GuestFavourites />}
       </div>
       <Footer currentCityName={city?.name} cityAreas={cityAreas} allCities={allCities} />
     </div>
@@ -41,9 +39,7 @@ async function FavouritesGrid({ accessToken }: { accessToken: string }) {
   try {
     favourites = await fetchFavourites(accessToken);
   } catch (error) {
-    if (error instanceof BffAuthError) {
-      return <RequireLoginPrompt message="Log in to see the listings you've favourited." />;
-    }
+    if (error instanceof BffAuthError) return <GuestFavourites />;
     throw error;
   }
 

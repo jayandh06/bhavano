@@ -11,6 +11,7 @@ import { useBuyCredits } from "./BuyCreditsProvider";
 import { toggleFavouriteAction, revealContactAction } from "@/app/actions/listings";
 import { hasSessionAction } from "@/app/actions/auth";
 import { buildListingPath } from "@/lib/listingPath";
+import { toggleGuestSave, useGuestSaves } from "@/lib/guestSaves";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
 import { ShareButton } from "./ShareButton";
@@ -20,7 +21,9 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   const { requireLogin } = useAuthGate();
   const { buyCredits } = useBuyCredits();
   const router = useRouter();
-  const [isFavourited, setIsFavourited] = useState(item.isFavourited);
+  const [accountFavourited, setIsFavourited] = useState(item.isFavourited);
+  const guestSaved = useGuestSaves().some((save) => save.id === item.id);
+  const isFavourited = accountFavourited || guestSaved;
   const [likeCount, setLikeCount] = useState(item.likeCount);
   const [contactError, setContactError] = useState<string | null>(null);
   const href = buildListingPath(item);
@@ -66,11 +69,13 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     setHoverPhotoIndex(0);
   }
 
+  // Logged out, the heart saves on this device (GuestSavesToast then offers a login that moves it
+  // to the account) instead of stopping the visitor at a login dialog.
   async function onToggleFavourite(e: React.MouseEvent) {
     e.preventDefault();
     const result = await toggleFavouriteAction(item.id);
     if (result.requiresLogin) {
-      requireLogin();
+      toggleGuestSave(item);
       return;
     }
     setIsFavourited(result.favourited);

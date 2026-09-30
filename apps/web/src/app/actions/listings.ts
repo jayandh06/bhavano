@@ -35,6 +35,7 @@ import {
   rotateOwnListingPhoto,
   setOwnListingCoverPhoto,
   toggleFavourite,
+  importFavourites,
   updateListing,
   uploadPhoto,
 } from "@/lib/bff";
@@ -93,10 +94,17 @@ export type ToggleFavouriteResult = { requiresLogin: true } | { requiresLogin: f
 
 export async function toggleFavouriteAction(listingId: string): Promise<ToggleFavouriteResult> {
   const session = await auth();
-  if (!session?.accessToken) return { requiresLogin: true };
+  if (!session || !isAccessTokenValid(session.accessToken)) return { requiresLogin: true };
 
   const result = await toggleFavourite(session.accessToken, listingId);
   return { requiresLogin: false, ...result };
+}
+
+/** Moves device saves onto the account; see lib/guestSaves.ts. */
+export async function importGuestSavesAction(listingIds: string[]): Promise<{ saved: number } | null> {
+  const session = await auth();
+  if (!session || !isAccessTokenValid(session.accessToken) || listingIds.length === 0) return null;
+  return importFavourites(session.accessToken, listingIds).catch(() => null);
 }
 
 export type RecordInterestResult =

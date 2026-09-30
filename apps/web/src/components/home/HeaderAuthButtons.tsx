@@ -9,6 +9,7 @@ import { useClickOutside } from "@/lib/useClickOutside";
 import { Icon } from "./Icon";
 import { MessagesNavItem, UnreadCountProvider } from "./MessagesNavItem";
 import { SessionKeepAlive } from "./SessionKeepAlive";
+import { GuestSavesSync } from "./GuestSavesSync";
 
 export function HeaderAuthButtons({
   userName,
@@ -32,7 +33,12 @@ export function HeaderAuthButtons({
 
   return (
     <UnreadCountProvider accessToken={accessToken}>
-      {accessToken && <SessionKeepAlive />}
+      {accessToken && (
+        <>
+          <SessionKeepAlive />
+          <GuestSavesSync />
+        </>
+      )}
       <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 ml-auto">
         {/* Desktop keeps these as top-level links, where there is room for words. On a phone they
           * move into the account menu — the same place My listings already lives — so the first

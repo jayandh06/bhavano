@@ -7,12 +7,15 @@ import { useBuyCredits } from "./BuyCreditsProvider";
 import { toggleFavouriteAction, revealContactAction } from "@/app/actions/listings";
 import { hasSessionAction } from "@/app/actions/auth";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import type { ListingCardDto } from "@bhavano/types";
 import { ownerEnquiryText, whatsAppChatUrl } from "@bhavano/types/whatsapp";
+import { toggleGuestSave, useGuestSaves } from "@/lib/guestSaves";
 import { Icon } from "./Icon";
 
 export function ListingDetailActions({
   listingId,
   listingTitle,
+  guestSave,
   initialIsFavourited,
   initialLikeCount,
   isOwner,
@@ -28,6 +31,8 @@ export function ListingDetailActions({
   listingId: string;
   /** Pre-fills the WhatsApp message once contact is revealed. */
   listingTitle: string;
+  /** What a logged-out save stores on the device (toGuestSave of this listing). */
+  guestSave: ListingCardDto;
   initialIsFavourited: boolean;
   initialLikeCount: number;
   /** The poster's own view. Contact is hidden — it would start a conversation with yourself,
@@ -50,7 +55,9 @@ export function ListingDetailActions({
   const { requireLogin } = useAuthGate();
   const { buyCredits } = useBuyCredits();
   const router = useRouter();
-  const [isFavourited, setIsFavourited] = useState(initialIsFavourited);
+  const [accountFavourited, setIsFavourited] = useState(initialIsFavourited);
+  const guestSaved = useGuestSaves().some((save) => save.id === listingId);
+  const isFavourited = accountFavourited || guestSaved;
   const [likeCount, setLikeCount] = useState(initialLikeCount);
 
   const [contactRevealed, setContactRevealed] = useState(initialContactRevealed);
@@ -61,10 +68,11 @@ export function ListingDetailActions({
   const [unlocking, setUnlocking] = useState(false);
   const whatsAppHref = ownerPhone ? whatsAppChatUrl(ownerPhone, ownerEnquiryText(listingTitle)) : null;
 
+  // Logged out, saves on this device; see ListingCard's matching handler.
   async function onToggleFavourite() {
     const result = await toggleFavouriteAction(listingId);
     if (result.requiresLogin) {
-      requireLogin();
+      toggleGuestSave(guestSave);
       return;
     }
     setIsFavourited(result.favourited);

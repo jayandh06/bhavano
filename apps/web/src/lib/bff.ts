@@ -795,6 +795,14 @@ export function toggleFavourite(
   return authedBffFetch(accessToken, `/listings/${listingId}/favourite`, { method: "POST" });
 }
 
+/** Saves the listings a visitor saved on this device before logging in. */
+export function importFavourites(accessToken: string, listingIds: string[]): Promise<{ saved: number }> {
+  return authedBffFetch(accessToken, "/listings/favourites/import", {
+    method: "POST",
+    body: JSON.stringify({ listingIds }),
+  });
+}
+
 export function recordListingInterest(
   accessToken: string,
   listingId: string,
