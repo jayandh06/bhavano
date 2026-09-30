@@ -32,6 +32,15 @@ the choice stays reversible.
   `updateMany` rename, now that a rename can't collide with an existing row (see
   `docs/plans/link-anonymous-views-to-account-on-signup.md`, updated to match).
 
+## Admin visits are not counted (2026-09-30)
+
+`POST /listings/:id/view` records nothing for a logged-in `role: 'admin'` viewer: no
+`ListingView` row and no `viewCount` increment. It answers with the current count via
+`ListingsService.getViewCount`. Staff open listings to moderate, fix and message owners, and in
+production that was 348 of 2,540 recorded visits (about 14%, across 189 listings), inflating the
+number owners and buyers see. The role comes from the JWT, the same trust `AdminGuard` uses. An
+admin browsing logged out is indistinguishable from any anonymous visitor and still counts.
+
 ## Known consequence, not yet addressed
 
 `ListingsService.listEngagement` (the admin "Liked & Viewed" table) reads `ListingView` rows

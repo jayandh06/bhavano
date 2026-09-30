@@ -2509,6 +2509,16 @@ export class ListingsService {
     return { viewCount: listing.viewCount };
   }
 
+  /** The current count, without recording a visit — what the view endpoint answers for an admin. */
+  async getViewCount(listingId: string): Promise<{ viewCount: number }> {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { viewCount: true },
+    });
+    if (!listing) throw new NotFoundException('Listing not found');
+    return { viewCount: listing.viewCount };
+  }
+
   /** Re-keys a visitor's pre-signup anonymous views (`anon:<viewerKey>`) onto their new account
    * (`user:<userId>`) once they sign up on the same device — the ListingView analogue of
    * AnalyticsService.linkVisitToUser. A plain bulk rename is safe now that ListingView no longer

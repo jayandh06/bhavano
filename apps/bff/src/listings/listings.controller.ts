@@ -142,6 +142,10 @@ export class ListingsController {
     @Body() dto: RecordViewDto,
     @CurrentUser() user?: RequestUser,
   ): Promise<{ viewCount: number }> {
+    // Staff open listings to moderate, fix and message owners; counting those visits inflated the
+    // number owners and buyers see. Only recognisable while logged in — an admin browsing logged
+    // out is an anonymous visitor like anyone else.
+    if (user?.role === 'admin') return this.listingsService.getViewCount(id);
     // Logged-in viewers dedupe by their real user id (consistent across devices);
     // anonymous viewers dedupe by the client-persisted key they send.
     return this.listingsService.recordView(id, user ? `user:${user.id}` : `anon:${dto.viewerKey}`);
