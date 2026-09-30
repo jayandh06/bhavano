@@ -8,7 +8,9 @@ import { Icon } from "./Icon";
  * bought from here is recorded on the payment. */
 export function BoostOfferMessageCard({ card }: { card: BoostOfferMessageCardDto }) {
   return (
-    <div className="self-start w-full max-w-[400px] rounded-xl border border-border bg-surface text-text overflow-hidden">
+    // shrink-0: the thread list is a fixed-height flex column, and an overflow-hidden item in one
+    // shrinks to fit instead of letting the list scroll, clipping the button on a phone.
+    <div className="self-start shrink-0 w-full max-w-[400px] rounded-xl border border-border bg-surface text-text overflow-hidden">
       <div className="flex gap-3 p-3.5 pb-3 bg-surface-alt">
         {card.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
