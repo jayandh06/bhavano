@@ -24,11 +24,15 @@ campaign is switched to Enabled in the Ads UI.
   Conversions already considers it without any extra setup. It also has 0 real volume in the poster
   campaigns today, so leaving the account-wide default in place doesn't dilute their bidding either.
 
-**Before enabling it, run the GTM verification this doc already called for**: open the site in GTM
-Preview, save a search, confirm the Google Ads conversion tag actually fires. "Save a search" has 0
-Google Ads conversions in 3 months — expected, since no ad has ever sent seeker traffic to it before
-now — but that also means it has never been tested end-to-end, and GTM's container configuration
-can't be verified by reading this repo.
+**GTM verification: done, passed (2026-09-30).** Checked directly against the live Tag Manager
+container via the API (`gtm_check_save_search.py`, read-only) rather than a manual Preview
+click-through: the "CE - save_search" trigger matches the exact event name the code pushes
+(`{{_event}} equals "save_search"`), the "Ads - save_search" tag is wired to fire on that trigger
+(confirmed by trigger id, not just name), the tag is not paused, and all of this is true in the
+**currently published, live** container version (version 9), not just an unpublished draft. "Save a
+search" showing 0 Google Ads conversions in 3 months is confirmed to be exactly what it looked like:
+no ad has ever sent seeker traffic to it, not a broken pipeline. Nothing left blocking enabling the
+campaign on this front.
 
 ## Original sketch
 
