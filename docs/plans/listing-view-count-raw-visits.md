@@ -41,6 +41,11 @@ production that was 348 of 2,540 recorded visits (about 14%, across 189 listings
 number owners and buyers see. The role comes from the JWT, the same trust `AdminGuard` uses. An
 admin browsing logged out is indistinguishable from any anonymous visitor and still counts.
 
+Admin visits recorded before this change were removed by migration
+`20260930120000_remove_admin_listing_views`. It subtracts each listing's admin-visit rows from its
+`viewCount`, floored at 0, then deletes those rows. A dry run against production just before the
+deploy touched 189 listings and 348 rows.
+
 ## Known consequence, not yet addressed
 
 `ListingsService.listEngagement` (the admin "Liked & Viewed" table) reads `ListingView` rows
