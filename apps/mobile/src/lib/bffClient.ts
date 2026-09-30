@@ -284,6 +284,14 @@ export function toggleFavourite(
   return authedBffFetch(accessToken, `/listings/${listingId}/favourite`, { method: "POST" });
 }
 
+/** Saves the listings saved on this phone before logging in (see src/lib/guestSaves.ts). */
+export function importFavourites(accessToken: string, listingIds: string[]): Promise<{ saved: number }> {
+  return authedBffFetch(accessToken, "/listings/favourites/import", {
+    method: "POST",
+    body: JSON.stringify({ listingIds }),
+  });
+}
+
 export function recordListingInterest(
   accessToken: string,
   listingId: string,

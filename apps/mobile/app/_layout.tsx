@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import type { ErrorUtils } from "react-native";
@@ -16,7 +16,8 @@ import { requestTrackingConsent } from "../src/lib/trackingConsent";
 import { BottomTabBar } from "../src/components/home/BottomTabBar";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { SoftNavAppPageViews } from "../src/components/home/SoftNavAppPageViews";
-import { reportClientError } from "../src/lib/bffClient";
+import { importFavourites, reportClientError } from "../src/lib/bffClient";
+import { clearGuestSaves, guestSaveIds, useGuestSaves } from "../src/lib/guestSaves";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,31 @@ function PushBridge() {
   return null;
 }
 
+/** Moves listings saved on this phone while logged out onto the account once logged in, then
+ * refreshes the Saved list. */
+function GuestSavesSync() {
+  const { accessToken } = useHomeSheets();
+  const queryClient = useQueryClient();
+  const saveCount = useGuestSaves().length;
+
+  useEffect(() => {
+    if (!accessToken || saveCount === 0) return;
+    let cancelled = false;
+    importFavourites(accessToken, guestSaveIds())
+      .then(() => {
+        if (cancelled) return;
+        clearGuestSaves();
+        void queryClient.invalidateQueries({ queryKey: ["favourites"] });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, saveCount, queryClient]);
+
+  return null;
+}
+
 /** Child of HomeSheetsProvider purely so the top-level ErrorBoundary below can attach `userId`
  * (best-effort — null before login, same as every other consumer of useHomeSheets()) to a crash
  * report without lifting that boundary outside the provider that owns it. */
@@ -103,6 +129,7 @@ function AppNavigation() {
     <HomeSheetsProvider popularCities={popularCities ?? []}>
       <AppCrashBoundary>
         <PushBridge />
+        <GuestSavesSync />
         <SoftNavAppPageViews />
         {/* Every screen runs headerShown:false and draws its own header, so nothing was reserving
             the status-bar area — content rendered under the clock, Dynamic Island and Wi-Fi icons

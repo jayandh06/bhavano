@@ -9,6 +9,7 @@ import { useListingQuery } from "../../src/lib/queries";
 import { BffError, recordListingInterest, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
 import { getOrCreateViewerKey } from "../../src/lib/viewerKey";
 import { useListingLoginNudge } from "../../src/lib/useListingLoginNudge";
+import { useGuestSaveHeart } from "../../src/lib/useGuestSaveHeart";
 import { Icon } from "../../src/components/Icon";
 import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
 import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
@@ -40,7 +41,9 @@ export default function ListingDetailScreen() {
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const { data: listing, isLoading, refetch, isRefetching } = useListingQuery(id, accessToken);
   useListingLoginNudge(listing);
-  const [isFavourited, setIsFavourited] = useState(false);
+  const [accountFavourited, setIsFavourited] = useState(false);
+  const guestHeart = useGuestSaveHeart(id);
+  const isFavourited = accountFavourited || guestHeart.guestSaved;
   const [likeCount, setLikeCount] = useState(0);
   const [contactRevealed, setContactRevealed] = useState(false);
   const [ownerPhone, setOwnerPhone] = useState<string | null>(null);
@@ -77,7 +80,7 @@ export default function ListingDetailScreen() {
 
   async function onToggleFavourite() {
     if (!accessToken) {
-      requireLogin();
+      if (listing) guestHeart.toggle(listing);
       return;
     }
     const result = await toggleFavourite(accessToken, id);

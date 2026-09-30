@@ -1,8 +1,9 @@
-import { ActivityIndicator, FlatList, RefreshControl, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { useHomeSheets } from "../src/context/HomeSheetsProvider";
 import { useFavouritesQuery } from "../src/lib/queries";
+import { useGuestSaves } from "../src/lib/guestSaves";
 import { ListingCard } from "../src/components/home/ListingCard";
 import { ScreenHeader } from "../src/components/home/ScreenHeader";
 
@@ -19,7 +20,9 @@ export default function SavedScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader title="Saved listings" onBack={() => router.back()} />
 
-      {isLoading || !favourites ? (
+      {!accessToken ? (
+        <GuestSavedList />
+      ) : isLoading || !favourites ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={colors.green} />
         </View>
@@ -49,5 +52,50 @@ export default function SavedScreen() {
         />
       )}
     </View>
+  );
+}
+
+/** Logged out: the homes saved on this phone, with a login that moves them to the account. */
+function GuestSavedList() {
+  const { colors } = useAppTheme();
+  const { requireLogin } = useHomeSheets();
+  const saves = useGuestSaves();
+
+  return (
+    <FlatList
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+      data={saves}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => <ListingCard item={item} />}
+      ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+      ListHeaderComponent={
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            padding: 12,
+            marginBottom: 16,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+          }}
+        >
+          <Text style={{ flex: 1, color: colors.text, fontSize: 13, lineHeight: 18 }}>
+            {saves.length
+              ? "Saved on this phone only. Log in to keep them on any phone."
+              : "Log in to see your saved homes, or tap the heart on a listing to save it here."}
+          </Text>
+          <Pressable
+            onPress={() => requireLogin()}
+            style={{ backgroundColor: colors.green, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 }}
+          >
+            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13 }}>Log in</Text>
+          </Pressable>
+        </View>
+      }
+    />
   );
 }

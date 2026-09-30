@@ -8,6 +8,7 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { BffError, revealContact, toggleFavourite } from "../../lib/bffClient";
 import { sharedWebUrl } from "../../lib/appWebUrl";
+import { useGuestSaveHeart } from "../../lib/useGuestSaveHeart";
 import { Icon } from "../Icon";
 import { ListingPrice } from "./PriceWithWords";
 
@@ -15,7 +16,9 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   const { colors } = useAppTheme();
   const { requireLogin, accessToken } = useHomeSheets();
   const router = useRouter();
-  const [isFavourited, setIsFavourited] = useState(item.isFavourited);
+  const [accountFavourited, setIsFavourited] = useState(item.isFavourited);
+  const guestHeart = useGuestSaveHeart(item.id);
+  const isFavourited = accountFavourited || guestHeart.guestSaved;
   const [likeCount, setLikeCount] = useState(item.likeCount);
   const [contactError, setContactError] = useState<string | null>(null);
   const [contactRevealed, setContactRevealed] = useState(item.contactRevealed);
@@ -43,7 +46,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
 
   async function onToggleFavourite() {
     if (!accessToken) {
-      requireLogin();
+      guestHeart.toggle(item);
       return;
     }
     const result = await toggleFavourite(accessToken, item.id);

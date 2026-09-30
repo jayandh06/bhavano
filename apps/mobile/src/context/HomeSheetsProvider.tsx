@@ -90,6 +90,13 @@ function isTokenDueForRenewal(token: string): boolean {
   }
 }
 
+export interface RequireLoginOptions {
+  onSuccess?: () => void;
+  skippable?: { reason: string; onSkip: () => void };
+  /** Replaces the sheet's heading, for an ask about something specific ("Keep your saved homes"). */
+  title?: string;
+}
+
 interface HomeSheetsContextValue {
   city: City | null;
   setCity: (city: City) => void;
@@ -98,7 +105,7 @@ interface HomeSheetsContextValue {
    * AuthGateProvider. `skippable` is for an unprompted ask (the listing-detail login nudge): it
    * adds a reason line and a Skip button, and `onSkip` runs if the sheet closes without a login,
    * by Skip or by swiping it away. */
-  requireLogin: (options?: { onSuccess?: () => void; skippable?: { reason: string; onSkip: () => void } }) => void;
+  requireLogin: (options?: RequireLoginOptions) => void;
   /** False until the stored session has been read on launch. `isLoggedIn` is false before that
    * even for a logged-in user, so anything that prompts on its own should wait for this. */
   sessionReady: boolean;
@@ -382,6 +389,7 @@ export function HomeSheetsProvider({
    * doesn't count as a skip. */
   const onSkipRef = useRef<(() => void) | undefined>(undefined);
   const [skipReason, setSkipReason] = useState<string | null>(null);
+  const [loginTitle, setLoginTitle] = useState<string | null>(null);
   /** True when basics was opened for an already-signed-in cold start, not a fresh login. */
   const quietBasicsRef = useRef(false);
   /** True while the basics sheet is being used only to verify a phone at Publish. A ref beside the
@@ -390,11 +398,12 @@ export function HomeSheetsProvider({
   const [verifyPhoneMode, setVerifyPhoneMode] = useState(false);
   const sessionBasicsCheckedRef = useRef(false);
 
-  const requireLogin = useCallback((options?: { onSuccess?: () => void; skippable?: { reason: string; onSkip: () => void } }) => {
+  const requireLogin = useCallback((options?: RequireLoginOptions) => {
     if (isLoggedIn) return;
     onSuccessRef.current = options?.onSuccess;
     onSkipRef.current = options?.skippable?.onSkip;
     setSkipReason(options?.skippable?.reason ?? null);
+    setLoginTitle(options?.title ?? null);
     quietBasicsRef.current = false;
     setLoginStep("choose");
     setPhone("");
@@ -908,7 +917,7 @@ export function HomeSheetsProvider({
           {loginStep === "choose" && (
             <>
               <Text style={[styles.sheetTitle, { color: colors.text }, skipReason ? { marginBottom: 6 } : null]}>
-                {skipReason ? "Log in to hear back from owners faster" : "Log in to continue"}
+                {loginTitle ?? (skipReason ? "Log in to hear back from owners faster" : "Log in to continue")}
               </Text>
               {skipReason && (
                 <Text style={{ fontSize: 13, color: colors.textSoft, marginBottom: 16, lineHeight: 19 }}>{skipReason}</Text>
