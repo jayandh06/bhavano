@@ -1306,6 +1306,17 @@ export interface SavedSearchDto {
     bedrooms?: number;
     createdAt: string;
 }
+/** Whether this user can create another saved-search alert right now, and which bucket it would
+ * come from — see SavedSearchesService.alertAllowance. `canCreate: false` means neither a free
+ * slot nor an active Bhavano Plus subscription is available; the caller shows the upgrade prompt
+ * instead of the create form. */
+export interface SavedSearchAllowanceDto {
+    canCreate: boolean;
+    source?: "plus" | "free";
+    /** How many free alerts are left, regardless of `canCreate` — 0 when a Plus subscriber has used
+     * their free quota too (irrelevant to them) or when a free user has none left (why they can't). */
+    freeRemaining: number;
+}
 /** A seeker's unmet demand, captured from an empty search — Phase 0 of
  * docs/plans/property-requirements-demand-side.md. Internal for now: read by the seeker on
  * /my-requirements and by an admin who works it by hand. */

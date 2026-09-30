@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
-import { BffAuthError, fetchCities, fetchProfile, fetchSavedSearches } from "@/lib/bff";
+import { BffAuthError, fetchCities, fetchSavedSearchAllowance, fetchSavedSearches } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { isAccessTokenValid } from "@/lib/session";
 import { Footer } from "@/components/home/Footer";
@@ -42,21 +42,24 @@ export default async function SavedSearchesPage({
 }
 
 async function SavedSearchesGate({ accessToken }: { accessToken: string }) {
-  let profile;
+  let allowance;
   try {
-    profile = await fetchProfile(accessToken);
+    allowance = await fetchSavedSearchAllowance(accessToken);
   } catch (error) {
     if (error instanceof BffAuthError) return <RequireLoginPrompt message="Log in to manage your saved searches." />;
     throw error;
   }
 
-  const isPremium = !!profile.premiumUntil && new Date(profile.premiumUntil).getTime() > Date.now();
-  if (!isPremium) {
+  // Everyone gets a free quota (2 alerts, admin-configurable) before Plus is ever required — see
+  // SavedSearchesService.alertAllowance's own doc for why this replaced a Plus-only gate that made
+  // the whole feature unreachable (there have never been any Plus subscribers). This only turns
+  // away someone who has used their free quota *and* isn't a Plus subscriber.
+  if (!allowance.canCreate) {
     return (
       <div className="border border-border rounded-2xl p-6 bg-surface text-center">
         <p className="text-sm text-text-soft mb-4 m-0">
-          Saved search alerts are a Bhavano Plus benefit — subscribe to get notified the moment a matching listing
-          goes up, before anyone else does.
+          You&apos;ve used your free saved search alerts. Subscribe to Bhavano Plus for unlimited alerts — get
+          notified the moment a matching listing goes up, before anyone else does.
         </p>
         <Link
           href="/premium"
@@ -69,5 +72,11 @@ async function SavedSearchesGate({ accessToken }: { accessToken: string }) {
   }
 
   const [searches, cities] = await Promise.all([fetchSavedSearches(accessToken), fetchCities(undefined, true)]);
-  return <SavedSearchesManager initial={searches} cities={cities} />;
+  return (
+    <SavedSearchesManager
+      initial={searches}
+      cities={cities}
+      freeRemaining={allowance.source === "free" ? allowance.freeRemaining : undefined}
+    />
+  );
 }

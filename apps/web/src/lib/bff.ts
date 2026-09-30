@@ -45,6 +45,7 @@ import type {
   RefineRequirementInput,
   RequirementDto,
   ReverseGeocodeResultDto,
+  SavedSearchAllowanceDto,
   SavedSearchDto,
   SendFirstMessageResponseDto,
   SubscriptionTier,
@@ -753,6 +754,13 @@ export function fetchAgentStorefront(userId: string): Promise<AgentStorefrontDto
 
 export function fetchSavedSearches(accessToken: string): Promise<SavedSearchDto[]> {
   return authedBffFetch(accessToken, "/saved-searches", { cache: "no-store" });
+}
+
+/** Whether this user can create another saved search right now (a free slot or active Plus), and
+ * which bucket it would come from — see SavedSearchesService.alertAllowance. The /saved-searches
+ * page calls this before deciding whether to show the create form or the upgrade prompt. */
+export function fetchSavedSearchAllowance(accessToken: string): Promise<SavedSearchAllowanceDto> {
+  return authedBffFetch(accessToken, "/saved-searches/allowance", { cache: "no-store" });
 }
 
 export function createSavedSearch(accessToken: string, input: CreateSavedSearchInput): Promise<SavedSearchDto> {

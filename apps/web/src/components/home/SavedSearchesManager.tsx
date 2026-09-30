@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { Area, City, ListingCategory, SavedSearchDto, TransactionType } from "@bhavano/types";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { createSavedSearchAction, deleteSavedSearchAction } from "@/app/actions/saved-searches";
@@ -30,7 +31,19 @@ const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }[] = [
   { value: "lease", label: "Lease" },
 ];
 
-export function SavedSearchesManager({ initial, cities }: { initial: SavedSearchDto[]; cities: City[] }) {
+export function SavedSearchesManager({
+  initial,
+  cities,
+  freeRemaining,
+}: {
+  initial: SavedSearchDto[];
+  cities: City[];
+  /** Free alerts left, only when the *next* one would come from the free quota rather than an
+   * active Plus subscription — undefined for a Plus subscriber, who has no count to show. Set by
+   * the page's own allowance check (SavedSearchesGate), which already confirmed at least one
+   * alert is available before this component ever renders. */
+  freeRemaining?: number;
+}) {
   const [searches, setSearches] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -112,6 +125,16 @@ export function SavedSearchesManager({ initial, cities }: { initial: SavedSearch
     <div className="flex flex-col gap-4">
       {searches.length === 0 && !showForm && (
         <p className="text-muted text-sm">No saved searches yet — create one and we&apos;ll email/text you the moment a match posts.</p>
+      )}
+
+      {freeRemaining !== undefined && (
+        <p className="text-[13px] text-muted m-0">
+          {freeRemaining} free alert{freeRemaining === 1 ? "" : "s"} left.{" "}
+          <Link href="/premium" className="font-bold text-green">
+            Get Bhavano Plus
+          </Link>{" "}
+          for unlimited.
+        </p>
       )}
 
       {searches.map((s) => (
