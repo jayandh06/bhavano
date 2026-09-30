@@ -12,7 +12,7 @@ import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { ListingDetailActions } from "./ListingDetailActions";
 import { ListingMediaGallery } from "./ListingMediaGallery";
-import { PriceWithWords } from "./PriceWithWords";
+import { ListingPrice } from "./PriceWithWords";
 import { ViewTracker } from "./ViewTracker";
 import { Icon, isIconName } from "./Icon";
 
@@ -139,7 +139,7 @@ export async function ListingDetailView({
                 * in one component even though the page wants something between them. */}
               <div className="flex justify-between items-start gap-4 mb-2">
                 <div className="font-lora text-[28px] font-bold text-green">
-                  <PriceWithWords price={listing.price} priceInWords={listing.priceInWords} />
+                  <ListingPrice item={listing} />
                 </div>
                 {listing.priceQualifier && (
                   <div className="text-[13px] font-bold text-muted bg-surface-alt px-3 py-[5px] rounded-md whitespace-nowrap">

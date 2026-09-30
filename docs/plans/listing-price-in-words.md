@@ -1,6 +1,6 @@
 # Listing price in words (Thousand / Lakh / Crore)
 
-## Status: implemented 2026-09-27; number + words everywhere 2026-09-28
+## Status: implemented 2026-09-27; number + words everywhere 2026-09-28; words only on cards and share text 2026-09-30
 
 **Ask (2026-09-27):** show listing prices as "₹35 Thousand", "₹35 Lakh", "₹1 Crore" instead of
 "₹35,00,000". Long Indian-grouped numbers are easy to misread by a factor of 10 (₹3,50,000 vs
@@ -10,6 +10,19 @@ display prices.
 **Follow-up (2026-09-28):** "Wherever we show price show it number + word form, even in admin."
 Words alone hid the exact figure (a buyer or admin couldn't tell ₹35,00,000 from ₹35,49,999), so
 every price now reads **"₹35,00,000 (35 Lakh)"**: the exact figure first, then the words in brackets.
+
+**Follow-up (2026-09-30):** "Do we need to show both total price and price in words for all
+listings, or is price in words enough?" Split by surface:
+
+- **Browse cards and share text: words only, from ₹1 lakh up** ("₹60 Lakh"). A card is for
+  scanning and comparing; the words are what's easy to compare, and the exact figure is one tap
+  away. Below ₹1 lakh the plain number stays ("₹23,500"), since "₹23.5 Thousand" reads worse than
+  the digits. (`compactPrice`: words when they contain Lakh or Crore.)
+- **Detail page, my listings, post preview, admin: number + words**, unchanged — the places
+  where the exact figure is being checked (the buyer deciding, the seller or admin confirming what
+  was typed).
+- A per-unit rate line ("₹5,000/sq ft · 1,200 sq ft") stays a number everywhere — see
+  multiple-area-units-price-per-unit.md.
 
 ## Design
 
@@ -22,15 +35,19 @@ every price now reads **"₹35,00,000 (35 Lakh)"**: the exact figure first, then
   - `priceWordsNote(price, priceInWords)` → just "35 Lakh", for UIs that style the words separately.
   - `formatInrRangeWithWords(min, max)` → "₹30,00,000 – ₹60,00,000 (30 Lakh – 60 Lakh)",
     "up to ₹60,00,000 (60 Lakh)", "from ₹15,000 (15 Thousand)".
+  - `compactPrice(price, priceInWords)` → "₹60 Lakh" from ₹1 lakh up, else `price` (cards, share).
+  - `listingHeadlinePrice(item)` / `listingPriceText(item, "compact" | "full")` → a listing DTO's
+    headline price, leading with `totalPrice` for a per-unit listing and adding the rate line.
 - **Scales:** ≥ 1 Crore (1,00,00,000) → Crore; ≥ 1 Lakh → Lakh; ≥ 1,000 → Thousand; else digits.
   Below ₹1,000 there are no words, so the bracket is dropped ("₹500").
 - **Numerals, not spelled-out numbers:** "35 Lakh", not "Thirty-five Lakh". Singular unit words.
 - **Up to 2 decimals, truncated rather than rounded, trailing zeros dropped:** "35.5 Lakh",
   "1.25 Crore". Truncating means ₹99,999 reads "99.99 Thousand", never an overstated "100 Thousand".
 - **Price on request:** stays "Contact for price", with no bracket.
-- **Styling:** on cards and the detail page the exact figure keeps the big green style and the
-  words sit after it, smaller and muted (web and mobile `PriceWithWords` components). Plain-text
-  spots (my listings, admin tables, share text, notifications) use the string form.
+- **Styling:** on the detail page the exact figure keeps the big green style and the words sit
+  after it, smaller and muted; cards show the compact form in the same style (web and mobile
+  `PriceWithWords` / `ListingPrice` components). Plain-text spots (my listings, admin tables,
+  share text, notifications) use the string form.
 
 ## Why a separate field instead of changing `price`
 
@@ -48,11 +65,11 @@ When `priceInWords` is missing (an older BFF), they show just `price`.
 
 | Surface | Shows |
 |---|---|
-| Listing cards (web `ListingCard`, mobile `ListingCard`) | number + words |
+| Listing cards (web `ListingCard`, mobile `ListingCard`) | words from ₹1 lakh, else number |
 | Listing detail (web `ListingDetailView`, mobile `listing/[id]`) | number + words |
 | My listings (web and mobile) | number + words |
 | Post-ad preview card (web and mobile) | number + words |
-| Mobile share text | number + words |
+| Share text (mobile card share, web and mobile owner WhatsApp share) | words from ₹1 lakh, else number |
 | Price inputs: post-ad, edit listing (web, mobile), admin edit form | live hint under the box, e.g. "₹35,00,000 (35 Lakh)" |
 | Requirement budget: my requirements (web, mobile), admin requirements table | number + words range |
 | Requirement refine wizard budget boxes (web, mobile) | live number + words hint |

@@ -84,6 +84,10 @@ export interface ListingCardDto {
      * alongside the exact `price`, "₹35,00,000 (35 Lakh)" (`priceWithWords` in
      * @bhavano/types/priceWords). See docs/plans/listing-price-in-words.md. */
     priceInWords: string;
+    /** Only when `price` is a rate per unit of area ("₹5,000/sq ft"): what the whole listing costs.
+     * Clients lead with this and show the rate as a second line — `listingHeadlinePrice` in
+     * @bhavano/types/priceWords. Missing from an older BFF, which leaves just the rate. */
+    totalPrice?: ListingTotalPriceDto | null;
     priceQualifier: string;
     /** True when `price` reads "Contact for price" rather than a real ₹ amount — pg/coworking
      * only (see ListingsService.assertValidPrice), for a poster whose plans vary by option and
@@ -144,6 +148,15 @@ export interface ListingCardDto {
      * `revealMethod` is `"credit"` or `"insufficient"`. */
     creditPackSize?: number;
     creditPackPriceRupees?: number;
+}
+/** A per-unit-priced listing's total — `Listing.price` itself, which is always stored as the total. */
+export interface ListingTotalPriceDto {
+    /** "₹60,00,000" */
+    price: string;
+    /** "₹60 Lakh" */
+    priceInWords: string;
+    /** The area the rate is multiplied by — "1,200 sq ft". */
+    area: string;
 }
 export interface ListingsPage {
     items: ListingCardDto[];
@@ -713,6 +726,8 @@ export interface AdminListingRowDto {
     price: string;
     /** Same as ListingCardDto.priceInWords — the queue shows `price` with these words in brackets. */
     priceInWords?: string;
+    /** Same as ListingCardDto.totalPrice. */
+    totalPrice?: ListingTotalPriceDto | null;
     priceQualifier: string;
     createdAt: string;
     updatedAt: string;

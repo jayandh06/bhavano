@@ -1,6 +1,7 @@
 "use client";
 
-import { priceWithWords } from "@bhavano/types/priceWords";
+import type { ListingTotalPriceDto } from "@bhavano/types";
+import { listingPriceText } from "@bhavano/types/priceWords";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { buildListingPath } from "@/lib/listingPath";
 import { taggedShareUrl, whatsappShareHref } from "@/lib/shareLinks";
@@ -13,6 +14,7 @@ type ShareableListing = Parameters<typeof buildListingPath>[0] & {
   title: string;
   price: string;
   priceInWords?: string | null;
+  totalPrice?: ListingTotalPriceDto | null;
   area: string;
   cityName: string;
 };
@@ -34,7 +36,7 @@ export function OwnerWhatsAppShare({
   variant: "prominent" | "compact";
 }) {
   const url = taggedShareUrl(`${SITE_URL}${buildListingPath(listing)}`, "whatsapp", "owner_share");
-  const text = `${listing.title}\n${priceWithWords(listing.price, listing.priceInWords)} · ${listing.area}, ${listing.cityName}\nPhotos and details on Bhavano — message me there:`;
+  const text = `${listing.title}\n${listingPriceText(listing, "compact")} · ${listing.area}, ${listing.cityName}\nPhotos and details on Bhavano — message me there:`;
   const href = whatsappShareHref(text, url);
   const onClick = () => pushDataLayerEvent("owner_share_whatsapp", { listingId: listing.id, placement });
 

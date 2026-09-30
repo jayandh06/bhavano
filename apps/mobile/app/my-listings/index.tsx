@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, Style
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
-import { priceWithWords } from "@bhavano/types/priceWords";
+import { listingPriceText } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useMyListingsQuery } from "../../src/lib/queries";
@@ -137,7 +137,7 @@ export default function MyListingsScreen() {
                 </View>
 
                 <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6 }}>
-                  {priceWithWords(item.price, item.priceInWords)} {item.priceQualifier} · {item.area}, {item.cityName}
+                  {listingPriceText(item, "full")} {item.priceQualifier} · {item.area}, {item.cityName}
                 </Text>
                 {isPendingPublish && (
                   <Text style={{ fontSize: 12.5, color: "#b3413a", marginTop: 6 }}>

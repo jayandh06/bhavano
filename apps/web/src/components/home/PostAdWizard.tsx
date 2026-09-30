@@ -25,7 +25,7 @@ import {
   pruneHiddenAttributes,
 } from "@bhavano/types/categoryFields";
 import { fromBrokerDefault, hasFromBrokerField, sellerTypeFromBroker } from "@bhavano/types/sellerType";
-import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
+import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import {
   AREA_NAME_MAX_LENGTH,
   clampPrice,
@@ -102,7 +102,7 @@ import { BoostBundlePicker } from "./BoostBundlePicker";
 import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
-import { PriceWordsHint } from "./PriceWithWords";
+import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
 import { VideoManager } from "./VideoManager";
@@ -1655,6 +1655,9 @@ export function PostAdWizard({
                           value={price}
                           suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                         />
+                        {pricedPerUnit && (
+                          <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
+                        )}
                         {priceIssue && <p className="text-xs text-[#b3413a] mt-1.5 m-0">{priceIssue}</p>}
                       </div>
                       <div className="flex-1">
@@ -1884,6 +1887,7 @@ export function PostAdWizard({
                 title={title}
                 price={price}
                 priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                priceArea={priceArea}
                 priceQualifier={priceQualifier}
                 areaName={areaQuery}
                 cityName={cities.find((c) => c.id === cityId)?.name ?? ""}

@@ -137,6 +137,32 @@ verbatim.
 `ListingPreviewCard.tsx` (web + mobile) takes a new optional `priceUnit` prop and appends
 `/${areaUnitShortLabel(priceUnit, 1)}` to its client-side preview price string.
 
+### Total shown alongside the rate (2026-09-30)
+
+**Ask:** "calculate the total price automatically (total area × price per unit), so we can show
+both total price and price per unit in the listing instead of just Price / unit." A buyer
+comparing a per-unit plot with whole-price plots had to do the multiplication themselves.
+
+A per-unit listing now **leads with the total** and keeps the rate as a smaller second line:
+
+> **₹60 Lakh** (card) / **₹60,00,000 (60 Lakh)** (detail)
+> ₹5,000/sq ft · 1,200 sq ft
+
+- **New optional DTO field, `price` unchanged.** `ListingCardDto.totalPrice` (so also the detail
+  DTO) and `AdminListingRowDto.totalPrice` are `{ price: "₹60,00,000", priceInWords: "₹60 Lakh",
+  area: "1,200 sq ft" }`, set only when `priceUnit` is set and the area is valid (null otherwise).
+  `price` keeps the rate string because the edit forms and JSON-LD parse it back (see above).
+  Older clients ignore the new field and keep showing the rate, as before.
+- **Built once.** `perUnitTotalPrice(total, area, unit)` in `packages/types/src/priceWords.ts` is
+  used by the BFF (`listingTotalPrice` in `listings.service.ts`, from the stored total and the area
+  attribute) and by the wizard preview cards (rate × area as typed). `listingHeadlinePrice` /
+  `listingPriceText` pick the headline and the rate line for every display.
+- **Live hint while typing.** Under a per-unit price box (post wizard and edit forms on web and
+  mobile, admin edit form): "= ₹60,00,000 (60 Lakh) for 1,200 sq ft", once both the rate and the
+  area are filled in.
+- **Not changed:** SEO meta description and the assisted-claim preview still show the rate string
+  (`formatListingPrice`); sorting, filtering and bounds already use the stored total.
+
 JSON-LD in `apps/web/src/app/[city]/[[...rest]]/page.tsx`: `floorSize.unitCode` is now looked up
 via an `AREA_UNIT_CODE` map (sqft→FTK, sqm→MTK, acre→ACR, hectare→HAR), with `floorSize` omitted
 entirely for `cent` (no standard UN/CEFACT code exists for it). Also fixed, beyond the original

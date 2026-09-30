@@ -19,7 +19,7 @@ import {
   type FieldSection,
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
-import { AREA_UNIT_LABELS, areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
+import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
 import { clampDigits } from "@bhavano/types/listingLimits";
@@ -895,6 +895,11 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
                       <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
                         {formatInrWithWords(Number(price))}
                         {priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
+                      </div>
+                    )}
+                    {priceMode === "perUnit" && priceUnitAreaField && totalPrice !== null && totalPrice > 0 && (
+                      <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
+                        = {formatInrWithWords(totalPrice)} for {formatArea(priceArea, currentAreaUnit)}
                       </div>
                     )}
                   </div>

@@ -2,9 +2,9 @@ import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
-import { formatInrInWords, groupInr } from "@bhavano/types/priceWords";
+import { formatInrInWords, groupInr, perUnitTotalPrice } from "@bhavano/types/priceWords";
 import { Icon } from "./Icon";
-import { PriceWithWords } from "./PriceWithWords";
+import { ListingPrice } from "./PriceWithWords";
 
 /**
  * What the actual browse-grid `ListingCard` will look like once this ad is posted — same photo/
@@ -28,6 +28,7 @@ export function ListingPreviewCard({
   title,
   price,
   priceUnit,
+  priceArea,
   priceQualifier,
   areaName,
   cityName,
@@ -39,10 +40,11 @@ export function ListingPreviewCard({
   title: string;
   /** Raw digits as typed, or empty/"0" for a price-on-request category — formatted here the
    * same way the real card's `₹`-prefixed, comma-grouped price is. When `priceUnit` is set, this
-   * is the per-unit figure the seller typed (₹5,000), not the total the server will compute and
-   * store — matching exactly what the real card shows for a per-unit-priced listing. */
+   * is the per-unit figure the seller typed (₹5,000); multiplied by `priceArea` it gives the total
+   * the listing leads with, the rate beneath it, as on the real card. */
   price: string;
   priceUnit?: AreaUnit;
+  priceArea?: number;
   priceQualifier: string;
   areaName: string;
   cityName: string;
@@ -53,6 +55,10 @@ export function ListingPreviewCard({
     priceNum > 0 ? `₹${groupInr(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, priceNum)}` : ""}` : "Contact for price";
   const wordsPrice =
     priceNum > 0 ? `${formatInrInWords(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}` : null;
+  const totalPrice =
+    priceNum > 0 && priceUnit && priceArea && priceArea > 0
+      ? perUnitTotalPrice(Math.round(priceNum * priceArea), priceArea, priceUnit)
+      : null;
   const specs = deriveCardSpecs(category, attributes);
 
   return (
@@ -74,7 +80,7 @@ export function ListingPreviewCard({
       <div className="p-[18px] flex flex-col gap-2.5">
         <div className="flex justify-between items-start gap-2.5">
           <div className="font-lora text-xl font-bold text-green">
-            <PriceWithWords price={exactPrice} priceInWords={wordsPrice} />
+            <ListingPrice item={{ price: exactPrice, priceInWords: wordsPrice, totalPrice }} />
           </div>
           {priceQualifier && (
             <div className="text-xs font-bold text-muted bg-surface-alt px-2.5 py-1 rounded-md whitespace-nowrap">

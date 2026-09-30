@@ -3,10 +3,10 @@ import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
-import { formatInrInWords, groupInr } from "@bhavano/types/priceWords";
+import { formatInrInWords, groupInr, perUnitTotalPrice } from "@bhavano/types/priceWords";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
-import { PriceWithWords } from "./PriceWithWords";
+import { ListingPrice } from "./PriceWithWords";
 
 /**
  * Mobile counterpart to the web wizard's ListingPreviewCard — same reasoning: the review step
@@ -24,6 +24,7 @@ export function ListingPreviewCard({
   title,
   price,
   priceUnit,
+  priceArea,
   priceQualifier,
   areaName,
   cityName,
@@ -35,9 +36,11 @@ export function ListingPreviewCard({
   title: string;
   /** Raw digits as typed, or empty/"0" for a price-on-request category — formatted here the
    * same way the real card's `₹`-prefixed, comma-grouped price is. When `priceUnit` is set, this
-   * is the per-unit figure the seller typed, not the total the server will compute and store. */
+   * is the per-unit figure the seller typed; multiplied by `priceArea` it gives the total the
+   * listing leads with, the rate beneath it, as on the real card. */
   price: string;
   priceUnit?: AreaUnit;
+  priceArea?: number;
   priceQualifier: string;
   areaName: string;
   cityName: string;
@@ -49,6 +52,10 @@ export function ListingPreviewCard({
     priceNum > 0 ? `₹${groupInr(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, priceNum)}` : ""}` : "Contact for price";
   const wordsPrice =
     priceNum > 0 ? `${formatInrInWords(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, 1)}` : ""}` : null;
+  const totalPrice =
+    priceNum > 0 && priceUnit && priceArea && priceArea > 0
+      ? perUnitTotalPrice(Math.round(priceNum * priceArea), priceArea, priceUnit)
+      : null;
   const specs = deriveCardSpecs(category, attributes);
 
   return (
@@ -66,7 +73,7 @@ export function ListingPreviewCard({
 
       <View style={styles.body}>
         <View style={styles.priceRow}>
-          <PriceWithWords price={exactPrice} priceInWords={wordsPrice} fontSize={17} />
+          <ListingPrice item={{ price: exactPrice, priceInWords: wordsPrice, totalPrice }} fontSize={17} />
           {!!priceQualifier && (
             <View style={[styles.qualifierChip, { backgroundColor: colors.surfaceAlt }]}>
               <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.muted }}>{priceQualifier}</Text>

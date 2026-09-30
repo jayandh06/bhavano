@@ -29,6 +29,7 @@ import type {
   ListingInterestPage,
   ListingMetaDto,
   ListingSitemapEntry,
+  ListingTotalPriceDto,
   ListingStatus,
   ListingVideoDto,
   ListingsPage,
@@ -55,7 +56,7 @@ import {
 import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from '@bhavano/types/priceQualifiers';
 import { areaUnitShortLabel, type AreaUnit } from '@bhavano/types/areaUnit';
-import { formatInrInWords } from '@bhavano/types/priceWords';
+import { formatInrInWords, perUnitTotalPrice } from '@bhavano/types/priceWords';
 import { listingPriceIssue } from '@bhavano/types/priceBounds';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
@@ -884,6 +885,7 @@ export class ListingsService {
       area: listing.area.name,
       price: this.formatListingPrice(listing),
       priceInWords: this.formatListingPriceInWords(listing),
+      totalPrice: this.listingTotalPrice(listing),
       priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
       viewCount: listing.viewCount,
       likeCount: listing.likeCount,
@@ -3156,6 +3158,21 @@ export class ListingsService {
     return `₹${priceFormatter.format(perUnit)}/${areaUnitShortLabel(listing.priceUnit as AreaUnit, perUnit)}`;
   }
 
+  /** For a per-unit price, the stored total it came from and the area it was multiplied by — what
+   * cards lead with instead of the rate alone. Null for a whole price or one we can't split. */
+  private listingTotalPrice(listing: {
+    category: ListingCategory;
+    price: number;
+    priceUnit: string | null;
+    attributes: unknown;
+  }): ListingTotalPriceDto | null {
+    if (listing.price === 0 || !listing.priceUnit || this.perUnitPrice(listing) === null) return null;
+    const areaField = this.areaFieldFor(listing.category);
+    const attrs = (listing.attributes as Record<string, unknown> | null) ?? {};
+    const areaValue = Number(areaField ? attrs[areaField.key] : undefined);
+    return perUnitTotalPrice(listing.price, areaValue, listing.priceUnit as AreaUnit);
+  }
+
   /** Buyer-facing twin of `formatListingPrice` — "₹35 Lakh" / "₹5 Thousand/cent". */
   private formatListingPriceInWords(listing: { category: ListingCategory; price: number; priceUnit: string | null; attributes: unknown }): string {
     if (listing.price === 0) return 'Contact for price';
@@ -3391,6 +3408,7 @@ export class ListingsService {
       tag: listing.tag,
       price: this.formatListingPrice(listing),
       priceInWords: this.formatListingPriceInWords(listing),
+      totalPrice: this.listingTotalPrice(listing),
       // A qualifier ("/month") next to "Contact for price" reads oddly, so it's suppressed here
       // rather than at posting time — the stored value (if any) survives for if/when the owner
       // sets a real price.

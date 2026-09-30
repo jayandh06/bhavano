@@ -1694,6 +1694,24 @@ describe('ListingsService.update — brokerage against the price', () => {
   });
 });
 
+describe('ListingsService totalPrice — per-unit listings', () => {
+  type TotalPriceFn = (listing: Record<string, unknown>) => unknown;
+  const totalPriceOf = (listing: Record<string, unknown>) =>
+    (makeService().service as unknown as { listingTotalPrice: TotalPriceFn }).listingTotalPrice(listing);
+
+  it('multiplies a per sq ft plot price out to the stored total and its area', () => {
+    expect(
+      totalPriceOf({ category: 'plot', price: 60_00_000, priceUnit: 'sqft', attributes: { plotAreaSqft: 1200 } }),
+    ).toEqual({ price: '₹60,00,000', priceInWords: '₹60 Lakh', area: '1,200 sq ft' });
+  });
+
+  it('is null for a whole price, price on request, or a per-unit price with no area', () => {
+    expect(totalPriceOf({ category: 'plot', price: 60_00_000, priceUnit: null, attributes: { plotAreaSqft: 1200 } })).toBeNull();
+    expect(totalPriceOf({ category: 'plot', price: 0, priceUnit: 'sqft', attributes: { plotAreaSqft: 1200 } })).toBeNull();
+    expect(totalPriceOf({ category: 'plot', price: 60_00_000, priceUnit: 'sqft', attributes: {} })).toBeNull();
+  });
+});
+
 describe('ListingsService.updateAsAdmin — the admin content-override endpoint', () => {
   it('edits a listing regardless of who owns it, with no ownership check at all', async () => {
     const { service, prisma } = makeService();

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
-import { priceWithWords } from "@bhavano/types/priceWords";
+import { listingPriceText } from "@bhavano/types/priceWords";
 import { auth } from "@/auth";
 import { BffAuthError, fetchMyListings, fetchProfile, previewBoostPricing } from "@/lib/bff";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
@@ -206,7 +206,7 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
           )}
         </div>
         <div className="text-[13px] text-muted mt-1">
-          {priceWithWords(item.price, item.priceInWords)} {item.priceQualifier} · {item.area}, {item.cityName}
+          {listingPriceText(item, "full")} {item.priceQualifier} · {item.area}, {item.cityName}
         </div>
         {isPendingPublish && (
           <p className="text-[12.5px] text-[#b3413a] m-0 mt-1.5">Not visible to buyers until you complete payment.</p>

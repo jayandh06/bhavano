@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
 import type { ListingEditLogEntryDto } from "@bhavano/types";
-import { formatInrWithWords, priceWithWords } from "@bhavano/types/priceWords";
+import { formatInrWithWords, listingPriceText } from "@bhavano/types/priceWords";
 import {
   fetchListingById,
   fetchListingConversations,
@@ -169,7 +169,7 @@ export default async function ListingModerationPage({
         <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 20, marginBottom: 20, background: "var(--surface)" }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>{listing.title}</h1>
           <div style={{ fontSize: 14, color: "var(--text-soft)", marginBottom: 4 }}>
-            {priceWithWords(listing.price, listing.priceInWords)} {listing.priceQualifier} · {listing.category} · {listing.transactionType}
+            {listingPriceText(listing, "full")} {listing.priceQualifier} · {listing.category} · {listing.transactionType}
           </div>
           <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>
             {listing.area}, {listing.cityName}

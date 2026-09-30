@@ -1,5 +1,5 @@
 import { Linking, Pressable, Text, View } from "react-native";
-import { priceWithWords } from "@bhavano/types/priceWords";
+import { listingPriceText } from "@bhavano/types/priceWords";
 import type { ListingDetailDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { sharedWebUrl } from "../../lib/appWebUrl";
@@ -16,14 +16,14 @@ import { Icon } from "../Icon";
 export function OwnerWhatsAppShare({
   listing,
 }: {
-  listing: Pick<ListingDetailDto, "id" | "title" | "price" | "priceInWords" | "area" | "cityName">;
+  listing: Pick<ListingDetailDto, "id" | "title" | "price" | "priceInWords" | "totalPrice" | "area" | "cityName">;
 }) {
   const { colors } = useAppTheme();
 
   const share = () => {
     const url = sharedWebUrl(`/listings/${listing.id}`, "owner_share");
     const text =
-      `${listing.title}\n${priceWithWords(listing.price, listing.priceInWords)} · ${listing.area}, ${listing.cityName}\n` +
+      `${listing.title}\n${listingPriceText(listing, "compact")} · ${listing.area}, ${listing.cityName}\n` +
       `Photos and details on Bhavano — message me there:\n${url}`;
     void recordAppPageView("/post/success/share-whatsapp");
     // wa.me opens the WhatsApp app when installed and WhatsApp Web otherwise, so there is no

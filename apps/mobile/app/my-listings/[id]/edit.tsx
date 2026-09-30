@@ -11,7 +11,7 @@ import {
   fieldIsVisible,
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
-import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
+import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { clampPrice, DESCRIPTION_MAX_LENGTH, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { MAX_PHOTOS } from "@bhavano/types/photoLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
@@ -21,7 +21,7 @@ import { useMyListingQuery } from "../../../src/lib/queries";
 import { addListingPhoto, addListingVideo, deleteListingPhoto, deleteListingVideo, updateListing } from "../../../src/lib/bffClient";
 import { Icon } from "../../../src/components/Icon";
 import { ScreenHeader } from "../../../src/components/home/ScreenHeader";
-import { PriceWordsHint } from "../../../src/components/home/PriceWithWords";
+import { PerUnitTotalHint, PriceWordsHint } from "../../../src/components/home/PriceWithWords";
 import { CategoryFieldsForm } from "../../../src/components/home/CategoryFieldsForm";
 
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -328,6 +328,9 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
                       value={price}
                       suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                     />
+                    {priceMode === "perUnit" && priceUnitAreaField && (
+                      <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.label, { color: colors.textSoft }]}>Price qualifier</Text>

@@ -2,14 +2,14 @@ import { useState } from "react";
 import { Image, Pressable, Share, StyleSheet, Text, View, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import type { ListingCardDto } from "@bhavano/types";
-import { priceWithWords } from "@bhavano/types/priceWords";
+import { listingPriceText } from "@bhavano/types/priceWords";
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { BffError, revealContact, toggleFavourite } from "../../lib/bffClient";
 import { sharedWebUrl } from "../../lib/appWebUrl";
 import { Icon } from "../Icon";
-import { PriceWithWords } from "./PriceWithWords";
+import { ListingPrice } from "./PriceWithWords";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
   const { colors } = useAppTheme();
@@ -34,7 +34,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   async function onShare() {
     const url = sharedWebUrl(`/listings/${item.id}`, item.isOwner ? "owner_share" : "listing_share");
     try {
-      await Share.share({ message: `${item.title} — ${priceWithWords(item.price, item.priceInWords)}\n${url}`, url, title: item.title });
+      await Share.share({ message: `${item.title} — ${listingPriceText(item, "compact")}\n${url}`, url, title: item.title });
     } catch {
       // Share.share() resolves normally on a plain dismiss — this only catches the share sheet
       // itself genuinely failing to open, which has nothing to recover from or show an error for.
@@ -126,7 +126,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
 
       <View style={styles.body}>
         <View style={styles.priceRow}>
-          <PriceWithWords price={item.price} priceInWords={item.priceInWords} fontSize={17} />
+          <ListingPrice item={item} fontSize={17} compact />
           {!!item.priceQualifier && (
             <View style={[styles.qualifierChip, { backgroundColor: colors.surfaceAlt }]}>
               <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.muted }}>{item.priceQualifier}</Text>

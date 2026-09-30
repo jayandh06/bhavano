@@ -1,8 +1,12 @@
 import {
+  compactPrice,
   formatInrInWords,
   formatInrRangeWithWords,
   formatInrWithWords,
   groupInr,
+  listingHeadlinePrice,
+  listingPriceText,
+  perUnitTotalPrice,
   priceWithWords,
 } from '@bhavano/types/priceWords';
 
@@ -59,5 +63,46 @@ describe('number + words', () => {
     expect(formatInrRangeWithWords(undefined, 60_00_000)).toBe('up to ₹60,00,000 (60 Lakh)');
     expect(formatInrRangeWithWords(15_000, null)).toBe('from ₹15,000 (15 Thousand)');
     expect(formatInrRangeWithWords(null, null)).toBeUndefined();
+  });
+});
+
+describe('compact price (browse cards, share text)', () => {
+  it('uses the words from ₹1 lakh up and the plain number below', () => {
+    expect(compactPrice('₹60,00,000', '₹60 Lakh')).toBe('₹60 Lakh');
+    expect(compactPrice('₹1,25,00,000', '₹1.25 Crore')).toBe('₹1.25 Crore');
+    expect(compactPrice('₹23,500', '₹23.5 Thousand')).toBe('₹23,500');
+    expect(compactPrice('₹5,000/cent', '₹5 Thousand/cent')).toBe('₹5,000/cent');
+    expect(compactPrice('Contact for price', 'Contact for price')).toBe('Contact for price');
+    expect(compactPrice('₹60,00,000', undefined)).toBe('₹60,00,000');
+  });
+});
+
+describe('per-unit listings lead with the total', () => {
+  const perUnit = {
+    price: '₹5,000/sq ft',
+    priceInWords: '₹5 Thousand/sq ft',
+    totalPrice: perUnitTotalPrice(60_00_000, 1200, 'sqft'),
+  };
+
+  it('builds the total from the stored price and area', () => {
+    expect(perUnit.totalPrice).toEqual({ price: '₹60,00,000', priceInWords: '₹60 Lakh', area: '1,200 sq ft' });
+  });
+
+  it('keeps the rate as a second line', () => {
+    expect(listingHeadlinePrice(perUnit)).toEqual({
+      price: '₹60,00,000',
+      priceInWords: '₹60 Lakh',
+      rate: '₹5,000/sq ft · 1,200 sq ft',
+    });
+    expect(listingPriceText(perUnit, 'compact')).toBe('₹60 Lakh · ₹5,000/sq ft · 1,200 sq ft');
+    expect(listingPriceText(perUnit, 'full')).toBe('₹60,00,000 (60 Lakh) · ₹5,000/sq ft · 1,200 sq ft');
+  });
+
+  it('leaves a whole price, or an older BFF without totalPrice, as it was', () => {
+    const whole = { price: '₹35,00,000', priceInWords: '₹35 Lakh' };
+    expect(listingHeadlinePrice(whole)).toEqual({ ...whole, rate: null });
+    expect(listingPriceText(whole, 'compact')).toBe('₹35 Lakh');
+    expect(listingPriceText(whole, 'full')).toBe('₹35,00,000 (35 Lakh)');
+    expect(listingPriceText({ ...perUnit, totalPrice: null }, 'full')).toBe('₹5,000/sq ft (5 Thousand/sq ft)');
   });
 });

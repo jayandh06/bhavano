@@ -10,12 +10,12 @@ import {
   listingAttributesIssue,
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
-import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
+import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { updateListingAction } from "@/app/actions/listings";
 import { clampPrice, DESCRIPTION_MAX_LENGTH, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass, primaryButtonClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
-import { PriceWordsHint } from "./PriceWithWords";
+import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { CategoryFieldsAccordion } from "./CategoryFieldsAccordion";
 import { EditListingPhotos } from "./EditListingPhotos";
 import { VideoManager } from "./VideoManager";
@@ -236,6 +236,9 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
                       value={price}
                       suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                     />
+                    {priceMode === "perUnit" && priceUnitAreaField && (
+                      <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
+                    )}
                   </div>
                   <div className="flex-1">
                     <RequiredLabel text="Price qualifier" />

@@ -14,7 +14,7 @@ import { buildListingPath } from "@/lib/listingPath";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { Icon } from "./Icon";
 import { ShareButton } from "./ShareButton";
-import { PriceWithWords } from "./PriceWithWords";
+import { ListingPrice } from "./PriceWithWords";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
   const { requireLogin } = useAuthGate();
@@ -218,7 +218,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
         <Link href={href} prefetch={false} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-2.5 text-inherit">
           <div className="flex justify-between items-start gap-2.5">
             <div className="font-lora text-xl font-bold text-green">
-              <PriceWithWords price={item.price} priceInWords={item.priceInWords} />
+              <ListingPrice item={item} compact />
             </div>
             {item.priceQualifier && (
               <div className="text-xs font-bold text-muted bg-surface-alt px-2.5 py-1 rounded-md whitespace-nowrap">

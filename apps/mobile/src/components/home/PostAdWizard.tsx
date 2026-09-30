@@ -51,7 +51,7 @@ import {
 import { listingPriceIssue } from "@bhavano/types/priceBounds";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
-import { AREA_UNIT_LABELS, areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
+import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLimits";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
@@ -88,7 +88,7 @@ import { BoostBundleCard } from "./BoostBundleCard";
 import { BoostPlanSelector } from "./BoostPlanSelector";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
-import { PriceWordsHint } from "./PriceWithWords";
+import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { appWebUrl } from "../../lib/appWebUrl";
 import { priceSuffix } from "../../lib/boostPriceDisplay";
 
@@ -1606,6 +1606,9 @@ export function PostAdWizard({
                   value={price}
                   suffix={priceMode === "perUnit" ? ` per ${areaUnitShortLabel(currentAreaUnit, 1)}` : ""}
                 />
+                {pricedPerUnit && (
+                  <PerUnitTotalHint total={totalPrice} area={priceArea > 0 ? formatArea(priceArea, currentAreaUnit) : null} />
+                )}
                 {price.length > 0 && !priceIsValid(price, category) ? (
                   <Text style={styles.fieldError}>Enter a price greater than 0.</Text>
                 ) : priceIssue ? (
@@ -1797,6 +1800,7 @@ export function PostAdWizard({
             title={title}
             price={price}
             priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+            priceArea={priceArea}
             priceQualifier={priceQualifier}
             areaName={areaQuery}
             cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
