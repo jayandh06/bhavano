@@ -15,7 +15,7 @@ exports.discountPercentFor = discountPercentFor;
  * screen); every price shown is resolved against that row. Pointing this at a code that does not
  * exist makes the auto-apply a no-op, not a free boost.
  */
-exports.ACTIVE_PROMO_CODE = "BHAVANO-SEP";
+exports.ACTIVE_PROMO_CODE = "BHAVANO-OCT";
 /**
  * A discounted rupee price, rounded the way `PaymentsService.previewBoostPricing` rounds it.
  *
