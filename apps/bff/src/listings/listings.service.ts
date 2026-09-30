@@ -43,7 +43,13 @@ import { LISTING_RENEW_ATTENTION_WINDOW_DAYS } from '@bhavano/types/listingLimit
 import { categoryImagePlaceholder } from '@bhavano/types/tokens';
 import { slugify } from '@bhavano/types/slugify';
 import { deriveTag } from '@bhavano/types/listingTag';
-import { CATEGORY_FIELD_CONFIG, defaultAttributesFor, type FieldDef } from '@bhavano/types/categoryFields';
+import {
+  CATEGORY_FIELD_CONFIG,
+  defaultAttributesFor,
+  inferBrokerageFeeType,
+  numberFieldIssue,
+  type FieldDef,
+} from '@bhavano/types/categoryFields';
 import { deriveCardSpecs } from '@bhavano/types/cardSpecs';
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from '@bhavano/types/priceQualifiers';
 import { areaUnitShortLabel, type AreaUnit } from '@bhavano/types/areaUnit';
@@ -1318,16 +1324,17 @@ export class ListingsService {
       throw new UnauthorizedException('This account was deleted');
     }
     await this.listingSlotsService.assertCanPublish(ownerId);
+    const inputAttributes = inferBrokerageFeeType(input.attributes ?? {});
     this.assertValidAttributes(
       input.category,
       input.transactionType,
-      input.attributes ?? {},
+      inputAttributes,
     );
     // For an assisted listing the answer is the seller's, not the Bulk Import account's: it fills
     // the listing's own fromBroker here and reaches the seller's profile at claim time.
     const declaredSellerType = resolveDeclaredSellerType(
       input.category,
-      this.normalizeAttributes(input.category, input.attributes ?? {}),
+      this.normalizeAttributes(input.category, inputAttributes),
       assisted ? assisted.claimSellerType : input.postedAs,
       assisted ? null : (owner?.sellerType ?? null),
     );
@@ -2021,9 +2028,11 @@ export class ListingsService {
     // fields, different allowed keys) — reset to the new category's defaults exactly like the
     // posting wizard does on a category change, unless the caller already sent a fresh attributes
     // object for the new category in the same request.
-    const rawAttributes =
-      dto.attributes ??
-      (categoryOrTxnChanged ? defaultAttributesFor(nextCategory) : undefined);
+    const rawAttributes = dto.attributes
+      ? inferBrokerageFeeType(dto.attributes)
+      : categoryOrTxnChanged
+        ? defaultAttributesFor(nextCategory)
+        : undefined;
     if (rawAttributes !== undefined) {
       this.assertValidAttributes(
         nextCategory,
@@ -2893,25 +2902,8 @@ export class ListingsService {
 
       if (value !== undefined && value !== null && value !== '') {
         if (field.type === 'number' || field.type === 'area') {
-          const numberValue =
-            typeof value === 'number'
-              ? value
-              : typeof value === 'string' && value.trim() !== ''
-                ? Number(value)
-                : NaN;
-          // Unlike a plain `number` field, an area's value isn't required to be a whole number
-          // — 2.5 acres is a completely ordinary answer, unlike "2.5 bedrooms".
-          const isValid =
-            field.type === 'area'
-              ? Number.isFinite(numberValue) && numberValue >= (field.min ?? 0)
-              : Number.isInteger(numberValue) && numberValue >= (field.min ?? 0);
-          if (!isValid) {
-            throw new BadRequestException(
-              field.type === 'area'
-                ? `${field.label} must be a number of at least ${field.min ?? 0}`
-                : `${field.label} must be a whole number of at least ${field.min ?? 0}`,
-            );
-          }
+          const issue = numberFieldIssue(field, value);
+          if (issue) throw new BadRequestException(issue);
           if (field.type === 'area') this.assertValidAreaUnit(field, attributes[`${field.key}Unit`]);
         } else if (field.type === 'multi-select') {
           if (
@@ -2954,13 +2946,8 @@ export class ListingsService {
       }
     }
 
-    this.assertConditionalFee(
-      category,
-      transactionType,
-      attributes,
-      'brokerageFeeApplicable',
-      'Brokerage fee',
-    );
+    // Brokerage needs no call here: its type and amount fields are plain `required` fields gated
+    // by `dependsOn`, which the loop above already enforces.
     this.assertConditionalFee(
       category,
       transactionType,
@@ -2970,16 +2957,10 @@ export class ListingsService {
     );
   }
 
-  /** `applicableKey`'s amount isn't always the same field: brokerage is quoted as a flat ₹
-   * amount for rent/lease (`brokerageFee`) but as a % of sale price for a sell listing
-   * (`brokerageCommissionPercent`) — two distinct keys sharing one applicability toggle (see
-   * their `dependsOn`/`transactionTypes` in categoryFields.ts). This used to hardcode
-   * `brokerageFee` regardless of transactionType, so turning the toggle on for a *sell* listing
-   * always failed with "Brokerage fee amount is required" no matter what the admin entered —
-   * `brokerageFee` isn't even a field a sell listing shows, `brokerageCommissionPercent` is.
-   * Resolving the actual amount field from CATEGORY_FIELD_CONFIG itself (rather than a second,
-   * hardcoded per-transactionType mapping here) keeps this in sync with that file automatically;
-   * `monthlyMaintenanceFee` has no transactionTypes split, so it always resolves to itself. */
+  /** Requires the amount behind a yes/no fee toggle (the field whose `dependsOn` is
+   * `applicableKey` = yes), resolved from CATEGORY_FIELD_CONFIG so it stays in sync with that
+   * file. Only the monthly maintenance fee uses it now — brokerage has a fee-type step in between
+   * and relies on its fields' own `required` instead. */
   private assertConditionalFee(
     category: ListingCategory,
     transactionType: TransactionType,

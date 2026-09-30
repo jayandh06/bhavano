@@ -20,6 +20,11 @@ export interface FieldDef {
     options?: FieldOption[];
     placeholder?: string;
     min?: number;
+    /** Upper bound for a `number` field, checked by the BFF and the forms alike (a percentage). */
+    max?: number;
+    /** `number` only: accepts up to 2 decimal places instead of whole numbers only (a percentage
+     * like 1.5). Such a field shouldn't set `maxDigits`, which counts the "." as a digit. */
+    decimal?: boolean;
     /** `type: "area"` only — which units this field's number can be entered in. A single-entry
      * list (or omitted entirely) renders as a plain sqft number input, visually identical to every
      * other numeric field; more than one renders a unit dropdown alongside the number. Only Plot
@@ -90,6 +95,12 @@ export declare function groupFieldsBySection<F extends {
  * it. Iterates to a fixpoint since hiding one field can cascade to hide the next. */
 export declare function pruneHiddenAttributes(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>): Record<string, string | string[]>;
 /**
+ * Why a filled-in `number` / `area` value is invalid, or null. Shared by the BFF's
+ * `assertValidAttributes` and `listingAttributesIssue` so the forms and the server word and draw
+ * the line identically. Accepts the raw form string or the BFF's already-normalized number.
+ */
+export declare function numberFieldIssue(field: FieldDef, value: unknown): string | null;
+/**
  * The first reason the BFF's `assertValidAttributes` would reject these attributes, in its own
  * words, or null. The post-ad forms use it to keep Preview disabled instead of letting the seller
  * reach Post ad and fail there ("Total floors in building must be a whole number of at least 1").
@@ -97,7 +108,18 @@ export declare function pruneHiddenAttributes(category: ListingCategory, transac
  * ListingsService.assertValidAttributes / assertConditionalFee.
  */
 export declare function listingAttributesIssue(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>): string | null;
+/** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
+ * of resetting to an empty object so a stepper has a number to increment from and the form opens
+ * with honest answers rather than blanks the poster has to fill in to say "none". */
 export declare function defaultAttributesFor(category: ListingCategory): Record<string, string>;
+export declare const BROKERAGE_FEE_FIXED = "fixed";
+export declare const BROKERAGE_FEE_PERCENT = "percent";
+/**
+ * Fills in `brokerageFeeType` for a payload that says a brokerage fee applies but predates the
+ * type question (an old app build, or a listing stored before it) — picked from whichever amount
+ * is present. Leaves the attributes untouched when the type is already set or can't be told.
+ */
+export declare function inferBrokerageFeeType(attributes: Record<string, unknown>): Record<string, unknown>;
 /** One field-def list per category — the single source of truth for both the posting
  * wizard's dynamic step-3 form and the `attributes` JSONB column it maps onto. Adding a
  * future category means adding an entry here, not a new form/code path. */

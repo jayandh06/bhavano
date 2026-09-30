@@ -31,21 +31,43 @@ Apartment, and Villa:
 | `balconyCount`             | Balcony count               | number                                  | No                         | Integer, minimum 0                                                                               |
 | `openParkingCount`         | Open parking spaces         | number                                  | No                         | Integer, minimum 0                                                                               |
 | `closedParkingCount`       | Closed parking spaces       | number                                  | No                         | Integer, minimum 0                                                                               |
-| `entranceFacing`           | Main entrance facing        | select                                  | No                         | North, South, East, West, North-East, North-West, South-East, South-West                         |
+| `entranceFacing`           | Entrance facing             | select                                  | Yes (since 30 Sept 2026)   | North, South, East, West, North-East, North-West, South-East, South-West                         |
 | `bathrooms`                | Bathrooms                   | number                                  | Yes                        | Integer                                                                                          |
-| `floor`                    | Floor                       | select                                  | No                         | Basement / Ground / 1st–50th / Top — sell, rent, and lease; structured for future filters (commercial still uses free-text `floor`) |
-| `totalFloors`              | Total floors in building    | number                                  | No                         | Integer ≥ 1                                                                                      |
+| `floor`                    | Floor                       | select                                  | Yes (since 30 Sept 2026)   | Basement / Ground / 1st–50th / Top — sell, rent, and lease; structured for future filters (commercial still uses free-text `floor`) |
+| `totalFloors`              | Total floors in building    | number                                  | Yes (since 30 Sept 2026)   | Integer ≥ 1                                                                                      |
 | `carpetAreaSqft`           | Carpet area (sqft)          | number                                  | Yes                        | Positive integer                                                                                 |
 | `gatedCommunity`           | Gated community             | select                                  | No                         | Yes / No                                                                                         |
 | `priceNegotiable`          | Price negotiable            | select                                  | No                         | Yes / No                                                                                         |
 | `leaseType`                | Lease type                  | select                                  | Rent/Lease only, if needed | Use a confirmed controlled option list; do not invent options until product meaning is confirmed |
 | `preferredTenantTypes`     | Preferred tenant type       | multi-select or normalized string array | Rent/Lease only            | Any of Family, Company, Bachelor; at least one when supplied                                     |
 | `fromBroker`               | Posted by Broker / Agent    | select                                  | No                         | Yes / No                                                                                         |
-| `brokerageFeeApplicable`   | Brokerage fee               | select                                  | Rent/Lease only            | Yes / No; required when `fromBroker` is Yes if the fee is broker-specific                        |
-| `brokerageFee`             | Brokerage fee amount        | number                                  | Conditional                | Non-negative amount; required when `brokerageFeeApplicable` is Yes                               |
+| `brokerageFeeApplicable`   | Has brokerage fee           | select                                  | No                         | Yes / No; shown when `fromBroker` is Yes, any transaction type                                   |
+| `brokerageFeeType`         | Brokerage fee type          | select                                  | When applicable is Yes     | `fixed` (Fixed amount) / `percent` (% of total value); any transaction type                      |
+| `brokerageFee`             | Brokerage Fee (₹)           | number                                  | When type is `fixed`       | Whole rupees, ≥ 1, up to 9 digits                                                                |
+| `brokerageCommissionPercent` | Brokerage Fee (%)         | number (`decimal`)                      | When type is `percent`     | 0.1–100, up to 2 decimal places                                                                  |
 | `maintenanceFeeApplicable` | Monthly maintenance fee     | select                                  | No                         | Yes / No                                                                                         |
 | `monthlyMaintenanceFee`    | Monthly maintenance fee (₹) | number                                  | Conditional                | Non-negative amount; required when applicable is Yes                                             |
 | `gasPipeline`              | Gas pipeline                | select                                  | No                         | Yes / No                                                                                         |
+
+### Required floor/facing and brokerage fee type (30 Sept 2026)
+
+- `floor`, `totalFloors` and `entranceFacing` became `required: true`. About 140 of 169 active
+  residential listings predate them. So they aren't forced to invent answers just to change a
+  price or mark themselves sold, the web and admin edit forms send `attributes` (and so trigger
+  attribute validation) only when the attributes were actually edited. Touching any detail field
+  means completing the new required ones.
+- Brokerage used to be ₹ for rent/lease and % for sell. The broker now picks
+  `brokerageFeeType` first, on any transaction type, and only that type's amount field shows.
+  The fields are one shared `BROKERAGE_FIELDS` block used by residential, plot and commercial,
+  and the amount fields are plain `required` fields gated by `dependsOn`. The BFF's
+  `assertConditionalFee` now only covers maintenance.
+- `FieldDef` gained `max` and `decimal` (the % field). The number rule lives in the shared
+  `numberFieldIssue`, used by both the BFF and `listingAttributesIssue`, so the forms and the
+  server word and draw the line identically.
+- Legacy payloads (brokerage Yes plus one amount, no type) get the type inferred by
+  `inferBrokerageFeeType` on create/update. Migration `20260930060000_brokerage_fee_type`
+  backfilled the 7 stored listings. The detail pages hide the type row, since the amount's
+  label already says it.
 
 Add two grouped UI sections to the same residential configuration:
 

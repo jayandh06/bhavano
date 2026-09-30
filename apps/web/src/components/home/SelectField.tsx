@@ -16,11 +16,17 @@ import { fieldClass } from "@/lib/formStyles";
 export function SelectField({
   children,
   className = "",
+  narrow = false,
   ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & { children: ReactNode }) {
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  children: ReactNode;
+  /** For short values ("3rd", "Top floor"), which leave a full-width box mostly empty. */
+  narrow?: boolean;
+}) {
+  const baseClass = narrow ? fieldClass.replace("w-full", "w-36") : fieldClass;
   return (
-    <div className="relative">
-      <select {...props} className={`${fieldClass} appearance-none pr-9 cursor-pointer ${className}`}>
+    <div className={narrow ? "relative w-fit" : "relative"}>
+      <select {...props} className={`${baseClass} appearance-none pr-9 cursor-pointer ${className}`}>
         {children}
       </select>
       <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted">▾</span>

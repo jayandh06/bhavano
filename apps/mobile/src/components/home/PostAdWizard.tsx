@@ -170,6 +170,13 @@ function sanitizeAreaInput(value: string): string {
   return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
 }
 
+/** A `decimal` number field (brokerage %): an area-style decimal cut to 2 places, the shape the
+ * BFF accepts. */
+function sanitizePercentInput(value: string): string {
+  const [whole, fraction] = sanitizeAreaInput(value).split(".");
+  return fraction === undefined ? whole : `${whole}.${fraction.slice(0, 2)}`;
+}
+
 /** A price is what the listing is for; 0 or blank is not a listing — except for pg/coworking,
  * where "Contact for price" (0) is a legitimate posting, see PRICE_ON_REQUEST_CATEGORIES's own
  * doc comment. Kept as its own predicate so the Review gate and the inline message can never
@@ -853,10 +860,15 @@ export function PostAdWizard({
             onChangeText={(v) =>
               setAttributes((prev) => ({
                 ...prev,
-                [field.key]: field.type === "number" ? clampDigits(digitsOnly(v), field.maxDigits) : v,
+                [field.key]:
+                  field.type !== "number"
+                    ? v
+                    : field.decimal
+                      ? sanitizePercentInput(v)
+                      : clampDigits(digitsOnly(v), field.maxDigits),
               }))
             }
-            keyboardType={field.type === "number" ? "number-pad" : "default"}
+            keyboardType={field.type === "number" ? (field.decimal ? "decimal-pad" : "number-pad") : "default"}
             placeholder={field.placeholder}
             placeholderTextColor={colors.muted}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}

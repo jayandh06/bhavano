@@ -13,6 +13,7 @@ import { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provid
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import type { AnalyticsService } from '../analytics/analytics.service';
 import { ConfigService } from '@nestjs/config';
+import { inferBrokerageFeeType } from '@bhavano/types/categoryFields';
 import type { Prisma } from '@prisma/client';
 
 // computeDHash calls sharp on a real image buffer — stubbed so addPhoto's own logic (cap,
@@ -581,10 +582,12 @@ describe('ListingsService.listEngagement', () => {
 
 describe('ListingsService', () => {
   describe('residential attributes', () => {
+    const residentialBasics = { floor: '2', totalFloors: '4', entranceFacing: 'east' };
     const validAttributes = {
       bedrooms: '2',
       bathrooms: '2',
       carpetAreaSqft: '950',
+      ...residentialBasics,
       balconyCount: '1',
       openParkingCount: '1',
       closedParkingCount: '0',
@@ -592,6 +595,7 @@ describe('ListingsService', () => {
       priceNegotiable: 'no',
       fromBroker: 'yes',
       brokerageFeeApplicable: 'yes',
+      brokerageFeeType: 'fixed',
       brokerageFee: '10000',
       maintenanceFeeApplicable: 'yes',
       monthlyMaintenanceFee: '2500',
@@ -652,6 +656,7 @@ describe('ListingsService', () => {
       const { service } = makeService();
       expect(() =>
         (service as any).assertValidAttributes('house', 'buy', {
+          ...residentialBasics,
           bedrooms: '2',
           bathrooms: '2',
           carpetAreaSqft: '950',
@@ -668,6 +673,7 @@ describe('ListingsService', () => {
       const { service } = makeService();
       expect(() =>
         (service as any).assertValidAttributes('house', 'sell', {
+          ...residentialBasics,
           bedrooms: 2,
           bathrooms: 2,
           sqft: 950,
@@ -675,120 +681,148 @@ describe('ListingsService', () => {
       ).not.toThrow();
     });
 
-    // Regression test: a sell listing quotes brokerage as a % of sale price
-    // (brokerageCommissionPercent), not the flat ₹ amount rent/lease listings use
-    // (brokerageFee) — assertConditionalFee used to hardcode 'brokerageFee' regardless of
-    // transactionType, so turning brokerageFeeApplicable on for a sell listing always failed
-    // with "Brokerage fee amount is required" no matter what commission percentage was entered,
-    // since brokerageFee is never a field a sell listing shows in the first place.
-    it('accepts a sell listing with brokerage quoted as a commission percentage', () => {
+    // Brokerage is quoted either way on any transaction type: the poster first picks a fixed ₹
+    // amount or a % of the total value, and only that type's amount field applies.
+    it.each([
+      ['house', 'sell', 'fixed', { brokerageFee: '200000' }],
+      ['house', 'sell', 'percent', { brokerageCommissionPercent: '1.5' }],
+      ['apartment', 'rent', 'fixed', { brokerageFee: '5000' }],
+      ['apartment', 'rent', 'percent', { brokerageCommissionPercent: '8.33' }],
+    ] as const)('accepts a %s %s listing with %s brokerage', (category, transactionType, type, amount) => {
       const { service } = makeService();
       expect(() =>
-        (service as any).assertValidAttributes('house', 'sell', {
+        (service as any).assertValidAttributes(category, transactionType, {
           bedrooms: '2',
           bathrooms: '2',
           carpetAreaSqft: '950',
+          ...residentialBasics,
           fromBroker: 'yes',
           brokerageFeeApplicable: 'yes',
-          brokerageCommissionPercent: '2',
+          brokerageFeeType: type,
+          ...amount,
         }),
       ).not.toThrow();
     });
 
-    it('rejects a sell listing with brokerage applicable but no commission percentage set', () => {
+    const brokered = {
+      bedrooms: '2',
+      bathrooms: '2',
+      carpetAreaSqft: '950',
+      ...residentialBasics,
+      fromBroker: 'yes',
+      brokerageFeeApplicable: 'yes',
+    };
+
+    it('requires the brokerage fee type once a brokerage fee applies', () => {
       const { service } = makeService();
-      expect(() =>
-        (service as any).assertValidAttributes('house', 'sell', {
-          bedrooms: '2',
-          bathrooms: '2',
-          carpetAreaSqft: '950',
-          fromBroker: 'yes',
-          brokerageFeeApplicable: 'yes',
-        }),
-      ).toThrow('Brokerage commission (%) is required');
+      expect(() => (service as any).assertValidAttributes('house', 'sell', brokered)).toThrow(
+        'Brokerage fee type is required',
+      );
     });
 
-    it('still requires the flat brokerage fee (not a commission percentage) for a rent listing', () => {
+    it('requires the amount of the chosen brokerage type', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('house', 'sell', { ...brokered, brokerageFeeType: 'fixed' }),
+      ).toThrow('Brokerage Fee (₹) is required');
+      expect(() =>
+        (service as any).assertValidAttributes('apartment', 'rent', { ...brokered, brokerageFeeType: 'percent' }),
+      ).toThrow('Brokerage Fee (%) is required');
+    });
+
+    it('rejects an amount of the brokerage type that was not chosen', () => {
       const { service } = makeService();
       expect(() =>
         (service as any).assertValidAttributes('apartment', 'rent', {
-          ...validAttributes,
-          brokerageFee: undefined,
-        }),
-      ).toThrow('Brokerage fee (₹) is required');
-    });
-
-    // plot is sell-only (POSTABLE_TRANSACTION_TYPES), so it only ever needs the commission-
-    // percentage variant, same as a residential sale — added on request alongside the same
-    // fromBroker/brokerageFeeApplicable/brokerageCommissionPercent chain house/apartment/villa
-    // already have.
-    it('accepts a plot sale with brokerage quoted as a commission percentage', () => {
-      const { service } = makeService();
-      expect(() =>
-        (service as any).assertValidAttributes('plot', 'sell', {
-          plotAreaSqft: '1200',
-          fromBroker: 'yes',
-          brokerageFeeApplicable: 'yes',
+          ...brokered,
+          brokerageFeeType: 'percent',
           brokerageCommissionPercent: '2',
-        }),
-      ).not.toThrow();
-    });
-
-    it('rejects a plot sale with brokerage applicable but no commission percentage set', () => {
-      const { service } = makeService();
-      expect(() =>
-        (service as any).assertValidAttributes('plot', 'sell', {
-          plotAreaSqft: '1200',
-          fromBroker: 'yes',
-          brokerageFeeApplicable: 'yes',
-        }),
-      ).toThrow('Brokerage commission (%) is required');
-    });
-
-    // Unlike plot, commercial supports sell/rent/lease, so it needs both brokerage-amount
-    // variants — a flat ₹ fee for rent/lease, a % of sale price for sell.
-    it('accepts a sell commercial listing with brokerage quoted as a commission percentage', () => {
-      const { service } = makeService();
-      expect(() =>
-        (service as any).assertValidAttributes('commercial', 'sell', {
-          sqft: '1200',
-          purpose: 'office',
-          fromBroker: 'yes',
-          brokerageFeeApplicable: 'yes',
-          brokerageCommissionPercent: '2',
-        }),
-      ).not.toThrow();
-    });
-
-    it('accepts a rent commercial listing with a flat brokerage fee', () => {
-      const { service } = makeService();
-      expect(() =>
-        (service as any).assertValidAttributes('commercial', 'rent', {
-          sqft: '1200',
-          purpose: 'office',
-          fromBroker: 'yes',
-          brokerageFeeApplicable: 'yes',
           brokerageFee: '5000',
         }),
-      ).not.toThrow();
+      ).toThrow('Brokerage Fee (₹) is not applicable');
     });
 
-    it('rejects a sell commercial listing with brokerage applicable but no commission percentage set', () => {
+    it.each(['0', '100.5', '1.125', 'two'])('rejects a brokerage percentage of %s', (percent) => {
       const { service } = makeService();
       expect(() =>
-        (service as any).assertValidAttributes('commercial', 'sell', {
-          sqft: '1200',
-          purpose: 'office',
-          fromBroker: 'yes',
-          brokerageFeeApplicable: 'yes',
+        (service as any).assertValidAttributes('house', 'sell', {
+          ...brokered,
+          brokerageFeeType: 'percent',
+          brokerageCommissionPercent: percent,
         }),
-      ).toThrow('Brokerage commission (%) is required');
+      ).toThrow('Brokerage Fee (%) must be between 0.1 and 100, up to 2 decimal places');
+    });
+
+    it('rejects a fixed brokerage fee that is not a whole rupee amount', () => {
+      const { service } = makeService();
+      expect(() =>
+        (service as any).assertValidAttributes('house', 'sell', {
+          ...brokered,
+          brokerageFeeType: 'fixed',
+          brokerageFee: '5000.5',
+        }),
+      ).toThrow('Brokerage Fee (₹) must be a whole number of at least 1');
+    });
+
+    it('infers the brokerage type for a payload from before the type question', () => {
+      expect(inferBrokerageFeeType({ brokerageFeeApplicable: 'yes', brokerageFee: '5000' })).toMatchObject({
+        brokerageFeeType: 'fixed',
+      });
+      expect(
+        inferBrokerageFeeType({ brokerageFeeApplicable: 'yes', brokerageCommissionPercent: 2 }),
+      ).toMatchObject({ brokerageFeeType: 'percent' });
+      const chosen = { brokerageFeeApplicable: 'yes', brokerageFeeType: 'percent', brokerageFee: '5000' };
+      expect(inferBrokerageFeeType(chosen)).toBe(chosen);
+      const none = { brokerageFeeApplicable: 'no' };
+      expect(inferBrokerageFeeType(none)).toBe(none);
+    });
+
+    it('accepts a plot sale with either brokerage type', () => {
+      const { service } = makeService();
+      const plot = { plotAreaSqft: '1200', fromBroker: 'yes', brokerageFeeApplicable: 'yes' };
+      expect(() =>
+        (service as any).assertValidAttributes('plot', 'sell', {
+          ...plot,
+          brokerageFeeType: 'percent',
+          brokerageCommissionPercent: '2',
+        }),
+      ).not.toThrow();
+      expect(() =>
+        (service as any).assertValidAttributes('plot', 'sell', {
+          ...plot,
+          brokerageFeeType: 'fixed',
+          brokerageFee: '50000',
+        }),
+      ).not.toThrow();
+      expect(() => (service as any).assertValidAttributes('plot', 'sell', plot)).toThrow(
+        'Brokerage fee type is required',
+      );
+    });
+
+    it('accepts a commercial listing with either brokerage type on any transaction', () => {
+      const { service } = makeService();
+      const commercial = { sqft: '1200', purpose: 'office', fromBroker: 'yes', brokerageFeeApplicable: 'yes' };
+      expect(() =>
+        (service as any).assertValidAttributes('commercial', 'rent', {
+          ...commercial,
+          brokerageFeeType: 'percent',
+          brokerageCommissionPercent: '8.33',
+        }),
+      ).not.toThrow();
+      expect(() =>
+        (service as any).assertValidAttributes('commercial', 'sell', {
+          ...commercial,
+          brokerageFeeType: 'fixed',
+          brokerageFee: '100000',
+        }),
+      ).not.toThrow();
     });
 
     it('rejects furnishing inventory when the residence is not furnished', () => {
       const { service } = makeService();
       expect(() =>
         (service as any).assertValidAttributes('house', 'rent', {
+          ...residentialBasics,
           bedrooms: 2,
           bathrooms: 2,
           carpetAreaSqft: 950,
@@ -802,6 +836,7 @@ describe('ListingsService', () => {
       const { service } = makeService();
       expect(() =>
         (service as any).assertValidAttributes('house', 'buy', {
+          ...residentialBasics,
           bedrooms: 3,
           bathrooms: 2,
           carpetAreaSqft: 1450,
@@ -834,6 +869,7 @@ describe('ListingsService', () => {
       const { service } = makeService();
       expect(() =>
         (service as any).assertValidAttributes('apartment', 'rent', {
+          ...residentialBasics,
           bedrooms: 2,
           bathrooms: 2,
           carpetAreaSqft: 950,
@@ -844,6 +880,7 @@ describe('ListingsService', () => {
 
       expect(() =>
         (service as any).assertValidAttributes('apartment', 'rent', {
+          ...residentialBasics,
           bedrooms: 2,
           bathrooms: 2,
           carpetAreaSqft: 950,
@@ -857,6 +894,7 @@ describe('ListingsService', () => {
       const { service } = makeService();
       expect(() =>
         (service as any).assertValidAttributes('villa', 'buy', {
+          ...residentialBasics,
           bedrooms: 3,
           bathrooms: 2,
           carpetAreaSqft: 1800,

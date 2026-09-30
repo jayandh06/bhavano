@@ -80,6 +80,8 @@ export async function ListingDetailView({
     if (!(field.key in attributes)) return false;
     if (!fieldIsVisible(field, listing.transactionType, attributes)) return false;
     if (field.section === "amenities" && attributes[field.key] !== "yes") return false;
+    // The amount's own label ("Brokerage Fee (%)") already says which type was picked.
+    if (field.key === "brokerageFeeType") return false;
     return true;
   });
   const displaySections = groupFieldsBySection(visibleFields);

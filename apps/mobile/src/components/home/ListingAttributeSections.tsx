@@ -37,6 +37,8 @@ export function ListingAttributeSections({
     if (!(field.key in attrs)) return false;
     if (!fieldIsVisible(field, transactionType, attrs)) return false;
     if (field.section === "amenities" && attrs[field.key] !== "yes") return false;
+    // The amount's own label ("Brokerage Fee (%)") already says which type was picked.
+    if (field.key === "brokerageFeeType") return false;
     return true;
   });
   if (visibleFields.length === 0) return null;

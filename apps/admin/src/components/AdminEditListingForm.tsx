@@ -8,6 +8,7 @@ import {
   defaultAttributesFor,
   fieldIsVisible,
   groupFieldsBySection,
+  listingAttributesIssue,
   pruneHiddenAttributes,
   SECTION_LABELS,
   SECTION_ORDER,
@@ -304,6 +305,8 @@ function CategoryFieldInput({
     <input
       type={field.type === "number" ? "number" : "text"}
       min={field.type === "number" ? (field.min ?? 0) : undefined}
+      max={field.max}
+      step={field.decimal ? "0.01" : undefined}
       value={typeof value === "string" ? value : ""}
       onChange={(e) =>
         onChange(field.type === "number" ? clampDigits(sanitizeNonNegative(e.target.value), field.maxDigits) : e.target.value)
@@ -471,9 +474,8 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
   const [priceMode, setPriceMode] = useState<"total" | "perUnit">(listing.priceUnit ? "perUnit" : "total");
   const [description, setDescription] = useState(listing.description ?? "");
   const [specsValue, setSpecsValue] = useState(listing.specs.join(", "));
-  const [attributes, setAttributes] = useState<Record<string, string | string[]>>(
-    attributesToStrings(listing.attributes),
-  );
+  const [initialAttributes] = useState(() => attributesToStrings(listing.attributes));
+  const [attributes, setAttributes] = useState<Record<string, string | string[]>>(initialAttributes);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -586,15 +588,14 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
-  const requiredAttributesFilled = visibleFields.every((field) => {
-    if (!field.required) return true;
-    const value = attributes[field.key];
-    return Array.isArray(value) ? value.length > 0 : (value ?? "").length > 0;
-  });
+  // Only sent (and so only checked) once edited, so a listing posted before a field became
+  // required can still be retitled or moved without the admin inventing that field's answer.
+  const attributesChanged = JSON.stringify(attributes) !== JSON.stringify(initialAttributes);
+  const attributesIssue = attributesChanged ? listingAttributesIssue(category, transactionType, attributes) : null;
   const valid =
     (priceValue > 0 || priceOnRequestAllowed) &&
     title.trim().length > 0 &&
-    requiredAttributesFilled &&
+    attributesIssue === null &&
     !!cityId &&
     (useOtherArea ? areaName.trim().length > 0 : !!areaId) &&
     pinValid;
@@ -626,7 +627,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
       priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
       description: description.trim(),
       specs: specsValue.split(",").map((s) => s.trim()).filter(Boolean),
-      attributes,
+      ...(attributesChanged ? { attributes } : {}),
       category,
       transactionType,
       cityId,
@@ -903,6 +904,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
 
       {error && <p style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{error}</p>}
       {saved && !error && <p style={{ color: "var(--green)", fontSize: 13, margin: 0 }}>Saved.</p>}
+      {attributesIssue && <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>To save: {attributesIssue}</p>}
 
       <button onClick={onSave} disabled={saving || !valid} style={primaryButtonStyle}>
         {saving ? "Saving…" : "Save changes"}

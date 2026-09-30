@@ -29,7 +29,12 @@ const base = {
   bathrooms: '1',
   carpetAreaSqft: '900',
   carpetAreaSqftUnit: 'sqft',
+  floor: '2',
+  totalFloors: '4',
+  entranceFacing: 'east',
 };
+
+const broker = { ...base, fromBroker: 'yes', brokerageFeeApplicable: 'yes' };
 
 const cases: [
   string,
@@ -37,26 +42,67 @@ const cases: [
   TransactionType,
   Record<string, string | string[]>,
 ][] = [
-  ['valid apartment', 'apartment', 'rent', { ...base, totalFloors: '4' }],
+  ['valid apartment', 'apartment', 'rent', base],
   ['0 total floors', 'apartment', 'rent', { ...base, totalFloors: '0' }],
+  ['missing total floors', 'apartment', 'rent', { ...base, totalFloors: '' }],
+  ['missing floor', 'apartment', 'rent', { ...base, floor: '' }],
+  [
+    'missing entrance facing',
+    'apartment',
+    'rent',
+    { ...base, entranceFacing: '' },
+  ],
   ['decimal bedrooms', 'apartment', 'rent', { ...base, bedrooms: '2.5' }],
   ['missing bedrooms', 'apartment', 'rent', { ...base, bedrooms: '' }],
   ['bad floor option', 'apartment', 'rent', { ...base, floor: 'penthouse' }],
+  ['brokerage yes without type', 'apartment', 'rent', broker],
   [
-    'brokerage yes without amount',
+    'fixed brokerage without amount',
     'apartment',
     'rent',
-    { ...base, fromBroker: 'yes', brokerageFeeApplicable: 'yes' },
+    { ...broker, brokerageFeeType: 'fixed' },
   ],
   [
-    'brokerage yes with amount',
+    'fixed brokerage with amount',
+    'apartment',
+    'rent',
+    { ...broker, brokerageFeeType: 'fixed', brokerageFee: '5000' },
+  ],
+  [
+    'fixed brokerage with decimals',
+    'apartment',
+    'sell',
+    { ...broker, brokerageFeeType: 'fixed', brokerageFee: '5000.5' },
+  ],
+  [
+    'percent brokerage on a rental',
     'apartment',
     'rent',
     {
-      ...base,
+      ...broker,
+      brokerageFeeType: 'percent',
+      brokerageCommissionPercent: '8.33',
+    },
+  ],
+  [
+    'percent brokerage with 3 decimals',
+    'apartment',
+    'sell',
+    {
+      ...broker,
+      brokerageFeeType: 'percent',
+      brokerageCommissionPercent: '1.125',
+    },
+  ],
+  [
+    'percent brokerage over 100',
+    'commercial',
+    'sell',
+    {
       fromBroker: 'yes',
       brokerageFeeApplicable: 'yes',
-      brokerageFee: '5000',
+      brokerageFeeType: 'percent',
+      brokerageCommissionPercent: '101',
     },
   ],
 ];
@@ -76,23 +122,42 @@ describe('listingAttributesIssue', () => {
   );
 
   it('passes a complete listing', () => {
-    expect(
-      listingAttributesIssue('apartment', 'rent', {
-        ...base,
-        totalFloors: '4',
-      }),
-    ).toBeNull();
-    expect(
-      serverIssue('apartment', 'rent', { ...base, totalFloors: '4' }),
-    ).toBeNull();
+    expect(listingAttributesIssue('apartment', 'rent', base)).toBeNull();
+    expect(serverIssue('apartment', 'rent', base)).toBeNull();
   });
 
   it('uses the BFF wording for number fields', () => {
+    const zeroFloors = { ...base, totalFloors: '0' };
+    expect(listingAttributesIssue('apartment', 'rent', zeroFloors)).toBe(
+      serverIssue('apartment', 'rent', zeroFloors),
+    );
+    const percent = {
+      ...broker,
+      brokerageFeeType: 'percent',
+      brokerageCommissionPercent: '150',
+    };
+    expect(listingAttributesIssue('apartment', 'sell', percent)).toBe(
+      'Brokerage Fee (%) must be between 0.1 and 100, up to 2 decimal places',
+    );
+    expect(serverIssue('apartment', 'sell', percent)).toBe(
+      listingAttributesIssue('apartment', 'sell', percent),
+    );
+  });
+
+  it('accepts both brokerage types on a sale', () => {
     expect(
-      listingAttributesIssue('apartment', 'rent', {
-        ...base,
-        totalFloors: '0',
+      listingAttributesIssue('apartment', 'sell', {
+        ...broker,
+        brokerageFeeType: 'fixed',
+        brokerageFee: '200000',
       }),
-    ).toBe(serverIssue('apartment', 'rent', { ...base, totalFloors: '0' }));
+    ).toBeNull();
+    expect(
+      listingAttributesIssue('apartment', 'sell', {
+        ...broker,
+        brokerageFeeType: 'percent',
+        brokerageCommissionPercent: '1.5',
+      }),
+    ).toBeNull();
   });
 });

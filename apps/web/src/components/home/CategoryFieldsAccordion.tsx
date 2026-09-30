@@ -28,6 +28,13 @@ function sanitizeWholeNumber(value: string): string {
   return value.replace(/[.,].*$/, "").replace(/\D/g, "");
 }
 
+/** A `decimal` number field (a percentage) keeps one "." and at most 2 places after it — the
+ * same shape the BFF accepts. */
+function sanitizeDecimal(value: string): string {
+  const [whole, ...rest] = value.replace(/,/g, ".").replace(/[^\d.]/g, "").split(".");
+  return rest.length === 0 ? whole : `${whole}.${rest.join("").slice(0, 2)}`;
+}
+
 /** The browser's `min` doesn't stop anyone typing below it: "0" total floors reached the BFF's
  * "at least 1" check and failed the post. Raised to the minimum when the box is left instead. */
 function raiseToMin(value: string | string[] | undefined, min: number, onChange: (value: string) => void) {
@@ -212,8 +219,13 @@ function CategoryFieldInput({
   }
 
   if (field.type === "select") {
+    const shortOptions = (field.options ?? []).every((opt) => opt.label.length <= 9);
     return (
-      <SelectField value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)}>
+      <SelectField
+        value={typeof value === "string" ? value : ""}
+        onChange={(e) => onChange(e.target.value)}
+        narrow={shortOptions}
+      >
         <option value="" disabled>
           Select…
         </option>
@@ -227,9 +239,25 @@ function CategoryFieldInput({
   }
 
   const maxValue =
-    field.type === "number" && field.maxDigits !== undefined
+    field.max ??
+    (field.type === "number" && field.maxDigits !== undefined
       ? 10 ** field.maxDigits - 1
-      : undefined;
+      : undefined);
+
+  // Text rather than type="number": a number input reports "" while "1." is half-typed, which
+  // would wipe the box on the way to "1.5".
+  if (field.type === "number" && field.decimal) {
+    return (
+      <input
+        type="text"
+        inputMode="decimal"
+        value={typeof value === "string" ? value : ""}
+        onChange={(e) => onChange(sanitizeDecimal(e.target.value))}
+        placeholder={field.placeholder}
+        className={fieldClass.replace("w-full", "w-28")}
+      />
+    );
+  }
 
   // Always-visible −/+ buttons for small counts. `<input type="number">` spinners are not a
   // substitute: desktop browsers only reveal them on hover, and phones never show them at all,

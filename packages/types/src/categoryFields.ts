@@ -63,6 +63,11 @@ export interface FieldDef {
   options?: FieldOption[];
   placeholder?: string;
   min?: number;
+  /** Upper bound for a `number` field, checked by the BFF and the forms alike (a percentage). */
+  max?: number;
+  /** `number` only: accepts up to 2 decimal places instead of whole numbers only (a percentage
+   * like 1.5). Such a field shouldn't set `maxDigits`, which counts the "." as a digit. */
+  decimal?: boolean;
   /** `type: "area"` only — which units this field's number can be entered in. A single-entry
    * list (or omitted entirely) renders as a plain sqft number input, visually identical to every
    * other numeric field; more than one renders a unit dropdown alongside the number. Only Plot
@@ -181,10 +186,39 @@ export function pruneHiddenAttributes(
   return next;
 }
 
-/** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
- * of resetting to an empty object so a stepper has a number to increment from and the form opens
- * with honest answers rather than blanks the poster has to fill in to say "none". */
-const CONDITIONAL_FEE_KEYS = ["brokerageFeeApplicable", "maintenanceFeeApplicable"] as const;
+/**
+ * Why a filled-in `number` / `area` value is invalid, or null. Shared by the BFF's
+ * `assertValidAttributes` and `listingAttributesIssue` so the forms and the server word and draw
+ * the line identically. Accepts the raw form string or the BFF's already-normalized number.
+ */
+export function numberFieldIssue(field: FieldDef, value: unknown): string | null {
+  const text = typeof value === "number" ? String(value) : typeof value === "string" ? value.trim() : "";
+  const numberValue = text === "" ? NaN : Number(text);
+  const min = field.min ?? 0;
+  // Unlike a plain `number` field, an area's value isn't required to be a whole number — 2.5
+  // acres is a completely ordinary answer, unlike "2.5 bedrooms".
+  if (field.type === "area") {
+    return Number.isFinite(numberValue) && numberValue >= min
+      ? null
+      : `${field.label} must be a number of at least ${min}`;
+  }
+  const inRange =
+    Number.isFinite(numberValue) && numberValue >= min && (field.max === undefined || numberValue <= field.max);
+  if (field.decimal) {
+    return inRange && /^\d+(\.\d{1,2})?$/.test(text)
+      ? null
+      : field.max === undefined
+        ? `${field.label} must be a number of at least ${min}, up to 2 decimal places`
+        : `${field.label} must be between ${min} and ${field.max}, up to 2 decimal places`;
+  }
+  return inRange && Number.isInteger(numberValue)
+    ? null
+    : field.max === undefined
+      ? `${field.label} must be a whole number of at least ${min}`
+      : `${field.label} must be a whole number from ${min} to ${field.max}`;
+}
+
+const CONDITIONAL_FEE_KEYS = ["maintenanceFeeApplicable"] as const;
 
 /**
  * The first reason the BFF's `assertValidAttributes` would reject these attributes, in its own
@@ -207,13 +241,8 @@ export function listingAttributesIssue(
       continue;
     }
     if (field.type === "number" || field.type === "area") {
-      const numberValue = typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
-      const min = field.min ?? 0;
-      if (field.type === "area" ? !(Number.isFinite(numberValue) && numberValue >= min) : !(Number.isInteger(numberValue) && numberValue >= min)) {
-        return field.type === "area"
-          ? `${field.label} must be a number of at least ${min}`
-          : `${field.label} must be a whole number of at least ${min}`;
-      }
+      const issue = numberFieldIssue(field, value);
+      if (issue) return issue;
     } else if (field.type === "select" || field.type === "multi-select") {
       const allowed = new Set(field.options?.map((option) => option.value));
       const picked = Array.isArray(value) ? value : [value];
@@ -235,6 +264,9 @@ export function listingAttributesIssue(
   return null;
 }
 
+/** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
+ * of resetting to an empty object so a stepper has a number to increment from and the form opens
+ * with honest answers rather than blanks the poster has to fill in to say "none". */
 export function defaultAttributesFor(category: ListingCategory): Record<string, string> {
   const out: Record<string, string> = {};
   for (const field of CATEGORY_FIELD_CONFIG[category]) {
@@ -263,6 +295,90 @@ const RESIDENTIAL_FLOOR_OPTIONS: FieldOption[] = [
   { value: "top", label: "Top floor" },
 ];
 
+export const BROKERAGE_FEE_FIXED = "fixed";
+export const BROKERAGE_FEE_PERCENT = "percent";
+
+/**
+ * The brokerage block every broker-capable category (residential, plot, commercial) shares, after
+ * its own `fromBroker` field. A broker picks how the fee is quoted before entering it — a flat ₹
+ * amount or a % of the total value — on any transaction type, so each quoting style keeps its own
+ * key and neither the BFF nor the detail page has to guess whether a stored number means ₹ or %.
+ * Listings stored before `brokerageFeeType` existed get it inferred from whichever amount they
+ * hold (`inferBrokerageFeeType`).
+ */
+const BROKERAGE_FIELDS: FieldDef[] = [
+  {
+    key: "brokerageFeeApplicable",
+    label: "Has brokerage fee",
+    type: "select",
+    section: "pricing",
+    dependsOn: { key: "fromBroker", value: "yes" },
+    options: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ],
+  },
+  {
+    key: "brokerageFeeType",
+    label: "Brokerage fee type",
+    type: "select",
+    section: "pricing",
+    dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
+    options: [
+      { value: BROKERAGE_FEE_FIXED, label: "Fixed amount" },
+      { value: BROKERAGE_FEE_PERCENT, label: "% of total value" },
+    ],
+    required: true,
+  },
+  {
+    key: "brokerageFee",
+    label: "Brokerage Fee (₹)",
+    type: "number",
+    min: 1,
+    maxDigits: 9,
+    section: "pricing",
+    dependsOn: { key: "brokerageFeeType", value: BROKERAGE_FEE_FIXED },
+    required: true,
+  },
+  {
+    key: "brokerageCommissionPercent",
+    label: "Brokerage Fee (%)",
+    type: "number",
+    decimal: true,
+    min: 0.1,
+    max: 100,
+    section: "pricing",
+    dependsOn: { key: "brokerageFeeType", value: BROKERAGE_FEE_PERCENT },
+    required: true,
+  },
+];
+
+/**
+ * Fills in `brokerageFeeType` for a payload that says a brokerage fee applies but predates the
+ * type question (an old app build, or a listing stored before it) — picked from whichever amount
+ * is present. Leaves the attributes untouched when the type is already set or can't be told.
+ */
+export function inferBrokerageFeeType(
+  attributes: Record<string, unknown>,
+): Record<string, unknown> {
+  if (attributes.brokerageFeeApplicable !== "yes" || isFilled(attributes.brokerageFeeType)) {
+    return attributes;
+  }
+  if (isFilled(attributes.brokerageFee)) {
+    return { ...attributes, brokerageFeeType: BROKERAGE_FEE_FIXED };
+  }
+  if (isFilled(attributes.brokerageCommissionPercent)) {
+    return { ...attributes, brokerageFeeType: BROKERAGE_FEE_PERCENT };
+  }
+  return attributes;
+}
+
+function isFilled(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return String(value).trim() !== "";
+}
+
 const RESIDENTIAL_FIELDS: FieldDef[] = [
   {
     key: "bedrooms",
@@ -286,15 +402,18 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
   },
   {
     // Structured (not free text like commercial `floor`) so browse filters can match later.
-    // Optional — older listings simply omit it. Sell/rent/lease all share this; no
-    // transactionTypes gate. Values: basement / ground / 1…50 / top.
+    // Required since 30 Sept; listings posted before then may omit it, and are asked for it on
+    // their next edit. Sell/rent/lease all share this; no transactionTypes gate. Values:
+    // basement / ground / 1…50 / top.
     key: "floor",
     label: "Floor",
     type: "select",
     section: "basics",
     options: RESIDENTIAL_FLOOR_OPTIONS,
+    required: true,
   },
   {
+    // Required alongside `floor` (30 Sept). No defaultValue: 1 would be a guess for a flat.
     key: "totalFloors",
     label: "Total floors in building",
     type: "number",
@@ -302,6 +421,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     maxDigits: 2,
     stepper: true,
     section: "basics",
+    required: true,
   },
   {
     key: "carpetAreaSqft",
@@ -358,6 +478,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Entrance facing",
     type: "select",
     section: "basics",
+    required: true,
     options: [
       { value: "north", label: "North" },
       { value: "south", label: "South" },
@@ -413,42 +534,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
       { value: "no", label: "No" },
     ],
   },
-  {
-    // Shared gate for both brokerage-amount fields below — no transactionTypes restriction of
-    // its own, since a sale can involve a broker just as much as a rental can.
-    key: "brokerageFeeApplicable",
-    label: "Has brokerage fee",
-    type: "select",
-    section: "pricing",
-    dependsOn: { key: "fromBroker", value: "yes" },
-    options: [
-      { value: "yes", label: "Yes" },
-      { value: "no", label: "No" },
-    ],
-  },
-  {
-    key: "brokerageFee",
-    label: "Brokerage fee (₹)",
-    type: "number",
-    maxDigits: 5,
-    min: 0,
-    section: "pricing",
-    transactionTypes: ["rent", "lease"],
-    dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
-  },
-  {
-    // Sale-side brokerage is conventionally quoted as a % of sale price rather than a flat
-    // amount — a distinct field/key rather than reusing `brokerageFee` for both, so neither the
-    // BFF nor the listing detail page has to guess whether a stored number means ₹ or %.
-    key: "brokerageCommissionPercent",
-    label: "Brokerage commission (%)",
-    type: "number",
-    min: 0,
-    maxDigits: 2,
-    section: "pricing",
-    transactionTypes: ["sell"],
-    dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
-  },
+  ...BROKERAGE_FIELDS,
   {
     key: "maintenanceFeeApplicable",
     label: "Has monthly maintenance?",
@@ -1117,30 +1203,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "no", label: "No" },
       ],
     },
-    {
-      key: "brokerageFeeApplicable",
-      label: "Has brokerage fee",
-      type: "select",
-      section: "pricing",
-      dependsOn: { key: "fromBroker", value: "yes" },
-      options: [
-        { value: "yes", label: "Yes" },
-        { value: "no", label: "No" },
-      ],
-    },
-    {
-      // plot is sell-only (see POSTABLE_TRANSACTION_TYPES), so this is the only brokerage-amount
-      // field it ever needs — no flat-₹ brokerageFee variant, unlike RESIDENTIAL_FIELDS, which
-      // also supports rent/lease.
-      key: "brokerageCommissionPercent",
-      label: "Brokerage commission (%)",
-      type: "number",
-      min: 0,
-      maxDigits: 2,
-      section: "pricing",
-      transactionTypes: ["sell"],
-      dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
-    },
+    ...BROKERAGE_FIELDS,
   ],
   commercial: [
     {
@@ -1201,43 +1264,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "no", label: "No" },
       ],
     },
-    {
-      key: "brokerageFeeApplicable",
-      label: "Has brokerage fee",
-      type: "select",
-      section: "pricing",
-      dependsOn: { key: "fromBroker", value: "yes" },
-      options: [
-        { value: "yes", label: "Yes" },
-        { value: "no", label: "No" },
-      ],
-    },
-    {
-      // commercial supports sell/rent/lease (POSTABLE_TRANSACTION_TYPES), so — same as
-      // RESIDENTIAL_FIELDS — it needs both brokerage-amount variants: a flat ₹ fee for rent/lease
-      // and a % of sale price for sell. Without both, a rent/lease commercial listing with
-      // brokerageFeeApplicable=yes would have no matching amount field at all (see
-      // ListingsService.assertConditionalFee, which resolves the amount field by transactionType
-      // from this config and silently requires nothing when none matches).
-      key: "brokerageFee",
-      label: "Brokerage fee (₹)",
-      type: "number",
-      maxDigits: 5,
-      min: 0,
-      section: "pricing",
-      transactionTypes: ["rent", "lease"],
-      dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
-    },
-    {
-      key: "brokerageCommissionPercent",
-      label: "Brokerage commission (%)",
-      type: "number",
-      min: 0,
-      maxDigits: 2,
-      section: "pricing",
-      transactionTypes: ["sell"],
-      dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
-    },
+    ...BROKERAGE_FIELDS,
   ],
 };
 

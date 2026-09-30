@@ -229,7 +229,7 @@ export function CategoryFieldsForm({
           <TextInput
             value={typeof attributes[field.key] === "string" ? (attributes[field.key] as string) : ""}
             onChangeText={(v) => onAttributesChange((prev) => ({ ...prev, [field.key]: sanitizeFieldInput(field, v) }))}
-            keyboardType={field.type === "number" ? "number-pad" : "default"}
+            keyboardType={field.type === "number" ? (field.decimal ? "decimal-pad" : "number-pad") : "default"}
             placeholder={field.placeholder}
             placeholderTextColor={colors.muted}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
@@ -337,7 +337,12 @@ export function CategoryFieldsForm({
 /** Exported for the edit screen's plain (non-counter, non-select) text fields, which need the
  * same digit-clamping PostAdWizard applies — kept here rather than a third copy. */
 export function sanitizeFieldInput(field: FieldConfig, value: string): string {
-  return field.type === "number" ? clampDigits(digitsOnly(value), field.maxDigits) : value;
+  if (field.type !== "number") return value;
+  if (field.decimal) {
+    const [whole, fraction] = sanitizeAreaInput(value).split(".");
+    return fraction === undefined ? whole : `${whole}.${fraction.slice(0, 2)}`;
+  }
+  return clampDigits(digitsOnly(value), field.maxDigits);
 }
 
 const styles = StyleSheet.create({

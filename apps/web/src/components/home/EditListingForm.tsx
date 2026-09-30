@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
-import { CATEGORY_FIELD_CONFIG, fieldIsVisible } from "@bhavano/types/categoryFields";
+import { CATEGORY_FIELD_CONFIG, listingAttributesIssue } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, type AreaUnit } from "@bhavano/types/areaUnit";
 import { updateListingAction } from "@/app/actions/listings";
@@ -59,9 +59,8 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
   // them), so unlike the wizard, no reset-on-change is needed here.
   const [priceMode, setPriceMode] = useState<"total" | "perUnit">(listing.priceUnit ? "perUnit" : "total");
   const [description, setDescription] = useState(listing.description ?? "");
-  const [attributes, setAttributes] = useState<
-    Record<string, string | string[]>
-  >(attributesToStrings(listing.attributes));
+  const [initialAttributes] = useState(() => attributesToStrings(listing.attributes));
+  const [attributes, setAttributes] = useState<Record<string, string | string[]>>(initialAttributes);
   const [status, setStatus] = useState<ListingStatus>(listing.status);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
@@ -70,27 +69,23 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
   } | null>(null);
 
   const fieldConfig = CATEGORY_FIELD_CONFIG[listing.category];
-  const visibleFields = fieldConfig.filter((field) =>
-    fieldIsVisible(field, listing.transactionType, attributes),
-  );
   const priceUnitAreaField =
     listing.transactionType === "sell" || listing.transactionType === "lease"
       ? fieldConfig.find((field) => field.type === "area")
       : undefined;
   const currentAreaUnit = (attributes[`${priceUnitAreaField?.key}Unit`] as AreaUnit | undefined) ?? "sqft";
   const priceValue = Number(price.replace(/[^0-9.]/g, ""));
-  // Only currently-visible required fields block saving — a required field hidden behind an
-  // unmet `dependsOn` (none today, but the config allows it) can't be filled in anyway.
-  const requiredAttributesFilled = visibleFields.every((field) => {
-    if (!field.required) return true;
-    const value = attributes[field.key];
-    return Array.isArray(value) ? value.length > 0 : (value ?? "").length > 0;
-  });
+  // Attributes are only sent (and so only checked) once edited: a listing posted before a field
+  // became required can still have its price or status changed without filling that field in.
+  const attributesChanged = JSON.stringify(attributes) !== JSON.stringify(initialAttributes);
+  const attributesIssue = attributesChanged
+    ? listingAttributesIssue(listing.category, listing.transactionType, attributes)
+    : null;
   // 0 is a real, submittable price ("Contact for price") for pg/coworking — see
   // PRICE_ON_REQUEST_CATEGORIES's own doc comment. Every other category still needs a real one.
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(listing.category);
   const valid =
-    (priceValue > 0 || priceOnRequestAllowed) && title.trim().length > 0 && requiredAttributesFilled;
+    (priceValue > 0 || priceOnRequestAllowed) && title.trim().length > 0 && attributesIssue === null;
 
   // The stored value may not appear in today's fixed option list (legacy free-text data from
   // before this dropdown existed) — keep it selectable rather than silently swapping it out.
@@ -119,7 +114,7 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
       priceQualifier,
       priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
       description: description.trim(),
-      attributes,
+      ...(attributesChanged ? { attributes } : {}),
       status,
     });
     setSaving(false);
@@ -305,6 +300,7 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
           {message.text}
         </p>
       )}
+      {attributesIssue && <p className="text-[13px] m-0 text-muted">To save: {attributesIssue}</p>}
 
       <button
         onClick={onSave}
