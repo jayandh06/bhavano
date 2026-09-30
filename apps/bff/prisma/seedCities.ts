@@ -5,6 +5,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
 const cities = [
+  // Popular: the 11 cities the Google Ads campaigns target (since 2026-09-28). Listed first in the
+  // city pickers, the header, every page's footer and /cities. See
+  // docs/plans/focus-on-ad-target-cities.md.
   { name: 'Bengaluru', state: 'Karnataka', lat: 12.9716, lng: 77.5946, isPopular: true },
   { name: 'Mumbai', state: 'Maharashtra', lat: 19.076, lng: 72.8777, isPopular: true },
   { name: 'Delhi NCR', state: 'Delhi', lat: 28.7041, lng: 77.1025, isPopular: true },
@@ -13,18 +16,18 @@ const cities = [
   { name: 'Chennai', state: 'Tamil Nadu', lat: 13.0827, lng: 80.2707, isPopular: true },
   { name: 'Kolkata', state: 'West Bengal', lat: 22.5726, lng: 88.3639, isPopular: true },
   { name: 'Ahmedabad', state: 'Gujarat', lat: 23.0225, lng: 72.5714, isPopular: true },
-  { name: 'Surat', state: 'Gujarat', lat: 21.1702, lng: 72.8311, isPopular: true },
   { name: 'Jaipur', state: 'Rajasthan', lat: 26.9124, lng: 75.7873, isPopular: true },
-  { name: 'Kochi', state: 'Kerala', lat: 9.9312, lng: 76.2673, isPopular: true },
-  { name: 'Chandigarh', state: 'Chandigarh', lat: 30.7333, lng: 76.7794, isPopular: true },
+  { name: 'Lucknow', state: 'Uttar Pradesh', lat: 26.8467, lng: 80.9462, isPopular: true },
+  { name: 'Coimbatore', state: 'Tamil Nadu', lat: 11.0168, lng: 76.9558, isPopular: true },
   // Tier 2 — browsable via "Show more cities" in the location picker, not shown by default.
+  { name: 'Surat', state: 'Gujarat', lat: 21.1702, lng: 72.8311, isPopular: false },
+  { name: 'Kochi', state: 'Kerala', lat: 9.9312, lng: 76.2673, isPopular: false },
+  { name: 'Chandigarh', state: 'Chandigarh', lat: 30.7333, lng: 76.7794, isPopular: false },
   { name: 'Nagpur', state: 'Maharashtra', lat: 21.1458, lng: 79.0882, isPopular: false },
   { name: 'Indore', state: 'Madhya Pradesh', lat: 22.7196, lng: 75.8577, isPopular: false },
   { name: 'Bhopal', state: 'Madhya Pradesh', lat: 23.2599, lng: 77.4126, isPopular: false },
-  { name: 'Coimbatore', state: 'Tamil Nadu', lat: 11.0168, lng: 76.9558, isPopular: false },
   { name: 'Visakhapatnam', state: 'Andhra Pradesh', lat: 17.6868, lng: 83.2185, isPopular: false },
   { name: 'Vijayawada', state: 'Andhra Pradesh', lat: 16.506, lng: 80.648, isPopular: false },
-  { name: 'Lucknow', state: 'Uttar Pradesh', lat: 26.8467, lng: 80.9462, isPopular: false },
   { name: 'Kanpur', state: 'Uttar Pradesh', lat: 26.4499, lng: 80.3319, isPopular: false },
   { name: 'Nashik', state: 'Maharashtra', lat: 19.9975, lng: 73.7898, isPopular: false },
   { name: 'Vadodara', state: 'Gujarat', lat: 22.3072, lng: 73.1812, isPopular: false },
@@ -470,11 +473,18 @@ const areasByCity: Record<string, { name: string; lat: number; lng: number }[]> 
   ],
 };
 
-/** Every city here is served (targeted by the Google Ads campaigns), and its catchment is its
- * reach: the towns around it fold into it. See docs/plans/serve-only-ad-targeted-cities.md. */
-function catchmentKmFor(name: string, isPopular: boolean): number {
+/** The big metros whose reach is 75 km. Its own list, not `isPopular`: that tier follows the ad
+ * targeting and changes, and a city's reach shouldn't move with it. */
+const WIDE_REACH_CITIES = new Set([
+  'Bengaluru', 'Mumbai', 'Pune', 'Hyderabad', 'Chennai', 'Kolkata', 'Ahmedabad', 'Surat', 'Jaipur',
+  'Kochi', 'Chandigarh',
+]);
+
+/** Every city here is served, and its catchment is its reach: the towns around it fold into it.
+ * See docs/plans/serve-only-ad-targeted-cities.md. */
+function catchmentKmFor(name: string): number {
   if (name === 'Delhi NCR') return 90;
-  return isPopular ? 75 : 40;
+  return WIDE_REACH_CITIES.has(name) ? 75 : 40;
 }
 
 /** Upserts every city and its curated areas — safe to run repeatedly anywhere, including
@@ -487,7 +497,7 @@ export async function seedCities(prisma: PrismaClient): Promise<{
 }> {
   const cityRecords = new Map<string, string>();
   for (const c of cities) {
-    const data = { ...c, catchmentKm: catchmentKmFor(c.name, c.isPopular), isServed: true };
+    const data = { ...c, catchmentKm: catchmentKmFor(c.name), isServed: true };
     const city = await prisma.city.upsert({
       where: { name_state: { name: c.name, state: c.state } },
       update: data,

@@ -9,10 +9,12 @@ export const metadata = {
 };
 
 /** Every served city — the counterpart to the footer's "Browse Cities" block (which only shows
- * `isPopular` cities plus a link here), grouped by state. See
- * docs/plans/seo-all-cities-footer-links.md and docs/plans/serve-only-ad-targeted-cities.md. */
+ * `isPopular` cities plus a link here), grouped by state, with the popular cities (the ones the ads
+ * target) first. See docs/plans/seo-all-cities-footer-links.md,
+ * docs/plans/serve-only-ad-targeted-cities.md and docs/plans/focus-on-ad-target-cities.md. */
 export default async function CitiesPage() {
   const cities = (await fetchCities(undefined, true).catch(() => [])).filter((city) => city.isServed);
+  const topCities = cities.filter((city) => city.isPopular).sort((a, b) => a.name.localeCompare(b.name));
 
   const byState = new Map<string, typeof cities>();
   for (const city of cities) {
@@ -30,6 +32,24 @@ export default async function CitiesPage() {
         {cities.length.toLocaleString()} cities across India — pick one to browse houses, apartments, villas, plots,
         PG accommodation, coworking desks, commercial spaces and furniture listings there.
       </p>
+      {topCities.length > 0 && (
+        <div>
+          <h2 className="font-bold text-[15px] text-text m-0 mb-3">Top cities</h2>
+          <div className="flex flex-wrap gap-2.5 text-[13px]">
+            {topCities.map((city) => (
+              <Link
+                key={city.id}
+                href={buildBrowsePath({ cityName: city.name })}
+                prefetch={false}
+                className="border border-border rounded-lg px-3 py-1.5 font-semibold"
+              >
+                {city.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      <h2 className="font-bold text-[15px] text-text m-0">All cities by state</h2>
       <div className="grid gap-8 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
         {states.map(([state, stateCities]) => (
           <div key={state}>

@@ -209,14 +209,17 @@ model City {
   state     String
   lat       Float
   lng       Float
+  /// One of the 11 cities the Google Ads campaigns target now (seedCities.ts): listed first in the
+  /// pickers, header, footer and /cities. Not the reach — see catchmentKm. See
+  /// docs/plans/focus-on-ad-target-cities.md.
   isPopular Boolean   @default(false)
   source    String    @default("curated")
   /// How far from this city's centroid a dropped pin still counts as this city, in kilometres.
   /// A ward Google labels as its own locality stays an area of this city when the pin is inside
-  /// the circle. For a served city this is its reach: 75 km for the popular metros (Delhi NCR 90),
+  /// the circle. For a served city this is its reach: 75 km for the big metros (Delhi NCR 90),
   /// 40 km for the rest. See docs/plans/serve-only-ad-targeted-cities.md.
   catchmentKm Int     @default(25)
-  /// One of the 37 markets the Google Ads campaigns target. A pin within a served city's reach is
+  /// One of the 37 markets the Google Ads campaigns targeted at launch. A pin within a served city's reach is
   /// filed under it before any other city is considered, and only served cities are listed in the
   /// city pickers. Census towns keep their rows for listings already filed under them.
   isServed  Boolean   @default(false)

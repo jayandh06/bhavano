@@ -1,12 +1,15 @@
 import type { MetadataRoute } from "next";
-import { fetchListingsSitemap } from "@/lib/bff";
+import { fetchCities, fetchListingsSitemap } from "@/lib/bff";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import { transactionGroupFor } from "@/lib/seoRoute";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const listings = await fetchListingsSitemap();
+  const [listings, cities] = await Promise.all([fetchListingsSitemap(), fetchCities(undefined, true).catch(() => [])]);
+  // The cities the ads target (`isPopular`) go first and rank above the rest. Google ignores
+  // `priority`, Bing reads it; see docs/plans/focus-on-ad-target-cities.md.
+  const topCityNames = new Set(cities.filter((city) => city.isPopular).map((city) => city.name));
 
   const listingEntries: MetadataRoute.Sitemap = listings.map((listing) => ({
     url: `${SITE_URL}${buildListingPath(listing)}`,
@@ -17,43 +20,53 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // combination actually present in the data (not a combinatorial city×area×group×category×facet
   // explosion) — the direct SEO payoff of the area-first city hierarchy: a real, indexable
   // landing page per locality ("apartments for rent in Koramangala"), not just per city.
-  const cityPaths = new Map<string, string>();
-  const areaPaths = new Map<string, string>();
-  const groupPaths = new Map<string, string>();
-  const categoryPaths = new Map<string, string>();
+  type BrowsePath = { path: string; cityName: string };
+  const cityPaths = new Map<string, BrowsePath>();
+  const areaPaths = new Map<string, BrowsePath>();
+  const groupPaths = new Map<string, BrowsePath>();
+  const categoryPaths = new Map<string, BrowsePath>();
 
   for (const listing of listings) {
     const group = transactionGroupFor(listing.transactionType);
+    const { cityName } = listing;
 
-    if (!cityPaths.has(listing.cityName)) {
-      cityPaths.set(listing.cityName, buildBrowsePath({ cityName: listing.cityName }));
+    if (!cityPaths.has(cityName)) {
+      cityPaths.set(cityName, { cityName, path: buildBrowsePath({ cityName }) });
     }
 
-    const areaKey = `${listing.cityName}|${listing.area}`;
+    const areaKey = `${cityName}|${listing.area}`;
     if (!areaPaths.has(areaKey)) {
-      areaPaths.set(areaKey, buildBrowsePath({ cityName: listing.cityName, areaName: listing.area }));
+      areaPaths.set(areaKey, { cityName, path: buildBrowsePath({ cityName, areaName: listing.area }) });
     }
 
-    const groupKey = `${listing.cityName}|${group}`;
+    const groupKey = `${cityName}|${group}`;
     if (!groupPaths.has(groupKey)) {
-      groupPaths.set(groupKey, buildBrowsePath({ cityName: listing.cityName, transactionGroup: group }));
+      groupPaths.set(groupKey, { cityName, path: buildBrowsePath({ cityName, transactionGroup: group }) });
     }
 
     const categoryKey = `${groupKey}|${listing.category}`;
     if (!categoryPaths.has(categoryKey)) {
-      categoryPaths.set(categoryKey, buildBrowsePath({ cityName: listing.cityName, transactionGroup: group, category: listing.category }));
+      categoryPaths.set(categoryKey, {
+        cityName,
+        path: buildBrowsePath({ cityName, transactionGroup: group, category: listing.category }),
+      });
     }
   }
 
-  const browseEntries: MetadataRoute.Sitemap = [
-    ...cityPaths.values(),
-    ...areaPaths.values(),
-    ...groupPaths.values(),
-    ...categoryPaths.values(),
-  ].map((path) => ({
-    url: `${SITE_URL}${path}`,
+  const cityHubs = [...cityPaths.values()];
+  const drillDowns = [...areaPaths.values(), ...groupPaths.values(), ...categoryPaths.values()];
+  const isTop = (entry: BrowsePath) => topCityNames.has(entry.cityName);
+  const toEntry = (entry: BrowsePath, priority: number): MetadataRoute.Sitemap[number] => ({
+    url: `${SITE_URL}${entry.path}`,
     lastModified: new Date(),
-  }));
+    priority,
+  });
+  const browseEntries: MetadataRoute.Sitemap = [
+    ...cityHubs.filter(isTop).map((entry) => toEntry(entry, 0.9)),
+    ...drillDowns.filter(isTop).map((entry) => toEntry(entry, 0.8)),
+    ...cityHubs.filter((entry) => !isTop(entry)).map((entry) => toEntry(entry, 0.6)),
+    ...drillDowns.filter((entry) => !isTop(entry)).map((entry) => toEntry(entry, 0.5)),
+  ];
 
   // Static informational pages. Previously absent, which left the legal/company pages
   // discoverable only by following footer links — the entity-disclosure pages in particular need
@@ -77,7 +90,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ].map((path) => ({ url: `${SITE_URL}${path}`, lastModified: new Date() }));
 
   return [
-    { url: SITE_URL, lastModified: new Date() },
+    { url: SITE_URL, lastModified: new Date(), priority: 1 },
     ...staticEntries,
     ...browseEntries,
     ...listingEntries,

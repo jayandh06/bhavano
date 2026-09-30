@@ -1,5 +1,9 @@
 # Grouping the city picker by region
 
+> **Update 2026-09-30:** the Popular tier is now the 11 cities the Google Ads campaigns target
+> (Lucknow and Coimbatore in; Surat, Kochi and Chandigarh moved to More cities) — see
+> [focus-on-ad-target-cities.md](focus-on-ad-target-cities.md). The lists below are as written.
+
 ## The actual list, today
 
 37 cities across 21 states, split into two tiers already — `isPopular` — and each tier sorted

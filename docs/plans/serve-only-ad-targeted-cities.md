@@ -30,7 +30,9 @@ Bhavano's market is the 37 cities the Google Ads campaigns target:
   Mangaluru, Mysuru, Nagpur, Nashik, Panaji, Patna, Raipur, Rajkot, Ranchi, Surat,
   Thiruvananthapuram, Vadodara, Vijayawada, Visakhapatnam.
 
-These are exactly the 37 cities in `apps/bff/prisma/seedCities.ts` (12 `isPopular`, 25 tier-2). The
+These are exactly the 37 cities in `apps/bff/prisma/seedCities.ts` (12 `isPopular`, 25 tier-2 at the
+time; since 2026-09-30 `isPopular` is the 11 cities the ads still target and no longer drives the
+reach — see [focus-on-ad-target-cities.md](focus-on-ad-target-cities.md)). The
 census import (`seedKnownCities.ts`) then added 721 more curated cities (758 in production), so every
 town with 50,000+ people became its own city. That split a metro's market (Bhongir, Meerut and
 Chengalpattu are Hyderabad, Delhi NCR and Chennai to a buyer) and put 746 towns in the pickers'
@@ -51,8 +53,9 @@ away (Tirunelveli, Erode, the Nalgonda pin, Jammu, Hubli, Aurangabad, Agra, Vara
 
 ## Decisions
 
-- **Reach:** the 12 popular cities reach **75 km** from their centroid (Delhi NCR **90 km**); the
-  other 25 reach **40 km**. Stored as `catchmentKm`. A pin inside several reaches goes to the
+- **Reach:** the 12 popular cities (as of 2026-09-28) reach **75 km** from their centroid (Delhi NCR
+  **90 km**); the other 25 reach **40 km**. Since 2026-09-30 `seedCities.ts` keeps that as its own
+  list (`WIDE_REACH_CITIES`), independent of `isPopular`. Stored as `catchmentKm`. A pin inside several reaches goes to the
   nearest centroid. Yadagirigutta (54 km) → Hyderabad; Meerut (70 km) → Delhi NCR; Chengalpattu
   (51 km) → Chennai.
 - **Beyond every reach, the town keeps its own city** (the previous resolver, unchanged): Parvedula
