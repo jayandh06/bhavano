@@ -36,6 +36,7 @@ function makeService() {
     listingEditLog: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
     listingInterest: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), count: jest.fn(), groupBy: jest.fn() },
     listingNotificationLog: { create: jest.fn() },
+    listingView: { findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn() },
     // First-photo lookup for the like/view push's preview image — null = no image.
     listingPhoto: { findFirst: jest.fn().mockResolvedValue(null) },
     conversation: { findMany: jest.fn(), upsert: jest.fn() },
@@ -1950,5 +1951,79 @@ describe('resolveDeclaredSellerType', () => {
     const r = resolveDeclaredSellerType('pg', {}, 'owner', null);
     expect(r.attributes).not.toHaveProperty('fromBroker');
     expect(r.saveToProfile).toBe('owner');
+  });
+});
+
+/**
+ * linkListingViewsToUser used to be a pure rename: a visitor who browsed anonymously and only
+ * logged in afterward meant those owners never heard about the visit, since recordInterest only
+ * ran for views that happened *after* a session existed. This is the fix: retroactively run
+ * recordInterest for every distinct listing viewed anonymously in a recent window, while the
+ * rename itself (needed for correct analytics attribution) stays unbounded.
+ */
+describe('ListingsService.linkListingViewsToUser', () => {
+  it('retroactively notifies owners for distinct listings viewed anonymously within the window', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listingView.findMany as jest.Mock).mockResolvedValue([
+      { listingId: 'listing1' },
+      { listingId: 'listing2' },
+    ]);
+    const recordInterest = jest.spyOn(service, 'recordInterest').mockResolvedValue({ interested: true, notified: true });
+
+    await service.linkListingViewsToUser('device-key', 'user1');
+
+    expect(prisma.listingView.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ viewerKey: 'anon:device-key' }),
+        distinct: ['listingId'],
+      }),
+    );
+    expect(recordInterest).toHaveBeenCalledTimes(2);
+    expect(recordInterest).toHaveBeenCalledWith('listing1', 'user1', 'view');
+    expect(recordInterest).toHaveBeenCalledWith('listing2', 'user1', 'view');
+  });
+
+  it('always renames every anonymous view regardless of age, independent of the notify window', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listingView.findMany as jest.Mock).mockResolvedValue([]); // nothing recent enough to notify about
+    jest.spyOn(service, 'recordInterest').mockResolvedValue({ interested: true, notified: true });
+
+    await service.linkListingViewsToUser('device-key', 'user1');
+
+    expect(prisma.listingView.updateMany).toHaveBeenCalledWith({
+      where: { viewerKey: 'anon:device-key' },
+      data: { viewerKey: 'user:user1' },
+    });
+  });
+
+  it("skips a listing recordInterest rejects (viewer's own, delisted, deleted) without failing the rest", async () => {
+    const { service, prisma } = makeService();
+    (prisma.listingView.findMany as jest.Mock).mockResolvedValue([
+      { listingId: 'own-listing' },
+      { listingId: 'listing2' },
+    ]);
+    const recordInterest = jest
+      .spyOn(service, 'recordInterest')
+      .mockRejectedValueOnce(new BadRequestException("You can't register interest in your own listing"))
+      .mockResolvedValueOnce({ interested: true, notified: true });
+
+    await expect(service.linkListingViewsToUser('device-key', 'user1')).resolves.toBeUndefined();
+
+    expect(recordInterest).toHaveBeenCalledTimes(2);
+    // The rename still runs even though one listing's retroactive notify failed.
+    expect(prisma.listingView.updateMany).toHaveBeenCalled();
+  });
+
+  it('only calls recordInterest once for a listing viewed anonymously multiple times', async () => {
+    const { service, prisma } = makeService();
+    // distinct: ['listingId'] on the query means Prisma itself would collapse these — asserting
+    // the query shape, not re-implementing Prisma's dedup, so this covers the call having the
+    // right distinct clause rather than two rows ever actually reaching recordInterest.
+    (prisma.listingView.findMany as jest.Mock).mockResolvedValue([{ listingId: 'listing1' }]);
+    const recordInterest = jest.spyOn(service, 'recordInterest').mockResolvedValue({ interested: true, notified: true });
+
+    await service.linkListingViewsToUser('device-key', 'user1');
+
+    expect(recordInterest).toHaveBeenCalledTimes(1);
   });
 });

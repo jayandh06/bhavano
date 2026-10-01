@@ -2519,18 +2519,51 @@ export class ListingsService {
     return { viewCount: listing.viewCount };
   }
 
+  /** A viewer who only ever logs in after browsing a while shouldn't have every owner go
+   * un-notified just because the view happened before they signed in — but a ping about a view
+   * from weeks ago reads as stale and confusing to the owner, not useful, so this only looks back
+   * this far. Independent of INTEREST_RENOTIFY_MS, which governs re-notifying about the *same*
+   * listing, not how far back a first-time retroactive notify reaches. */
+  private static readonly ANONYMOUS_INTEREST_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
   /** Re-keys a visitor's pre-signup anonymous views (`anon:<viewerKey>`) onto their new account
    * (`user:<userId>`) once they sign up on the same device — the ListingView analogue of
-   * AnalyticsService.linkVisitToUser. A plain bulk rename is safe now that ListingView no longer
-   * enforces one row per (listingId, viewerKey) — a listing already viewed as `user:<userId>`
-   * from an earlier login just ends up with two rows for it, which is correct (two real visits),
-   * not a collision. Fire-and-forget from AuthService, same as linkVisitToUser — never blocks
-   * login. */
+   * AnalyticsService.linkVisitToUser — and retroactively runs recordInterest for every distinct
+   * listing viewed anonymously in the last ANONYMOUS_INTEREST_WINDOW_MS, so those owners hear
+   * about the visit too, not just the ones viewed after the login happened to land. recordInterest
+   * already no-ops a listing seen within the last INTEREST_RENOTIFY_MS, so this never double-pings
+   * one the normal logged-in-view path already notified about.
+   *
+   * The rename itself stays unbounded (every anonymous view ever, for complete analytics
+   * attribution) — only the retroactive notify is windowed. Each listing is best-effort and
+   * independent: the viewer's own listing, one that's gone off-market, or one since deleted is
+   * skipped rather than failing the batch, since this is fire-and-forget from AuthService and must
+   * never block login. */
   async linkListingViewsToUser(viewerKey: string, userId: string): Promise<void> {
+    const since = new Date(Date.now() - ListingsService.ANONYMOUS_INTEREST_WINDOW_MS);
+    const recentViews = await this.prisma.listingView.findMany({
+      where: { viewerKey: `anon:${viewerKey}`, createdAt: { gte: since } },
+      select: { listingId: true },
+      distinct: ['listingId'],
+    });
+
     await this.prisma.listingView.updateMany({
       where: { viewerKey: `anon:${viewerKey}` },
       data: { viewerKey: `user:${userId}` },
     });
+
+    for (const { listingId } of recentViews) {
+      try {
+        await this.recordInterest(listingId, userId, 'view');
+      } catch (err) {
+        // Own listing, not live any more, or deleted since the anonymous view — not an error,
+        // just nothing to notify.
+        this.logger.debug(
+          { err, listingId, userId },
+          'Skipped retroactive interest for an anonymously-viewed listing',
+        );
+      }
+    }
   }
 
   /** Flips the favourite, or with `desired` sets it: a save resumed after login, or synced from the
