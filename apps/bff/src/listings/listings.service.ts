@@ -354,12 +354,19 @@ const RECENT_MIX_POOL_CAP = 1000;
 /** Part 2 of the plan doc: bounds how many boosted listings can occupy the guaranteed-first
  * "featured" slots, so the boost tier stays a real page-1/page-2 differentiator instead of
  * (once boost adoption grows past this) spilling onto page 3+ and pushing organic content out of
- * sight entirely — if everyone's boosted, nobody is. A no-op today (0 listings are boosted).
+ * sight entirely — if everyone's boosted, nobody is.
  *
  * Deliberately a flat total across the first `RECENT_MIX_PAGES` pages, front-loaded onto page 1
  * first, rather than a strict "exactly N per page" split — simpler, and still satisfies "boosted
  * ads show up in the first two pages" (the total is small enough to always fit within them). A
  * stricter even split is straightforward to add later if page 1 alone ends up feeling crowded.
+ *
+ * **Which listings fill the cap is round-robin'd by `recentMixGroupKey`** (see fetchOffsetPage),
+ * not a flat top-N-by-boostRank slice — checked against prod once boost adoption grew past the
+ * cap (20 boosted listings, 8 slots): a flat slice let whichever category had the most boost
+ * buyers take every guaranteed slot, so a seller who boosted the only listing in their category
+ * could still be shut out entirely despite paying the same price. Same "one oversized group
+ * buries the rest" fix Part 1 already applies to the recent pool, applied here too.
  *
  * Listings boosted *beyond* this cap are not hidden or demoted — they compete in the normal
  * recent-mix/older pools on their own merits (see fetchOffsetPage) and still carry the "⭐
@@ -682,9 +689,11 @@ export class ListingsService {
    * created between the two requests can still shift what "page 2" contains, exactly as it could
    * before this existed):
    *
-   * 1. Every boosted (`boostRank` not null) match, in the caller's existing `orderBy` — unchanged
-   *    from today's behavior, still uncapped (see Part 2 of the plan doc for the not-yet-built
-   *    per-page cap).
+   * 1. Every boosted (`boostRank` not null) match, round-robin'd by `recentMixGroupKey` and capped
+   *    at `BOOST_FEATURED_CAP` — a guaranteed slot per group before any group gets a second one,
+   *    so a boost buyer in a thin category isn't shut out by one with more boosted listings (see
+   *    Part 2 of the plan doc). The overflow past the cap still competes below, unordered by
+   *    boostRank at that point — it's just another row in whichever pool it lands in.
    * 2. The "recent" pool (created within `RECENT_MIX_WINDOW_MS`, not boosted), round-robin'd by
    *    `recentMixGroupKey` so no single group can bury the rest.
    * 3. If 1+2 don't fill the window, the next-oldest non-boosted rows, plainly sorted — same
@@ -729,7 +738,15 @@ export class ListingsService {
         take: RECENT_MIX_POOL_CAP,
       }),
     ]);
-    const featuredRows = allBoosted.slice(0, BOOST_FEATURED_CAP);
+    // Round-robin'd by the same group key as the recent pool below, before slicing to the cap —
+    // otherwise whichever category happens to have the most boost buyers wins every guaranteed
+    // slot, same "one oversized group buries the rest" problem Part 1 already solved for recent
+    // listings. A boostRank-sorted slice still happens *within* each group, so the rotation
+    // fairness BoostRotationService provides is unchanged — this only changes which *groups* get
+    // represented in the cap, not the order within a group.
+    const featuredRows = roundRobinByGroup(allBoosted, (row) =>
+      recentMixGroupKey(homeCategory, cityId, row),
+    ).slice(0, BOOST_FEATURED_CAP);
     const featuredIds = new Set(featuredRows.map((row) => row.id));
 
     const mixedRecent = roundRobinByGroup(

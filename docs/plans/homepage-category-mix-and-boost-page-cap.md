@@ -194,11 +194,25 @@ this could eventually push organic content past page 2, 3, 4+, which cuts agains
   the cap) — **no residual ranking bump past the cap**. Resolved this way rather than asking
   again, matching the plan's own recommendation: simplest, and avoids a slow creep back toward
   "boost dominates everything" as more listings buy it.
+- **(2026-10-01) Which listings fill the cap is round-robin'd by category, not a flat
+  boostRank-sorted slice.** Checked against prod once adoption grew past the no-op stage this doc
+  originally described: 20 listings boosted, 8 slots. A flat slice handed every guaranteed slot to
+  whichever category had the most boost buyers — a seller who boosted the only listing in a thin
+  category got shut out of all 8 despite paying the same price as everyone else. Fixed by running
+  `allBoosted` through the same `roundRobinByGroup`/`recentMixGroupKey` Part 1 already uses for the
+  recent pool, before slicing to `BOOST_FEATURED_CAP` — a guaranteed slot per group before any
+  group gets a second, with `boostRank` order preserved *within* each group so
+  `BoostRotationService`'s fairness rotation is unchanged. Single-category pages (PG/Furniture/
+  Interiors tabs with no facet diversity, or any view where every boosted match shares one group)
+  degrade to the original flat-slice behavior, since round-robin over one group is a no-op. New
+  test: `listings.service.spec.ts` — 9 boosted houses + 1 boosted apartment (lowest boostRank of
+  the ten) still gets the apartment into the top 8, in its round-robin position rather than
+  excluded entirely.
 - **Applies to every home tab**, composing with Part 1 exactly as originally planned — the cap is
   evaluated first (fills up to 8 featured slots total), then Part 1's round-robin fills the rest
   from the recent/older pools, using whichever tab's own group key is in scope.
-- A no-op today, by construction — 0 listings are boosted, so `featuredRows` is always empty and
-  the code path degrades to exactly what Part 1 alone already did.
+- Was a no-op at build time (0 listings boosted); no longer — see the 2026-10-01 update below, added
+  once adoption grew past the cap.
 
 ### Verification
 
