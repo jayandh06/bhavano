@@ -48,4 +48,7 @@ export class UpdateBoostPricingDto {
 
   @IsBoolean()
   boost30dEnabled!: boolean;
+
+  @IsBoolean()
+  allowSkippingBoost!: boolean;
 }

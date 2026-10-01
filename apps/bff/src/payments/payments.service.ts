@@ -514,6 +514,7 @@ export class PaymentsService {
       boost7WithInstantAlerts: option(boost7Rupees, hasFreeBoostCredit),
       boost15WithInstantAlerts: option(boost15Rupees, false),
       showSelectorOnPreview: boostPriceSettings.showSelectorOnPreview,
+      allowSkippingBoost: boostPriceSettings.allowSkippingBoost,
       enabledDurations: BOOST_DURATIONS.filter(
         (days) => enabledBoostDurations(boostPriceSettings).includes(days) || (days === 7 && hasFreeBoostCredit),
       ),
@@ -594,9 +595,12 @@ export class PaymentsService {
     if (boostDays) {
       boostRupees = boostPriceFor(listing.category, boostDays, boostPriceSettings ?? DEFAULT_BOOST_PRICE_SETTINGS);
     }
-    if (feeRupees === 0 && !boostDays) {
-      throw new BadRequestException('Nothing to charge for this listing');
-    }
+    // feeRupees === 0 && !boostDays is a legitimate case, not a client mistake: the publish
+    // checkout recovery screen lets an owner who originally picked Boost change their mind and
+    // skip it (BoostPlanSelector's "Skip — post without boosting", gated on allowSkippingBoost).
+    // With no platform fee and no boost requested there's genuinely nothing to charge, so this
+    // falls through to the amountInPaise === 0 branch below and activates for free, same as if
+    // Boost had never been requested at creation.
 
     const discount = await this.resolveDiscountCodeSafely(discountCode, userId);
 

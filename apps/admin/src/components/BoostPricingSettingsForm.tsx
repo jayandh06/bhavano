@@ -30,6 +30,7 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
   const [boost7dEnabled, setBoost7dEnabled] = useState(initial.boost7dEnabled);
   const [boost15dEnabled, setBoost15dEnabled] = useState(initial.boost15dEnabled);
   const [boost30dEnabled, setBoost30dEnabled] = useState(initial.boost30dEnabled);
+  const [allowSkippingBoost, setAllowSkippingBoost] = useState(initial.allowSkippingBoost);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -50,6 +51,7 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
     boost7dEnabled,
     boost15dEnabled,
     boost30dEnabled,
+    allowSkippingBoost,
   };
   const anyDurationOn = enabledBoostDurations(parsed).length > 0;
   // Only the price fields need this check — the toggles are booleans, not positive integers, so
@@ -153,6 +155,26 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
               When checked, advertisers pick a plan before posting instead of being offered one
               afterward. The two placements are mutually exclusive — checking this hides the
               post-ad upsell card entirely.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={allowSkippingBoost}
+            onChange={(e) => setAllowSkippingBoost(e.target.checked)}
+            style={{ marginTop: 3 }}
+          />
+          <span>
+            <span style={{ fontWeight: 700, fontSize: 14, display: "block" }}>Allow skipping Boost</span>
+            <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+              When checked, the Boost card shows a &quot;Skip — post without boosting&quot; link, on
+              both the ad-preview step and the publish-checkout recovery screen. Uncheck to make
+              Boost mandatory wherever the card is shown — independent of the platform fee or the
+              preview-selector setting above.
             </span>
           </span>
         </label>

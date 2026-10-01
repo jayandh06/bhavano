@@ -17,10 +17,12 @@ import { Icon } from "../Icon";
  * admin has moved the offer here (`pricing.showSelectorOnPreview`) — see
  * docs/plans/boost-instant-alerts-preview-selector.md.
  *
- * `value === null` means the advertiser has explicitly skipped it — still fully optional, unlike
- * BoostBundleCard where "skip" is simply never showing the card. The wizard pre-fills a default
- * (15-day boost + Instant Alerts) the moment a category is picked, so this renders as an already
- * dimmed-in choice — "Skip" is what backs out of that default.
+ * `value === null` means the advertiser has explicitly skipped it, unlike BoostBundleCard where
+ * "skip" is simply never showing the card. The wizard pre-fills a default (15-day boost + Instant
+ * Alerts) the moment a category is picked, so this renders as an already dimmed-in choice — "Skip"
+ * is what backs out of that default. The skip/"Add it back" link itself only renders when
+ * `pricing.allowSkippingBoost` is not `false` (admin → Plans) — a standalone admin switch, not
+ * derived from `showSelectorOnPreview` or whether a platform fee applies.
  */
 export function BoostPlanSelector({
   pricing,
@@ -180,11 +182,13 @@ export function BoostPlanSelector({
         )}
       </Text>
 
-      <Pressable onPress={() => onChange(value ? null : effective)} style={{ marginTop: 10 }}>
-        <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.muted, textDecorationLine: "underline" }}>
-          {value ? "Skip — post without boosting" : "Add it back"}
-        </Text>
-      </Pressable>
+      {pricing.allowSkippingBoost !== false && (
+        <Pressable onPress={() => onChange(value ? null : effective)} style={{ marginTop: 10 }}>
+          <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.muted, textDecorationLine: "underline" }}>
+            {value ? "Skip — post without boosting" : "Add it back"}
+          </Text>
+        </Pressable>
+      )}
         </>
       )}
 

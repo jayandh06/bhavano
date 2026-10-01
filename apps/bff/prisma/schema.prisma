@@ -949,6 +949,11 @@ model BoostPriceSetting {
   boost7dEnabled                  Boolean  @default(true)
   boost15dEnabled                 Boolean  @default(true)
   boost30dEnabled                 Boolean  @default(true)
+  /// Whether the Boost card's "Skip — post without boosting" link appears at all (ad-preview step
+  /// and the publish-checkout recovery screen). false makes Boost effectively mandatory wherever
+  /// the card is shown, independent of showSelectorOnPreview or any platform-fee state. Defaults
+  /// to true, preserving the always-skippable behavior that existed before this flag.
+  allowSkippingBoost              Boolean  @default(true)
   updatedAt                       DateTime @updatedAt
 }
 

@@ -32,6 +32,11 @@ export interface BoostPriceSettings {
   boost7dEnabled: boolean;
   boost15dEnabled: boolean;
   boost30dEnabled: boolean;
+  /** Whether the Boost card's "Skip — post without boosting" link appears at all, on both the
+   * ad-preview step and the publish-checkout recovery screen. `false` makes Boost mandatory
+   * wherever the card is shown — a standalone switch, not derived from `showSelectorOnPreview` or
+   * whether a platform fee applies to the category. */
+  allowSkippingBoost: boolean;
 }
 
 /** Bundled into this shared package (not just the BFF) since `boostPriceFor` below is also
@@ -52,6 +57,7 @@ export const DEFAULT_BOOST_PRICE_SETTINGS: BoostPriceSettings = {
   boost7dEnabled: true,
   boost15dEnabled: true,
   boost30dEnabled: true,
+  allowSkippingBoost: true,
 };
 
 /** The durations admin has switched on, shortest first. A flag missing from a response sent by a
@@ -170,5 +176,6 @@ export function buildDisplayBoostPricing(
     boost15WithInstantAlerts: option(boost15),
     showSelectorOnPreview: boostSettings.showSelectorOnPreview,
     enabledDurations: enabledBoostDurations(boostSettings),
+    allowSkippingBoost: boostSettings.allowSkippingBoost,
   };
 }

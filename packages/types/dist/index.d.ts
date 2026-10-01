@@ -1077,6 +1077,11 @@ export interface BoostPricingPreviewDto {
     /** Durations to offer, shortest first (admin → Plans). Read through `offeredBoostDurations`,
      * which also covers a response from a server that predates this field. */
     enabledDurations?: BoostDurationDays[];
+    /** Whether the "Skip — post without boosting" link renders on the Boost card at all. `false`
+     * makes Boost mandatory wherever the card is shown. A response from a server that predates this
+     * field is treated as skippable (`true`) by the components that read it, matching the
+     * always-skippable behavior that existed before this flag. */
+    allowSkippingBoost?: boolean;
 }
 /** A boost/instant-alerts choice made ahead of time on the ad-preview step — `null` means the
  * advertiser skipped it (still fully optional). Carried in wizard state from the moment it's

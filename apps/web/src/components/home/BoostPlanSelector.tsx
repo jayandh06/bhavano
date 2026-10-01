@@ -17,10 +17,12 @@ import { Icon } from "./Icon";
  * moved the offer here (`pricing.showSelectorOnPreview`) — see
  * docs/plans/boost-instant-alerts-preview-selector.md.
  *
- * `value === null` means the advertiser has explicitly skipped it — still fully optional, unlike
- * BoostBundlePicker where "skip" is simply never opening the picker. The wizard pre-fills a
- * default (15-day boost + Instant Alerts) the moment a category is picked, so this renders as an
- * already dimmed-in choice — "Skip" is what backs out of that default.
+ * `value === null` means the advertiser has explicitly skipped it, unlike BoostBundlePicker where
+ * "skip" is simply never opening the picker. The wizard pre-fills a default (15-day boost +
+ * Instant Alerts) the moment a category is picked, so this renders as an already dimmed-in choice
+ * — "Skip" is what backs out of that default. The skip/"Add it back" link itself only renders when
+ * `pricing.allowSkippingBoost` is not `false` (admin → Plans) — a standalone admin switch, not
+ * derived from `showSelectorOnPreview` or whether a platform fee applies.
  */
 export function BoostPlanSelector({
   pricing,
@@ -135,13 +137,15 @@ export function BoostPlanSelector({
 
       <p className="text-[13px] font-bold text-green mt-3 mb-0">{value ? `Boost add-on: ${priceText(option)}` : "Not boosting this ad"}</p>
 
-      <button
-        type="button"
-        onClick={() => onChange(value ? null : effective)}
-        className="mt-2.5 bg-transparent border-0 p-0 text-[12.5px] font-bold text-muted underline cursor-pointer"
-      >
-        {value ? "Skip — post without boosting" : "Add it back"}
-      </button>
+      {pricing.allowSkippingBoost !== false && (
+        <button
+          type="button"
+          onClick={() => onChange(value ? null : effective)}
+          className="mt-2.5 bg-transparent border-0 p-0 text-[12.5px] font-bold text-muted underline cursor-pointer"
+        >
+          {value ? "Skip — post without boosting" : "Add it back"}
+        </button>
+      )}
         </>
       )}
 

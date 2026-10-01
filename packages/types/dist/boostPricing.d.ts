@@ -28,6 +28,11 @@ export interface BoostPriceSettings {
     boost7dEnabled: boolean;
     boost15dEnabled: boolean;
     boost30dEnabled: boolean;
+    /** Whether the Boost card's "Skip — post without boosting" link appears at all, on both the
+     * ad-preview step and the publish-checkout recovery screen. `false` makes Boost mandatory
+     * wherever the card is shown — a standalone switch, not derived from `showSelectorOnPreview` or
+     * whether a platform fee applies to the category. */
+    allowSkippingBoost: boolean;
 }
 /** Bundled into this shared package (not just the BFF) since `boostPriceFor` below is also
  * called client-side, purely for display, before any live-settings fetch resolves — see

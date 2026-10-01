@@ -29,6 +29,7 @@ const LIVE: BoostPriceSettings = {
   boost7dEnabled: true,
   boost15dEnabled: true,
   boost30dEnabled: true,
+  allowSkippingBoost: true,
 };
 
 describe('boostPriceFor — three durations', () => {
@@ -196,6 +197,67 @@ describe('PaymentsService.previewBoostPricing — 30 days', () => {
     const preview = await service.previewBoostPricing('u1', 'apartment');
     expect(preview.enabledDurations).toEqual([7, 15, 30]);
     expect(preview.boost7.free).toBe(true);
+  });
+});
+
+describe('PaymentsService.createListingPublishOrder — skipping Boost with no platform fee', () => {
+  /** Reproduces the publish-checkout recovery screen: an owner who originally picked Boost opens
+   * "Complete payment to publish" and taps "Skip — post without boosting" (BoostPlanSelector,
+   * gated on allowSkippingBoost), so this is called with no boostDays. With every platform fee at
+   * ₹0 (today's live settings) there is genuinely nothing left to charge — this must activate the
+   * listing for free, not throw, the way it used to before this was a client-reachable case. */
+  function makePublishOrder() {
+    const completePendingPublish = jest.fn().mockResolvedValue(undefined);
+    const prisma = {
+      listing: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'l1',
+          ownerId: 'u1',
+          category: 'apartment',
+          publishState: 'pending_checkout',
+        }),
+      },
+      platformFeeSetting: {
+        findUnique: jest.fn().mockResolvedValue({
+          propertyListingFee: 0,
+          coworkingPgStorageListingFee: 0,
+          furnitureInteriorsListingFee: 0,
+          allowLivePublishWithPendingPayment: false,
+        }),
+      },
+      boostPriceSetting: { findUnique: jest.fn().mockResolvedValue(LIVE) },
+      payment: {
+        create: jest.fn().mockResolvedValue({
+          id: 'pay1',
+          userId: 'u1',
+          listingId: 'l1',
+          boostDays: null,
+          boostIncludesInstantAlerts: false,
+          adsTrackingAuthorized: null,
+        }),
+      },
+      discountCode: { findUnique: jest.fn() },
+    } as unknown as PrismaService;
+    const service = new PaymentsService(
+      prisma,
+      { get: jest.fn().mockReturnValue('key') } as unknown as ConfigService,
+      {} as NotificationsService,
+      {} as GoogleAdsConversionProvider,
+      { completePendingPublish } as unknown as ListingsService,
+    );
+    return { service, prisma, completePendingPublish };
+  }
+
+  it('activates the listing for free instead of throwing "Nothing to charge"', async () => {
+    const { service, prisma, completePendingPublish } = makePublishOrder();
+
+    const result = await service.createListingPublishOrder('u1', 'l1', undefined);
+
+    expect(result).toEqual({ paymentId: 'pay1', amount: 0, currency: 'INR', activated: true });
+    expect(prisma.payment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ amount: 0, status: 'paid', boostDays: null }),
+    });
+    expect(completePendingPublish).toHaveBeenCalledWith('l1', undefined);
   });
 });
 

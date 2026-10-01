@@ -29,6 +29,7 @@ exports.DEFAULT_BOOST_PRICE_SETTINGS = {
     boost7dEnabled: true,
     boost15dEnabled: true,
     boost30dEnabled: true,
+    allowSkippingBoost: true,
 };
 /** The durations admin has switched on, shortest first. A flag missing from a response sent by a
  * server older than these toggles counts as on. */
@@ -119,5 +120,6 @@ function buildDisplayBoostPricing(category, boostSettings, discountPercent) {
         boost15WithInstantAlerts: option(boost15),
         showSelectorOnPreview: boostSettings.showSelectorOnPreview,
         enabledDurations: enabledBoostDurations(boostSettings),
+        allowSkippingBoost: boostSettings.allowSkippingBoost,
     };
 }
