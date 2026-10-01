@@ -23,10 +23,15 @@ export function FeaturedRail({ items }: { items: ListingCardDto[] }) {
         <Icon name="featured" filled className="text-gold" />
         Featured listings
       </div>
-      <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory [scrollbar-width:thin] -mx-4 px-4 sm:mx-0 sm:px-0">
+      {/* items-stretch (the flex default, stated explicitly rather than relied on) is what makes
+        * every card match the row's tallest — ListingCard's own `fixedHeight` prop is what lets
+        * each card actually fill that height instead of sitting at its natural size inside a now-
+        * taller wrapper, with its own Contact button pinned to the bottom via mt-auto rather than
+        * wherever its own (title-length-dependent) content happened to end. */}
+      <div className="flex items-stretch gap-4 overflow-x-auto pb-2 snap-x snap-mandatory [scrollbar-width:thin] -mx-4 px-4 sm:mx-0 sm:px-0">
         {items.map((item) => (
           <div key={item.id} className="shrink-0 snap-start w-[250px] sm:w-[290px]">
-            <ListingCard item={item} />
+            <ListingCard item={item} fixedHeight />
           </div>
         ))}
       </div>

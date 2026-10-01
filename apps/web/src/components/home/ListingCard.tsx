@@ -17,7 +17,18 @@ import { Icon } from "./Icon";
 import { ShareButton } from "./ShareButton";
 import { ListingPrice } from "./PriceWithWords";
 
-export function ListingCard({ item }: { item: ListingCardDto }) {
+export function ListingCard({
+  item,
+  /** For a horizontal rail (FeaturedRail) where every card sits in the same row and an uneven
+   * bottom edge — or, worse, a shorter neighbor making the row's height clip a taller card's own
+   * Contact button — actually shows. The grid everywhere else leaves this off on purpose: rows
+   * there aren't side by side in one view the way a rail's are, so natural, varying card heights
+   * never look wrong the way they do here. */
+  fixedHeight = false,
+}: {
+  item: ListingCardDto;
+  fixedHeight?: boolean;
+}) {
   const { requireLogin } = useAuthGate();
   const { buyCredits } = useBuyCredits();
   const router = useRouter();
@@ -140,7 +151,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     // A faint resting shadow (border alone read flat against the page's own near-white bg) plus
     // a lighter border, since the two together at full strength double up on the same job.
     <div
-      className={`bg-surface rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both] transition-[box-shadow,border-color] duration-200 sm:hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] ${
+      className={`bg-surface rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both] transition-[box-shadow,border-color] duration-200 sm:hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] ${fixedHeight ? "h-full" : ""} ${
         // Featured cards win attention at rest, not only on hover like every other card —
         // the gold badge alone is easy to miss in a dense grid; a matching border/glow carries
         // the same signal across the whole card. See docs/plans/homepage-category-mix-and-boost-page-cap.md.
@@ -240,7 +251,11 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
               </div>
             )}
           </div>
-          <div className="text-[15px] font-bold text-text leading-[1.35]">{item.title}</div>
+          <div
+            className={`text-[15px] font-bold text-text leading-[1.35] ${fixedHeight ? "line-clamp-2" : ""}`}
+          >
+            {item.title}
+          </div>
           <div className="text-[13px] text-muted flex items-center gap-[5px]">
             {/* The listing's own city, not the one being browsed. The all-cities views passed
               * "India" as a stand-in heading word, so every card read "Koramangala, India" — and
@@ -260,7 +275,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
           * card still shows the counts here; the buttons just aren't part of the row for it.
           * No breakpoint prefixes in this block on purpose — one layout on a phone-width card
           * and a desktop grid card alike, not buttons that only appear past some screen size. */}
-        <div className="flex items-center justify-between gap-2 mt-1">
+        <div className={`flex items-center justify-between gap-2 ${fixedHeight ? "mt-auto pt-1" : "mt-1"}`}>
           <div className="flex gap-3 text-[11.5px] text-muted shrink-0">
             <span className="flex items-center gap-1"><Icon name="eye" /> {item.viewCount}</span>
             <span className="flex items-center gap-1"><Icon name="heart" /> {likeCount}</span>
