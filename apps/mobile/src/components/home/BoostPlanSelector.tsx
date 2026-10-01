@@ -169,7 +169,7 @@ export function BoostPlanSelector({
         })}
       </View>
       <Text style={{ fontSize: 12.5, color: colors.textSoft, marginTop: 10 }}>
-        Instant Alerts is included: you are emailed the moment someone messages you.
+        Instant Alerts is included: you are emailed and WhatsApp'd the moment someone messages you.
       </Text>
 
       <Text style={{ fontWeight: "700", fontSize: 13, color: colors.green, marginTop: 12 }}>

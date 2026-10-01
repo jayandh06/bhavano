@@ -133,7 +133,7 @@ export function BoostPlanSelector({
           );
         })}
       </div>
-      <p className="text-[12.5px] text-text-soft mt-2.5 mb-0">Instant Alerts is included: you are emailed the moment someone messages you.</p>
+      <p className="text-[12.5px] text-text-soft mt-2.5 mb-0">Instant Alerts is included: you are emailed and WhatsApp&apos;d the moment someone messages you.</p>
 
       <p className="text-[13px] font-bold text-green mt-3 mb-0">{value ? `Boost add-on: ${priceText(option)}` : "Not boosting this ad"}</p>
 

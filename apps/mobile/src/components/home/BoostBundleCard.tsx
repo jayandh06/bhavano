@@ -195,7 +195,7 @@ export function BoostBundleCard({
         })}
       </View>
       <Text style={{ fontSize: 12.5, color: colors.textSoft, marginTop: 10 }}>
-        Instant Alerts is included: you are emailed the moment someone messages you.
+        Instant Alerts is included: you are emailed and WhatsApp'd the moment someone messages you.
       </Text>
 
       {pending && <ActivityIndicator color={colors.green} style={{ marginTop: 14 }} />}
