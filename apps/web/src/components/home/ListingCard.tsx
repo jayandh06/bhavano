@@ -290,29 +290,36 @@ export function ListingCard({
             <div className="flex gap-1.5">
               <button
                 onClick={onMessage}
+                aria-label={fixedHeight ? "Message" : undefined}
                 className="flex items-center gap-1 bg-green/10 text-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold cursor-pointer whitespace-nowrap"
               >
                 <Icon name="message" />
-                Message
+                {/* The rail's cards are narrow enough (250px on a phone browser) that "Message" +
+                  * "Contact" (worse once revealed: an actual phone number) as text overflowed the
+                  * card width and got clipped by its own overflow-hidden — icon-only here, same
+                  * fix the grid's own wider cards never needed. */}
+                {!fixedHeight && "Message"}
               </button>
               {contactRevealed ? (
                 (ownerPhone || ownerEmail) && (
                   <a
                     href={`tel:${ownerPhone ?? ""}`}
                     onClick={(e) => e.stopPropagation()}
+                    aria-label={fixedHeight ? (ownerPhone ?? "Email") : undefined}
                     className="flex items-center gap-1 bg-green text-on-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold whitespace-nowrap no-underline"
                   >
-                    <Icon name="phone" /> {ownerPhone ?? "Email"}
+                    <Icon name="phone" /> {!fixedHeight && (ownerPhone ?? "Email")}
                   </a>
                 )
               ) : (
                 <button
                   onClick={onViewContact}
                   disabled={revealPending}
+                  aria-label={fixedHeight ? (revealPending ? "Unlocking…" : "Contact") : undefined}
                   className="flex items-center gap-1 bg-green text-on-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold cursor-pointer whitespace-nowrap disabled:opacity-60"
                 >
                   <Icon name="phone" />
-                  {revealPending ? "Unlocking…" : "Contact"}
+                  {!fixedHeight && (revealPending ? "Unlocking…" : "Contact")}
                 </button>
               )}
             </div>
