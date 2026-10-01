@@ -1136,13 +1136,17 @@ export function PostAdWizard({
     if (areaQuery.trim().length === 0) return { text: "Add the area / locality", missing: true };
     if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
       return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
+    // The assisted panel's own Owner/Agent answer overrides this field on submit. Checked before
+    // the generic attribute sweep below so this field's own friendlier copy wins over the generic
+    // "Posted by Broker / Agent is required" listingAttributesIssue would otherwise produce — the
+    // field is marked required there too, so EditListingForm's generic check (no bespoke copy of
+    // its own) enforces the same thing on an existing listing.
+    if (categoryHasPostedBy && !assistedMode && !sellerTypeFromBroker(attributes.fromBroker))
+      return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
     if (category && transactionType) {
       const attributeIssue = listingAttributesIssue(category, transactionType, attributes);
       if (attributeIssue) return { text: attributeIssue, missing: attributeIssue.endsWith(" is required") };
     }
-    // The assisted panel's own Owner/Agent answer overrides this field on submit.
-    if (categoryHasPostedBy && !assistedMode && !sellerTypeFromBroker(attributes.fromBroker))
-      return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
     if (!(Number(price) > 0) && !priceOnRequestAllowed) return { text: "Add a price", missing: true };
     if (priceIssue) return { text: priceIssue, missing: false };
     const brokerageIssue = transactionType ? brokerageFeeIssue(transactionType, totalPrice, attributes) : null;

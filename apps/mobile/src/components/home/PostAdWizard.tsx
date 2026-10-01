@@ -1075,12 +1075,15 @@ export function PostAdWizard({
     if (areaQuery.trim().length === 0) return { text: "Add the area / locality", missing: true };
     if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
       return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
+    // Checked before the generic attribute sweep below so this field's own friendlier copy wins
+    // over the generic "Posted by Broker / Agent is required" listingAttributesIssue would
+    // otherwise produce — see the web wizard's identical comment for why.
+    if (categoryHasPostedBy && !sellerTypeFromBroker(attributes.fromBroker))
+      return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
     if (category && transactionType) {
       const attributeIssue = listingAttributesIssue(category, transactionType, attributes);
       if (attributeIssue) return { text: attributeIssue, missing: attributeIssue.endsWith(" is required") };
     }
-    if (categoryHasPostedBy && !sellerTypeFromBroker(attributes.fromBroker))
-      return { text: "Choose Owner or Broker / Agent under Posted by", missing: true };
     if (!priceIsValid(price, category)) return { text: "Add a price", missing: true };
     if (priceIssue) return { text: priceIssue, missing: false };
     const brokerageIssue = transactionType ? brokerageFeeIssue(transactionType, totalPrice, attributes) : null;

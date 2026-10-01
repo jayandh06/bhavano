@@ -587,7 +587,9 @@ describe('ListingsService.listEngagement', () => {
 
 describe('ListingsService', () => {
   describe('residential attributes', () => {
-    const residentialBasics = { floor: '2', totalFloors: '4', entranceFacing: 'east' };
+    // fromBroker: 'no' rather than omitted — now required (see sellerType.ts's own doc comment),
+    // and 'no' (vs. 'yes') avoids incidentally making the brokerage-fee fields visible too.
+    const residentialBasics = { floor: '2', totalFloors: '4', entranceFacing: 'east', fromBroker: 'no' };
     const validAttributes = {
       bedrooms: '2',
       bathrooms: '2',

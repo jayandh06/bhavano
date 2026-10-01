@@ -72,6 +72,26 @@ with depth in the 11 ad cities (see `growth-beyond-google-ads.md` §3).
     categories that have the field).
   - Known gap: listings posted from older mobile builds with the preset "No" show "Owner". In
     production on 2026-09-29: 444 listings blank, 15 "yes", 19 "no".
+  - **Correction (2026-10-01):** despite this doc already saying "required before Preview" above,
+    `fromBroker` was never actually marked `required` in `CATEGORY_FIELD_CONFIG` — only the post
+    wizards' own bespoke check blocked Preview on it. Two real gaps followed: `EditListingForm`
+    (web) had no equivalent check at all, so an existing listing could be re-saved without ever
+    answering it once its other attributes changed; and the BFF's own `assertValidAttributes` never
+    enforced it either, so there was no authoritative server-side check behind the client-side one.
+    Fixed by marking all three `fromBroker` field defs `required: true`, which both
+    `listingAttributesIssue` (client) and `assertValidAttributes` (server) already read generically
+    — closing both gaps from one place instead of adding a second bespoke check. Two follow-on
+    fixes this required: (1) `create()` now resolves `fromBroker` (`resolveDeclaredSellerType`)
+    *before* `assertValidAttributes` instead of after, so assisted/bulk-import creation (which
+    always supplies `claimSellerType`, never a per-listing answer) and the account-default fallback
+    still validate correctly instead of being rejected for a value this same call was about to fill
+    in; (2) `EditListingForm` now fetches the viewer's own profile and pre-fills a blank
+    `fromBroker` from it via `fromBrokerDefault` — the same courtesy the wizards give, so reopening
+    an old listing doesn't show neither "Posted by" option enabled when the account already
+    answered once elsewhere. Still shows neither option enabled when the profile has no answer
+    either — never invents one. Admin's `AdminEditListingForm` gets the server-side check for free
+    (same shared config) but no profile pre-fill, since there's no "the admin's own answer" to
+    pre-fill from.
   - The label (`ListingCardDto.postedBy` / `postedByAgency`, formatted by `postedByLabel` in
     `@bhavano/types/sellerType`) prefers the listing's `fromBroker` answer, then the account's.
     The agency name is shown only when both agree it is an agent listing. Unanswered shows nothing.

@@ -514,6 +514,7 @@ const RESIDENTIAL_FIELDS = [
         label: "Posted by Broker / Agent",
         type: "select",
         section: "pricing",
+        required: true,
         options: [
             { value: "yes", label: "Yes" },
             { value: "no", label: "No" },
@@ -1182,6 +1183,7 @@ exports.CATEGORY_FIELD_CONFIG = {
             label: "Posted by Broker / Agent",
             type: "select",
             section: "pricing",
+            required: true,
             options: [
                 { value: "yes", label: "Yes" },
                 { value: "no", label: "No" },
@@ -1243,6 +1245,7 @@ exports.CATEGORY_FIELD_CONFIG = {
             label: "Posted by Broker / Agent",
             type: "select",
             section: "pricing",
+            required: true,
             options: [
                 { value: "yes", label: "Yes" },
                 { value: "no", label: "No" },

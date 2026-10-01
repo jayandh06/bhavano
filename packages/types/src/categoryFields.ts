@@ -622,6 +622,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Posted by Broker / Agent",
     type: "select",
     section: "pricing",
+    required: true,
     options: [
       { value: "yes", label: "Yes" },
       { value: "no", label: "No" },
@@ -1291,6 +1292,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       label: "Posted by Broker / Agent",
       type: "select",
       section: "pricing",
+      required: true,
       options: [
         { value: "yes", label: "Yes" },
         { value: "no", label: "No" },
@@ -1352,6 +1354,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       label: "Posted by Broker / Agent",
       type: "select",
       section: "pricing",
+      required: true,
       options: [
         { value: "yes", label: "Yes" },
         { value: "no", label: "No" },

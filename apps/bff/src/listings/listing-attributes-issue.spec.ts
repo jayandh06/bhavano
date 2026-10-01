@@ -32,6 +32,10 @@ const base = {
   floor: '2',
   totalFloors: '4',
   entranceFacing: 'east',
+  // Now required (see sellerType.ts's own doc comment); 'no' rather than 'yes' avoids incidentally
+  // making the brokerage-fee fields visible too, same reasoning as listings.service.spec.ts's
+  // identical residentialBasics fixture.
+  fromBroker: 'no',
 };
 
 const broker = { ...base, fromBroker: 'yes', brokerageFeeApplicable: 'yes' };

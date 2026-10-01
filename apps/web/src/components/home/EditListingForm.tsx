@@ -2,13 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
+import type { ListingDetailDto, ListingStatus, SellerType } from "@bhavano/types";
 import {
   brokerageFeeIssue,
   brokerageFeeNote,
   CATEGORY_FIELD_CONFIG,
   listingAttributesIssue,
 } from "@bhavano/types/categoryFields";
+import { fromBrokerDefault } from "@bhavano/types/sellerType";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { updateListingAction } from "@/app/actions/listings";
@@ -51,7 +52,20 @@ const STATUS_OPTIONS: { value: ListingStatus; label: string }[] = [
   { value: "deactivated", label: "Deactivated — hidden from search" },
 ];
 
-export function EditListingForm({ listing, accessToken }: { listing: ListingDetailDto; accessToken: string }) {
+export function EditListingForm({
+  listing,
+  accessToken,
+  sellerType,
+}: {
+  listing: ListingDetailDto;
+  accessToken: string;
+  /** The account's own Owner/Agent answer (profile.sellerType) — fills an unanswered "Posted by"
+   * so the account's existing answer counts, same as PostAdWizard's identical default. Never used
+   * to invent an answer neither the listing nor the profile actually has: `fromBrokerDefault`
+   * returns `{}` when `sellerType` is null, leaving the field genuinely blank so PostedByButtons
+   * shows neither option enabled until the seller (or their profile) actually says. */
+  sellerType: SellerType | null;
+}) {
   const router = useRouter();
   const isPendingPublish = listing.publishState === "pending_checkout";
   const [title, setTitle] = useState(listing.title);
@@ -64,7 +78,12 @@ export function EditListingForm({ listing, accessToken }: { listing: ListingDeta
   const initialPriceMode = listing.priceUnit ? "perUnit" : "total";
   const [priceMode, setPriceMode] = useState<"total" | "perUnit">(initialPriceMode);
   const [description, setDescription] = useState(listing.description ?? "");
-  const [initialAttributes] = useState(() => attributesToStrings(listing.attributes));
+  // The profile default is spread first so the listing's own saved answer (if any) always wins —
+  // this only ever fills in a blank, never overrides what the listing already says.
+  const [initialAttributes] = useState(() => ({
+    ...fromBrokerDefault(listing.category, sellerType),
+    ...attributesToStrings(listing.attributes),
+  }));
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>(initialAttributes);
   const [status, setStatus] = useState<ListingStatus>(listing.status);
   const [saving, setSaving] = useState(false);

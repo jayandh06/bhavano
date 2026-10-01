@@ -1329,20 +1329,27 @@ export class ListingsService {
     }
     await this.listingSlotsService.assertCanPublish(ownerId);
     const inputAttributes = normalizeBrokerageAttributes(input.transactionType, input.attributes ?? {});
-    this.assertValidAttributes(
-      input.category,
-      input.transactionType,
-      inputAttributes,
-    );
     // For an assisted listing the answer is the seller's, not the Bulk Import account's: it fills
-    // the listing's own fromBroker here and reaches the seller's profile at claim time.
+    // the listing's own fromBroker here and reaches the seller's profile at claim time. Resolved
+    // before validation (not after, like every other field normalizes) so a legitimately deferred
+    // fromBroker — assisted creation always supplies claimSellerType, an account that already
+    // answered Owner/Agent once doesn't have to answer again per listing — counts toward the
+    // field's own required check below, instead of rejecting a value this same call is about to
+    // fill in. fromBroker is a select field untouched by normalizeAttributes, so resolving it on
+    // the raw attributes here and normalizing everything afterward (including this fill) changes
+    // nothing about what gets validated for any other field.
     const declaredSellerType = resolveDeclaredSellerType(
       input.category,
-      this.normalizeAttributes(input.category, inputAttributes),
+      inputAttributes,
       assisted ? assisted.claimSellerType : input.postedAs,
       assisted ? null : (owner?.sellerType ?? null),
     );
-    const attributes = declaredSellerType.attributes;
+    this.assertValidAttributes(
+      input.category,
+      input.transactionType,
+      declaredSellerType.attributes,
+    );
+    const attributes = this.normalizeAttributes(input.category, declaredSellerType.attributes);
     this.assertValidPriceQualifier(
       input.category,
       input.transactionType,
