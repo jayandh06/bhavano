@@ -36,11 +36,11 @@ function lifetimeDays(token: string): number {
 }
 
 describe('AuthService.refresh', () => {
-  it('issues a 30-day token to a user and a 1-day token to an admin', async () => {
+  it('issues a 30-day token to a user and a 90-day token to an admin', async () => {
     const user = await makeService({ id: 'u1', role: 'user', deletedAt: null }).service.refresh('u1');
     expect(lifetimeDays(user.accessToken!)).toBe(30);
     const admin = await makeService({ id: 'u1', role: 'admin', deletedAt: null }).service.refresh('u1');
-    expect(lifetimeDays(admin.accessToken!)).toBe(1);
+    expect(lifetimeDays(admin.accessToken!)).toBe(90);
   });
 
   it('renews for the surviving account after a merge', async () => {

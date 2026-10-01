@@ -23,10 +23,16 @@ import {
 } from '../ads/google-ads-conversion.provider';
 
 /** Users stay logged in while they keep coming back: clients renew through `refresh` once a token
- * is a day old, so only 30 idle days end a session. Admins stay short because the guards trust
- * the token's `role` claim without a DB read. See docs/plans/more-login-conversion.md. */
+ * is a day old, so only 30 idle days end a session. See docs/plans/more-login-conversion.md.
+ *
+ * Admin was deliberately kept at 24h there, specifically because the guards trust the token's
+ * `role` claim without a DB read — there is no server-side revocation check, so a long-lived
+ * admin token stays valid for its whole life even if the admin's access is pulled or the token
+ * leaks. Raised to 90d on explicit instruction (2026-10-01); that tradeoff is now accepted, not
+ * unnoticed — if admin access ever needs to be revocable mid-token-life, that requires the guard
+ * to actually read the user's current role from the DB, not a shorter TTL band-aid. */
 const USER_TOKEN_TTL = '30d';
-const ADMIN_TOKEN_TTL = '24h';
+const ADMIN_TOKEN_TTL = '90d';
 
 /** Visit context passed up from the web app at signup — see AuthService.verifyOtp /
  * loginWithGoogle. All fields optional since anonymous/API callers (e.g. dev-login) never send

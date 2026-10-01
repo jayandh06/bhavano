@@ -31,7 +31,12 @@ expires. Every prompt we built has to win the same person back daily.
   keeps the old token.
 - **App.** On cold start and on returning to the foreground, a token older than a day is renewed
   and stored in SecureStore. An expired token is still dropped as before.
-- **Admin app.** Unchanged, so it keeps 24h tokens.
+- **Admin app.** Kept at 24h originally, specifically because the guards trust the token's `role`
+  claim with no server-side revocation check — a long-lived admin token stays valid for its whole
+  life even if access is pulled or the token leaks. Raised to 90d on explicit instruction
+  (2026-10-01); the tradeoff is accepted, not an oversight. If admin access ever needs to be
+  revocable mid-token-life, that needs the guard to read the current role from the DB, not a
+  shorter TTL.
 
 ## 2. Resume the tap after login
 
