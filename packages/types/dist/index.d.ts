@@ -467,7 +467,7 @@ export interface CreateListingInput {
     areaName?: string;
     cityId: string;
     specs?: string[];
-    description?: string;
+    description: string;
     photos: CreatedPhotoInput[];
     /** Optional — video is additive, never required. Entitlement (Agent Pro only, since the
      * listing doesn't exist yet to be boosted) is re-checked and silently trimmed in

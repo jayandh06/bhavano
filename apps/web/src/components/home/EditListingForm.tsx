@@ -13,7 +13,13 @@ import { fromBrokerDefault } from "@bhavano/types/sellerType";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { updateListingAction } from "@/app/actions/listings";
-import { clampPrice, DESCRIPTION_MAX_LENGTH, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import {
+  clampPrice,
+  DESCRIPTION_MAX_LENGTH,
+  DESCRIPTION_MIN_LENGTH,
+  maxPriceFor,
+  TITLE_MAX_LENGTH,
+} from "@bhavano/types/listingLimits";
 import { fieldClass, labelClass, primaryButtonClass } from "@/lib/formStyles";
 import { SelectField } from "./SelectField";
 import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
@@ -77,7 +83,8 @@ export function EditListingForm({
   // them), so unlike the wizard, no reset-on-change is needed here.
   const initialPriceMode = listing.priceUnit ? "perUnit" : "total";
   const [priceMode, setPriceMode] = useState<"total" | "perUnit">(initialPriceMode);
-  const [description, setDescription] = useState(listing.description ?? "");
+  const [initialDescription] = useState(listing.description ?? "");
+  const [description, setDescription] = useState(initialDescription);
   // The profile default is spread first so the listing's own saved answer (if any) always wins —
   // this only ever fills in a blank, never overrides what the listing already says.
   const [initialAttributes] = useState(() => ({
@@ -121,8 +128,19 @@ export function EditListingForm({
   // 0 is a real, submittable price ("Contact for price") for pg/coworking — see
   // PRICE_ON_REQUEST_CATEGORIES's own doc comment. Every other category still needs a real one.
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(listing.category);
+  // Only checked when actually touched — same reasoning as attributesChanged above: a listing
+  // posted before the 50-character minimum existed can still have its price or status changed
+  // without being forced to write a description first.
+  const descriptionChanged = description.trim() !== initialDescription.trim();
+  const descriptionIssue =
+    descriptionChanged && description.trim().length < DESCRIPTION_MIN_LENGTH
+      ? `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`
+      : null;
   const valid =
-    (priceValue > 0 || priceOnRequestAllowed) && title.trim().length > 0 && attributesIssue === null;
+    (priceValue > 0 || priceOnRequestAllowed) &&
+    title.trim().length > 0 &&
+    attributesIssue === null &&
+    descriptionIssue === null;
 
   // The stored value may not appear in today's fixed option list (legacy free-text data from
   // before this dropdown existed) — keep it selectable rather than silently swapping it out.
@@ -150,7 +168,7 @@ export function EditListingForm({
       price: priceValue,
       priceQualifier,
       priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
-      description: description.trim(),
+      ...(descriptionChanged ? { description: description.trim() } : {}),
       ...(attributesChanged ? { attributes } : {}),
       status,
     });
@@ -201,6 +219,8 @@ export function EditListingForm({
           placeholder="Describe the place in your own words — the layout, the neighbourhood, what's nearby."
           className={`${fieldClass} resize-y min-h-[120px] max-w-[720px]`}
         />
+        {/* Only nagged about once they touch it — see descriptionChanged's own comment. */}
+        {descriptionIssue && <p className="text-xs text-muted mt-1">{descriptionIssue}</p>}
       </div>
 
       {/* Same accordion PostAdWizard.tsx uses for the same CATEGORY_FIELD_CONFIG — Price/Price

@@ -12,7 +12,13 @@ import {
 } from "@bhavano/types/categoryFields";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
-import { clampPrice, DESCRIPTION_MAX_LENGTH, maxPriceFor, TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
+import {
+  clampPrice,
+  DESCRIPTION_MAX_LENGTH,
+  DESCRIPTION_MIN_LENGTH,
+  maxPriceFor,
+  TITLE_MAX_LENGTH,
+} from "@bhavano/types/listingLimits";
 import { MAX_PHOTOS } from "@bhavano/types/photoLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
 import { useAppTheme } from "../../../src/theme/ThemeContext";
@@ -82,7 +88,8 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   // EditListingPhotos/VideoManager draw between the two.
   const [listing, setListing] = useState(initialListing);
   const [title, setTitle] = useState(initialListing.title);
-  const [description, setDescription] = useState(initialListing.description ?? "");
+  const [initialDescription] = useState(initialListing.description ?? "");
+  const [description, setDescription] = useState(initialDescription);
   const [price, setPrice] = useState(String(initialListing.price).replace(/[^0-9]/g, ""));
   const [priceQualifier, setPriceQualifier] = useState(initialListing.priceQualifier);
   // "Whole price vs price per unit" — see web EditListingForm.tsx's identical toggle. Category/
@@ -122,8 +129,19 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
   const brokerageIssue = brokerageFeeIssue(listing.transactionType, totalPrice, attributes);
   const brokerageNote = brokerageFeeNote(listing.transactionType, totalPrice, attributes);
   const priceOnRequestAllowed = PRICE_ON_REQUEST_CATEGORIES.has(listing.category);
+  // Only checked once actually touched — a listing posted before the 50-character minimum existed
+  // can still have its price or status changed without being forced to write a description first.
+  const descriptionChanged = description.trim() !== initialDescription.trim();
+  const descriptionIssue =
+    descriptionChanged && description.trim().length < DESCRIPTION_MIN_LENGTH
+      ? `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`
+      : null;
   const valid =
-    (priceValue > 0 || priceOnRequestAllowed) && title.trim().length > 0 && requiredAttributesFilled && !brokerageIssue;
+    (priceValue > 0 || priceOnRequestAllowed) &&
+    title.trim().length > 0 &&
+    requiredAttributesFilled &&
+    !brokerageIssue &&
+    descriptionIssue === null;
 
   const priceQualifierOptions = getPriceQualifierOptions(listing.category, listing.transactionType);
   const priceQualifierChoices = priceQualifierOptions.some((opt) => opt.value === priceQualifier)
@@ -142,7 +160,7 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         price: priceValue,
         priceQualifier,
         priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
-        description: description.trim(),
+        ...(descriptionChanged ? { description: description.trim() } : {}),
         attributes,
         status,
       });
@@ -279,6 +297,10 @@ function EditListingFormBody({ listing: initialListing, accessToken }: { listing
         placeholderTextColor={colors.muted}
         style={[styles.input, styles.textarea, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
       />
+      {/* Only nagged about once they touch it — see descriptionChanged's own comment. */}
+      {descriptionIssue && (
+        <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{descriptionIssue}</Text>
+      )}
 
       <View style={[styles.divider, { borderColor: colors.border, marginTop: 18 }]}>
         <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>

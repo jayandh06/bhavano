@@ -32,6 +32,7 @@ import {
   AREA_NAME_MAX_LENGTH,
   clampPrice,
   DESCRIPTION_MAX_LENGTH,
+  DESCRIPTION_MIN_LENGTH,
   maxPriceFor,
   TITLE_MAX_LENGTH,
   TITLE_MIN_LENGTH,
@@ -1146,6 +1147,9 @@ export function PostAdWizard({
     if (areaQuery.trim().length === 0) return { text: "Add the area / locality", missing: true };
     if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
       return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
+    if (description.trim().length === 0) return { text: "Add a description", missing: true };
+    if (description.trim().length < DESCRIPTION_MIN_LENGTH)
+      return { text: `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`, missing: false };
     // The assisted panel's own Owner/Agent answer overrides this field on submit. Checked before
     // the generic attribute sweep below so this field's own friendlier copy wins over the generic
     // "Posted by Broker / Agent is required" listingAttributesIssue would otherwise produce — the
@@ -1348,7 +1352,7 @@ export function PostAdWizard({
       areaId: areaId ?? undefined,
       areaName: areaId ? undefined : areaQuery.trim(),
       cityId,
-      description: description.trim() || undefined,
+      description: description.trim(),
       photos: uploadedPhotos,
       videos: uploadedVideos.length > 0 ? uploadedVideos : undefined,
       attributes: pruneHiddenAttributes(category, transactionType, attributes),
@@ -1664,8 +1668,9 @@ export function PostAdWizard({
           </div>
 
           <div>
-            <label className={labelClass}>Description</label>
+            <RequiredLabel text="Description" />
             <textarea
+              required
               value={description}
               onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
               maxLength={DESCRIPTION_MAX_LENGTH}
@@ -1674,7 +1679,7 @@ export function PostAdWizard({
               className={`${fieldClass} resize-y min-h-[120px] max-w-[720px]`}
             />
             <p className="text-xs text-muted mt-1">
-              Optional, but ads with a description get more responses.
+              At least {DESCRIPTION_MIN_LENGTH} characters — ads with a real description get more responses.
             </p>
           </div>
 

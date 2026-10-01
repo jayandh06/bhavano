@@ -16,6 +16,7 @@ import type { AreaUnit } from '@bhavano/types/areaUnit';
 import {
   AREA_NAME_MAX_LENGTH,
   DESCRIPTION_MAX_LENGTH,
+  DESCRIPTION_MIN_LENGTH,
   TITLE_MAX_LENGTH,
   TITLE_MIN_LENGTH,
 } from '@bhavano/types/listingLimits';
@@ -69,6 +70,7 @@ export class UpdateListingDto {
 
   @IsOptional()
   @IsString()
+  @MinLength(DESCRIPTION_MIN_LENGTH)
   @MaxLength(DESCRIPTION_MAX_LENGTH)
   description?: string;
 

@@ -20,6 +20,7 @@ import type { AreaUnit } from '@bhavano/types/areaUnit';
 import {
   AREA_NAME_MAX_LENGTH,
   DESCRIPTION_MAX_LENGTH,
+  DESCRIPTION_MIN_LENGTH,
   TITLE_MAX_LENGTH,
   TITLE_MIN_LENGTH,
 } from '@bhavano/types/listingLimits';
@@ -129,10 +130,10 @@ export class CreateListingDto {
 
   // 4000 is generous for a classified ad and still bounded — the column is TEXT, so without a
   // limit here a single listing could carry a novel.
-  @IsOptional()
   @IsString()
+  @MinLength(DESCRIPTION_MIN_LENGTH)
   @MaxLength(DESCRIPTION_MAX_LENGTH)
-  description?: string;
+  description!: string;
 
   @IsArray()
   @ValidateNested({ each: true })

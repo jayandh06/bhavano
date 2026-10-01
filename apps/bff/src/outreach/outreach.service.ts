@@ -655,6 +655,14 @@ export class OutreachService {
             powerBackup: 'yes',
           };
 
+    // Same "claiming owner corrects it later" philosophy as the attribute defaults above —
+    // CreateListingInput.description became mandatory (DESCRIPTION_MIN_LENGTH) after this path
+    // was built, and there's no scraped description to carry over, only the business name/category.
+    const description =
+      contact.businessCategory === 'pg'
+        ? `${contact.name} is a PG accommodation listed on Bhavano. Contact the lister for full details on availability, sharing options and amenities.`
+        : `${contact.name} is a coworking space listed on Bhavano. Contact the lister for full details on seat types, pricing and amenities.`;
+
     return this.listingsService.create(
       {
         id: listingId,
@@ -667,6 +675,7 @@ export class OutreachService {
         // "Fixed price" option, which doesn't exist for rent at all.
         priceQualifier: 'onwards',
         title: contact.name,
+        description,
         cityId: contact.cityId,
         areaId: contact.areaId ?? undefined,
         photos,

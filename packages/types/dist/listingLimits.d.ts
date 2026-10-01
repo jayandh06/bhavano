@@ -14,6 +14,9 @@ export declare const TITLE_MAX_LENGTH = 150;
 export declare const TITLE_MIN_LENGTH = 3;
 /** Generous for a classified ad, and still bounded: the column is TEXT. */
 export declare const DESCRIPTION_MAX_LENGTH = 4000;
+/** Below this it's "2bhk good location" — not enough for a buyer to act on, and not enough for
+ * the BFF to reject. */
+export declare const DESCRIPTION_MIN_LENGTH = 50;
 /** A typed (not picked) area / locality name. */
 export declare const AREA_NAME_MAX_LENGTH = 120;
 /** Days before expiry when renew affordance appears on My listings — shared with seller-attention counts. */

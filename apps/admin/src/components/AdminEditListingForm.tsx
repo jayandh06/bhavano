@@ -22,7 +22,7 @@ import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/
 import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { TITLE_MAX_LENGTH } from "@bhavano/types/listingLimits";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
-import { clampDigits } from "@bhavano/types/listingLimits";
+import { clampDigits, DESCRIPTION_MIN_LENGTH } from "@bhavano/types/listingLimits";
 import { POST_CATEGORIES } from "@bhavano/types/postCategories";
 import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { setListingStatusAction, updateListingAction } from "@/app/actions/admin";
@@ -482,7 +482,8 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
   // EditListingForm.tsx for the full reasoning.
   const initialPriceMode = listing.priceUnit ? "perUnit" : "total";
   const [priceMode, setPriceMode] = useState<"total" | "perUnit">(initialPriceMode);
-  const [description, setDescription] = useState(listing.description ?? "");
+  const [initialDescription] = useState(listing.description ?? "");
+  const [description, setDescription] = useState(initialDescription);
   const [specsValue, setSpecsValue] = useState(listing.specs.join(", "));
   const [initialAttributes] = useState(() => attributesToStrings(listing.attributes));
   const [attributes, setAttributes] = useState<Record<string, string | string[]>>(initialAttributes);
@@ -613,13 +614,20 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
       ? brokerageFeeIssue(transactionType, totalPrice, attributes)
       : null;
   const brokerageNote = brokerageFeeNote(transactionType, totalPrice, attributes);
+  // Only checked once actually touched — same reasoning as attributesChanged above.
+  const descriptionChanged = description.trim() !== initialDescription.trim();
+  const descriptionIssue =
+    descriptionChanged && description.trim().length < DESCRIPTION_MIN_LENGTH
+      ? `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`
+      : null;
   const valid =
     (priceValue > 0 || priceOnRequestAllowed) &&
     title.trim().length > 0 &&
     attributesIssue === null &&
     !!cityId &&
     (useOtherArea ? areaName.trim().length > 0 : !!areaId) &&
-    pinValid;
+    pinValid &&
+    descriptionIssue === null;
 
   const priceQualifierOptions = getPriceQualifierOptions(category, transactionType);
   const priceQualifierChoices = priceQualifierOptions.some((opt) => opt.value === priceQualifier)
@@ -646,7 +654,7 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
       price: priceValue,
       priceQualifier,
       priceUnit: priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : null,
-      description: description.trim(),
+      ...(descriptionChanged ? { description: description.trim() } : {}),
       specs: specsValue.split(",").map((s) => s.trim()).filter(Boolean),
       ...(attributesChanged ? { attributes } : {}),
       category,
@@ -834,6 +842,10 @@ export function AdminEditListingForm({ listing, cities }: { listing: ListingDeta
           rows={4}
           style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", maxWidth: 720 }}
         />
+        {/* Only nagged about once touched — see descriptionChanged's own comment. */}
+        {descriptionIssue && (
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>{descriptionIssue}</p>
+        )}
       </div>
 
       {sections.map((section) => (

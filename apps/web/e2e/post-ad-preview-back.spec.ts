@@ -17,6 +17,12 @@ async function fillStorageDetails(page: Page) {
   await page.getByRole("button", { name: "Rent out" }).click();
   await fieldInput(page, "Title").fill("Dry storage room near metro");
   await page.getByPlaceholder("Start typing a locality…").fill("Indiranagar");
+  await page
+    .locator("label")
+    .filter({ hasText: "Description" })
+    .locator("..")
+    .locator("textarea")
+    .fill("Spacious, dry storage room a short walk from the metro station — ideal for boxes, luggage or seasonal items, with secure, easy access any time.");
   await fieldInput(page, "Price (₹)").fill("5000");
   await fieldInput(page, "Size (sqft)").fill("120");
   await page.locator('input[type="file"][accept^="image/"]').setInputFiles(PHOTO);
