@@ -3,12 +3,14 @@ import type { BoostPriceSettings } from '@bhavano/types/boostPricing';
 import type { SubscriptionPlanSettings } from '@bhavano/types/subscriptionPricing';
 import type { InstantAlertsPriceSettings } from '@bhavano/types/instantAlertsPricing';
 import type { PlatformFeeSettings } from '@bhavano/types/platformFeePricing';
+import type { BoostEffectivenessDto } from '@bhavano/types/boostEffectiveness';
 import { PlatformFeeSettingsService } from './platform-fee-settings.service';
 import { ACTIVE_PROMO_CODE } from '@bhavano/types/promoCode';
 import { PrismaService } from '../prisma/prisma.service';
 import { BoostPricingSettingsService } from './boost-pricing-settings.service';
 import { SubscriptionPlanSettingsService } from './subscription-plan-settings.service';
 import { InstantAlertsPricingSettingsService } from './instant-alerts-pricing-settings.service';
+import { BoostEffectivenessStatService } from './boost-effectiveness.service';
 
 /** Public, no AdminGuard — a logged-out visitor browsing the pricing page or the boost picker
  * needs to see current prices too, same precedent as LocationsController and
@@ -22,6 +24,7 @@ export class PlansController {
     private readonly subscriptionPlanSettingsService: SubscriptionPlanSettingsService,
     private readonly instantAlertsPricingSettingsService: InstantAlertsPricingSettingsService,
     private readonly platformFeeSettingsService: PlatformFeeSettingsService,
+    private readonly boostEffectivenessStatService: BoostEffectivenessStatService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -32,15 +35,18 @@ export class PlansController {
     instantAlerts: InstantAlertsPriceSettings;
     platformFee: PlatformFeeSettings;
     activeDiscountPercent: number | null;
+    boostEffectiveness: BoostEffectivenessDto | null;
   }> {
-    const [boost, subscription, instantAlerts, platformFee, activeDiscountPercent] = await Promise.all([
-      this.boostPricingSettingsService.getSettings(),
-      this.subscriptionPlanSettingsService.getSettings(),
-      this.instantAlertsPricingSettingsService.getSettings(),
-      this.platformFeeSettingsService.getSettings(),
-      this.getActiveDiscountPercent(),
-    ]);
-    return { boost, subscription, instantAlerts, platformFee, activeDiscountPercent };
+    const [boost, subscription, instantAlerts, platformFee, activeDiscountPercent, boostEffectiveness] =
+      await Promise.all([
+        this.boostPricingSettingsService.getSettings(),
+        this.subscriptionPlanSettingsService.getSettings(),
+        this.instantAlertsPricingSettingsService.getSettings(),
+        this.platformFeeSettingsService.getSettings(),
+        this.getActiveDiscountPercent(),
+        this.boostEffectivenessStatService.getStats(),
+      ]);
+    return { boost, subscription, instantAlerts, platformFee, activeDiscountPercent, boostEffectiveness };
   }
 
   /** The percent off `ACTIVE_PROMO_CODE` currently gives, or `null` if it isn't usable right now

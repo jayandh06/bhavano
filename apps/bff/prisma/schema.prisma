@@ -952,6 +952,26 @@ model BoostPriceSetting {
   updatedAt                       DateTime @updatedAt
 }
 
+/// Nightly-recomputed comparison of boosted vs. non-boosted listings, feeding the post-ad preview
+/// step's "why boosting helps" recovery dialog (docs/plans/boost-recovery-dialog.md). Cached
+/// rather than computed per-request — the query spans every live listing's view/interest history,
+/// not worth paying for on every dialog render. Sample sizes are stored alongside the stats
+/// themselves so the client can decide whether there's enough data to show a real number yet
+/// (see @bhavano/types/boostEffectiveness's MIN_SAMPLE_SIZE) rather than ever showing a stat
+/// computed from a handful of listings.
+model BoostEffectivenessStat {
+  id                    String   @id
+  /// Average ListingView count in a listing's first 7 days live.
+  avgViews7dBoosted     Float
+  avgViews7dUnboosted   Float
+  /// Share (0-1) of listings with at least one ListingInterest row in their first 7 days live.
+  contactRate7dBoosted  Float
+  contactRate7dUnboosted Float
+  boostedSampleSize     Int
+  unboostedSampleSize   Int
+  computedAt            DateTime @updatedAt
+}
+
 /** Singleton row (fixed id "singleton", upserted) — admin-editable Instant Alerts price. Flat,
  * no category tiers (unlike boost) since the value proposition doesn't scale with listing price
  * the way boost visibility does. See docs/plans/instant-alerts-paid-message-notifications.md. */

@@ -6,6 +6,7 @@ import { DEFAULT_PLATFORM_FEE_SETTINGS } from '@bhavano/types/platformFeePricing
 /** Fixed ids of the three singleton settings rows — same convention as RateLimitService's
  * SETTINGS_ID / ContactRevealService's CONTACT_REVEAL_SETTINGS_ID. */
 export const BOOST_PRICE_SETTINGS_ID = 'singleton';
+export const BOOST_EFFECTIVENESS_STAT_ID = 'singleton';
 export const SUBSCRIPTION_PLAN_SETTINGS_ID = 'singleton';
 export const INSTANT_ALERTS_PRICE_SETTINGS_ID = 'singleton';
 export const PLATFORM_FEE_SETTINGS_ID = 'singleton';

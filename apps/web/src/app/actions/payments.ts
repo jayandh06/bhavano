@@ -10,6 +10,7 @@ import type {
   SubscriptionTier,
 } from "@bhavano/types";
 import type { BoostDurationDays, BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
@@ -50,9 +51,10 @@ export async function fetchPostAdPlanPricingAction(): Promise<{
   instantAlerts: InstantAlertsPriceSettings;
   platformFee: PlatformFeeSettings;
   activeDiscountPercent: number | null;
+  boostEffectiveness: BoostEffectivenessDto | null;
 }> {
-  const { boost, instantAlerts, platformFee, activeDiscountPercent } = await fetchPlanPricing();
-  return { boost, instantAlerts, platformFee, activeDiscountPercent };
+  const { boost, instantAlerts, platformFee, activeDiscountPercent, boostEffectiveness } = await fetchPlanPricing();
+  return { boost, instantAlerts, platformFee, activeDiscountPercent, boostEffectiveness };
 }
 
 export type CreateBoostOrderResult = { success: true; order: CreateBoostOrderResponseDto } | { success: false; error: string };

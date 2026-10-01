@@ -48,6 +48,7 @@ DLV_KEYS = [
     "months",
     "boostDays",
     "topic",
+    "trigger",
     # Nested under `user_data` on post_ad_success / signup_complete — raw email + E.164 phone for
     # Google Ads Enhanced Conversions' user-provided data. Deliberately NOT added to EVENTS: they
     # feed the Ads conversion tags only, never GA4 (that would send PII to Analytics). GTM's
@@ -73,6 +74,11 @@ EVENTS = {
     # Support requests: tracked in GA4 as a product-health signal, deliberately NOT an Ads
     # conversion — bidding toward it would spend budget finding users who hit problems.
     "contact_form_submit": ["topic"],
+    # docs/plans/boost-recovery-dialog.md — GA4-only, deliberately NOT an Ads conversion: these
+    # measure an on-site nudge's own effectiveness, not a billable action.
+    "boost_recovery_shown": ["trigger"],
+    "boost_recovery_accepted": [],
+    "boost_recovery_dismissed": [],
 }
 
 # Conversion labels for the actions in Ads account 421-406-6478, created by

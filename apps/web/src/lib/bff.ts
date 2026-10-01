@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import type { CreateListingPublishOrderResponseDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
@@ -364,6 +365,7 @@ export function fetchPlanPricing(): Promise<{
   instantAlerts: InstantAlertsPriceSettings;
   platformFee: PlatformFeeSettings;
   activeDiscountPercent: number | null;
+  boostEffectiveness: BoostEffectivenessDto | null;
 }> {
   return bffFetch("/plans/pricing", { cache: "no-store" });
 }

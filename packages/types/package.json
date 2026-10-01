@@ -69,6 +69,10 @@
       "types": "./dist/listingPublishPricing.d.ts",
       "default": "./dist/listingPublishPricing.js"
     },
+    "./boostEffectiveness": {
+      "types": "./dist/boostEffectiveness.d.ts",
+      "default": "./dist/boostEffectiveness.js"
+    },
     "./promoCode": {
       "types": "./dist/promoCode.d.ts",
       "default": "./dist/promoCode.js"

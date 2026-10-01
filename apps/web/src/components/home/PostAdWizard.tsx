@@ -13,8 +13,10 @@ import type {
   SellerType,
   TransactionType,
 } from "@bhavano/types";
-import { buildDisplayBoostPricing } from "@bhavano/types/boostPricing";
+import { buildDisplayBoostPricing, defaultBoostDuration, offeredBoostDurations } from "@bhavano/types/boostPricing";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import { boostRecoveryMessage } from "@bhavano/types/boostEffectiveness";
+import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import {
   brokerageFeeIssue,
@@ -100,6 +102,7 @@ import {
 } from "@/lib/postAdDraft";
 import { BoostBundlePicker } from "./BoostBundlePicker";
 import { BoostPlanSelector } from "./BoostPlanSelector";
+import { BoostRecoveryDialog } from "./BoostRecoveryDialog";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
 import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
@@ -387,6 +390,7 @@ export function PostAdWizard({
     instantAlerts: InstantAlertsPriceSettings;
     platformFee: PlatformFeeSettings;
     activeDiscountPercent: number | null;
+    boostEffectiveness: BoostEffectivenessDto | null;
   } | null>(null);
   const [publishCheckoutError, setPublishCheckoutError] = useState<string | null>(null);
   // Every error the wizard shows at the review/publish step is also reported (see
@@ -403,6 +407,10 @@ export function PostAdWizard({
   // advertiser explicitly skipped it (see selectCategory's pre-fill and BoostPlanSelector's own
   // "Skip" affordance). Only ever read/acted on when previewBoostDisplay?.showSelectorOnPreview.
   const [selectedBoostPlan, setSelectedBoostPlan] = useState<BoostPlanSelection | null>(null);
+  // See docs/plans/boost-recovery-dialog.md — state declared here, the idle timer that uses it is
+  // below, after showBoostOnReview exists.
+  const [showBoostRecovery, setShowBoostRecovery] = useState(false);
+  const boostRecoveryShownRef = useRef(false);
   // null until a checkout attempt (auto-fired right after posting, or a manual retry) resolves —
   // drives the narrow "Finish boosting this listing" retry prompt on the success step.
   const [boostCheckoutOutcome, setBoostCheckoutOutcome] = useState<"succeeded" | "failed" | null>(null);
@@ -686,6 +694,45 @@ export function PostAdWizard({
   const showBoostOnReview =
     !!previewBoostDisplay?.showSelectorOnPreview ||
     !!(category && planPricingSettings && platformFeeApplies(category, planPricingSettings.platformFee));
+
+  // docs/plans/boost-recovery-dialog.md: at most once per wizard mount, whichever comes first of
+  // (a) 60s idle on the review step with Boost still skipped, or (b) tapping Post ad while still
+  // skipped (handlePostAdClick below). boostRecoveryShownRef (not state) so both checks see the
+  // same answer synchronously, without a stale-closure race between the timer and a click.
+  useEffect(() => {
+    if (!previewBoostDisplay?.showSelectorOnPreview || step !== "review" || selectedBoostPlan !== null) return;
+    if (boostRecoveryShownRef.current) return;
+    const timer = window.setTimeout(() => {
+      boostRecoveryShownRef.current = true;
+      setShowBoostRecovery(true);
+      pushDataLayerEvent("boost_recovery_shown", { trigger: "idle" });
+    }, 60_000);
+    return () => window.clearTimeout(timer);
+  }, [previewBoostDisplay?.showSelectorOnPreview, step, selectedBoostPlan]);
+
+  function handlePostAdClick() {
+    if (previewBoostDisplay?.showSelectorOnPreview && selectedBoostPlan === null && !boostRecoveryShownRef.current) {
+      boostRecoveryShownRef.current = true;
+      setShowBoostRecovery(true);
+      pushDataLayerEvent("boost_recovery_shown", { trigger: "submit" });
+      return;
+    }
+    void onSubmit();
+  }
+
+  function handleBoostRecoveryAddBoost() {
+    setShowBoostRecovery(false);
+    pushDataLayerEvent("boost_recovery_accepted", {});
+    const duration = previewBoostDisplay ? defaultBoostDuration(offeredBoostDurations(previewBoostDisplay)) : 15;
+    setSelectedBoostPlan({ duration: duration as BoostPlanSelection["duration"], includeInstantAlerts: true });
+    void onSubmit();
+  }
+
+  function handleBoostRecoverySkip() {
+    setShowBoostRecovery(false);
+    pushDataLayerEvent("boost_recovery_dismissed", {});
+    void onSubmit();
+  }
 
   async function waitForListingLive(listingId: string): Promise<boolean> {
     for (let i = 0; i < 20; i++) {
@@ -1943,7 +1990,7 @@ export function PostAdWizard({
               ← Back
             </button>
             <button
-              onClick={onSubmit}
+              onClick={handlePostAdClick}
               disabled={pending}
               className={`ml-auto ${primaryButtonClass}`}
             >
@@ -1952,6 +1999,15 @@ export function PostAdWizard({
           </div>
           </div>
         </div>
+      )}
+
+      {showBoostRecovery && previewBoostDisplay && (
+        <BoostRecoveryDialog
+          pricing={previewBoostDisplay}
+          effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+          onAddBoost={handleBoostRecoveryAddBoost}
+          onSkip={handleBoostRecoverySkip}
+        />
       )}
 
       {step === "success" && createdListing && assistedMode && (
