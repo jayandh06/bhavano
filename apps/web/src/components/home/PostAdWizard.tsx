@@ -216,6 +216,22 @@ function reportPostError(stage: string, message: string) {
   });
 }
 
+/** Same synthetic-pageview trick as reportPostError, for the boost recovery dialog
+ * (docs/plans/boost-recovery-dialog.md) — GTM/GA4 sees these via pushDataLayerEvent at each call
+ * site, but that's a separate system from the admin's own Page visits trail, which only reads
+ * PageView rows. Decoded by the admin app's trailEntry() into readable text. */
+function reportBoostRecoveryEvent(event: "shown" | "accepted" | "dismissed", trigger?: "idle" | "submit") {
+  const query = trigger ? `event=${event}&trigger=${trigger}` : `event=${event}`;
+  void fetch("/api/analytics/pageview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: `/post/boost-recovery?${query}` }),
+    keepalive: true,
+  }).catch(() => {
+    // Best-effort, same as reportPostError's own write.
+  });
+}
+
 /**
  * One `post_step_view` per step the user actually reaches, and resets scroll to the top of the
  * page on every step change.
@@ -706,6 +722,7 @@ export function PostAdWizard({
       boostRecoveryShownRef.current = true;
       setShowBoostRecovery(true);
       pushDataLayerEvent("boost_recovery_shown", { trigger: "idle" });
+      reportBoostRecoveryEvent("shown", "idle");
     }, 60_000);
     return () => window.clearTimeout(timer);
   }, [previewBoostDisplay?.showSelectorOnPreview, step, selectedBoostPlan]);
@@ -715,6 +732,7 @@ export function PostAdWizard({
       boostRecoveryShownRef.current = true;
       setShowBoostRecovery(true);
       pushDataLayerEvent("boost_recovery_shown", { trigger: "submit" });
+      reportBoostRecoveryEvent("shown", "submit");
       return;
     }
     void onSubmit();
@@ -723,6 +741,7 @@ export function PostAdWizard({
   function handleBoostRecoveryAddBoost() {
     setShowBoostRecovery(false);
     pushDataLayerEvent("boost_recovery_accepted", {});
+    reportBoostRecoveryEvent("accepted");
     const duration = previewBoostDisplay ? defaultBoostDuration(offeredBoostDurations(previewBoostDisplay)) : 15;
     setSelectedBoostPlan({ duration: duration as BoostPlanSelection["duration"], includeInstantAlerts: true });
     void onSubmit();
@@ -731,6 +750,7 @@ export function PostAdWizard({
   function handleBoostRecoverySkip() {
     setShowBoostRecovery(false);
     pushDataLayerEvent("boost_recovery_dismissed", {});
+    reportBoostRecoveryEvent("dismissed");
     void onSubmit();
   }
 
