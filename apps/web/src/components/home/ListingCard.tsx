@@ -139,7 +139,16 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
     // close together, and a card that grows or shifts on hover jostles its neighbours' edges.
     // A faint resting shadow (border alone read flat against the page's own near-white bg) plus
     // a lighter border, since the two together at full strength double up on the same job.
-    <div className="bg-surface border border-border/70 rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both] transition-[box-shadow,border-color] duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.04)] sm:hover:border-green/40 sm:hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+    <div
+      className={`bg-surface rounded-2xl overflow-hidden flex flex-col animate-[fadein_0.4s_ease_both] transition-[box-shadow,border-color] duration-200 sm:hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] ${
+        // Featured cards win attention at rest, not only on hover like every other card —
+        // the gold badge alone is easy to miss in a dense grid; a matching border/glow carries
+        // the same signal across the whole card. See docs/plans/homepage-category-mix-and-boost-page-cap.md.
+        item.isBoosted
+          ? "border-[1.5px] border-gold/70 shadow-[0_2px_10px_rgba(201,161,90,0.22)] sm:hover:border-gold"
+          : "border border-border/70 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.04)] sm:hover:border-green/40"
+      }`}
+    >
       <div
         className="relative h-[200px]"
         onMouseEnter={startPhotoCycle}

@@ -17,6 +17,7 @@ import { BhkFilter } from "@/components/home/BhkFilter";
 import { OwnersOnlyToggle } from "@/components/home/OwnersOnlyToggle";
 import { hasAssetFilter } from "@/lib/assetFilters";
 import { ListingGrid } from "@/components/home/ListingGrid";
+import { FeaturedRail } from "@/components/home/FeaturedRail";
 import { Pagination } from "@/components/home/Pagination";
 import { Footer } from "@/components/home/Footer";
 import { resolvePopularSearches } from "@/lib/popularSearches";
@@ -137,6 +138,21 @@ export default async function HomePage({
         throw error;
       });
 
+  // Only page 1, and only without an active text search — a rail of promoted listings above
+  // someone's own search results reads as noise, not help, exactly backwards from what search is
+  // for. Scoped to the same tab/city as the main feed, so "Featured" here means featured *for
+  // what you're looking at*, not an unrelated sitewide sample. See FeaturedRail's own doc comment.
+  const featuredPage =
+    page === 1 && !noAreaSelected && !q
+      ? await fetchListings(
+          { homeCategory: listingsQuery.homeCategory, cityId: listingsQuery.cityId, featuredOnly: true, limit: 10 },
+          session?.accessToken,
+        ).catch((error) => {
+          if (error instanceof BffAuthError) return { items: [], total: 0, nextCursor: null };
+          throw error;
+        })
+      : { items: [], total: 0, nextCursor: null };
+
   // Page 1 with zero results is a normal "nothing here yet" state — only pages *past* the last
   // real page are a crawl-trap/dead-end worth 404ing (see docs/plans/seo-distinct-window-pagination.md).
   const totalPages = Math.ceil(listingsPage.total / PAGE_SIZE);
@@ -249,6 +265,7 @@ export default async function HomePage({
         {adLanding && (
           <AdLandingCard intent={adLanding.intent} preview={adLanding.preview} freeToPost={freeToPost} />
         )}
+        <FeaturedRail items={featuredPage.items} />
         {/* The All tab mixes every category together, so none of these filters mean one
           * consistent thing across a PG, a plot, and a sofa in the same grid — same reasoning as
           * BrowseListingsView's own filter row, which hides itself the same way. Picking a real

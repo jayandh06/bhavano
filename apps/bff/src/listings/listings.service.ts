@@ -356,27 +356,41 @@ const RECENT_MIX_POOL_CAP = 1000;
  * (once boost adoption grows past this) spilling onto page 3+ and pushing organic content out of
  * sight entirely — if everyone's boosted, nobody is.
  *
+ * **(2026-10-01) A fraction of the window, not a flat constant.** Was a flat 8 (4/page ×
+ * `RECENT_MIX_PAGES`) until boost adoption (20 listings) grew past it on a 2-page/24-slot window —
+ * a flat cap that stops scaling with demand just pushes more and more paying listings into "badge
+ * only, no guaranteed slot" limbo as adoption grows, which is exactly the "paid but got nothing"
+ * complaint that motivated capping it in the first place (it exists to protect organic content
+ * from boost, not to arbitrarily shortchange boost buyers once there's real demand for it).
+ * Recomputed per request from the page window (`windowSize = RECENT_MIX_PAGES * limit`) instead,
+ * capped at `BOOST_FEATURED_CAP_MAX_FRACTION` of it — organic/recent-mix content is guaranteed at
+ * least half of the curated head no matter how much boost adoption grows, while demand under that
+ * ceiling gets a real slot instead of being held at the old fixed 8. Naturally still shrinks below
+ * the ceiling when there simply aren't that many boosted listings (`.slice()` below only ever
+ * takes as many as exist) — this never *forces* extra listings into the cap.
+ *
  * Deliberately a flat total across the first `RECENT_MIX_PAGES` pages, front-loaded onto page 1
  * first, rather than a strict "exactly N per page" split — simpler, and still satisfies "boosted
- * ads show up in the first two pages" (the total is small enough to always fit within them). A
- * stricter even split is straightforward to add later if page 1 alone ends up feeling crowded.
+ * ads show up in the first two pages" for any cap value small enough to fit within them (true by
+ * construction here, since the cap is itself a fraction of that same window). A stricter even
+ * split is straightforward to add later if page 1 alone ends up feeling crowded.
  *
  * **Which listings fill the cap is round-robin'd by `recentMixGroupKey`** (see fetchOffsetPage),
- * not a flat top-N-by-boostRank slice — checked against prod once boost adoption grew past the
- * cap (20 boosted listings, 8 slots): a flat slice let whichever category had the most boost
- * buyers take every guaranteed slot, so a seller who boosted the only listing in their category
- * could still be shut out entirely despite paying the same price. Same "one oversized group
- * buries the rest" fix Part 1 already applies to the recent pool, applied here too.
+ * not a flat top-N-by-boostRank slice — checked against prod at the same time as the above: a flat
+ * slice let whichever category had the most boost buyers take every guaranteed slot, so a seller
+ * who boosted the only listing in their category could still be shut out entirely despite paying
+ * the same price. Same "one oversized group buries the rest" fix Part 1 already applies to the
+ * recent pool, applied here too — both fixes landed together since they address the same
+ * underlying problem (the cap not actually serving every paying boost buyer fairly).
  *
- * Listings boosted *beyond* this cap are not hidden or demoted — they compete in the normal
+ * Listings boosted *beyond* the cap are not hidden or demoted — they compete in the normal
  * recent-mix/older pools on their own merits (see fetchOffsetPage) and still carry the "⭐
  * Featured" badge (ListingCardDto.isBoosted, driven by boostedUntil independent of this cap) —
  * they just don't get the guaranteed top slot. No residual ranking bump past the cap either: the
  * simplest option, and it avoids a slow creep back toward "boost dominates everything" as more
  * listings buy it. Both of these were open decisions in the plan doc, resolved this way when
  * building it — reachable to revisit if they turn out wrong once there's real boost volume. */
-const BOOST_FEATURED_SLOTS_PER_PAGE = 4;
-const BOOST_FEATURED_CAP = BOOST_FEATURED_SLOTS_PER_PAGE * RECENT_MIX_PAGES;
+const BOOST_FEATURED_CAP_MAX_FRACTION = 0.5;
 
 /** The dimension each home tab mixes recent listings by — property category for the multi-
  * category tabs (All/Buy/Rent & Lease all pass `homeCategory` as undefined/'buy'/'rentLease'),
@@ -622,6 +636,35 @@ export class ListingsService {
       ...ORDER_BY[sort ?? 'auto'],
     ];
 
+    // The homepage's Featured rail (ListListingsDto.featuredOnly) — a standalone, un-paginated
+    // request for the best `limit` boosted matches, round-robin'd by the same group key as the
+    // main feed's featured cap so one category can't fill every rail slot either. Short-circuits
+    // before offset/cursor mode entirely: the rail has no pages, it only ever wants the top
+    // `limit` from a fresh top each time it's requested.
+    if (query.featuredOnly) {
+      const allBoosted = await this.prisma.listing.findMany({
+        where: { ...where, boostRank: { not: null } },
+        include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+        orderBy,
+      });
+      const rows = roundRobinByGroup(allBoosted, (row) =>
+        recentMixGroupKey(homeCategory, cityId, row),
+      ).slice(0, limit);
+      const favouritedIds = await this.getFavouritedIds(
+        currentUserId,
+        rows.map((r) => r.id),
+      );
+      const revealStates = await this.contactRevealService.getRevealStatesForListings(
+        currentUserId,
+        rows.map((r) => ({ id: r.id, ownerPhone: r.owner.phone, ownerEmail: r.owner.email })),
+      );
+      return {
+        items: rows.map((row) => this.toCardDto(row, favouritedIds, currentUserId, revealStates)),
+        nextCursor: null,
+        total: allBoosted.length,
+      };
+    }
+
     // Offset mode (numbered `?page=N` pagination — see ListListingsDto.offset) fetches the exact
     // window directly, since the caller already knows the total and doesn't need a `hasMore`
     // look-ahead row the way cursor-based append does. Two explicit branches (rather than
@@ -690,10 +733,11 @@ export class ListingsService {
    * before this existed):
    *
    * 1. Every boosted (`boostRank` not null) match, round-robin'd by `recentMixGroupKey` and capped
-   *    at `BOOST_FEATURED_CAP` — a guaranteed slot per group before any group gets a second one,
-   *    so a boost buyer in a thin category isn't shut out by one with more boosted listings (see
-   *    Part 2 of the plan doc). The overflow past the cap still competes below, unordered by
-   *    boostRank at that point — it's just another row in whichever pool it lands in.
+   *    at `featuredCap` (up to `BOOST_FEATURED_CAP_MAX_FRACTION` of the window) — a guaranteed slot
+   *    per group before any group gets a second one, so a boost buyer in a thin category isn't
+   *    shut out by one with more boosted listings (see Part 2 of the plan doc). The overflow past
+   *    the cap still competes below, unordered by boostRank at that point — it's just another row
+   *    in whichever pool it lands in.
    * 2. The "recent" pool (created within `RECENT_MIX_WINDOW_MS`, not boosted), round-robin'd by
    *    `recentMixGroupKey` so no single group can bury the rest.
    * 3. If 1+2 don't fill the window, the next-oldest non-boosted rows, plainly sorted — same
@@ -726,7 +770,7 @@ export class ListingsService {
     const plainRecentSort: Prisma.ListingOrderByWithRelationInput[] = [{ createdAt: 'desc' }, { id: 'asc' }];
 
     // All matches, boosted or not, still get pulled into the recent/older pools below — capping
-    // `featuredRows` to BOOST_FEATURED_CAP doesn't exclude the overflow from the feed, it just
+    // `featuredRows` to `featuredCap` doesn't exclude the overflow from the feed, it just
     // stops guaranteeing them the top slot. `featuredIds` is how the two later queries avoid
     // showing an already-featured row a second time in its own natural position.
     const [allBoosted, recentPool] = await Promise.all([
@@ -738,6 +782,11 @@ export class ListingsService {
         take: RECENT_MIX_POOL_CAP,
       }),
     ]);
+    // Grows with real demand instead of staying fixed — see BOOST_FEATURED_CAP_MAX_FRACTION's own
+    // comment — but never past half the window, so organic content always keeps the other half.
+    const featuredCap = Math.floor(
+      windowSize * BOOST_FEATURED_CAP_MAX_FRACTION,
+    );
     // Round-robin'd by the same group key as the recent pool below, before slicing to the cap —
     // otherwise whichever category happens to have the most boost buyers wins every guaranteed
     // slot, same "one oversized group buries the rest" problem Part 1 already solved for recent
@@ -746,7 +795,7 @@ export class ListingsService {
     // represented in the cap, not the order within a group.
     const featuredRows = roundRobinByGroup(allBoosted, (row) =>
       recentMixGroupKey(homeCategory, cityId, row),
-    ).slice(0, BOOST_FEATURED_CAP);
+    ).slice(0, featuredCap);
     const featuredIds = new Set(featuredRows.map((row) => row.id));
 
     const mixedRecent = roundRobinByGroup(

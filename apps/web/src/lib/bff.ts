@@ -197,6 +197,9 @@ export interface ListingsQuery {
   offset?: number;
   limit?: number;
   sort?: "auto" | "newest" | "price_asc" | "price_desc" | "popular";
+  /** The homepage's Featured rail — every currently-boosted match, round-robin'd across
+   * categories/cities, ignoring offset/cursor entirely. See ListListingsDto.featuredOnly. */
+  featuredOnly?: boolean;
 }
 
 export function fetchListings(query: ListingsQuery, accessToken?: string): Promise<ListingsPage> {
@@ -222,6 +225,7 @@ export function fetchListings(query: ListingsQuery, accessToken?: string): Promi
   if (query.offset !== undefined) params.set("offset", String(query.offset));
   if (query.limit) params.set("limit", String(query.limit));
   if (query.sort) params.set("sort", query.sort);
+  if (query.featuredOnly) params.set("featuredOnly", "true");
 
   const path = `/listings?${params.toString()}`;
   return accessToken

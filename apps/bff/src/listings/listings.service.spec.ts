@@ -422,16 +422,16 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     expect(findMany).toHaveBeenCalledTimes(3);
   });
 
-  it('caps guaranteed-featured slots at BOOST_FEATURED_CAP, letting the overflow compete normally', async () => {
-    // 10 boosted listings — more than the 8-slot cap (4 slots x 2 pages) — ranked by boostRank,
-    // highest first, same as BoostRotationService's own random reshuffle would order them.
-    const boosted = Array.from({ length: 10 }, (_, i) =>
+  it('caps guaranteed-featured slots at a fraction of the window, letting the overflow compete normally', async () => {
+    // 15 boosted listings — more than the cap (half of the 24-slot window at limit:12 = 12) —
+    // ranked by boostRank, highest first, same as BoostRotationService's own random reshuffle
+    // would order them.
+    const boosted = Array.from({ length: 15 }, (_, i) =>
       row(`boost${i}`, { boostRank: 1 - i * 0.01, boostedUntil: new Date(now + DAY) }),
     );
-    // The 9th/10th boosted listings (past the cap) still show up in the recent pool, same as any
-    // other recent row would — the boostRank:null exclusion was removed from that query for
-    // exactly this reason.
-    const recent = [row('house1', { category: 'house' }), boosted[8], boosted[9]];
+    // The listings past the cap still show up in the recent pool, same as any other recent row
+    // would — the boostRank:null exclusion was removed from that query for exactly this reason.
+    const recent = [row('house1', { category: 'house' }), boosted[12], boosted[13], boosted[14]];
 
     const { service, findMany } = makeMixService((args) => {
       const where = args.where as Record<string, unknown>;
@@ -440,26 +440,36 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
       return [];
     });
 
-    const result = await service.list({ offset: 0, limit: 12 } as never);
-    const ids = result.items.map((i) => i.id);
+    // The cap (12) exactly fills page 1 at limit:12, so the overflow only becomes visible on
+    // page 2 — both pages come from the same underlying 24-slot window (see fetchOffsetPage).
+    const page1 = await service.list({ offset: 0, limit: 12 } as never);
+    const page2 = await service.list({ offset: 12, limit: 12 } as never);
+    const page1Ids = page1.items.map((i) => i.id);
+    const page2Ids = page2.items.map((i) => i.id);
 
-    // The top 8 by boostRank are guaranteed the featured slots, in order.
-    expect(ids.slice(0, 8)).toEqual(['boost0', 'boost1', 'boost2', 'boost3', 'boost4', 'boost5', 'boost6', 'boost7']);
-    // boost8/boost9 aren't dropped for missing the cap — they compete in the recent pool.
-    expect(ids).toEqual(expect.arrayContaining(['boost8', 'boost9', 'house1']));
-    expect(new Set(ids).size).toBe(ids.length); // no duplicate entries from double-counting
+    // The top 12 by boostRank are guaranteed the featured slots, in order, filling page 1 exactly.
+    expect(page1Ids).toEqual(Array.from({ length: 12 }, (_, i) => `boost${i}`));
+    // boost12/13/14 aren't dropped for missing the cap — they compete in the recent pool, visible
+    // on page 2 instead of being guaranteed the top slot.
+    expect(page2Ids).toEqual(
+      expect.arrayContaining(['boost12', 'boost13', 'boost14', 'house1']),
+    );
+    // no duplicates
+    expect(new Set([...page1Ids, ...page2Ids]).size).toBe(
+      page1Ids.length + page2Ids.length,
+    );
     // Still carries the "Featured" badge despite missing the guaranteed slot — isBoosted comes
     // from boostedUntil, independent of whether this row made the cap.
-    expect(result.items.find((i) => i.id === 'boost9')?.isBoosted).toBe(true);
+    expect(page2.items.find((i) => i.id === 'boost14')?.isBoosted).toBe(true);
   });
 
   it('round-robins the featured cap by category, so one boost-heavy category cannot shut out another', async () => {
-    // 9 boosted houses outrank (by boostRank) the account's one boosted apartment — a real
-    // incident once boost adoption passed the 8-slot cap: a flat boostRank-sorted slice gave
-    // every guaranteed slot to whichever category had the most boost buyers, so a seller who
-    // boosted the only listing in their category got none of the 8 guaranteed slots despite
-    // paying the same price as everyone else.
-    const houses = Array.from({ length: 9 }, (_, i) =>
+    // 13 boosted houses outrank (by boostRank) the account's one boosted apartment — a real
+    // incident once boost adoption passed the cap: a flat boostRank-sorted slice gave every
+    // guaranteed slot to whichever category had the most boost buyers, so a seller who boosted
+    // the only listing in their category got none of the guaranteed slots despite paying the
+    // same price as everyone else.
+    const houses = Array.from({ length: 13 }, (_, i) =>
       row(`house${i}`, {
         category: 'house',
         boostRank: 0.99 - i * 0.01,
@@ -472,13 +482,13 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
       boostedUntil: new Date(now + DAY),
     });
     // allBoosted comes back boostRank-sorted (highest first), same as the real query's orderBy —
-    // the apartment, with the lowest boostRank of all 10, sorts last.
+    // the apartment, with the lowest boostRank of all 14, sorts last.
     const boosted = [...houses, apartment];
-    // house7/house8 miss the cap but still show up in the recent pool, same as any other recent
-    // row would — mirrors the overflow handling in the test above.
-    const recentOverflow = [houses[7], houses[8]];
+    // house11/house12 miss the cap (12, half of the 24-slot window) but still show up in the
+    // recent pool, same as any other recent row would — mirrors the overflow handling above.
+    const recentOverflow = [houses[11], houses[12]];
 
-    const { service, findMany } = makeMixService((args) => {
+    const { service } = makeMixService((args) => {
       const where = args.where as Record<string, unknown>;
       if ((where.boostRank as { not: null })?.not === null) return boosted;
       if ((where.createdAt as { gte?: Date })?.gte) return recentOverflow;
@@ -489,10 +499,50 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     const ids = result.items.map((i) => i.id);
 
     // Round-robin gives the lone apartment the 2nd guaranteed slot (right after the single
-    // highest-boostRank house), not the 10th-and-excluded position a flat sort would give it.
-    expect(ids.slice(0, 8)).toEqual(['house0', 'apartment0', 'house1', 'house2', 'house3', 'house4', 'house5', 'house6']);
-    // house7/house8 miss the cap but aren't dropped from the feed entirely.
-    expect(ids).toEqual(expect.arrayContaining(['house7', 'house8']));
+    // highest-boostRank house), not the excluded-entirely position a flat sort would give it.
+    expect(ids).toEqual([
+      'house0',
+      'apartment0',
+      'house1',
+      'house2',
+      'house3',
+      'house4',
+      'house5',
+      'house6',
+      'house7',
+      'house8',
+      'house9',
+      'house10',
+    ]);
+  });
+
+  it('shows the round-robin overflow (house11/house12) on page 2', async () => {
+    const houses = Array.from({ length: 13 }, (_, i) =>
+      row(`house${i}`, {
+        category: 'house',
+        boostRank: 0.99 - i * 0.01,
+        boostedUntil: new Date(now + DAY),
+      }),
+    );
+    const apartment = row('apartment0', {
+      category: 'apartment',
+      boostRank: 0.1,
+      boostedUntil: new Date(now + DAY),
+    });
+    const boosted = [...houses, apartment];
+    const recentOverflow = [houses[11], houses[12]];
+
+    const { service } = makeMixService((args) => {
+      const where = args.where as Record<string, unknown>;
+      if ((where.boostRank as { not: null })?.not === null) return boosted;
+      if ((where.createdAt as { gte?: Date })?.gte) return recentOverflow;
+      return [];
+    });
+
+    const page2 = await service.list({ offset: 12, limit: 12 } as never);
+    expect(page2.items.map((i) => i.id)).toEqual(
+      expect.arrayContaining(['house11', 'house12']),
+    );
   });
 
   it('uses the plain single-query path, unchanged, once past the first 2 pages', async () => {
@@ -526,6 +576,49 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
       // 3 findMany calls (boosted, recent pool, older top-up) means the mix ran, not the plain path.
       expect(findMany).toHaveBeenCalledTimes(3);
     }
+  });
+
+  it('featuredOnly short-circuits to a single round-robin-by-group boosted fetch, ignoring offset/cursor', async () => {
+    const houses = [
+      row('h0', {
+        category: 'house',
+        boostRank: 0.9,
+        boostedUntil: new Date(now + DAY),
+      }),
+      row('h1', {
+        category: 'house',
+        boostRank: 0.8,
+        boostedUntil: new Date(now + DAY),
+      }),
+    ];
+    const apartment = row('a0', {
+      category: 'apartment',
+      boostRank: 0.1,
+      boostedUntil: new Date(now + DAY),
+    });
+    // allBoosted comes back boostRank-sorted (highest first), same as the real query's orderBy.
+    const boosted = [...houses, apartment];
+
+    const { service, findMany } = makeMixService((args) => {
+      const where = args.where as Record<string, unknown>;
+      if ((where.boostRank as { not: null })?.not === null) return boosted;
+      return [];
+    });
+
+    const result = await service.list({
+      featuredOnly: true,
+      limit: 2,
+      offset: 0,
+    });
+
+    // One query (every boosted match), not the mix's 3-call pattern or the plain path's findMany+count.
+    expect(findMany).toHaveBeenCalledTimes(1);
+    // Round-robin puts the apartment 2nd, ahead of the 2nd house, even though it ranks lowest —
+    // same fairness the main feed's featured cap gets, so the rail can't be one category either.
+    expect(result.items.map((i) => i.id)).toEqual(['h0', 'a0']);
+    expect(result.nextCursor).toBeNull();
+    // Reports every boosted match found, not just how many fit in `limit`.
+    expect(result.total).toBe(3);
   });
 });
 

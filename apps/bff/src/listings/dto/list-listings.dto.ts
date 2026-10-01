@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from '@bhavano/types';
 import { AMENITY_KEYS, CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 
@@ -169,4 +169,14 @@ export class ListListingsDto {
   @IsOptional()
   @IsIn(SORT_VALUES)
   sort?: (typeof SORT_VALUES)[number];
+
+  /** The homepage's Featured rail — every currently-boosted match for the rest of this query's
+   * filters, round-robin'd across categories/cities the same way the main feed's featured cap is
+   * (see ListingsService.list and docs/plans/homepage-category-mix-and-boost-page-cap.md), instead
+   * of the normal recent/older feed. `limit` still caps how many come back; `offset`/`cursor` are
+   * ignored — the rail is never paginated, it always asks for the first `limit` from the top. */
+  @IsOptional()
+  @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
+  @IsBoolean()
+  featuredOnly?: boolean;
 }

@@ -211,6 +211,18 @@ this could eventually push organic content past page 2, 3, 4+, which cuts agains
 - **Applies to every home tab**, composing with Part 1 exactly as originally planned — the cap is
   evaluated first (fills up to 8 featured slots total), then Part 1's round-robin fills the rest
   from the recent/older pools, using whichever tab's own group key is in scope.
+- **(2026-10-01) The cap itself is now a fraction of the window, not a flat 8.** Same prod check
+  that motivated the round-robin fix above: a flat cap that doesn't grow with demand just pushes
+  more paying listings into "badge only, no slot" limbo as adoption increases — the cap exists to
+  protect organic content from boost, not to arbitrarily shortchange boost buyers past some
+  adoption threshold nobody chose on purpose. `BOOST_FEATURED_SLOTS_PER_PAGE`/`BOOST_FEATURED_CAP`
+  replaced by `BOOST_FEATURED_CAP_MAX_FRACTION = 0.5` and a per-request `featuredCap =
+  Math.floor(windowSize * 0.5)` — at the homepage's `limit:12`, `windowSize` (`RECENT_MIX_PAGES *
+  limit`) is 24, so the cap is now 12 (up from 8), and organic content is still guaranteed at
+  least half the curated head no matter how much further adoption grows. Still naturally shrinks
+  below the ceiling when fewer listings are actually boosted (`.slice()` only ever takes as many as
+  exist). Existing tests updated for the new numbers; one new test added confirming overflow still
+  surfaces correctly on page 2 once the cap itself spans more than a single page of 12.
 - Was a no-op at build time (0 listings boosted); no longer — see the 2026-10-01 update below, added
   once adoption grew past the cap.
 
