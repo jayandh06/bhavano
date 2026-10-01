@@ -101,7 +101,7 @@ export function BoostPlanSelector({
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <Icon name="boost" size={17} color={colors.gold} />
         <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-          Boost this ad (optional)
+          Boost this ad
           {/* Appended only while a discount is actually live on the option being shown, and
               computed from its own amount/originalAmount rather than a hardcoded "50" — the real
               percent lives on an admin-edited DiscountCode row, so this can't quietly go stale. */}
