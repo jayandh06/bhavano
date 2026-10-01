@@ -541,6 +541,16 @@ export function PostAdWizard({
     !!previewBoostDisplay?.showSelectorOnPreview ||
     !!(category && planPricingSettings && platformFeeApplies(category, planPricingSettings.platformFee));
 
+  // selectedBoostPlan carries its 15-day default (set in selectCategory) even while the preview
+  // selector itself is hidden (admin's showSelectorOnPreview off) — purely so the selector shows
+  // a sensible pre-filled choice the moment it *is* shown. Used raw, that default would make every
+  // ad require publish checkout for a boost the advertiser never saw or had any way to skip, since
+  // BoostPlanSelector (and its Skip link) never even mounts in that case. Gating on
+  // showSelectorOnPreview is what makes a hidden default count as "no boost chosen" everywhere a
+  // real purchase decision is made from it: needsCheckout below, the checkoutIntent sent to
+  // create(), and finishPublishCheckout's own boostSelection. See the web wizard's identical fix.
+  const boostIntent = previewBoostDisplay?.showSelectorOnPreview ? selectedBoostPlan : null;
+
   async function waitForListingLive(listingId: string, token: string): Promise<boolean> {
     for (let i = 0; i < 20; i++) {
       const listing = await fetchListingById(listingId, token);
@@ -560,7 +570,7 @@ export function PostAdWizard({
     const checkout = await startListingPublishCheckout({
       accessToken: token,
       listingId: listing.id,
-      boostSelection: selectedBoostPlan,
+      boostSelection: boostIntent,
     });
     if (checkout.outcome === "cancelled") {
       setPublishCheckoutError("Payment was cancelled — your ad is not live yet.");
@@ -1175,7 +1185,7 @@ export function PostAdWizard({
       const needsCheckout =
         category &&
         planPricingSettings &&
-        listingPublishRequiresCheckout(category, planPricingSettings.platformFee, selectedBoostPlan);
+        listingPublishRequiresCheckout(category, planPricingSettings.platformFee, boostIntent);
 
       const listing = await createListing(
         {
@@ -1202,10 +1212,10 @@ export function PostAdWizard({
           postedAs: profile?.sellerType ? undefined : (sellerTypeFromBroker(attributes.fromBroker) ?? postedAs ?? undefined),
           ...(needsCheckout
             ? {
-                checkoutIntent: selectedBoostPlan
+                checkoutIntent: boostIntent
                   ? {
-                      boostDays: selectedBoostPlan.duration,
-                      includeInstantAlerts: selectedBoostPlan.includeInstantAlerts,
+                      boostDays: boostIntent.duration,
+                      includeInstantAlerts: boostIntent.includeInstantAlerts,
                     }
                   : undefined,
               }
