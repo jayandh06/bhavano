@@ -30,7 +30,21 @@ export class SessionExpiredError extends Error {
   }
 }
 
-function xhrJson<T>(method: string, url: string, accessToken: string, formData: FormData, onProgress?: (fraction: number) => void): Promise<T> {
+/** xhr.onerror only — a connection-level failure (dropped mid-upload, DNS hiccup), never an HTTP
+ * status the server actually returned. That distinction is what makes it safe to retry: a real
+ * 4xx/5xx (bad file, auth, server rejected it) won't get a different answer next time, but a
+ * mobile network blip very often clears within a couple of seconds. */
+class TransientUploadError extends Error {
+  constructor() {
+    super("Network error during upload");
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function xhrJsonOnce<T>(method: string, url: string, accessToken: string, formData: FormData, onProgress?: (fraction: number) => void): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(method, url);
@@ -60,10 +74,26 @@ function xhrJson<T>(method: string, url: string, accessToken: string, formData: 
       }
       reject(new Error(message));
     };
-    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.onerror = () => reject(new TransientUploadError());
 
     xhr.send(formData);
   });
+}
+
+// Total attempts = 1 + this. FormData (and the File inside it) isn't consumed by xhr.send, so the
+// same instance can be resent across attempts.
+const UPLOAD_RETRIES = 2;
+const UPLOAD_RETRY_DELAY_MS = 1500;
+
+async function xhrJson<T>(method: string, url: string, accessToken: string, formData: FormData, onProgress?: (fraction: number) => void): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await xhrJsonOnce<T>(method, url, accessToken, formData, onProgress);
+    } catch (error) {
+      if (!(error instanceof TransientUploadError) || attempt >= UPLOAD_RETRIES) throw error;
+      await sleep(UPLOAD_RETRY_DELAY_MS);
+    }
+  }
 }
 
 /** Wizard-time upload — runs before the listing exists (the client's pre-minted `listingId`). */
