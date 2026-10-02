@@ -168,6 +168,9 @@ export interface ListingCardDto {
   /** The viewer posted this listing. Hides the contact actions on the card, for the same reason
    * as on the detail page — always false for an anonymous viewer, who owns nothing. */
   isOwner: boolean;
+  /** The viewer's referral code (their user id), only on their own listings, so the card's share
+   * link credits them. Never set for anyone else's listing — it would expose the owner's id. */
+  viewerReferralCode?: string;
   /** Still owned by the Bulk Import account (a scraped business that hasn't claimed it). There's
    * nobody to reach, so clients show a "not verified yet" note instead of Message/View Contact,
    * and the BFF refuses both. */
