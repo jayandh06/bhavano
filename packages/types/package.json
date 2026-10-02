@@ -113,6 +113,10 @@
       "types": "./dist/photoLimits.d.ts",
       "default": "./dist/photoLimits.js"
     },
+    "./concurrencyPool": {
+      "types": "./dist/concurrencyPool.d.ts",
+      "default": "./dist/concurrencyPool.js"
+    },
     "./listingSlots": {
       "types": "./dist/listingSlots.d.ts",
       "default": "./dist/listingSlots.js"

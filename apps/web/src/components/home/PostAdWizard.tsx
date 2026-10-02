@@ -85,6 +85,7 @@ import {
   secondaryButtonClass,
 } from "@/lib/formStyles";
 import { uploadVideoDirect } from "@/lib/videoUpload";
+import { runWithConcurrency } from "@bhavano/types/concurrencyPool";
 import {
   PHOTO_SIZE_LABEL,
   VIDEO_SIZE_LABEL,
@@ -186,6 +187,22 @@ function draftAgeLabel(savedAt: number): string {
   const startOfDay = (time: number) => new Date(time).setHours(0, 0, 0, 0);
   const days = Math.round((startOfDay(Date.now()) - startOfDay(savedAt)) / 86_400_000);
   return days <= 0 ? "saved today" : days === 1 ? "saved yesterday" : `saved ${days} days ago`;
+}
+
+/** The Post/Save button's status text while `pending` — see docs/plans/posting-speed-and-progress.md.
+ * Falls back to the old plain "Posting…" before the first upload progress update lands (the brief
+ * window spent validating the phone/session) and once everything's uploaded and the listing is
+ * actually being created. */
+function postAdButtonProgressText(
+  progress: { phase: "photos" | "video" | "creating"; current: number; total: number; fraction?: number } | null,
+): string {
+  if (!progress) return "Posting…";
+  if (progress.phase === "photos") return `Uploading photo ${progress.current} of ${progress.total}…`;
+  if (progress.phase === "video") {
+    const pct = progress.fraction !== undefined ? ` ${Math.round(progress.fraction * 100)}%` : "";
+    return progress.total > 1 ? `Uploading video ${progress.current} of ${progress.total}…${pct}` : `Uploading video…${pct}`;
+  }
+  return "Creating listing…";
 }
 
 /** Records a failure at the Preview/Publish step — as a `post_error` dataLayer event and as a
@@ -388,6 +405,16 @@ export function PostAdWizard({
   // beside the photo picker, and cleared by anything that changes the photos.
   const [photoNotice, setPhotoNotice] = useState<{ kind: "limit" | "file"; text: string } | null>(null);
   const [pending, setPending] = useState(false);
+  // Drives the submit button's status text during the upload sequence — see
+  // docs/plans/posting-speed-and-progress.md. `fraction` is only ever set for the video phase
+  // (byte-level progress needs the direct-XHR path video already uses; photos only report which
+  // one is in flight, not bytes — see that plan for why).
+  const [uploadProgress, setUploadProgress] = useState<{
+    phase: "photos" | "video" | "creating";
+    current: number;
+    total: number;
+    fraction?: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [slotCap, setSlotCap] = useState<ListingSlotCapErrorBody | null>(null);
   const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(
@@ -1240,6 +1267,7 @@ export function PostAdWizard({
 
     setPending(true);
     setError(null);
+    setUploadProgress(null);
 
     // `loggedIn`/`token` are both server-rendered (the latter seeded from an `accessToken`
     // prop) — neither one updates just because a client-side login happened.
@@ -1274,18 +1302,32 @@ export function PostAdWizard({
       return;
     }
 
-    const uploadedPhotos: { photoNo: number; hash: string; ext: string }[] = [];
-    for (let i = 0; i < photos.length; i++) {
+    // Uploaded with up to 3 in flight at once (runWithConcurrency) rather than one at a time —
+    // see docs/plans/posting-speed-and-progress.md: sequential upload of every photo then every
+    // video was the dominant cost in how slow posting felt, since server-side processing
+    // (watermarking, variants) already runs in the background and never blocked this. 3 covers
+    // MAX_PHOTOS (6) in two waves.
+    //
+    // Each photo's own result is captured rather than thrown, because a pool worker throwing
+    // only fails *that* worker — the original behavior (abort the whole submit on the first
+    // failure) has to be reconstructed after the pool settles instead. `photoFailure` also stops
+    // new workers from starting real work once set, though an upload already in flight when it's
+    // set will still land — exactly zero extra uploads past a failure isn't achievable once work
+    // is genuinely concurrent, which is the trade this makes for the speed.
+    type PhotoFailure = { kind: "unreadable" | "needsLogin" | "other"; photoNo: number; message?: string };
+    let photosCompleted = 0;
+    let photoFailure: PhotoFailure | null = null;
+    const photoResults = await runWithConcurrency(photos, 3, async (picked, i) => {
       const photoNo = i + 1;
-      // Read up front so a photo whose file iOS has since deleted fails here, by number, instead of
-      // being sent as a truncated upload.
+      if (photoFailure) return null;
+      // Read up front so a photo whose file iOS has since deleted fails here, by number, instead
+      // of being sent as a truncated upload.
       let file: File;
       try {
-        file = await inMemoryCopy(photos[i].file);
+        file = await inMemoryCopy(picked.file);
       } catch {
-        setPending(false);
-        setError(`Photo ${photoNo} can no longer be read. Remove it, add it again, then tap Post ad.`);
-        return;
+        photoFailure ??= { kind: "unreadable", photoNo };
+        return null;
       }
       const formData = new FormData();
       formData.set("file", file);
@@ -1293,48 +1335,64 @@ export function PostAdWizard({
       formData.set("photoNo", String(photoNo));
       const uploadResult = await uploadPhotoAction(formData);
       if (uploadResult.error || !uploadResult.hash || !uploadResult.ext) {
-        setPending(false);
-        // A session can lapse between onSubmit's own upfront check and this request (a slow
-        // upload in between, a token that expired in the interim) — reopen the login dialog
-        // rather than leaving the advertiser looking at a plain error for something a login
-        // fixes. onSuccess resumes the whole submit, same as the upfront check's own requireLogin.
-        if (uploadResult.error === NEEDS_LOGIN_ERROR) {
-          requireLogin({ onSuccess: () => void onSubmit() });
-        } else {
-          setError(uploadResult.error ?? "Failed to upload a photo");
-        }
-        return;
+        photoFailure ??= {
+          kind: uploadResult.error === NEEDS_LOGIN_ERROR ? "needsLogin" : "other",
+          photoNo,
+          message: uploadResult.error,
+        };
+        return null;
       }
-      uploadedPhotos.push({
-        photoNo,
-        hash: uploadResult.hash,
-        ext: uploadResult.ext,
-      });
+      photosCompleted++;
+      setUploadProgress({ phase: "photos", current: photosCompleted, total: photos.length });
+      return { photoNo, hash: uploadResult.hash, ext: uploadResult.ext };
+    });
+
+    // Asserted, not just annotated — TS's control-flow narrowing gets confused by a `let`
+    // mutated only inside the pool's async closures above (it can't see that `await
+    // runWithConcurrency(...)` guarantees every worker already ran), and otherwise narrows
+    // `photoFailure` to `null` here regardless of the declared type, making every `.kind`/
+    // `.photoNo`/`.message` access below a false "does not exist on type 'never'" error.
+    const failure = photoFailure as PhotoFailure | null;
+    if (failure) {
+      setPending(false);
+      // A session can lapse between onSubmit's own upfront check and this request (a slow
+      // upload in between, a token that expired in the interim) — reopen the login dialog
+      // rather than leaving the advertiser looking at a plain error for something a login
+      // fixes. onSuccess resumes the whole submit, same as the upfront check's own requireLogin.
+      if (failure.kind === "needsLogin") {
+        requireLogin({ onSuccess: () => void onSubmit() });
+      } else if (failure.kind === "unreadable") {
+        setError(`Photo ${failure.photoNo} can no longer be read. Remove it, add it again, then tap Post ad.`);
+      } else {
+        setError(failure.message ?? "Failed to upload a photo");
+      }
+      return;
     }
+    const uploadedPhotos = photoResults.filter((r): r is NonNullable<typeof r> => r !== null);
 
     // Video never blocks the post — if a single upload fails, drop it and continue rather than
     // aborting the whole submission the way a failed photo upload does (photos are required,
     // video is additive). ListingsService.create() also re-validates and silently trims against
     // the caller's current entitlement, so this array is best-effort even before it gets there.
-    const uploadedVideos: {
-      storageId: string;
-      ext: string;
-      durationSec: number;
-      sizeBytes: number;
-    }[] = [];
-    for (const video of assistedMode ? [] : videos) {
+    // Concurrency 2, not 3 like photos — matches the BFF's own global video-upload cap
+    // (MAX_CONCURRENT_VIDEO_UPLOADS in video-upload.guard-rails.ts) exactly; going higher only
+    // trades client-side parallelism for more 503s from that shared limit.
+    const videosToUpload = assistedMode ? [] : videos;
+    let videosCompleted = 0;
+    const uploadedVideoResults = await runWithConcurrency(videosToUpload, 2, async (video, i) => {
       try {
-        uploadedVideos.push(
-          await uploadVideoDirect(video.file, listingId, activeToken),
+        const result = await uploadVideoDirect(video.file, listingId, activeToken, (fraction) =>
+          setUploadProgress({ phase: "video", current: i + 1, total: videosToUpload.length, fraction }),
         );
+        videosCompleted++;
+        setUploadProgress({ phase: "video", current: videosCompleted, total: videosToUpload.length });
+        return result;
       } catch (uploadError) {
-        setError(
-          uploadError instanceof Error
-            ? uploadError.message
-            : "Failed to upload a video",
-        );
+        setError(uploadError instanceof Error ? uploadError.message : "Failed to upload a video");
+        return null;
       }
-    }
+    });
+    const uploadedVideos = uploadedVideoResults.filter((r): r is NonNullable<typeof r> => r !== null);
 
     const needsCheckout =
       category &&
@@ -1370,6 +1428,7 @@ export function PostAdWizard({
           }
         : {}),
     };
+    setUploadProgress({ phase: "creating", current: 1, total: 1 });
     const result =
       assistedMode && assistedSeller.sellerType
         ? await createAssistedListingAction({
@@ -2033,7 +2092,7 @@ export function PostAdWizard({
               disabled={pending}
               className={`ml-auto ${primaryButtonClass}`}
             >
-              {pending ? "Posting…" : assistedMode ? "Save for seller" : "Post ad"}
+              {pending ? postAdButtonProgressText(uploadProgress) : assistedMode ? "Save for seller" : "Post ad"}
             </button>
           </div>
           </div>

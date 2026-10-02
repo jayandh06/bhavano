@@ -30,13 +30,18 @@ export class SessionExpiredError extends Error {
   }
 }
 
-/** xhr.onerror only — a connection-level failure (dropped mid-upload, DNS hiccup), never an HTTP
- * status the server actually returned. That distinction is what makes it safe to retry: a real
- * 4xx/5xx (bad file, auth, server rejected it) won't get a different answer next time, but a
- * mobile network blip very often clears within a couple of seconds. */
+/** A connection-level failure (`xhr.onerror` — dropped mid-upload, DNS hiccup) or a 503 the BFF
+ * returns on purpose (`withVideoUploadSlot`, `apps/bff/src/uploads/video-upload.guard-rails.ts` —
+ * a global in-process cap of `MAX_CONCURRENT_VIDEO_UPLOADS` across every user, not just this one).
+ * Both clear on their own within a couple of seconds, unlike a real 4xx (bad file, auth) which
+ * won't get a different answer next time — that distinction is what makes these two, and only
+ * these two, safe to retry. Became reachable in practice once the wizard started uploading videos
+ * with real client-side concurrency (see docs/plans/posting-speed-and-progress.md) — at
+ * concurrency 2, hitting the server's own cap of 2 across *other* users' uploads is no longer the
+ * rare event it was when every upload ran strictly one at a time. */
 class TransientUploadError extends Error {
-  constructor() {
-    super("Network error during upload");
+  constructor(message = "Network error during upload") {
+    super(message);
   }
 }
 
@@ -72,7 +77,10 @@ function xhrJsonOnce<T>(method: string, url: string, accessToken: string, formDa
       } catch {
         // Keep the generic message above.
       }
-      reject(new Error(message));
+      // 503 specifically (not every 5xx) — see TransientUploadError's own doc comment. The
+      // server's own message ("Too many video uploads in progress…") carries through so a
+      // visitor who exhausts every retry still sees why, not a generic network-error string.
+      reject(xhr.status === 503 ? new TransientUploadError(message) : new Error(message));
     };
     xhr.onerror = () => reject(new TransientUploadError());
 
