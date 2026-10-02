@@ -1,8 +1,8 @@
 # Bhavano Referral Program: Implementation Plan
 
-**Status (2026-10-02): Phases 1-4 built and verified** (deep linking + attribution capture, reward
-engine, approval/takedown hooks, anti-abuse). Phases 5-6 (admin/funnel, notifications/remaining UI)
-not started. Not yet deployed — holding per explicit instruction to bundle the whole feature into
+**Status (2026-10-02): Phases 1-5 built and verified** (deep linking + attribution capture, reward
+engine, approval/takedown hooks, anti-abuse, admin dashboard + funnel). Phase 6 (notifications and
+remaining UI) not started. Not yet deployed — holding per explicit instruction to bundle the whole feature into
 one deploy rather than shipping phase by phase. See each phase's section below for what actually
 landed vs. what changed from the original plan during implementation.
 
@@ -183,8 +183,7 @@ policy-violation takedown — and confirming with product before building the br
   sold or deactivated.
 - **BR-9.** `User.referralFrozenAt` / `referralFrozenReason` stop *new* grants only. Credits
   already granted stay spendable (freezing stops further abuse; it isn't a clawback). The
-  freeze/unfreeze/reverse actions and writes to `ReferralAdminAction` are Phase 5, so nothing sets
-  `referralFrozenAt` yet.
+  freeze/unfreeze actions that set it are in Phase 5.
 - **Not built:** the 3/5-referrals-a-month bonus tiers and the Top Agent badge (the schema already
   has `bonusTier`), the welcome reward, and payment-instrument matching (out of scope for v1).
 - **Still needs sign-off:** keeping the phone hash after account deletion (the privacy tension
@@ -231,7 +230,43 @@ credits, or only block new grants? BR-7 timing (gate at grant, as proposed, vs. 
 BR-2's phone-hash retention needs explicit privacy/product sign-off given the tension with the
 account-deletion erasure flow, plus a concrete salt/hash strategy.
 
-## Phase 5 — Admin dashboard + funnel tracking
+## Phase 5 — Admin dashboard + funnel tracking — **BUILT**
+
+**As built (2026-10-02)** — no migration (all tables came from Phases 1-4):
+- **BFF.** `ReferralsAdminService` (`apps/bff/src/referrals/referrals-admin.service.ts`), exported
+  from `ReferralsModule`, which `AdminModule` now imports. Routes on `AdminController`:
+  - `GET admin/referrals`: filters `status`, `frozen` (referrer frozen), `referrerId`; paginated,
+    newest signup first. Also returns `flaggedTotal` (status `blocked`).
+  - `GET admin/referrals/funnel?sinceDays=7|30|90` (omit for all time): link clicks, signups,
+    first ad approved, credits granted, used, revoked, and expired unused, plus flagged, reversed,
+    and the count of skipped rewards per `rewardSkippedReason`. Each step counts events whose own
+    timestamp falls in the window, so it is an activity view, not a cohort.
+  - `GET admin/referrals/:id`: the referral, referrer stats (referrals made, base credits this IST
+    month, credits available, live approved ads), and the audit log (actions on this referral plus
+    freeze/unfreeze on its referrer).
+  - `POST admin/referrals/:id/approve {note?}`: only for `blocked` (same-device flag). If the first
+    ad isn't approved yet, the referral goes back to `signed_up` and is judged normally later. If
+    it is, the other Phase 4 rules run now: the credit is granted, or the remaining skip reason is
+    recorded.
+  - `POST admin/referrals/:id/reverse {reason}`: status `reversed`; an unused credit is revoked
+    (`Reversed by admin: …`); a credit already spent isn't clawed back, same as BR-5. The BR-2
+    ledger entry stays. Rejected if already reversed.
+  - `POST admin/users/:id/referral-freeze {reason}` / `referral-unfreeze {note?}` (BR-9).
+  - `GET/PATCH admin/referral-settings`: the `ReferralSetting` singleton (upserted).
+  - Every action writes a `ReferralAdminAction` row with the admin's id (`approve_flag`,
+    `reverse`, `freeze`, `unfreeze`).
+- **Admin UI.** Top-level **Referrals** nav item (the open question below):
+  - `/referrals`: funnel cards with 7/30/90-day and all-time presets, then filter tabs (All,
+    Flagged, Awaiting first ad, Ad approved with no credit, Rewarded, Reversed, Frozen referrers)
+    over a table linking to both users and the detail page.
+  - `/referrals/[id]`: details, credit state, Clear flag / Reverse / Freeze or Unfreeze referrer
+    (reason prompts), referrer stats, and the action log.
+  - `/settings/referrals` (**Referral rewards** in the nav): edits the settings. Changes apply only
+    to credits granted afterwards, because each credit snapshots its boost length and expiry.
+- **Not built:** a per-user referral section on `/users/[id]` (use `/referrals?referrerId=…`, linked
+  from the detail page). Freezing is done from a referral's page.
+
+Original plan:
 
 **BFF** — new routes on the existing single `AdminController` (matches how every other admin
 feature works today, confirmed no per-feature controllers exist): `GET admin/referrals` (list +
