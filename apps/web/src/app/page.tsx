@@ -163,6 +163,22 @@ export default async function HomePage({
   const totalPages = Math.ceil(listingsPage.total / PAGE_SIZE);
   if (page > 1 && page > totalPages) notFound();
 
+  // Below this many, a dedicated horizontal rail reads as sparse rather than a showcase — fold
+  // those few into the top of the main grid instead. The featured query is only scoped to
+  // homeCategory/cityId (not the grid's propertyType/bedrooms/areaIds/etc.), so an item here isn't
+  // guaranteed to already be in listingsPage.items — dedupe by id and prepend explicitly rather
+  // than relying on the main query's own boostRank-first sort, which only surfaces items that
+  // happen to also match every active filter. Capped back to PAGE_SIZE so merging never grows a
+  // page past its normal size.
+  const showFeaturedRail = featuredPage.items.length >= 4;
+  const gridItems = showFeaturedRail
+    ? listingsPage.items
+    : (() => {
+        const existingIds = new Set(listingsPage.items.map((i) => i.id));
+        const extra = featuredPage.items.filter((i) => !existingIds.has(i.id));
+        return [...extra, ...listingsPage.items].slice(0, PAGE_SIZE);
+      })();
+
   const activeTab = HOME_TABS.find((t) => t.value === category) ?? HOME_TABS[0];
   /** The asset the homepage is currently narrowed to, from either spelling — the raw
    * `?listingCategory=` bypass or the tab row's own `?propertyType=`. */
@@ -270,7 +286,7 @@ export default async function HomePage({
         {adLanding && (
           <AdLandingCard intent={adLanding.intent} preview={adLanding.preview} freeToPost={freeToPost} />
         )}
-        <FeaturedRail items={featuredPage.items} />
+        {showFeaturedRail && <FeaturedRail items={featuredPage.items} />}
         {/* The All tab mixes every category together, so none of these filters mean one
           * consistent thing across a PG, a plot, and a sofa in the same grid — same reasoning as
           * BrowseListingsView's own filter row, which hides itself the same way. Picking a real
@@ -327,7 +343,7 @@ export default async function HomePage({
           <PickAnAreaNotice />
         ) : (
         <ListingGrid
-          items={listingsPage.items}
+          items={gridItems}
           requirement={{
             label: heading,
             criteria: {
