@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { AppState } from "react-native";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UnreadUpdateEvent } from "@bhavano/types";
+import type { RequirementFeedFilters } from "@bhavano/types/requirementFeed";
 import {
   fetchAreas,
   fetchCities,
@@ -15,6 +16,8 @@ import {
   fetchMyListing,
   fetchMyListings,
   fetchPaymentHistory,
+  fetchRequirementsFeed,
+  fetchRequirementsFeedSummary,
   fetchUnreadCount,
   type ListingsQuery,
 } from "./bffClient";
@@ -90,6 +93,27 @@ export function useMyListingQuery(id: string, accessToken: string | null) {
     queryKey: ["myListing", id, accessToken],
     queryFn: () => fetchMyListing(accessToken!, id),
     enabled: !!accessToken,
+  });
+}
+
+/** The requirements browse feed — mobile counterpart to web's `/requirements` page fetch.
+ * `enabled` on `accessToken` alone: the BFF route itself decides `eligible` (declared seller
+ * type, Agent Pro, or a live listing), not this hook. */
+export function useRequirementsFeedQuery(filters: RequirementFeedFilters, accessToken: string | null) {
+  return useQuery({
+    queryKey: ["requirementsFeed", filters, accessToken],
+    queryFn: () => fetchRequirementsFeed(filters, accessToken!),
+    enabled: !!accessToken,
+  });
+}
+
+/** Public counts-only view, shown instead of the full feed to a signed-out visitor or one not yet
+ * eligible for it. */
+export function useRequirementsFeedSummaryQuery(cityId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["requirementsFeedSummary", cityId ?? ""],
+    queryFn: () => fetchRequirementsFeedSummary(cityId),
+    enabled,
   });
 }
 

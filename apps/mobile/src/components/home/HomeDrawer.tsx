@@ -16,8 +16,11 @@ const DRAWER_WIDTH = 300;
  * The hamburger drawer opened from `CollapsedHeaderBar` — mirrors the web app's mobile
  * `HeaderDrawer` item-for-item (city, login CTA, Browse category links, Tools, Plans, divider,
  * For Owners, Help, divider, account, divider, Appearance), not just the same idea loosely
- * reimplemented. Two deliberate departures from web, both because native's own navigation already
- * covers the ground differently:
+ * reimplemented. Web's HeaderDrawer also has a Requirements link here, but mobile's placement for
+ * that feature is its own owner/agent-only 5th tab plus an Account-screen row instead (see
+ * `(tabs)/_layout.tsx`'s `requirements` tab and docs/plans/requirements-feed-for-owners-agents.md),
+ * not a second entry point duplicating the tab. Two deliberate departures from web, both because
+ * native's own navigation already covers the ground differently:
  *  - No internal "Bhavano + ✕" header row — web's drawer doesn't have one either (its own
  *    hamburger button already toggles to a ✕ to close), and neither does the collapsed bar this
  *    opens from.

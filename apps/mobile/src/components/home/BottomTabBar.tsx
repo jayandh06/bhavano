@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { usePathname, useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { UserProfileDto } from "@bhavano/types";
 import { formatUnreadCount } from "@bhavano/types/unreadCount";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
@@ -25,8 +26,23 @@ const TABS: TabDef[] = [
   { key: "index", path: "/", label: "Home", icon: "home", alsoActiveOn: ["/listing"] },
   { key: "messages", path: "/messages", label: "Messages", icon: "message", authRequired: true },
   { key: "post", path: "/post", label: "Post Ad", icon: "plus" },
+  { key: "requirements", path: "/requirements", label: "Requirements", icon: "requirements", authRequired: true },
   { key: "account", path: "/account", label: "Account", icon: "user", authRequired: true, alsoActiveOn: ["/saved", "/purchases", "/my-listings", "/my-requirements"] },
 ];
+
+/** Same rule `RequirementFeedService.viewer()` (requirement-feed.service.ts) uses to gate the
+ * feed itself, approximated from what's already loaded in `profile` rather than a second request
+ * just to decide whether to show a tab — `activeListingCount` stands in for "has a live listing"
+ * (the server's exact check also excludes Bulk Import and requires `moderationState: 'approved'`,
+ * narrower cases this count doesn't separate out, but good enough for "is this worth showing
+ * proactively"). Never hides the feature outright: an owner/agent this misses on a technicality
+ * still reaches it from the Account screen's own row, same as before they're eligible at all. */
+function looksLikeOwnerOrAgent(profile: UserProfileDto | null): boolean {
+  if (!profile) return false;
+  if (profile.sellerType) return true;
+  if (profile.activeListingCount > 0) return true;
+  return !!profile.agentProUntil && new Date(profile.agentProUntil).getTime() > Date.now();
+}
 
 function isActive(pathname: string, tab: TabDef): boolean {
   const base = String(tab.path);
@@ -60,8 +76,9 @@ export function BottomTabBar() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { isLoggedIn, requireLogin, accessToken } = useHomeSheets();
+  const { isLoggedIn, requireLogin, accessToken, profile } = useHomeSheets();
   const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
+  const visibleTabs = TABS.filter((tab) => tab.key !== "requirements" || looksLikeOwnerOrAgent(profile));
 
   return (
     <View
@@ -75,7 +92,7 @@ export function BottomTabBar() {
         paddingBottom: insets.bottom + 6,
       }}
     >
-      {TABS.map((tab) => {
+      {visibleTabs.map((tab) => {
         const active = isActive(pathname, tab);
         const color = active ? colors.onGreen : colors.onGreenMuted;
         const showUnread = tab.key === "messages" && isLoggedIn && unreadCount > 0;

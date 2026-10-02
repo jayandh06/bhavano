@@ -2,6 +2,12 @@ import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
+import {
+  encodeRequirementFeedQuery,
+  type RequirementFeedDto,
+  type RequirementFeedFilters,
+  type RequirementFeedSummaryDto,
+} from "@bhavano/types/requirementFeed";
 import type {
   Area,
   BoostPricingPreviewDto,
@@ -643,6 +649,27 @@ export function createRequirement(accessToken: string, input: CreateRequirementI
 
 export function fetchMyRequirements(accessToken: string): Promise<RequirementDto[]> {
   return authedBffFetch(accessToken, "/requirements/mine");
+}
+
+/** The owner/agent requirements browse feed — mobile counterpart to web's `fetchRequirementFeed`
+ * (bff.ts) and `/requirements` page. `filters.city`/`.areas` are always plain ids here, never
+ * slugs: unlike web, mobile has no SEO path to keep them readable in, so there's no slug round
+ * trip to do — the BFF's own matcher compares `city` against `cityId` by plain equality either
+ * way (requirement-feed.ts). See docs/plans/requirements-feed-for-owners-agents.md. */
+export function fetchRequirementsFeed(
+  filters: RequirementFeedFilters,
+  accessToken: string,
+): Promise<RequirementFeedDto> {
+  const params = new URLSearchParams(encodeRequirementFeedQuery(filters));
+  return authedBffFetch(accessToken, `/requirements/feed?${params.toString()}`);
+}
+
+/** Public: counts only, no cards — shown to a signed-out visitor or one not yet eligible
+ * (`RequirementFeedDto.eligible` false) in place of the full feed. */
+export function fetchRequirementsFeedSummary(cityId?: string): Promise<RequirementFeedSummaryDto> {
+  const params = new URLSearchParams();
+  if (cityId) params.set("city", cityId);
+  return bffFetch<RequirementFeedSummaryDto>(`/requirements/feed/summary?${params.toString()}`);
 }
 
 export function fetchMyRequirement(accessToken: string, id: string): Promise<RequirementDto> {

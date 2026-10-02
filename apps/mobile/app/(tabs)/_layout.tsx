@@ -13,6 +13,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="messages" />
       <Tabs.Screen name="post" />
+      <Tabs.Screen name="requirements" />
       <Tabs.Screen name="account" />
     </Tabs>
   );
