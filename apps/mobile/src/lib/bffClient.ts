@@ -419,34 +419,112 @@ const MIME_BY_EXT: Record<string, string> = {
   jpeg: "image/jpeg",
 };
 
+// Both uploadPhoto and uploadVideo go through XMLHttpRequest, not fetch — mirrors
+// apps/web/src/lib/videoUpload.ts's shape exactly (same TransientUploadError/retry structure),
+// ported here so the wizard can show real upload progress and run several uploads concurrently
+// (see docs/plans/posting-speed-and-progress.md, Phase 4). RN's XMLHttpRequest is a separate
+// native module from whichever `fetch` is globally aliased (EXPO_PUBLIC_USE_RN_FETCH only affects
+// `fetch`), and has always supported `xhr.upload.onprogress` for a multipart body.
+
+/** A connection-level failure (`xhr.onerror`) or a 503 the BFF returns on purpose
+ * (`MAX_CONCURRENT_VIDEO_UPLOADS` in `apps/bff/src/uploads/video-upload.guard-rails.ts`, a global
+ * cap across every user's video uploads, not just this one). Both clear on their own within a
+ * couple of seconds, unlike a real 4xx, which won't get a different answer next time — that's what
+ * makes these two, and only these two, safe to retry. */
+class TransientUploadError extends Error {
+  constructor(message = "Network error during upload") {
+    super(message);
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function xhrJsonOnce<T>(
+  method: string,
+  url: string,
+  accessToken: string,
+  formData: FormData,
+  onProgress?: (fraction: number) => void,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url);
+    xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+
+    if (onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress(event.loaded / event.total);
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as T);
+        } catch {
+          reject(new Error("Unexpected response from server"));
+        }
+        return;
+      }
+      let message = `Upload failed (${xhr.status})`;
+      try {
+        const parsed = JSON.parse(xhr.responseText) as { message?: string | string[] };
+        if (parsed.message) message = Array.isArray(parsed.message) ? parsed.message.join(", ") : parsed.message;
+      } catch {
+        // Keep the generic message above.
+      }
+      // 503 specifically (not every 5xx) — see TransientUploadError's own doc comment.
+      reject(xhr.status === 503 ? new TransientUploadError(message) : new Error(message));
+    };
+    xhr.onerror = () => reject(new TransientUploadError());
+
+    xhr.send(formData);
+  });
+}
+
+// Total attempts = 1 + this. FormData (and the file part inside it) isn't consumed by xhr.send, so
+// the same instance can be resent across attempts.
+const UPLOAD_RETRIES = 2;
+const UPLOAD_RETRY_DELAY_MS = 1500;
+
+async function xhrJson<T>(
+  method: string,
+  url: string,
+  accessToken: string,
+  formData: FormData,
+  onProgress?: (fraction: number) => void,
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await xhrJsonOnce<T>(method, url, accessToken, formData, onProgress);
+    } catch (error) {
+      if (!(error instanceof TransientUploadError) || attempt >= UPLOAD_RETRIES) throw error;
+      await sleep(UPLOAD_RETRY_DELAY_MS);
+    }
+  }
+}
+
 export async function uploadPhoto(
   fileUri: string,
   listingId: string,
   photoNo: number,
   accessToken: string,
+  onProgress?: (fraction: number) => void,
 ): Promise<{ hash: string; ext: string }> {
   const formData = new FormData();
   const filename = fileUri.split("/").pop() ?? "photo.jpg";
   const ext = filename.split(".").pop()?.toLowerCase();
   const mimeType = (ext && MIME_BY_EXT[ext]) ?? "image/jpeg";
   // RN multipart file field. Requires EXPO_PUBLIC_USE_RN_FETCH=1 so global fetch is RN's
-  // (expo/fetch rejects this shape with "Unsupported FormDataPart implementation").
+  // (expo/fetch rejects this shape with "Unsupported FormDataPart implementation") — XHR itself
+  // isn't affected by that flag, but the app sets it anyway for fetch's other callers.
   formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
   formData.append("listingId", listingId);
   formData.append("photoNo", String(photoNo));
 
-  // Not routed through bffFetch/authedBffFetch — those force a JSON Content-Type, which would
-  // strip the multipart boundary fetch otherwise auto-generates for a FormData body.
-  const res = await fetch(`${BFF_URL}/uploads`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: formData,
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`BFF upload failed (${res.status}): ${body}`);
-  }
-  return res.json() as Promise<{ hash: string; ext: string }>;
+  return xhrJson<{ hash: string; ext: string }>("POST", `${BFF_URL}/uploads`, accessToken, formData, onProgress);
 }
 
 const VIDEO_MIME_BY_EXT: Record<string, string> = {
@@ -457,12 +535,14 @@ const VIDEO_MIME_BY_EXT: Record<string, string> = {
   mkv: "video/x-matroska",
 };
 
-/** Mirrors uploadPhoto's shape exactly (raw fetch, RN's `{uri,name,type}` multipart field, not
- * routed through authedBffFetch's JSON-forcing wrapper) — `/uploads/video` is the same one-request
- * upload endpoint the website's `uploadVideoDirect` hits, just via RN `fetch` instead of the XHR
- * that exists there only to get upload-progress events and dodge a Next.js Server Action's 1MB
- * body limit, neither of which applies to a direct native network call. */
-export async function uploadVideo(fileUri: string, listingId: string, accessToken: string): Promise<CreatedVideoInput> {
+/** Mirrors uploadPhoto's shape exactly — `/uploads/video` is the same one-request upload endpoint
+ * the website's `uploadVideoDirect` hits. */
+export async function uploadVideo(
+  fileUri: string,
+  listingId: string,
+  accessToken: string,
+  onProgress?: (fraction: number) => void,
+): Promise<CreatedVideoInput> {
   const formData = new FormData();
   const filename = fileUri.split("/").pop() ?? "video.mp4";
   const ext = filename.split(".").pop()?.toLowerCase();
@@ -470,16 +550,7 @@ export async function uploadVideo(fileUri: string, listingId: string, accessToke
   formData.append("file", { uri: fileUri, name: filename, type: mimeType } as unknown as Blob);
   formData.append("listingId", listingId);
 
-  const res = await fetch(`${BFF_URL}/uploads/video`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` },
-    body: formData,
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`BFF video upload failed (${res.status}): ${body}`);
-  }
-  return res.json() as Promise<CreatedVideoInput>;
+  return xhrJson<CreatedVideoInput>("POST", `${BFF_URL}/uploads/video`, accessToken, formData, onProgress);
 }
 
 export function sendOtp(phone: string): Promise<{ success: true }> {

@@ -53,6 +53,9 @@ progress UI.
   this change shows video size, not sequential uploading, is still the dominant cost.
 - **Web ships first, mobile is a fast-follow** — validates the concurrency numbers and the new
   503-retry behavior against real traffic before a second client adds the same load pattern.
+  **Update**: mobile (Phase 4) was explicitly brought forward and implemented immediately after
+  Phase 1-3 shipped, overriding the "wait and observe" sequencing above — the user asked to
+  continue with mobile right away rather than waiting for a web-only observation period.
 
 ## Approach
 
@@ -100,15 +103,26 @@ Lowest-risk, ships independently of the phases below.
 - Real-world impact is modest (most listings carry 0-1 video) — included for consistency and
   because skipping the 503 retry fix while adding concurrency would be a net-new regression.
 
-### Phase 4 — Mobile fast-follow (after web ships, same approach)
+### Phase 4 — Mobile fast-follow (after web ships, same approach) — done
 
-- `apps/mobile/src/lib/bffClient.ts`: port `uploadPhoto`/`uploadVideo` (currently plain `fetch`,
-  no progress) to `XMLHttpRequest`-based versions exposing `onProgress` — a direct port of web's
-  `videoUpload.ts` shape, since RN's XHR supports `xhr.upload.onprogress` the same way.
-- Import the same `runWithConcurrency` from `packages/types/src/concurrencyPool.ts`; apply
-  concurrency 3/2 at the same two loop sites
-  (`apps/mobile/src/components/home/PostAdWizard.tsx:1170` photos, `:1181` video).
-  Replace the bare `ActivityIndicator` with the same progress text pattern as web.
+- `apps/mobile/src/lib/bffClient.ts`: `uploadPhoto`/`uploadVideo` ported from plain `fetch` to
+  `XMLHttpRequest`-based versions exposing `onProgress`, mirroring `apps/web/src/lib/videoUpload.ts`'s
+  shape exactly, including its `TransientUploadError`/503-retry logic (`UPLOAD_RETRIES = 2`,
+  `UPLOAD_RETRY_DELAY_MS = 1500`) — the same global `MAX_CONCURRENT_VIDEO_UPLOADS` cap applies
+  across both clients, so mobile needs the same retry, not just web. RN's own `XMLHttpRequest` is a
+  separate native module from whichever `fetch` is globally aliased (`EXPO_PUBLIC_USE_RN_FETCH`
+  only affects `fetch`) and has always supported `xhr.upload.onprogress` for a multipart body — no
+  session-expiry pre-check was ported (web's `isAccessTokenValid` check), since mobile's own upload
+  call sites had no equivalent before this change.
+- `apps/mobile/src/components/home/PostAdWizard.tsx`: imports `runWithConcurrency`; the photo loop
+  (previously a sequential `for`) now runs at concurrency 3 and the video loop at concurrency 2,
+  both via `runWithConcurrency`, with the same `uploadProgress` state shape and
+  `postAdButtonProgressText` helper as web. Mobile's failure semantics were already simpler than
+  web's (no Server-Action-specific "needs login"/"unreadable file" cases to preserve) — a thrown
+  photo-upload error rejects the whole `runWithConcurrency` call the same way it aborted the old
+  sequential loop, so no extra bookkeeping (web's `photoFailure` closure) was needed. The submit
+  button's `ActivityIndicator` was replaced with the progress text itself (not text alongside a
+  spinner), matching web's button treatment.
 
 ## Not doing (this pass)
 
@@ -143,3 +157,9 @@ Lowest-risk, ships independently of the phases below.
    Post a real ad through production after deploy, including at least one video, and confirm the
    listing publishes correctly with its photos/video intact.
 6. Phase 4: same manual checks on a real device (iOS + Android) before considering mobile done.
+   Note: `pnpm --filter mobile exec tsc --noEmit` crashes with a pre-existing `RangeError: Maximum
+   call stack size exceeded` in this TypeScript/codebase combination, unrelated to this change —
+   verified by the crash reproducing before this phase's edits too. Mobile also has no eslint
+   configured. Phase 4 was verified by careful manual review against the web implementation instead
+   of a clean compiler/lint pass; an on-device check (iOS + Android) is still needed before shipping
+   a build.

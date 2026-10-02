@@ -54,6 +54,7 @@ import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import { AREA_UNIT_LABELS, areaUnitShortLabel, formatArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { MAX_VIDEO_BYTES, resolveVideoEntitlement } from "@bhavano/types/videoLimits";
+import { runWithConcurrency } from "@bhavano/types/concurrencyPool";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
@@ -228,6 +229,22 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 type Step = "category" | "transactionType" | "details" | "review" | "success";
 
+/** The Post ad button's status text while `pending` — see docs/plans/posting-speed-and-progress.md.
+ * Falls back to the old plain "Posting…" before the first upload progress update lands (the brief
+ * window spent validating the phone/session) and once everything's uploaded and the listing is
+ * actually being created. */
+function postAdButtonProgressText(
+  progress: { phase: "photos" | "video" | "creating"; current: number; total: number; fraction?: number } | null,
+): string {
+  if (!progress) return "Posting…";
+  if (progress.phase === "photos") return `Uploading photo ${progress.current} of ${progress.total}…`;
+  if (progress.phase === "video") {
+    const pct = progress.fraction !== undefined ? ` ${Math.round(progress.fraction * 100)}%` : "";
+    return progress.total > 1 ? `Uploading video ${progress.current} of ${progress.total}…${pct}` : `Uploading video…${pct}`;
+  }
+  return "Creating listing…";
+}
+
 export function PostAdWizard({
   cities,
   defaultCityId,
@@ -327,6 +344,16 @@ export function PostAdWizard({
   const [videos, setVideos] = useState<SelectedVideo[]>([]);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Drives the submit button's status text during the upload sequence — see
+  // docs/plans/posting-speed-and-progress.md. `fraction` is only ever set for the video phase
+  // (byte-level progress needs the direct-XHR path video already uses; photos only report which
+  // one is in flight, not bytes).
+  const [uploadProgress, setUploadProgress] = useState<{
+    phase: "photos" | "video" | "creating";
+    current: number;
+    total: number;
+    fraction?: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Messages about the photos just picked (too many, wrong format, too big). Deliberately NOT the
   // wizard's shared `error`: that one is also what the Preview screen prints above the Post button,
@@ -1165,26 +1192,49 @@ export function PostAdWizard({
 
     setPending(true);
     setError(null);
+    setUploadProgress(null);
     try {
-      const uploadedPhotos: { photoNo: number; hash: string; ext: string }[] = [];
-      for (let i = 0; i < photoUris.length; i++) {
+      // Uploaded with up to 3 in flight at once (runWithConcurrency) rather than one at a time —
+      // see docs/plans/posting-speed-and-progress.md: sequential upload of every photo then every
+      // video was the dominant cost in how slow posting felt, since server-side processing
+      // (watermarking, variants) already runs in the background and never blocked this. 3 covers
+      // MAX_PHOTOS (6) in two waves. `runWithConcurrency` preserves input order in its result
+      // array regardless of completion order, and a thrown error rejects the whole call the same
+      // way a single failed request aborted this loop before — no extra bookkeeping needed to keep
+      // "a failed photo aborts the whole submit" working.
+      let photosCompleted = 0;
+      const uploadedPhotos = await runWithConcurrency(photoUris, 3, async (uri, i) => {
         const photoNo = i + 1;
-        const upload = await uploadPhoto(photoUris[i], listingId, photoNo, activeToken);
-        uploadedPhotos.push({ photoNo, hash: upload.hash, ext: upload.ext });
-      }
+        const upload = await uploadPhoto(uri, listingId, photoNo, activeToken);
+        photosCompleted++;
+        setUploadProgress({ phase: "photos", current: photosCompleted, total: photoUris.length });
+        return { photoNo, hash: upload.hash, ext: upload.ext };
+      });
 
       // Video never blocks the post — a failed upload is dropped and submission continues,
       // unlike a failed photo upload above (photos are required, video is additive).
       // ListingsService.create() also re-validates and silently trims against the caller's
       // current entitlement, so this array is best-effort even before it gets there.
-      const uploadedVideos: CreatedVideoInput[] = [];
-      for (const video of videos) {
+      // Concurrency 2, not 3 like photos — matches the BFF's own global video-upload cap
+      // (MAX_CONCURRENT_VIDEO_UPLOADS in video-upload.guard-rails.ts) exactly; going higher only
+      // trades client-side parallelism for more 503s from that shared limit.
+      let videosCompleted = 0;
+      const uploadedVideoResults = await runWithConcurrency(videos, 2, async (video, i) => {
         try {
-          uploadedVideos.push(await uploadVideo(video.uri, listingId, activeToken));
+          const result = await uploadVideo(video.uri, listingId, activeToken, (fraction) =>
+            setUploadProgress({ phase: "video", current: i + 1, total: videos.length, fraction }),
+          );
+          videosCompleted++;
+          setUploadProgress({ phase: "video", current: videosCompleted, total: videos.length });
+          return result;
         } catch (uploadError) {
           setError(uploadError instanceof Error ? uploadError.message : "Failed to upload a video");
+          return null;
         }
-      }
+      });
+      const uploadedVideos = uploadedVideoResults.filter((r): r is CreatedVideoInput => r !== null);
+
+      setUploadProgress({ phase: "creating", current: 1, total: 1 });
 
       const needsCheckout =
         category &&
@@ -1845,9 +1895,9 @@ export function PostAdWizard({
 
           <View style={styles.navRow}>
             <Pressable onPress={onSubmit} disabled={pending} style={[styles.submitButton, { backgroundColor: colors.green, opacity: pending ? 0.6 : 1 }]}>
-              {pending ? <ActivityIndicator color={colors.onGreen} /> : (
-                <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Post ad</Text>
-              )}
+              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }} numberOfLines={1}>
+                {pending ? postAdButtonProgressText(uploadProgress) : "Post ad"}
+              </Text>
             </Pressable>
           </View>
         </View>
