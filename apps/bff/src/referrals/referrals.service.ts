@@ -1,8 +1,9 @@
 import { createHmac } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { ReferralSettingsDto } from '@bhavano/types';
+import type { MyReferralsDto, ReferralSettingsDto, ReferralStatus } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { ReferralNotificationsService } from './referral-notifications.service';
 import {
   DEFAULT_REFERRAL_SETTINGS,
   REFERRAL_SETTINGS_ID,
@@ -25,13 +26,14 @@ export function istMonthStart(now = new Date()): Date {
  * ad is genuinely approved — subject to the referrer having an approved ad of their own (BR-7),
  * the monthly cap (BR-6), not being frozen (BR-9), and the referred phone never having earned a
  * reward before even under a deleted account (BR-2) — and revokes an unused credit if that ad is
- * taken down within the revocation window (BR-5). The admin/funnel views and the freeze/reverse
- * actions (Phase 5) and the 3/5-referral bonus tiers are not built yet. */
+ * taken down within the revocation window (BR-5). Admin views and actions live in
+ * ReferralsAdminService (Phase 5); the 3/5-referral bonus tiers are not built yet. */
 @Injectable()
 export class ReferralsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly notifier: ReferralNotificationsService,
   ) {}
 
   async getSettings(): Promise<ReferralSettingsDto> {
@@ -133,7 +135,10 @@ export class ReferralsService {
       if (Date.now() - matchingClick.createdAt.getTime() > windowMs) return;
     }
 
-    const newUser = await this.prisma.user.findUnique({ where: { id: newUserId }, select: { phone: true } });
+    const newUser = await this.prisma.user.findUnique({
+      where: { id: newUserId },
+      select: { phone: true, name: true },
+    });
     if (newUser?.phone && (await this.phoneAlreadyRewarded(this.hashPhone(newUser.phone)))) return;
 
     const sameDevice = Boolean(viewerKey) && viewerKey === referrer.firstSeenViewerKey;
@@ -146,6 +151,9 @@ export class ReferralsService {
         ...(sameDevice ? { status: 'blocked', rewardSkippedReason: 'same_device' } : {}),
       },
     });
+    // A same-device signup is most likely the referrer themselves; telling them it worked would
+    // only confirm the trick.
+    if (!sameDevice) void this.notifier.referralSignedUp(referralCode, newUser?.name ?? null);
   }
 
   /** Grants the referrer's boost credit for a successful referral — called from
@@ -176,6 +184,7 @@ export class ReferralsService {
       }),
       ...(phoneHash ? [this.prisma.referralPhoneLedger.create({ data: { phoneHash, referralId } })] : []),
     ]);
+    void this.notifier.rewardGranted(referrerId, settings.boostDays, expiresAt);
   }
 
   /** The first rule a referral fails, or null when it earns a credit. Order matters only for
@@ -294,7 +303,7 @@ export class ReferralsService {
   async revokeIfTakenDown(ownerId: string, reason: string): Promise<void> {
     const referral = await this.prisma.referral.findUnique({
       where: { referredUserId: ownerId },
-      select: { id: true, firstAdApprovedAt: true },
+      select: { id: true, referrerId: true, firstAdApprovedAt: true },
     });
     if (!referral?.firstAdApprovedAt) return;
 
@@ -302,10 +311,11 @@ export class ReferralsService {
     const windowMs = settings.takedownRevocationWindowDays * DAY_MS;
     if (Date.now() - referral.firstAdApprovedAt.getTime() > windowMs) return;
 
-    await this.prisma.referralCreditBatch.updateMany({
+    const { count } = await this.prisma.referralCreditBatch.updateMany({
       where: { referralId: referral.id, redeemedAt: null, revokedAt: null },
       data: { revokedAt: new Date(), revokedReason: reason },
     });
+    if (count > 0) void this.notifier.creditRevoked(referral.referrerId);
   }
 
   /** For the Referrals page (Phase 6) — how many credits are spendable right now and when the
@@ -318,5 +328,73 @@ export class ReferralsService {
       select: { expiresAt: true },
     });
     return { availableCredits: batches.length, nextExpiryAt: batches[0]?.expiresAt ?? null };
+  }
+
+  /** `GET /referrals/me`. Blocked and reversed referrals are listed (as "under review" / "not
+   * eligible" in the UI) but never with the reason, so the rules can't be probed from outside. */
+  async getMine(userId: string): Promise<MyReferralsDto> {
+    const now = new Date();
+    const [settings, credits, creditsThisMonth, grouped, recent] = await Promise.all([
+      this.getSettings(),
+      this.prisma.referralCreditBatch.findMany({
+        where: { userId, redeemedAt: null, revokedAt: null, expiresAt: { gt: now } },
+        orderBy: { expiresAt: 'asc' },
+        select: { daysGranted: true, grantedAt: true, expiresAt: true },
+      }),
+      this.prisma.referralCreditBatch.count({
+        where: { userId, bonusTier: null, grantedAt: { gte: istMonthStart(now) } },
+      }),
+      this.prisma.referral.groupBy({ by: ['status'], where: { referrerId: userId }, _count: { _all: true } }),
+      this.prisma.referral.findMany({
+        where: { referrerId: userId },
+        orderBy: { signedUpAt: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          status: true,
+          signedUpAt: true,
+          rewardedAt: true,
+          referredUser: { select: { name: true } },
+        },
+      }),
+    ]);
+
+    const byStatus = Object.fromEntries(grouped.map((g) => [g.status, g._count._all])) as Record<string, number>;
+    const signedUp = Object.values(byStatus).reduce((a, b) => a + b, 0);
+    const rewarded = byStatus.rewarded ?? 0;
+
+    return {
+      referralCode: userId,
+      boostDays: settings.boostDays,
+      creditExpiryDays: settings.creditExpiryDays,
+      monthlyCap: settings.monthlyCapPerReferrer,
+      creditsThisMonth,
+      availableCredits: credits.map((c) => ({
+        daysGranted: c.daysGranted,
+        grantedAt: c.grantedAt.toISOString(),
+        expiresAt: c.expiresAt.toISOString(),
+      })),
+      counts: { signedUp, firstAdApproved: (byStatus.ad_approved ?? 0) + rewarded, rewarded },
+      recent: recent.map((r) => ({
+        id: r.id,
+        firstName: r.referredUser.name?.trim().split(/\s+/)[0] || null,
+        status: r.status as ReferralStatus,
+        signedUpAt: r.signedUpAt.toISOString(),
+        rewardedAt: r.rewardedAt?.toISOString() ?? null,
+      })),
+    };
+  }
+
+  /** The soonest-expiring spendable credit, for the boost picker. */
+  async getRedeemableCreditSummary(
+    userId: string,
+  ): Promise<{ days: number; expiresAt: string; available: number } | null> {
+    const credits = await this.prisma.referralCreditBatch.findMany({
+      where: { userId, redeemedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { expiresAt: 'asc' },
+      select: { daysGranted: true, expiresAt: true },
+    });
+    if (credits.length === 0) return null;
+    return { days: credits[0].daysGranted, expiresAt: credits[0].expiresAt.toISOString(), available: credits.length };
   }
 }

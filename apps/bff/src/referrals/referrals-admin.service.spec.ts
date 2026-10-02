@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ReferralsAdminService } from './referrals-admin.service';
 import type { ReferralsService } from './referrals.service';
+import type { ReferralNotificationsService } from './referral-notifications.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
 function makeService(opts: {
@@ -35,12 +36,14 @@ function makeService(opts: {
     grantReward: jest.fn().mockResolvedValue(undefined),
     hashPhone: jest.fn((phone: string) => `hash:${phone}`),
   };
+  const notifier = { creditRevoked: jest.fn().mockResolvedValue(undefined) };
   const service = new ReferralsAdminService(
     prisma as unknown as PrismaService,
     referrals as unknown as ReferralsService,
+    notifier as unknown as ReferralNotificationsService,
   );
   jest.spyOn(service, 'detail').mockResolvedValue({} as never);
-  return { service, prisma, referrals };
+  return { service, prisma, referrals, notifier };
 }
 
 const blocked = { id: 'ref1', status: 'blocked', referrerId: 'referrer1', referredUserId: 'u1' };
@@ -115,8 +118,9 @@ describe('ReferralsAdminService.reverse', () => {
   });
 
   it('marks the referral reversed, revokes only an unspent credit, and logs the reason', async () => {
-    const { service, prisma } = makeService({ referral: { status: 'rewarded', referrerId: 'referrer1' } });
+    const { service, prisma, notifier } = makeService({ referral: { status: 'rewarded', referrerId: 'referrer1' } });
     await service.reverse('ref1', 'admin1', 'fake account');
+    expect(notifier.creditRevoked).toHaveBeenCalledWith('referrer1');
     expect(prisma.referral.update).toHaveBeenCalledWith({ where: { id: 'ref1' }, data: { status: 'reversed' } });
     expect(prisma.referralCreditBatch.updateMany).toHaveBeenCalledWith({
       where: { referralId: 'ref1', redeemedAt: null, revokedAt: null },

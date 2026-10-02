@@ -186,6 +186,41 @@ export class NotificationsService {
     return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
+  /** Referral programme emails (docs/plans/bhavano-referral-program-implementation.md, Phase 6).
+   * No WhatsApp template is approved for any of them yet — see `notifyListingFlagged`'s comment;
+   * phone-only users get the push notification ReferralNotificationsService sends alongside. */
+  async notifyReferralSignup(
+    user: NotifiableUser,
+    params: { friendName: string; boostDays: number },
+  ): Promise<'email' | 'whatsapp' | null> {
+    const vars = { friend: params.friendName, days: pluralDays(params.boostDays) };
+    const { subject, text, html } = this.renderPurchaseEmail('email/referral-signup', vars, '/referrals');
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
+  }
+
+  async notifyReferralRewardGranted(
+    user: NotifiableUser,
+    params: { boostDays: number; expiresAt: Date },
+  ): Promise<'email' | 'whatsapp' | null> {
+    const vars = { days: pluralDays(params.boostDays), expiresAt: params.expiresAt.toLocaleDateString('en-IN') };
+    const { subject, text, html } = this.renderPurchaseEmail('email/referral-reward', vars, '/my-listings');
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
+  }
+
+  async notifyReferralCreditExpiring(
+    user: NotifiableUser,
+    params: { boostDays: number; expiresAt: Date },
+  ): Promise<'email' | 'whatsapp' | null> {
+    const vars = { days: pluralDays(params.boostDays), expiresAt: params.expiresAt.toLocaleDateString('en-IN') };
+    const { subject, text, html } = this.renderPurchaseEmail('email/referral-credit-expiring', vars, '/my-listings');
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
+  }
+
+  async notifyReferralCreditRevoked(user: NotifiableUser): Promise<'email' | 'whatsapp' | null> {
+    const { subject, text, html } = this.renderPurchaseEmail('email/referral-credit-revoked', {}, '/referrals');
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
+  }
+
   /** Instant Alerts' actual per-message payoff — see MessagingService's `wasUnread` gate, which
    * only calls this on the message that flips the owner's unread count from zero to nonzero (one
    * alert per burst, not per message). `senderName` is already a role-label fallback
@@ -713,6 +748,9 @@ export class NotificationsService {
       | 'area'
       | 'title'
     >,
+    /** The owner's id, added to the WhatsApp share link as `ref` so a signup from it counts as
+     * their referral. Not in the WhatsApp template's button, whose URL needs re-approval. */
+    referralCode?: string,
   ): Promise<{ channel: 'email' | 'whatsapp'; messageId?: string | null } | null> {
     const site =
       this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
@@ -731,7 +769,8 @@ export class NotificationsService {
     const shareText =
       `${listing.title}\n${listing.area}, ${listing.cityName}\n` +
       `Photos and details on Bhavano — message me there:\n` +
-      `${link}?utm_source=whatsapp&utm_medium=share&utm_campaign=owner_share`;
+      `${link}?utm_source=whatsapp&utm_medium=share&utm_campaign=owner_share` +
+      (referralCode ? `&ref=${encodeURIComponent(referralCode)}` : '');
     const shareLink = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
     const buttons = [
       tpl.buttonLabel ? { label: renderTemplate(tpl.buttonLabel, vars), url: link } : undefined,

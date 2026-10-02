@@ -1119,15 +1119,19 @@ export class AdminService {
         continue;
       }
 
-      const sent = await this.notificationsService.notifyListingPosted(listing.owner, {
-        id: listing.id,
-        slug: listing.slug,
-        category: listing.category,
-        transactionType: listing.transactionType,
-        cityName: listing.city.name,
-        area: listing.area.name,
-        title: listing.title,
-      });
+      const sent = await this.notificationsService.notifyListingPosted(
+        listing.owner,
+        {
+          id: listing.id,
+          slug: listing.slug,
+          category: listing.category,
+          transactionType: listing.transactionType,
+          cityName: listing.city.name,
+          area: listing.area.name,
+          title: listing.title,
+        },
+        listing.ownerId,
+      );
 
       if (!sent) {
         results.push({ listingId, success: false, error: 'Owner has no email or phone on file' });

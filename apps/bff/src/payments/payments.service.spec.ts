@@ -36,7 +36,7 @@ function make(overrides: { user?: Record<string, unknown> | null } = {}) {
     {} as NotificationsService,
     { uploadClickConversion } as unknown as GoogleAdsConversionProvider,
     { completePendingPublish: jest.fn() } as unknown as ListingsService,
-    {} as ReferralsService,
+    { getRedeemableCreditSummary: jest.fn().mockResolvedValue(null) } as unknown as ReferralsService,
   );
   return { service, uploadClickConversion, prisma };
 }

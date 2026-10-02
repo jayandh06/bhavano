@@ -1457,6 +1457,9 @@ model ReferralCreditBatch {
   redeemedPayment   Payment?  @relation(fields: [redeemedPaymentId], references: [id])
   revokedAt         DateTime?
   revokedReason     String?
+  /** Set once ReferralCreditExpiryReminderJob has reminded the owner about this credit — one
+   * reminder per credit, ever. Phase 6. */
+  expiryReminderSentAt DateTime?
   /** Non-null for a bonus credit (3rd/5th-referral-in-a-month tier, Phase 4) not tied 1:1 to a
    * single referral the way the base credit above is — "referrals_3" / "referrals_5", a plain
    * string matching this schema's `kind`/`source` convention rather than a Prisma enum. Null for

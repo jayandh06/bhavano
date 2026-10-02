@@ -113,6 +113,7 @@ function listingRow(overrides: Record<string, unknown> = {}) {
     title: 'A listing',
     city: { name: 'Bengaluru' },
     area: { name: 'Koramangala' },
+    ownerId: 'owner1',
     owner: { name: 'Owner', email: 'owner@example.com', phone: '+919876543210' },
     notificationLogs: [],
     // Live by default — the promotion refuses anything that isn't.
@@ -184,6 +185,7 @@ describe('AdminService.sendPostedNotification', () => {
     expect(notificationsService.notifyListingPosted).toHaveBeenCalledWith(
       { name: 'Owner', email: 'owner@example.com', phone: '+919876543210' },
       expect.objectContaining({ id: 'listing1', cityName: 'Bengaluru', area: 'Koramangala' }),
+      'owner1',
     );
     expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
       data: { listingId: 'listing1', kind: 'posted', channel: 'email', providerMessageId: null },

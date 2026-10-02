@@ -98,7 +98,14 @@ describe('boost durations admin can switch off', () => {
   });
 });
 
-function makePayments(overrides: { agentProUntil?: Date | null; settings?: BoostPriceSettings | null } = {}) {
+function makePayments(
+  overrides: {
+    agentProUntil?: Date | null;
+    settings?: BoostPriceSettings | null;
+    referralCredit?: { days: number; expiresAt: string; available: number } | null;
+  } = {},
+) {
+  const referralCredit = overrides.referralCredit ?? null;
   const create = jest.fn().mockResolvedValue({ id: 'order1' });
   const prisma = {
     listing: {
@@ -119,7 +126,7 @@ function makePayments(overrides: { agentProUntil?: Date | null; settings?: Boost
     {} as NotificationsService,
     {} as GoogleAdsConversionProvider,
     {} as ListingsService,
-    {} as ReferralsService,
+    { getRedeemableCreditSummary: jest.fn().mockResolvedValue(referralCredit) } as unknown as ReferralsService,
   );
   (service as unknown as { getRazorpay: () => unknown }).getRazorpay = () => ({ orders: { create } });
   return { service, prisma, razorpayCreate: create };
@@ -258,6 +265,14 @@ describe('PaymentsService.previewBoostPricing — 30 days', () => {
     const preview = await service.previewBoostPricing('u1', 'apartment');
     expect(preview.enabledDurations).toEqual([7, 15, 30]);
     expect(preview.boost7.free).toBe(true);
+  });
+
+  it('reports a free referral boost alongside the prices, without changing them', async () => {
+    const referralCredit = { days: 3, expiresAt: '2026-12-01T00:00:00.000Z', available: 2 };
+    const { service } = makePayments({ referralCredit });
+    const preview = await service.previewBoostPricing('u1', 'apartment');
+    expect(preview.referralCredit).toEqual(referralCredit);
+    expect(preview.boost30.amount).toBe(299);
   });
 });
 

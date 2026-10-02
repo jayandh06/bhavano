@@ -11,6 +11,7 @@ import type {
 import { PrismaService } from '../prisma/prisma.service';
 import { REFERRAL_SETTINGS_ID } from './referrals.constants';
 import { ReferralsService, istMonthStart } from './referrals.service';
+import { ReferralNotificationsService } from './referral-notifications.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -62,6 +63,7 @@ export class ReferralsAdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly referrals: ReferralsService,
+    private readonly notifier: ReferralNotificationsService,
   ) {}
 
   async getSettings(): Promise<ReferralSettingsDto> {
@@ -242,7 +244,7 @@ export class ReferralsAdminService {
     if (!referral) throw new NotFoundException('Referral not found');
     if (referral.status === 'reversed') throw new BadRequestException('Referral is already reversed');
 
-    await this.prisma.$transaction([
+    const [, revoked] = await this.prisma.$transaction([
       this.prisma.referral.update({ where: { id }, data: { status: 'reversed' } }),
       this.prisma.referralCreditBatch.updateMany({
         where: { referralId: id, redeemedAt: null, revokedAt: null },
@@ -252,6 +254,7 @@ export class ReferralsAdminService {
         data: { adminId, targetUserId: referral.referrerId, referralId: id, action: 'reverse', note: reason },
       }),
     ]);
+    if (revoked.count > 0) void this.notifier.creditRevoked(referral.referrerId);
     return this.detail(id);
   }
 

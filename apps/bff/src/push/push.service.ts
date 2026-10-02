@@ -233,6 +233,24 @@ export class PushService {
     });
   }
 
+  /** Referral programme alerts (signup, reward, expiry, revoked). Tapping opens the app's
+   * Referrals screen. `kind` doubles as the collapse key, so a repeat replaces the last one. */
+  async notifyReferral(
+    recipientId: string,
+    params: { kind: 'referral_signup' | 'referral_reward' | 'referral_expiring' | 'referral_revoked'; title: string; body: string },
+  ): Promise<void> {
+    await this.sendToUser(recipientId, {
+      title: params.title,
+      body: params.body,
+      channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
+      priority: 'default',
+      interruptionLevel: 'active',
+      collapseId: params.kind,
+      tag: params.kind,
+      data: { kind: params.kind, path: '/referrals' },
+    });
+  }
+
   private async sendToUser(recipientId: string, content: PushContent): Promise<void> {
     if (!this.enabled) {
       if (!this.loggedDisabledSkip) {

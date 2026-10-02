@@ -1,8 +1,19 @@
 import type { ConfigService } from '@nestjs/config';
 import { ReferralsService, istMonthStart } from './referrals.service';
 import { PrismaService } from '../prisma/prisma.service';
+import type { ReferralNotificationsService } from './referral-notifications.service';
 
 const config = { get: () => 'test-secret' } as unknown as ConfigService;
+const notifierMock = {
+  referralSignedUp: jest.fn().mockResolvedValue(undefined),
+  rewardGranted: jest.fn().mockResolvedValue(undefined),
+  creditRevoked: jest.fn().mockResolvedValue(undefined),
+};
+const notifier = notifierMock as unknown as ReferralNotificationsService;
+
+beforeEach(() => {
+  Object.values(notifierMock).forEach((fn) => fn.mockClear());
+});
 
 function makeService(opts: {
   referrerExists?: boolean;
@@ -38,7 +49,7 @@ function makeService(opts: {
       findUnique: jest.fn().mockResolvedValue(opts.settings ?? null),
     },
   };
-  const service = new ReferralsService(prisma as unknown as PrismaService, config);
+  const service = new ReferralsService(prisma as unknown as PrismaService, config, notifier);
   return { service, prisma };
 }
 
@@ -66,6 +77,7 @@ describe('ReferralsService.attributeSignupIfReferred', () => {
     expect(prisma.referral.create).toHaveBeenCalledWith({
       data: { referrerId: 'referrer1', referredUserId: 'newUser1', clickedAt },
     });
+    expect(notifierMock.referralSignedUp).toHaveBeenCalledWith('referrer1', null);
   });
 
   it('attributes with no clickedAt when no matching click was ever recorded', async () => {
@@ -140,6 +152,7 @@ describe('ReferralsService.attributeSignupIfReferred', () => {
     expect(prisma.referral.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ status: 'blocked', rewardSkippedReason: 'same_device' }),
     });
+    expect(notifierMock.referralSignedUp).not.toHaveBeenCalled();
   });
 
   it('attributes normally from a different device, or when the referrer has no recorded device', async () => {
@@ -226,7 +239,7 @@ describe('ReferralsService.recordFirstApprovedAdIfReferred', () => {
       referralSetting: { findUnique: jest.fn().mockResolvedValue(null) },
       $transaction: jest.fn((ops: unknown[]) => Promise.resolve(ops)),
     };
-    const service = new ReferralsService(prisma as unknown as PrismaService, config);
+    const service = new ReferralsService(prisma as unknown as PrismaService, config, notifier);
     return { service, prisma };
   }
 
@@ -298,7 +311,7 @@ describe('ReferralsService.grantReward', () => {
       referralSetting: { findUnique: jest.fn().mockResolvedValue(opts.settings ?? null) },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
-    const service = new ReferralsService(prisma as unknown as PrismaService, config);
+    const service = new ReferralsService(prisma as unknown as PrismaService, config, notifier);
     return { service, prisma };
   }
 
@@ -318,6 +331,7 @@ describe('ReferralsService.grantReward', () => {
         data: expect.objectContaining({ status: 'rewarded' }),
       }),
     );
+    expect(notifierMock.rewardGranted).toHaveBeenCalledWith('referrer1', 3, expect.any(Date));
   });
 
   it('is idempotent — a referral that already has a credit batch is never granted twice', async () => {
@@ -325,6 +339,7 @@ describe('ReferralsService.grantReward', () => {
     await service.grantReward('referral1', 'referrer1');
     expect(prisma.$transaction).not.toHaveBeenCalled();
     expect(prisma.referralCreditBatch.create).not.toHaveBeenCalled();
+    expect(notifierMock.rewardGranted).not.toHaveBeenCalled();
   });
 });
 
@@ -341,7 +356,7 @@ describe('ReferralsService.findRedeemableCredit / markCreditRedeemed / getBalanc
         update: jest.fn().mockResolvedValue({}),
       },
     };
-    const service = new ReferralsService(prisma as unknown as PrismaService, config);
+    const service = new ReferralsService(prisma as unknown as PrismaService, config, notifier);
     return { service, prisma };
   }
 
@@ -379,5 +394,81 @@ describe('ReferralsService.findRedeemableCredit / markCreditRedeemed / getBalanc
   it('reports zero balance with no next expiry when nothing is available', async () => {
     const { service } = makeCreditService([]);
     expect(await service.getBalanceForUser('user1')).toEqual({ availableCredits: 0, nextExpiryAt: null });
+  });
+});
+
+describe('ReferralsService.revokeIfTakenDown', () => {
+  function makeRevokeService(opts: { approvedDaysAgo: number; revokedCount: number }) {
+    const prisma = {
+      referral: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'referral1',
+          referrerId: 'referrer1',
+          firstAdApprovedAt: new Date(Date.now() - opts.approvedDaysAgo * 86_400_000),
+        }),
+      },
+      referralSetting: { findUnique: jest.fn().mockResolvedValue(null) },
+      referralCreditBatch: { updateMany: jest.fn().mockResolvedValue({ count: opts.revokedCount }) },
+    };
+    return { service: new ReferralsService(prisma as unknown as PrismaService, config, notifier), prisma };
+  }
+
+  it('revokes the unused credit inside the window and tells the referrer', async () => {
+    const { service, prisma } = makeRevokeService({ approvedDaysAgo: 3, revokedCount: 1 });
+    await service.revokeIfTakenDown('owner1', 'flagged');
+    expect(prisma.referralCreditBatch.updateMany).toHaveBeenCalled();
+    expect(notifierMock.creditRevoked).toHaveBeenCalledWith('referrer1');
+  });
+
+  it('says nothing when there was no unused credit to revoke', async () => {
+    const { service } = makeRevokeService({ approvedDaysAgo: 3, revokedCount: 0 });
+    await service.revokeIfTakenDown('owner1', 'flagged');
+    expect(notifierMock.creditRevoked).not.toHaveBeenCalled();
+  });
+
+  it('leaves the credit alone past the revocation window', async () => {
+    const { service, prisma } = makeRevokeService({ approvedDaysAgo: 30, revokedCount: 1 });
+    await service.revokeIfTakenDown('owner1', 'flagged');
+    expect(prisma.referralCreditBatch.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('ReferralsService.getMine', () => {
+  function makeMineService() {
+    const signedUpAt = new Date('2026-10-01T10:00:00Z');
+    const prisma = {
+      referralSetting: { findUnique: jest.fn().mockResolvedValue(null) },
+      referralCreditBatch: {
+        findMany: jest.fn().mockResolvedValue([
+          { daysGranted: 3, grantedAt: signedUpAt, expiresAt: new Date('2026-11-30T10:00:00Z') },
+        ]),
+        count: jest.fn().mockResolvedValue(1),
+      },
+      referral: {
+        groupBy: jest.fn().mockResolvedValue([
+          { status: 'signed_up', _count: { _all: 2 } },
+          { status: 'ad_approved', _count: { _all: 1 } },
+          { status: 'rewarded', _count: { _all: 1 } },
+          { status: 'blocked', _count: { _all: 1 } },
+        ]),
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'r1', status: 'rewarded', signedUpAt, rewardedAt: signedUpAt, referredUser: { name: 'Asha Rao Kumar' } },
+          { id: 'r2', status: 'signed_up', signedUpAt, rewardedAt: null, referredUser: { name: null } },
+        ]),
+      },
+    };
+    return new ReferralsService(prisma as unknown as PrismaService, config, notifier);
+  }
+
+  it("returns the code, spendable credits, counts, and only referred users' first names", async () => {
+    const mine = await makeMineService().getMine('user1');
+    expect(mine.referralCode).toBe('user1');
+    expect(mine.boostDays).toBe(3);
+    expect(mine.availableCredits).toEqual([
+      { daysGranted: 3, grantedAt: '2026-10-01T10:00:00.000Z', expiresAt: '2026-11-30T10:00:00.000Z' },
+    ]);
+    expect(mine.creditsThisMonth).toBe(1);
+    expect(mine.counts).toEqual({ signedUp: 5, firstAdApproved: 2, rewarded: 1 });
+    expect(mine.recent.map((r) => r.firstName)).toEqual(['Asha', null]);
   });
 });

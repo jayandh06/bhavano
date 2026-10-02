@@ -515,9 +515,10 @@ export class PaymentsService {
    * create*Order method — a bad/expired/exhausted code degrades to "no discount" rather than
    * throwing, since this and every other caller only ever passes the auto-applied ACTIVE_PROMO_CODE. */
   async previewBoostPricing(userId: string, category: ListingCategory, discountCode?: string): Promise<BoostPricingPreviewDto> {
-    const [boostPriceSettingsRow, owner] = await Promise.all([
+    const [boostPriceSettingsRow, owner, referralCredit] = await Promise.all([
       this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { agentProUntil: true } }),
+      this.referralsService.getRedeemableCreditSummary(userId),
     ]);
     const boostPriceSettings = boostPriceSettingsRow ?? DEFAULT_BOOST_PRICE_SETTINGS;
 
@@ -558,6 +559,7 @@ export class PaymentsService {
       enabledDurations: BOOST_DURATIONS.filter(
         (days) => enabledBoostDurations(boostPriceSettings).includes(days) || (days === 7 && hasFreeBoostCredit),
       ),
+      referralCredit,
     };
   }
 

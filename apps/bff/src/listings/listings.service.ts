@@ -1303,15 +1303,19 @@ export class ListingsService {
 
     if (!isBulkImportOwner && owner) {
       this.notificationsService
-        .notifyListingPosted(owner, {
-          id: listing.id,
-          slug: listing.slug,
-          category: listing.category,
-          transactionType: listing.transactionType,
-          cityName: listing.city.name,
-          area: listing.area.name,
-          title: listing.title,
-        })
+        .notifyListingPosted(
+          owner,
+          {
+            id: listing.id,
+            slug: listing.slug,
+            category: listing.category,
+            transactionType: listing.transactionType,
+            cityName: listing.city.name,
+            area: listing.area.name,
+            title: listing.title,
+          },
+          listing.ownerId,
+        )
         .then((result) => {
           if (!result) return;
           return this.prisma.listingNotificationLog.create({
