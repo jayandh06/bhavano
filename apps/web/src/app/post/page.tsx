@@ -95,8 +95,6 @@ export default async function PostAdPage({
             presetTransactionType={presetTransactionType}
             sellerType={profile?.sellerType ?? null}
             isAdmin={isAdminAccessToken(accessToken)}
-            // An admin may be posting on someone else's behalf, so their shares aren't referrals.
-            referralCode={isAdminAccessToken(accessToken) ? undefined : profile?.id}
           />
         </div>
       </div>

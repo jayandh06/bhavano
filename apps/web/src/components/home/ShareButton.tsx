@@ -22,6 +22,7 @@ export function ShareButton({
   title,
   listingId,
   isOwner = false,
+  referralCode,
   className,
 }: {
   /** Relative path, e.g. `buildListingPath(item)` — resolved against `window.location.origin` at
@@ -32,6 +33,8 @@ export function ShareButton({
   listingId: string;
   /** The viewer owns this listing — tags the link `owner_share` rather than `listing_share`. */
   isOwner?: boolean;
+  /** The owner's referral code, sent as `ref` — only ever passed on their own listing. */
+  referralCode?: string;
   className: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -41,7 +44,12 @@ export function ShareButton({
 
   function absoluteUrl(channel: ShareChannel): string {
     const origin = typeof window !== "undefined" ? window.location.origin : SITE_URL;
-    return taggedShareUrl(`${origin}${path}`, channel, isOwner ? "owner_share" : "listing_share");
+    return taggedShareUrl(
+      `${origin}${path}`,
+      channel,
+      isOwner ? "owner_share" : "listing_share",
+      isOwner ? referralCode : undefined,
+    );
   }
 
   async function onShare(e: React.MouseEvent) {
