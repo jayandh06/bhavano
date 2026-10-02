@@ -12,7 +12,7 @@ import {
 } from "@bhavano/types/boostPricing";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
-import { previewBoostPricingAction } from "@/app/actions/payments";
+import { previewBoostPricingAction, redeemReferralBoostAction } from "@/app/actions/payments";
 import { startBoostCheckout } from "@/lib/boostCheckout";
 import { Icon } from "./Icon";
 
@@ -139,11 +139,60 @@ export function BoostBundlePicker({
     // "cancelled" — no error shown, just re-enable the button, same as before.
   }
 
+  async function onUseFreeBoost() {
+    setPending(true);
+    setError(null);
+    const result = await redeemReferralBoostAction(listingId, source);
+    setPending(false);
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    onActivating?.();
+    setTimeout(() => router.refresh(), 1500);
+  }
+
+  const referralCredit = pricing?.referralCredit ?? null;
+
   // Admin has moved this offer onto the ad-preview step instead — see
   // docs/plans/boost-instant-alerts-preview-selector.md. The two placements are mutually
   // exclusive, so this post-creation picker stays hidden entirely rather than duplicating the
   // offer.
-  if (pricing?.showSelectorOnPreview) return null;
+  // A free referral boost is still offered here — the preview-step selector can't spend one.
+  const paidOptionsHidden = !!pricing?.showSelectorOnPreview;
+  if (paidOptionsHidden && !referralCredit) return null;
+
+  const freeBoostBlock = referralCredit && (
+    <div className="mb-4 rounded-[10px] border-[1.5px] border-green bg-green/10 p-3.5 flex flex-col gap-2.5">
+      <div className="text-[13.5px] text-text">
+        <span className="font-bold">
+          You have {referralCredit.available === 1 ? "a free boost" : `${referralCredit.available} free boosts`}
+        </span>{" "}
+        from referring friends. Use one now for {referralCredit.days} days, free.{" "}
+        <span className="text-muted" suppressHydrationWarning>
+          Expires {new Date(referralCredit.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={onUseFreeBoost}
+        disabled={pending}
+        className="w-full bg-green text-on-green border-0 rounded-lg px-4 py-2.5 text-sm font-bold cursor-pointer disabled:opacity-60"
+      >
+        {pending ? "Activating…" : `Use free ${referralCredit.days}-day boost`}
+      </button>
+      {!paidOptionsHidden && <div className="text-[12px] text-muted text-center">or pay for a longer boost below</div>}
+    </div>
+  );
+
+  if (paidOptionsHidden) {
+    return (
+      <div className="w-full">
+        {freeBoostBlock}
+        {error && <p className="text-[#b3413a] text-[13px] mt-0 mb-0">{error}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
@@ -171,6 +220,8 @@ export function BoostBundlePicker({
           </li>
         ))}
       </ul>
+
+      {freeBoostBlock}
 
       <div className="flex flex-col gap-2.5">
         {offered.map((days) => {

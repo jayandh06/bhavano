@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ListingTotalPriceDto } from "@bhavano/types";
 import { listingPriceText } from "@bhavano/types/priceWords";
 import { pushDataLayerEvent } from "@/lib/gtm";
@@ -24,18 +25,23 @@ type ShareableListing = Parameters<typeof buildListingPath>[0] & {
  * audience that always wants an ad seen, and every share puts it in front of people no ad reaches
  * (society groups, office groups, family). Tagged `owner_share` so those visits are counted
  * separately — see lib/shareLinks.ts and docs/plans/growth-beyond-google-ads.md.
+ *
+ * With `referralCode` (the owner's user id) the link also credits them under the referral
+ * programme, and the prominent variant says so.
  */
 export function OwnerWhatsAppShare({
   listing,
   placement,
   variant,
+  referralCode,
 }: {
   listing: ShareableListing;
   /** Which screen it was tapped on, for the `owner_share_whatsapp` event. */
   placement: "post_success" | "my_listings";
   variant: "prominent" | "compact";
+  referralCode?: string;
 }) {
-  const url = taggedShareUrl(`${SITE_URL}${buildListingPath(listing)}`, "whatsapp", "owner_share");
+  const url = taggedShareUrl(`${SITE_URL}${buildListingPath(listing)}`, "whatsapp", "owner_share", referralCode);
   const text = `${listing.title}\n${listingPriceText(listing, "compact")} · ${listing.area}, ${listing.cityName}\nPhotos and details on Bhavano — message me there:`;
   const href = whatsappShareHref(text, url);
   const onClick = () => pushDataLayerEvent("owner_share_whatsapp", { listingId: listing.id, placement });
@@ -74,6 +80,15 @@ export function OwnerWhatsAppShare({
       >
         <Icon name="message" /> Share on WhatsApp
       </a>
+      {referralCode && (
+        <p className="text-[12.5px] text-text-soft m-0">
+          <Icon name="boost" className="text-[color:var(--gold)] mr-1 align-[-2px]" />
+          Share your ad, and get a free boost when a friend joins from your link and posts their own.{" "}
+          <Link href="/referrals" className="font-bold text-green">
+            How it works
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

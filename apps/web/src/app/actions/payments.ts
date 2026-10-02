@@ -84,6 +84,29 @@ export async function createBoostOrderAction(
   }
 }
 
+/** Spends the user's soonest-expiring free referral boost on this listing. Activates immediately
+ * (no payment); the boost length is the credit's own, so the `7` sent here is only there to pass
+ * the order DTO's validation. */
+export async function redeemReferralBoostAction(listingId: string, source?: PurchaseSource): Promise<CreateBoostOrderResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const order = await createBoostOrder(
+      session.accessToken,
+      listingId,
+      7,
+      undefined,
+      true,
+      parsePurchaseSource(source),
+      true,
+    );
+    return { success: true, order };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Couldn't use your free boost" };
+  }
+}
+
 // The auto-applied promo now lives in @bhavano/types/promoCode — the BFF quotes the same code's
 // price in the admin-sent Boost promotion email, and three copies of one string is how they drift.
 

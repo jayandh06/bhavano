@@ -9,14 +9,24 @@
  */
 export type ShareChannel = "whatsapp" | "copy" | "email" | "share_sheet";
 
-/** `owner_share`: the owner sharing their own ad. `listing_share`: anyone else passing one on. */
-export type ShareCampaign = "owner_share" | "listing_share";
+/** `owner_share`: the owner sharing their own ad. `listing_share`: anyone else passing one on.
+ * `referral_invite`: the invite link on the Referrals page, not tied to an ad. */
+export type ShareCampaign = "owner_share" | "listing_share" | "referral_invite";
 
-export function taggedShareUrl(absoluteUrl: string, channel: ShareChannel, campaign: ShareCampaign): string {
+/** `referralCode` is the sharer's user id, sent as `?ref=` — middleware.ts turns it into the
+ * referral cookie that credits them if the visitor signs up (docs/plans/bhavano-referral-program.md).
+ * Only the owner's own shares carry one. */
+export function taggedShareUrl(
+  absoluteUrl: string,
+  channel: ShareChannel,
+  campaign: ShareCampaign,
+  referralCode?: string,
+): string {
   const url = new URL(absoluteUrl);
   url.searchParams.set("utm_source", channel);
   url.searchParams.set("utm_medium", "share");
   url.searchParams.set("utm_campaign", campaign);
+  if (referralCode) url.searchParams.set("ref", referralCode);
   return url.toString();
 }
 

@@ -327,6 +327,7 @@ export function PostAdWizard({
   presetTransactionType,
   sellerType: profileSellerType,
   isAdmin = false,
+  referralCode,
 }: {
   cities: City[];
   defaultCityId?: string;
@@ -343,6 +344,8 @@ export function PostAdWizard({
   sellerType: SellerType | null;
   /** Offers "Posting for someone else" — see AssistedSellerPanel. */
   isAdmin?: boolean;
+  /** The poster's user id, for the referral link on the success screen's WhatsApp share. */
+  referralCode?: string;
 }) {
   const { requireLogin, requireVerifiedPhone } = useAuthGate();
   const [listingId] = useState(() => crypto.randomUUID());
@@ -2174,7 +2177,12 @@ export function PostAdWizard({
             <BoostBundlePicker listingId={createdListing.id} category={createdListing.category} />
           )}
 
-          <OwnerWhatsAppShare listing={createdListing} placement="post_success" variant="prominent" />
+          <OwnerWhatsAppShare
+            listing={createdListing}
+            placement="post_success"
+            variant="prominent"
+            referralCode={referralCode}
+          />
 
           <div className="w-full flex justify-center">
             <VideoManager listing={createdListing} accessToken={token ?? ""} />

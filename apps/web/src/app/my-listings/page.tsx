@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import type { ListingDetailDto, ListingStatus } from "@bhavano/types";
+import type { ListingDetailDto, ListingStatus, MyReferralsDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { listingPriceText } from "@bhavano/types/priceWords";
 import { auth } from "@/auth";
-import { BffAuthError, fetchMyListings, fetchProfile, previewBoostPricing } from "@/lib/bff";
+import { BffAuthError, fetchMyListings, fetchMyReferrals, fetchProfile, previewBoostPricing } from "@/lib/bff";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { ListingSlotMeter } from "@/components/home/ListingSlotMeter";
 import { buildListingPath } from "@/lib/listingPath";
@@ -96,8 +96,14 @@ async function MyListingsGrid({
 }) {
   let listings;
   let profile;
+  let referrals: MyReferralsDto | null;
   try {
-    [listings, profile] = await Promise.all([fetchMyListings(accessToken), fetchProfile(accessToken)]);
+    [listings, profile, referrals] = await Promise.all([
+      fetchMyListings(accessToken),
+      fetchProfile(accessToken),
+      // Only feeds the banner — never worth failing the page over.
+      fetchMyReferrals(accessToken).catch(() => null),
+    ]);
   } catch (error) {
     if (error instanceof BffAuthError) {
       return <RequireLoginPrompt message="Log in to view and edit the ads you've posted." />;
@@ -159,8 +165,11 @@ async function MyListingsGrid({
         initialPricing={openBoostPricing}
       />
       <ListingSlotMeter profile={profile} />
+      {referrals && activeListings.some((item) => item.status === "active") && (
+        <ReferralBanner referrals={referrals} />
+      )}
       {activeListings.map((item) => (
-        <MyListingRow key={item.id} item={item} accessToken={accessToken} />
+        <MyListingRow key={item.id} item={item} accessToken={accessToken} referralCode={profile.id} />
       ))}
       {pastListings.length > 0 && (
         <>
@@ -169,7 +178,7 @@ async function MyListingsGrid({
             These have expired and are no longer visible to buyers. Renew one to put it back up.
           </p>
           {pastListings.map((item) => (
-            <MyListingRow key={item.id} item={item} accessToken={accessToken} />
+            <MyListingRow key={item.id} item={item} accessToken={accessToken} referralCode={profile.id} />
           ))}
         </>
       )}
@@ -177,7 +186,44 @@ async function MyListingsGrid({
   );
 }
 
-function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessToken: string }) {
+/** The requirements doc's "My Ads banner": the balance when there is one, the pitch otherwise. */
+function ReferralBanner({ referrals }: { referrals: MyReferralsDto }) {
+  const credits = referrals.availableCredits;
+  const soonest = credits[0];
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[color:var(--gold)]/40 bg-surface-alt/60 px-4 py-3">
+      <div className="flex items-start gap-2 text-[13px] text-text-soft min-w-0">
+        <Icon name="boost" className="text-[color:var(--gold)] mt-[2px] shrink-0" />
+        {soonest ? (
+          <span>
+            <span className="font-bold text-text">
+              {credits.length === 1 ? "You have a free boost" : `You have ${credits.length} free boosts`}
+            </span>{" "}
+            — tap Boost on any ad to use it. Expires {renewedAtFormatter.format(new Date(soonest.expiresAt))}.
+          </span>
+        ) : (
+          <span>
+            <span className="font-bold text-text">Share your ad and earn free boosts.</span> When a friend joins from
+            your link and posts their own ad, you get a free {referrals.boostDays}-day boost.
+          </span>
+        )}
+      </div>
+      <Link href="/referrals" className="text-[13px] font-bold text-green whitespace-nowrap">
+        Your referrals →
+      </Link>
+    </div>
+  );
+}
+
+function MyListingRow({
+  item,
+  accessToken,
+  referralCode,
+}: {
+  item: ListingDetailDto;
+  accessToken: string;
+  referralCode: string;
+}) {
   const isPendingPublish = item.publishState === "pending_checkout";
   const daysLeft = daysUntil(item.expiresAt);
   // A negative value still satisfies <= 7, so this covers both the pre-expiry window and any
@@ -247,7 +293,12 @@ function MyListingRow({ item, accessToken }: { item: ListingDetailDto; accessTok
               <BoostButton listingId={item.id} category={item.category} />
             )}
             {item.status === "active" && !item.isExpired && (
-              <OwnerWhatsAppShare listing={item} placement="my_listings" variant="compact" />
+              <OwnerWhatsAppShare
+                listing={item}
+                placement="my_listings"
+                variant="compact"
+                referralCode={referralCode}
+              />
             )}
             <Link
               href={buildListingPath(item)}

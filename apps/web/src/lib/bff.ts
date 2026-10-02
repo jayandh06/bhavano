@@ -38,6 +38,7 @@ import type {
   ListingSitemapEntry,
   ListingsPage,
   MessageDto,
+  MyReferralsDto,
   PaymentHistoryPage,
   PopularSearchDto,
   ProfileNudgeDto,
@@ -703,11 +704,17 @@ export function createBoostOrder(
   discountCode?: string,
   includeInstantAlerts?: boolean,
   source?: PurchaseSource,
+  useReferralCredit?: boolean,
 ): Promise<CreateBoostOrderResponseDto> {
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
-    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts, source }),
+    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts, source, useReferralCredit }),
   });
+}
+
+/** The Referrals page — code, free boosts, and who joined. See ReferralsService.getMine. */
+export function fetchMyReferrals(accessToken: string): Promise<MyReferralsDto> {
+  return authedBffFetch(accessToken, "/referrals/me", { cache: "no-store" });
 }
 
 export function createListingPublishOrder(
