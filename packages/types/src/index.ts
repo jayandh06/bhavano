@@ -1319,6 +1319,32 @@ export interface PublicLoginNudgeDto extends LoginNudgeSettingsDto {
   freeRevealsPerUser: number;
 }
 
+/** Admin-editable referral program settings — same singleton-row convention as
+ * ContactRevealSettingsDto. See docs/plans/bhavano-referral-program-implementation.md. */
+export interface ReferralSettingsDto {
+  /** Length of the boost credit a referrer earns per successful referral. */
+  boostDays: number;
+  /** An unused credit expires this many days after it's granted. */
+  creditExpiryDays: number;
+  /** Most boost credits one referrer can earn in a calendar month — further referrals still count
+   * toward the dashboard/funnel, just grant no credit past this. */
+  monthlyCapPerReferrer: number;
+  /** This many successful referrals in a month earns one extra bonus boost credit. */
+  bonusExtraBoostAtReferrals: number;
+  /** This many successful referrals in a month earns the "Top Agent" profile badge. */
+  topAgentBadgeAtReferrals: number;
+  /** Whether the referred (new) user also gets a welcome reward on their first ad. */
+  welcomeRewardEnabled: boolean;
+  welcomeRewardFeaturedDays: number;
+  /** A signup only attributes to a referrer if it happens within this many days of the click. */
+  attributionWindowDays: number;
+  /** An approved referred ad removed for policy violations within this many days still revokes
+   * the referrer's unused credit from that referral. */
+  takedownRevocationWindowDays: number;
+}
+
+export type UpdateReferralSettingsInput = ReferralSettingsDto;
+
 /** A user's own current standing — free reveals left this account has never used, plus the sum
  * of `creditsRemaining` across every non-expired purchased batch. Derived fresh from
  * ContactReveal/ContactRevealCreditBatch rows on every request (ContactRevealService.
