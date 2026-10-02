@@ -62,6 +62,19 @@ module.exports = {
       // layout is an easy rejection — turn this back on deliberately, with screenshots.
       supportsTablet: false,
       bundleIdentifier: "com.finfolia.bhavano",
+      // Universal Links — lets iOS hand a tapped https://www.bhavano.com/... link (a shared
+      // listing/referral link) to this app instead of Safari, when installed. See
+      // docs/plans/bhavano-referral-program-implementation.md's Phase 1 and
+      // src/components/home/ReferralLinkBridge.tsx, which reads the incoming URL.
+      //
+      // This config alone is not enough — iOS also verifies apple-app-site-association (AASA),
+      // served from https://www.bhavano.com/.well-known/apple-app-site-association (see
+      // apps/web/public/.well-known/), which must list this app's Team ID + bundle id
+      // ("TEAMID.com.finfolia.bhavano") before Apple will actually hand the link over instead of
+      // opening it in Safari. That file currently has a placeholder Team ID — fill it in from
+      // the Apple Developer account (Membership page) and this needs a new build (native
+      // entitlement, not a JS-only change) before it takes effect on a real device.
+      associatedDomains: ["applinks:www.bhavano.com"],
       // Sign in with Apple (Guideline 4.8) — see HomeSheetsProvider.tsx's login sheet and
       // docs/plans/ios-app-store-release.md.
       usesAppleSignIn: true,
@@ -112,6 +125,21 @@ module.exports = {
         "com.google.android.gms.permission.AD_ID",
       ],
       package: "com.finfolia.bhavano",
+      // App Links — Android's equivalent of iOS's associatedDomains above. `autoVerify: true` is
+      // what makes Android check assetlinks.json (served from
+      // https://www.bhavano.com/.well-known/assetlinks.json, see apps/web/public/.well-known/)
+      // before routing a tapped link here instead of the browser — that file currently has a
+      // placeholder SHA256 signing-certificate fingerprint. Get the real one via
+      // `eas credentials` (Android → select the production keystore → it prints the SHA256) and
+      // this needs a new build before it takes effect, same as the iOS side.
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [{ scheme: "https", host: "www.bhavano.com" }],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
       // Firebase project's client config — required for Android push: expo-notifications'
       // getExpoPushTokenAsync registers with FCM through it and fails without it. Public client
       // identifiers, safe to commit; the FCM V1 service-account *private key* Expo uses to send

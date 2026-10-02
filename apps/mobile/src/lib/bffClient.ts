@@ -553,6 +553,21 @@ export async function uploadVideo(
   return xhrJson<CreatedVideoInput>("POST", `${BFF_URL}/uploads/video`, accessToken, formData, onProgress);
 }
 
+/** Public, unauthenticated — logs an anonymous click on a shared referral/listing link before any
+ * signup exists, for the funnel's "clicks" count. See ReferralLinkBridge.tsx (the only call site)
+ * and docs/plans/bhavano-referral-program-implementation.md. Best-effort: the caller doesn't await
+ * this before navigating to the shared listing, so a dropped call never delays that. */
+export function recordReferralClick(
+  referralCode: string,
+  sessionId: string,
+  landingListingId?: string,
+): Promise<{ success: true }> {
+  return bffFetch("/referrals/click", {
+    method: "POST",
+    body: JSON.stringify({ referralCode, sessionId, landingListingId }),
+  });
+}
+
 export function sendOtp(phone: string): Promise<{ success: true }> {
   return bffFetch("/auth/otp/send", { method: "POST", body: JSON.stringify({ phone }) });
 }
@@ -562,10 +577,11 @@ export function verifyOtp(
   code: string,
   viewerKey?: string,
   sessionId?: string,
+  referralCode?: string,
 ): Promise<{ user: { id: string; phone?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/otp/verify", {
     method: "POST",
-    body: JSON.stringify({ phone, code, viewerKey, sessionId }),
+    body: JSON.stringify({ phone, code, viewerKey, sessionId, referralCode }),
   });
 }
 
@@ -573,10 +589,11 @@ export function loginWithGoogle(
   idToken: string,
   viewerKey?: string,
   sessionId?: string,
+  referralCode?: string,
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/google", {
     method: "POST",
-    body: JSON.stringify({ idToken, viewerKey, sessionId }),
+    body: JSON.stringify({ idToken, viewerKey, sessionId, referralCode }),
   });
 }
 
@@ -588,10 +605,11 @@ export function loginWithApple(
   fullName?: string,
   viewerKey?: string,
   sessionId?: string,
+  referralCode?: string,
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/apple", {
     method: "POST",
-    body: JSON.stringify({ identityToken, fullName, viewerKey, sessionId }),
+    body: JSON.stringify({ identityToken, fullName, viewerKey, sessionId, referralCode }),
   });
 }
 

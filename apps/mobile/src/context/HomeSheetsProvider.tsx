@@ -41,6 +41,7 @@ import {
 } from "../lib/bffClient";
 import { useGoogleSignIn } from "../lib/googleSignIn";
 import { getOrCreateViewerKey } from "../lib/viewerKey";
+import { getReferralCodeIfFresh } from "../lib/referralLink";
 import { getAnalyticsSessionId, linkAnalyticsSessionToUser } from "../lib/analyticsSession";
 import { registerForPushAsync, unregisterPushAsync } from "../lib/push";
 import { Icon } from "../components/Icon";
@@ -639,6 +640,7 @@ export function HomeSheetsProvider({
         otp,
         await getOrCreateViewerKey(),
         getAnalyticsSessionId(),
+        await getReferralCodeIfFresh(),
       );
       await onLoginSuccess(session.accessToken);
     } catch (e) {
@@ -660,6 +662,7 @@ export function HomeSheetsProvider({
         idToken,
         await getOrCreateViewerKey(),
         getAnalyticsSessionId(),
+        await getReferralCodeIfFresh(),
       );
       await onLoginSuccess(session.accessToken);
     } catch (e) {
@@ -692,6 +695,7 @@ export function HomeSheetsProvider({
         fullName || undefined,
         await getOrCreateViewerKey(),
         getAnalyticsSessionId(),
+        await getReferralCodeIfFresh(),
       );
       await onLoginSuccess(session.accessToken);
     } catch (e) {

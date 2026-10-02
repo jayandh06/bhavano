@@ -16,6 +16,7 @@ import { requestTrackingConsent } from "../src/lib/trackingConsent";
 import { BottomTabBar } from "../src/components/home/BottomTabBar";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { SoftNavAppPageViews } from "../src/components/home/SoftNavAppPageViews";
+import { ReferralLinkBridge } from "../src/components/home/ReferralLinkBridge";
 import { importFavourites, reportClientError } from "../src/lib/bffClient";
 import { clearGuestSaves, guestSaveIds, useGuestSaves } from "../src/lib/guestSaves";
 
@@ -131,6 +132,7 @@ function AppNavigation() {
         <PushBridge />
         <GuestSavesSync />
         <SoftNavAppPageViews />
+        <ReferralLinkBridge />
         {/* Every screen runs headerShown:false and draws its own header, so nothing was reserving
             the status-bar area — content rendered under the clock, Dynamic Island and Wi-Fi icons
             on notched devices. SafeAreaProvider alone doesn't fix this: it supplies inset values,
