@@ -1204,6 +1204,10 @@ export interface BoostPricingPreviewDto {
    * field is treated as skippable (`true`) by the components that read it, matching the
    * always-skippable behavior that existed before this flag. */
   allowSkippingBoost?: boolean;
+  /** The user's soonest-expiring free boost earned by referring someone, if any. Spent through
+   * `createBoostOrder` with `useReferralCredit: true`; its length is `days`, not the chosen
+   * duration. Absent from a server that predates the referral programme. */
+  referralCredit?: { days: number; expiresAt: string; available: number } | null;
 }
 
 /** A boost/instant-alerts choice made ahead of time on the ad-preview step — `null` means the
@@ -1417,6 +1421,38 @@ export interface ReferralFunnelDto {
   creditsExpired: number;
   /** First approved ads that earned nothing, by reason. */
   skippedByReason: Record<string, number>;
+}
+
+/** One spendable free boost — unredeemed, unrevoked, unexpired. */
+export interface MyReferralCreditDto {
+  daysGranted: number;
+  grantedAt: string;
+  expiresAt: string;
+}
+
+/** Someone the signed-in user referred. First name only: the referrer doesn't need more. */
+export interface MyReferralItemDto {
+  id: string;
+  firstName: string | null;
+  status: ReferralStatus;
+  signedUpAt: string;
+  rewardedAt: string | null;
+}
+
+/** The signed-in user's own referral standing — `GET /referrals/me`, behind the Referrals page. */
+export interface MyReferralsDto {
+  /** The user's id. Shared links carry it as `?ref=`. */
+  referralCode: string;
+  /** Current settings, for the page's copy ("earn a free 3-day boost"). */
+  boostDays: number;
+  creditExpiryDays: number;
+  monthlyCap: number;
+  creditsThisMonth: number;
+  /** Nearest expiry first — the order they are spent in. */
+  availableCredits: MyReferralCreditDto[];
+  counts: { signedUp: number; firstAdApproved: number; rewarded: number };
+  /** Newest first, at most 20. */
+  recent: MyReferralItemDto[];
 }
 
 /** A user's own current standing — free reveals left this account has never used, plus the sum
