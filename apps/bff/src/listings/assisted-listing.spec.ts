@@ -15,6 +15,7 @@ import {
 import type { PrismaService } from '../prisma/prisma.service';
 import type { ListingSlotsService } from '../listing-slots/listing-slots.service';
 import type { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
+import type { ReferralsService } from '../referrals/referrals.service';
 
 describe('assisted listing helpers', () => {
   it('masks the claim phone to its first two and last three digits', () => {
@@ -80,6 +81,10 @@ function makeService(opts: { platformFee?: number } = {}) {
     } as unknown as PlatformFeeSettingsService,
     {} as never,
     {} as never,
+    {
+      recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined),
+      revokeIfTakenDown: jest.fn().mockResolvedValue(undefined),
+    } as unknown as ReferralsService,
   );
   const internals = service as unknown as {
     toDetailDto: jest.Mock;

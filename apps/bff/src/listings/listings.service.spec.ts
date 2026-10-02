@@ -12,6 +12,7 @@ import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.servi
 import { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provider';
 import { ContactRevealService } from '../contact-reveal/contact-reveal.service';
 import type { AnalyticsService } from '../analytics/analytics.service';
+import type { ReferralsService } from '../referrals/referrals.service';
 import { ConfigService } from '@nestjs/config';
 import {
   brokerageFeeIssue,
@@ -50,6 +51,10 @@ function makeService() {
   const listingSlotsService = {
     assertCanRenew: jest.fn(),
   } as unknown as ListingSlotsService;
+  const referralsService = {
+    recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined),
+    revokeIfTakenDown: jest.fn().mockResolvedValue(undefined),
+  } as unknown as ReferralsService;
 
   const service = new ListingsService(
     prisma,
@@ -73,8 +78,9 @@ function makeService() {
     } as unknown as PlatformFeeSettingsService,
     { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
   { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
+  referralsService,
   );
-  return { service, prisma, notificationsService, listingSlotsService };
+  return { service, prisma, notificationsService, listingSlotsService, referralsService };
 }
 
 describe('ListingsService.list — word match + fuzzy title search', () => {
@@ -116,6 +122,7 @@ describe('ListingsService.list — word match + fuzzy title search', () => {
       } as unknown as PlatformFeeSettingsService,
       { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
     { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
+    { recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined), revokeIfTakenDown: jest.fn().mockResolvedValue(undefined) } as unknown as ReferralsService,
     );
     return { service, findMany, count, queryRaw };
   }
@@ -199,6 +206,7 @@ describe('ListingsService.list — amenity filter', () => {
       } as unknown as PlatformFeeSettingsService,
       { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
     { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
+    { recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined), revokeIfTakenDown: jest.fn().mockResolvedValue(undefined) } as unknown as ReferralsService,
     );
     return { service, count };
   }
@@ -394,6 +402,7 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
       } as unknown as PlatformFeeSettingsService,
       { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
     { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
+    { recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined), revokeIfTakenDown: jest.fn().mockResolvedValue(undefined) } as unknown as ReferralsService,
     );
     return { service, findMany };
   }
@@ -679,6 +688,7 @@ describe('ListingsService.listEngagement', () => {
       } as unknown as PlatformFeeSettingsService,
       { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
     { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
+    { recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined), revokeIfTakenDown: jest.fn().mockResolvedValue(undefined) } as unknown as ReferralsService,
     );
     return { service, prisma };
   }
@@ -1324,6 +1334,7 @@ describe('ListingsService', () => {
         } as unknown as PlatformFeeSettingsService,
         { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
       { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
+      { recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined), revokeIfTakenDown: jest.fn().mockResolvedValue(undefined) } as unknown as ReferralsService,
       );
       // getMine's own plumbing (toDetailDto etc.) isn't what these tests are about — stubbed so
       // a resolved add/delete just needs to not throw, not exercise the whole DTO pipeline.
@@ -1899,10 +1910,10 @@ describe('ListingsService.updateAsAdmin — the admin content-override endpoint'
 });
 
 describe('ListingsService.flag/approve/setStatusAsAdmin — attribute the change to the admin', () => {
-  it('flag() logs the moderationState before/after and the admin as actor', async () => {
-    const { service, prisma } = makeService();
+  it('flag() logs the moderationState before/after and the admin as actor, and revokes any unused referral credit', async () => {
+    const { service, prisma, referralsService } = makeService();
     (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ moderationState: 'approved' });
-    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+    (prisma.listing.update as jest.Mock).mockResolvedValue({ ownerId: 'owner1' });
 
     await service.flag('l1', 'admin1').catch(() => undefined);
 
@@ -1915,12 +1926,13 @@ describe('ListingsService.flag/approve/setStatusAsAdmin — attribute the change
         changes: { moderationState: { before: 'approved', after: 'flagged' } },
       },
     });
+    expect(referralsService.revokeIfTakenDown).toHaveBeenCalledWith('owner1', expect.any(String));
   });
 
-  it('approve() logs the moderationState before/after and the admin as actor', async () => {
-    const { service, prisma } = makeService();
+  it('approve() logs the moderationState before/after and the admin as actor, and checks for a referral reward', async () => {
+    const { service, prisma, referralsService } = makeService();
     (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ moderationState: 'flagged' });
-    (prisma.listing.update as jest.Mock).mockResolvedValue({});
+    (prisma.listing.update as jest.Mock).mockResolvedValue({ ownerId: 'owner1' });
 
     await service.approve('l1', 'admin1').catch(() => undefined);
 
@@ -1933,6 +1945,7 @@ describe('ListingsService.flag/approve/setStatusAsAdmin — attribute the change
         changes: { moderationState: { before: 'flagged', after: 'approved' } },
       },
     });
+    expect(referralsService.recordFirstApprovedAdIfReferred).toHaveBeenCalledWith('owner1');
   });
 
   it('setStatusAsAdmin() logs the status change when it actually changes', async () => {

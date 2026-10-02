@@ -16,9 +16,10 @@ import { ContactRevealModule } from '../contact-reveal/contact-reveal.module';
 import { PlansModule } from '../plans/plans.module';
 import { PushModule } from '../push/push.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { ReferralsModule } from '../referrals/referrals.module';
 
 @Module({
-  imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule, AdsModule, ContactRevealModule, PlansModule, PushModule, AnalyticsModule],
+  imports: [ModerationModule, RateLimitModule, NotificationsModule, SavedSearchesModule, LocationsModule, StorageModule, ListingSlotsModule, AdsModule, ContactRevealModule, PlansModule, PushModule, AnalyticsModule, ReferralsModule],
   controllers: [ListingsController],
   providers: [ListingsService, ListingPhotosService, AssistedListingExpiryJob, LoginNudgeService],
   exports: [ListingsService, ListingPhotosService, LoginNudgeService],

@@ -67,6 +67,7 @@ import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import { Prisma } from '@prisma/client';
 import type {
   Area,
@@ -473,6 +474,7 @@ export class ListingsService {
     private readonly platformFeeSettingsService: PlatformFeeSettingsService,
     private readonly pushService: PushService,
     private readonly analyticsService: AnalyticsService,
+    private readonly referralsService: ReferralsService,
   ) {}
 
   async list(
@@ -1114,6 +1116,11 @@ export class ListingsService {
     await this.logEdit(id, 'admin', adminId, 'flagged', {
       moderationState: { before: existing?.moderationState ?? null, after: 'flagged' },
     });
+    // Referral program BR-5 — a flag is the de-facto takedown (flagged listings fail every public
+    // visibility query), so this is one of the two revocation triggers alongside deleteCompletely.
+    // See revokeIfTakenDown's own doc comment for why setStatusAsAdmin's `deactivated` is not a
+    // third trigger.
+    this.referralsService.revokeIfTakenDown(listing.ownerId, 'Listing flagged').catch(() => undefined);
     return this.toDetailDto(listing, undefined, true);
   }
 
@@ -1135,6 +1142,10 @@ export class ListingsService {
     await this.logEdit(id, 'admin', adminId, 'approved', {
       moderationState: { before: existing?.moderationState ?? null, after: 'approved' },
     });
+    // Referral program, Phase 3 — the other path (besides runPostLiveSideEffects) a listing can
+    // reach "live and approved" through: an admin un-flagging one that was moderated before its
+    // own first live moment. See that method's own comment on this same call.
+    this.referralsService.recordFirstApprovedAdIfReferred(listing.ownerId).catch(() => undefined);
     return this.toDetailDto(listing, undefined, true);
   }
 
@@ -1314,6 +1325,12 @@ export class ListingsService {
         })
         .catch(() => undefined);
     }
+
+    // Referral program, Phase 3 (docs/plans/bhavano-referral-program-implementation.md) — a no-op
+    // for the overwhelming majority of listings (no referral on file for this owner at all), and
+    // itself a no-op past the referred user's first-ever approved ad. Fire-and-forget, same
+    // reasoning as every other side effect in this method.
+    this.referralsService.recordFirstApprovedAdIfReferred(ownerId).catch(() => undefined);
   }
 
   /** Idempotent — flips `pending_checkout` → `live` and runs deferred post-live side effects. */
@@ -1949,6 +1966,13 @@ export class ListingsService {
       },
     });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+
+    // Referral program BR-5 (docs/plans/bhavano-referral-program-implementation.md, Phase 3) —
+    // fire-and-forget, before the delete itself so it still fires even if something later in this
+    // method throws partway through.
+    this.referralsService
+      .revokeIfTakenDown(listing.ownerId, 'Listing deleted')
+      .catch(() => undefined);
 
     const jobExts = await this.prisma.photoVariantJob.findMany({
       where: { listingId },
