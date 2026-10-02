@@ -1211,6 +1211,75 @@ export interface ReferralSettingsDto {
     takedownRevocationWindowDays: number;
 }
 export type UpdateReferralSettingsInput = ReferralSettingsDto;
+/** Where a referral is in its life — `blocked` is a same-device flag awaiting admin review,
+ * `reversed` an admin rejection. See docs/plans/bhavano-referral-program-implementation.md. */
+export type ReferralStatus = "signed_up" | "ad_approved" | "rewarded" | "blocked" | "reversed";
+export interface AdminReferralUserDto {
+    id: string;
+    name: string | null;
+    phone: string | null;
+}
+export interface AdminReferralCreditDto {
+    grantedAt: string;
+    expiresAt: string;
+    redeemedAt: string | null;
+    revokedAt: string | null;
+    revokedReason: string | null;
+}
+export interface AdminReferralDto {
+    id: string;
+    status: ReferralStatus;
+    /** Why the first approved ad earned no credit — see ReferralRewardSkipReason in the BFF. */
+    rewardSkippedReason: string | null;
+    referrer: AdminReferralUserDto & {
+        referralFrozenAt: string | null;
+        referralFrozenReason: string | null;
+    };
+    referred: AdminReferralUserDto;
+    clickedAt: string | null;
+    signedUpAt: string;
+    firstAdApprovedAt: string | null;
+    rewardedAt: string | null;
+    credit: AdminReferralCreditDto | null;
+}
+export interface AdminReferralsPage {
+    items: AdminReferralDto[];
+    total: number;
+    /** Same-device referrals waiting for a decision, regardless of the current filter. */
+    flaggedTotal: number;
+}
+export interface AdminReferralActionDto {
+    id: string;
+    action: string;
+    note: string | null;
+    createdAt: string;
+    adminName: string | null;
+}
+export interface AdminReferralDetailDto extends AdminReferralDto {
+    referrerStats: {
+        referralsTotal: number;
+        creditsThisMonth: number;
+        availableCredits: number;
+        approvedAds: number;
+    };
+    /** Admin actions on this referral and on its referrer (freeze/unfreeze), newest first. */
+    actions: AdminReferralActionDto[];
+}
+export interface ReferralFunnelDto {
+    /** null = all time. */
+    sinceDays: number | null;
+    clicks: number;
+    signups: number;
+    firstAdApproved: number;
+    rewarded: number;
+    flagged: number;
+    reversed: number;
+    creditsRedeemed: number;
+    creditsRevoked: number;
+    creditsExpired: number;
+    /** First approved ads that earned nothing, by reason. */
+    skippedByReason: Record<string, number>;
+}
 /** A user's own current standing — free reveals left this account has never used, plus the sum
  * of `creditsRemaining` across every non-expired purchased batch. Derived fresh from
  * ContactReveal/ContactRevealCreditBatch rows on every request (ContactRevealService.
