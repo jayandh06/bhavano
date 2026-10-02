@@ -15,19 +15,23 @@ import { Icon } from "../Icon";
  * the app's equivalent of the web's `owner_share_whatsapp` event. See
  * docs/plans/growth-beyond-google-ads.md.
  *
- * The link carries the signed-in owner's id as `ref`, crediting them under the referral programme.
+ * The link carries the owner's id as `ref`, crediting them under the referral programme.
  */
 export function OwnerWhatsAppShare({
   listing,
 }: {
-  listing: Pick<ListingDetailDto, "id" | "title" | "price" | "priceInWords" | "totalPrice" | "area" | "cityName">;
+  listing: Pick<
+    ListingDetailDto,
+    "id" | "title" | "price" | "priceInWords" | "totalPrice" | "area" | "cityName" | "viewerReferralCode"
+  >;
 }) {
   const { colors } = useAppTheme();
   const { userId } = useHomeSheets();
   const router = useRouter();
+  const code = listing.viewerReferralCode ?? userId;
 
   const share = () => {
-    const url = sharedWebUrl(`/listings/${listing.id}`, "owner_share", userId);
+    const url = sharedWebUrl(`/listings/${listing.id}`, "owner_share", code);
     const text =
       `${listing.title}\n${listingPriceText(listing, "compact")} · ${listing.area}, ${listing.cityName}\n` +
       `Photos and details on Bhavano — message me there:\n${url}`;
@@ -45,17 +49,30 @@ export function OwnerWhatsAppShare({
         borderRadius: 16,
         padding: 18,
         gap: 12,
-        borderColor: colors.border,
+        borderColor: code ? colors.gold : colors.border,
         backgroundColor: colors.surfaceAlt,
       }}
     >
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>Get enquiries sooner</Text>
-        <Text style={{ fontSize: 13, color: colors.textSoft }}>
-          Send your ad to your society, office or family WhatsApp groups — people nearby often know
-          someone looking.
-        </Text>
-      </View>
+      {code ? (
+        <View style={{ gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Icon name="boost" size={15} color={colors.gold} />
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>Share your ad and earn a free boost</Text>
+          </View>
+          <Text style={{ fontSize: 13, color: colors.textSoft }}>
+            Send it to your society, office or family WhatsApp groups to get enquiries sooner. When someone joins
+            Bhavano from your link and their first ad is approved, you get a free boost for any of your ads.
+          </Text>
+        </View>
+      ) : (
+        <View style={{ gap: 4 }}>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>Get enquiries sooner</Text>
+          <Text style={{ fontSize: 13, color: colors.textSoft }}>
+            Send your ad to your society, office or family WhatsApp groups — people nearby often know
+            someone looking.
+          </Text>
+        </View>
+      )}
       <Pressable
         onPress={share}
         style={{
@@ -72,13 +89,9 @@ export function OwnerWhatsAppShare({
         <Icon name="message" size={16} color={colors.onGreen} />
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Share on WhatsApp</Text>
       </Pressable>
-      {userId && (
-        <Text style={{ fontSize: 12.5, color: colors.textSoft }}>
-          <Icon name="boost" size={12} color={colors.gold} /> Share your ad, and get a free boost when a friend
-          joins from your link and posts their own.{" "}
-          <Text onPress={() => router.push("/referrals")} style={{ fontWeight: "700", color: colors.green }}>
-            How it works
-          </Text>
+      {code && (
+        <Text onPress={() => router.push("/referrals")} style={{ fontSize: 12.5, fontWeight: "700", color: colors.green }}>
+          How referrals work
         </Text>
       )}
     </View>
