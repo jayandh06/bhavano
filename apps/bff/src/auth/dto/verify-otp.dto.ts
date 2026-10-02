@@ -65,4 +65,12 @@ export class VerifyOtpDto {
   @IsString()
   @MaxLength(64)
   viewerKey?: string;
+
+  /** The referrer's user id, from a shared referral link's `?ref=` param (web's `bhavano_ref`
+   * cookie) — lets AuthService attribute a brand-new signup back to them. Ignored for a returning
+   * login and by otp/link, which reuses this same DTO. See VisitContext.referralCode. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  referralCode?: string;
 }

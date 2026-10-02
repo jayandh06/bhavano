@@ -51,6 +51,7 @@ export class AuthController {
       adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
       viewerKey: dto.viewerKey,
+      referralCode: dto.referralCode,
       trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
   }
@@ -71,6 +72,7 @@ export class AuthController {
       adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
       viewerKey: dto.viewerKey,
+      referralCode: dto.referralCode,
       trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
   }
@@ -91,6 +93,7 @@ export class AuthController {
       adId: dto.acquisitionAdId,
       sessionId: dto.sessionId,
       viewerKey: dto.viewerKey,
+      referralCode: dto.referralCode,
       trackingAuthorized: parseTrackingAuthorized(trackingAuthorizedHeader),
     });
   }

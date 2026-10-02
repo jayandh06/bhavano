@@ -9,6 +9,7 @@ import { UsersModule } from '../users/users.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AdsModule } from '../ads/ads.module';
 import { ListingsModule } from '../listings/listings.module';
+import { ReferralsModule } from '../referrals/referrals.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ListingsModule } from '../listings/listings.module';
     AnalyticsModule,
     AdsModule,
     ListingsModule,
+    ReferralsModule,
     forwardRef(() => UsersModule),
   ],
   controllers: [AuthController],

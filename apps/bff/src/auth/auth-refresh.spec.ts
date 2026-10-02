@@ -26,6 +26,7 @@ function makeService(user: Record<string, unknown> | null, activeId = 'u1') {
     noop,
     noop,
     noop,
+    noop,
   );
   return { service, prisma, accountMerge };
 }

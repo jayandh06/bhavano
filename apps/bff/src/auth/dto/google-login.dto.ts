@@ -53,4 +53,10 @@ export class GoogleLoginDto {
   @IsString()
   @MaxLength(64)
   viewerKey?: string;
+
+  /** See VerifyOtpDto.referralCode — same purpose, for the Google login path. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  referralCode?: string;
 }

@@ -17,6 +17,7 @@ import { AppleProvider } from './providers/apple.provider';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { ListingsService } from '../listings/listings.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import {
   GoogleAdsConversionProvider,
   NEW_REGISTRATION_CONVERSION_ACTION_ID,
@@ -55,6 +56,11 @@ export interface VisitContext {
    * now-known user, same purpose as sessionId above but for listing views rather than page
    * visits. Not persisted onto User itself. */
   viewerKey?: string;
+  /** The referrer's user id, carried by a shared referral link (`?ref=<userId>` on web, the
+   * mobile deep link's equivalent) — see ReferralsService.attributeSignupIfReferred and
+   * docs/plans/bhavano-referral-program-implementation.md. Only meaningful on a brand-new signup;
+   * ignored for a returning login the same way acquisition* fields are. */
+  referralCode?: string;
   /** iOS only, from the app's ATT prompt (see AuthController's `x-tracking-authorized` header —
    * web has no such concept and never sends this, so it stays undefined there, which
    * reportSignupConversion treats the same as `true`). `false` is the only value that changes
@@ -113,6 +119,7 @@ export class AuthService {
     private readonly notificationsService: NotificationsService,
     private readonly analyticsService: AnalyticsService,
     private readonly listingsService: ListingsService,
+    private readonly referralsService: ReferralsService,
     private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
     @InjectPinoLogger(AuthService.name) private readonly logger: PinoLogger,
   ) {}
@@ -166,6 +173,7 @@ export class AuthService {
     await this.recordLogin(promoted.id, 'otp', visit?.sessionId);
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
+    this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, promoted.id);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -273,6 +281,7 @@ export class AuthService {
     await this.recordLogin(promoted.id, 'google', visit?.sessionId);
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
+    this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, promoted.id);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -342,6 +351,7 @@ export class AuthService {
     await this.recordLogin(promoted.id, 'apple', visit?.sessionId);
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
+    this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, promoted.id);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -456,6 +466,27 @@ export class AuthService {
         this.logger.warn(
           { err, viewerKey, userId },
           'Failed to link listing views to user',
+        ),
+      );
+  }
+
+  /** Best-effort, fire-and-forget: attributes a brand-new signup to whoever shared the referral
+   * link, if any — see ReferralsService.attributeSignupIfReferred. Not awaited, same reasoning as
+   * linkVisitToUser/linkListingViewsToUser above, and only called for a new user (a returning
+   * login's referralCode, if a stale link param somehow still carried one, is ignored). */
+  private attributeReferralIfNew(
+    isNewUser: boolean,
+    referralCode: string | undefined,
+    sessionId: string | undefined,
+    userId: string,
+  ): void {
+    if (!isNewUser || !referralCode) return;
+    void this.referralsService
+      .attributeSignupIfReferred(userId, referralCode, sessionId)
+      .catch((err: unknown) =>
+        this.logger.warn(
+          { err, referralCode, userId },
+          'Failed to attribute referral signup',
         ),
       );
   }
