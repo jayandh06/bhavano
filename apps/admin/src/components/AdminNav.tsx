@@ -14,10 +14,12 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/users", label: "Users" },
   { href: "/page-visits", label: "Page visits" },
   { href: "/requirements", label: "Requirements" },
+  { href: "/referrals", label: "Referrals" },
   { href: "/search-demand", label: "Search demand" },
   { href: "/settings/plans", label: "Plans" },
   { href: "/settings/rate-limits", label: "Rate limits" },
   { href: "/settings/contact-reveal", label: "Contact reveal" },
+  { href: "/settings/referrals", label: "Referral rewards" },
   { href: "/settings/alerts", label: "Search alerts" },
   { href: "/settings/login-nudge", label: "Login prompt" },
 ];

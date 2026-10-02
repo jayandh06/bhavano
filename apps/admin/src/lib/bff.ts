@@ -9,6 +9,8 @@ import type {
   AdminDiscountCodesPage,
   AdminListingsPage,
   AdminPaymentsPage,
+  AdminReferralDetailDto,
+  AdminReferralsPage,
   AdminRequirementsPage,
   AdminUpdateListingInput,
   AdminUsersPage,
@@ -38,6 +40,9 @@ import type {
   PaymentStatus,
   ModerationState,
   RateLimitSettingsDto,
+  ReferralFunnelDto,
+  ReferralSettingsDto,
+  ReferralStatus,
   RequirementStatus,
   SavedSearchSettingsDto,
   SearchDemandPage,
@@ -656,6 +661,58 @@ export function updateContactRevealSettings(
   input: ContactRevealSettingsDto,
 ): Promise<ContactRevealSettingsDto> {
   return authedBffFetch(accessToken, "/admin/contact-reveal-settings", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function fetchReferralSettings(accessToken: string): Promise<ReferralSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/referral-settings", { cache: "no-store" });
+}
+
+export function updateReferralSettings(accessToken: string, input: ReferralSettingsDto): Promise<ReferralSettingsDto> {
+  return authedBffFetch(accessToken, "/admin/referral-settings", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+export function fetchReferrals(
+  accessToken: string,
+  query: { status?: ReferralStatus; frozen?: boolean; referrerId?: string; offset?: number; limit?: number } = {},
+): Promise<AdminReferralsPage> {
+  const params = new URLSearchParams();
+  if (query.status) params.set("status", query.status);
+  if (query.frozen) params.set("frozen", "true");
+  if (query.referrerId) params.set("referrerId", query.referrerId);
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
+  if (query.limit !== undefined) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/referrals?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchReferralFunnel(accessToken: string, sinceDays?: number): Promise<ReferralFunnelDto> {
+  const qs = sinceDays ? `?sinceDays=${sinceDays}` : "";
+  return authedBffFetch(accessToken, `/admin/referrals/funnel${qs}`, { cache: "no-store" });
+}
+
+export function fetchReferral(accessToken: string, id: string): Promise<AdminReferralDetailDto> {
+  return authedBffFetch(accessToken, `/admin/referrals/${id}`, { cache: "no-store" });
+}
+
+export function approveReferral(accessToken: string, id: string, note?: string): Promise<AdminReferralDetailDto> {
+  return authedBffFetch(accessToken, `/admin/referrals/${id}/approve`, { method: "POST", body: JSON.stringify({ note }) });
+}
+
+export function reverseReferral(accessToken: string, id: string, reason: string): Promise<AdminReferralDetailDto> {
+  return authedBffFetch(accessToken, `/admin/referrals/${id}/reverse`, { method: "POST", body: JSON.stringify({ reason }) });
+}
+
+export function freezeReferrals(accessToken: string, userId: string, reason: string): Promise<void> {
+  return authedBffFetch(accessToken, `/admin/users/${userId}/referral-freeze`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function unfreezeReferrals(accessToken: string, userId: string, note?: string): Promise<void> {
+  return authedBffFetch(accessToken, `/admin/users/${userId}/referral-unfreeze`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
 }
 
 export function fetchLoginNudgeSettings(accessToken: string): Promise<LoginNudgeSettingsDto> {
