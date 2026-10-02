@@ -1,8 +1,31 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { loginWithGoogle, refreshSession, verifyOtp } from "@/lib/bff";
+import { loginWithGoogle, refreshSession, verifyOtp, type VisitContext } from "@/lib/bff";
 import { isAccessTokenDueForRenewal } from "@/lib/session";
+
+/** Pulls VisitContext fields back out of a Credentials provider's `credentials` — the flat
+ * string-keyed object `signIn()` posts them as (see next-auth's lib/actions.js: every field
+ * becomes a URLSearchParams entry). verifyOtpAction/signInWithGoogleOneTapAction put them there
+ * explicitly, precisely so `authorize()` below never has to call `cookies()` (or getVisitContext,
+ * which calls it) itself — see getVisitContext's own doc comment for why that's unreliable from
+ * in here. */
+function visitFromCredentials(credentials: Partial<Record<string, unknown>>): VisitContext {
+  const str = (key: keyof VisitContext): string | undefined =>
+    typeof credentials[key] === "string" ? (credentials[key] as string) : undefined;
+  return {
+    sessionId: str("sessionId"),
+    viewerKey: str("viewerKey"),
+    referralCode: str("referralCode"),
+    acquisitionSource: str("acquisitionSource"),
+    acquisitionMedium: str("acquisitionMedium"),
+    acquisitionCampaign: str("acquisitionCampaign"),
+    acquisitionGclid: str("acquisitionGclid"),
+    acquisitionCampaignId: str("acquisitionCampaignId"),
+    acquisitionAdGroupId: str("acquisitionAdGroupId"),
+    acquisitionAdId: str("acquisitionAdId"),
+  };
+}
 
 declare module "next-auth" {
   interface Session {
@@ -42,7 +65,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         const code = credentials?.code as string | undefined;
         if (!phone || !code) return null;
 
-        const session = await verifyOtp(phone, code);
+        const session = await verifyOtp(phone, code, visitFromCredentials(credentials));
         return {
           id: session.user.id,
           name: session.user.name ?? session.user.phone,
@@ -63,7 +86,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
       async authorize(credentials) {
         const credential = credentials?.credential as string | undefined;
         if (!credential) return null;
-        const session = await loginWithGoogle(credential);
+        const session = await loginWithGoogle(credential, visitFromCredentials(credentials));
         return {
           id: session.user.id,
           name: session.user.name ?? session.user.email,

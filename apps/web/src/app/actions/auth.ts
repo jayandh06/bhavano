@@ -2,9 +2,19 @@
 
 import { signIn, signOut } from "@/auth";
 import type { LinkIdentifierResult, UserProfileDto } from "@bhavano/types";
-import { fetchProfile, linkPhone, logout, sendOtp } from "@/lib/bff";
+import { fetchProfile, getVisitContext, linkPhone, logout, sendOtp, type VisitContext } from "@/lib/bff";
 import { isAccessTokenValid } from "@/lib/session";
 import { auth, unstable_update } from "@/auth";
+
+/** `signIn()` posts every field through `URLSearchParams`, which stringifies `undefined` as the
+ * literal text "undefined" rather than dropping it — worse than not sending it at all, since a
+ * bogus non-empty "sessionId" would look like a real one downstream. Drops anything not already a
+ * string before it reaches `signIn()`. */
+function definedStrings(visit: VisitContext): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(visit).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
+}
 
 export async function sendOtpAction(phone: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -20,7 +30,11 @@ export async function verifyOtpAction(
   code: string,
 ): Promise<{ success: boolean; error?: string; isNewUser?: boolean; profile?: UserProfileDto }> {
   try {
-    await signIn("phone-otp", { phone, code, redirect: false });
+    // Resolved here, not inside authorize() — see getVisitContext's own doc comment for why
+    // cookies() isn't reliable called from in there, and threaded through as plain credential
+    // strings instead.
+    const visit = await getVisitContext().catch(() => ({}) as VisitContext);
+    await signIn("phone-otp", { phone, code, ...definedStrings(visit), redirect: false });
     // isNewUser only reflects this login (see the Session type's isNewUser doc comment) — read
     // it now, right after signing in, rather than expecting callers to trust it on future reads.
     const session = await auth();
@@ -58,7 +72,8 @@ export async function signInWithGoogleOneTapAction(
   credential: string,
 ): Promise<{ success: boolean; isNewUser?: boolean; email?: string }> {
   try {
-    await signIn("google-one-tap", { credential, redirect: false });
+    const visit = await getVisitContext().catch(() => ({}) as VisitContext);
+    await signIn("google-one-tap", { credential, ...definedStrings(visit), redirect: false });
     const session = await auth();
     return { success: true, isNewUser: session?.isNewUser, email: session?.user?.email ?? undefined };
   } catch {

@@ -603,14 +603,7 @@ const VIEWER_KEY_COOKIE = "bhavano_vk";
  * docs/plans/bhavano-referral-program-implementation.md's Phase 1. */
 const REFERRAL_COOKIE = "bhavano_ref";
 
-/** Reads the cookies middleware.ts (and, for the viewer key, ViewTracker.tsx) sets on a visitor's
- * first request/first view — the permanent first-touch acquisition source (UTM params, external
- * referrer hostname, or "direct"), the current session id, the persistent anonymous device key,
- * and the referral code from a shared link, if any — and forwards all of it on signup so
- * AuthService can persist the acquisition source onto the new User row, link the session's
- * Visit/ListingView rows to it, and attribute the signup to a referrer. A missing/malformed
- * cookie just means no attribution/linking is available — never blocks login. */
-async function getVisitContext(): Promise<{
+export interface VisitContext {
   acquisitionSource?: string;
   acquisitionMedium?: string;
   acquisitionCampaign?: string;
@@ -621,7 +614,29 @@ async function getVisitContext(): Promise<{
   sessionId?: string;
   viewerKey?: string;
   referralCode?: string;
-}> {
+}
+
+/** Reads the cookies middleware.ts (and, for the viewer key, ViewTracker.tsx) sets on a visitor's
+ * first request/first view — the permanent first-touch acquisition source (UTM params, external
+ * referrer hostname, or "direct"), the current session id, the persistent anonymous device key,
+ * and the referral code from a shared link, if any — and forwards all of it on signup so
+ * AuthService can persist the acquisition source onto the new User row, link the session's
+ * Visit/ListingView rows to it, and attribute the signup to a referrer. A missing/malformed
+ * cookie just means no attribution/linking is available — never blocks login.
+ *
+ * Exported so auth.ts's Credentials providers' `authorize()` never has to call this themselves:
+ * `authorize()` runs inside NextAuth's own in-process `Auth()` call (see next-auth's
+ * lib/actions.js `signIn()`), not a plain Next.js Route Handler/Server Action request, and
+ * `next/headers`'s `cookies()` has shown itself unreliable called from in there — phone-OTP
+ * logins consistently came back with no `sessionId` even though verifyOtpAction's own browser
+ * request plainly carried the cookie. The fix is to call this once, from verifyOtpAction/
+ * signInWithGoogleOneTapAction (both genuine Server Actions, where cookies() is unambiguously
+ * correct), and thread the resolved values through `signIn()`'s credentials as plain strings —
+ * see `authorize()` in auth.ts, which now builds its VisitContext from `credentials` instead of
+ * calling this function (or `cookies()`) itself. The real Google OAuth redirect flow is unaffected
+ * and still calls this directly from the `jwt()` callback, which *is* a genuine Route Handler
+ * request. */
+export async function getVisitContext(): Promise<VisitContext> {
   const jar = await cookies();
   const sessionId = jar.get(SESSION_COOKIE)?.value;
   const viewerKey = jar.get(VIEWER_KEY_COOKIE)?.value;
@@ -656,23 +671,31 @@ async function getVisitContext(): Promise<{
   }
 }
 
-export async function verifyOtp(phone: string, code: string): Promise<AuthSession> {
+/** `visit`, when given, is used as-is instead of re-reading cookies — see getVisitContext's own
+ * doc comment for why auth.ts's phone-otp authorize() always passes one explicitly now. */
+export async function verifyOtp(phone: string, code: string, visit?: VisitContext): Promise<AuthSession> {
   return bffFetch("/auth/otp/verify", {
     method: "POST",
-    body: JSON.stringify({ phone, code, ...(await getVisitContext()) }),
+    body: JSON.stringify({ phone, code, ...(visit ?? (await getVisitContext())) }),
   });
 }
 
-export async function loginWithGoogle(idToken: string): Promise<AuthSession> {
-  let visit: Awaited<ReturnType<typeof getVisitContext>> = {};
-  try {
-    visit = await getVisitContext();
-  } catch {
-    // Best-effort — OAuth callback should still mint a BFF session without attribution cookies.
+/** `visit`, when given, is used as-is instead of re-reading cookies — passed explicitly by the
+ * google-one-tap Credentials provider's authorize(), same reasoning as verifyOtp's own `visit`
+ * param. Omitted by the real Google OAuth redirect's jwt() callback, which still re-reads cookies
+ * itself since that call site is a genuine Route Handler request, not an authorize() callback. */
+export async function loginWithGoogle(idToken: string, visit?: VisitContext): Promise<AuthSession> {
+  let resolved: VisitContext = visit ?? {};
+  if (!visit) {
+    try {
+      resolved = await getVisitContext();
+    } catch {
+      // Best-effort — OAuth callback should still mint a BFF session without attribution cookies.
+    }
   }
   return bffFetch("/auth/google", {
     method: "POST",
-    body: JSON.stringify({ idToken, ...visit }),
+    body: JSON.stringify({ idToken, ...resolved }),
   });
 }
 
