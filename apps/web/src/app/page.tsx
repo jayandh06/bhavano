@@ -131,27 +131,32 @@ export default async function HomePage({
   // must not crash the single highest-traffic route on the site — retrying once with no token
   // shows the same real listings a logged-out visitor would see, instead of an error page or a
   // login prompt that makes no sense here.
-  const listingsPage = noAreaSelected
-    ? { items: [], total: 0, nextCursor: null }
-    : await fetchListings(listingsQuery, session?.accessToken).catch((error) => {
-        if (error instanceof BffAuthError) return fetchListings(listingsQuery, undefined);
-        throw error;
-      });
-
-  // Only page 1, and only without an active text search — a rail of promoted listings above
-  // someone's own search results reads as noise, not help, exactly backwards from what search is
-  // for. Scoped to the same tab/city as the main feed, so "Featured" here means featured *for
-  // what you're looking at*, not an unrelated sitewide sample. See FeaturedRail's own doc comment.
-  const featuredPage =
+  // Both requests are independent (neither's result feeds the other's input) and fired together
+  // — the rail used to be a second `await` after `listingsPage` resolved, adding its own full
+  // round-trip on top of the main fetch instead of overlapping it. Promise.all turns that into
+  // "whichever is slower", not "both, back to back".
+  const [listingsPage, featuredPage] = await Promise.all([
+    noAreaSelected
+      ? Promise.resolve({ items: [], total: 0, nextCursor: null })
+      : fetchListings(listingsQuery, session?.accessToken).catch((error) => {
+          if (error instanceof BffAuthError) return fetchListings(listingsQuery, undefined);
+          throw error;
+        }),
+    // Only page 1, and only without an active text search — a rail of promoted listings above
+    // someone's own search results reads as noise, not help, exactly backwards from what search
+    // is for. Scoped to the same tab/city as the main feed, so "Featured" here means featured
+    // *for what you're looking at*, not an unrelated sitewide sample. See FeaturedRail's own doc
+    // comment.
     page === 1 && !noAreaSelected && !q
-      ? await fetchListings(
+      ? fetchListings(
           { homeCategory: listingsQuery.homeCategory, cityId: listingsQuery.cityId, featuredOnly: true, limit: 10 },
           session?.accessToken,
         ).catch((error) => {
           if (error instanceof BffAuthError) return { items: [], total: 0, nextCursor: null };
           throw error;
         })
-      : { items: [], total: 0, nextCursor: null };
+      : Promise.resolve({ items: [], total: 0, nextCursor: null }),
+  ]);
 
   // Page 1 with zero results is a normal "nothing here yet" state — only pages *past* the last
   // real page are a crawl-trap/dead-end worth 404ing (see docs/plans/seo-distinct-window-pagination.md).
