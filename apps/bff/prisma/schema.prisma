@@ -413,6 +413,22 @@ model User {
   referralAsReferred    Referral?  @relation("ReferralsAsReferred")
   referralClicks        ReferralClick[] @relation("ReferralClicks")
   referralCreditBatches ReferralCreditBatch[] @relation("ReferralCreditBatches")
+  /** The device key (`bhavano.viewerKey`) this account's very first signup request carried, if
+   * any — set once, at creation, never updated. Referral program BR-3 (Phase 4): if a new signup
+   * shares this value with the referrer's own account, that's a strong signal they're the same
+   * physical device, not just the same person browsing twice — flagged for admin review (never
+   * auto-blocked, since a resettable per-install key is not real device fingerprinting). Not the
+   * same thing as ListingView.viewerKey, which gets overwritten to `user:<id>` once linked and so
+   * can't answer "which account first signed up from this device" after the fact — this column
+   * exists because that question has no other answer in the schema. */
+  firstSeenViewerKey    String?
+  /** Non-null freezes this user's ability to earn *new* referral credits (BR-9, admin action) —
+   * already-granted unused credits are still spendable; freezing stops further suspected abuse,
+   * it isn't a clawback. See docs/plans/bhavano-referral-program-implementation.md, Phase 4. */
+  referralFrozenAt       DateTime?
+  referralFrozenReason   String?
+  referralAdminActionsByAdmin ReferralAdminAction[] @relation("ReferralAdminActionsByAdmin")
+  referralAdminActionsOnUser  ReferralAdminAction[] @relation("ReferralAdminActionsOnUser")
 
   @@index([cityId])
   @@index([mergedIntoUserId])
@@ -1387,9 +1403,15 @@ model Referral {
   firstAdPostedAt  DateTime?
   firstAdApprovedAt DateTime?
   rewardedAt       DateTime?
+  /** Why the first approved ad earned no credit (same_device, phone_already_rewarded,
+   * referrer_frozen, referrer_no_approved_ad, monthly_cap, …) — see ReferralRewardSkipReason.
+   * Null while undecided or once rewarded. Phase 4. */
+  rewardSkippedReason String?
   createdAt        DateTime  @default(now())
   /** Set once the reward actually fires (Phase 3's approval hook) — see ReferralCreditBatch. */
   creditBatch      ReferralCreditBatch?
+  phoneLedgerEntry ReferralPhoneLedger?
+  adminActions     ReferralAdminAction[]
 
   @@index([referrerId, status])
 }
@@ -1460,6 +1482,39 @@ model ReferralSetting {
   attributionWindowDays      Int      @default(30)
   takedownRevocationWindowDays Int    @default(14)
   updatedAt                  DateTime @updatedAt
+}
+
+/** BR-2: "a phone number can be referred only once, ever, even if the account is deleted and
+ * recreated." Deliberately append-only and outliving the `User` row it was written from —
+ * `User.deletedAt`'s own erasure flow nulls `phone` on deletion (by design, for DPDP Act
+ * compliance), which would otherwise let a deleted phone number be referred again. `phoneHash` is
+ * a salted SHA-256 (see ReferralsService's hashing helper), never the raw phone — a one-way
+ * fingerprint used only to answer "has this number already earned a referral reward," not
+ * recoverable back to the number itself. Written once, at `grantReward` time. */
+model ReferralPhoneLedger {
+  id         String    @id @default(cuid())
+  phoneHash  String    @unique
+  referralId String?   @unique
+  referral   Referral? @relation(fields: [referralId], references: [id])
+  rewardedAt DateTime  @default(now())
+}
+
+/** "Never silent" audit trail for referral-program admin actions (freeze/unfreeze a user, reverse
+ * a referral) — same convention as ListingEditLog's actorType/actorId shape. Phase 5 builds the
+ * admin screens that write here; the freeze/unfreeze actions themselves land in Phase 4. */
+model ReferralAdminAction {
+  id           String    @id @default(cuid())
+  adminId      String
+  admin        User      @relation("ReferralAdminActionsByAdmin", fields: [adminId], references: [id])
+  targetUserId String?
+  targetUser   User?     @relation("ReferralAdminActionsOnUser", fields: [targetUserId], references: [id])
+  referralId   String?
+  referral     Referral? @relation(fields: [referralId], references: [id])
+  action       String
+  note         String?
+  createdAt    DateTime  @default(now())
+
+  @@index([targetUserId, createdAt])
 }
 
 /// ---------------------------------------------------------------------------
