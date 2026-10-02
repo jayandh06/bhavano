@@ -1,22 +1,59 @@
+import { createHmac } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { ReferralSettingsDto } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
-import { DEFAULT_REFERRAL_SETTINGS, REFERRAL_SETTINGS_ID } from './referrals.constants';
+import {
+  DEFAULT_REFERRAL_SETTINGS,
+  REFERRAL_SETTINGS_ID,
+  type ReferralRewardSkipReason,
+} from './referrals.constants';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const IST_OFFSET_MS = 330 * 60 * 1000;
 
-/** Phases 1-3 of docs/plans/bhavano-referral-program-implementation.md: records anonymous clicks,
- * attributes a new signup back to whoever shared the link, grants/redeems the resulting boost
- * credit once the referred user's first ad is genuinely approved, and revokes an unused credit if
- * that ad is taken down within the revocation window (BR-5). Anti-abuse (Phase 4) and the
- * admin/funnel views (Phase 5) are not built yet. */
+/** Start of the current calendar month in India time — BR-6's "per calendar month" is the
+ * month the poster sees, not UTC's. */
+export function istMonthStart(now = new Date()): Date {
+  const ist = new Date(now.getTime() + IST_OFFSET_MS);
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - IST_OFFSET_MS);
+}
+
+/** Phases 1-4 of docs/plans/bhavano-referral-program-implementation.md: records anonymous clicks,
+ * attributes a new signup back to whoever shared the link (flagging, not blocking, a same-device
+ * self-referral — BR-3), grants/redeems the resulting boost credit once the referred user's first
+ * ad is genuinely approved — subject to the referrer having an approved ad of their own (BR-7),
+ * the monthly cap (BR-6), not being frozen (BR-9), and the referred phone never having earned a
+ * reward before even under a deleted account (BR-2) — and revokes an unused credit if that ad is
+ * taken down within the revocation window (BR-5). The admin/funnel views and the freeze/reverse
+ * actions (Phase 5) and the 3/5-referral bonus tiers are not built yet. */
 @Injectable()
 export class ReferralsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   private async getSettings(): Promise<ReferralSettingsDto> {
     const row = await this.prisma.referralSetting.findUnique({ where: { id: REFERRAL_SETTINGS_ID } });
     return row ?? DEFAULT_REFERRAL_SETTINGS;
+  }
+
+  /** One-way fingerprint for BR-2's phone ledger — never the raw phone. Salted with the same
+   * secret that signs auth JWTs: this hash exists purely to detect "has this exact phone number
+   * already earned a referral reward," not to protect a high-value secret, so reusing an existing
+   * server secret as the pepper avoids a second piece of required deploy config for a
+   * fraud-detection fingerprint. Unsalted SHA-256 alone would be reversible by brute force — the
+   * entire 10-digit Indian mobile number space is seconds of hashing on commodity hardware.
+   * Rotating AUTH_JWT_SECRET orphans existing ledger rows, so rotate it together with a rehash. */
+  hashPhone(phone: string): string {
+    const secret = this.config.get<string>('AUTH_JWT_SECRET') ?? 'dev-only-change-me';
+    return createHmac('sha256', secret).update(phone).digest('hex');
+  }
+
+  private async phoneAlreadyRewarded(phoneHash: string): Promise<boolean> {
+    const entry = await this.prisma.referralPhoneLedger.findUnique({ where: { phoneHash }, select: { id: true } });
+    return entry !== null;
   }
 
   /** Public, unauthenticated call site (see ReferralsController) — a click on a shared link,
@@ -41,11 +78,23 @@ export class ReferralsService {
    * fixed after" rule, and this method only ever runs once per user in practice (at creation), but
    * stays idempotent against a retried call. An unknown `referralCode` (bad link, deleted account)
    * is the same "attributes to nothing" stance as recordClick above.
- */
+   *
+   * `viewerKey` is the new user's own device key (`User.firstSeenViewerKey`, just set at creation
+   * by the same signup call this runs from) — BR-3: if it matches the *referrer's* own
+   * `firstSeenViewerKey`, this looks like the same person signing up twice on one device to farm
+   * a reward. Flagged (`status: 'blocked'`), not refused outright — the referral is still created
+   * and visible to admin (Phase 5), it just never auto-rewards (see grantReward's own check). A
+   * resettable per-install key is not real device fingerprinting, so this stays a soft signal.
+   * Referrers who signed up before this column existed have no key, so they are never matched.
+   *
+   * BR-2: a phone-OTP signup whose number already earned a referral reward is not attributed at
+   * all. Google/Apple signups have no phone yet; recordFirstApprovedAdIfReferred re-checks at
+   * reward time, when publishing has guaranteed a verified phone. */
   async attributeSignupIfReferred(
     newUserId: string,
     referralCode: string | undefined,
     sessionId: string | undefined,
+    viewerKey?: string,
   ): Promise<void> {
     if (!referralCode || referralCode === newUserId) return;
 
@@ -57,7 +106,7 @@ export class ReferralsService {
 
     const referrer = await this.prisma.user.findUnique({
       where: { id: referralCode },
-      select: { id: true },
+      select: { id: true, firstSeenViewerKey: true },
     });
     if (!referrer) return;
 
@@ -84,11 +133,17 @@ export class ReferralsService {
       if (Date.now() - matchingClick.createdAt.getTime() > windowMs) return;
     }
 
+    const newUser = await this.prisma.user.findUnique({ where: { id: newUserId }, select: { phone: true } });
+    if (newUser?.phone && (await this.phoneAlreadyRewarded(this.hashPhone(newUser.phone)))) return;
+
+    const sameDevice = Boolean(viewerKey) && viewerKey === referrer.firstSeenViewerKey;
+
     await this.prisma.referral.create({
       data: {
         referrerId: referralCode,
         referredUserId: newUserId,
         clickedAt: matchingClick?.createdAt,
+        ...(sameDevice ? { status: 'blocked', rewardSkippedReason: 'same_device' } : {}),
       },
     });
   }
@@ -96,10 +151,11 @@ export class ReferralsService {
   /** Grants the referrer's boost credit for a successful referral — called from
    * recordFirstApprovedAdIfReferred below, the "first ad approved" hook. Idempotent:
    * `ReferralCreditBatch.referralId` is `@unique`, so a retried call for the same referral is a
-   * silent no-op rather than a duplicate credit. BR-6 (monthly cap)/BR-7 (referrer needs an
-   * approved ad)/BR-9 (frozen referrer) are Phase 4 — this method grants unconditionally once
-   * called. */
-  async grantReward(referralId: string, referrerId: string): Promise<void> {
+   * silent no-op rather than a duplicate credit. Eligibility (BR-2/3/6/7/9) is decided by the
+   * caller (rewardSkipReason); this method grants unconditionally once called. `phoneHash` is the
+   * referred user's — written to the BR-2 ledger in the same transaction, so a concurrent second
+   * reward for the same phone fails on the ledger's unique key instead of granting twice. */
+  async grantReward(referralId: string, referrerId: string, phoneHash?: string): Promise<void> {
     const existing = await this.prisma.referralCreditBatch.findUnique({
       where: { referralId },
       select: { id: true },
@@ -116,9 +172,44 @@ export class ReferralsService {
       }),
       this.prisma.referral.update({
         where: { id: referralId },
-        data: { status: 'rewarded', rewardedAt: now },
+        data: { status: 'rewarded', rewardedAt: now, rewardSkippedReason: null },
       }),
+      ...(phoneHash ? [this.prisma.referralPhoneLedger.create({ data: { phoneHash, referralId } })] : []),
     ]);
+  }
+
+  /** The first rule a referral fails, or null when it earns a credit. Order matters only for
+   * which reason admin sees; any one failure means no credit. A frozen referrer keeps credits
+   * already granted (BR-9 stops new grants, it isn't a clawback). */
+  private async rewardSkipReason(
+    referral: { status: string; referrerId: string },
+    referredPhone: string | null,
+  ): Promise<ReferralRewardSkipReason | null> {
+    if (referral.status === 'blocked') return 'same_device';
+    if (!referredPhone) return 'phone_missing';
+    if (await this.phoneAlreadyRewarded(this.hashPhone(referredPhone))) return 'phone_already_rewarded';
+
+    const referrer = await this.prisma.user.findUnique({
+      where: { id: referral.referrerId },
+      select: { deletedAt: true, referralFrozenAt: true },
+    });
+    if (!referrer || referrer.deletedAt) return 'referrer_deleted';
+    if (referrer.referralFrozenAt) return 'referrer_frozen';
+
+    // BR-7: an ad that was ever approved and published counts, even if since sold or deactivated.
+    const referrerApprovedAds = await this.prisma.listing.count({
+      where: { ownerId: referral.referrerId, moderationState: 'approved', publishState: 'live' },
+    });
+    if (referrerApprovedAds === 0) return 'referrer_no_approved_ad';
+
+    // BR-6: bonus-tier credits are extra, so they don't use up the monthly allowance.
+    const settings = await this.getSettings();
+    const grantedThisMonth = await this.prisma.referralCreditBatch.count({
+      where: { userId: referral.referrerId, bonusTier: null, grantedAt: { gte: istMonthStart() } },
+    });
+    if (grantedThisMonth >= settings.monthlyCapPerReferrer) return 'monthly_cap';
+
+    return null;
   }
 
   /** The credit batch `PaymentsService.createBoostOrder`'s `useReferralCredit` branch should
@@ -152,25 +243,40 @@ export class ReferralsService {
    * ad" regardless of which of the two call sites triggered the check, and it's naturally safe to
    * call from a state-changing method that didn't itself make the listing live (e.g. `approve()`
    * on a listing that's still `pending_checkout`): the count simply won't be 1 yet, so nothing
-   * fires early. */
+   * fires early.
+   *
+   * Runs once per referral: `firstAdApprovedAt` marks it decided, so deleting the first ad and
+   * posting another can't re-roll a skipped reward (BR-4 is about the *first* ad). A skipped
+   * referral keeps its progress (`ad_approved`, or `blocked` for a same-device flag) with the
+   * reason recorded, so it still counts on the dashboard per BR-6. */
   async recordFirstApprovedAdIfReferred(ownerId: string): Promise<void> {
     const referral = await this.prisma.referral.findUnique({
       where: { referredUserId: ownerId },
-      select: { id: true, referrerId: true, rewardedAt: true },
+      select: { id: true, referrerId: true, status: true, rewardedAt: true, firstAdApprovedAt: true },
     });
-    if (!referral || referral.rewardedAt) return;
+    if (!referral || referral.rewardedAt || referral.firstAdApprovedAt) return;
 
     const approvedCount = await this.prisma.listing.count({
       where: { ownerId, status: 'active', publishState: 'live', moderationState: 'approved' },
     });
     if (approvedCount !== 1) return;
 
+    const owner = await this.prisma.user.findUnique({ where: { id: ownerId }, select: { phone: true } });
+    const phone = owner?.phone ?? null;
+    const skipReason = await this.rewardSkipReason(referral, phone);
+
     const now = new Date();
     await this.prisma.referral.update({
       where: { id: referral.id },
-      data: { status: 'ad_approved', firstAdPostedAt: now, firstAdApprovedAt: now },
+      data: {
+        status: referral.status === 'blocked' ? 'blocked' : 'ad_approved',
+        firstAdPostedAt: now,
+        firstAdApprovedAt: now,
+        rewardSkippedReason: skipReason,
+      },
     });
-    await this.grantReward(referral.id, referral.referrerId);
+    if (skipReason || !phone) return;
+    await this.grantReward(referral.id, referral.referrerId, this.hashPhone(phone));
   }
 
   /** BR-5: "if the referred user's ad is removed for policy violations within 14 days of

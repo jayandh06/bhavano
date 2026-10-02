@@ -1,15 +1,25 @@
-import { ReferralsService } from './referrals.service';
+import type { ConfigService } from '@nestjs/config';
+import { ReferralsService, istMonthStart } from './referrals.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+const config = { get: () => 'test-secret' } as unknown as ConfigService;
 
 function makeService(opts: {
   referrerExists?: boolean;
+  referrerViewerKey?: string | null;
+  newUserPhone?: string | null;
+  phoneAlreadyRewarded?: boolean;
   alreadyAttributed?: boolean;
   matchingClick?: { createdAt: Date } | null;
   settings?: Record<string, unknown> | null;
 } = {}) {
   const prisma = {
     user: {
-      findUnique: jest.fn().mockResolvedValue(opts.referrerExists === false ? null : { id: 'referrer1' }),
+      findUnique: jest.fn().mockImplementation(({ where }: { where: { id: string } }) => {
+        if (where.id === 'newUser1') return Promise.resolve({ phone: opts.newUserPhone ?? null });
+        if (opts.referrerExists === false) return Promise.resolve(null);
+        return Promise.resolve({ id: 'referrer1', firstSeenViewerKey: opts.referrerViewerKey ?? null });
+      }),
     },
     referral: {
       findUnique: jest.fn().mockResolvedValue(opts.alreadyAttributed ? { id: 'existing' } : null),
@@ -19,13 +29,16 @@ function makeService(opts: {
       create: jest.fn().mockResolvedValue({}),
       findFirst: jest.fn().mockResolvedValue(opts.matchingClick ?? null),
     },
+    referralPhoneLedger: {
+      findUnique: jest.fn().mockResolvedValue(opts.phoneAlreadyRewarded ? { id: 'ledger1' } : null),
+    },
     // null falls back to DEFAULT_REFERRAL_SETTINGS (getSettings), same as a real singleton row
     // that hasn't been created/edited yet.
     referralSetting: {
       findUnique: jest.fn().mockResolvedValue(opts.settings ?? null),
     },
   };
-  const service = new ReferralsService(prisma as unknown as PrismaService);
+  const service = new ReferralsService(prisma as unknown as PrismaService, config);
   return { service, prisma };
 }
 
@@ -120,6 +133,155 @@ describe('ReferralsService.attributeSignupIfReferred', () => {
     expect(prisma.referralSetting.findUnique).not.toHaveBeenCalled();
     expect(prisma.referral.create).toHaveBeenCalled();
   });
+
+  it('flags (not refuses) a signup from the referrer\'s own device — BR-3', async () => {
+    const { service, prisma } = makeService({ referrerViewerKey: 'device1' });
+    await service.attributeSignupIfReferred('newUser1', 'referrer1', 'sess1', 'device1');
+    expect(prisma.referral.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ status: 'blocked', rewardSkippedReason: 'same_device' }),
+    });
+  });
+
+  it('attributes normally from a different device, or when the referrer has no recorded device', async () => {
+    for (const referrerViewerKey of ['device2', null]) {
+      const { service, prisma } = makeService({ referrerViewerKey });
+      await service.attributeSignupIfReferred('newUser1', 'referrer1', 'sess1', 'device1');
+      expect(prisma.referral.create).toHaveBeenCalledWith({
+        data: { referrerId: 'referrer1', referredUserId: 'newUser1', clickedAt: undefined },
+      });
+    }
+  });
+
+  it('refuses attribution for a phone that already earned a referral reward — BR-2', async () => {
+    const { service, prisma } = makeService({ newUserPhone: '+919876543210', phoneAlreadyRewarded: true });
+    await service.attributeSignupIfReferred('newUser1', 'referrer1', 'sess1');
+    expect(prisma.referralPhoneLedger.findUnique).toHaveBeenCalledWith({
+      where: { phoneHash: service.hashPhone('+919876543210') },
+      select: { id: true },
+    });
+    expect(prisma.referral.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('ReferralsService.hashPhone / istMonthStart', () => {
+  it('hashes a phone deterministically and never returns the raw number', () => {
+    const { service } = makeService();
+    const hash = service.hashPhone('+919876543210');
+    expect(hash).toBe(service.hashPhone('+919876543210'));
+    expect(hash).not.toContain('9876543210');
+    expect(hash).not.toBe(service.hashPhone('+919876543211'));
+  });
+
+  it('starts the month at midnight India time', () => {
+    // 1:30 am IST on 1 Nov is still 31 Oct in UTC — it already belongs to November.
+    expect(istMonthStart(new Date('2026-10-31T20:00:00Z')).toISOString()).toBe('2026-10-31T18:30:00.000Z');
+    expect(istMonthStart(new Date('2026-10-15T10:00:00Z')).toISOString()).toBe('2026-09-30T18:30:00.000Z');
+  });
+});
+
+describe('ReferralsService.recordFirstApprovedAdIfReferred', () => {
+  function makeApprovalService(opts: {
+    referral?: { status?: string; rewardedAt?: Date | null; firstAdApprovedAt?: Date | null } | null;
+    ownerApprovedCount?: number;
+    ownerPhone?: string | null;
+    phoneAlreadyRewarded?: boolean;
+    referrer?: { deletedAt?: Date | null; referralFrozenAt?: Date | null } | null;
+    referrerApprovedAds?: number;
+    grantedThisMonth?: number;
+  } = {}) {
+    const referral =
+      opts.referral === null
+        ? null
+        : { id: 'referral1', referrerId: 'referrer1', status: 'signed_up', rewardedAt: null, firstAdApprovedAt: null, ...opts.referral };
+    const prisma = {
+      referral: {
+        findUnique: jest.fn().mockResolvedValue(referral),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      listing: {
+        count: jest.fn().mockImplementation(({ where }: { where: { ownerId: string } }) =>
+          Promise.resolve(where.ownerId === 'owner1' ? (opts.ownerApprovedCount ?? 1) : (opts.referrerApprovedAds ?? 2)),
+        ),
+      },
+      user: {
+        findUnique: jest.fn().mockImplementation(({ where }: { where: { id: string } }) =>
+          Promise.resolve(
+            where.id === 'owner1'
+              ? { phone: opts.ownerPhone === undefined ? '+919876543210' : opts.ownerPhone }
+              : opts.referrer === null
+                ? null
+                : { deletedAt: null, referralFrozenAt: null, ...opts.referrer },
+          ),
+        ),
+      },
+      referralPhoneLedger: {
+        findUnique: jest.fn().mockResolvedValue(opts.phoneAlreadyRewarded ? { id: 'ledger1' } : null),
+        create: jest.fn().mockReturnValue('ledger-create'),
+      },
+      referralCreditBatch: {
+        count: jest.fn().mockResolvedValue(opts.grantedThisMonth ?? 0),
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockReturnValue('batch-create'),
+      },
+      referralSetting: { findUnique: jest.fn().mockResolvedValue(null) },
+      $transaction: jest.fn((ops: unknown[]) => Promise.resolve(ops)),
+    };
+    const service = new ReferralsService(prisma as unknown as PrismaService, config);
+    return { service, prisma };
+  }
+
+  it('grants the credit and records the referred phone in the ledger, in one transaction', async () => {
+    const { service, prisma } = makeApprovalService();
+    await service.recordFirstApprovedAdIfReferred('owner1');
+    expect(prisma.referral.update).toHaveBeenCalledWith({
+      where: { id: 'referral1' },
+      data: expect.objectContaining({ status: 'ad_approved', rewardSkippedReason: null }),
+    });
+    expect(prisma.referralPhoneLedger.create).toHaveBeenCalledWith({
+      data: { phoneHash: service.hashPhone('+919876543210'), referralId: 'referral1' },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledWith(['batch-create', expect.anything(), 'ledger-create']);
+  });
+
+  it.each([
+    ['a same-device flag stays blocked', { referral: { status: 'blocked' } }, 'same_device', 'blocked'],
+    ['the phone already earned a reward', { phoneAlreadyRewarded: true }, 'phone_already_rewarded', 'ad_approved'],
+    ['the referred user has no phone', { ownerPhone: null }, 'phone_missing', 'ad_approved'],
+    ['the referrer account is deleted', { referrer: { deletedAt: new Date() } }, 'referrer_deleted', 'ad_approved'],
+    ['the referrer is frozen', { referrer: { referralFrozenAt: new Date() } }, 'referrer_frozen', 'ad_approved'],
+    ['the referrer has no approved ad', { referrerApprovedAds: 0 }, 'referrer_no_approved_ad', 'ad_approved'],
+    ['the monthly cap is reached', { grantedThisMonth: 5 }, 'monthly_cap', 'ad_approved'],
+  ] as const)('grants nothing when %s', async (_label, opts, reason, status) => {
+    const { service, prisma } = makeApprovalService(opts);
+    await service.recordFirstApprovedAdIfReferred('owner1');
+    expect(prisma.referral.update).toHaveBeenCalledWith({
+      where: { id: 'referral1' },
+      data: expect.objectContaining({ status, rewardSkippedReason: reason, firstAdApprovedAt: expect.any(Date) }),
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('counts only base credits from this India-time month toward the cap', async () => {
+    const { service, prisma } = makeApprovalService({ grantedThisMonth: 4 });
+    await service.recordFirstApprovedAdIfReferred('owner1');
+    expect(prisma.referralCreditBatch.count).toHaveBeenCalledWith({
+      where: { userId: 'referrer1', bonusTier: null, grantedAt: { gte: istMonthStart() } },
+    });
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it('decides only once — a referral whose first ad was already judged is never re-evaluated', async () => {
+    const { service, prisma } = makeApprovalService({ referral: { firstAdApprovedAt: new Date() } });
+    await service.recordFirstApprovedAdIfReferred('owner1');
+    expect(prisma.referral.update).not.toHaveBeenCalled();
+    expect(prisma.listing.count).not.toHaveBeenCalled();
+  });
+
+  it('waits until the owner has exactly one approved live ad', async () => {
+    const { service, prisma } = makeApprovalService({ ownerApprovedCount: 0 });
+    await service.recordFirstApprovedAdIfReferred('owner1');
+    expect(prisma.referral.update).not.toHaveBeenCalled();
+  });
 });
 
 describe('ReferralsService.grantReward', () => {
@@ -136,7 +298,7 @@ describe('ReferralsService.grantReward', () => {
       referralSetting: { findUnique: jest.fn().mockResolvedValue(opts.settings ?? null) },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
-    const service = new ReferralsService(prisma as unknown as PrismaService);
+    const service = new ReferralsService(prisma as unknown as PrismaService, config);
     return { service, prisma };
   }
 
@@ -179,7 +341,7 @@ describe('ReferralsService.findRedeemableCredit / markCreditRedeemed / getBalanc
         update: jest.fn().mockResolvedValue({}),
       },
     };
-    const service = new ReferralsService(prisma as unknown as PrismaService);
+    const service = new ReferralsService(prisma as unknown as PrismaService, config);
     return { service, prisma };
   }
 

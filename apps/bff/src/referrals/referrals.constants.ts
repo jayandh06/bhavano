@@ -19,3 +19,14 @@ export const DEFAULT_REFERRAL_SETTINGS: ReferralSettingsDto = {
   attributionWindowDays: 30,
   takedownRevocationWindowDays: 14,
 };
+
+/** Why a referral whose first ad was approved earned no credit — stored on
+ * `Referral.rewardSkippedReason` so admin (Phase 5) can see it. */
+export type ReferralRewardSkipReason =
+  | 'same_device'
+  | 'phone_already_rewarded'
+  | 'phone_missing'
+  | 'referrer_deleted'
+  | 'referrer_frozen'
+  | 'referrer_no_approved_ad'
+  | 'monthly_cap';

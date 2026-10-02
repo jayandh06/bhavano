@@ -163,6 +163,9 @@ export class AuthService {
         phone,
         phoneVerifiedAt: new Date(),
         ...acquisitionCreateFields(visit),
+        // Referral program BR-3 (Phase 4) — set once, at creation, never updated; see
+        // User.firstSeenViewerKey's own doc comment.
+        firstSeenViewerKey: visit?.viewerKey,
       },
     });
 
@@ -173,7 +176,7 @@ export class AuthService {
     await this.recordLogin(promoted.id, 'otp', visit?.sessionId);
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
-    this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, promoted.id);
+    this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, visit?.viewerKey, promoted.id);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -270,6 +273,9 @@ export class AuthService {
               // Google asserts the address, so it is proven from the moment of creation.
               emailVerifiedAt: new Date(),
               ...acquisitionCreateFields(visit),
+              // Referral program BR-3 (Phase 4) — set once, at creation, never updated; see
+              // User.firstSeenViewerKey's own doc comment.
+              firstSeenViewerKey: visit?.viewerKey,
             },
           });
     }
@@ -281,7 +287,7 @@ export class AuthService {
     await this.recordLogin(promoted.id, 'google', visit?.sessionId);
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
-    this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, promoted.id);
+    this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, visit?.viewerKey, promoted.id);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -340,6 +346,9 @@ export class AuthService {
               name: fullName,
               emailVerifiedAt: profile.email ? new Date() : undefined,
               ...acquisitionCreateFields(visit),
+              // Referral program BR-3 (Phase 4) — set once, at creation, never updated; see
+              // User.firstSeenViewerKey's own doc comment.
+              firstSeenViewerKey: visit?.viewerKey,
             },
           });
     }
@@ -351,7 +360,7 @@ export class AuthService {
     await this.recordLogin(promoted.id, 'apple', visit?.sessionId);
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
-    this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, promoted.id);
+    this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, visit?.viewerKey, promoted.id);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -478,11 +487,12 @@ export class AuthService {
     isNewUser: boolean,
     referralCode: string | undefined,
     sessionId: string | undefined,
+    viewerKey: string | undefined,
     userId: string,
   ): void {
     if (!isNewUser || !referralCode) return;
     void this.referralsService
-      .attributeSignupIfReferred(userId, referralCode, sessionId)
+      .attributeSignupIfReferred(userId, referralCode, sessionId, viewerKey)
       .catch((err: unknown) =>
         this.logger.warn(
           { err, referralCode, userId },
