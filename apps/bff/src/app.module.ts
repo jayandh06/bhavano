@@ -25,6 +25,7 @@ import { OutreachModule } from './outreach/outreach.module';
 import { SupportModule } from './support/support.module';
 import { PlansModule } from './plans/plans.module';
 import { ClientErrorsModule } from './client-errors/client-errors.module';
+import { ReferralsModule } from './referrals/referrals.module';
 // LoggingModule's import MUST be the last one in this file, not just last in the `imports:`
 // array below — nestjs-pino's LoggerModule.forRootAsync() snapshots every @InjectPinoLogger(...)
 // context name SYNCHRONOUSLY, the moment this import statement runs (see
@@ -63,6 +64,7 @@ import { LoggingModule } from './logging/logging.module';
     SupportModule,
     PlansModule,
     ClientErrorsModule,
+    ReferralsModule,
   ],
   controllers: [AppController],
   // NOT bound globally via APP_GUARD: that applies ThrottlerModule.forRoot()'s default limit
