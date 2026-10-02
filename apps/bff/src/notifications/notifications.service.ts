@@ -748,8 +748,9 @@ export class NotificationsService {
       | 'area'
       | 'title'
     >,
-    /** The owner's id, added to the WhatsApp share link as `ref` so a signup from it counts as
-     * their referral. Not in the WhatsApp template's button, whose URL needs re-approval. */
+    /** The owner's id, added to the email's WhatsApp share link as `ref` so a signup from it
+     * counts as their referral. Deliberately never in the WhatsApp template: Bhavano's own
+     * WhatsApp messages carry no share link — owners share from their own WhatsApp, in-app. */
     referralCode?: string,
   ): Promise<{ channel: 'email' | 'whatsapp'; messageId?: string | null } | null> {
     const site =

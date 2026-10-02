@@ -129,7 +129,7 @@ The share prompt appears at the moment of highest intent, right after an ad goes
 | Touchpoint | Trigger | Content |
 | --- | --- | --- |
 | Share screen | Ad approved and live | Share on WhatsApp, Copy link, and one line: Share your ad, and get a free boost when a friend posts. |
-| Ad live message (WhatsApp or SMS) | Ad approved | Ad is live, with the share link included. |
+| Ad live message (WhatsApp or SMS) | Ad approved | Ad is live. No share link: sharing happens in-app, from the owner's own WhatsApp (decision 2026-10-02, see the implementation plan's Phase 6). |
 | My Ads banner | Any visit with at least one live ad | Share your ad and earn free boosts, with the current balance. |
 | Referral signup alert | Referred user signs up | A friend joined through your link. They need to post an ad for you to earn a boost. |
 | Reward alert | Reward granted | You earned a free boost. Use it on any of your ads. Valid until the expiry date. |
@@ -143,7 +143,7 @@ The offer must reach posters at the moments they are most motivated, and the rew
 ### When to show it
 
 - **Right after the ad goes live.** The Share screen is the success page itself, not a dismissible pop-up. It leads with the reward ("Your ad is live. Share it and earn a free 3-day boost."), the WhatsApp button is the largest element, and Skip is small text.
-- **In the "ad is live" message.** The WhatsApp or SMS message carries the share link and one line about the free boost, so posters who never reopen the app still see it.
+- **~~In the "ad is live" message.~~** Dropped (2026-10-02): Bhavano's own WhatsApp messages carry no share link. Owners share from their own WhatsApp via the in-app and website share buttons instead.
 - **On the Boost screen.** Offer "Don't want to pay? Earn a free boost by inviting a friend."
 - **When an ad is about to expire or gets few views.** Prompt: "Get more views, share it with agents you know."
 - **When a poster reposts or renews an ad.**

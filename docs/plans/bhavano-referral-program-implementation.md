@@ -311,8 +311,14 @@ or nested under an existing "Users" area?
   soonest credit; all of that user's matching credits are then marked `expiryReminderSentAt`, so
   a user holding several credits isn't reminded every day.
 - **Ad-posted email.** `notifyListingPosted` takes the owner's id and puts `&ref=` on the email's
-  WhatsApp share link, with a one-line reward mention in `listing-posted/body.txt`. The
-  WhatsApp-template version is unchanged (its button needs MSG91 re-approval).
+  WhatsApp share link, with a one-line reward mention in `listing-posted/body.txt`.
+- **Decision (2026-10-02): no share link in Bhavano's own WhatsApp messages.** The MSG91
+  `listing_posted` template stays as it is, and no referral template carries a share or invite
+  link. Sharing to WhatsApp happens only from the owner's own WhatsApp, started in the app or on
+  the website (the share buttons above and below), so the message friends receive comes from
+  someone they know. This replaces the requirements doc's "ad is live message carries the share
+  link" touchpoint. The referral alert templates (signup, reward, expiring, revoked) are still
+  wanted for users with no email, but they only link to Bhavano pages (My listings, Referrals).
 - **Web.**
   - Owner shares carry `?ref=<userId>`: post success (`OwnerWhatsAppShare` prominent variant, with
     the reward line and a "How it works" link to `/referrals`) and My listings (compact share).
@@ -338,7 +344,6 @@ or nested under an existing "Users" area?
   - the header balance chip and the "earn a free boost by inviting a friend" cross-sell line on
     the paid boost screen;
   - the landing banner for referred visitors;
-  - the referral link in the WhatsApp ad-live template (needs re-approval);
   - spending a credit from the post-ad wizard's preview-step selector (it's offered after the ad
     is created instead);
   - the "clicks" step of the user-facing funnel (shown: joined, posted an ad, boosts earned);
