@@ -1,8 +1,8 @@
 # Bhavano Referral Program: Implementation Plan
 
-**Status (2026-10-02): Phases 1-5 built and verified** (deep linking + attribution capture, reward
-engine, approval/takedown hooks, anti-abuse, admin dashboard + funnel). Phase 6 (notifications and
-remaining UI) not started. Not yet deployed — holding per explicit instruction to bundle the whole feature into
+**Status (2026-10-02): Phases 1-6 built and verified** (deep linking + attribution capture, reward
+engine, approval/takedown hooks, anti-abuse, admin dashboard + funnel, notifications + user-facing
+Referrals page and free-boost redemption). Not yet deployed — holding per explicit instruction to bundle the whole feature into
 one deploy rather than shipping phase by phase. See each phase's section below for what actually
 landed vs. what changed from the original plan during implementation.
 
@@ -287,7 +287,64 @@ over existing rows — `ReferralClick` (Phase 1) is the only genuinely new schem
 **Confirm before building**: exact admin nav placement — a new top-level "Referrals" admin section,
 or nested under an existing "Users" area?
 
-## Phase 6 — Notifications + remaining UI touchpoints
+## Phase 6 — Notifications + remaining UI touchpoints — **BUILT**
+
+**As built (2026-10-02)** — migration `20261002100000_referral_program_phase6` adds
+`ReferralCreditBatch.expiryReminderSentAt DateTime?`.
+- **BFF summary.** `GET referrals/me` (`ReferralsService.getMine`, logged in): referral code (the
+  user id), the current settings (boost days, credit expiry, monthly cap), base credits granted this
+  IST month, unspent credits soonest-expiring first, counts (joined, first ad approved, rewarded),
+  and the 20 latest referrals. Referred people are shown by **first name only**, and the skip reason
+  is never returned. `previewBoostPricing` now also returns `referralCredit` (`{days, expiresAt,
+  available}` or null) from `getRedeemableCreditSummary`, so the boost pickers learn about the
+  credit without an extra request.
+- **Notifications.** `ReferralNotificationsService` sends **email + push** for: friend signed up
+  (skipped for same-device signups, which are flagged), reward granted, credit expiring, and credit
+  revoked (takedown under BR-5, or an admin reversal). All are fire-and-forget; failures are
+  swallowed. Email templates: `referral-signup`, `referral-reward`, `referral-credit-expiring`,
+  `referral-credit-revoked`. Delivery goes through `dispatchEmailPreferWhatsapp`, so a user with no
+  email gets nothing by WhatsApp until MSG91 templates are approved, and a phone-only web user
+  without the app gets nothing at all for now. Push uses the listing-activity channel with
+  `data.path = '/referrals'`, so a tap opens the app's Referrals screen.
+- **Expiry reminder.** `ReferralCreditExpiryReminderJob`, `@Cron('0 10 * * *', IST)`: credits
+  unspent, unrevoked, not yet reminded, expiring within 7 days. One reminder per user, about the
+  soonest credit; all of that user's matching credits are then marked `expiryReminderSentAt`, so
+  a user holding several credits isn't reminded every day.
+- **Ad-posted email.** `notifyListingPosted` takes the owner's id and puts `&ref=` on the email's
+  WhatsApp share link, with a one-line reward mention in `listing-posted/body.txt`. The
+  WhatsApp-template version is unchanged (its button needs MSG91 re-approval).
+- **Web.**
+  - Owner shares carry `?ref=<userId>`: post success (`OwnerWhatsAppShare` prominent variant, with
+    the reward line and a "How it works" link to `/referrals`) and My listings (compact share).
+    Admin posters don't attach one.
+  - `/referrals` (server page, `robots: noindex`, set in page metadata rather than `robots.txt`):
+    balance and next expiry, the invite link (homepage + `ref`, campaign `referral_invite`) with
+    copy and WhatsApp, counts, referred people, and how it works. Linked from Profile.
+  - My listings banner (any visit with an active ad): the balance when there is one, otherwise
+    the pitch, linking to `/referrals`.
+  - `BoostBundlePicker` (post success and the My listings Boost dialog) shows **Use free N-day
+    boost** when `referralCredit` is set; it calls `createBoostOrder` with `useReferralCredit`,
+    which activates at once. When admin has moved paid options to the preview step, the picker
+    still renders the free-boost block alone instead of nothing.
+- **Mobile.**
+  - Owner shares carry `ref` (post success, and the share button on the owner's own listing
+    cards), using the user id decoded from the session.
+  - `app/referrals/index.tsx`: same content as web; invite via WhatsApp or the native share sheet
+    (which covers copy, since the app has no clipboard module). Linked from Account.
+  - Android's `BoostBundleCard` and My listings `BoostModal` show the same free-boost block
+    (`ReferralFreeBoost`). iOS keeps sending boosts to the website, which has it.
+- **Not built in Phase 6:**
+  - the welcome reward, the 3/5-referral bonus tiers and the Top Agent badge (see Phase 4);
+  - the header balance chip and the "earn a free boost by inviting a friend" cross-sell line on
+    the paid boost screen;
+  - the landing banner for referred visitors;
+  - the referral link in the WhatsApp ad-live template (needs re-approval);
+  - spending a credit from the post-ad wizard's preview-step selector (it's offered after the ad
+    is created instead);
+  - the "clicks" step of the user-facing funnel (shown: joined, posted an ad, boosts earned);
+  - a user who logs in midway through the web wizard gets no `ref` on the success-screen share.
+
+Original plan:
 
 **BFF** — new methods on `NotificationsService`'s existing `notifyX` template (e.g.
 `notifyListingApproved:51`): `notifyReferralSignup`, `notifyReferralRewardGranted`,
