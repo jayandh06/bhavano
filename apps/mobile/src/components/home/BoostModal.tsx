@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
 import RazorpayCheckout from "react-native-razorpay";
-import type { ListingCategory } from "@bhavano/types";
+import type { BoostPricingPreviewDto, ListingCategory } from "@bhavano/types";
 import {
   boostPriceFor,
   DEFAULT_BOOST_PRICE_SETTINGS,
@@ -10,8 +10,9 @@ import {
   type BoostPriceSettings,
 } from "@bhavano/types/boostPricing";
 import { useAppTheme } from "../../theme/ThemeContext";
-import { createBoostOrder, fetchPlanPricing } from "../../lib/bffClient";
+import { createBoostOrder, fetchPlanPricing, previewBoostPricing } from "../../lib/bffClient";
 import { isRazorpayUserCancel, razorpayFailureMessage } from "../../lib/razorpayNative";
+import { ReferralFreeBoost } from "./ReferralFreeBoost";
 
 /**
  * Native equivalent of the website's `BoostProvider` modal — same duration/price picker, same
@@ -49,6 +50,7 @@ export function BoostModal({
   // see docs/plans/admin-manage-plans-pricing.md. No SSR available here (React Native), unlike
   // the website's BoostProvider, which gets this as a server-fetched prop instead.
   const [boostPriceSettings, setBoostPriceSettings] = useState<BoostPriceSettings>(DEFAULT_BOOST_PRICE_SETTINGS);
+  const [referralCredit, setReferralCredit] = useState<BoostPricingPreviewDto["referralCredit"]>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -58,10 +60,16 @@ export function BoostModal({
         if (!cancelled) setBoostPriceSettings(pricing.boost);
       })
       .catch(() => undefined);
+    // Only for the referral credit; the price rows above don't wait on it.
+    previewBoostPricing(accessToken, category)
+      .then((pricing) => {
+        if (!cancelled) setReferralCredit(pricing.referralCredit ?? null);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [visible]);
+  }, [visible, accessToken, category]);
 
   async function onSelectDuration(days: BoostDurationDays) {
     setPending(true);
@@ -117,6 +125,18 @@ export function BoostModal({
             Featured listings rank ahead of regular ones and rotate through the top slots fairly
             — no one stays #1 forever.
           </Text>
+          {referralCredit && (
+            <ReferralFreeBoost
+              credit={referralCredit}
+              listingId={listingId}
+              accessToken={accessToken}
+              showPaidHint
+              onActivated={() => {
+                onActivating();
+                onClose();
+              }}
+            />
+          )}
           <View style={{ gap: 10 }}>
             {enabledBoostDurations(boostPriceSettings).map((days) => (
               <Pressable

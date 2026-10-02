@@ -12,6 +12,7 @@ import {
   fetchListings,
   friendlyErrorMessage,
   previewBoostPricing,
+  redeemReferralBoost,
 } from "./bffClient";
 
 function mockFetchOnce(body: unknown, ok = true, status = 200) {
@@ -113,6 +114,21 @@ describe("createBoostOrder", () => {
       boostDays: 7,
       discountCode: "BHAVANO-SEP",
       includeInstantAlerts: true,
+    });
+  });
+});
+
+describe("redeemReferralBoost", () => {
+  it("asks for the referral credit with a valid placeholder duration and no discount code", async () => {
+    const fetchMock = mockFetchOnce({ activated: true });
+    await redeemReferralBoost("token", "listing1");
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/payments/orders");
+    expect(JSON.parse(init.body as string)).toEqual({
+      listingId: "listing1",
+      boostDays: 7,
+      includeInstantAlerts: true,
+      useReferralCredit: true,
     });
   });
 });

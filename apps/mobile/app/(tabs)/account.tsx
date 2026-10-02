@@ -749,6 +749,10 @@ function ProfileFields({
         <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View your purchase history</Text>
       </Pressable>
 
+      <Pressable onPress={() => router.push("/referrals")} style={[styles.outlineButton, { borderColor: colors.green }]}>
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Referrals &amp; free boosts</Text>
+      </Pressable>
+
       {/* Below Save, above the legal footer: reachable but not adjacent to the primary action,
           so it can't be hit by mistake while editing the profile. */}
       <Pressable

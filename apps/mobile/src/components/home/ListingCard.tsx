@@ -14,7 +14,7 @@ import { ListingPrice } from "./PriceWithWords";
 
 export function ListingCard({ item }: { item: ListingCardDto }) {
   const { colors } = useAppTheme();
-  const { requireLogin, accessToken } = useHomeSheets();
+  const { requireLogin, accessToken, userId } = useHomeSheets();
   const router = useRouter();
   const [accountFavourited, setIsFavourited] = useState(item.isFavourited);
   const guestHeart = useGuestSaveHeart(item.id);
@@ -35,7 +35,9 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   // `message` carries the URL as text on both platforms — Share's own dedicated `url` field is
   // iOS-only, so Android would otherwise get a share sheet with no link in it at all.
   async function onShare() {
-    const url = sharedWebUrl(`/listings/${item.id}`, item.isOwner ? "owner_share" : "listing_share");
+    const url = item.isOwner
+      ? sharedWebUrl(`/listings/${item.id}`, "owner_share", userId)
+      : sharedWebUrl(`/listings/${item.id}`, "listing_share");
     try {
       await Share.share({ message: `${item.title} — ${listingPriceText(item, "compact")}\n${url}`, url, title: item.title });
     } catch {

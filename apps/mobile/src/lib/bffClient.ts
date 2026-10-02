@@ -28,6 +28,7 @@ import type {
   ListingDetailDto,
   ListingsPage,
   MessageDto,
+  MyReferralsDto,
   PaymentHistoryPage,
   PlaceAutocompletePrediction,
   PlaceGeocodeResultDto,
@@ -810,11 +811,28 @@ export function createBoostOrder(
   discountCode?: string,
   includeInstantAlerts?: boolean,
   source?: PurchaseSource,
+  useReferralCredit?: boolean,
 ): Promise<CreateBoostOrderResponseDto> {
   return authedBffFetch(accessToken, "/payments/orders", {
     method: "POST",
-    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts, source }),
+    body: JSON.stringify({ listingId, boostDays, discountCode, includeInstantAlerts, source, useReferralCredit }),
   });
+}
+
+/** Spends the user's soonest-expiring referral credit on this listing — activates at once, no
+ * checkout. The BFF ignores `boostDays` on this path (the credit carries its own length), but the
+ * request shape still requires one. */
+export function redeemReferralBoost(
+  accessToken: string,
+  listingId: string,
+  source?: PurchaseSource,
+): Promise<CreateBoostOrderResponseDto> {
+  return createBoostOrder(accessToken, listingId, 7, undefined, true, source, true);
+}
+
+/** Mirrors the website's fetchMyReferrals — the Referrals screen's data. */
+export function fetchMyReferrals(accessToken: string): Promise<MyReferralsDto> {
+  return authedBffFetch(accessToken, "/referrals/me");
 }
 
 export function createListingPublishOrder(

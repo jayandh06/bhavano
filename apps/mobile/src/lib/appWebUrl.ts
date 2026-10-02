@@ -23,8 +23,14 @@ export function publicWebUrl(path: string): string {
 }
 
 /** `publicWebUrl` plus the same UTM tags apps/web's shareLinks.ts puts on a web share, so a link
- * shared from the app is counted as a share rather than as "direct". */
-export function sharedWebUrl(path: string, campaign: "owner_share" | "listing_share"): string {
+ * shared from the app is counted as a share rather than as "direct". `referralCode` (the sharer's
+ * user id, only on their own shares) adds `ref=` — see docs/plans/bhavano-referral-program.md. */
+export function sharedWebUrl(
+  path: string,
+  campaign: "owner_share" | "listing_share" | "referral_invite",
+  referralCode?: string | null,
+): string {
   const separator = path.includes("?") ? "&" : "?";
-  return `${SITE_URL}${path}${separator}utm_source=app_share&utm_medium=share&utm_campaign=${campaign}`;
+  const ref = referralCode ? `&ref=${encodeURIComponent(referralCode)}` : "";
+  return `${SITE_URL}${path}${separator}utm_source=app_share&utm_medium=share&utm_campaign=${campaign}${ref}`;
 }

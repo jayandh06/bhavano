@@ -8,6 +8,7 @@ import {
   fetchCities,
   fetchContactRevealBalance,
   fetchConversations,
+  fetchMyReferrals,
   fetchFavourites,
   fetchListingById,
   fetchLoginNudgeSettings,
@@ -121,6 +122,14 @@ export function useContactRevealBalanceQuery(accessToken: string | null) {
   return useQuery({
     queryKey: ["contactRevealBalance", accessToken],
     queryFn: () => fetchContactRevealBalance(accessToken!),
+    enabled: !!accessToken,
+  });
+}
+
+export function useMyReferralsQuery(accessToken: string | null) {
+  return useQuery({
+    queryKey: ["myReferrals", accessToken],
+    queryFn: () => fetchMyReferrals(accessToken!),
     enabled: !!accessToken,
   });
 }

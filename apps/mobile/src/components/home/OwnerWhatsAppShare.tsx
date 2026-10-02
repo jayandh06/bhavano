@@ -1,7 +1,9 @@
 import { Linking, Pressable, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { listingPriceText } from "@bhavano/types/priceWords";
 import type { ListingDetailDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { sharedWebUrl } from "../../lib/appWebUrl";
 import { recordAppPageView } from "../../lib/analyticsSession";
 import { Icon } from "../Icon";
@@ -12,6 +14,8 @@ import { Icon } from "../Icon";
  * office and family groups). Tapping records a synthetic `/post/success/share-whatsapp` page view,
  * the app's equivalent of the web's `owner_share_whatsapp` event. See
  * docs/plans/growth-beyond-google-ads.md.
+ *
+ * The link carries the signed-in owner's id as `ref`, crediting them under the referral programme.
  */
 export function OwnerWhatsAppShare({
   listing,
@@ -19,9 +23,11 @@ export function OwnerWhatsAppShare({
   listing: Pick<ListingDetailDto, "id" | "title" | "price" | "priceInWords" | "totalPrice" | "area" | "cityName">;
 }) {
   const { colors } = useAppTheme();
+  const { userId } = useHomeSheets();
+  const router = useRouter();
 
   const share = () => {
-    const url = sharedWebUrl(`/listings/${listing.id}`, "owner_share");
+    const url = sharedWebUrl(`/listings/${listing.id}`, "owner_share", userId);
     const text =
       `${listing.title}\n${listingPriceText(listing, "compact")} · ${listing.area}, ${listing.cityName}\n` +
       `Photos and details on Bhavano — message me there:\n${url}`;
@@ -66,6 +72,15 @@ export function OwnerWhatsAppShare({
         <Icon name="message" size={16} color={colors.onGreen} />
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Share on WhatsApp</Text>
       </Pressable>
+      {userId && (
+        <Text style={{ fontSize: 12.5, color: colors.textSoft }}>
+          <Icon name="boost" size={12} color={colors.gold} /> Share your ad, and get a free boost when a friend
+          joins from your link and posts their own.{" "}
+          <Text onPress={() => router.push("/referrals")} style={{ fontWeight: "700", color: colors.green }}>
+            How it works
+          </Text>
+        </Text>
+      )}
     </View>
   );
 }

@@ -14,6 +14,7 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { previewBoostPricing } from "../../lib/bffClient";
 import { startBoostCheckout } from "../../lib/boostCheckout";
 import { Icon } from "../Icon";
+import { ReferralFreeBoost } from "./ReferralFreeBoost";
 
 // Temporary September promo — same constant as the website's own copy in
 // app/actions/payments.ts. Auto-applied so the price shown is just what checkout will actually
@@ -121,7 +122,25 @@ export function BoostBundleCard({
   // Admin has moved this offer onto the ad-preview step instead — see
   // docs/plans/boost-instant-alerts-preview-selector.md. The two placements are mutually
   // exclusive, so this post-creation card stays hidden entirely rather than duplicating the offer.
-  if (pricing?.showSelectorOnPreview && !ignorePlacementSetting) return null;
+  // A held referral credit is still offered, though — the preview-step selector can't spend one.
+  const referralCredit = pricing?.referralCredit ?? null;
+  const paidOptionsHidden = !!pricing?.showSelectorOnPreview && !ignorePlacementSetting;
+  if (paidOptionsHidden && !referralCredit) return null;
+
+  const freeBoost = referralCredit && (
+    <ReferralFreeBoost
+      credit={referralCredit}
+      listingId={listingId}
+      accessToken={accessToken}
+      source={source}
+      showPaidHint={!paidOptionsHidden}
+      onActivated={onActivating}
+    />
+  );
+
+  if (paidOptionsHidden) {
+    return <View style={[styles.card, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>{freeBoost}</View>;
+  }
 
   return (
     <View style={[styles.card, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
@@ -136,6 +155,8 @@ export function BoostBundleCard({
           )}
         </Text>
       </View>
+
+      {freeBoost}
 
       <View style={{ gap: 8 }}>
         {offered.map((days) => {
