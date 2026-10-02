@@ -12,6 +12,7 @@ import { UsersModule } from '../users/users.module';
 import { SavedSearchesModule } from '../saved-searches/saved-searches.module';
 import { PlansModule } from '../plans/plans.module';
 import { PushModule } from '../push/push.module';
+import { ReferralsModule } from '../referrals/referrals.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PushModule } from '../push/push.module';
     PlansModule,
     SavedSearchesModule,
     PushModule,
+    ReferralsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, BoostNudgeJob],

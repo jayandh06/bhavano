@@ -34,7 +34,7 @@ export class ReferralsService {
     private readonly config: ConfigService,
   ) {}
 
-  private async getSettings(): Promise<ReferralSettingsDto> {
+  async getSettings(): Promise<ReferralSettingsDto> {
     const row = await this.prisma.referralSetting.findUnique({ where: { id: REFERRAL_SETTINGS_ID } });
     return row ?? DEFAULT_REFERRAL_SETTINGS;
   }
@@ -181,7 +181,7 @@ export class ReferralsService {
   /** The first rule a referral fails, or null when it earns a credit. Order matters only for
    * which reason admin sees; any one failure means no credit. A frozen referrer keeps credits
    * already granted (BR-9 stops new grants, it isn't a clawback). */
-  private async rewardSkipReason(
+  async rewardSkipReason(
     referral: { status: string; referrerId: string },
     referredPhone: string | null,
   ): Promise<ReferralRewardSkipReason | null> {

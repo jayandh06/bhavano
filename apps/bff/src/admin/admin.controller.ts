@@ -4,6 +4,8 @@ import type {
   AdminDiscountCodesPage,
   AdminListingsPage,
   AdminPaymentsPage,
+  AdminReferralDetailDto,
+  AdminReferralsPage,
   AdminRequirementsPage,
   AdminUsersPage,
   CampaignPreviewDto,
@@ -29,6 +31,8 @@ import type {
   OutreachContactDto,
   OutreachContactsPage,
   RateLimitSettingsDto,
+  ReferralFunnelDto,
+  ReferralSettingsDto,
   SavedSearchSettingsDto,
   SearchDemandPage,
   SendPostedNotificationResponseDto,
@@ -95,6 +99,14 @@ import {
 } from './dto/outreach.dto';
 import { OutreachService } from '../outreach/outreach.service';
 import { OutreachCampaignJob } from '../outreach/outreach-campaign.job';
+import { ReferralsAdminService } from '../referrals/referrals-admin.service';
+import {
+  ListReferralsDto,
+  ReferralFunnelQueryDto,
+  ReferralNoteDto,
+  ReferralReasonDto,
+  UpdateReferralSettingsDto,
+} from './dto/referrals.dto';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -105,6 +117,7 @@ export class AdminController {
     private readonly outreachCampaignJob: OutreachCampaignJob,
     private readonly listingPhotos: ListingPhotosService,
     private readonly loginNudge: LoginNudgeService,
+    private readonly referralsAdmin: ReferralsAdminService,
   ) {}
 
   @Get('listings')
@@ -395,6 +408,71 @@ export class AdminController {
   @Patch('contact-reveal-settings')
   updateContactRevealSettings(@Body() dto: UpdateContactRevealSettingsDto): Promise<ContactRevealSettingsDto> {
     return this.adminService.updateContactRevealSettings(dto);
+  }
+
+  @Get('referral-settings')
+  getReferralSettings(): Promise<ReferralSettingsDto> {
+    return this.referralsAdmin.getSettings();
+  }
+
+  @Patch('referral-settings')
+  updateReferralSettings(@Body() dto: UpdateReferralSettingsDto): Promise<ReferralSettingsDto> {
+    return this.referralsAdmin.updateSettings(dto);
+  }
+
+  @Get('referrals')
+  listReferrals(@Query() query: ListReferralsDto): Promise<AdminReferralsPage> {
+    return this.referralsAdmin.list(query);
+  }
+
+  @Get('referrals/funnel')
+  getReferralFunnel(@Query() query: ReferralFunnelQueryDto): Promise<ReferralFunnelDto> {
+    return this.referralsAdmin.funnel(query.sinceDays);
+  }
+
+  @Get('referrals/:id')
+  getReferral(@Param('id') id: string): Promise<AdminReferralDetailDto> {
+    return this.referralsAdmin.detail(id);
+  }
+
+  @Post('referrals/:id/approve')
+  @HttpCode(200)
+  approveReferral(
+    @Param('id') id: string,
+    @Body() dto: ReferralNoteDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<AdminReferralDetailDto> {
+    return this.referralsAdmin.approve(id, user.id, dto.note);
+  }
+
+  @Post('referrals/:id/reverse')
+  @HttpCode(200)
+  reverseReferral(
+    @Param('id') id: string,
+    @Body() dto: ReferralReasonDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<AdminReferralDetailDto> {
+    return this.referralsAdmin.reverse(id, user.id, dto.reason);
+  }
+
+  @Post('users/:id/referral-freeze')
+  @HttpCode(204)
+  freezeReferrals(
+    @Param('id') id: string,
+    @Body() dto: ReferralReasonDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<void> {
+    return this.referralsAdmin.freeze(id, user.id, dto.reason);
+  }
+
+  @Post('users/:id/referral-unfreeze')
+  @HttpCode(204)
+  unfreezeReferrals(
+    @Param('id') id: string,
+    @Body() dto: ReferralNoteDto,
+    @CurrentUser() user: RequestUser,
+  ): Promise<void> {
+    return this.referralsAdmin.unfreeze(id, user.id, dto.note);
   }
 
   @Get('login-nudge-settings')
