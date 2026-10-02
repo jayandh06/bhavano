@@ -114,6 +114,8 @@ export default async function ReferralDetailPage({ params }: { params: Promise<{
           <Row label="Credits this month">{referral.referrerStats.creditsThisMonth}</Row>
           <Row label="Credits available now">{referral.referrerStats.availableCredits}</Row>
           <Row label="Live approved ads">{referral.referrerStats.approvedAds}</Row>
+          <Row label="Their link was opened">{referral.referrerStats.linkOpens} times</Row>
+          <Row label="They tapped Share">{referral.referrerStats.shareTaps} times</Row>
         </div>
 
         <div style={box}>

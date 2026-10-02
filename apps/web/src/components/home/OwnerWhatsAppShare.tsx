@@ -6,6 +6,7 @@ import { listingPriceText } from "@bhavano/types/priceWords";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { buildListingPath } from "@/lib/listingPath";
 import { taggedShareUrl, whatsappShareHref } from "@/lib/shareLinks";
+import { recordShareTapAction } from "@/app/actions/referrals";
 import { Icon } from "./Icon";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bhavano.com";
@@ -47,7 +48,10 @@ export function OwnerWhatsAppShare({
   const url = taggedShareUrl(`${SITE_URL}${buildListingPath(listing)}`, "whatsapp", "owner_share", code);
   const text = `${listing.title}\n${listingPriceText(listing, "compact")} · ${listing.area}, ${listing.cityName}\nPhotos and details on Bhavano — message me there:`;
   const href = whatsappShareHref(text, url);
-  const onClick = () => pushDataLayerEvent("owner_share_whatsapp", { listingId: listing.id, placement });
+  const onClick = () => {
+    pushDataLayerEvent("owner_share_whatsapp", { listingId: listing.id, placement });
+    void recordShareTapAction(listing.id, "whatsapp");
+  };
 
   if (variant === "compact") {
     return (

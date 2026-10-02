@@ -69,6 +69,36 @@ describe('ReferralsService.recordClick', () => {
   });
 });
 
+describe('ReferralsService.recordShareTap', () => {
+  it('records a share_tap row for the authenticated referrer, with the given channel and listing', async () => {
+    const { service, prisma } = makeService();
+    await service.recordShareTap('referrer1', 'sess1', 'listing1', 'whatsapp');
+    expect(prisma.referralClick.create).toHaveBeenCalledWith({
+      data: {
+        referrerId: 'referrer1',
+        sessionId: 'sess1',
+        landingListingId: 'listing1',
+        kind: 'share_tap',
+        channel: 'whatsapp',
+      },
+    });
+  });
+
+  it('works without a listingId or channel', async () => {
+    const { service, prisma } = makeService();
+    await service.recordShareTap('referrer1', 'sess1');
+    expect(prisma.referralClick.create).toHaveBeenCalledWith({
+      data: {
+        referrerId: 'referrer1',
+        sessionId: 'sess1',
+        landingListingId: undefined,
+        kind: 'share_tap',
+        channel: undefined,
+      },
+    });
+  });
+});
+
 describe('ReferralsService.attributeSignupIfReferred', () => {
   it('attributes a new signup to the referrer, carrying over a matching click timestamp', async () => {
     const clickedAt = new Date('2026-10-01T00:00:00Z');

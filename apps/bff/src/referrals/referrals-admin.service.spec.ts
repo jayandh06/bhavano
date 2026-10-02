@@ -9,6 +9,8 @@ function makeService(opts: {
   referredPhone?: string | null;
   userExists?: boolean;
   skipReason?: string | null;
+  clicksByKind?: { kind: string; _count: { _all: number } }[];
+  mockDetail?: boolean;
 } = {}) {
   const prisma = {
     referral: {
@@ -21,8 +23,15 @@ function makeService(opts: {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       count: jest.fn().mockResolvedValue(0),
     },
-    referralClick: { count: jest.fn().mockResolvedValue(0) },
-    referralAdminAction: { create: jest.fn().mockResolvedValue({}) },
+    referralClick: {
+      count: jest.fn().mockResolvedValue(0),
+      groupBy: jest.fn().mockResolvedValue(opts.clicksByKind ?? []),
+    },
+    referralAdminAction: {
+      create: jest.fn().mockResolvedValue({}),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    listing: { count: jest.fn().mockResolvedValue(0) },
     user: {
       findUnique: jest.fn().mockImplementation(() =>
         Promise.resolve(opts.userExists === false ? null : { id: 'u1', phone: opts.referredPhone ?? null }),
@@ -35,6 +44,7 @@ function makeService(opts: {
     rewardSkipReason: jest.fn().mockResolvedValue(opts.skipReason ?? null),
     grantReward: jest.fn().mockResolvedValue(undefined),
     hashPhone: jest.fn((phone: string) => `hash:${phone}`),
+    getBalanceForUser: jest.fn().mockResolvedValue({ availableCredits: 0 }),
   };
   const notifier = { creditRevoked: jest.fn().mockResolvedValue(undefined) };
   const service = new ReferralsAdminService(
@@ -42,7 +52,9 @@ function makeService(opts: {
     referrals as unknown as ReferralsService,
     notifier as unknown as ReferralNotificationsService,
   );
-  jest.spyOn(service, 'detail').mockResolvedValue({} as never);
+  if (opts.mockDetail !== false) {
+    jest.spyOn(service, 'detail').mockResolvedValue({} as never);
+  }
   return { service, prisma, referrals, notifier };
 }
 
@@ -181,5 +193,64 @@ describe('ReferralsAdminService.funnel', () => {
     const { service } = makeService();
     const funnel = await service.funnel();
     expect(funnel.sinceDays).toBeNull();
+  });
+});
+
+const detailRow = {
+  id: 'ref1',
+  status: 'rewarded',
+  rewardSkippedReason: null,
+  referrerId: 'referrer1',
+  referrer: {
+    id: 'referrer1',
+    name: 'Referrer',
+    phone: '9000000001',
+    referralFrozenAt: null,
+    referralFrozenReason: null,
+  },
+  referredUser: { id: 'u1', name: 'Referred', phone: '9000000002' },
+  clickedAt: null,
+  signedUpAt: new Date('2026-01-01'),
+  firstAdApprovedAt: null,
+  rewardedAt: null,
+  creditBatch: null,
+};
+
+describe('ReferralsAdminService.detail', () => {
+  it('surfaces link-open and share-tap counts for the referrer, keyed off ReferralClick.kind', async () => {
+    const { service, prisma } = makeService({
+      referral: detailRow,
+      mockDetail: false,
+      clicksByKind: [
+        { kind: 'open', _count: { _all: 4 } },
+        { kind: 'share_tap', _count: { _all: 7 } },
+      ],
+    });
+    const result = await service.detail('ref1');
+    expect(prisma.referralClick.groupBy).toHaveBeenCalledWith({
+      by: ['kind'],
+      where: { referrerId: 'referrer1' },
+      _count: { _all: true },
+    });
+    expect(result.referrerStats.linkOpens).toBe(4);
+    expect(result.referrerStats.shareTaps).toBe(7);
+  });
+
+  it('defaults both counts to 0 when the referrer has no clicks of either kind', async () => {
+    const { service } = makeService({
+      referral: detailRow,
+      mockDetail: false,
+      clicksByKind: [],
+    });
+    const result = await service.detail('ref1');
+    expect(result.referrerStats.linkOpens).toBe(0);
+    expect(result.referrerStats.shareTaps).toBe(0);
+  });
+
+  it('404s an unknown referral', async () => {
+    const { service } = makeService({ referral: null, mockDetail: false });
+    await expect(service.detail('nope')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

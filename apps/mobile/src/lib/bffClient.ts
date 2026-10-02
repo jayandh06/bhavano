@@ -569,6 +569,22 @@ export function recordReferralClick(
   });
 }
 
+/** Authenticated — the referrer tapping the native share sheet on their own listing (see
+ * ListingCard.tsx's onShare, the only call site). Mirrors web's recordShareTap/
+ * recordShareTapAction. Best-effort: the caller doesn't await this before/after opening the share
+ * sheet, so a dropped call never affects sharing itself. */
+export function recordShareTap(
+  accessToken: string,
+  sessionId: string,
+  listingId?: string,
+  channel?: "whatsapp" | "copy" | "share_sheet" | "email",
+): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/referrals/share-tap", {
+    method: "POST",
+    body: JSON.stringify({ sessionId, listingId, channel }),
+  });
+}
+
 export function sendOtp(phone: string): Promise<{ success: true }> {
   return bffFetch("/auth/otp/send", { method: "POST", body: JSON.stringify({ phone }) });
 }

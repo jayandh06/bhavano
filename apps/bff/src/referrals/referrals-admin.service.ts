@@ -120,7 +120,7 @@ export class ReferralsAdminService {
     const row = await this.prisma.referral.findUnique({ where: { id }, include: REFERRAL_INCLUDE });
     if (!row) throw new NotFoundException('Referral not found');
 
-    const [referralsTotal, creditsThisMonth, balance, approvedAds, actions] = await Promise.all([
+    const [referralsTotal, creditsThisMonth, balance, approvedAds, actions, clicksByKind] = await Promise.all([
       this.prisma.referral.count({ where: { referrerId: row.referrerId } }),
       this.prisma.referralCreditBatch.count({
         where: { userId: row.referrerId, bonusTier: null, grantedAt: { gte: istMonthStart() } },
@@ -135,11 +135,27 @@ export class ReferralsAdminService {
         orderBy: { createdAt: 'desc' },
         take: 50,
       }),
+      // "Which user's share links were clicked" — both signals for this referrer across every
+      // listing they've ever shared, not just this one referral: how many times someone opened
+      // their link (kind:'open') and how many times they themselves tapped Share (kind:'share_tap').
+      this.prisma.referralClick.groupBy({
+        by: ['kind'],
+        where: { referrerId: row.referrerId },
+        _count: { _all: true },
+      }),
     ]);
+    const clickCounts = Object.fromEntries(clicksByKind.map((g) => [g.kind, g._count._all]));
 
     return {
       ...toDto(row),
-      referrerStats: { referralsTotal, creditsThisMonth, availableCredits: balance.availableCredits, approvedAds },
+      referrerStats: {
+        referralsTotal,
+        creditsThisMonth,
+        availableCredits: balance.availableCredits,
+        approvedAds,
+        linkOpens: clickCounts.open ?? 0,
+        shareTaps: clickCounts.share_tap ?? 0,
+      },
       actions: actions.map((a) => ({
         id: a.id,
         action: a.action,

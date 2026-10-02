@@ -1405,6 +1405,12 @@ export interface AdminReferralDetailDto extends AdminReferralDto {
     creditsThisMonth: number;
     availableCredits: number;
     approvedAds: number;
+    /** Times someone opened this referrer's shared link (ReferralClick, kind:'open') — the
+     * "did the share actually reach someone" signal. */
+    linkOpens: number;
+    /** Times this referrer tapped a Share button themselves (ReferralClick, kind:'share_tap') —
+     * "did they try to share," independent of whether it was ever opened. */
+    shareTaps: number;
   };
   /** Admin actions on this referral and on its referrer (freeze/unfreeze), newest first. */
   actions: AdminReferralActionDto[];

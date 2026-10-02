@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { taggedShareUrl, whatsappShareHref } from "@/lib/shareLinks";
+import { recordShareTapAction } from "@/app/actions/referrals";
 import { Icon } from "./Icon";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bhavano.com";
@@ -20,6 +21,7 @@ export function ReferralInviteActions({ referralCode }: { referralCode: string }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       pushDataLayerEvent("referral_invite_share", { channel: "copy" });
+      void recordShareTapAction(undefined, "copy");
     } catch {
       // Clipboard can be blocked (insecure context, permissions) — the link stays visible to copy by hand.
     }
@@ -41,7 +43,10 @@ export function ReferralInviteActions({ referralCode }: { referralCode: string }
         href={whatsappShareHref(INVITE_TEXT, whatsappUrl)}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => pushDataLayerEvent("referral_invite_share", { channel: "whatsapp" })}
+        onClick={() => {
+          pushDataLayerEvent("referral_invite_share", { channel: "whatsapp" });
+          void recordShareTapAction(undefined, "whatsapp");
+        }}
         className="bg-green text-on-green rounded-lg px-5 py-3 text-[15px] font-bold text-center inline-flex items-center justify-center gap-2"
       >
         <Icon name="message" /> Invite on WhatsApp

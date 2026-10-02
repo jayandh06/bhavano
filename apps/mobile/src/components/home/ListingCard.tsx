@@ -6,8 +6,9 @@ import { listingPriceText } from "@bhavano/types/priceWords";
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
-import { BffError, revealContact, toggleFavourite } from "../../lib/bffClient";
+import { BffError, recordShareTap, revealContact, toggleFavourite } from "../../lib/bffClient";
 import { sharedWebUrl } from "../../lib/appWebUrl";
+import { getAnalyticsSessionId } from "../../lib/analyticsSession";
 import { useGuestSaveHeart } from "../../lib/useGuestSaveHeart";
 import { Icon } from "../Icon";
 import { ListingPrice } from "./PriceWithWords";
@@ -40,6 +41,9 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
       : sharedWebUrl(`/listings/${item.id}`, "listing_share");
     try {
       await Share.share({ message: `${item.title} — ${listingPriceText(item, "compact")}\n${url}`, url, title: item.title });
+      if (item.isOwner && accessToken) {
+        void recordShareTap(accessToken, getAnalyticsSessionId(), item.id, "share_sheet").catch(() => undefined);
+      }
     } catch {
       // Share.share() resolves normally on a plain dismiss — this only catches the share sheet
       // itself genuinely failing to open, which has nothing to recover from or show an error for.

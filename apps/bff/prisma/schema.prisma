@@ -1429,6 +1429,17 @@ model ReferralClick {
    * this session exists yet. */
   sessionId        String
   landingListingId String?
+  /** "open" (default) — someone opened the referrer's shared link (ReferralsService.recordClick,
+   * public/unauthenticated). "share_tap" — the referrer themselves tapped a Share button
+   * (ReferralsService.recordShareTap, authenticated) — recorded so admin can see "did they try to
+   * share" independent of "did anyone open it", which `attributeSignupIfReferred`'s matching-click
+   * lookup also relies on staying `kind:'open'`-only in practice (a share-tap row's `referrerId`
+   * is the sharer, same person as any `open` row for their own link, so the two are never
+   * confused by id alone). */
+  kind             String   @default("open")
+  /** Only meaningful for `kind:'share_tap'` — "whatsapp" | "copy" | "share_sheet" | "email",
+   * whichever button/menu entry was tapped. Null for `kind:'open'`. */
+  channel          String?
   createdAt        DateTime @default(now())
 
   @@index([referrerId, createdAt])

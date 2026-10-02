@@ -4,6 +4,7 @@ import { AuthGuard, type RequestUser } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ReferralsService } from './referrals.service';
 import { RecordReferralClickDto } from './dto/record-referral-click.dto';
+import { RecordShareTapDto } from './dto/record-share-tap.dto';
 
 @Controller('referrals')
 export class ReferralsController {
@@ -24,5 +25,15 @@ export class ReferralsController {
   @UseGuards(AuthGuard)
   getMine(@CurrentUser() user: RequestUser): Promise<MyReferralsDto> {
     return this.referralsService.getMine(user.id);
+  }
+
+  /** Authenticated — the referrer tapping their own Share button. See
+   * ReferralsService.recordShareTap's own doc comment. */
+  @Post('share-tap')
+  @UseGuards(AuthGuard)
+  @HttpCode(200)
+  async recordShareTap(@Body() dto: RecordShareTapDto, @CurrentUser() user: RequestUser): Promise<{ success: true }> {
+    await this.referralsService.recordShareTap(user.id, dto.sessionId, dto.listingId, dto.channel);
+    return { success: true };
   }
 }

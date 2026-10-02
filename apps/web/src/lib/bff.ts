@@ -832,6 +832,20 @@ export function recordListingInterest(
   return authedBffFetch(accessToken, `/listings/${listingId}/interest`, { method: "POST" });
 }
 
+/** The referrer tapping a Share button (ShareButton/OwnerWhatsAppShare/ReferralInviteActions) —
+ * see ReferralsService.recordShareTap. Fire-and-forget from the caller's own Server Action. */
+export function recordShareTap(
+  accessToken: string,
+  sessionId: string,
+  listingId?: string,
+  channel?: "whatsapp" | "copy" | "share_sheet" | "email",
+): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/referrals/share-tap", {
+    method: "POST",
+    body: JSON.stringify({ sessionId, listingId, channel }),
+  });
+}
+
 export function fetchListingInterests(
   accessToken: string,
   listingId: string,

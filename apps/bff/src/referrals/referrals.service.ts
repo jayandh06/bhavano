@@ -70,6 +70,18 @@ export class ReferralsService {
     await this.prisma.referralClick.create({ data: { referrerId, sessionId, landingListingId } });
   }
 
+  /** Authenticated — the referrer themselves tapping a Share button (web's ShareButton/
+   * OwnerWhatsAppShare/ReferralInviteActions, mobile's ListingCard onShare). Unlike recordClick,
+   * the caller is already a known, authenticated user (from the request's own JWT), so there's no
+   * "does this id exist" check to do. A durable record of *intent* to share — "did they try,"
+   * independent of whether recordClick's `kind:'open'` ever shows anyone actually followed the
+   * link — surfaced per-referrer in ReferralsAdminService.detail's `referrerStats`. */
+  async recordShareTap(referrerId: string, sessionId: string, listingId?: string, channel?: string): Promise<void> {
+    await this.prisma.referralClick.create({
+      data: { referrerId, sessionId, landingListingId: listingId, kind: 'share_tap', channel },
+    });
+  }
+
   /** Called once, fire-and-forget, from AuthService at the moment a brand-new user is created
    * (verifyOtp/loginWithGoogle/loginWithApple) — mirrors linkVisitToUser/linkListingViewsToUser's
    * own fire-and-forget convention there, so a failure here never blocks or slows down signup.

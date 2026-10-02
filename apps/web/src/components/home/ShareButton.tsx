@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { pushDataLayerEvent } from "@/lib/gtm";
 import { taggedShareUrl, type ShareChannel } from "@/lib/shareLinks";
+import { recordShareTapAction } from "@/app/actions/referrals";
 import { Icon } from "./Icon";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.bhavano.com";
@@ -52,6 +53,13 @@ export function ShareButton({
     );
   }
 
+  // Only for the owner's own listing — that's the only case the link actually carries a referral
+  // code (see absoluteUrl above), so it's the only case a tap is part of the referral funnel
+  // rather than a visitor just forwarding a listing they liked.
+  function trackShareTap(channel: "whatsapp" | "copy" | "share_sheet" | "email") {
+    if (isOwner) void recordShareTapAction(listingId, channel);
+  }
+
   async function onShare(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -59,9 +67,11 @@ export function ShareButton({
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title, url: absoluteUrl("share_sheet") });
+        trackShareTap("share_sheet");
       } catch {
         // AbortError on cancel, or any other failure — either way the OS's own share sheet
-        // already closed itself, nothing left here to recover.
+        // already closed itself, nothing left here to recover. Not tracked as a tap: the sheet
+        // never actually opened or the person backed out immediately.
       }
       return;
     }
@@ -74,6 +84,7 @@ export function ShareButton({
     await navigator.clipboard.writeText(absoluteUrl("copy"));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+    trackShareTap("copy");
   }
 
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(`${title} — ${absoluteUrl("whatsapp")}`)}`;
@@ -99,14 +110,20 @@ export function ShareButton({
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              trackShareTap("whatsapp");
+            }}
             className="flex items-center gap-2 w-full text-left rounded-md px-2.5 py-2 text-[13px] text-text no-underline"
           >
             <Icon name="message" className="text-muted" /> WhatsApp
           </a>
           <a
             href={emailHref}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              trackShareTap("email");
+            }}
             className="flex items-center gap-2 w-full text-left rounded-md px-2.5 py-2 text-[13px] text-text no-underline"
           >
             <Icon name="mail" className="text-muted" /> Email
