@@ -1,7 +1,7 @@
 # Bhavano Referral Program: Implementation Plan
 
-**Status (2026-10-02): Phases 1-3 built and verified** (deep linking + attribution capture, reward
-engine, approval/takedown hooks). Phases 4-6 (anti-abuse, admin/funnel, notifications/remaining UI)
+**Status (2026-10-02): Phases 1-4 built and verified** (deep linking + attribution capture, reward
+engine, approval/takedown hooks, anti-abuse). Phases 5-6 (admin/funnel, notifications/remaining UI)
 not started. Not yet deployed — holding per explicit instruction to bundle the whole feature into
 one deploy rather than shipping phase by phase. See each phase's section below for what actually
 landed vs. what changed from the original plan during implementation.
@@ -152,7 +152,45 @@ rather than catching cleanly; worth remembering for Phase 4's own tests.
 actions (`flag()`/`deleteCompletely()`)? Recommend scoping to the latter — `deactivated` isn't a
 policy-violation takedown — and confirming with product before building the broader version.
 
-## Phase 4 — Anti-abuse (phone-only enforcement at launch; device signal as a soft flag)
+## Phase 4 — Anti-abuse (phone-only enforcement at launch; device signal as a soft flag) — **BUILT**
+
+**As built (2026-10-02)** — migration `20261002090000_referral_program_phase4`:
+- **Where the rules run.** All reward eligibility is decided once, in
+  `recordFirstApprovedAdIfReferred` → `rewardSkipReason`, when the referred user's first ad is
+  approved. `firstAdApprovedAt` marks the referral as decided, so deleting the first ad and posting
+  another can't re-roll a skipped reward. A skipped referral keeps its progress (`ad_approved`, or
+  `blocked` for the device flag) and records why on the new `Referral.rewardSkippedReason`
+  (`same_device`, `phone_already_rewarded`, `phone_missing`, `referrer_deleted`,
+  `referrer_frozen`, `referrer_no_approved_ad`, `monthly_cap`; type `ReferralRewardSkipReason`),
+  for the Phase 5 admin view. It still counts on the dashboard (BR-6).
+- **BR-2 phone ledger.** `ReferralPhoneLedger.phoneHash` is HMAC-SHA256 of the stored phone, keyed
+  with `AUTH_JWT_SECRET` (no new deploy config). Rotating that secret orphans existing rows, so
+  rotate it together with a rehash. The row is written in the same transaction as the credit, so a
+  concurrent second reward for one phone fails on the unique key. Checked at attribution for
+  phone-OTP signups (refuse attribution) and again at reward time. Google/Apple signups have no
+  phone at signup; publishing requires a verified phone, so the reward-time check always has one.
+- **BR-3 device.** Not `ListingView`, as first proposed: `linkListingViewsToUser` rewrites
+  `anon:<key>` to `user:<id>` on login, so it can't answer "which account first signed up on this
+  device". Instead `User.firstSeenViewerKey` is set once at account creation (all three signup
+  paths) and compared with the referrer's. A match creates the referral as `blocked`
+  (`same_device`): flagged, never rewarded automatically. Referrers created before this column
+  have no key and are never matched.
+- **BR-6 cap.** Counts the referrer's base credits (`bonusTier: null`) granted since the start of
+  the current calendar month **in India time** (`istMonthStart`). Bonus-tier credits are extra and
+  don't use up the allowance.
+- **BR-7.** Checked at reward time, not at attribution: the referrer needs at least one ad that was
+  ever approved and published (`moderationState: approved`, `publishState: live`), even if since
+  sold or deactivated.
+- **BR-9.** `User.referralFrozenAt` / `referralFrozenReason` stop *new* grants only. Credits
+  already granted stay spendable (freezing stops further abuse; it isn't a clawback). The
+  freeze/unfreeze/reverse actions and writes to `ReferralAdminAction` are Phase 5, so nothing sets
+  `referralFrozenAt` yet.
+- **Not built:** the 3/5-referrals-a-month bonus tiers and the Top Agent badge (the schema already
+  has `bonusTier`), the welcome reward, and payment-instrument matching (out of scope for v1).
+- **Still needs sign-off:** keeping the phone hash after account deletion (the privacy tension
+  below). The hash isn't reversible to the number, but it is retained deliberately.
+
+Original plan:
 
 **New Prisma model**
 - `ReferralPhoneLedger` — append-only, deliberately outlives the `User` row (this is what makes
