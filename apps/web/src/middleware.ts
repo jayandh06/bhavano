@@ -6,9 +6,16 @@ import { citySlugForRoute } from "@/lib/cityFromRoute";
 const ACQUISITION_COOKIE = "bhavano_acq";
 const SESSION_COOKIE = "bhavano_sid";
 const CITY_COOKIE = "bhavano_city";
+const REFERRAL_COOKIE = "bhavano_ref";
 // 30 days — long enough to still attribute a signup that happens a few visits after the user's
 // first-ever landing, without pinning the cookie down indefinitely.
 const ACQUISITION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+// Same window as the acquisition cookie, for the same reason — see
+// docs/plans/bhavano-referral-program-implementation.md's Phase 1. Unlike bhavano_acq (first-touch,
+// written once and never overwritten), this one is latest-wins: every visit carrying a `ref` param
+// refreshes it, matching the source doc's "if they open several links before signing up, the
+// latest one wins" rule.
+const REFERRAL_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 // 90 days. Longer than the acquisition window above because this is a stated preference, not an
 // attribution horizon — someone who picked Chennai in March still lives in Chennai in May.
 const CITY_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 90;
@@ -269,7 +276,12 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
   // with no Set-Cookie on every page view.
   const cityChanged =
     citySlug !== undefined && (citySlug === null ? currentCity !== undefined : currentCity !== citySlug);
-  if (hasAcquisitionCookie && hasSessionCookie && !cityChanged) return NextResponse.next();
+  // A referral link's `?ref=<userId>` has to refresh bhavano_ref (latest-wins) on every visit that
+  // carries one, so this can't join the other three in being skipped once the session's already
+  // established — an already-cookied returning visitor clicking a *new* share link still needs to
+  // overwrite the old referrer.
+  const refParam = request.nextUrl.searchParams.get("ref");
+  if (hasAcquisitionCookie && hasSessionCookie && !cityChanged && !refParam) return NextResponse.next();
 
   const resolved = resolveSource(request);
   const response = NextResponse.next();
@@ -306,6 +318,29 @@ export function middleware(request: NextRequest, event: NextFetchEvent): NextRes
       path: "/",
       maxAge: ACQUISITION_COOKIE_MAX_AGE_SECONDS,
     });
+  }
+
+  // See docs/plans/bhavano-referral-program-implementation.md's Phase 1. Deliberately not gated on
+  // `!hasAcquisitionCookie`/`!hasSessionCookie` like the two blocks above — a referral link can be
+  // the visitor's 2nd, 10th, or 50th visit, not just their first.
+  if (refParam) {
+    response.cookies.set(REFERRAL_COOKIE, refParam, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: secureCookie,
+      path: "/",
+      maxAge: REFERRAL_COOKIE_MAX_AGE_SECONDS,
+    });
+    event.waitUntil(
+      fetch(`${BFF_URL}/referrals/click`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referralCode: refParam, sessionId }),
+      }).catch(() => {
+        // Best-effort — a dropped click log should never affect the page request itself, and
+        // never should block/slow down a referral link resolving to the shared listing.
+      }),
+    );
   }
 
   if (!hasSessionCookie) {

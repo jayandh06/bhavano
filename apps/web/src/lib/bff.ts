@@ -598,12 +598,16 @@ const SESSION_COOKIE = "bhavano_sid";
  * a plain client → server-action call could, so unlike sessionId (already a cookie from the
  * start) this one has to be promoted into a cookie deliberately, purely to survive that redirect. */
 const VIEWER_KEY_COOKIE = "bhavano_vk";
+/** middleware.ts's latest-wins referral cookie — see getVisitContext below and
+ * docs/plans/bhavano-referral-program-implementation.md's Phase 1. */
+const REFERRAL_COOKIE = "bhavano_ref";
 
 /** Reads the cookies middleware.ts (and, for the viewer key, ViewTracker.tsx) sets on a visitor's
  * first request/first view — the permanent first-touch acquisition source (UTM params, external
- * referrer hostname, or "direct"), the current session id, and the persistent anonymous device
- * key — and forwards all three on signup so AuthService can persist the acquisition source onto
- * the new User row and link the session's Visit/ListingView rows to it. A missing/malformed
+ * referrer hostname, or "direct"), the current session id, the persistent anonymous device key,
+ * and the referral code from a shared link, if any — and forwards all of it on signup so
+ * AuthService can persist the acquisition source onto the new User row, link the session's
+ * Visit/ListingView rows to it, and attribute the signup to a referrer. A missing/malformed
  * cookie just means no attribution/linking is available — never blocks login. */
 async function getVisitContext(): Promise<{
   acquisitionSource?: string;
@@ -615,13 +619,15 @@ async function getVisitContext(): Promise<{
   acquisitionAdId?: string;
   sessionId?: string;
   viewerKey?: string;
+  referralCode?: string;
 }> {
   const jar = await cookies();
   const sessionId = jar.get(SESSION_COOKIE)?.value;
   const viewerKey = jar.get(VIEWER_KEY_COOKIE)?.value;
+  const referralCode = jar.get(REFERRAL_COOKIE)?.value;
 
   const raw = jar.get(ACQUISITION_COOKIE)?.value;
-  if (!raw) return { sessionId, viewerKey };
+  if (!raw) return { sessionId, viewerKey, referralCode };
   try {
     const parsed = JSON.parse(raw) as {
       source?: string;
@@ -642,9 +648,10 @@ async function getVisitContext(): Promise<{
       acquisitionAdId: parsed.adId,
       sessionId,
       viewerKey,
+      referralCode,
     };
   } catch {
-    return { sessionId, viewerKey };
+    return { sessionId, viewerKey, referralCode };
   }
 }
 
