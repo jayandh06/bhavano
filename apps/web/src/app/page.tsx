@@ -164,20 +164,16 @@ export default async function HomePage({
   if (page > 1 && page > totalPages) notFound();
 
   // Below this many, a dedicated horizontal rail reads as sparse rather than a showcase — fold
-  // those few into the top of the main grid instead. The featured query is only scoped to
-  // homeCategory/cityId (not the grid's propertyType/bedrooms/areaIds/etc.), so an item here isn't
-  // guaranteed to already be in listingsPage.items — dedupe by id and prepend explicitly rather
-  // than relying on the main query's own boostRank-first sort, which only surfaces items that
-  // happen to also match every active filter. Capped back to PAGE_SIZE so merging never grows a
-  // page past its normal size.
+  // those few into the top of the main grid instead. Either way, a listing already placed in the
+  // rail (or prepended here) is dropped from its ordinary grid position — the main query doesn't
+  // exclude boosted listings on its own (and in fact sorts them first via boostRank in `orderBy`),
+  // so without this the same card showed up twice: once in its dedicated spot, once again in the
+  // grid right below. Capped back to PAGE_SIZE so prepending never grows a page past its normal
+  // size.
   const showFeaturedRail = featuredPage.items.length >= 4;
-  const gridItems = showFeaturedRail
-    ? listingsPage.items
-    : (() => {
-        const existingIds = new Set(listingsPage.items.map((i) => i.id));
-        const extra = featuredPage.items.filter((i) => !existingIds.has(i.id));
-        return [...extra, ...listingsPage.items].slice(0, PAGE_SIZE);
-      })();
+  const featuredIds = new Set(featuredPage.items.map((i) => i.id));
+  const restOfGrid = listingsPage.items.filter((i) => !featuredIds.has(i.id));
+  const gridItems = showFeaturedRail ? restOfGrid : [...featuredPage.items, ...restOfGrid].slice(0, PAGE_SIZE);
 
   const activeTab = HOME_TABS.find((t) => t.value === category) ?? HOME_TABS[0];
   /** The asset the homepage is currently narrowed to, from either spelling — the raw
