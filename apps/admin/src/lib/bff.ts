@@ -83,9 +83,12 @@ export type AdminListingSortField =
   | "claimSource"
   | "price"
   | "viewCount"
+  | "organicViewCount"
   | "likeCount"
   | "messageCount"
-  | "expiresAt";
+  | "expiresAt"
+  | "owner"
+  | "boosted";
 
 export type AdminListingSort = `${AdminListingSortField}_asc` | `${AdminListingSortField}_desc`;
 

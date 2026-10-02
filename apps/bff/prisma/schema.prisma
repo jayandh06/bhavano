@@ -502,6 +502,15 @@ model Listing {
   updatedAt        DateTime          @updatedAt
   expiresAt        DateTime
   viewCount        Int               @default(0)
+  /// Denormalized distinct-viewerKey count — "organic" in the admin sense, since recordView is
+  /// never called for an admin viewer (see ListingsController.recordView), so no ListingView row
+  /// for this listing was ever written by staff browsing it. Incremented in recordView only the
+  /// first time a given viewerKey is seen for this listing, same denormalize-for-the-hot-path
+  /// reasoning as boostedUntil below. Re-keying an anonymous viewer onto their account at signup
+  /// (linkListingViewsToUser) does not recount: a person who browsed anonymously under two
+  /// different anon keys before ever logging in is still counted twice, the same known tradeoff
+  /// viewCount itself already accepts by not deduping at write time.
+  uniqueViewerCount Int              @default(0)
   likeCount        Int               @default(0)
   // Denormalized from ListingBoost (the audit trail) so the hot-path browse query never needs
   // a join just to check boost status — null means not currently boosted. boostRank is bumped

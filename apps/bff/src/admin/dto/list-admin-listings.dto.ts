@@ -57,6 +57,12 @@ const ADMIN_LISTING_SORT_VALUES = [
   'messageCount_desc',
   'expiresAt_asc',
   'expiresAt_desc',
+  'organicViewCount_asc',
+  'organicViewCount_desc',
+  'owner_asc',
+  'owner_desc',
+  'boosted_asc',
+  'boosted_desc',
 ] as const;
 
 export type AdminListingSort = (typeof ADMIN_LISTING_SORT_VALUES)[number];

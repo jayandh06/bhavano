@@ -26,7 +26,7 @@ import {
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { ListingRowDetail } from "@/components/ListingRowDetail";
 import type { AdminListingSortField } from "@/lib/bff";
-import { formatDate } from "@/lib/formatDateTime";
+import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 import { buildSuffixSortHref, str, suffixSortDirectionFor, type SearchParams } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { SortableHeader } from "@/components/SortableHeader";
@@ -315,7 +315,36 @@ export function AdminListingsTable({
       defaultVisible: true,
       nowrap: true,
     },
+    {
+      key: "boosted",
+      label: "Boosted",
+      sortField: "boosted",
+      render: (item) => <BoostedBadge boostedUntil={item.boostedUntil} isBoosted={item.isBoosted} />,
+      defaultVisible: true,
+      nowrap: true,
+    },
+    {
+      key: "owner",
+      label: "Owner",
+      sortField: "owner",
+      // Filtering by owner already exists above the table (the UserPicker "Posted by" filter in
+      // page.tsx) — a second filter here on the same field would just fight it.
+      render: (item) => (
+        <Link href={`/?userId=${item.owner.id}&userLabel=${encodeURIComponent(item.owner.name ?? item.owner.phone ?? item.owner.id)}`}>
+          {item.owner.name ?? item.owner.phone ?? item.owner.id}
+        </Link>
+      ),
+      defaultVisible: true,
+      nowrap: true,
+    },
     { key: "views", label: "Views", sortField: "viewCount", render: (item) => item.viewCount, defaultVisible: true },
+    {
+      key: "organicViews",
+      label: "Organic views",
+      sortField: "organicViewCount",
+      render: (item) => item.organicViewCount,
+      defaultVisible: true,
+    },
     { key: "likes", label: "Likes", sortField: "likeCount", render: (item) => item.likeCount, defaultVisible: true },
     {
       key: "messages",
@@ -336,7 +365,7 @@ export function AdminListingsTable({
       key: "created",
       label: "Created",
       sortField: "createdAt",
-      render: (item) => formatDate(item.createdAt),
+      render: (item) => formatDateTime(item.createdAt),
       defaultVisible: true,
       nowrap: true,
     },
@@ -344,7 +373,7 @@ export function AdminListingsTable({
       key: "updated",
       label: "Modified",
       sortField: "updatedAt",
-      render: (item) => formatDate(item.updatedAt),
+      render: (item) => formatDateTime(item.updatedAt),
       defaultVisible: true,
       nowrap: true,
     },
@@ -897,6 +926,14 @@ function BoostPromoBadge({
       color="var(--green)"
     />
   );
+}
+
+/** Whether the listing is currently boosted right now — `boostedUntil` in the future — not
+ * whether it was ever boosted (ListingBoost has the full purchase history for that; this is just
+ * the live denormalized status, same field the public "⭐ Featured" badge reads). */
+function BoostedBadge({ boostedUntil, isBoosted }: { boostedUntil: string | null; isBoosted: boolean }) {
+  if (!isBoosted) return dash;
+  return <Badge label={`Until ${formatDate(boostedUntil!)}`} color="var(--gold)" />;
 }
 
 /** One pill, so the badges above don't each carry their own copy of the same eight style

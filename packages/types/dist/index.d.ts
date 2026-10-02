@@ -730,8 +730,21 @@ export interface AdminListingRowDto {
         lastSentAt: string | null;
     };
     viewCount: number;
+    /** Distinct-viewerKey count for this listing — see Listing.uniqueViewerCount's own doc comment.
+     * No admin rows ever reach it (admin visits never call recordView), so this is already the
+     * "organic, unique" count the admin queue wants without a separate admin-exclusion filter. */
+    organicViewCount: number;
     likeCount: number;
     messageCount?: number;
+    owner: {
+        id: string;
+        name: string | null;
+        phone: string | null;
+    };
+    /** `boostedUntil` in the future — denormalized the same way Listing.boostedUntil itself is; see
+     * that field's own doc comment. */
+    isBoosted: boolean;
+    boostedUntil: string | null;
     price: string;
     /** Same as ListingCardDto.priceInWords — the queue shows `price` with these words in brackets. */
     priceInWords?: string;
@@ -1272,6 +1285,12 @@ export interface AdminReferralDetailDto extends AdminReferralDto {
         creditsThisMonth: number;
         availableCredits: number;
         approvedAds: number;
+        /** Times someone opened this referrer's shared link (ReferralClick, kind:'open') — the
+         * "did the share actually reach someone" signal. */
+        linkOpens: number;
+        /** Times this referrer tapped a Share button themselves (ReferralClick, kind:'share_tap') —
+         * "did they try to share," independent of whether it was ever opened. */
+        shareTaps: number;
     };
     /** Admin actions on this referral and on its referrer (freeze/unfreeze), newest first. */
     actions: AdminReferralActionDto[];

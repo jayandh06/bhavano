@@ -245,6 +245,12 @@ const ADMIN_ORDER_BY: Record<
   messageCount_desc: adminOrderBy({ conversations: { _count: 'desc' } }),
   expiresAt_asc: adminOrderBy({ expiresAt: 'asc' }),
   expiresAt_desc: adminOrderBy({ expiresAt: 'desc' }),
+  organicViewCount_asc: adminOrderBy({ uniqueViewerCount: 'asc' }),
+  organicViewCount_desc: adminOrderBy({ uniqueViewerCount: 'desc' }),
+  owner_asc: adminOrderBy({ owner: { name: nullsLast('asc') } }),
+  owner_desc: adminOrderBy({ owner: { name: nullsLast('desc') } }),
+  boosted_asc: adminOrderBy({ boostedUntil: nullsLast('asc') }),
+  boosted_desc: adminOrderBy({ boostedUntil: nullsLast('desc') }),
 };
 
 const priceFormatter = new Intl.NumberFormat('en-IN');
@@ -898,6 +904,7 @@ export class ListingsService {
         include: {
           city: true,
           area: true,
+          owner: { select: { id: true, name: true, phone: true } },
           // Newest "posted" row only — mirrors AdminService.listUsers' notificationLogs include
           // for the "welcomed" column. Admin-only: no other listForAdmin caller pays for this.
           notificationLogs: {
@@ -956,7 +963,9 @@ export class ListingsService {
    * fields), which AdminListingsTable never renders. The two-line price-formatting rule below
    * duplicates toCardDto's rather than sharing it, since sharing would mean widening this query's
    * `include` right back out to match toCardDto's signature. */
-  private toAdminQueueRowDto(listing: Listing & { city: City; area: Area }): AdminListingRowDto {
+  private toAdminQueueRowDto(
+    listing: Listing & { city: City; area: Area; owner: { id: string; name: string | null; phone: string | null } },
+  ): AdminListingRowDto {
     return {
       id: listing.id,
       title: listing.title,
@@ -968,11 +977,15 @@ export class ListingsService {
       transactionType: listing.transactionType,
       cityName: listing.city.name,
       area: listing.area.name,
+      owner: listing.owner,
+      isBoosted: (listing.boostedUntil?.getTime() ?? 0) > Date.now(),
+      boostedUntil: listing.boostedUntil?.toISOString() ?? null,
       price: this.formatListingPrice(listing),
       priceInWords: this.formatListingPriceInWords(listing),
       totalPrice: this.listingTotalPrice(listing),
       priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
       viewCount: listing.viewCount,
+      organicViewCount: listing.uniqueViewerCount,
       likeCount: listing.likeCount,
       createdAt: listing.createdAt.toISOString(),
       updatedAt: listing.updatedAt.toISOString(),
@@ -2611,17 +2624,24 @@ export class ListingsService {
     }));
   }
 
-  /** Records every visit — who (logged-in user id or anonymous device key) and when. No
-   * dedup: viewCount counts total visits, not unique viewers (see ListingView's own doc
-   * comment for why this shape was chosen over deduping at write time). */
+  /** Records every visit — who (logged-in user id or anonymous device key) and when. No dedup on
+   * viewCount: it counts total visits, not unique viewers (see ListingView's own doc comment for
+   * why this shape was chosen over deduping at write time). uniqueViewerCount is the one dedup
+   * that does happen — incremented only the first time this exact viewerKey is seen for this
+   * listing — see that field's own doc comment on Listing for the admin "organic views" use and
+   * its known cross-device-before-login tradeoff. */
   async recordView(
     listingId: string,
     viewerKey: string,
   ): Promise<{ viewCount: number }> {
+    const seenBefore = (await this.prisma.listingView.count({ where: { listingId, viewerKey } })) > 0;
     await this.prisma.listingView.create({ data: { listingId, viewerKey } });
     const listing = await this.prisma.listing.update({
       where: { id: listingId },
-      data: { viewCount: { increment: 1 } },
+      data: {
+        viewCount: { increment: 1 },
+        ...(seenBefore ? {} : { uniqueViewerCount: { increment: 1 } }),
+      },
       select: { viewCount: true },
     });
     return { viewCount: listing.viewCount };

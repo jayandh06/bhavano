@@ -38,7 +38,12 @@ function makeService() {
     listingEditLog: { create: jest.fn(), findMany: jest.fn(), count: jest.fn() },
     listingInterest: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn(), count: jest.fn(), groupBy: jest.fn() },
     listingNotificationLog: { create: jest.fn() },
-    listingView: { findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn() },
+    listingView: {
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockResolvedValue({}),
+    },
     // First-photo lookup for the like/view push's preview image — null = no image.
     listingPhoto: { findFirst: jest.fn().mockResolvedValue(null) },
     conversation: { findMany: jest.fn(), upsert: jest.fn() },
@@ -1713,6 +1718,39 @@ describe('ListingsService', () => {
   });
 });
 
+describe('ListingsService.recordView', () => {
+  it('increments both viewCount and uniqueViewerCount for a never-seen-before viewerKey', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listingView.count as jest.Mock).mockResolvedValue(0);
+    (prisma.listing.update as jest.Mock).mockResolvedValue({ viewCount: 1 });
+
+    await service.recordView('listing1', 'user:buyer1');
+
+    expect(prisma.listingView.create).toHaveBeenCalledWith({
+      data: { listingId: 'listing1', viewerKey: 'user:buyer1' },
+    });
+    expect(prisma.listing.update).toHaveBeenCalledWith({
+      where: { id: 'listing1' },
+      data: { viewCount: { increment: 1 }, uniqueViewerCount: { increment: 1 } },
+      select: { viewCount: true },
+    });
+  });
+
+  it('increments only viewCount, not uniqueViewerCount, on a repeat view from the same viewerKey', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listingView.count as jest.Mock).mockResolvedValue(2);
+    (prisma.listing.update as jest.Mock).mockResolvedValue({ viewCount: 3 });
+
+    await service.recordView('listing1', 'user:buyer1');
+
+    expect(prisma.listing.update).toHaveBeenCalledWith({
+      where: { id: 'listing1' },
+      data: { viewCount: { increment: 1 } },
+      select: { viewCount: true },
+    });
+  });
+});
+
 describe('ListingsService.listForAdmin — status filter and sort', () => {
   // findMany resolving to [] means toDetailDto (which needs a fully-shaped row: city, area,
   // owner, media, etc.) is never actually called — this only needs to inspect what where/orderBy
@@ -1760,6 +1798,31 @@ describe('ListingsService.listForAdmin — status filter and sort', () => {
   it('filters by owner (ownerId) when a userId is given', async () => {
     const { where } = await callWith({ userId: 'user1' });
     expect(where).toMatchObject({ ownerId: 'user1' });
+  });
+
+  it('sorts by organic view count (the denormalized uniqueViewerCount column)', async () => {
+    expect((await callWith({ sort: 'organicViewCount_asc' })).orderBy).toEqual([
+      { uniqueViewerCount: 'asc' },
+      { id: 'asc' },
+    ]);
+    expect((await callWith({ sort: 'organicViewCount_desc' })).orderBy).toEqual([
+      { uniqueViewerCount: 'desc' },
+      { id: 'asc' },
+    ]);
+  });
+
+  it('sorts by owner name, nulls last', async () => {
+    expect((await callWith({ sort: 'owner_asc' })).orderBy).toEqual([
+      { owner: { name: { sort: 'asc', nulls: 'last' } } },
+      { id: 'asc' },
+    ]);
+  });
+
+  it('sorts by boosted-until, nulls last so never-boosted listings sort to the end', async () => {
+    expect((await callWith({ sort: 'boosted_desc' })).orderBy).toEqual([
+      { boostedUntil: { sort: 'desc', nulls: 'last' } },
+      { id: 'asc' },
+    ]);
   });
 });
 

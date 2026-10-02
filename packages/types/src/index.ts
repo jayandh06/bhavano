@@ -815,8 +815,17 @@ export interface AdminListingRowDto {
     lastSentAt: string | null;
   };
   viewCount: number;
+  /** Distinct-viewerKey count for this listing — see Listing.uniqueViewerCount's own doc comment.
+   * No admin rows ever reach it (admin visits never call recordView), so this is already the
+   * "organic, unique" count the admin queue wants without a separate admin-exclusion filter. */
+  organicViewCount: number;
   likeCount: number;
   messageCount?: number;
+  owner: { id: string; name: string | null; phone: string | null };
+  /** `boostedUntil` in the future — denormalized the same way Listing.boostedUntil itself is; see
+   * that field's own doc comment. */
+  isBoosted: boolean;
+  boostedUntil: string | null;
   price: string;
   /** Same as ListingCardDto.priceInWords — the queue shows `price` with these words in brackets. */
   priceInWords?: string;
