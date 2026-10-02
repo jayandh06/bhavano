@@ -3508,6 +3508,8 @@ export class ListingsService {
         : undefined,
       renewCount: listing.listingRenewals.length,
       isOwner,
+      // The Bulk Import account "owns" admin-assisted and scraped listings — not a referrer.
+      ...(isOwner && !isBulkImportOwner(listing.owner) ? { viewerReferralCode: listing.ownerId } : {}),
       renewalHistory: isOwnerOrAdmin
         ? listing.listingRenewals.map((r) => ({
             from: r.previousExpiresAt.toISOString(),
@@ -3628,6 +3630,9 @@ export class ListingsService {
       isBoosted: (listing.boostedUntil?.getTime() ?? 0) > Date.now(),
       hasInstantAlerts: (listing.instantAlertsUntil?.getTime() ?? 0) > Date.now(),
       isOwner: viewerId !== undefined && viewerId === listing.ownerId,
+      ...(viewerId !== undefined && viewerId === listing.ownerId && !isBulkImportOwner(listing.owner)
+        ? { viewerReferralCode: viewerId }
+        : {}),
       // Browse-card badge only — not gated on isOwnerOrAdmin like toDetailDto's `videos` array,
       // since "does this listing have a playable video at all" is fine as public info once done.
       hasVideo: listing.listingVideos.some((v) => v.status === 'done'),

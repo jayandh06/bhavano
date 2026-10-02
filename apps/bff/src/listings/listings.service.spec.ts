@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ListingsService, recentMixGroupKey, resolveDeclaredSellerType, roundRobinByGroup } from './listings.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { BULK_IMPORT_OWNER_PHONE } from './bulk-import-owner';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
@@ -376,7 +377,10 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
   function makeMixService(findManyImpl: (args: Record<string, unknown>) => unknown[]) {
     const findMany = jest.fn().mockImplementation(async (args: Record<string, unknown>) => findManyImpl(args));
     const count = jest.fn().mockResolvedValue(0);
-    const prisma = { listing: { findMany, count } } as unknown as PrismaService;
+    const prisma = {
+      listing: { findMany, count },
+      favourite: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as PrismaService;
     const contactRevealService = {
       getRevealStatesForListings: jest.fn().mockResolvedValue(new Map()),
     } as unknown as ContactRevealService;
@@ -429,6 +433,24 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     expect(result.items.map((i) => i.id)).toEqual(['boosted1', 'pg1', 'house1', 'pg2']);
     // 3 findMany calls for the mixed path: boosted, recent pool, older top-up.
     expect(findMany).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives the viewer their referral code on their own cards only, never on Bulk Import's", async () => {
+    const recent = [
+      row('mine'),
+      row('theirs', { ownerId: 'someoneElse' }),
+      row('bulk', { ownerId: 'owner1', owner: { phone: BULK_IMPORT_OWNER_PHONE, email: null } }),
+    ];
+    const { service } = makeMixService((args) =>
+      ((args.where as Record<string, unknown>).createdAt as { gte?: Date })?.gte ? recent : [],
+    );
+
+    const result = await service.list({ offset: 0, limit: 12 } as never, 'owner1');
+    const codeFor = (id: string) => result.items.find((i) => i.id === id)?.viewerReferralCode;
+
+    expect(codeFor('mine')).toBe('owner1');
+    expect(codeFor('theirs')).toBeUndefined();
+    expect(codeFor('bulk')).toBeUndefined();
   });
 
   it('caps guaranteed-featured slots at a fraction of each page, not the whole window, so organic content always fills the rest', async () => {
