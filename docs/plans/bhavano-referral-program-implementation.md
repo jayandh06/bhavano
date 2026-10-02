@@ -320,9 +320,12 @@ or nested under an existing "Users" area?
   link" touchpoint. The referral alert templates (signup, reward, expiring, revoked) are still
   wanted for users with no email, but they only link to Bhavano pages (My listings, Referrals).
 - **Web.**
-  - Owner shares carry `?ref=<userId>`: post success (`OwnerWhatsAppShare` prominent variant, with
-    the reward line and a "How it works" link to `/referrals`) and My listings (compact share).
-    Admin posters don't attach one.
+  - Owner shares carry `?ref=<userId>`: post success (`OwnerWhatsAppShare` prominent variant, which
+    then leads with "Share your ad and earn a free boost" and links to `/referrals`), My listings
+    (compact share), and the share icon on listing cards of the viewer's own ads. The code comes
+    from the listing itself: the BFF sets `viewerReferralCode` on cards and details only when the
+    viewer owns the listing, and never for Bulk Import-owned (admin-assisted or scraped) ones. So a
+    poster who logs in at Publish, or an admin posting their own ad, still gets it.
   - `/referrals` (server page, `robots: noindex`, set in page metadata rather than `robots.txt`):
     balance and next expiry, the invite link (homepage + `ref`, campaign `referral_invite`) with
     copy and WhatsApp, counts, referred people, and how it works. Linked from Profile.
@@ -346,8 +349,7 @@ or nested under an existing "Users" area?
   - the landing banner for referred visitors;
   - spending a credit from the post-ad wizard's preview-step selector (it's offered after the ad
     is created instead);
-  - the "clicks" step of the user-facing funnel (shown: joined, posted an ad, boosts earned);
-  - a user who logs in midway through the web wizard gets no `ref` on the success-screen share.
+  - the "clicks" step of the user-facing funnel (shown: joined, posted an ad, boosts earned).
 
 Original plan:
 
