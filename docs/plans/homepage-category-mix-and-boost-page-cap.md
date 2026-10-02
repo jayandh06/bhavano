@@ -185,7 +185,7 @@ this could eventually push organic content past page 2, 3, 4+, which cuts agains
   **Front-loaded onto page 1 first, not a strict "exactly 4 per page" split** — simpler to
   implement and reason about, and still satisfies "boosted ads show up in the first two pages"
   since 8 always fits inside 2 pages' 24 slots. Worth revisiting for an even split later if page 1
-  ends up feeling crowded relative to page 2.
+  ends up feeling crowded relative to page 2. **(2026-10-02: it did — see below.)**
 - Listings boosted **beyond** the cap are not hidden or demoted — `fetchOffsetPage` merges them
   back into the recent-mix/older pools (removed the `boostRank: null` exclusion those queries used
   to have, filtering out only the ids that already got a featured slot instead) so they compete
@@ -225,6 +225,63 @@ this could eventually push organic content past page 2, 3, 4+, which cuts agains
   surfaces correctly on page 2 once the cap itself spans more than a single page of 12.
 - Was a no-op at build time (0 listings boosted); no longer — see the 2026-10-01 update below, added
   once adoption grew past the cap.
+- **(2026-10-02) Front-loading onto page 1 was revisited, as flagged above.** Reported: the
+  homepage read as "only featured ads" — the separate Featured rail (up to 10 boosted listings,
+  `docs/plans/featured-listings-visibility-improvements.md`'s #3) and this cap both draw from the
+  same boosted pool with no coordination between them. Confirmed directly against production
+  (curled `www.bhavano.com`, grepped the rendered page for `isBoosted`): with ~12-13 boosted
+  listings (at/over the then-current whole-window cap of 12), the rail showed 10 and the main grid
+  showed only 2 — **all 12 unique listings on the page were boosted**, despite 43 pages of organic
+  inventory existing. The rail+grid dedup (`page.tsx`'s `featuredIds`/`restOfGrid`) correctly
+  prevented a literal duplicate card, but couldn't manufacture organic content neither query had
+  fetched in the first place. Fixed with two changes:
+  - **The cap is now evaluated per page, not once across the whole window.**
+    `BOOST_FEATURED_CAP_MAX_FRACTION` (of `windowSize`) replaced by
+    `BOOST_FEATURED_CAP_PER_PAGE_FRACTION = 0.25` (of `limit`) — `perPageCap = Math.floor(limit *
+    0.25) = 3` at `limit:12`, one per visual row of the homepage's 4-rows-of-3 grid.
+    `fetchOffsetPage` now assembles each of the first `RECENT_MIX_PAGES` pages as its own
+    `[pageFeatured, ...fill]` chunk (page 1 gets `featuredRows[0:3]`, page 2 gets
+    `featuredRows[3:6]`), instead of one flat capped block at the front of the combined window that
+    let raw `offset`/`limit` slicing hand the entire budget to whichever page was requested first.
+    Chosen smaller than a naive "half the old cap" (6/page) because the rail already gives boosted
+    listings their own dedicated showcase of 10 — the grid's own guarantee doesn't need to carry
+    that weight alone. Guarantees organic content 75% of every page (up from the 0% production was
+    actually showing), while 6 boosted listings still get a guaranteed grid slot across page 1+2
+    (on top of the rail's 10), still growing with demand via the same `.slice()`-bounded mechanism
+    as before.
+  - **The grid's cap now reserves past whatever the rail already claimed.** New optional
+    `ListListingsDto.featuredRailLimit` — the homepage (`apps/web/src/app/page.tsx`) passes its own
+    `FEATURED_RAIL_LIMIT` (10, the same number the rail's own `featuredOnly` fetch uses) on its main
+    grid request; `fetchOffsetPage` slices the round-robin'd boosted list past that count
+    (`priorityBoosted.slice(featuredRailLimit ?? 0)`) before applying `perPageCap`. In the common
+    case (same `where`/`orderBy` the rail and grid both resolve to, i.e. no extra attribute filters
+    the rail's narrower scope doesn't apply) this makes the grid's guaranteed rows disjoint from the
+    rail's, instead of a literal prefix of them. `BrowseListingsView` (no rail) never sets this
+    field, so its own behavior is unchanged. Known, accepted residual gap: a visitor with extra
+    filters the rail's narrower query doesn't share (bedrooms/price/amenities) can still see a
+    little overlap — `page.tsx`'s existing post-hoc dedup remains the safety net there, same as
+    before this change, just with less to strip in practice.
+  - `BoostRotationService`'s 30-minute random reshuffle and the round-robin-by-category fairness are
+    both untouched — this only changes how many guaranteed slots exist per page and which pool they
+    draw from, not how rotation/fairness works within that.
+  - New/updated tests in `listings.service.spec.ts`: the cap split cleanly across page 1 and page 2
+    instead of front-loaded; the rail-reserve slice producing disjoint grid rows when a rail size is
+    set; round-robin fairness still applying within the smaller per-page cap.
+  - **(2026-10-02, same day) Merged into one query.** The rail and the grid started as (and the
+    reservation above still assumed) two independent requests — the website issuing its own
+    separate `featuredOnly: true` fetch for the rail, then a second request for the grid carrying
+    `featuredRailLimit` so the grid's cap knew how many to skip. Asked to fold this into a single
+    request instead ("so we know in one shot all the required conditions"). `ListListingsDto`'s
+    `featuredOnly` boolean is gone entirely; `featuredRailLimit` became `featuredRailSize` and now
+    means "compute and return this many as `ListingsPage.featuredRail` in *this* response," not "the
+    other request already claimed this many." `fetchOffsetPage` carves `featuredRail` directly off
+    the front of the same `priorityBoosted` list the grid's own per-page cap reserves past — one
+    shared `allBoosted` fetch instead of two, and the rail/grid split is disjoint *by construction*
+    now rather than by two separately-filtered queries happening to agree (closing the one residual
+    gap the two-query design had: a visitor with extra attribute filters the old rail query didn't
+    apply could previously still see a little overlap). `apps/web/src/app/page.tsx` dropped its
+    `Promise.all` of two `fetchListings` calls for one, and its own `featuredIds`/`restOfGrid` dedup
+    logic entirely — no longer needed once the two can't overlap in the first place.
 
 ### Verification
 
@@ -233,6 +290,30 @@ holding at exactly 8 when more listings are boosted than that, the overflow (9th
 showing up in the recent pool rather than being dropped, and an overflow listing still reporting
 `isBoosted: true` despite missing the guaranteed slot. Full bff suite otherwise unaffected (one
 pre-existing, unrelated failure tracked earlier this session, unchanged by this).
+
+**(2026-10-02)** Updated for the per-page-cap/rail-reserve change above: the whole-window-cap test
+now asserts a 3-per-page split across two separate `offset:0`/`offset:12` calls instead of "all 12
+of page 1," plus a new test for the rail-reserve slice and the round-robin-by-category test updated
+to check only the first 3 slots rather than all remaining houses.
+
+**(2026-10-02, same day — single-query merge)** `'featuredOnly short-circuits...'` deleted (the
+branch it tested no longer exists); replaced with `'computes the Featured rail and the main grid
+from one request, disjoint by construction'` (asserts `result.featuredRail` and `result.items` in
+one `service.list({ featuredRailSize: 2 })` call, from one shared `allBoosted` fetch) and `'omits
+featuredRail entirely... when no rail was requested'` (confirms `undefined`, not `[]`, for every
+caller that never asked — i.e. `BrowseListingsView`'s own behavior is provably unchanged). The
+earlier rail-reserve test now also asserts `result.featuredRail` directly instead of inferring it
+only existed in a separate response.
+
+`pnpm --filter bff test` — 697 passing (same 1 pre-existing, unrelated jwks-rsa/ESM failure as
+before, confirmed unchanged by diffing against the pre-change run). `pnpm --filter bff exec tsc
+--noEmit` and `pnpm --filter web exec tsc --noEmit` both clean. `pnpm --filter bff exec eslint`/
+`pnpm --filter web exec eslint` on every touched file clean except pre-existing CRLF-formatting
+noise already present throughout `listings.service.ts`/`.spec.ts` before this change (confirmed via
+a stashed baseline comparison, not introduced by this). `packages/types` rebuilt
+(`ListingsPage.featuredRail` is a new field on the shared type).
+**Not yet verified**: a post-deploy live check (curl the real homepage again, confirm the grid is
+now a genuine organic/featured mix) — the method that originally diagnosed this.
 
 ## Part 3 — "Auto" sort default, explicit sort bypasses the mix entirely — **BUILT**
 

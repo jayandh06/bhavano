@@ -422,48 +422,68 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     expect(findMany).toHaveBeenCalledTimes(3);
   });
 
-  it('caps guaranteed-featured slots at a fraction of the window, letting the overflow compete normally', async () => {
-    // 15 boosted listings — more than the cap (half of the 24-slot window at limit:12 = 12) —
-    // ranked by boostRank, highest first, same as BoostRotationService's own random reshuffle
-    // would order them.
+  it('caps guaranteed-featured slots at a fraction of each page, not the whole window, so organic content always fills the rest', async () => {
+    // 15 boosted listings — more than the per-page cap (a quarter of limit:12 = 3) — ranked by
+    // boostRank, highest first, same as BoostRotationService's own random reshuffle would order
+    // them. Same group (default category from `row()`), so round-robin is a no-op here.
     const boosted = Array.from({ length: 15 }, (_, i) =>
       row(`boost${i}`, { boostRank: 1 - i * 0.01, boostedUntil: new Date(now + DAY) }),
     );
-    // The listings past the cap still show up in the recent pool, same as any other recent row
-    // would — the boostRank:null exclusion was removed from that query for exactly this reason.
-    const recent = [row('house1', { category: 'house' }), boosted[12], boosted[13], boosted[14]];
+    // Plenty of organic content — enough to fill both pages' non-featured slots, unlike a bare
+    // couple of rows, so the test actually exercises "organic fills the rest of the page" rather
+    // than silently running dry.
+    const recent = Array.from({ length: 20 }, (_, i) => row(`organic${i}`, { category: 'house' }));
 
-    const { service, findMany } = makeMixService((args) => {
+    const { service } = makeMixService((args) => {
       const where = args.where as Record<string, unknown>;
       if ((where.boostRank as { not: null })?.not === null) return boosted;
       if ((where.createdAt as { gte?: Date })?.gte) return recent;
       return [];
     });
 
-    // The cap (12) exactly fills page 1 at limit:12, so the overflow only becomes visible on
-    // page 2 — both pages come from the same underlying 24-slot window (see fetchOffsetPage).
     const page1 = await service.list({ offset: 0, limit: 12 } as never);
     const page2 = await service.list({ offset: 12, limit: 12 } as never);
     const page1Ids = page1.items.map((i) => i.id);
     const page2Ids = page2.items.map((i) => i.id);
 
-    // The top 12 by boostRank are guaranteed the featured slots, in order, filling page 1 exactly.
-    expect(page1Ids).toEqual(Array.from({ length: 12 }, (_, i) => `boost${i}`));
-    // boost12/13/14 aren't dropped for missing the cap — they compete in the recent pool, visible
-    // on page 2 instead of being guaranteed the top slot.
-    expect(page2Ids).toEqual(
-      expect.arrayContaining(['boost12', 'boost13', 'boost14', 'house1']),
-    );
-    // no duplicates
-    expect(new Set([...page1Ids, ...page2Ids]).size).toBe(
-      page1Ids.length + page2Ids.length,
-    );
-    // Still carries the "Featured" badge despite missing the guaranteed slot — isBoosted comes
-    // from boostedUntil, independent of whether this row made the cap.
-    expect(page2.items.find((i) => i.id === 'boost14')?.isBoosted).toBe(true);
+    // Only 3 guaranteed featured slots per page — not the old whole-window cap of 12 — leaving 9
+    // of every 12 slots for organic content, the actual fix for "page 1 was 100% featured ads".
+    expect(page1Ids.slice(0, 3)).toEqual(['boost0', 'boost1', 'boost2']);
+    expect(page1Ids.slice(3)).toEqual(expect.arrayContaining(['organic0', 'organic1']));
+    expect(page2Ids.slice(0, 3)).toEqual(['boost3', 'boost4', 'boost5']);
+    expect(page2Ids.slice(3).every((id) => id.startsWith('organic'))).toBe(true);
+    // boost6-14 aren't dropped for missing the cap — they'd compete in the recent pool on their
+    // own merits, same as before; this fixture just doesn't surface them there (see the dedicated
+    // round-robin test below for one still carrying the badge past the cap).
+    expect(new Set([...page1Ids, ...page2Ids]).size).toBe(page1Ids.length + page2Ids.length);
   });
 
-  it('round-robins the featured cap by category, so one boost-heavy category cannot shut out another', async () => {
+  it("reserves the Featured rail's own slice before computing the grid's per-page cap", async () => {
+    // Same 15 boosted listings as above, computed in the same single request this time
+    // (featuredRailSize: 10) — the grid's own 3-per-page guarantee must come from what's left
+    // after the rail's own 10 (boost10+), not re-promise the rail's own boost0-9 a slot here too.
+    const boosted = Array.from({ length: 15 }, (_, i) =>
+      row(`boost${i}`, { boostRank: 1 - i * 0.01, boostedUntil: new Date(now + DAY) }),
+    );
+    const recent = Array.from({ length: 20 }, (_, i) => row(`organic${i}`, { category: 'house' }));
+
+    const { service } = makeMixService((args) => {
+      const where = args.where as Record<string, unknown>;
+      if ((where.boostRank as { not: null })?.not === null) return boosted;
+      if ((where.createdAt as { gte?: Date })?.gte) return recent;
+      return [];
+    });
+
+    const page1 = await service.list({ offset: 0, limit: 12, featuredRailSize: 10 } as never);
+
+    // The rail itself gets the top 10, returned in the same response.
+    expect(page1.featuredRail?.map((i) => i.id)).toEqual(Array.from({ length: 10 }, (_, i) => `boost${i}`));
+    // Disjoint from what the rail already showed (boost0-9) — the grid's guaranteed slots start
+    // right after it.
+    expect(page1.items.map((i) => i.id).slice(0, 3)).toEqual(['boost10', 'boost11', 'boost12']);
+  });
+
+  it('round-robins the per-page featured cap by category, so one boost-heavy category cannot shut out another', async () => {
     // 13 boosted houses outrank (by boostRank) the account's one boosted apartment — a real
     // incident once boost adoption passed the cap: a flat boostRank-sorted slice gave every
     // guaranteed slot to whichever category had the most boost buyers, so a seller who boosted
@@ -484,9 +504,10 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     // allBoosted comes back boostRank-sorted (highest first), same as the real query's orderBy —
     // the apartment, with the lowest boostRank of all 14, sorts last.
     const boosted = [...houses, apartment];
-    // house11/house12 miss the cap (12, half of the 24-slot window) but still show up in the
-    // recent pool, same as any other recent row would — mirrors the overflow handling above.
-    const recentOverflow = [houses[11], houses[12]];
+    // Every house beyond the cap (now just 6 total across both pages, not 12) still shows up in
+    // the recent pool, same as any other recent row would — still carries the Featured badge via
+    // isBoosted (independent of the cap), just without a guaranteed slot.
+    const recentOverflow = houses.slice(4);
 
     const { service } = makeMixService((args) => {
       const where = args.where as Record<string, unknown>;
@@ -499,24 +520,14 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     const ids = result.items.map((i) => i.id);
 
     // Round-robin gives the lone apartment the 2nd guaranteed slot (right after the single
-    // highest-boostRank house), not the excluded-entirely position a flat sort would give it.
-    expect(ids).toEqual([
-      'house0',
-      'apartment0',
-      'house1',
-      'house2',
-      'house3',
-      'house4',
-      'house5',
-      'house6',
-      'house7',
-      'house8',
-      'house9',
-      'house10',
-    ]);
+    // highest-boostRank house), not the excluded-entirely position a flat sort would give it —
+    // only the first 3 are guaranteed now, not all remaining houses.
+    expect(ids.slice(0, 3)).toEqual(['house0', 'apartment0', 'house1']);
+    // house5-12 (beyond the cap) still appear, via the recent pool, still carrying the badge.
+    expect(result.items.find((i) => i.id === 'house12')?.isBoosted).toBe(true);
   });
 
-  it('shows the round-robin overflow (house11/house12) on page 2', async () => {
+  it('shows the round-robin overflow on page 2, not just page 1', async () => {
     const houses = Array.from({ length: 13 }, (_, i) =>
       row(`house${i}`, {
         category: 'house',
@@ -530,7 +541,9 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
       boostedUntil: new Date(now + DAY),
     });
     const boosted = [...houses, apartment];
-    const recentOverflow = [houses[11], houses[12]];
+    // Enough organic/overflow content to span both pages' non-featured fill, same reasoning as
+    // the per-page cap test above.
+    const recentOverflow = [...houses.slice(4), ...Array.from({ length: 10 }, (_, i) => row(`organic${i}`))];
 
     const { service } = makeMixService((args) => {
       const where = args.where as Record<string, unknown>;
@@ -539,10 +552,13 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
       return [];
     });
 
+    const page1 = await service.list({ offset: 0, limit: 12 } as never);
     const page2 = await service.list({ offset: 12, limit: 12 } as never);
-    expect(page2.items.map((i) => i.id)).toEqual(
-      expect.arrayContaining(['house11', 'house12']),
-    );
+
+    // Page 1 gets its own 3 guaranteed slots, page 2 gets the next 3 — not page 1 claiming the
+    // whole window's worth up front.
+    expect(page1.items.map((i) => i.id).slice(0, 3)).toEqual(['house0', 'apartment0', 'house1']);
+    expect(page2.items.map((i) => i.id).slice(0, 3)).toEqual(['house2', 'house3', 'house4']);
   });
 
   it('uses the plain single-query path, unchanged, once past the first 2 pages', async () => {
@@ -578,47 +594,44 @@ describe('ListingsService.list — recent-listings mix (first 2 pages only)', ()
     }
   });
 
-  it('featuredOnly short-circuits to a single round-robin-by-group boosted fetch, ignoring offset/cursor', async () => {
+  it('computes the Featured rail and the main grid from one request, disjoint by construction', async () => {
+    // Same 2026-10-02 single-query merge this whole describe block's other tests exercise —
+    // `featuredRailSize` used to require a second, separate `featuredOnly: true` request
+    // (replaced entirely by this field; see docs/plans/homepage-category-mix-and-boost-page-cap.md,
+    // Part 2).
     const houses = [
-      row('h0', {
-        category: 'house',
-        boostRank: 0.9,
-        boostedUntil: new Date(now + DAY),
-      }),
-      row('h1', {
-        category: 'house',
-        boostRank: 0.8,
-        boostedUntil: new Date(now + DAY),
-      }),
+      row('h0', { category: 'house', boostRank: 0.9, boostedUntil: new Date(now + DAY) }),
+      row('h1', { category: 'house', boostRank: 0.8, boostedUntil: new Date(now + DAY) }),
     ];
-    const apartment = row('a0', {
-      category: 'apartment',
-      boostRank: 0.1,
-      boostedUntil: new Date(now + DAY),
-    });
+    const apartment = row('a0', { category: 'apartment', boostRank: 0.1, boostedUntil: new Date(now + DAY) });
     // allBoosted comes back boostRank-sorted (highest first), same as the real query's orderBy.
     const boosted = [...houses, apartment];
+    const recent = Array.from({ length: 10 }, (_, i) => row(`organic${i}`, { category: 'house' }));
 
     const { service, findMany } = makeMixService((args) => {
       const where = args.where as Record<string, unknown>;
       if ((where.boostRank as { not: null })?.not === null) return boosted;
+      if ((where.createdAt as { gte?: Date })?.gte) return recent;
       return [];
     });
 
-    const result = await service.list({
-      featuredOnly: true,
-      limit: 2,
-      offset: 0,
-    });
+    const result = await service.list({ offset: 0, limit: 12, featuredRailSize: 2 } as never);
 
-    // One query (every boosted match), not the mix's 3-call pattern or the plain path's findMany+count.
-    expect(findMany).toHaveBeenCalledTimes(1);
-    // Round-robin puts the apartment 2nd, ahead of the 2nd house, even though it ranks lowest —
-    // same fairness the main feed's featured cap gets, so the rail can't be one category either.
-    expect(result.items.map((i) => i.id)).toEqual(['h0', 'a0']);
-    expect(result.nextCursor).toBeNull();
-    // Reports every boosted match found, not just how many fit in `limit`.
-    expect(result.total).toBe(3);
+    // One shared boosted-pool fetch serves both — not a separate request for the rail.
+    expect(findMany).toHaveBeenCalledTimes(3); // allBoosted, recent pool, older top-up
+    // Round-robin puts the apartment 2nd in the rail, ahead of the 2nd house, even though it
+    // ranks lowest by boostRank — same fairness the grid's own cap gets.
+    expect(result.featuredRail?.map((i) => i.id)).toEqual(['h0', 'a0']);
+    // The grid's own per-page cap reserves past the rail's 2 — h1 (the only boosted listing left)
+    // gets the grid's guaranteed slot, disjoint from the rail, not repeated from it.
+    expect(result.items[0]?.id).toBe('h1');
+    expect(result.items.map((i) => i.id)).not.toEqual(expect.arrayContaining(['h0', 'a0']));
+  });
+
+  it('omits featuredRail entirely (not even an empty array) when no rail was requested', async () => {
+    const { service } = makeMixService(() => []);
+    const result = await service.list({ offset: 0, limit: 12 } as never);
+    expect(result.featuredRail).toBeUndefined();
   });
 });
 

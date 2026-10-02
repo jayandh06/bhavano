@@ -205,6 +205,12 @@ export interface ListingsPage {
   items: ListingCardDto[];
   nextCursor: string | null;
   total: number;
+  /** The homepage's Featured rail, computed in the same request as `items` rather than a separate
+   * round-trip — present only when the request set `featuredRailSize` (see
+   * ListListingsDto.featuredRailSize), undefined for every other caller (e.g. BrowseListingsView,
+   * mobile). An empty array is a real "no boosted matches," distinct from undefined ("no rail
+   * requested at all"). */
+  featuredRail?: ListingCardDto[];
 }
 
 /** Minimal shape for sitemap.xml generation — every active, non-expired listing. */

@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type { HomeCategoryFilter, ListingCategory, PropertyTypeFilter, TransactionType } from '@bhavano/types';
 import { AMENITY_KEYS, CATEGORY_FIELD_CONFIG } from '@bhavano/types/categoryFields';
 
@@ -170,13 +170,16 @@ export class ListListingsDto {
   @IsIn(SORT_VALUES)
   sort?: (typeof SORT_VALUES)[number];
 
-  /** The homepage's Featured rail — every currently-boosted match for the rest of this query's
-   * filters, round-robin'd across categories/cities the same way the main feed's featured cap is
-   * (see ListingsService.list and docs/plans/homepage-category-mix-and-boost-page-cap.md), instead
-   * of the normal recent/older feed. `limit` still caps how many come back; `offset`/`cursor` are
-   * ignored — the rail is never paginated, it always asks for the first `limit` from the top. */
+  /** The homepage's own Featured rail, computed and returned in this same request (`response.
+   * featuredRail`) rather than a separate round-trip — every currently-boosted match for the rest
+   * of this query's filters, round-robin'd across categories/cities the same way the main feed's
+   * own guaranteed-featured cap is, up to this many. The main grid's own (much smaller) per-page
+   * cap reserves past these so the two never guarantee the same listing a slot twice — see
+   * docs/plans/homepage-category-mix-and-boost-page-cap.md, Part 2's 2026-10-02 update. Omitted by
+   * every caller without a rail (BrowseListingsView), whose behavior is unaffected. */
   @IsOptional()
-  @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
-  @IsBoolean()
-  featuredOnly?: boolean;
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  featuredRailSize?: number;
 }

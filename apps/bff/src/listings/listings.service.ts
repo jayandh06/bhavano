@@ -362,35 +362,37 @@ const RECENT_MIX_POOL_CAP = 1000;
  * only, no guaranteed slot" limbo as adoption grows, which is exactly the "paid but got nothing"
  * complaint that motivated capping it in the first place (it exists to protect organic content
  * from boost, not to arbitrarily shortchange boost buyers once there's real demand for it).
- * Recomputed per request from the page window (`windowSize = RECENT_MIX_PAGES * limit`) instead,
- * capped at `BOOST_FEATURED_CAP_MAX_FRACTION` of it — organic/recent-mix content is guaranteed at
- * least half of the curated head no matter how much boost adoption grows, while demand under that
- * ceiling gets a real slot instead of being held at the old fixed 8. Naturally still shrinks below
- * the ceiling when there simply aren't that many boosted listings (`.slice()` below only ever
- * takes as many as exist) — this never *forces* extra listings into the cap.
  *
- * Deliberately a flat total across the first `RECENT_MIX_PAGES` pages, front-loaded onto page 1
- * first, rather than a strict "exactly N per page" split — simpler, and still satisfies "boosted
- * ads show up in the first two pages" for any cap value small enough to fit within them (true by
- * construction here, since the cap is itself a fraction of that same window). A stricter even
- * split is straightforward to add later if page 1 alone ends up feeling crowded.
+ * **(2026-10-02) Per page, not per window.** The fraction above used to apply to the whole
+ * `windowSize = RECENT_MIX_PAGES * limit` and front-load onto page 1 first — exactly the
+ * "straightforward to add later if page 1 ends up feeling crowded" caveat this comment used to
+ * end with. It did: with the homepage's Featured rail (up to 10 boosted listings,
+ * `docs/plans/featured-listings-visibility-improvements.md`) *also* drawing from the same pool,
+ * and boost adoption (~12-13) at/over the old whole-window cap (12), page 1's entire grid was
+ * boosted — confirmed directly against production (curled the homepage, 0 of 12 grid listings were
+ * organic despite 43 pages of real inventory existing). Fixed by applying this fraction to one
+ * page (`limit`) at a time instead of the whole window, and by computing the rail and the grid's
+ * cap from one shared boosted-listings fetch (`featuredRailSize`, see `fetchOffsetPage`) instead
+ * of two independent, uncoordinated ones — see that doc's Part 2 for the full writeup.
+ * Organic/recent-mix content is now guaranteed at least 3/4 of every page, not just half of the
+ * whole window. Naturally still shrinks below the ceiling when there simply aren't that many
+ * boosted listings (`.slice()` below only ever takes as many as exist) — this never *forces* extra
+ * listings into the cap.
  *
  * **Which listings fill the cap is round-robin'd by `recentMixGroupKey`** (see fetchOffsetPage),
- * not a flat top-N-by-boostRank slice — checked against prod at the same time as the above: a flat
- * slice let whichever category had the most boost buyers take every guaranteed slot, so a seller
- * who boosted the only listing in their category could still be shut out entirely despite paying
- * the same price. Same "one oversized group buries the rest" fix Part 1 already applies to the
- * recent pool, applied here too — both fixes landed together since they address the same
- * underlying problem (the cap not actually serving every paying boost buyer fairly).
+ * not a flat top-N-by-boostRank slice — checked against prod at the same time as the 2026-10-01
+ * change above: a flat slice let whichever category had the most boost buyers take every
+ * guaranteed slot, so a seller who boosted the only listing in their category could still be shut
+ * out entirely despite paying the same price. Same "one oversized group buries the rest" fix Part 1
+ * already applies to the recent pool, applied here too.
  *
  * Listings boosted *beyond* the cap are not hidden or demoted — they compete in the normal
  * recent-mix/older pools on their own merits (see fetchOffsetPage) and still carry the "⭐
  * Featured" badge (ListingCardDto.isBoosted, driven by boostedUntil independent of this cap) —
  * they just don't get the guaranteed top slot. No residual ranking bump past the cap either: the
  * simplest option, and it avoids a slow creep back toward "boost dominates everything" as more
- * listings buy it. Both of these were open decisions in the plan doc, resolved this way when
- * building it — reachable to revisit if they turn out wrong once there's real boost volume. */
-const BOOST_FEATURED_CAP_MAX_FRACTION = 0.5;
+ * listings buy it. */
+const BOOST_FEATURED_CAP_PER_PAGE_FRACTION = 0.25;
 
 /** The dimension each home tab mixes recent listings by — property category for the multi-
  * category tabs (All/Buy/Rent & Lease all pass `homeCategory` as undefined/'buy'/'rentLease'),
@@ -636,35 +638,6 @@ export class ListingsService {
       ...ORDER_BY[sort ?? 'auto'],
     ];
 
-    // The homepage's Featured rail (ListListingsDto.featuredOnly) — a standalone, un-paginated
-    // request for the best `limit` boosted matches, round-robin'd by the same group key as the
-    // main feed's featured cap so one category can't fill every rail slot either. Short-circuits
-    // before offset/cursor mode entirely: the rail has no pages, it only ever wants the top
-    // `limit` from a fresh top each time it's requested.
-    if (query.featuredOnly) {
-      const allBoosted = await this.prisma.listing.findMany({
-        where: { ...where, boostRank: { not: null } },
-        include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
-        orderBy,
-      });
-      const rows = roundRobinByGroup(allBoosted, (row) =>
-        recentMixGroupKey(homeCategory, cityId, row),
-      ).slice(0, limit);
-      const favouritedIds = await this.getFavouritedIds(
-        currentUserId,
-        rows.map((r) => r.id),
-      );
-      const revealStates = await this.contactRevealService.getRevealStatesForListings(
-        currentUserId,
-        rows.map((r) => ({ id: r.id, ownerPhone: r.owner.phone, ownerEmail: r.owner.email })),
-      );
-      return {
-        items: rows.map((row) => this.toCardDto(row, favouritedIds, currentUserId, revealStates)),
-        nextCursor: null,
-        total: allBoosted.length,
-      };
-    }
-
     // Offset mode (numbered `?page=N` pagination — see ListListingsDto.offset) fetches the exact
     // window directly, since the caller already knows the total and doesn't need a `hasMore`
     // look-ahead row the way cursor-based append does. Two explicit branches (rather than
@@ -675,30 +648,42 @@ export class ListingsService {
     // below — round-robin reordering the first pages doesn't map cleanly onto an append-only
     // cursor the way it does onto numbered offset pages, and every offset-mode consumer (the
     // homepage, BrowseListingsView) already gets the fix. Worth revisiting for mobile separately.
-    const [rows, total] = await Promise.all([
+    const [{ items: rows, featuredRail }, total] = await Promise.all([
       offset !== undefined
-        ? this.fetchOffsetPage(where, orderBy, offset, limit, homeCategory, cityId, wantsExplicitSort(sort))
-        : this.prisma.listing.findMany({
-            where,
-            include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
-            orderBy,
-            take: limit + 1,
-            ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-          }),
+        ? this.fetchOffsetPage(where, orderBy, offset, limit, homeCategory, cityId, wantsExplicitSort(sort), query.featuredRailSize)
+        : this.prisma.listing
+            .findMany({
+              where,
+              include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+              orderBy,
+              take: limit + 1,
+              ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+            })
+            .then((items) => ({ items, featuredRail: [] as typeof items })),
       this.prisma.listing.count({ where }),
     ]);
 
     if (offset !== undefined) {
+      // One combined lookup for both arrays — the homepage's Featured rail and the main grid are
+      // now a single request (see ListListingsDto.featuredRailSize), so there's no reason to ask
+      // twice for the same visitor's favourite/contact-reveal state.
+      const allRows = [...rows, ...featuredRail];
       const favouritedIds = await this.getFavouritedIds(
         currentUserId,
-        rows.map((r) => r.id),
+        allRows.map((r) => r.id),
       );
       const revealStates = await this.contactRevealService.getRevealStatesForListings(
         currentUserId,
-        rows.map((r) => ({ id: r.id, ownerPhone: r.owner.phone, ownerEmail: r.owner.email })),
+        allRows.map((r) => ({ id: r.id, ownerPhone: r.owner.phone, ownerEmail: r.owner.email })),
       );
       return {
         items: rows.map((row) => this.toCardDto(row, favouritedIds, currentUserId, revealStates)),
+        // undefined ("no rail requested") is distinct from `[]` ("requested, nothing boosted") —
+        // see ListingsPage.featuredRail's own doc comment.
+        featuredRail:
+          query.featuredRailSize !== undefined
+            ? featuredRail.map((row) => this.toCardDto(row, favouritedIds, currentUserId, revealStates))
+            : undefined,
         nextCursor: null,
         total,
       };
@@ -723,21 +708,27 @@ export class ListingsService {
   }
 
   /** `list()`'s offset-mode row fetch — plain for page 3+, mixed for the first
-   * `RECENT_MIX_PAGES` pages (see docs/plans/homepage-category-mix-and-boost-page-cap.md).
+   * `RECENT_MIX_PAGES` pages (see docs/plans/homepage-category-mix-and-boost-page-cap.md). Also
+   * computes the homepage's own Featured rail in the same pass when `featuredRailSize` is given —
+   * see `featuredRail` below — instead of the website issuing a second, separate request for it
+   * (the 2026-10-02 single-query merge: the rail and the grid were two independently-uncoordinated
+   * queries before this, which is how they ended up guaranteeing the same boosted listings a slot
+   * twice while leaving the grid otherwise 100% boosted).
    *
-   * The mixed path fetches three disjoint slices and concatenates them in display order, then
-   * slices out the requested window — deterministic given unchanged underlying data, so two
-   * requests for page 1 and page 2 of the same query produce consecutive, non-repeating results,
-   * same stability guarantee a plain `skip`/`take` already has (and the same caveat: a listing
-   * created between the two requests can still shift what "page 2" contains, exactly as it could
-   * before this existed):
+   * The mixed path fetches three disjoint slices, then assembles each of the first
+   * `RECENT_MIX_PAGES` pages as its own chunk (see the per-page loop below) — deterministic given
+   * unchanged underlying data, so two requests for page 1 and page 2 of the same query produce
+   * consecutive, non-repeating results, same stability guarantee a plain `skip`/`take` already has
+   * (and the same caveat: a listing created between the two requests can still shift what "page 2"
+   * contains, exactly as it could before this existed):
    *
-   * 1. Every boosted (`boostRank` not null) match, round-robin'd by `recentMixGroupKey` and capped
-   *    at `featuredCap` (up to `BOOST_FEATURED_CAP_MAX_FRACTION` of the window) — a guaranteed slot
-   *    per group before any group gets a second one, so a boost buyer in a thin category isn't
-   *    shut out by one with more boosted listings (see Part 2 of the plan doc). The overflow past
-   *    the cap still competes below, unordered by boostRank at that point — it's just another row
-   *    in whichever pool it lands in.
+   * 1. Every boosted (`boostRank` not null) match, round-robin'd by `recentMixGroupKey`. The first
+   *    `featuredRailSize` of those become `featuredRail`; the main grid's own cap is capped at
+   *    `perPageCap` *per page* (`BOOST_FEATURED_CAP_PER_PAGE_FRACTION` of `limit`) from whatever's
+   *    left after that — a guaranteed slot per group before any group gets a second one, so a
+   *    boost buyer in a thin category isn't shut out by one with more boosted listings (see Part 2
+   *    of the plan doc). The overflow past both reservations still competes below, unordered by
+   *    boostRank at that point — it's just another row in whichever pool it lands in.
    * 2. The "recent" pool (created within `RECENT_MIX_WINDOW_MS`, not boosted), round-robin'd by
    *    `recentMixGroupKey` so no single group can bury the rest.
    * 3. If 1+2 don't fill the window, the next-oldest non-boosted rows, plainly sorted — same
@@ -758,11 +749,17 @@ export class ListingsService {
      * uncapped — same as before Part 2 existed), since that part of the ordering isn't what
      * "sort by" is about. */
     explicitSort: boolean,
+    /** `ListListingsDto.featuredRailSize` — how many of the round-robin'd boosted matches to carve
+     * off as the homepage's own Featured rail (`featuredRail` below) and reserve past when
+     * computing the grid's own smaller per-page cap. `undefined` for every caller without a rail
+     * (BrowseListingsView), which behaves exactly as if this parameter didn't exist. */
+    featuredRailSize: number | undefined,
   ) {
     const include = { city: true, area: true, ...LISTING_MEDIA_INCLUDE };
 
     if (explicitSort || offset >= RECENT_MIX_PAGES * limit) {
-      return this.prisma.listing.findMany({ where, include, orderBy, skip: offset, take: limit });
+      const items = await this.prisma.listing.findMany({ where, include, orderBy, skip: offset, take: limit });
+      return { items, featuredRail: [] };
     }
 
     const windowSize = RECENT_MIX_PAGES * limit;
@@ -770,7 +767,7 @@ export class ListingsService {
     const plainRecentSort: Prisma.ListingOrderByWithRelationInput[] = [{ createdAt: 'desc' }, { id: 'asc' }];
 
     // All matches, boosted or not, still get pulled into the recent/older pools below — capping
-    // `featuredRows` to `featuredCap` doesn't exclude the overflow from the feed, it just
+    // `featuredRows` to `perPageCap` doesn't exclude the overflow from the feed, it just
     // stops guaranteeing them the top slot. `featuredIds` is how the two later queries avoid
     // showing an already-featured row a second time in its own natural position.
     const [allBoosted, recentPool] = await Promise.all([
@@ -782,21 +779,24 @@ export class ListingsService {
         take: RECENT_MIX_POOL_CAP,
       }),
     ]);
-    // Grows with real demand instead of staying fixed — see BOOST_FEATURED_CAP_MAX_FRACTION's own
-    // comment — but never past half the window, so organic content always keeps the other half.
-    const featuredCap = Math.floor(
-      windowSize * BOOST_FEATURED_CAP_MAX_FRACTION,
-    );
-    // Round-robin'd by the same group key as the recent pool below, before slicing to the cap —
-    // otherwise whichever category happens to have the most boost buyers wins every guaranteed
-    // slot, same "one oversized group buries the rest" problem Part 1 already solved for recent
-    // listings. A boostRank-sorted slice still happens *within* each group, so the rotation
-    // fairness BoostRotationService provides is unchanged — this only changes which *groups* get
-    // represented in the cap, not the order within a group.
-    const featuredRows = roundRobinByGroup(allBoosted, (row) =>
-      recentMixGroupKey(homeCategory, cityId, row),
-    ).slice(0, featuredCap);
-    const featuredIds = new Set(featuredRows.map((row) => row.id));
+    // Round-robin'd by the same group key as the recent pool below — otherwise whichever category
+    // happens to have the most boost buyers wins every guaranteed slot, same "one oversized group
+    // buries the rest" problem Part 1 already solved for recent listings. A boostRank-sorted slice
+    // still happens *within* each group, so the rotation fairness BoostRotationService provides is
+    // unchanged — this only changes which *groups* get represented in the cap, not the order
+    // within a group.
+    const priorityBoosted = roundRobinByGroup(allBoosted, (row) => recentMixGroupKey(homeCategory, cityId, row));
+    // The homepage's own Featured rail — see featuredRailSize's own doc comment above. Computed
+    // from the exact same `priorityBoosted` list the grid's cap reserves past, so the two are
+    // disjoint by construction, not by a second query's filters happening to line up.
+    const featuredRail = priorityBoosted.slice(0, featuredRailSize ?? 0);
+    const afterRailReserve = priorityBoosted.slice(featuredRailSize ?? 0);
+    // Grows with real demand instead of staying fixed — see
+    // BOOST_FEATURED_CAP_PER_PAGE_FRACTION's own comment — but never past a quarter of *each*
+    // page, so organic content always keeps the rest of every page, not just the window overall.
+    const perPageCap = Math.floor(limit * BOOST_FEATURED_CAP_PER_PAGE_FRACTION);
+    const featuredRows = afterRailReserve.slice(0, perPageCap * RECENT_MIX_PAGES);
+    const featuredIds = new Set([...featuredRows, ...featuredRail].map((row) => row.id));
 
     const mixedRecent = roundRobinByGroup(
       recentPool.filter((row) => !featuredIds.has(row.id)),
@@ -816,7 +816,24 @@ export class ListingsService {
           ).filter((row) => !featuredIds.has(row.id))
         : [];
 
-    return [...featuredRows, ...mixedRecent, ...olderRows].slice(offset, offset + limit);
+    // Assembled page by page — page 1 gets featuredRows' own first `perPageCap` rows, page 2 gets
+    // the *next* `perPageCap`, and so on — instead of one flat `[...featuredRows, ...]` block up
+    // front, which let whichever page was requested first claim the entire window's cap (see
+    // BOOST_FEATURED_CAP_PER_PAGE_FRACTION's 2026-10-02 update for why that was the actual "only
+    // featured ads, normal ads start on page 2" complaint). `nonFeatured` fills whatever each
+    // page's `pageFeatured` chunk leaves open, drawing down the same shared queue across pages so
+    // nothing is skipped or repeated between them.
+    const nonFeatured = [...mixedRecent, ...olderRows];
+    const pages: typeof allBoosted = [];
+    let cursor = 0;
+    for (let p = 0; p < RECENT_MIX_PAGES; p++) {
+      const pageFeatured = featuredRows.slice(p * perPageCap, (p + 1) * perPageCap);
+      const fill = nonFeatured.slice(cursor, cursor + (limit - pageFeatured.length));
+      cursor += fill.length;
+      pages.push(...pageFeatured, ...fill);
+    }
+
+    return { items: pages.slice(offset, offset + limit), featuredRail };
   }
 
   /** Admin moderation queue — every listing regardless of status/moderationState/expiry

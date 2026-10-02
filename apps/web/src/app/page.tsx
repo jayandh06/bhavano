@@ -40,6 +40,12 @@ import {
 } from "@/lib/seoRoute";
 
 const PAGE_SIZE = 12;
+/** The Featured rail's own item count, and how many of the main grid's boosted matches the BFF
+ * should skip past when computing its own (much smaller) guaranteed-featured slots — see
+ * `featuredRailLimit` below and docs/plans/homepage-category-mix-and-boost-page-cap.md's Part 2,
+ * 2026-10-02 update. One constant, not two separately-hardcoded `10`s, so the rail's own fetch and
+ * the grid's reserve can never silently drift apart. */
+const FEATURED_RAIL_LIMIT = 10;
 
 function parseCategory(value: string | string[] | undefined): HomeTabValue {
   const v = Array.isArray(value) ? value[0] : value;
@@ -119,6 +125,16 @@ export default async function HomePage({
     serviceType,
     offset,
     limit: PAGE_SIZE,
+    // Asks the BFF to compute the homepage's own Featured rail in this same request (returned as
+    // `featuredRail`) and reserve the main grid's own smaller per-page cap past it, so the two
+    // never guarantee the same boosted listing a slot twice — see
+    // docs/plans/homepage-category-mix-and-boost-page-cap.md's Part 2, 2026-10-02 update. Never
+    // relevant for a text search, where the rail is never shown (a rail of promoted listings above
+    // someone's own search results reads as noise, backwards from what search is for) — not
+    // conditioned on the current page number, since the reserve has to stay consistent across a
+    // page-1 request and a later page-2 request for the same browsing session, not just apply on
+    // whichever page happens to actually render the rail component.
+    featuredRailSize: q ? undefined : FEATURED_RAIL_LIMIT,
   };
   // Nothing selected means there is nothing to ask for — skipping the call is both correct and
   // one fewer uncached query per such page view. See lib/areaSelection.ts.
@@ -131,49 +147,35 @@ export default async function HomePage({
   // must not crash the single highest-traffic route on the site — retrying once with no token
   // shows the same real listings a logged-out visitor would see, instead of an error page or a
   // login prompt that makes no sense here.
-  // Both requests are independent (neither's result feeds the other's input) and fired together
-  // — the rail used to be a second `await` after `listingsPage` resolved, adding its own full
-  // round-trip on top of the main fetch instead of overlapping it. Promise.all turns that into
-  // "whichever is slower", not "both, back to back".
-  const [listingsPage, featuredPage] = await Promise.all([
-    noAreaSelected
-      ? Promise.resolve({ items: [], total: 0, nextCursor: null })
-      : fetchListings(listingsQuery, session?.accessToken).catch((error) => {
-          if (error instanceof BffAuthError) return fetchListings(listingsQuery, undefined);
-          throw error;
-        }),
-    // Only page 1, and only without an active text search — a rail of promoted listings above
-    // someone's own search results reads as noise, not help, exactly backwards from what search
-    // is for. Scoped to the same tab/city as the main feed, so "Featured" here means featured
-    // *for what you're looking at*, not an unrelated sitewide sample. See FeaturedRail's own doc
-    // comment.
-    page === 1 && !noAreaSelected && !q
-      ? fetchListings(
-          { homeCategory: listingsQuery.homeCategory, cityId: listingsQuery.cityId, featuredOnly: true, limit: 10 },
-          session?.accessToken,
-        ).catch((error) => {
-          if (error instanceof BffAuthError) return { items: [], total: 0, nextCursor: null };
-          throw error;
-        })
-      : Promise.resolve({ items: [], total: 0, nextCursor: null }),
-  ]);
+  //
+  // One request now covers both the grid and the Featured rail (`listingsPage.featuredRail`) —
+  // see docs/plans/homepage-category-mix-and-boost-page-cap.md's Part 2, 2026-10-02 update. Used
+  // to be two independent `fetchListings` calls (the rail as its own separate, un-coordinated
+  // request), which is how the rail and the grid ended up guaranteeing the same boosted listings a
+  // slot twice while leaving the grid otherwise 100% boosted.
+  const listingsPage = noAreaSelected
+    ? { items: [], total: 0, nextCursor: null, featuredRail: undefined }
+    : await fetchListings(listingsQuery, session?.accessToken).catch((error) => {
+        if (error instanceof BffAuthError) return fetchListings(listingsQuery, undefined);
+        throw error;
+      });
 
   // Page 1 with zero results is a normal "nothing here yet" state — only pages *past* the last
   // real page are a crawl-trap/dead-end worth 404ing (see docs/plans/seo-distinct-window-pagination.md).
   const totalPages = Math.ceil(listingsPage.total / PAGE_SIZE);
   if (page > 1 && page > totalPages) notFound();
 
+  // Only ever rendered on page 1 — the BFF computes `featuredRail` on every page of the mixed
+  // window (so its own reservation logic stays consistent across a page-1 then page-2 request),
+  // but a dedicated rail only makes sense as the very first thing a visitor sees.
+  const featuredRailItems = page === 1 ? (listingsPage.featuredRail ?? []) : [];
   // Below this many, a dedicated horizontal rail reads as sparse rather than a showcase — fold
-  // those few into the top of the main grid instead. Either way, a listing already placed in the
-  // rail (or prepended here) is dropped from its ordinary grid position — the main query doesn't
-  // exclude boosted listings on its own (and in fact sorts them first via boostRank in `orderBy`),
-  // so without this the same card showed up twice: once in its dedicated spot, once again in the
-  // grid right below. Capped back to PAGE_SIZE so prepending never grows a page past its normal
-  // size.
-  const showFeaturedRail = featuredPage.items.length >= 4;
-  const featuredIds = new Set(featuredPage.items.map((i) => i.id));
-  const restOfGrid = listingsPage.items.filter((i) => !featuredIds.has(i.id));
-  const gridItems = showFeaturedRail ? restOfGrid : [...featuredPage.items, ...restOfGrid].slice(0, PAGE_SIZE);
+  // those few into the top of the main grid instead. No dedup needed here: the BFF computes the
+  // rail and the grid from the same shared boosted-listings fetch, reserving the grid's own cap
+  // past whatever became the rail, so they're disjoint by construction rather than by a
+  // best-effort filter after the fact.
+  const showFeaturedRail = featuredRailItems.length >= 4;
+  const gridItems = showFeaturedRail ? listingsPage.items : [...featuredRailItems, ...listingsPage.items].slice(0, PAGE_SIZE);
 
   const activeTab = HOME_TABS.find((t) => t.value === category) ?? HOME_TABS[0];
   /** The asset the homepage is currently narrowed to, from either spelling — the raw
@@ -282,7 +284,7 @@ export default async function HomePage({
         {adLanding && (
           <AdLandingCard intent={adLanding.intent} preview={adLanding.preview} freeToPost={freeToPost} />
         )}
-        {showFeaturedRail && <FeaturedRail items={featuredPage.items} />}
+        {showFeaturedRail && <FeaturedRail items={featuredRailItems} />}
         {/* The All tab mixes every category together, so none of these filters mean one
           * consistent thing across a PG, a plot, and a sofa in the same grid — same reasoning as
           * BrowseListingsView's own filter row, which hides itself the same way. Picking a real
