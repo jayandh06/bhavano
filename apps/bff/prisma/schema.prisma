@@ -406,6 +406,13 @@ model User {
    * so the account is unusable and holds no personal data. Required by App Store guideline
    * 5.1.1(v) and by the DPDP Act's erasure right; see docs/plans/ios-app-store-release.md. */
   deletedAt             DateTime?
+  /** Referrals this user has made (they're the one who shared the link) — see
+   * docs/plans/bhavano-referral-program-implementation.md. */
+  referralsAsReferrer   Referral[] @relation("ReferralsAsReferrer")
+  /** The single referral that brought this user in, if any — null for an organic signup. */
+  referralAsReferred    Referral?  @relation("ReferralsAsReferred")
+  referralClicks        ReferralClick[] @relation("ReferralClicks")
+  referralCreditBatches ReferralCreditBatch[] @relation("ReferralCreditBatches")
 
   @@index([cityId])
   @@index([mergedIntoUserId])
@@ -1074,6 +1081,7 @@ model Payment {
   subscription      UserSubscription?
   contactRevealCreditBatch ContactRevealCreditBatch?
   discountCodeRedemption   DiscountCodeRedemption?
+  referralCreditRedemption ReferralCreditBatch?
 
   @@index([userId, createdAt])
 }
@@ -1348,6 +1356,110 @@ model DiscountCodeRedemption {
   createdAt      DateTime     @default(now())
 
   @@index([discountCodeId, userId])
+}
+
+/// ---------------------------------------------------------------------------
+/// Referral program — see docs/plans/bhavano-referral-program-implementation.md
+/// ---------------------------------------------------------------------------
+
+/** One row per attributed referral — created the moment a referred visitor signs up (not at
+ * click time; an anonymous click with no signup is only ever counted via ReferralClick below).
+ * `status` is a plain string progressing through the funnel
+ * (clicked|signed_up|ad_posted|ad_approved|rewarded|blocked|reversed), matching this schema's
+ * existing `kind`/`source` convention rather than a Prisma enum — `blocked` is set by anti-abuse
+ * checks (Phase 4) and `reversed` by an admin action (Phase 5), neither of which this phase
+ * writes yet. The later timestamp fields are nullable and filled in by Phase 3's approval hook and
+ * Phase 2's reward grant respectively — present now so this model doesn't need a later migration
+ * just to add them. */
+model Referral {
+  id               String    @id @default(cuid())
+  referrerId       String
+  referrer         User      @relation("ReferralsAsReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  /** Null until the attributed visitor actually completes signup — see ReferralsService.
+   * attributeSignupIfReferred, which is the only place this row is created. @unique because each
+   * user can only ever be the *referred* party once (their referrer, once set, is fixed — see the
+   * source doc's "latest link wins before signup, fixed after" attribution rule). */
+  referredUserId   String    @unique
+  referredUser     User      @relation("ReferralsAsReferred", fields: [referredUserId], references: [id], onDelete: Cascade)
+  status           String    @default("signed_up")
+  clickedAt        DateTime?
+  signedUpAt       DateTime  @default(now())
+  firstAdPostedAt  DateTime?
+  firstAdApprovedAt DateTime?
+  rewardedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  /** Set once the reward actually fires (Phase 3's approval hook) — see ReferralCreditBatch. */
+  creditBatch      ReferralCreditBatch?
+
+  @@index([referrerId, status])
+}
+
+/** Anonymous pre-signup click log — feeds the funnel's "clicks" count (ReferralsService.
+ * getFunnelStats, Phase 5) for referral links that never convert to a signup at all, which never
+ * get a Referral row. Deliberately a log, not a dedup'd counter — same "every event gets its own
+ * row" convention as SearchEvent/Visit. */
+model ReferralClick {
+  id               String   @id @default(cuid())
+  referrerId       String
+  referrer         User     @relation("ReferralClicks", fields: [referrerId], references: [id], onDelete: Cascade)
+  /** The visitor's per-session id (web's `bhavano_sid` cookie, or the mobile app's in-process
+   * session id) — not a foreign key to Visit, since a click can arrive before any Visit row for
+   * this session exists yet. */
+  sessionId        String
+  landingListingId String?
+  createdAt        DateTime @default(now())
+
+  @@index([referrerId, createdAt])
+}
+
+/** One row per granted boost credit — a real ledger, same "spend from the batch nearest expiry
+ * first, an expired one just stops being selected, no cleanup job" discipline as
+ * ContactRevealCreditBatch, except one batch is always exactly one credit here (this program
+ * grants exactly 1 boost per successful referral, never a pack), so there's no `creditsRemaining`
+ * counter to track — `redeemedAt`/`revokedAt` being null is itself "this credit is spendable".
+ * `daysGranted` snapshots `ReferralSetting.boostDays` at grant time so a later admin change to the
+ * setting never retroactively changes an already-granted credit's length. Phase 2 of
+ * docs/plans/bhavano-referral-program-implementation.md. */
+model ReferralCreditBatch {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation("ReferralCreditBatches", fields: [userId], references: [id], onDelete: Cascade)
+  referralId        String    @unique
+  referral          Referral  @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  daysGranted       Int
+  grantedAt         DateTime  @default(now())
+  expiresAt         DateTime
+  redeemedAt        DateTime?
+  redeemedListingId String?
+  redeemedPaymentId String?   @unique
+  redeemedPayment   Payment?  @relation(fields: [redeemedPaymentId], references: [id])
+  revokedAt         DateTime?
+  revokedReason     String?
+  /** Non-null for a bonus credit (3rd/5th-referral-in-a-month tier, Phase 4) not tied 1:1 to a
+   * single referral the way the base credit above is — "referrals_3" / "referrals_5", a plain
+   * string matching this schema's `kind`/`source` convention rather than a Prisma enum. Null for
+   * the ordinary one-credit-per-referral case this phase builds. */
+  bonusTier         String?
+
+  @@index([userId, expiresAt])
+}
+
+/** Singleton row (fixed id "singleton", upserted) — the admin-editable referral program settings,
+ * same convention as LoginNudgeSetting/ContactRevealSetting. Field defaults match
+ * docs/plans/bhavano-referral-program.md's own stated defaults (3-day boost, 60-day credit expiry,
+ * 5/month cap, bonus at 3/5 referrals, 30-day attribution window). */
+model ReferralSetting {
+  id                         String   @id
+  boostDays                  Int      @default(3)
+  creditExpiryDays           Int      @default(60)
+  monthlyCapPerReferrer      Int      @default(5)
+  bonusExtraBoostAtReferrals Int      @default(3)
+  topAgentBadgeAtReferrals   Int      @default(5)
+  welcomeRewardEnabled       Boolean  @default(false)
+  welcomeRewardFeaturedDays  Int      @default(1)
+  attributionWindowDays      Int      @default(30)
+  takedownRevocationWindowDays Int    @default(14)
+  updatedAt                  DateTime @updatedAt
 }
 
 /// ---------------------------------------------------------------------------
