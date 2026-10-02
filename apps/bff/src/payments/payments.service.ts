@@ -31,6 +31,7 @@ import { subscriptionPriceFor } from '@bhavano/types/subscriptionPricing';
 import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import {
   GoogleAdsConversionProvider,
   PURCHASE_CONVERSION_ACTION_IDS,
@@ -84,6 +85,7 @@ export class PaymentsService {
     private readonly notificationsService: NotificationsService,
     private readonly googleAdsConversionProvider: GoogleAdsConversionProvider,
     private readonly listingsService: ListingsService,
+    private readonly referralsService: ReferralsService,
   ) {}
 
   private getRazorpay(): Razorpay {
@@ -372,10 +374,48 @@ export class PaymentsService {
     boostDays: BoostDurationDays,
     discountCode?: string,
     context: PurchaseContext = {},
+    useReferralCredit = false,
   ): Promise<CreateBoostOrderResponseDto> {
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
     if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+
+    // A referral boost credit (docs/plans/bhavano-referral-program-implementation.md, Phase 2) —
+    // checked before the Agent Pro branch below since the two are independent ways to skip
+    // payment and a visitor could in principle qualify for both; whichever the client asked for
+    // wins. Unlike the Pro credit, this isn't gated on a specific `boostDays` value: the actual
+    // length comes from the redeemed batch's own `daysGranted` (snapshotted at grant time from
+    // whatever ReferralSetting.boostDays was then), not from this call's `boostDays` argument,
+    // which is ignored on this branch.
+    if (useReferralCredit) {
+      const credit = await this.referralsService.findRedeemableCredit(userId);
+      if (!credit) {
+        throw new BadRequestException('No free boost credit available to use.');
+      }
+      const payment = await this.prisma.payment.create({
+        data: {
+          userId,
+          razorpayOrderId: `referral_credit_${userId}_${Date.now()}`,
+          amount: 0,
+          currency: 'INR',
+          purpose: 'listing_boost',
+          listingId,
+          boostDays: credit.daysGranted,
+          status: 'paid',
+          paidAt: new Date(),
+          source: context.source,
+        },
+      });
+      const boostedUntil = await this.activateListingBoost(listingId, credit.daysGranted, payment.id);
+      await this.activateInstantAlerts(listingId, payment.id, boostedUntil);
+      await this.referralsService.markCreditRedeemed(credit.id, listingId, payment.id);
+      return {
+        paymentId: payment.id,
+        amount: 0,
+        currency: 'INR',
+        activated: true,
+      };
+    }
 
     // The free monthly Agent Pro credit covers the 7-day boost. Instant Alerts is included in every
     // boost, so there is no separate paid add-on to split out of it any more.

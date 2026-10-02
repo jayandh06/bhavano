@@ -4,6 +4,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provider';
 import type { ListingsService } from '../listings/listings.service';
+import type { ReferralsService } from '../referrals/referrals.service';
 
 /**
  * What the webhook reports to Google Ads, and — more importantly — what it refuses to report.
@@ -35,6 +36,7 @@ function make(overrides: { user?: Record<string, unknown> | null } = {}) {
     {} as NotificationsService,
     { uploadClickConversion } as unknown as GoogleAdsConversionProvider,
     { completePendingPublish: jest.fn() } as unknown as ListingsService,
+    {} as ReferralsService,
   );
   return { service, uploadClickConversion, prisma };
 }

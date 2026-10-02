@@ -55,6 +55,7 @@ export class PaymentsController {
       dto.boostDays,
       dto.discountCode,
       { ...purchaseContext(tracking, client), ...(dto.source ? { source: dto.source } : {}) },
+      dto.useReferralCredit,
     );
   }
 

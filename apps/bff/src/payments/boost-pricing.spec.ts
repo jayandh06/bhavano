@@ -4,6 +4,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { GoogleAdsConversionProvider } from '../ads/google-ads-conversion.provider';
 import type { ListingsService } from '../listings/listings.service';
+import type { ReferralsService } from '../referrals/referrals.service';
 import {
   boostPriceFor,
   boostSavings,
@@ -118,6 +119,7 @@ function makePayments(overrides: { agentProUntil?: Date | null; settings?: Boost
     {} as NotificationsService,
     {} as GoogleAdsConversionProvider,
     {} as ListingsService,
+    {} as ReferralsService,
   );
   (service as unknown as { getRazorpay: () => unknown }).getRazorpay = () => ({ orders: { create } });
   return { service, prisma, razorpayCreate: create };
@@ -170,6 +172,65 @@ describe('PaymentsService.createBoostOrder — 30 days, alerts included', () => 
 
     await expect(service.createBoostOrder('u1', 'l1', 30)).rejects.toThrow("The 30-day boost isn't offered right now");
     expect(razorpayCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('PaymentsService.createBoostOrder — redeeming a referral credit', () => {
+  function makePaymentsWithReferralCredit(credit: { id: string; daysGranted: number } | null) {
+    const create = jest.fn().mockResolvedValue({ id: 'order1' });
+    const prisma = {
+      listing: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'l1', ownerId: 'u1', category: 'apartment' }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({ expiresAt: new Date('2026-10-30T00:00:00Z') }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      user: { findUnique: jest.fn().mockResolvedValue({ agentProUntil: null }) },
+      payment: { create: jest.fn().mockResolvedValue({ id: 'pay1' }) },
+      listingBoost: { create: jest.fn().mockResolvedValue({}) },
+      listingInstantAlert: { create: jest.fn().mockResolvedValue({}) },
+    } as unknown as PrismaService;
+    const referralsService = {
+      findRedeemableCredit: jest.fn().mockResolvedValue(credit),
+      markCreditRedeemed: jest.fn().mockResolvedValue(undefined),
+    } as unknown as ReferralsService;
+    const service = new PaymentsService(
+      prisma,
+      { get: jest.fn().mockReturnValue('key') } as unknown as ConfigService,
+      {} as NotificationsService,
+      {} as GoogleAdsConversionProvider,
+      {} as ListingsService,
+      referralsService,
+    );
+    (service as unknown as { getRazorpay: () => unknown }).getRazorpay = () => ({ orders: { create } });
+    return { service, prisma, referralsService, razorpayCreate: create };
+  }
+
+  it('skips Razorpay entirely and activates the boost for free, for the credit\'s own length — not the requested boostDays', async () => {
+    const { service, prisma, referralsService, razorpayCreate } = makePaymentsWithReferralCredit({
+      id: 'batch1',
+      daysGranted: 3,
+    });
+
+    // boostDays:30 here is what the client's UI happened to have selected — the credit (3 days)
+    // wins regardless, since redeeming a credit isn't "pick a duration and pay for it".
+    const result = await service.createBoostOrder('u1', 'l1', 30, undefined, {}, true);
+
+    expect(razorpayCreate).not.toHaveBeenCalled();
+    expect(prisma.payment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ amount: 0, status: 'paid', boostDays: 3 }),
+    });
+    expect(referralsService.markCreditRedeemed).toHaveBeenCalledWith('batch1', 'l1', 'pay1');
+    expect(result).toEqual({ paymentId: 'pay1', amount: 0, currency: 'INR', activated: true });
+  });
+
+  it('refuses the order outright when no credit is available, rather than silently charging', async () => {
+    const { service, razorpayCreate, referralsService } = makePaymentsWithReferralCredit(null);
+
+    await expect(service.createBoostOrder('u1', 'l1', 7, undefined, {}, true)).rejects.toThrow(
+      'No free boost credit available to use.',
+    );
+    expect(razorpayCreate).not.toHaveBeenCalled();
+    expect(referralsService.markCreditRedeemed).not.toHaveBeenCalled();
   });
 });
 
@@ -244,6 +305,7 @@ describe('PaymentsService.createListingPublishOrder — skipping Boost with no p
       {} as NotificationsService,
       {} as GoogleAdsConversionProvider,
       { completePendingPublish } as unknown as ListingsService,
+      {} as ReferralsService,
     );
     return { service, prisma, completePendingPublish };
   }
