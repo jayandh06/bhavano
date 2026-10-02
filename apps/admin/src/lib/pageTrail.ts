@@ -38,3 +38,13 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
     return { text: path, isError: true };
   }
 }
+
+const SITE_URL = "https://www.bhavano.com";
+
+/** The real page to open for a trail entry, or null for a `/post/boost-recovery`/`/post/error`
+ * marker (see trailEntry above) — those aren't pages anyone can visit, just an event encoded as a
+ * path, so there's nothing to link to. */
+export function trailEntryHref(path: string): string | null {
+  if (path.startsWith("/post/boost-recovery") || path.startsWith("/post/error")) return null;
+  return `${SITE_URL}${path}`;
+}

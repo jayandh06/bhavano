@@ -4,7 +4,7 @@ import type { DeviceType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchSessionTrail } from "@/lib/bff";
 import { formatDateTime } from "@/lib/formatDateTime";
-import { trailEntry } from "@/lib/pageTrail";
+import { trailEntry, trailEntryHref } from "@/lib/pageTrail";
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   desktop: "Desktop",
@@ -122,6 +122,7 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
             {pageViews.map((pv, i) => {
               const prev = i > 0 ? pageViews[i - 1] : null;
               const gapMs = prev ? new Date(pv.createdAt).getTime() - new Date(prev.createdAt).getTime() : null;
+              const href = trailEntryHref(pv.path);
               return (
                 <div
                   key={`${pv.path}-${pv.createdAt}-${i}`}
@@ -137,7 +138,14 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
                   }}
                 >
                   <div style={{ fontSize: 13.5, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-                    {i + 1}. {trailEntry(pv.path).text}
+                    {i + 1}.{" "}
+                    {href ? (
+                      <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)" }}>
+                        {trailEntry(pv.path).text}
+                      </a>
+                    ) : (
+                      trailEntry(pv.path).text
+                    )}
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{formatDateTime(pv.createdAt)}</div>

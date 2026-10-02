@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { trailEntry } from "./pageTrail";
+import { trailEntry, trailEntryHref } from "./pageTrail";
 
 describe("trailEntry", () => {
   it("leaves ordinary paths untouched", () => {
@@ -42,5 +42,17 @@ describe("trailEntry", () => {
       text: "Boost recovery — skipped",
       isError: false,
     });
+  });
+});
+
+describe("trailEntryHref", () => {
+  it("links an ordinary path to the live site", () => {
+    expect(trailEntryHref("/post/preview")).toBe("https://www.bhavano.com/post/preview");
+    expect(trailEntryHref("/")).toBe("https://www.bhavano.com/");
+  });
+
+  it("has no link for a boost-recovery or error marker — there's no real page behind either", () => {
+    expect(trailEntryHref("/post/boost-recovery?event=shown&trigger=idle")).toBeNull();
+    expect(trailEntryHref("/post/error?stage=checkout")).toBeNull();
   });
 });
