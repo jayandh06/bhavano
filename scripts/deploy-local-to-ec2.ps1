@@ -29,7 +29,11 @@ param(
   [string] $SshKey = $env:BHAVANO_EC2_SSH_KEY,
   [string] $RemoteDir = $(if ($env:BHAVANO_REMOTE_DIR) { $env:BHAVANO_REMOTE_DIR } else { "~/bhavano" }),
   [string] $EnvFile = $(if ($env:BHAVANO_ENV_FILE) { $env:BHAVANO_ENV_FILE } else { ".env.prod.build" }),
-  [ValidateSet("web", "bff", "admin")]
+  # No [ValidateSet]/typed-array binding here on purpose — see the normalization block below for
+  # why: `powershell -File` flattens a multi-value array argument (any syntax: @('web','admin'),
+  # "web,admin", or bare space-separated tokens) down to just its first element before this param
+  # block ever sees it, since the child process only receives a flat argv, and ValidateSet would
+  # reject the comma-joined string this script now also accepts as a workaround.
   [string[]] $Services = @("web", "bff", "admin"),
   [switch] $SkipPull,
   [switch] $SkipMigrate,
@@ -50,6 +54,20 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $RepoRoot
+
+# `powershell -File .\deploy-local-to-ec2.ps1 -Services @('web','admin')` (or any other multi-value
+# syntax) silently collapses to a one-element array holding just "web" — confirmed directly:
+# `-File` launches this script as a brand-new process, so PowerShell can only hand it a flat argv
+# like any other external program, not the rich array object the caller typed. Splitting a single
+# comma-joined element here (`-Services "web,admin"` also works) is the only form that survives
+# that flattening, so it's accepted alongside the normal multi-argument form for an in-session call.
+$Services = $Services | ForEach-Object { $_ -split "," } | Where-Object { $_ }
+$validServices = @("web", "bff", "admin")
+foreach ($svc in $Services) {
+  if ($validServices -notcontains $svc) {
+    throw "Invalid -Services value '$svc'. Valid values: $($validServices -join ', ')"
+  }
+}
 
 function Require-Command([string] $Name) {
   if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
@@ -98,7 +116,12 @@ $env:COMPOSE_PROJECT_NAME = $ProjectName
 $env:DOCKER_DEFAULT_PLATFORM = $Platform
 
 Write-Host "==> Ensuring buildx builder (armbuilder)"
-$builders = docker buildx ls 2>&1 | Out-String
+# No `2>&1` here: under Windows PowerShell 5.1, with $ErrorActionPreference = "Stop" above,
+# redirecting a native command's stderr into the success stream wraps each stderr line in a
+# NativeCommandError and throws — even when `docker buildx ls` exits 0. stderr prints straight to
+# the console instead; only stdout (the builder list itself) needs to be captured for the match
+# below. See docs/deployment.md's own Windows gotchas for the same issue at the outer invocation.
+$builders = docker buildx ls | Out-String
 if ($builders -notmatch "armbuilder") {
   docker buildx create --name armbuilder --driver docker-container --use | Out-Null
   docker buildx inspect --bootstrap | Out-Null
