@@ -871,7 +871,7 @@ export function PostAdWizard({
         : (selectedOption?.label ?? null);
 
     const cells: ReactNode[] = [
-      <View key={field.key} style={styles.attrCell}>
+      <View key={field.key} style={field.key === "fromBroker" ? styles.attrCellFull : styles.attrCell}>
         <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
           {field.key === "fromBroker" ? POSTED_BY_FORM_LABEL : field.label}
           {field.required && <RequiredMark />}
@@ -2126,6 +2126,11 @@ const styles = StyleSheet.create({
   fieldError: { color: "#c0554b", fontSize: 12, marginTop: 4 },
   attrGrid: { flexDirection: "row", flexWrap: "wrap", columnGap: 12 },
   attrCell: { width: "47%", flexGrow: 1 },
+  // "Posted by" (fromBroker) alone gets the full row — same reasoning as the website's own
+  // `col-span-full` for it. Squeezed into the usual 47% cell, "Broker / Agent" (POSTED_BY_FORM_
+  // OPTIONS' swapped-in label, 15 chars) truncated: isSegmented's <=12-char check only ever saw
+  // the field's real config options ("Yes"/"No"), never the longer label rendered in their place.
+  attrCellFull: { width: "100%" },
   counter: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 9, overflow: "hidden" },
   counterButton: { paddingVertical: 9, paddingHorizontal: 16, alignItems: "center", justifyContent: "center" },
   optionSheet: { paddingHorizontal: 20, paddingBottom: 24 },
