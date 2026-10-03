@@ -28,7 +28,7 @@ import { ListingRowDetail } from "@/components/ListingRowDetail";
 import type { AdminListingSortField } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 import { buildSuffixSortHref, str, suffixSortDirectionFor, type SearchParams } from "@/lib/searchParams";
-import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
+import { CLEAR_FILTERS_PARAM, SKIP_REMEMBER_PARAM } from "@/lib/rememberedFilters";
 import { SortableHeader } from "@/components/SortableHeader";
 
 /** The dashboard's listing moderation queue as an actual table — was previously a card list
@@ -328,9 +328,14 @@ export function AdminListingsTable({
       label: "Owner",
       sortField: "owner",
       // Filtering by owner already exists above the table (the UserPicker "Posted by" filter in
-      // page.tsx) — a second filter here on the same field would just fight it.
+      // page.tsx) — a second filter here on the same field would just fight it. SKIP_REMEMBER_PARAM
+      // so clicking through from a listing to "everything this owner posted" is a one-off jump, not
+      // something that silently becomes the remembered Posted-by filter for every later bare visit
+      // to this screen — only actually typing/picking a name in the UserPicker should persist.
       render: (item) => (
-        <Link href={`/?userId=${item.owner.id}&userLabel=${encodeURIComponent(item.owner.name ?? item.owner.phone ?? item.owner.id)}`}>
+        <Link
+          href={`/?userId=${item.owner.id}&userLabel=${encodeURIComponent(item.owner.name ?? item.owner.phone ?? item.owner.id)}&${SKIP_REMEMBER_PARAM}=1`}
+        >
           {item.owner.name ?? item.owner.phone ?? item.owner.id}
         </Link>
       ),

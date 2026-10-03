@@ -86,6 +86,15 @@ export function persistableQuery(query: string): string {
  * the exact same param rather than retyping the string. */
 export const CLEAR_FILTERS_PARAM = "__clearFilters";
 
+/** The explicit signal a link that *sets* a filter by clicking through to it — rather than an
+ * admin typing/picking it themselves — carries, e.g. a listing row's owner name linking to
+ * `/?userId=...&userLabel=...&__skipRemember=1`. Without this, clicking one owner's name on one
+ * listing silently became "the" remembered Posted-by filter for every later bare visit to this
+ * screen, indistinguishable from the admin having deliberately searched for that person in the
+ * UserPicker. The marker says "apply this filter to what's on screen right now, but don't let it
+ * overwrite whatever's actually remembered" — same shape as CLEAR_FILTERS_PARAM, opposite effect. */
+export const SKIP_REMEMBER_PARAM = "__skipRemember";
+
 export type FilterAction =
   | { type: "restore"; query: string }
   | { type: "write"; saved: Record<string, string> }
@@ -93,6 +102,10 @@ export type FilterAction =
    * unlike an ordinary write, the incoming URL here carries a marker param that must never reach
    * the rendered page or get remembered as part of "the filter". */
   | { type: "reset"; saved: Record<string, string> }
+  /** SKIP_REMEMBER_PARAM's effect: redirect to `query` (the marker stripped) so the page renders
+   * with this filter and the address bar reads clean, but the cookie is left exactly as it was —
+   * neither overwritten with this filter nor cleared. */
+  | { type: "transient"; query: string }
   | { type: "noop" };
 
 /**
@@ -133,6 +146,11 @@ export function decideFilterAction(input: {
     // Always acts, even if this path was already remembered as cleared — the marker still has to
     // be redirected away so it never reaches the rendered page or lingers in the address bar.
     return { type: "reset", saved: withRemembered(saved, pathname, "") };
+  }
+
+  if (params.has(SKIP_REMEMBER_PARAM)) {
+    params.delete(SKIP_REMEMBER_PARAM);
+    return { type: "transient", query: params.toString() };
   }
 
   if (currentQuery !== "") {

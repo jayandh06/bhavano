@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CLEAR_FILTERS_PARAM,
+  SKIP_REMEMBER_PARAM,
   decideFilterAction,
   isExcludedPath,
   parseSavedFilters,
@@ -169,6 +170,35 @@ describe("decideFilterAction", () => {
       type: "write",
       saved: { "/listings": "status=active", "/users": "role=admin" },
     });
+  });
+
+  /**
+   * A listing row's owner-name link carries this marker — clicking through to "everything this
+   * owner posted" should filter the current view without silently becoming the remembered
+   * Posted-by filter for every later bare visit, the way an ordinary filter would. Only an admin
+   * actually typing/picking a name in the UserPicker should persist.
+   */
+  it("applies but doesn't remember a filter carrying the skip-remember marker", () => {
+    expect(
+      decideFilterAction({
+        pathname: "/",
+        currentQuery: `userId=u1&userLabel=Jane&${SKIP_REMEMBER_PARAM}=1`,
+        saved: { "/": "status=active" },
+      }),
+    ).toEqual({ type: "transient", query: "userId=u1&userLabel=Jane" });
+  });
+
+  it("a transient filter leaves an already-remembered one untouched for next time", () => {
+    const saved = { "/": "status=active" };
+    const action = decideFilterAction({
+      pathname: "/",
+      currentQuery: `userId=u1&userLabel=Jane&${SKIP_REMEMBER_PARAM}=1`,
+      saved,
+    });
+    expect(action.type).toBe("transient");
+    // decideFilterAction never even sees `saved` touched for this branch — the object passed in
+    // is never mutated, and no "write" ever reaches the cookie for it.
+    expect(saved).toEqual({ "/": "status=active" });
   });
 
   it("evicts the least-recently-touched path once over the cap", () => {
