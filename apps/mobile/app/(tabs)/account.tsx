@@ -737,14 +737,6 @@ function ProfileFields({
         <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View your requirements</Text>
       </Pressable>
 
-      {/* The owner/agent browse feed, not the row above (the seeker's own posted asks) — kept
-          reachable here even once BottomTabBar starts showing its own Requirements tab, since
-          that only appears once `looksLikeOwnerOrAgent` already looks true; this is how it's
-          found before then. See docs/plans/requirements-feed-for-owners-agents.md. */}
-      <Pressable onPress={() => router.push("/requirements")} style={[styles.outlineButton, { borderColor: colors.green }]}>
-        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>See what buyers and tenants want</Text>
-      </Pressable>
-
       <Pressable onPress={onOpenPurchases} style={[styles.outlineButton, { borderColor: colors.green }]}>
         <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>View your purchase history</Text>
       </Pressable>

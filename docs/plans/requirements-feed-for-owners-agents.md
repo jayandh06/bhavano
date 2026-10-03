@@ -1,7 +1,7 @@
 # Requirements tab for owners and agents
 
-Status: **Phase 1 (web, browse-only) built** (2026-09-29); **Phase 3 (mobile) built** (2026-10-02).
-Phases 2 and 4 are still plans.
+Status: **Phase 1 (web, browse-only) built** (2026-09-29); **Phase 3 (mobile) built** (2026-10-02),
+**placement revised** (2026-10-03 — see Placement below). Phases 2 and 4 are still plans.
 
 A new **Requirements** tab where owners and agents browse every open, usable requirement that
 seekers have posted, filtered by city and then by the fields that make sense for the chosen
@@ -95,17 +95,17 @@ Contact is reached only through the leads plan's actions (below).
     stay a later phase of the demand-side plan, gated on volume.
 - **`/requirements/matching`** becomes the feed with the "Only ones my listings fit" toggle on. It
   301-redirects to `/requirements?matches=1`, and digest links move to the feed.
-- **Mobile:** a 5th tab, **Requirements**, in `(tabs)/requirements.tsx`. This app's tab bar is its
-  own component (`BottomTabBar.tsx`, rendered outside the `Tabs` navigator — `(tabs)/_layout.tsx`
-  suppresses the navigator's own chrome with `tabBar={() => null}`), not expo-router's generic tab
-  bar, so there is no `href: null` to set; the bar's own `TABS` array is filtered at render time
-  instead, by `looksLikeOwnerOrAgent(profile)` — an approximation of
-  `RequirementFeedService.viewer()`'s own rule from whatever `useHomeSheets().profile` already has
-  loaded (`sellerType`, `activeListingCount`, `agentProUntil`), rather than a second request just to
-  decide tab visibility. Filters open in a bottom sheet. The Account screen gets a row
-  ("See what buyers and tenants want") linking to the same screen, so the feature can be found
-  before the tab appears, and stays there afterward too — not removed once eligible, since the
-  heuristic can still miss a real edge case the Account row remains a fallback for.
+- **Mobile (2026-10-02, revised 2026-10-03):** originally a 5th bottom tab gated on
+  `looksLikeOwnerOrAgent(profile)`, with an Account-screen row as the pre-eligibility fallback. Moved
+  instead to a chip in `CategoryChips` (`(tabs)/index.tsx`'s Home feed), alongside PG/Furniture/
+  Interiors — open to everyone the same way those are, not gated on looking like an owner/agent.
+  Unlike those chips it isn't a `HomeTabValue`: tapping it pushes `/requirements` rather than
+  filtering the home feed, since Requirements is its own screen with its own feed, not another slice
+  of the listings one. The bottom tab bar's 5th slot now shows **My Listings** (if the viewer has a
+  live listing, from `profile.activeListingCount`) or **Favourites** otherwise — unrelated to this
+  feature, it just took over the slot Requirements vacated. The Account-row fallback was removed:
+  its only reason to exist was finding the feature before the gated tab appeared, which no longer
+  applies now that the entry point is unconditional.
 
 ## What's in the feed
 
@@ -271,7 +271,7 @@ spreading. Open decision 2 below.
 2. **Contact actions:** leads plan Phase 1 (`RequirementLead`, `requirement_lead` conversation type,
    send-listing, capped reveal, the seeker's "who has my number", withdraw and report). They're
    exposed on these cards and on the digest.
-3. **Mobile:** the owner/agent-only 5th tab, the filter sheet, and the Account row.
+3. **Mobile:** the feed screen and the filter sheet (placement below revised 2026-10-03).
 
    **Built (2026-10-02):**
    - `fetchRequirementsFeed`/`fetchRequirementsFeedSummary` (bffClient.ts) call the same
@@ -284,6 +284,9 @@ spreading. Open decision 2 below.
    - "Post a matching ad" on mobile's card opens `/post` plain, with none of web's prefill
      (city/area/transaction/property type/BHK): mobile's `PostAdWizard` has no preset props to
      receive them yet. Left for its own change rather than guessed at here.
+
+   **Revised (2026-10-03):** the 5th-tab + Account-row placement replaced by a `CategoryChips` entry
+   — see Placement above. The feed screen, filters and BFF calls above are unchanged.
 4. **"New requirements in my city" alert:** a saved feed filter that joins the existing daily owner
    digest (`RequirementMatchJob`), not a separate message. It's the answer to the low-volume problem:
    check once, get told when something new fits.

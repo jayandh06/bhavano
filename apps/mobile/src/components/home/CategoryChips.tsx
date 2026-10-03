@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
 import { HOME_TABS, type HomeTabValue } from "./categories";
@@ -82,6 +83,7 @@ export function CategoryChips({
   onSelect: (value: HomeTabValue) => void;
 }) {
   const { colors } = useAppTheme();
+  const router = useRouter();
 
   return (
     <View>
@@ -111,6 +113,15 @@ export function CategoryChips({
               </Pressable>
             );
           })}
+          {/* Not a `HomeTabValue` — tapping it never filters this feed, it leaves it. Requirements
+            * is its own screen (its own feed, its own eligibility gating for non-owners/agents),
+            * open to everyone the same way PG/Furniture/Interiors are rather than a bottom-tab
+            * gated on looking like an owner/agent. See
+            * docs/plans/requirements-feed-for-owners-agents.md. */}
+          <Pressable onPress={() => router.push("/requirements")} style={styles.chip}>
+            <Icon name="requirements" size={15} color={colors.textSoft} />
+            <Text style={{ color: colors.textSoft, fontWeight: "700", fontSize: 12.5 }}>Requirements</Text>
+          </Pressable>
         </ScrollableRow>
       </View>
     </View>

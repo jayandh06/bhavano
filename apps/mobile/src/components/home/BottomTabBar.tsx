@@ -1,7 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { usePathname, useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { UserProfileDto } from "@bhavano/types";
 import { formatUnreadCount } from "@bhavano/types/unreadCount";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useHomeSheets } from "../../context/HomeSheetsProvider";
@@ -22,27 +21,18 @@ interface TabDef {
   alsoActiveOn?: string[];
 }
 
+// "myListings" defaults to Favourites/"/saved" — overridden below, at render time, once an
+// owner/agent with a live listing is known. Requirements moved out of this bar entirely: it's now
+// a chip in CategoryChips alongside PG/Furniture/Interiors, open to everyone the same way those
+// are, rather than a tab gated on looking like an owner/agent (see
+// docs/plans/requirements-feed-for-owners-agents.md).
 const TABS: TabDef[] = [
   { key: "index", path: "/", label: "Home", icon: "home", alsoActiveOn: ["/listing"] },
   { key: "messages", path: "/messages", label: "Messages", icon: "message", authRequired: true },
   { key: "post", path: "/post", label: "Post Ad", icon: "plus" },
-  { key: "requirements", path: "/requirements", label: "Requirements", icon: "requirements", authRequired: true },
-  { key: "account", path: "/account", label: "Account", icon: "user", authRequired: true, alsoActiveOn: ["/saved", "/purchases", "/my-listings", "/my-requirements"] },
+  { key: "myListings", path: "/saved", label: "Favourites", icon: "heart", authRequired: true, alsoActiveOn: ["/my-listings"] },
+  { key: "account", path: "/account", label: "Account", icon: "user", authRequired: true, alsoActiveOn: ["/purchases", "/my-requirements"] },
 ];
-
-/** Same rule `RequirementFeedService.viewer()` (requirement-feed.service.ts) uses to gate the
- * feed itself, approximated from what's already loaded in `profile` rather than a second request
- * just to decide whether to show a tab — `activeListingCount` stands in for "has a live listing"
- * (the server's exact check also excludes Bulk Import and requires `moderationState: 'approved'`,
- * narrower cases this count doesn't separate out, but good enough for "is this worth showing
- * proactively"). Never hides the feature outright: an owner/agent this misses on a technicality
- * still reaches it from the Account screen's own row, same as before they're eligible at all. */
-function looksLikeOwnerOrAgent(profile: UserProfileDto | null): boolean {
-  if (!profile) return false;
-  if (profile.sellerType) return true;
-  if (profile.activeListingCount > 0) return true;
-  return !!profile.agentProUntil && new Date(profile.agentProUntil).getTime() > Date.now();
-}
 
 function isActive(pathname: string, tab: TabDef): boolean {
   const base = String(tab.path);
@@ -78,7 +68,15 @@ export function BottomTabBar() {
   const insets = useSafeAreaInsets();
   const { isLoggedIn, requireLogin, accessToken, profile } = useHomeSheets();
   const { data: unreadCount = 0 } = useUnreadCountQuery(accessToken);
-  const visibleTabs = TABS.filter((tab) => tab.key !== "requirements" || looksLikeOwnerOrAgent(profile));
+  // `activeListingCount` is already loaded app-wide via `profile` — no second request just to
+  // decide which of the two this tab is right now. A seller with zero live listings still sees
+  // Favourites, the same as anyone else; the switch to My Listings happens the moment they have one.
+  const hasListings = (profile?.activeListingCount ?? 0) > 0;
+  const tabs = TABS.map((tab) =>
+    tab.key === "myListings" && hasListings
+      ? { ...tab, path: "/my-listings" as Href, label: "My Listings", icon: "list" as IconName, alsoActiveOn: ["/saved"] }
+      : tab,
+  );
 
   return (
     <View
@@ -92,7 +90,7 @@ export function BottomTabBar() {
         paddingBottom: insets.bottom + 6,
       }}
     >
-      {visibleTabs.map((tab) => {
+      {tabs.map((tab) => {
         const active = isActive(pathname, tab);
         const color = active ? colors.onGreen : colors.onGreenMuted;
         const showUnread = tab.key === "messages" && isLoggedIn && unreadCount > 0;
