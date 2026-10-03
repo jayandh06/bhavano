@@ -70,10 +70,12 @@ module.exports = {
       // This config alone is not enough — iOS also verifies apple-app-site-association (AASA),
       // served from https://www.bhavano.com/.well-known/apple-app-site-association (see
       // apps/web/public/.well-known/), which must list this app's Team ID + bundle id
-      // ("TEAMID.com.finfolia.bhavano") before Apple will actually hand the link over instead of
-      // opening it in Safari. That file currently has a placeholder Team ID — fill it in from
-      // the Apple Developer account (Membership page) and this needs a new build (native
-      // entitlement, not a JS-only change) before it takes effect on a real device.
+      // ("L6RKCXT9K4.com.finfolia.bhavano", filled in 2026-10-03 — see
+      // docs/plans/ios-app-store-release.md for where that Team ID comes from) before Apple will
+      // actually hand the link over instead of opening it in Safari. This is a native entitlement,
+      // not a JS-only change — it needs a new build (and a provisioning profile that actually
+      // includes the Associated Domains capability/entitlement, regenerated via
+      // `eas credentials -p ios`) before it takes effect on a real device.
       associatedDomains: ["applinks:www.bhavano.com"],
       // Sign in with Apple (Guideline 4.8) — see HomeSheetsProvider.tsx's login sheet and
       // docs/plans/ios-app-store-release.md.
