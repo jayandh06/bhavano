@@ -36,6 +36,9 @@ const base = {
   // making the brokerage-fee fields visible too, same reasoning as listings.service.spec.ts's
   // identical residentialBasics fixture.
   fromBroker: 'no',
+  // Also now required (categoryFields.ts) — without it this fixture no longer counts as "a
+  // complete listing" below.
+  furnished: 'unfurnished',
 };
 
 const broker = { ...base, fromBroker: 'yes', brokerageFeeApplicable: 'yes' };

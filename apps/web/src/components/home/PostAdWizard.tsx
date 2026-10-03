@@ -43,7 +43,7 @@ import { POSTABLE_TRANSACTION_TYPES } from "@bhavano/types/postingRules";
 import { getPriceQualifierOptions, PRICE_ON_REQUEST_CATEGORIES } from "@bhavano/types/priceQualifiers";
 import type { VideoEntitlement } from "@bhavano/types/videoLimits";
 import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
-import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "@bhavano/types/photoLimits";
+import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
 import { reportClientErrorAction } from "@/app/actions/clientErrors";
@@ -1192,7 +1192,7 @@ export function PostAdWizard({
     if (priceIssue) return { text: priceIssue, missing: false };
     const brokerageIssue = transactionType ? brokerageFeeIssue(transactionType, totalPrice, attributes) : null;
     if (brokerageIssue) return { text: brokerageIssue, missing: false };
-    if (photos.length === 0) return { text: "Add at least one photo", missing: true };
+    if (photos.length < MIN_PHOTOS) return { text: `Add at least ${MIN_PHOTOS} photos`, missing: true };
     if (askSellerType && !postedAs) return { text: "Choose Owner or Agent / broker", missing: true };
     const assistedProblem = assistedMode ? assistedSellerProblem(assistedSeller) : null;
     if (assistedProblem) return { text: assistedProblem, missing: false };
@@ -1825,7 +1825,7 @@ export function PostAdWizard({
           </div>
 
           <div className="max-w-[720px]">
-            <RequiredLabel text={`Photos (up to ${MAX_PHOTOS})`} />
+            <RequiredLabel text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`} />
             {photos.length < MAX_PHOTOS && (
               // A styled label wrapping a hidden input rather than a bare <input type="file">.
               // The native control renders as a small grey "Choose files" button that is easy to

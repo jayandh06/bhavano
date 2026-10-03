@@ -774,7 +774,15 @@ describe('ListingsService', () => {
   describe('residential attributes', () => {
     // fromBroker: 'no' rather than omitted — now required (see sellerType.ts's own doc comment),
     // and 'no' (vs. 'yes') avoids incidentally making the brokerage-fee fields visible too.
-    const residentialBasics = { floor: '2', totalFloors: '4', entranceFacing: 'east', fromBroker: 'no' };
+    // furnished: 'unfurnished' for the same reason (categoryFields.ts) — 'unfurnished' rather than
+    // 'furnished' avoids incidentally making the furnishing-inventory fields visible too.
+    const residentialBasics = {
+      floor: '2',
+      totalFloors: '4',
+      entranceFacing: 'east',
+      fromBroker: 'no',
+      furnished: 'unfurnished',
+    };
     const validAttributes = {
       bedrooms: '2',
       bathrooms: '2',

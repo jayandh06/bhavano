@@ -422,6 +422,7 @@ const RESIDENTIAL_FIELDS = [
         label: "Furnishing",
         type: "select",
         section: "basics",
+        required: true,
         options: [
             { value: "unfurnished", label: "Unfurnished" },
             { value: "semi", label: "Semi-furnished" },
@@ -1227,6 +1228,7 @@ exports.CATEGORY_FIELD_CONFIG = {
             label: "Furnishing",
             type: "select",
             section: "spaceDetails",
+            required: true,
             options: [
                 { value: "unfurnished", label: "Unfurnished" },
                 { value: "semi", label: "Semi-furnished" },

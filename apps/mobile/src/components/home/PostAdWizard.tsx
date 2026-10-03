@@ -98,6 +98,13 @@ type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
 type SavedDraft = NonNullable<Awaited<ReturnType<typeof loadPostAdDraft>>>;
 
+/** Same red as the website's RequiredLabel (`#b3413a`) — a mandatory field's label here used to
+ * end in a plain, same-color " *", which read as part of the word rather than a requirement
+ * marker the way the website's colored one does. */
+function RequiredMark() {
+  return <Text style={{ color: "#b3413a" }}> *</Text>;
+}
+
 /** "saved today" / "saved yesterday" / "saved 3 days ago" (drafts expire after 7 days). */
 function draftAgeLabel(savedAt: number): string {
   const startOfDay = (time: number) => new Date(time).setHours(0, 0, 0, 0);
@@ -208,6 +215,9 @@ function priceIsValid(price: string, category: ListingCategory | null): boolean 
  * number the BFF then has to reject. */
 
 const MAX_PHOTOS = 6;
+// Matches MIN_PHOTOS in packages/types/src/photoLimits.ts — enforced again server-side
+// (ListingsService.create), so this is a pre-submit UX check, not the only gate.
+const MIN_PHOTOS = 3;
 const MAX_PHOTO_SIZE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/3gpp", "video/x-matroska"];
@@ -864,7 +874,7 @@ export function PostAdWizard({
       <View key={field.key} style={styles.attrCell}>
         <Text style={[styles.label, { color: colors.textSoft }]} numberOfLines={2}>
           {field.key === "fromBroker" ? POSTED_BY_FORM_LABEL : field.label}
-          {field.required ? " *" : ""}
+          {field.required && <RequiredMark />}
         </Text>
         {field.type === "area" ? (
           <TextInput
@@ -1129,7 +1139,7 @@ export function PostAdWizard({
     if (priceIssue) return { text: priceIssue, missing: false };
     const brokerageIssue = transactionType ? brokerageFeeIssue(transactionType, totalPrice, attributes) : null;
     if (brokerageIssue) return { text: brokerageIssue, missing: false };
-    if (photoUris.length === 0) return { text: "Add at least one photo", missing: true };
+    if (photoUris.length < MIN_PHOTOS) return { text: `Add at least ${MIN_PHOTOS} photos`, missing: true };
     if (askSellerType && !postedAs) return { text: "Choose Owner or Agent / broker", missing: true };
     return null;
   })();
@@ -1497,7 +1507,10 @@ export function PostAdWizard({
       {step === "details" && category && transactionType && detailsReady && (
         <View style={{ gap: 4 }}>
           <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
-            <Text style={[styles.label, { color: colors.textSoft }]}>Title</Text>
+            <Text style={[styles.label, { color: colors.textSoft }]}>
+              Title
+              <RequiredMark />
+            </Text>
             {/* Counts up rather than down, so it reads as progress instead of a warning, and
                 turns amber before the cap rather than at it — running out mid-sentence is worth
                 knowing a few characters early. */}
@@ -1546,7 +1559,10 @@ export function PostAdWizard({
             <Text style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>{pinLookupNote}</Text>
           ) : null}
 
-          <Text style={[styles.label, { color: colors.textSoft }]}>City</Text>
+          <Text style={[styles.label, { color: colors.textSoft }]}>
+            City
+            <RequiredMark />
+          </Text>
           {/* Collapsed by default. Rendering a chip for every city pushed the rest of the form off
               screen and, worse, hid the fact that dropping a map pin had already chosen one —
               the selection was a subtly different chip background somewhere in a wall of chips. */}
@@ -1578,7 +1594,10 @@ export function PostAdWizard({
             </View>
           )}
 
-          <Text style={[styles.label, { color: colors.textSoft }]}>Area / locality</Text>
+          <Text style={[styles.label, { color: colors.textSoft }]}>
+            Area / locality
+            <RequiredMark />
+          </Text>
           <TextInput
             value={areaQuery}
             onChangeText={onAreaQueryChange}
@@ -1603,7 +1622,10 @@ export function PostAdWizard({
 
           {/* No Specs box, as on the website: the card's chips come from the category fields below
             * (deriveCardSpecs), so a typed "3 Beds" only repeated them in another spelling. */}
-          <Text style={[styles.label, { color: colors.textSoft }]}>Description</Text>
+          <Text style={[styles.label, { color: colors.textSoft }]}>
+            Description
+            <RequiredMark />
+          </Text>
           <TextInput
             value={description}
             onChangeText={(v) => setDescription(v.slice(0, DESCRIPTION_MAX_LENGTH))}
@@ -1659,7 +1681,8 @@ export function PostAdWizard({
                   </View>
                 )}
                 <Text style={[styles.label, { color: colors.textSoft }]}>
-                  {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹) *` : "Price (₹) *"}
+                  {priceMode === "perUnit" ? `Price per ${areaUnitShortLabel(currentAreaUnit, 1)} (₹)` : "Price (₹)"}
+                  <RequiredMark />
                 </Text>
                 <TextInput
                   value={price}
@@ -1702,7 +1725,10 @@ export function PostAdWizard({
             ))}
           </View>
 
-          <Text style={[styles.label, { color: colors.textSoft }]}>Photos (up to {MAX_PHOTOS}) *</Text>
+          <Text style={[styles.label, { color: colors.textSoft }]}>
+            Photos ({MIN_PHOTOS}-{MAX_PHOTOS})
+            <RequiredMark />
+          </Text>
           {photoUris.length < MAX_PHOTOS && (
             <Pressable onPress={pickPhotos} style={[styles.photoButton, { borderColor: colors.green, backgroundColor: colors.surfaceAlt }]}>
               <Icon name="camera" size={24} color={colors.green} />
@@ -1795,7 +1821,10 @@ export function PostAdWizard({
                 backgroundColor: sellerTypeMissing ? "#c0554b14" : "transparent",
               }}
             >
-              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>Are you the owner or an agent? *</Text>
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "700" }}>
+                Are you the owner or an agent?
+                <RequiredMark />
+              </Text>
               <View style={styles.chipRow}>
                 {(
                   [

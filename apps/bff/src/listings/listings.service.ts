@@ -60,7 +60,7 @@ import { formatInrInWords, perUnitTotalPrice } from '@bhavano/types/priceWords';
 import { listingPriceIssue } from '@bhavano/types/priceBounds';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
-import { MAX_PHOTOS } from '@bhavano/types/photoLimits';
+import { MAX_PHOTOS, MIN_PHOTOS } from '@bhavano/types/photoLimits';
 import { PrismaService } from '../prisma/prisma.service';
 import { toE164India } from '../outreach/phone';
 import { ModerationService } from '../moderation/moderation.service';
@@ -1420,8 +1420,8 @@ export class ListingsService {
     const input: CreateListingInput = assisted
       ? { ...rawInput, checkoutIntent: undefined, videos: [], sessionId: undefined, claimContactId: undefined }
       : rawInput;
-    if (!input.photos.length)
-      throw new BadRequestException('At least one photo is required');
+    if (input.photos.length < MIN_PHOTOS)
+      throw new BadRequestException(`At least ${MIN_PHOTOS} photos are required`);
     if (input.photos.length > MAX_PHOTOS)
       throw new BadRequestException(`No more than ${MAX_PHOTOS} photos are allowed`);
     // A token issued before the owner deleted their account still authenticates for up to an

@@ -530,6 +530,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     label: "Furnishing",
     type: "select",
     section: "basics",
+    required: true,
     options: [
       { value: "unfurnished", label: "Unfurnished" },
       { value: "semi", label: "Semi-furnished" },
@@ -1336,6 +1337,7 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       label: "Furnishing",
       type: "select",
       section: "spaceDetails",
+      required: true,
       options: [
         { value: "unfurnished", label: "Unfurnished" },
         { value: "semi", label: "Semi-furnished" },
