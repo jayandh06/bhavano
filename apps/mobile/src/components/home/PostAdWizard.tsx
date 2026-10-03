@@ -897,9 +897,23 @@ export function PostAdWizard({
                 * is guaranteed to render everywhere. */}
               <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>-</Text>
             </Pressable>
-            <Text style={{ color: colors.text, fontSize: 15, fontWeight: "700", flex: 1, textAlign: "center" }}>
-              {countLabel(field)}
-            </Text>
+            {/* Typing directly used to be impossible — the buttons were the only way in, which
+              * made setting e.g. "4 bedrooms" four taps instead of one. Same digits-only +
+              * clampDigits sanitizing as the plain number TextInput below, not a hard min/max
+              * clamp while typing (that would make typing "15" impossible one keystroke at a
+              * time if min were, say, 2) — out-of-range values are still caught at submit by
+              * listingAttributesIssue, same as every other numeric field. */}
+            <TextInput
+              value={countLabel(field) === "-" ? "" : countLabel(field)}
+              onChangeText={(v) =>
+                setAttributes((prev) => ({ ...prev, [field.key]: clampDigits(digitsOnly(v), field.maxDigits ?? 2) }))
+              }
+              keyboardType="number-pad"
+              selectTextOnFocus
+              placeholder="-"
+              placeholderTextColor={colors.muted}
+              style={{ color: colors.text, fontSize: 15, fontWeight: "700", flex: 1, textAlign: "center", padding: 0 }}
+            />
             <Pressable
               onPress={() => bumpCount(field, 1)}
               hitSlop={8}
