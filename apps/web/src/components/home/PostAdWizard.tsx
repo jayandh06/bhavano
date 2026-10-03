@@ -350,6 +350,7 @@ export function PostAdWizard({
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
   const [sellerTypeMissing, setSellerTypeMissing] = useState(false);
   const sellerTypeRef = useRef<HTMLDivElement | null>(null);
+  const photoSectionRef = useRef<HTMLDivElement | null>(null);
   const [assistedSeller, setAssistedSeller] = useState<AssistedSeller>(EMPTY_ASSISTED_SELLER);
   const assistedMode = isAdmin && assistedSeller.enabled;
   // Held in state as well as taken as a prop: after a login at submit, the prop is still the
@@ -1264,6 +1265,21 @@ export function PostAdWizard({
       setError(assistedProblem);
       return;
     }
+    // Belt-and-suspenders: the Preview button on Details already blocks fewer than MIN_PHOTOS, but
+    // if `photos` is ever below it by the time "Post ad" is pressed on Review, the server's own
+    // re-check (ListingsService.create) would otherwise reject the request from a screen with no
+    // photo-add/remove UI of its own — a dead end that only ever fails the same way again. Sending
+    // the visitor back to Details with something to actually do about it, instead of a repeatable
+    // server error, is what turned one real session into four identical failures over 40 minutes.
+    if (photos.length < MIN_PHOTOS) {
+      backToDetails();
+      setPhotoNotice({
+        kind: "file",
+        text: `Add at least ${MIN_PHOTOS} photos before posting — only ${photos.length} ${photos.length === 1 ? "is" : "are"} ready.`,
+      });
+      setTimeout(() => photoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+      return;
+    }
 
     setPending(true);
     setError(null);
@@ -1824,7 +1840,7 @@ export function PostAdWizard({
             />
           </div>
 
-          <div className="max-w-[720px]">
+          <div className="max-w-[720px]" ref={photoSectionRef}>
             <RequiredLabel text={`Photos (${MIN_PHOTOS}-${MAX_PHOTOS})`} />
             {photos.length < MAX_PHOTOS && (
               // A styled label wrapping a hidden input rather than a bare <input type="file">.
