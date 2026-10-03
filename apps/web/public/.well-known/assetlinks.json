@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.finfolia.bhavano",
-      "sha256_cert_fingerprints": ["TODO_SHA256_SIGNING_CERT_FINGERPRINT"]
+      "sha256_cert_fingerprints": [
+        "83:E7:7C:E6:BE:0A:FB:71:55:07:1C:7A:E5:CC:83:35:CF:8B:78:60:E8:B4:13:75:8D:EF:CE:E8:AF:31:58:50"
+      ]
     }
   }
 ]

@@ -130,10 +130,10 @@ module.exports = {
       // App Links — Android's equivalent of iOS's associatedDomains above. `autoVerify: true` is
       // what makes Android check assetlinks.json (served from
       // https://www.bhavano.com/.well-known/assetlinks.json, see apps/web/public/.well-known/)
-      // before routing a tapped link here instead of the browser — that file currently has a
-      // placeholder SHA256 signing-certificate fingerprint. Get the real one via
-      // `eas credentials` (Android → select the production keystore → it prints the SHA256) and
-      // this needs a new build before it takes effect, same as the iOS side.
+      // before routing a tapped link here instead of the browser. Its SHA256 fingerprint (filled in
+      // 2026-10-03) is the production upload keystore's, pulled with `keytool -printcert -jarfile`
+      // against a built .aab rather than `eas credentials`'s interactive menu — same value either
+      // way. This needs a new build before it takes effect, same as the iOS side.
       intentFilters: [
         {
           action: "VIEW",
