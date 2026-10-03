@@ -43,6 +43,36 @@ describe("trailEntry", () => {
       isError: false,
     });
   });
+
+  it("decodes the login-nudge card's shown/logged-in/dismissed events", () => {
+    expect(trailEntry("/login-nudge?event=shown&surface=web_prompt")).toEqual({
+      text: "Login nudge shown (card)",
+      isError: false,
+    });
+    expect(trailEntry("/login-nudge?event=login&surface=web_prompt")).toEqual({
+      text: "Login nudge — logged in (card)",
+      isError: false,
+    });
+    expect(trailEntry("/login-nudge?event=dismissed&surface=web_prompt")).toEqual({
+      text: "Login nudge — dismissed (card)",
+      isError: false,
+    });
+  });
+
+  it("decodes Google One Tap's shown/logged-in/dismissed events", () => {
+    expect(trailEntry("/login-nudge?event=shown&surface=one_tap")).toEqual({
+      text: "Login nudge shown (One Tap)",
+      isError: false,
+    });
+    expect(trailEntry("/login-nudge?event=login&surface=one_tap")).toEqual({
+      text: "Login nudge — logged in (One Tap)",
+      isError: false,
+    });
+    expect(trailEntry("/login-nudge?event=dismissed&surface=one_tap")).toEqual({
+      text: "Login nudge — dismissed (One Tap)",
+      isError: false,
+    });
+  });
 });
 
 describe("trailEntryHref", () => {
@@ -51,8 +81,9 @@ describe("trailEntryHref", () => {
     expect(trailEntryHref("/")).toBe("https://www.bhavano.com/");
   });
 
-  it("has no link for a boost-recovery or error marker — there's no real page behind either", () => {
+  it("has no link for a boost-recovery, error, or login-nudge marker — none are real pages", () => {
     expect(trailEntryHref("/post/boost-recovery?event=shown&trigger=idle")).toBeNull();
     expect(trailEntryHref("/post/error?stage=checkout")).toBeNull();
+    expect(trailEntryHref("/login-nudge?event=shown&surface=one_tap")).toBeNull();
   });
 });

@@ -16,10 +16,31 @@ const VIEWER_KEY = "bhavano.viewerKey";
 /** A beat to see the listing before Google's own sign-in prompt slides in. */
 const ONE_TAP_DELAY_MS = 2000;
 
+interface GooglePromptMomentNotification {
+  isDismissedMoment(): boolean;
+  getDismissedReason(): string;
+  isSkippedMoment(): boolean;
+}
+
 interface GoogleIdentity {
   initialize(config: Record<string, unknown>): void;
-  prompt(): void;
+  prompt(momentListener?: (notification: GooglePromptMomentNotification) => void): void;
   cancel(): void;
+}
+
+/** Same synthetic-pageview trick as PostAdWizard's reportBoostRecoveryEvent
+ * (docs/plans/boost-recovery-dialog.md) — GTM/GA4 already sees login_nudge_shown/login/dismissed
+ * via pushDataLayerEvent at each call site below, but that's a separate system from the admin's
+ * own Page visits trail, which only reads PageView rows. Decoded by the admin app's trailEntry(). */
+function reportLoginNudgeEvent(event: "shown" | "login" | "dismissed", surface: "web_prompt" | "one_tap") {
+  void fetch("/api/analytics/pageview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: `/login-nudge?event=${event}&surface=${surface}` }),
+    keepalive: true,
+  }).catch(() => {
+    // Best-effort, same as reportBoostRecoveryEvent's own write.
+  });
 }
 
 /** GIS's `google.accounts.id`. Read through a cast because `window.google` is already typed by
@@ -64,6 +85,7 @@ export function ListingLoginNudge({
         sessionStorage.setItem(SHOWN_KEY, "1");
         setShowCard(true);
         pushDataLayerEvent("login_nudge_shown", { surface: "web_prompt" });
+        reportLoginNudgeEvent("shown", "web_prompt");
       },
       ask === "card" ? settings.webPromptDelaySeconds * 1000 : ONE_TAP_DELAY_MS,
     );
@@ -93,6 +115,7 @@ export function ListingLoginNudge({
 
   function onLoggedIn(surface: "web_prompt" | "one_tap") {
     pushDataLayerEvent("login_nudge_login", { surface });
+    reportLoginNudgeEvent("login", surface);
     void recordInterestAction(listingId);
   }
 
@@ -110,8 +133,18 @@ export function ListingLoginNudge({
       use_fedcm_for_prompt: true,
       context: "signin",
     });
-    id.prompt();
+    // The moment listener is the only way to see a One Tap the visitor ignored or closed without
+    // ever returning a credential — "credential_returned" is excluded since that's a login, already
+    // reported by onLoggedIn above, not a dismissal.
+    id.prompt((notification) => {
+      const dismissedWithoutCredential =
+        notification.isDismissedMoment() && notification.getDismissedReason() !== "credential_returned";
+      if (notification.isSkippedMoment() || dismissedWithoutCredential) {
+        reportLoginNudgeEvent("dismissed", "one_tap");
+      }
+    });
     pushDataLayerEvent("login_nudge_shown", { surface: "one_tap" });
+    reportLoginNudgeEvent("shown", "one_tap");
   }
 
   useEffect(() => {
@@ -123,6 +156,7 @@ export function ListingLoginNudge({
     localStorage.setItem(DISMISSED_AT_KEY, String(Date.now()));
     setShowCard(false);
     pushDataLayerEvent("login_nudge_dismissed", { surface: "web_prompt" });
+    reportLoginNudgeEvent("dismissed", "web_prompt");
   }
 
   function onLogIn() {
