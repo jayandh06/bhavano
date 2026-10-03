@@ -42,11 +42,11 @@ module.exports = {
       "com.googleusercontent.apps.336986668125-vs9rfncotlefvtc9e7rsl15r5lhmjfht",
       "com.googleusercontent.apps.336986668125-gujm24as4oq0lqktsn8it63hgg2pm9hi",
     ],
-    version: "1.0.0",
+    version: "1.0.1",
     // EAS Update, added by `eas update:configure` (which can only print these for a dynamic
     // config, not write them). The "appVersion" policy ties an update to the `version` above, so
-    // a binary only accepts updates built against the same 1.0.0 — bumping version cuts older
-    // builds off, which is what you want when a release contains native changes.
+    // a binary only accepts updates built against that same version string — bumping it cuts
+    // older builds off, which is what you want when a release contains native changes.
     runtimeVersion: {
       policy: "appVersion",
     },
