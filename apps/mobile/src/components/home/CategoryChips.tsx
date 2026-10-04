@@ -118,7 +118,10 @@ export function CategoryChips({
             * open to everyone the same way PG/Furniture/Interiors are rather than a bottom-tab
             * gated on looking like an owner/agent. See
             * docs/plans/requirements-feed-for-owners-agents.md. */}
-          <Pressable onPress={() => router.push("/requirements")} style={styles.chip}>
+          <Pressable
+            onPress={() => router.push("/requirements")}
+            style={[styles.chip, { backgroundColor: "transparent", borderBottomColor: "transparent" }]}
+          >
             <Icon name="requirements" size={15} color={colors.textSoft} />
             <Text style={{ color: colors.textSoft, fontWeight: "700", fontSize: 12.5 }}>Requirements</Text>
           </Pressable>
