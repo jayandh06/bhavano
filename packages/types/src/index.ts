@@ -683,6 +683,10 @@ export interface ConversationDetailDto {
   type: ConversationType;
   otherPartyName: string;
   listing: ConversationListingRefDto;
+  /** True if either party has blocked the other — never which direction, so a blocked sender
+   * can't tell "they blocked me" apart from "I blocked them" from this alone. Drives the
+   * thread's own "can't message" state; the composer is disabled whenever this is true. */
+  blocked: boolean;
 }
 
 /** Total unread messages across every conversation the caller is a participant in (either role),

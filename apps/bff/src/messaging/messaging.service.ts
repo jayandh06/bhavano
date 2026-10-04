@@ -80,6 +80,15 @@ export class MessagingService {
       if (isBulkImportOwner(listing.owner)) {
         throw new ConflictException({ message: OWNER_UNVERIFIED_MESSAGE, code: 'OWNER_UNVERIFIED' });
       }
+      const blockedCount = await tx.blockedUser.count({
+        where: {
+          OR: [
+            { blockerId: senderId, blockedId: listing.ownerId },
+            { blockerId: listing.ownerId, blockedId: senderId },
+          ],
+        },
+      });
+      if (blockedCount > 0) throw new ForbiddenException("You can't message this user");
 
       const conversation = await tx.conversation.upsert({
         where: { listingId_inquirerId_type: { listingId, inquirerId: senderId, type: 'inquiry' } },
@@ -300,7 +309,45 @@ export class MessagingService {
         cityName: conversation.listing.city.name,
         area: conversation.listing.area.name,
       },
+      blocked: await this.isBlockedEitherWay(userId, otherParty.id),
     };
+  }
+
+  /** True if either side has blocked the other. Checked with a single OR query rather than two
+   * separate lookups since the caller only ever needs "can these two message each other", not
+   * which direction — see BlockedUser's own doc comment and ConversationDetailDto.blocked. */
+  private async isBlockedEitherWay(userA: string, userB: string): Promise<boolean> {
+    const count = await this.prisma.blockedUser.count({
+      where: {
+        OR: [
+          { blockerId: userA, blockedId: userB },
+          { blockerId: userB, blockedId: userA },
+        ],
+      },
+    });
+    return count > 0;
+  }
+
+  /** Blocks whoever the caller isn't, in this conversation — the client never has to know or
+   * pass the other party's raw id (same minimal-exposure pattern as getConversation's
+   * otherPartyName). Upsert, not create: blocking someone already blocked is a no-op, not a
+   * unique-constraint error. */
+  async blockOtherParticipant(conversationId: string, userId: string): Promise<void> {
+    const conversation = await this.assertParticipant(conversationId, userId);
+    const otherId = conversation.posterId === userId ? conversation.inquirerId : conversation.posterId;
+    await this.prisma.blockedUser.upsert({
+      where: { blockerId_blockedId: { blockerId: userId, blockedId: otherId } },
+      update: {},
+      create: { blockerId: userId, blockedId: otherId },
+    });
+  }
+
+  /** Reverses blockOtherParticipant — only ever removes a block the caller themselves placed, so
+   * unblocking from one conversation can't lift a block the *other* party placed from theirs. */
+  async unblockOtherParticipant(conversationId: string, userId: string): Promise<void> {
+    const conversation = await this.assertParticipant(conversationId, userId);
+    const otherId = conversation.posterId === userId ? conversation.inquirerId : conversation.posterId;
+    await this.prisma.blockedUser.deleteMany({ where: { blockerId: userId, blockedId: otherId } });
   }
 
   /** Total unread messages across every conversation this user is in (inquiry **and**
@@ -433,6 +480,9 @@ export class MessagingService {
     // Before creating the message — same reasoning as sendFirstMessage's identical check.
     const recipientId =
       conversation.posterId === senderId ? conversation.inquirerId : conversation.posterId;
+    if (await this.isBlockedEitherWay(senderId, recipientId)) {
+      throw new ForbiddenException("You can't message this user");
+    }
     const wasUnread = await this.prisma.message.count({
       where: { conversationId, senderId: { not: senderId }, readAt: null, deletedAt: null },
     });

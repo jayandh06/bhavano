@@ -314,12 +314,13 @@ describe('MessagingService.sendMessage', () => {
       message: { create: jest.fn().mockResolvedValue(created), count: jest.fn().mockResolvedValue(0) },
       user: { findUnique: jest.fn().mockResolvedValue(sender) },
       listing: { findUnique: jest.fn().mockResolvedValue({ title: '2 BHK for rent' }) },
+      blockedUser: { count: jest.fn().mockResolvedValue(0) },
     } as unknown as PrismaService;
-    return new MessagingService(prisma, notNotified, { recordInterest: jest.fn().mockResolvedValue({ interested: true, notified: false }) } as never);
+    return { service: new MessagingService(prisma, notNotified, { recordInterest: jest.fn().mockResolvedValue({ interested: true, notified: false }) } as never), prisma };
   }
 
   it('returns the other participant as recipient and the sender\'s name', async () => {
-    const service = makeSendService(
+    const { service } = makeSendService(
       { id: 'c1', posterId: 'poster1', inquirerId: 'buyer1', listingId: 'l1', type: 'inquiry' },
       { name: 'Asha', phone: null },
     );
@@ -334,7 +335,7 @@ describe('MessagingService.sendMessage', () => {
     const withPhone = makeSendService(
       { id: 'c1', posterId: 'p', inquirerId: 'b', listingId: 'l1', type: 'inquiry' },
       { name: null, phone: '9990001111' },
-    );
+    ).service;
     await expect(withPhone.sendMessage('c1', 'b', 'hi')).resolves.toMatchObject({
       recipientId: 'p',
       senderName: 'Buyer',
@@ -343,7 +344,7 @@ describe('MessagingService.sendMessage', () => {
     const anon = makeSendService(
       { id: 'c1', posterId: 'p', inquirerId: 'b', listingId: 'l1', type: 'inquiry' },
       null,
-    );
+    ).service;
     await expect(anon.sendMessage('c1', 'b', 'hi')).resolves.toMatchObject({
       senderName: 'Buyer',
     });
@@ -352,7 +353,7 @@ describe('MessagingService.sendMessage', () => {
   it.each(['moderation', 'announcement'])(
     'titles an admin\'s message in a %s thread as "Bhavano Admin", never the admin\'s own name',
     async (type) => {
-      const service = makeSendService(
+      const { service } = makeSendService(
         { id: 'c1', posterId: 'owner1', inquirerId: 'admin1', listingId: 'l1', type },
         { name: 'Jay (admin)', phone: null },
       );
@@ -364,10 +365,165 @@ describe('MessagingService.sendMessage', () => {
   );
 
   it("uses the owner's own name when the owner replies in a staff thread", async () => {
-    const service = makeSendService(
+    const { service } = makeSendService(
       { id: 'c1', posterId: 'owner1', inquirerId: 'admin1', listingId: 'l1', type: 'announcement' },
       { name: 'Asha', phone: null },
     );
     await expect(service.sendMessage('c1', 'owner1', 'hi')).resolves.toMatchObject({ senderName: 'Asha' });
+  });
+
+  /** The reporter's own words: "clicking an owner's name in a listing row" has nothing to do
+   * with this feature — this is the Guideline 1.2 blocking mechanism added 2026-10-04. Either
+   * direction (blocker-as-sender or blocker-as-recipient) refuses the send, so a blocked sender
+   * can't route around being blocked by replying instead of initiating. */
+  it('refuses to send when either party has blocked the other', async () => {
+    const { service, prisma } = makeSendService(
+      { id: 'c1', posterId: 'poster1', inquirerId: 'buyer1', listingId: 'l1', type: 'inquiry' },
+      { name: 'Asha', phone: null },
+    );
+    (prisma.blockedUser.count as jest.Mock).mockResolvedValue(1);
+
+    await expect(service.sendMessage('c1', 'poster1', 'hi')).rejects.toMatchObject({ status: 403 });
+    expect(prisma.message.create).not.toHaveBeenCalled();
+  });
+
+  it('allows sending when neither party has blocked the other', async () => {
+    const { service, prisma } = makeSendService(
+      { id: 'c1', posterId: 'poster1', inquirerId: 'buyer1', listingId: 'l1', type: 'inquiry' },
+      { name: 'Asha', phone: null },
+    );
+    await expect(service.sendMessage('c1', 'poster1', 'hi')).resolves.toMatchObject({ recipientId: 'buyer1' });
+    expect(prisma.blockedUser.count).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { blockerId: 'poster1', blockedId: 'buyer1' },
+          { blockerId: 'buyer1', blockedId: 'poster1' },
+        ],
+      },
+    });
+  });
+});
+
+describe('MessagingService.sendFirstMessage — blocking', () => {
+  function makeFirstMessageService(listing: unknown, blockedCount: number) {
+    const tx = {
+      listing: { findUnique: jest.fn().mockResolvedValue(listing) },
+      blockedUser: { count: jest.fn().mockResolvedValue(blockedCount) },
+      conversation: { upsert: jest.fn().mockResolvedValue({ id: 'conv1' }) },
+      message: {
+        // Non-zero so notifyInstantAlertsIfEligible's wasUnread !== 0 gate short-circuits before
+        // it —  that path needs its own prisma mocks this test isn't about and doesn't provide.
+        count: jest.fn().mockResolvedValue(1),
+        create: jest.fn().mockResolvedValue({
+          id: 'm1',
+          conversationId: 'conv1',
+          senderId: 'buyer1',
+          body: 'hi',
+          createdAt: new Date(),
+          readAt: null,
+        }),
+      },
+      user: { findUnique: jest.fn().mockResolvedValue({ name: 'Buyer' }) },
+    };
+    const prisma = { $transaction: (run: (t: typeof tx) => unknown) => run(tx) } as unknown as PrismaService;
+    return {
+      service: new MessagingService(
+        prisma,
+        notNotified,
+        { recordInterest: jest.fn().mockResolvedValue({ interested: true, notified: false }) } as never,
+      ),
+      tx,
+    };
+  }
+
+  it('refuses a first message to someone who blocked (or was blocked by) the sender', async () => {
+    const { service, tx } = makeFirstMessageService(
+      { id: 'l1', ownerId: 'owner1', title: 'A listing', owner: { phone: '9000000001' } },
+      1,
+    );
+    await expect(service.sendFirstMessage('l1', 'buyer1', 'hi')).rejects.toMatchObject({ status: 403 });
+    expect(tx.conversation.upsert).not.toHaveBeenCalled();
+  });
+
+  it('allows a first message when nobody has blocked anybody', async () => {
+    const { service } = makeFirstMessageService(
+      { id: 'l1', ownerId: 'owner1', title: 'A listing', owner: { phone: '9000000001' } },
+      0,
+    );
+    await expect(service.sendFirstMessage('l1', 'buyer1', 'hi')).resolves.toMatchObject({ conversationId: 'conv1' });
+  });
+});
+
+describe('MessagingService — block/unblock', () => {
+  function makeBlockService(conversationRow: unknown) {
+    const prisma = {
+      conversation: { findUnique: jest.fn().mockResolvedValue(conversationRow) },
+      blockedUser: { upsert: jest.fn(), deleteMany: jest.fn() },
+    } as unknown as PrismaService;
+    return { service: new MessagingService(prisma, notNotified, {} as never), prisma };
+  }
+
+  it('blocks the other participant without the caller ever naming their id', async () => {
+    const { service, prisma } = makeBlockService({ id: 'c1', posterId: 'poster1', inquirerId: 'buyer1' });
+    await service.blockOtherParticipant('c1', 'poster1');
+    expect(prisma.blockedUser.upsert).toHaveBeenCalledWith({
+      where: { blockerId_blockedId: { blockerId: 'poster1', blockedId: 'buyer1' } },
+      update: {},
+      create: { blockerId: 'poster1', blockedId: 'buyer1' },
+    });
+  });
+
+  it('resolves "the other participant" from whichever side the caller is on', async () => {
+    const { service, prisma } = makeBlockService({ id: 'c1', posterId: 'poster1', inquirerId: 'buyer1' });
+    await service.blockOtherParticipant('c1', 'buyer1');
+    expect(prisma.blockedUser.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: { blockerId: 'buyer1', blockedId: 'poster1' } }),
+    );
+  });
+
+  it('unblock only ever removes a block the caller themselves placed', async () => {
+    const { service, prisma } = makeBlockService({ id: 'c1', posterId: 'poster1', inquirerId: 'buyer1' });
+    await service.unblockOtherParticipant('c1', 'poster1');
+    expect(prisma.blockedUser.deleteMany).toHaveBeenCalledWith({
+      where: { blockerId: 'poster1', blockedId: 'buyer1' },
+    });
+  });
+});
+
+describe('MessagingService.getConversation — blocked flag', () => {
+  function makeGetConversationService(conversationRow: unknown, blockedCount: number) {
+    const prisma = {
+      conversation: { findUnique: jest.fn().mockResolvedValue(conversationRow) },
+      blockedUser: { count: jest.fn().mockResolvedValue(blockedCount) },
+    } as unknown as PrismaService;
+    return new MessagingService(prisma, notNotified, {} as never);
+  }
+
+  const row = {
+    id: 'c1',
+    type: 'inquiry',
+    posterId: 'poster1',
+    inquirerId: 'buyer1',
+    poster: { id: 'poster1', name: 'Poster', phone: null },
+    inquirer: { id: 'buyer1', name: 'Buyer', phone: null },
+    listing: {
+      id: 'l1',
+      title: 'A listing',
+      slug: 'a-listing',
+      category: 'apartment',
+      transactionType: 'rent',
+      city: { name: 'Bengaluru' },
+      area: { name: 'Koramangala' },
+    },
+  };
+
+  it('reports blocked: true when a block exists in either direction', async () => {
+    const service = makeGetConversationService(row, 1);
+    await expect(service.getConversation('c1', 'poster1')).resolves.toMatchObject({ blocked: true });
+  });
+
+  it('reports blocked: false when no block exists', async () => {
+    const service = makeGetConversationService(row, 0);
+    await expect(service.getConversation('c1', 'poster1')).resolves.toMatchObject({ blocked: false });
   });
 });

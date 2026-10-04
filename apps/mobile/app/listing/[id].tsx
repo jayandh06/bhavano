@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { ownerEnquiryText, whatsAppChatUrl } from "@bhavano/types/whatsapp";
 import { useAppTheme } from "../../src/theme/ThemeContext";
@@ -8,6 +9,7 @@ import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
 import { BffError, recordListingInterest, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
 import { getOrCreateViewerKey } from "../../src/lib/viewerKey";
+import { publicWebUrl } from "../../src/lib/appWebUrl";
 import { useListingLoginNudge } from "../../src/lib/useListingLoginNudge";
 import { useGuestSaveHeart } from "../../src/lib/useGuestSaveHeart";
 import { Icon } from "../../src/components/Icon";
@@ -15,6 +17,7 @@ import { ListingMediaGallery } from "../../src/components/home/ListingMediaGalle
 import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 import { ListingPrice } from "../../src/components/home/PriceWithWords";
+import { ReportSheet } from "../../src/components/home/ReportSheet";
 
 /** Same URL shape as the website's ListingDetailView.tsx — no origin, so Google Maps prompts for
  * the visitor's own location instead. `lat`/`lng` are already a server-side jittered
@@ -52,6 +55,7 @@ export default function ListingDetailScreen() {
   const [revealError, setRevealError] = useState<string | null>(null);
   const [insufficientCredits, setInsufficientCredits] = useState(false);
   const whatsAppHref = ownerPhone && listing ? whatsAppChatUrl(ownerPhone, ownerEnquiryText(listing.title)) : null;
+  const reportSheetRef = useRef<BottomSheetModal>(null);
 
   useEffect(() => {
     if (listing) {
@@ -145,7 +149,15 @@ export default function ListingDetailScreen() {
       {/* Generic, not listing.title — the body already shows the full title (and lets it wrap,
           rather than truncating to an ellipsis in the header's narrower width alongside the back
           arrow), same reasoning as the message thread's header. */}
-      <ScreenHeader title="Listing" onBack={goBack} />
+      <ScreenHeader
+        title="Listing"
+        onBack={goBack}
+        right={
+          <Pressable onPress={() => reportSheetRef.current?.present()} hitSlop={8} accessibilityLabel="Report this listing">
+            <Icon name="flag" size={18} color={colors.muted} />
+          </Pressable>
+        }
+      />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -323,6 +335,12 @@ export default function ListingDetailScreen() {
         </>
       )}
       </ScrollView>
+      <ReportSheet
+        ref={reportSheetRef}
+        topic="listing_report"
+        context={`Listing: ${listing.title}`}
+        listingUrl={publicWebUrl(`/listings/${listing.id}`)}
+      />
     </View>
   );
 }

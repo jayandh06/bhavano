@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Logger, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Logger, Param, Post, UseGuards } from '@nestjs/common';
 import type {
   ConversationDetailDto,
   ConversationSummaryDto,
@@ -135,5 +135,20 @@ export class MessagingController {
     // Clears/decrements the badge on this user's *other* devices and tabs.
     const unreadCount = await this.messagingService.getUnreadTotal(user.id);
     this.gateway.notifyUnread(user.id, { conversationId: id, unreadCount });
+  }
+
+  /** Blocks whoever the other participant in this conversation is — see
+   * MessagingService.blockOtherParticipant's own doc for why the client never passes a raw user
+   * id. Idempotent: blocking an already-blocked user is a no-op, not an error. */
+  @Post(':id/block')
+  @HttpCode(204)
+  block(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<void> {
+    return this.messagingService.blockOtherParticipant(id, user.id);
+  }
+
+  @Delete(':id/block')
+  @HttpCode(204)
+  unblock(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<void> {
+    return this.messagingService.unblockOtherParticipant(id, user.id);
   }
 }

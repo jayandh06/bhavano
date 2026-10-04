@@ -93,6 +93,9 @@ export default function ConversationScreen() {
       conversationId={id}
       listingId={conversation?.listing.id ?? null}
       listingTitle={conversation?.listing.title ?? null}
+      otherPartyName={conversation?.otherPartyName ?? null}
+      blocked={conversation?.blocked ?? false}
+      onBlockedChange={(blocked) => setConversation((prev) => (prev ? { ...prev, blocked } : prev))}
       accessToken={accessToken}
       userId={userId}
       initialMessages={initialMessages ?? []}

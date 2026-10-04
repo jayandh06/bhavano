@@ -1,16 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
+import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { Stack, useIsFocused, useRouter } from "expo-router";
 import type { MessageDeletedEvent, MessageDto } from "@bhavano/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useTabBarHeight } from "../../lib/tabBarHeight";
-import { deleteMessage, markConversationRead, sendFirstMessage, sendMessage } from "../../lib/bffClient";
+import {
+  blockConversationUser,
+  deleteMessage,
+  markConversationRead,
+  sendFirstMessage,
+  sendMessage,
+  unblockConversationUser,
+} from "../../lib/bffClient";
 import { getSocket } from "../../lib/socket";
 import { Icon } from "../Icon";
 import { MessageBody } from "./MessageBody";
 import { BoostOfferMessageCard } from "./BoostOfferMessageCard";
 import { ScreenHeader } from "./ScreenHeader";
+import { ReportSheet } from "./ReportSheet";
 
 /** The thread body shared by an existing conversation ([id].tsx) and a not-yet-created one
  * (new/[listingId].tsx) — see docs/plans/message-delete-and-lazy-conversation-creation.md.
@@ -21,6 +30,9 @@ export function ConversationThread({
   conversationId,
   listingId,
   listingTitle,
+  otherPartyName,
+  blocked,
+  onBlockedChange,
   accessToken,
   userId,
   initialMessages,
@@ -33,12 +45,23 @@ export function ConversationThread({
    * always already resolved in practice. */
   listingId: string | null;
   listingTitle: string | null;
+  /** Null for the not-yet-created thread, same reason/timing as listingTitle — the Report/Block
+   * menu only ever renders once a real conversationId exists anyway. */
+  otherPartyName: string | null;
+  /** Either party blocked the other — disables the composer and offers "Unblock" instead of
+   * "Block" in the menu. Always false for a not-yet-created thread. */
+  blocked: boolean;
+  /** Lets the parent screen's own ConversationDetailDto state track a block/unblock made from
+   * here, without this component owning that fetch itself. */
+  onBlockedChange?: (blocked: boolean) => void;
   accessToken: string | null;
   userId: string | null;
   initialMessages: MessageDto[];
 }) {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const reportSheetRef = useRef<BottomSheetModal>(null);
+  const [blockError, setBlockError] = useState<string | null>(null);
   // See lib/tabBarHeight.ts — the composer sits above the always-mounted tab bar, which the
   // keyboard covers, so it must lift by the keyboard height *minus* the bar to land flush on it.
   const tabBarHeight = useTabBarHeight();
@@ -131,6 +154,33 @@ export function ConversationThread({
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   }
 
+  async function onToggleBlock() {
+    if (!accessToken || !conversationId) return;
+    setBlockError(null);
+    try {
+      if (blocked) {
+        await unblockConversationUser(accessToken, conversationId);
+      } else {
+        await blockConversationUser(accessToken, conversationId);
+      }
+      onBlockedChange?.(!blocked);
+    } catch {
+      setBlockError("Something went wrong — please try again.");
+    }
+  }
+
+  function onMenuPress() {
+    Alert.alert("Conversation options", undefined, [
+      { text: "Report", onPress: () => reportSheetRef.current?.present() },
+      {
+        text: blocked ? "Unblock user" : "Block user",
+        style: blocked ? "default" : "destructive",
+        onPress: () => void onToggleBlock(),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
+
   function onDelete(messageId: string) {
     if (!accessToken) return;
     Alert.alert("Delete message?", undefined, [
@@ -155,15 +205,22 @@ export function ConversationThread({
         title="Conversation"
         onBack={() => router.back()}
         right={
-          listingId && (
-            <Pressable
-              onPress={() => router.push(`/listing/${listingId}`)}
-              style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
-            >
-              <Text style={{ fontSize: 13, color: colors.green, fontWeight: "700" }}>View ad</Text>
-              <Icon name="chevronRight" size={14} color={colors.green} />
-            </Pressable>
-          )
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+            {listingId && (
+              <Pressable
+                onPress={() => router.push(`/listing/${listingId}`)}
+                style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
+              >
+                <Text style={{ fontSize: 13, color: colors.green, fontWeight: "700" }}>View ad</Text>
+                <Icon name="chevronRight" size={14} color={colors.green} />
+              </Pressable>
+            )}
+            {conversationId && (
+              <Pressable onPress={onMenuPress} hitSlop={8} accessibilityLabel="Conversation options">
+                <Icon name="moreVertical" size={18} color={colors.muted} />
+              </Pressable>
+            )}
+          </View>
         }
       />
       {listingTitle && (
@@ -213,21 +270,41 @@ export function ConversationThread({
           return <Pressable onLongPress={() => onDelete(item.id)}>{bubble}</Pressable>;
         }}
       />
-      <KeyboardStickyView offset={{ closed: 0, opened: tabBarHeight }}>
-        <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.bg }]}>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Type a message…"
-            placeholderTextColor={colors.muted}
-            multiline
-            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
-          />
-          <Pressable onPress={onSend} style={[styles.sendButton, { backgroundColor: colors.green }]}>
-            <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send</Text>
-          </Pressable>
+      {blockError && (
+        <Text style={{ color: "#b3413a", fontSize: 12.5, textAlign: "center", paddingVertical: 4 }}>
+          {blockError}
+        </Text>
+      )}
+      {blocked ? (
+        <View style={[styles.blockedBanner, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+          <Text style={{ color: colors.muted, fontSize: 12.5, textAlign: "center" }}>
+            You can't message in this conversation anymore.
+          </Text>
         </View>
-      </KeyboardStickyView>
+      ) : (
+        <KeyboardStickyView offset={{ closed: 0, opened: tabBarHeight }}>
+          <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.bg }]}>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Type a message…"
+              placeholderTextColor={colors.muted}
+              multiline
+              style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+            />
+            <Pressable onPress={onSend} style={[styles.sendButton, { backgroundColor: colors.green }]}>
+              <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Send</Text>
+            </Pressable>
+          </View>
+        </KeyboardStickyView>
+      )}
+      {conversationId && (
+        <ReportSheet
+          ref={reportSheetRef}
+          topic="user_report"
+          context={`Conversation with ${otherPartyName ?? "this user"} (conversation ${conversationId})`}
+        />
+      )}
     </View>
   );
 }
@@ -235,6 +312,7 @@ export function ConversationThread({
 const styles = StyleSheet.create({
   bubble: { borderRadius: 12, padding: 12, maxWidth: "75%" },
   listingBar: { paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1 },
+  blockedBanner: { padding: 16, borderTopWidth: 1 },
   inputRow: { flexDirection: "row", gap: 10, padding: 16, borderTopWidth: 1 },
   input: { flex: 1, borderWidth: 1, borderRadius: 9, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14, maxHeight: 100 },
   sendButton: { borderRadius: 8, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },

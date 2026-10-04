@@ -8,6 +8,7 @@ import {
   type RequirementFeedFilters,
   type RequirementFeedSummaryDto,
 } from "@bhavano/types/requirementFeed";
+import type { ContactTopic, CreateSupportTicketResponse } from "@bhavano/types/support";
 import type {
   Area,
   BoostPricingPreviewDto,
@@ -383,6 +384,51 @@ export function deleteMessage(accessToken: string, messageId: string): Promise<M
 
 export function markConversationRead(accessToken: string, conversationId: string): Promise<void> {
   return authedBffFetch(accessToken, `/conversations/${conversationId}/read`, { method: "POST" });
+}
+
+/** Blocks whoever the other participant in this conversation is — the server resolves that from
+ * the conversation, never from a raw id this client would have to know. See
+ * MessagingService.blockOtherParticipant's own doc comment. */
+export function blockConversationUser(accessToken: string, conversationId: string): Promise<void> {
+  return authedBffFetch(accessToken, `/conversations/${conversationId}/block`, { method: "POST" });
+}
+
+export function unblockConversationUser(accessToken: string, conversationId: string): Promise<void> {
+  return authedBffFetch(accessToken, `/conversations/${conversationId}/block`, { method: "DELETE" });
+}
+
+/** Reports a listing or a conversation's other party — the same public, unauthenticated endpoint
+ * the website's Contact Us form posts to (see docs/plans/contact-us-support-form.md), wired into
+ * the app for the first time here rather than reusing bffFetch: the endpoint's FilesInterceptor
+ * only parses multipart/form-data, same reason uploadPhoto/uploadVideo above build their own
+ * FormData instead. No attachments from here, just the text fields. */
+export async function submitSupportTicket(input: {
+  topic: ContactTopic;
+  name: string;
+  email: string;
+  phone?: string;
+  listingUrl?: string;
+  message: string;
+  userId?: string;
+}): Promise<CreateSupportTicketResponse> {
+  const formData = new FormData();
+  formData.append("topic", input.topic);
+  formData.append("name", input.name);
+  formData.append("email", input.email);
+  if (input.phone) formData.append("phone", input.phone);
+  if (input.listingUrl) formData.append("listingUrl", input.listingUrl);
+  formData.append("message", input.message);
+  if (input.userId) formData.append("userId", input.userId);
+
+  const res = await fetch(`${BFF_URL}/support/tickets`, {
+    method: "POST",
+    body: formData as unknown as BodyInit,
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new BffError(res.status, "/support/tickets", body);
+  }
+  return res.json();
 }
 
 export function fetchUnreadCount(accessToken: string): Promise<{ count: number }> {

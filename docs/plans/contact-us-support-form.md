@@ -382,6 +382,11 @@ Not an Ads conversion: a support request is a cost signal, not something to bid 
 - **CAPTCHA** — the three layers in step 3 should hold. Revisit only if spam actually appears;
   reCAPTCHA costs real conversion and adds a third-party script to a page we keep lean for SEO.
 
+**Update (2026-10-04):** this endpoint is now also mobile's in-app reporting mechanism —
+`user_report` added as a topic, and the app calls `POST /support/tickets` directly for the first
+time, alongside a new, separate user-blocking feature. See
+`docs/plans/mobile-ugc-report-and-block.md`.
+
 ## Rollback
 
 Additive throughout: one new page section, one new bff module, two new tables. Reverting the web

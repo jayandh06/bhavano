@@ -314,6 +314,8 @@ model User {
   conversationsAsPoster Conversation[] @relation("ConversationPoster")
   conversationsAsInquirer Conversation[] @relation("ConversationInquirer")
   messages              Message[]
+  blockedUsers          BlockedUser[]  @relation("BlockerOf")
+  blockedByUsers        BlockedUser[]  @relation("BlockedBy")
   loginEvents           LoginEvent[]
   /** Send log for notifications with no listing to attach to — today, just "welcome". See
    * `ListingNotificationLog` for the listing-scoped equivalent; kept as a separate table rather
@@ -677,6 +679,23 @@ model Message {
   deletedAt      DateTime?
 
   @@index([conversationId, createdAt])
+}
+
+/** One-directional block between two users who share a conversation — checked in both
+ * directions (either party may have blocked the other) before a new message can be sent. See
+ * MessagingService's own doc comment on where this is enforced. Scoped to a user pair, not a
+ * conversation: blocking someone stops them messaging you about *any* listing, not just the one
+ * you blocked them from. */
+model BlockedUser {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("BlockerOf", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("BlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
 }
 
 /** One row per photo on a listing — ordered by photoNo, hash retained for the existing
@@ -1765,6 +1784,12 @@ enum ContactTopic {
   subscription
   account
   listing_report
+  // Reporting a message/sender in a conversation, rather than a listing itself — same support-
+  // ticket pipeline, just no listingUrl context (the conversation/other party is described in
+  // the free-text message instead, consistent with every other topic here having no dedicated
+  // structured target column). Added for Apple App Review's Guideline 1.2 requirement that UGC
+  // apps have a reporting mechanism — see docs/plans/ios-app-store-release.md.
+  user_report
   website
   other
 }

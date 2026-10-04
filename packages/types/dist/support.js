@@ -13,6 +13,10 @@ exports.CONTACT_TOPICS = [
     "subscription",
     "account",
     "listing_report",
+    // Reporting a message/sender in a conversation rather than a listing — same ticket pipeline,
+    // no listingUrl context; the conversation/other party goes in the free-text message instead,
+    // same as every other topic here with no dedicated structured target column.
+    "user_report",
     "website",
     "other",
 ];
@@ -26,6 +30,7 @@ exports.CONTACT_TOPIC_LABELS = {
     subscription: "Subscription, boost, or payment",
     account: "Login, OTP, or profile",
     listing_report: "Report a listing",
+    user_report: "Report a user or message",
     website: "Website bug or something looks wrong",
     other: "Something else",
 };

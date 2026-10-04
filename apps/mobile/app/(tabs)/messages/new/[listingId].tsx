@@ -30,6 +30,8 @@ export default function NewConversationScreen() {
       conversationId={null}
       listingId={listingId}
       listingTitle={listingTitle}
+      otherPartyName={null}
+      blocked={false}
       accessToken={accessToken}
       userId={userId}
       initialMessages={[]}

@@ -1,5 +1,11 @@
 # Shipping Bhavano to the iOS App Store
 
+**2026-10-04 — first submission rejected, Guideline 2.1 (Information Needed).** A new developer
+account's first submission gets asked for more context before review proceeds — expected, not a
+bug. Apple's reply explicitly asked about "the required content reporting and blocking
+mechanisms" for the app's UGC (listings, messages). Neither existed in-app before this; now
+built — see `docs/plans/mobile-ugc-report-and-block.md`.
+
 ## Where things already stand
 
 The mobile app is further along than a first release usually is. `apps/mobile` is Expo SDK 57
