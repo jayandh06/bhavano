@@ -70,11 +70,13 @@ jobs:
           path: ${{ env.ARTIFACT }}
           retention-days: 14
 
-      # iOS submit also needs EXPO_ASC_API_KEY_PATH (and ideally EXPO_ASC_API_KEY_ISSUER_ID/
-      # EXPO_ASC_API_KEY_ID, though those two are already in eas.json) pointing at a copy of
-      # AuthKey_6KPL9BLM97.p8 written from a GitHub secret — not yet wired up here, so this step
-      # will fail the same way local submit did before eas.json's ascApiKeyPath was removed (see
-      # docs/plans/ios-app-store-release.md). Android's submit doesn't need this.
+      # iOS submit needs eas.json's ascApiKeyPath to literally resolve on whichever machine runs
+      # it — confirmed 2026-10-04 that --non-interactive's upfront validation reads that field
+      # directly, with no ~ expansion and no env var fallback (see
+      # docs/plans/ios-app-store-release.md). eas.json currently points at a local workstation's
+      # path, which won't exist on this runner — a GitHub-runner submit needs its own step here
+      # writing AuthKey_6KPL9BLM97.p8 from a secret to some path, then eas.json's ascApiKeyPath
+      # updated to match it, before this will work. Android's submit doesn't need any of this.
       - name: eas submit
         if: inputs.submit && inputs.profile == 'production'
         working-directory: apps/mobile

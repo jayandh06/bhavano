@@ -218,23 +218,35 @@ Store provisioning profile exist under Apple team `L6RKCXT9K4`, both valid to 20
 `submit.production` is filled in and uses **App Store Connect API key** auth (`ascApiKeyId` /
 `ascApiKeyIssuerId` + `ascAppId: 6811878602`) rather than the `appleId` / `appleTeamId` pair this
 section originally called for — an API key needs no 2FA prompt, which is what makes submission
-scriptable. `ascApiKeyPath` itself is deliberately **not** in `eas.json` — a filesystem path is
-machine-specific, and `eas.json`'s first version hardcoded one Mac's absolute path
-(`/Users/jayandhan.r/...`), which silently broke `submit` on every other machine (caught
-2026-10-04 on a Windows machine). Each machine that submits sets its own
-`EXPO_ASC_API_KEY_PATH` env var pointing at wherever *it* keeps the key — conventionally
-`~/.config/bhavano-secrets/AuthKey_6KPL9BLM97.p8` (see `.gitignore`'s own comment on `*.p8`), but
-the point is it never has to be the same path twice. Apple only lets this key's `.p8` be
-downloaded once, at creation — back it up somewhere outside this repo instead of relying on
-only one machine having it.
+scriptable.
+
+`ascApiKeyPath` has to be a literal, resolvable absolute path for `--non-interactive` submits —
+tried both alternatives and confirmed neither works against the `eas-cli` version this project
+pins (2026-10-04): a leading `~` is never expanded (checked literally, reported as a nonexistent
+path), and `EXPO_ASC_API_KEY_PATH` is not consulted by `--non-interactive`'s upfront validation
+("ascApiKeyPath and ascApiKeyId must both be defined in eas.json" — that check reads the file
+directly, not env). So this field is unavoidably machine-specific: it's currently
+`C:\Users\r_jay\.config\bhavano-secrets\AuthKey_6KPL9BLM97.p8`, matching whoever submits today.
+**Submitting from a different machine means editing this one field** to that machine's own copy
+of the key — or drop `--non-interactive` and type the path when prompted interactively instead
+(works from any machine, no edit needed, but can't run unattended/in CI that way). `eas.json`'s
+first version hardcoded a *different* machine's path (`/Users/jayandhan.r/...`, a Mac), which is
+exactly what silently broke `submit` here — the lesson isn't "don't hardcode a path", it's
+"keep it pointed at whichever machine is actually submitting right now."
+
+Apple only lets this key's `.p8` be downloaded once, at creation — back it up somewhere outside
+this repo (a password manager, encrypted note, etc.) instead of relying on only one machine
+having a copy; losing the last copy means generating a new key and updating `ascApiKeyId`/
+`ascApiKeyIssuerId` to match.
 
 ### Getting it to testers
 
 1. `eas build --platform ios --profile production` (or add `--auto-submit` to do the next step
    automatically).
-2. Set `EXPO_ASC_API_KEY_PATH` to this machine's copy of the key (see above), then
-   `eas submit --platform ios --profile production` — uploads to App Store Connect. Processing
-   then takes roughly 10-15 minutes before the build appears in TestFlight.
+2. If submitting from a machine other than the one `ascApiKeyPath` currently points at, update
+   that field first (see above). Then `eas submit --platform ios --profile production` — uploads
+   to App Store Connect. Processing then takes roughly 10-15 minutes before the build appears in
+   TestFlight.
 3. **Internal testers** (up to 100 people who hold a role on the App Store Connect account) can
    install as soon as processing finishes — no review. **External testers** (up to 10,000, invited
    by email or a public link) require **Beta App Review** first, which is a separate, lighter
