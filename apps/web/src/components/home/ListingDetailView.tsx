@@ -11,8 +11,10 @@ import { resolveDefaultCity } from "@/lib/defaultCity";
 import { daysUntil } from "@/lib/listingExpiry";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
+import { buildListingPath } from "@/lib/listingPath";
 import { ListingDetailActions } from "./ListingDetailActions";
 import { ListingMediaGallery } from "./ListingMediaGallery";
+import { ListingReportButton } from "./ListingReportButton";
 import { ListingPrice } from "./PriceWithWords";
 import { ViewTracker } from "./ViewTracker";
 import { ListingLoginNudge } from "./ListingLoginNudge";
@@ -164,9 +166,18 @@ export async function ListingDetailView({
               <h1 className="font-lora text-[22px] font-semibold m-0 mb-2">
                 {listing.title}
               </h1>
-              <div className="text-sm text-muted mb-3">
-                <Icon name="pin" /> {listing.area}, {listing.cityName}
-                {postedBy && <span className="ml-2 font-semibold text-text-soft">· {postedBy}</span>}
+              <div className="flex items-center justify-between gap-3 text-sm text-muted mb-3">
+                <div>
+                  <Icon name="pin" /> {listing.area}, {listing.cityName}
+                  {postedBy && <span className="ml-2 font-semibold text-text-soft">· {postedBy}</span>}
+                </div>
+                {!listing.isOwner && (
+                  <ListingReportButton
+                    listingTitle={listing.title}
+                    listingUrl={`${process.env.NEXT_PUBLIC_SITE_URL ?? "https://bhavano.com"}${buildListingPath(listing)}`}
+                    defaultName={userName}
+                  />
+                )}
               </div>
             </ListingMediaGallery>
             {listing.lat !== undefined && listing.lng !== undefined && (

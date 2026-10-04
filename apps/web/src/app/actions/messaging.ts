@@ -2,7 +2,16 @@
 
 import type { MessageDto } from "@bhavano/types";
 import { auth } from "@/auth";
-import { BffAuthError, deleteMessage, fetchUnreadCount, markConversationRead, sendFirstMessage, sendMessage } from "@/lib/bff";
+import {
+  BffAuthError,
+  blockConversationUser,
+  deleteMessage,
+  fetchUnreadCount,
+  markConversationRead,
+  sendFirstMessage,
+  sendMessage,
+  unblockConversationUser,
+} from "@/lib/bff";
 
 export type SendFirstMessageResult =
   | { requiresLogin: true }
@@ -41,7 +50,9 @@ export async function deleteMessageAction(messageId: string): Promise<DeleteMess
   }
 }
 
-export type SendMessageResult = { requiresLogin: true } | { requiresLogin: false };
+export type SendMessageResult =
+  | { requiresLogin: true }
+  | { requiresLogin: false; error?: string };
 
 export async function sendMessageAction(conversationId: string, body: string): Promise<SendMessageResult> {
   const session = await auth();
@@ -52,7 +63,36 @@ export async function sendMessageAction(conversationId: string, body: string): P
     return { requiresLogin: false };
   } catch (error) {
     if (error instanceof BffAuthError) return { requiresLogin: true };
-    throw error;
+    // Reachable now that blocking exists: MessagingService.sendMessage 403s "You can't message
+    // this user" — surfaced here rather than thrown, same as sendFirstMessageAction already does
+    // for its own blocked case, so the thread can show it instead of a generic error page.
+    return { requiresLogin: false, error: error instanceof Error ? error.message : "Failed to send message" };
+  }
+}
+
+export type BlockUserResult = { requiresLogin: true } | { requiresLogin: false; error?: string };
+
+export async function blockConversationUserAction(conversationId: string): Promise<BlockUserResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { requiresLogin: true };
+  try {
+    await blockConversationUser(session.accessToken, conversationId);
+    return { requiresLogin: false };
+  } catch (error) {
+    if (error instanceof BffAuthError) return { requiresLogin: true };
+    return { requiresLogin: false, error: error instanceof Error ? error.message : "Something went wrong" };
+  }
+}
+
+export async function unblockConversationUserAction(conversationId: string): Promise<BlockUserResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { requiresLogin: true };
+  try {
+    await unblockConversationUser(session.accessToken, conversationId);
+    return { requiresLogin: false };
+  } catch (error) {
+    if (error instanceof BffAuthError) return { requiresLogin: true };
+    return { requiresLogin: false, error: error instanceof Error ? error.message : "Something went wrong" };
   }
 }
 

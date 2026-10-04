@@ -91,6 +91,10 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
           accessToken={session.accessToken}
           currentUserId={session.user.id}
           initialMessages={messages}
+          otherPartyName={conversation.otherPartyName}
+          initialBlocked={conversation.blocked}
+          defaultName={session.user.name}
+          defaultEmail={session.user.email}
         />
       </div>
       {/* A chat fills the phone screen, so there is nowhere to put a footer that would not mean

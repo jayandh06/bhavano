@@ -4,10 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { MessageDeletedEvent, MessageDto } from "@bhavano/types";
 import { getSocket } from "@/lib/socket";
-import { deleteMessageAction, markReadAction, sendFirstMessageAction, sendMessageAction } from "@/app/actions/messaging";
+import {
+  blockConversationUserAction,
+  deleteMessageAction,
+  markReadAction,
+  sendFirstMessageAction,
+  sendMessageAction,
+  unblockConversationUserAction,
+} from "@/app/actions/messaging";
 import { useAuthGate } from "./AuthGateProvider";
 import { MessageBody } from "./MessageBody";
 import { BoostOfferMessageCard } from "./BoostOfferMessageCard";
+import { ReportDialog } from "./ReportDialog";
 import { Icon } from "./Icon";
 
 export function MessageThread({
@@ -16,6 +24,10 @@ export function MessageThread({
   accessToken,
   currentUserId,
   initialMessages,
+  otherPartyName,
+  initialBlocked,
+  defaultName,
+  defaultEmail,
 }: {
   /** Null before the first message is sent — no Conversation row exists yet (see
    * docs/plans/message-delete-and-lazy-conversation-creation.md). Nothing is fetched or joined
@@ -26,13 +38,46 @@ export function MessageThread({
   accessToken: string;
   currentUserId: string;
   initialMessages: MessageDto[];
+  /** Null for the not-yet-created thread, same reason/timing as conversationId — Report/Block
+   * only ever render once a real conversationId exists anyway. */
+  otherPartyName?: string | null;
+  /** Renamed from the prop name to `blocked` state below, so a block/unblock made from here
+   * updates the composer immediately without re-fetching the conversation. */
+  initialBlocked?: boolean;
+  defaultName?: string | null;
+  defaultEmail?: string | null;
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [draft, setDraft] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState(initialBlocked ?? false);
+  const [blockPending, setBlockPending] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { requireLogin } = useAuthGate();
   const router = useRouter();
+
+  async function onToggleBlock() {
+    if (!conversationId) return;
+    if (!blocked && !window.confirm(`Block ${otherPartyName ?? "this user"}? They won't be able to message you.`)) {
+      return;
+    }
+    setBlockPending(true);
+    const result = blocked
+      ? await unblockConversationUserAction(conversationId)
+      : await blockConversationUserAction(conversationId);
+    setBlockPending(false);
+    if (result.requiresLogin) {
+      requireLogin();
+      return;
+    }
+    if (result.error) {
+      window.alert(result.error);
+      return;
+    }
+    setBlocked(!blocked);
+  }
 
   useEffect(() => {
     if (!conversationId) return;
@@ -87,6 +132,7 @@ export function MessageThread({
     const body = draft.trim();
     if (!body) return;
     setDraft("");
+    setSendError(null);
 
     if (!conversationId) {
       // No Conversation row exists yet — this call creates it and the message atomically, then
@@ -98,6 +144,7 @@ export function MessageThread({
       }
       if ("error" in result) {
         setDraft(body);
+        setSendError(result.error);
         return;
       }
       router.replace(`/messages/${result.conversationId}`);
@@ -107,7 +154,17 @@ export function MessageThread({
     // The message arrives back over the socket (sender's own connection is also in the
     // room), so no separate optimistic-append is needed.
     const result = await sendMessageAction(conversationId, body);
-    if (result.requiresLogin) requireLogin();
+    if (result.requiresLogin) {
+      requireLogin();
+      return;
+    }
+    // Reachable now that blocking exists: a block placed by the other party between loading
+    // this page and sending (e.g. a second tab) 403s here — restore the draft same as the
+    // first-message error path above.
+    if (result.error) {
+      setDraft(body);
+      setSendError(result.error);
+    }
   }
 
   async function onDelete(messageId: string) {
@@ -123,6 +180,28 @@ export function MessageThread({
     // bottom edge of the viewport and stays there. On desktop it keeps its fixed 70vh box, which
     // sits in a normally scrolling page alongside the footer.
     <div className="flex flex-col flex-1 min-h-0 sm:flex-none sm:h-[70vh]">
+      {conversationId && (
+        <div className="flex items-center justify-between gap-3 shrink-0 pb-2 border-b border-border text-[12.5px]">
+          <span className="text-muted truncate">{otherPartyName ?? "Conversation"}</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              className="inline-flex items-center gap-1 text-muted hover:text-text bg-transparent border-0 p-0 cursor-pointer"
+            >
+              <Icon name="flag" /> Report
+            </button>
+            <button
+              type="button"
+              onClick={onToggleBlock}
+              disabled={blockPending}
+              className="inline-flex items-center gap-1 text-muted hover:text-text bg-transparent border-0 p-0 cursor-pointer disabled:opacity-60"
+            >
+              <Icon name="block" /> {blocked ? "Unblock" : "Block"}
+            </button>
+          </div>
+        </div>
+      )}
       <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto py-4 flex flex-col gap-2.5">
         {/* No Conversation row exists until the first message is sent (see this component's
             conversationId doc), so an empty list here is simply "nothing sent yet", not a
@@ -164,30 +243,47 @@ export function MessageThread({
         })}
       </div>
 
-      {/* pb for the phone's home-indicator strip: without it the Send button sits under the
-          swipe bar on a gesture-navigation device. Zero on anything that has no such inset. */}
-      <div className="flex gap-2.5 border-t border-border pt-3 shrink-0 pb-[env(safe-area-inset-bottom)]">
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
-          placeholder="Type a message…"
-          rows={1}
-          className="flex-1 border border-border rounded-[9px] px-3.5 py-3 text-base sm:text-sm outline-none bg-surface text-text resize-none overflow-y-auto max-h-32"
+      {sendError && <p className="text-[#b3413a] text-[12.5px] shrink-0 mb-1">{sendError}</p>}
+
+      {blocked ? (
+        <div className="border-t border-border pt-3 shrink-0 pb-[env(safe-area-inset-bottom)]">
+          <p className="text-sm text-muted text-center m-0">You can&apos;t message in this conversation anymore.</p>
+        </div>
+      ) : (
+        // pb for the phone's home-indicator strip: without it the Send button sits under the
+        // swipe bar on a gesture-navigation device. Zero on anything that has no such inset.
+        <div className="flex gap-2.5 border-t border-border pt-3 shrink-0 pb-[env(safe-area-inset-bottom)]">
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                onSend();
+              }
+            }}
+            placeholder="Type a message…"
+            rows={1}
+            className="flex-1 border border-border rounded-[9px] px-3.5 py-3 text-base sm:text-sm outline-none bg-surface text-text resize-none overflow-y-auto max-h-32"
+          />
+          <button
+            onClick={onSend}
+            className="bg-green text-on-green border-0 rounded-lg px-5 py-3 text-sm font-bold cursor-pointer"
+          >
+            Send
+          </button>
+        </div>
+      )}
+      {conversationId && reportOpen && (
+        <ReportDialog
+          topic="user_report"
+          context={`Conversation with ${otherPartyName ?? "this user"} (conversation ${conversationId})`}
+          defaultName={defaultName ?? undefined}
+          defaultEmail={defaultEmail ?? undefined}
+          onClose={() => setReportOpen(false)}
         />
-        <button
-          onClick={onSend}
-          className="bg-green text-on-green border-0 rounded-lg px-5 py-3 text-sm font-bold cursor-pointer"
-        >
-          Send
-        </button>
-      </div>
+      )}
     </div>
   );
 }

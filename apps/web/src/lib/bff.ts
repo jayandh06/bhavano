@@ -946,6 +946,17 @@ export function markConversationRead(accessToken: string, conversationId: string
   return authedBffFetch(accessToken, `/conversations/${conversationId}/read`, { method: "POST" });
 }
 
+/** Blocks whoever the other participant in this conversation is — the server resolves that from
+ * the conversation itself, never from a raw id this client has to know. Same endpoint mobile's
+ * bffClient.ts already calls; see MessagingService.blockOtherParticipant's own doc comment. */
+export function blockConversationUser(accessToken: string, conversationId: string): Promise<void> {
+  return authedBffFetch(accessToken, `/conversations/${conversationId}/block`, { method: "POST" });
+}
+
+export function unblockConversationUser(accessToken: string, conversationId: string): Promise<void> {
+  return authedBffFetch(accessToken, `/conversations/${conversationId}/block`, { method: "DELETE" });
+}
+
 /** Total unread messages across all of the caller's conversations — the number on the Messages
  * count badge in the header. */
 export function fetchUnreadCount(accessToken: string): Promise<{ count: number }> {

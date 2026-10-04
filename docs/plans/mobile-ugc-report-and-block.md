@@ -1,5 +1,9 @@
 # Mobile UGC reporting and blocking (Apple Guideline 1.2 / 2.1)
 
+**Update (2026-10-04):** extended to web for parity — see "Web parity" below. The title/doc stays
+named for the mobile/Apple motivation since that is why this exists at all, but the backend and
+UI are now cross-platform.
+
 ## Why
 
 Apple's App Review rejected the first iOS submission under **Guideline 2.1 — Information
@@ -39,10 +43,10 @@ of raw ids. `POST/DELETE /conversations/:id/block` resolves "the other participa
 from the conversation and the caller's own id — the client never has to know or pass the other
 party's raw user id.
 
-**Mobile-only UI for now.** Apple reviews the iOS app specifically; the backend enforcement
-protects both platforms the moment it exists (a mobile-initiated block stops messages sent via
-web too, since it's the same `Message`/`Conversation` tables), but a web Block UI wasn't built
-here — flagged as a reasonable follow-up, not required for this submission.
+**Mobile-first, not mobile-only.** Apple reviews the iOS app specifically, so that UI came first;
+the backend enforcement already protected both platforms the moment it existed (a
+mobile-initiated block stops messages sent via web too, since it's the same
+`Message`/`Conversation` tables). Web's own UI followed the same day — see "Web parity" below.
 
 ## What shipped
 
@@ -61,6 +65,31 @@ here — flagged as a reasonable follow-up, not required for this submission.
   "⋮" menu on the conversation screen offers Report (`user_report`) and Block/Unblock, and the
   composer is replaced by a fixed banner while `blocked` is true.
 
+## Web parity (2026-10-04)
+
+No backend work needed — `user_report`, `BlockedUser`, and the block/unblock endpoints already
+existed for mobile. Web was missing only the UI:
+
+- **`ReportDialog.tsx`**: a hand-rolled modal (matching `BoostRecoveryDialog.tsx`'s overlay
+  pattern — there is no shared Modal component in this app) wrapping the same fields
+  `ContactForm.tsx` already has (name/email/phone/message), submitting via the existing
+  `submitSupportTicketAction`. Unlike mobile's `ReportSheet`, **not login-gated** — this is the
+  same public, unauthenticated `/support/tickets` endpoint the general Contact Us form already
+  uses, so a logged-out visitor reporting a listing works exactly like it already does there.
+- **`ListingReportButton.tsx`**: a small client wrapper owning the dialog's open/close state, so
+  the (async, Server Component) `ListingDetailView.tsx` doesn't need client state of its own —
+  a plain "Report" text link next to the area/city line, hidden for the listing's own owner.
+- **`MessageThread.tsx`**: a new header row above the message list ("Report" / "Block"/"Unblock"
+  text buttons) and a disabled-composer banner when `blocked` — `ConversationDetailDto.blocked`
+  was already returned by `fetchConversation()` but previously discarded by `page.tsx`.
+  `blockConversationUser`/`unblockConversationUser` added to `apps/web/src/lib/bff.ts` and a
+  `"use server"` action in `app/actions/messaging.ts`, mirroring `sendMessageAction`'s shape.
+  `sendMessageAction`'s result type gained an `error?: string` field — reachable now that a
+  blocked reply 403s, which previously had no surfaced-error path to reuse.
+- Full web type-check clean. Not yet verified: an actual browser walkthrough (open the dialog,
+  submit a report, block/unblock from a real conversation) — same caveat as mobile's own
+  verification note below.
+
 ## Verification
 
 - `MessagingService` unit tests: block/unblock resolve the right "other participant" from either
@@ -75,7 +104,6 @@ here — flagged as a reasonable follow-up, not required for this submission.
 
 ## Out of scope / follow-ups
 
-- A web Block/Report UI — the backend already supports it; only the UI is missing.
 - An admin-facing view of `user_report` tickets beyond the existing email-to-support pipeline —
   same as every other support topic (see `contact-us-support-form.md`'s own "Out of scope").
 - Blocking does not retroactively hide message history already exchanged, only prevents new
