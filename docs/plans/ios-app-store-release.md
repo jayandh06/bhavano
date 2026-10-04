@@ -215,18 +215,26 @@ Store provisioning profile exist under Apple team `L6RKCXT9K4`, both valid to 20
 `--non-interactive` builds work without an Apple login prompt. `appVersionSource: "remote"` plus
 `autoIncrement` handles build numbers.
 
-`submit.production` is filled in and uses **App Store Connect API key** auth (`ascApiKeyPath` /
-`ascApiKeyId` / `ascApiKeyIssuerId` + `ascAppId: 6811878602`) rather than the `appleId` /
-`appleTeamId` pair this section originally called for — an API key needs no 2FA prompt, which is
-what makes submission scriptable. The key lives outside the repo at
-`~/.config/bhavano-secrets/AuthKey_6KPL9BLM97.p8`; a machine without that file cannot submit.
+`submit.production` is filled in and uses **App Store Connect API key** auth (`ascApiKeyId` /
+`ascApiKeyIssuerId` + `ascAppId: 6811878602`) rather than the `appleId` / `appleTeamId` pair this
+section originally called for — an API key needs no 2FA prompt, which is what makes submission
+scriptable. `ascApiKeyPath` itself is deliberately **not** in `eas.json` — a filesystem path is
+machine-specific, and `eas.json`'s first version hardcoded one Mac's absolute path
+(`/Users/jayandhan.r/...`), which silently broke `submit` on every other machine (caught
+2026-10-04 on a Windows machine). Each machine that submits sets its own
+`EXPO_ASC_API_KEY_PATH` env var pointing at wherever *it* keeps the key — conventionally
+`~/.config/bhavano-secrets/AuthKey_6KPL9BLM97.p8` (see `.gitignore`'s own comment on `*.p8`), but
+the point is it never has to be the same path twice. Apple only lets this key's `.p8` be
+downloaded once, at creation — back it up somewhere outside this repo instead of relying on
+only one machine having it.
 
 ### Getting it to testers
 
 1. `eas build --platform ios --profile production` (or add `--auto-submit` to do the next step
    automatically).
-2. `eas submit --platform ios --profile production` — uploads to App Store Connect. Processing then
-   takes roughly 10-15 minutes before the build appears in TestFlight.
+2. Set `EXPO_ASC_API_KEY_PATH` to this machine's copy of the key (see above), then
+   `eas submit --platform ios --profile production` — uploads to App Store Connect. Processing
+   then takes roughly 10-15 minutes before the build appears in TestFlight.
 3. **Internal testers** (up to 100 people who hold a role on the App Store Connect account) can
    install as soon as processing finishes — no review. **External testers** (up to 10,000, invited
    by email or a public link) require **Beta App Review** first, which is a separate, lighter
