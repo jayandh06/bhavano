@@ -48,6 +48,7 @@ import type {
   UserProfileDto,
   PublicLoginNudgeDto,
 } from "@bhavano/types";
+import { installAcquisitionFields } from "./installReferrer";
 import { isTrackingAuthorized } from "./trackingConsent";
 
 const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL ?? "http://localhost:4000";
@@ -635,7 +636,7 @@ export function sendOtp(phone: string): Promise<{ success: true }> {
   return bffFetch("/auth/otp/send", { method: "POST", body: JSON.stringify({ phone }) });
 }
 
-export function verifyOtp(
+export async function verifyOtp(
   phone: string,
   code: string,
   viewerKey?: string,
@@ -644,11 +645,11 @@ export function verifyOtp(
 ): Promise<{ user: { id: string; phone?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/otp/verify", {
     method: "POST",
-    body: JSON.stringify({ phone, code, viewerKey, sessionId, referralCode }),
+    body: JSON.stringify({ phone, code, viewerKey, sessionId, referralCode, ...(await installAcquisitionFields()) }),
   });
 }
 
-export function loginWithGoogle(
+export async function loginWithGoogle(
   idToken: string,
   viewerKey?: string,
   sessionId?: string,
@@ -656,14 +657,14 @@ export function loginWithGoogle(
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/google", {
     method: "POST",
-    body: JSON.stringify({ idToken, viewerKey, sessionId, referralCode }),
+    body: JSON.stringify({ idToken, viewerKey, sessionId, referralCode, ...(await installAcquisitionFields()) }),
   });
 }
 
 /** `fullName` is only ever non-undefined on the very first Sign in with Apple authorization for
  * this user+app — see HomeSheetsProvider.tsx's handleApple and AuthService.loginWithApple's own
  * doc comment on why that one-shot value has to be captured and sent up right then or it's gone. */
-export function loginWithApple(
+export async function loginWithApple(
   identityToken: string,
   fullName?: string,
   viewerKey?: string,
@@ -672,7 +673,7 @@ export function loginWithApple(
 ): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
   return bffFetch("/auth/apple", {
     method: "POST",
-    body: JSON.stringify({ identityToken, fullName, viewerKey, sessionId, referralCode }),
+    body: JSON.stringify({ identityToken, fullName, viewerKey, sessionId, referralCode, ...(await installAcquisitionFields()) }),
   });
 }
 

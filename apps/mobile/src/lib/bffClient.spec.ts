@@ -3,6 +3,8 @@
 // here (before the import below) so this stays a pure-logic test with no native-module setup:
 // the mock replaces the whole module, so react-native is never actually required.
 jest.mock("./trackingConsent", () => ({ isTrackingAuthorized: () => null }));
+// Same for ./installReferrer (react-native, expo-application, AsyncStorage).
+jest.mock("./installReferrer", () => ({ installAcquisitionFields: () => Promise.resolve({}) }));
 
 import {
   BffError,

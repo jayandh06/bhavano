@@ -13,6 +13,7 @@ import { HomeSheetsProvider, useHomeSheets } from "../src/context/HomeSheetsProv
 import { useCitiesQuery, useUnreadCountSync } from "../src/lib/queries";
 import { configureNotificationHandler, onNotificationTap } from "../src/lib/push";
 import { requestTrackingConsent } from "../src/lib/trackingConsent";
+import { recordInstallReferrerOnce } from "../src/lib/installReferrer";
 import { BottomTabBar } from "../src/components/home/BottomTabBar";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { SoftNavAppPageViews } from "../src/components/home/SoftNavAppPageViews";
@@ -124,6 +125,10 @@ function AppNavigation() {
   useEffect(() => {
     const timer = setTimeout(() => void requestTrackingConsent(), 1200);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    void recordInstallReferrerOnce();
   }, []);
 
   return (
