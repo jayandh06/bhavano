@@ -3,6 +3,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { EmailProvider } from './providers/email.provider';
 import type { WhatsappProvider } from './providers/whatsapp.provider';
 import type { Msg91Provider } from './providers/msg91.provider';
+import type { FacebookProvider } from './providers/facebook.provider';
 
 /**
  * Which channel the Boost promotion goes out on, and what the WhatsApp half is handed.
@@ -17,14 +18,16 @@ function make() {
   const sendBoostPromotion = jest.fn().mockResolvedValue({ sent: true, messageId: 'req-1' });
   const sendAdPostedConfirmation = jest.fn().mockResolvedValue({ sent: true, messageId: 'req-2' });
   const sendTemplate = jest.fn().mockResolvedValue(true);
+  const publishListing = jest.fn().mockResolvedValue('page123_post456');
 
   const service = new NotificationsService(
     { send: emailSend } as unknown as EmailProvider,
     { sendTemplate } as unknown as WhatsappProvider,
     { sendBoostPromotion, sendAdPostedConfirmation } as unknown as Msg91Provider,
+    { configured: true, publishListing } as unknown as FacebookProvider,
     { get: jest.fn().mockReturnValue('https://www.bhavano.com') } as unknown as ConfigService,
   );
-  return { service, emailSend, sendBoostPromotion, sendAdPostedConfirmation, sendTemplate };
+  return { service, emailSend, sendBoostPromotion, sendAdPostedConfirmation, sendTemplate, publishListing };
 }
 
 const LISTING = {
@@ -217,5 +220,38 @@ describe('NotificationsService — support@ visibility on the WhatsApp branch', 
 
     expect(result).toBeNull();
     expect(emailSend).not.toHaveBeenCalled();
+  });
+});
+
+describe('NotificationsService.publishToFacebookPage', () => {
+  it('builds the message and absolute link, then returns the facebook channel result', async () => {
+    const { service, publishListing } = make();
+
+    const result = await service.publishToFacebookPage({ ...LISTING, priceText: '₹25,000' });
+
+    expect(publishListing).toHaveBeenCalledWith(
+      '2 BHK for rent in Koramangala\n₹25,000 · Koramangala, Bengaluru',
+      'https://www.bhavano.com/bengaluru/koramangala/rent-lease/apartment/2-bhk-for-rent-in-koramangala-abc123',
+    );
+    expect(result).toEqual({ channel: 'facebook', messageId: 'page123_post456' });
+  });
+
+  it('skips without calling publishListing when Facebook is not configured', async () => {
+    const { service, publishListing } = make();
+    (service as unknown as { facebook: { configured: boolean } }).facebook.configured = false;
+
+    const result = await service.publishToFacebookPage({ ...LISTING, priceText: '₹25,000' });
+
+    expect(publishListing).not.toHaveBeenCalled();
+    expect(result).toBeNull();
+  });
+
+  it('returns null when the post itself fails', async () => {
+    const { service, publishListing } = make();
+    publishListing.mockResolvedValueOnce(false);
+
+    const result = await service.publishToFacebookPage({ ...LISTING, priceText: '₹25,000' });
+
+    expect(result).toBeNull();
   });
 });

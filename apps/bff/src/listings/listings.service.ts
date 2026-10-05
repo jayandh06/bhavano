@@ -1343,6 +1343,37 @@ export class ListingsService {
         .catch(() => undefined);
     }
 
+    // Facebook Page cross-post (docs/plans/facebook-page-publishing.md) — every live listing,
+    // unconditionally (unlike the owner notification above, this isn't gated on having a real
+    // owner on file: a bulk-imported listing is still a real ad on the site and still gets
+    // shared). `formatListingPrice` is called here, not inside NotificationsService, because this
+    // is the only place that already has the category's per-unit area-field config in hand.
+    this.notificationsService
+      .publishToFacebookPage({
+        id: listing.id,
+        slug: listing.slug,
+        category: listing.category,
+        transactionType: listing.transactionType,
+        cityName: listing.city.name,
+        area: listing.area.name,
+        title: listing.title,
+        priceText:
+          this.formatListingPrice(listing) +
+          (listing.price === 0 ? '' : ` ${listing.priceQualifier}`),
+      })
+      .then((result) => {
+        if (!result) return;
+        return this.prisma.listingNotificationLog.create({
+          data: {
+            listingId: listing.id,
+            kind: 'posted',
+            channel: result.channel,
+            providerMessageId: result.messageId ?? null,
+          },
+        });
+      })
+      .catch(() => undefined);
+
     // Referral program, Phase 3 (docs/plans/bhavano-referral-program-implementation.md) — a no-op
     // for the overwhelming majority of listings (no referral on file for this owner at all), and
     // itself a no-op past the referred user's first-ever approved ad. Fire-and-forget, same

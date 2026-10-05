@@ -5,6 +5,7 @@ import { buildListingPath } from '@bhavano/types/listingPath';
 import { WhatsappProvider } from './providers/whatsapp.provider';
 import { EmailProvider } from './providers/email.provider';
 import { Msg91Provider } from './providers/msg91.provider';
+import { FacebookProvider } from './providers/facebook.provider';
 import { renderEmail } from './emailLayout';
 import { loadTemplate, renderTemplate } from './templateLoader';
 
@@ -26,6 +27,7 @@ export class NotificationsService {
     private readonly emailProvider: EmailProvider,
     private readonly whatsapp: WhatsappProvider,
     private readonly msg91: Msg91Provider,
+    private readonly facebook: FacebookProvider,
     private readonly config: ConfigService,
   ) {}
 
@@ -833,5 +835,31 @@ export class NotificationsService {
     }
 
     return null;
+  }
+
+  /**
+   * Shares a listing on the Bhavano Facebook Page — see docs/plans/facebook-page-publishing.md.
+   *
+   * Unlike `notifyListingPosted`, this isn't addressed to the listing's owner — it's a public
+   * Page post, fired for every live listing regardless of who posted it or whether they have
+   * contact details on file. `priceText` arrives already formatted (`₹50,000`, a per-unit rate,
+   * or "Contact for price") because that formatting — including the per-category per-unit split —
+   * lives in `ListingsService.formatListingPrice`, the only place that already has the category's
+   * area-field config in hand.
+   */
+  async publishToFacebookPage(
+    listing: Pick<
+      ListingDetailDto,
+      'id' | 'slug' | 'category' | 'transactionType' | 'cityName' | 'area' | 'title'
+    > & { priceText: string },
+  ): Promise<{ channel: 'facebook'; messageId: string } | null> {
+    if (!this.facebook.configured) return null;
+
+    const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const link = `${site}${buildListingPath(listing)}`;
+    const message = `${listing.title}\n${listing.priceText} · ${listing.area}, ${listing.cityName}`;
+
+    const postId = await this.facebook.publishListing(message, link);
+    return postId ? { channel: 'facebook', messageId: postId } : null;
   }
 }
