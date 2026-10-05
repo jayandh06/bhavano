@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { androidIntentUrl, appPathForWebPath, recordAdVisit } from "@/lib/appLinks";
-import { useCameFromAdRecently, useDismissedRecently, useIsAndroidBrowser } from "@/lib/useAppLinkEnv";
+import { useCameFromAdRecently, useDismissedForVisit, useIsAndroidBrowser } from "@/lib/useAppLinkEnv";
 import { reportGetAppEvent } from "@/lib/getAppEvents";
 import { Icon } from "./Icon";
 
@@ -16,7 +16,8 @@ import { Icon } from "./Icon";
  * (ProfileCompletionBanner, ListingLoginNudge) above it instead of under it. */
 
 const DISMISS_KEY = "bhavano_open_in_app_dismissed";
-const DISMISS_MS = 30 * 24 * 60 * 60 * 1000;
+/** ✕ hides it for the rest of the visit; it's back after this long away (GA4's session gap). */
+const PAUSE_MS = 30 * 60 * 1000;
 const STRIP_HEIGHT = "56px";
 
 /** Mid-task pages where pulling someone into the app would cost the task itself (the post-ad
@@ -27,8 +28,7 @@ export function OpenInAppStrip() {
   const pathname = usePathname();
   const android = useIsAndroidBrowser();
   const fromAd = useCameFromAdRecently();
-  const dismissedEarlier = useDismissedRecently(DISMISS_KEY, DISMISS_MS);
-  const [dismissedNow, setDismissedNow] = useState(false);
+  const { dismissed, dismiss } = useDismissedForVisit(DISMISS_KEY, PAUSE_MS, pathname);
 
   // On every navigation, not just mount, so an ad landing page records the visit even when the
   // strip is hidden on it anyway (e.g. an ad that lands on /post).
@@ -39,8 +39,7 @@ export function OpenInAppStrip() {
   const visible =
     android &&
     !fromAd &&
-    !dismissedEarlier &&
-    !dismissedNow &&
+    !dismissed &&
     !HIDDEN_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   useEffect(() => {
@@ -76,13 +75,8 @@ export function OpenInAppStrip() {
       </a>
       <button
         onClick={() => {
-          try {
-            localStorage.setItem(DISMISS_KEY, String(Date.now()));
-          } catch {
-            /* ignore */
-          }
           reportGetAppEvent("dismiss", "strip");
-          setDismissedNow(true);
+          dismiss();
         }}
         aria-label="Dismiss"
         className="shrink-0 w-8 h-8 flex items-center justify-center bg-transparent border-0 text-muted cursor-pointer"
