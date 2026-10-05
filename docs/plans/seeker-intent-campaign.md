@@ -2,6 +2,12 @@
 
 ## Status: built 2026-09-30, PAUSED — not yet reviewed/enabled by the owner
 
+**Update (observed 2026-10-04, see [`google-ads-keyword-audit-2026-10.md`](google-ads-keyword-audit-2026-10.md)):**
+the campaign is now **ENABLED**; Kolkata Buy/Rent ad groups were added 2026-10-01; and on
+2026-10-04 it was moved, with all 8 poster campaigns, onto the shared portfolio
+`Bhavano-TargetCPA` (₹75 target) — not the standalone goal/bidding described below. First week:
+₹1,386, 56 clicks, 0 saved searches, 1 "Post ad success".
+
 Built exactly as sketched below, plus the 14 seeker-bycatch keywords paused in the existing poster
 campaigns (see "Bycatch removed from poster campaigns" at the end). Nothing spends until the
 campaign is switched to Enabled in the Ads UI.
