@@ -46,10 +46,10 @@ banner CTR / dismiss rate.
 
 - **`OpenInAppStrip`** (root layout): fixed bottom bar on Android browsers only (not in-app
   WebViews), "Open app" → `intent://<app path>#Intent;scheme=bhavano;package=…;S.browser_fallback_url=<Play URL>`
-  — opens the same screen in the app, or the Play Store. ✕ hides it for the rest of the visit: it
-  returns once the visitor comes back after 30+ minutes away (`useDismissedForVisit`; the clock
-  restarts on every navigation and whenever the tab is hidden). Changed from a 30-day dismiss on
-  2026-10-05, so people who closed it once keep seeing it on later visits. While visible it sets
+  — opens the same screen in the app, or the Play Store. ✕ hides it for the rest of the day; it's
+  back on the visitor's next calendar day, local time (`useDismissedToday`). Changed from a 30-day
+  dismiss on 2026-10-05 (briefly a 30-minute pause between visits), so people who closed it once
+  still see it on later days. While visible it sets
   `--app-strip-h`, which pads `<body>` and lifts `ProfileCompletionBanner` / `ListingLoginNudge`
   above it.
   - **Hidden for 30 days after a paid-ad click** (`gclid`/`gbraid`/`wbraid`/`utm_medium=cpc`):
