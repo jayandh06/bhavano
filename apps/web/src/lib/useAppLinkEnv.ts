@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { cameFromAdRecently, isAndroidBrowser } from "./appLinks";
 
 const noSubscribe = () => () => {};
@@ -31,4 +31,31 @@ export function useDismissedRecently(key: string, windowMs: number): boolean {
     },
     () => true,
   );
+}
+
+/** True once, right after some earlier action on this tab set `key` in sessionStorage — consumed
+ * on first read (a plain effect, not a setState-in-effect: the removal has nothing to render) so
+ * revisiting the same page later in the same tab doesn't show it again. Server: false, same
+ * reason as the other hooks here — sessionStorage doesn't exist there. */
+export function useConsumeSessionFlag(key: string | null): boolean {
+  const flagged = useSyncExternalStore(
+    noSubscribe,
+    () => {
+      try {
+        return key !== null && sessionStorage.getItem(key) === "1";
+      } catch {
+        return false;
+      }
+    },
+    () => false,
+  );
+  useEffect(() => {
+    if (!flagged || key === null) return;
+    try {
+      sessionStorage.removeItem(key);
+    } catch {
+      /* ignore */
+    }
+  }, [flagged, key]);
+  return flagged;
 }

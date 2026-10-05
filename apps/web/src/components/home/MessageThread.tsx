@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { MessageDeletedEvent, MessageDto } from "@bhavano/types";
 import { getSocket } from "@/lib/socket";
+import { appPathForWebPath } from "@/lib/appLinks";
+import { useConsumeSessionFlag } from "@/lib/useAppLinkEnv";
 import {
   blockConversationUserAction,
   deleteMessageAction,
@@ -15,8 +17,17 @@ import {
 import { useAuthGate } from "./AuthGateProvider";
 import { MessageBody } from "./MessageBody";
 import { BoostOfferMessageCard } from "./BoostOfferMessageCard";
+import { GetAppCard } from "./GetAppCard";
 import { ReportDialog } from "./ReportDialog";
 import { Icon } from "./Icon";
+
+/** sessionStorage key for "the first message on this conversation was just sent" — set in
+ * onSend() right before its redirect to the canonical thread URL, consumed by
+ * useConsumeSessionFlag on that URL's next mount. Can't be plain component state: the redirect
+ * is a full route change, so this MessageThread instance unmounts and a new one mounts. */
+function justSentKey(conversationId: string): string {
+  return `bhavano_first_msg_sent_${conversationId}`;
+}
 
 export function MessageThread({
   conversationId,
@@ -53,10 +64,15 @@ export function MessageThread({
   const [blocked, setBlocked] = useState(initialBlocked ?? false);
   const [blockPending, setBlockPending] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  // True right after onSend()'s redirect lands on this conversation's canonical URL — the flag
+  // it leaves in sessionStorage — the one moment a reply notification is obviously worth more
+  // than refreshing a browser tab. See docs/plans/drive-users-to-android-app.md step 3.
+  const justSentFirst = useConsumeSessionFlag(conversationId ? justSentKey(conversationId) : null);
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { requireLogin } = useAuthGate();
   const router = useRouter();
+  const pathname = usePathname();
 
   async function onToggleBlock() {
     if (!conversationId) return;
@@ -146,6 +162,11 @@ export function MessageThread({
         setDraft(body);
         setSendError(result.error);
         return;
+      }
+      try {
+        sessionStorage.setItem(justSentKey(result.conversationId), "1");
+      } catch {
+        /* ignore */
       }
       router.replace(`/messages/${result.conversationId}`);
       return;
@@ -242,6 +263,17 @@ export function MessageThread({
           );
         })}
       </div>
+
+      {justSentFirst && conversationId && (
+        <div className="shrink-0 mb-2">
+          <GetAppCard
+            placement="contact"
+            appPath={appPathForWebPath(pathname)}
+            heading="Get the owner's reply as a notification"
+            body="The Bhavano Android app tells you the instant they reply, so you never miss it."
+          />
+        </div>
+      )}
 
       {sendError && <p className="text-[#b3413a] text-[12.5px] shrink-0 mb-1">{sendError}</p>}
 

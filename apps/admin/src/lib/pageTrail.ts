@@ -74,6 +74,7 @@ const GET_APP_PLACEMENTS: Record<string, string> = {
   post_success: "ad-posted screen",
   my_listings: "My listings",
   footer: "footer link",
+  contact: "message thread",
 };
 
 function getAppLabel(path: string): string {

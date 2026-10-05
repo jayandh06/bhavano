@@ -83,6 +83,9 @@ describe("trailEntry", () => {
     );
     expect(trailEntry("/get-app?event=dismiss&placement=strip").text).toBe("Get app — dismissed (bottom bar)");
     expect(trailEntry("/get-app?event=click&placement=footer").text).toBe("Get app — tapped Google Play (footer link)");
+    expect(trailEntry("/get-app?event=click&placement=contact&to=messages%2Fabc").text).toBe(
+      "Get app — tapped Open app (message thread) → messages/abc",
+    );
   });
 
   it("labels the app's first launch by its Play install referrer", () => {
