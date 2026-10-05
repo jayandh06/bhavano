@@ -31,6 +31,25 @@ Tab switches are now a full reload (a few hundred ms) — acceptable for an inte
 "…") via `useLinkStatus()`, so a slow listings query on a cold start no longer looks like a dead
 click (`docs/plans/admin-lazy-loaded-lists.md`).
 
+## Bug: Listings kept filtering by some listing's owner (2026-10-05)
+
+Reported: the Listings screen kept opening with the User filter set to an owner's name from some
+listing, without the admin ever choosing it.
+
+**Cause:** a listing row's owner-name link (`/?userId=…&userLabel=…&__skipRemember=1`) was meant to
+filter once without being remembered. Middleware honoured the marker by leaving the cookie alone
+and **redirecting to the same URL minus the marker**, but the browser then requested that clean
+URL, which middleware saw as an ordinary filtered visit and remembered. So every owner click became
+the remembered filter, restored on every later bare visit.
+
+**Fix:** `SKIP_REMEMBER_PARAM` is now a plain no-op: the marker stays in the URL and the cookie is
+untouched. Tab, sort, page, date-preset and column links copy every param, so browsing that owner's
+listings stays unremembered too. "Apply filters" drops the marker (`CarriedParams` omits it), so a
+filter the admin actually applies is remembered as before. Cost: `__skipRemember=1` is visible in
+the address bar on that view.
+
+An already-polluted cookie stays until the admin presses Reset or applies a filter once.
+
 ## Tried and rejected (don't retry these)
 
 - **Rewriting instead of redirecting for client navigations** (`NextResponse.rewrite` when

@@ -54,14 +54,11 @@ export function middleware(request: NextRequest): NextResponse {
 
   if (action.type === "noop") return NextResponse.next();
 
-  if (action.type === "restore" || action.type === "transient") {
+  if (action.type === "restore") {
     const url = request.nextUrl.clone();
     url.search = action.query;
     // 307: preserves the request method, though everything here is a GET anyway. Not cached by
-    // the browser — the target depends on a cookie, not just the source URL. "transient" redirects
-    // the same way "restore" does (to strip its marker param from the address bar) but — unlike
-    // every other branch below — never touches the cookie at all, so a click-through filter like a
-    // listing row's owner-name link can't silently become "the" remembered one.
+    // the browser — the target depends on a cookie, not just the source URL.
     return NextResponse.redirect(url, 307);
   }
 
