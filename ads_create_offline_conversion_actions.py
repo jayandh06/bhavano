@@ -38,10 +38,11 @@ ACTIONS = [
     # in-app purchase was invisible to Ads — 9 boost payments from google/cpc clicks recorded as
     # zero conversions. These are uploaded from the Razorpay webhook instead, which sees the
     # purpose, the exact amount and the buyer's stored gclid regardless of platform or ad blocker.
-    ("Boost purchase (offline)", "PURCHASE"),
-    ("Instant alerts purchase (offline)", "PURCHASE"),
-    ("Contact reveal credits purchase (offline)", "PURCHASE"),
-    ("Subscription purchase (offline)", "PURCHASE"),
+    # Renamed to the plain names on 2026-09-21 (rename_retire_offline_actions.py); "Instant alerts
+    # purchase" removed 2026-10-05 (ads_fix_purchase_conversions.py).
+    ("Boost purchase", "PURCHASE"),
+    ("Contact reveal credits purchase", "PURCHASE"),
+    ("Subscription purchase", "PURCHASE"),
 ]
 
 
@@ -72,7 +73,13 @@ def main():
         op.create.type_ = client.enums.ConversionActionTypeEnum.UPLOAD_CLICKS
         op.create.category = getattr(client.enums.ConversionActionCategoryEnum, category)
         op.create.status = client.enums.ConversionActionStatusEnum.ENABLED
-        op.create.counting_type = client.enums.ConversionActionCountingTypeEnum.ONE_PER_CLICK
+        # Purchases count every one (a second boost from the same ad click is real revenue);
+        # leads/signups count one per click.
+        op.create.counting_type = (
+            client.enums.ConversionActionCountingTypeEnum.MANY_PER_CLICK
+            if category == "PURCHASE"
+            else client.enums.ConversionActionCountingTypeEnum.ONE_PER_CLICK
+        )
         op.create.value_settings.always_use_default_value = True
         op.create.value_settings.default_value = 0.0
 
