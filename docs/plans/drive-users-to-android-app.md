@@ -61,8 +61,12 @@ banner CTR / dismiss rate.
   - Hidden on `/post`, `/checkout`, `/auth/*`, `/claim/*`.
   - Web → app path mapping: `appPathForWebPath` in `apps/web/src/lib/appLinks.ts` (listing pages
     → `listing/<id>`, My listings, messages, favourites → `saved`, etc.; anything else → app home).
-- **`GetAppCard`** (`apps/web/src/components/home/GetAppCard.tsx`): Open-the-app button on
-  Android, Play Store QR on desktop (`lg:`), nothing on iOS. `placement`/`appPath`/`heading`/`body`
+- **`GetAppCard`** (`apps/web/src/components/home/GetAppCard.tsx`): Play Store QR on desktop
+  (`lg:`), the "Get it on Google Play" badge on phones and tablets, iPhones included (changed
+  2026-10-05; before, Android got an "Open the app" button and other phones nothing). On Android
+  the badge is the `intent://` link (opens the app at `appPath` if installed, Play otherwise) and
+  shows at every width; elsewhere it's a plain Play link (`utm_medium=play_badge`). Admin's trail
+  shows a tap with an app destination as "tapped Open app", one without as "tapped Google Play". `placement`/`appPath`/`heading`/`body`
   are explicit per call site (step 3 needed per-moment copy and in-app destinations, not one fixed
   pitch) — on the post-ad success screen and below active ads on My listings it's still "Never
   miss an enquiry" → `my-listings`.
