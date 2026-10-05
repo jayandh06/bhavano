@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { androidIntentUrl, appPathForWebPath, recordAdVisit } from "@/lib/appLinks";
 import { useCameFromAdRecently, useDismissedRecently, useIsAndroidBrowser } from "@/lib/useAppLinkEnv";
-import { pushDataLayerEvent } from "@/lib/gtm";
+import { reportGetAppEvent } from "@/lib/getAppEvents";
 import { Icon } from "./Icon";
 
 /** "Open in the Bhavano app" bar on Android mobile web — opens the same page in the app, or the
@@ -69,7 +69,7 @@ export function OpenInAppStrip() {
       </span>
       <a
         href={androidIntentUrl(appPath, "open_in_app_strip", appPath ? appPath.split("/")[0] : "home")}
-        onClick={() => pushDataLayerEvent("open_in_app_click", { placement: "strip", app_path: appPath || "/" })}
+        onClick={() => reportGetAppEvent("click", "strip", appPath)}
         className="shrink-0 text-[13px] font-bold text-on-green bg-green rounded-full px-4 py-2"
       >
         Open app
@@ -81,7 +81,7 @@ export function OpenInAppStrip() {
           } catch {
             /* ignore */
           }
-          pushDataLayerEvent("open_in_app_dismiss", { placement: "strip" });
+          reportGetAppEvent("dismiss", "strip");
           setDismissedNow(true);
         }}
         aria-label="Dismiss"

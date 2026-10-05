@@ -2,7 +2,7 @@
 
 import { androidIntentUrl } from "@/lib/appLinks";
 import { useIsAndroidBrowser } from "@/lib/useAppLinkEnv";
-import { pushDataLayerEvent } from "@/lib/gtm";
+import { reportGetAppEvent } from "@/lib/getAppEvents";
 
 type Placement = "post_success" | "my_listings";
 
@@ -29,7 +29,7 @@ export function GetAppCard({ placement }: { placement: Placement }) {
         </div>
         <a
           href={androidIntentUrl("my-listings", "get_app_card", placement)}
-          onClick={() => pushDataLayerEvent("open_in_app_click", { placement })}
+          onClick={() => reportGetAppEvent("click", placement, "my-listings")}
           className="text-[13px] font-bold text-on-green bg-green rounded-full px-4 py-2 whitespace-nowrap"
         >
           Open the app
