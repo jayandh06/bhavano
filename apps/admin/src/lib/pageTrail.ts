@@ -104,6 +104,7 @@ const INSTALL_MEDIUMS: Record<string, string> = {
   footer_link: "website footer link",
   play_badge: "website Google Play badge",
   play_icon: "website Google Play icon",
+  header_link: "website header link",
 };
 
 function appInstallLabel(path: string): string {

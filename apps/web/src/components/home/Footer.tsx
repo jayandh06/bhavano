@@ -174,7 +174,19 @@ export async function Footer({
         </div>
         <div>
           <div className="font-bold text-[13px] text-text mb-2.5">Get the app</div>
-          <GooglePlayBadge placement="footer" height={44} className="inline-block" />
+          {/* Desktop gets a QR (a phone camera is the easy way from there); phones and tablets
+            * get the Play badge, which opens the Play Store app directly. */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
+          <img
+            src="/app-qr/footer.svg"
+            alt="QR code for the Bhavano app on Google Play"
+            width={96}
+            height={96}
+            loading="lazy"
+            className="hidden lg:block rounded bg-white"
+          />
+          <p className="hidden lg:block text-[12px] text-muted mt-1.5 mb-0 max-w-[120px]">Scan with your Android phone</p>
+          <GooglePlayBadge height={44} className="inline-block lg:hidden" />
         </div>
       </div>
       <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-4">
