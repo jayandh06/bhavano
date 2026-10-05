@@ -49,6 +49,8 @@ DLV_KEYS = [
     "boostDays",
     "topic",
     "trigger",
+    "placement",
+    "app_path",
     # Nested under `user_data` on post_ad_success / signup_complete — raw email + E.164 phone for
     # Google Ads Enhanced Conversions' user-provided data. Deliberately NOT added to EVENTS: they
     # feed the Ads conversion tags only, never GA4 (that would send PII to Analytics). GTM's
@@ -79,6 +81,10 @@ EVENTS = {
     "boost_recovery_shown": ["trigger"],
     "boost_recovery_accepted": [],
     "boost_recovery_dismissed": [],
+    # docs/plans/drive-users-to-android-app.md — the get-the-app strip/card/footer link
+    # (apps/web/src/lib/getAppEvents.ts). GA4-only for the same reason as boost_recovery_*.
+    "open_in_app_click": ["placement", "app_path"],
+    "open_in_app_dismiss": ["placement"],
 }
 
 # Conversion labels for the actions in Ads account 421-406-6478, created by
