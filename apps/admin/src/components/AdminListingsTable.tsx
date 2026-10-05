@@ -527,6 +527,8 @@ export function AdminListingsTable({
         sp={sp}
         omit={[
           "page",
+          // Apply is the admin choosing a filter, so it must be remembered — see SKIP_REMEMBER_PARAM.
+          SKIP_REMEMBER_PARAM,
           ...LISTINGS_FORM_OWNED_PARAMS,
           ...visible.filter((c) => c.filter).map((c) => filterNameFor(c)),
         ]}

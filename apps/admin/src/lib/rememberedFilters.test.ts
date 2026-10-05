@@ -178,27 +178,41 @@ describe("decideFilterAction", () => {
    * Posted-by filter for every later bare visit, the way an ordinary filter would. Only an admin
    * actually typing/picking a name in the UserPicker should persist.
    */
-  it("applies but doesn't remember a filter carrying the skip-remember marker", () => {
+  it("renders but doesn't remember a filter carrying the skip-remember marker", () => {
+    const saved = { "/": "status=active" };
     expect(
       decideFilterAction({
         pathname: "/",
         currentQuery: `userId=u1&userLabel=Jane&${SKIP_REMEMBER_PARAM}=1`,
-        saved: { "/": "status=active" },
+        saved,
       }),
-    ).toEqual({ type: "transient", query: "userId=u1&userLabel=Jane" });
+    ).toEqual({ type: "noop" });
+    expect(saved).toEqual({ "/": "status=active" });
   });
 
-  it("a transient filter leaves an already-remembered one untouched for next time", () => {
-    const saved = { "/": "status=active" };
-    const action = decideFilterAction({
-      pathname: "/",
-      currentQuery: `userId=u1&userLabel=Jane&${SKIP_REMEMBER_PARAM}=1`,
-      saved,
-    });
-    expect(action.type).toBe("transient");
-    // decideFilterAction never even sees `saved` touched for this branch — the object passed in
-    // is never mutated, and no "write" ever reaches the cookie for it.
-    expect(saved).toEqual({ "/": "status=active" });
+  it("keeps not remembering while paging/sorting that view (links carry the marker along)", () => {
+    expect(
+      decideFilterAction({
+        pathname: "/",
+        currentQuery: `userId=u1&userLabel=Jane&${SKIP_REMEMBER_PARAM}=1&sort=-createdAt&page=2`,
+        saved: { "/": "status=active" },
+      }).type,
+    ).toBe("noop");
+  });
+
+  /**
+   * The bug this replaced: the marker used to be redirected away, and the redirected, now
+   * marker-free URL arrived as an ordinary filtered request and was remembered anyway. The same
+   * filter submitted through "Apply filters" (which doesn't carry the marker) is meant to stick.
+   */
+  it("remembers the same filter once it comes without the marker", () => {
+    expect(
+      decideFilterAction({
+        pathname: "/",
+        currentQuery: "userId=u1&userLabel=Jane",
+        saved: { "/": "status=active" },
+      }),
+    ).toEqual({ type: "write", saved: { "/": "userId=u1&userLabel=Jane" } });
   });
 
   it("evicts the least-recently-touched path once over the cap", () => {

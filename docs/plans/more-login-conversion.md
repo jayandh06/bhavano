@@ -91,7 +91,8 @@ visitors don't see it, because their view already registers interest.
   main content (title, price, photos, description, JSON-LD).
 - **Open in app.** A thin, dismissible strip on Android mobile web: "Open in the Bhavano app".
   It opens the same listing through the `bhavano://` scheme, falling back to Play Store. It's
-  hidden for 30 days after dismissal. Android App Links (bhavano.com links opening the app
+  hidden for the rest of the day after dismissal, back the next day (was 30 days until
+  2026-10-05). Android App Links (bhavano.com links opening the app
   directly) need `assetlinks.json` with the Play signing key's SHA-256, and a native build, so
   they aren't done here. **Built 2026-10-05** as `OpenInAppStrip`, via an Android `intent://` link
   (the Play fallback is built in) and hidden after paid-ad clicks — see

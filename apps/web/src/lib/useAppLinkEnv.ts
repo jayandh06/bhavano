@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { cameFromAdRecently, isAndroidBrowser } from "./appLinks";
 
 const noSubscribe = () => () => {};
@@ -16,21 +16,48 @@ export function useCameFromAdRecently(): boolean {
   return useSyncExternalStore(noSubscribe, () => cameFromAdRecently(window.location.search), () => false);
 }
 
-/** Whether a "dismissed at" timestamp in localStorage is younger than `windowMs`. Server: true,
- * so a dismissible prompt stays hidden until the client has actually checked. */
-export function useDismissedRecently(key: string, windowMs: number): boolean {
-  return useSyncExternalStore(
-    noSubscribe,
-    () => {
-      try {
-        const at = Number(localStorage.getItem(key));
-        return Number.isFinite(at) && at > 0 && Date.now() - at < windowMs;
-      } catch {
-        return false;
-      }
-    },
-    () => true,
-  );
+const dismissListeners = new Set<() => void>();
+
+/** Whether a timestamp falls on today's date in the visitor's own time zone. */
+export function isSameLocalDay(at: number, now: number): boolean {
+  return new Date(at).toDateString() === new Date(now).toDateString();
+}
+
+function dismissedToday(key: string): boolean {
+  try {
+    const at = Number(localStorage.getItem(key));
+    return Number.isFinite(at) && at > 0 && isSameLocalDay(at, Date.now());
+  } catch {
+    return false;
+  }
+}
+
+/** A prompt dismissed for the rest of the day: back on the visitor's next calendar day.
+ *
+ * Re-read when the tab becomes visible again, so a tab left open overnight shows it the next day
+ * without needing a navigation. Server: dismissed, so it stays hidden until the client has
+ * checked. */
+export function useDismissedToday(key: string): { dismissed: boolean; dismiss: () => void } {
+  const subscribe = useCallback((onChange: () => void) => {
+    dismissListeners.add(onChange);
+    document.addEventListener("visibilitychange", onChange);
+    return () => {
+      dismissListeners.delete(onChange);
+      document.removeEventListener("visibilitychange", onChange);
+    };
+  }, []);
+  const dismissed = useSyncExternalStore(subscribe, () => dismissedToday(key), () => true);
+
+  const dismiss = useCallback(() => {
+    try {
+      localStorage.setItem(key, String(Date.now()));
+    } catch {
+      /* storage blocked: the dismissal just won't outlive this page */
+    }
+    dismissListeners.forEach((listener) => listener());
+  }, [key]);
+
+  return { dismissed, dismiss };
 }
 
 /** True once, right after some earlier action on this tab set `key` in sessionStorage — consumed

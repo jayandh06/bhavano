@@ -92,7 +92,13 @@ export const CLEAR_FILTERS_PARAM = "__clearFilters";
  * listing silently became "the" remembered Posted-by filter for every later bare visit to this
  * screen, indistinguishable from the admin having deliberately searched for that person in the
  * UserPicker. The marker says "apply this filter to what's on screen right now, but don't let it
- * overwrite whatever's actually remembered" — same shape as CLEAR_FILTERS_PARAM, opposite effect. */
+ * overwrite whatever's actually remembered" — same shape as CLEAR_FILTERS_PARAM, opposite effect.
+ *
+ * It stays in the URL rather than being redirected away: the redirected, marker-free URL is just an
+ * ordinary filtered request, which got remembered anyway (the bug as shipped until 2026-10-05).
+ * Staying put also covers browsing that view — tab/sort/page/preset links copy every param, so
+ * they keep it — while "Apply filters" deliberately drops it (CarriedParams omits it), so a filter
+ * the admin actually applies is remembered. */
 export const SKIP_REMEMBER_PARAM = "__skipRemember";
 
 export type FilterAction =
@@ -102,10 +108,6 @@ export type FilterAction =
    * unlike an ordinary write, the incoming URL here carries a marker param that must never reach
    * the rendered page or get remembered as part of "the filter". */
   | { type: "reset"; saved: Record<string, string> }
-  /** SKIP_REMEMBER_PARAM's effect: redirect to `query` (the marker stripped) so the page renders
-   * with this filter and the address bar reads clean, but the cookie is left exactly as it was —
-   * neither overwritten with this filter nor cleared. */
-  | { type: "transient"; query: string }
   | { type: "noop" };
 
 /**
@@ -148,10 +150,8 @@ export function decideFilterAction(input: {
     return { type: "reset", saved: withRemembered(saved, pathname, "") };
   }
 
-  if (params.has(SKIP_REMEMBER_PARAM)) {
-    params.delete(SKIP_REMEMBER_PARAM);
-    return { type: "transient", query: params.toString() };
-  }
+  // Renders as-is, cookie untouched — see SKIP_REMEMBER_PARAM for why the marker isn't stripped.
+  if (params.has(SKIP_REMEMBER_PARAM)) return { type: "noop" };
 
   if (currentQuery !== "") {
     const toStore = persistableQuery(currentQuery);
