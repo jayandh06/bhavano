@@ -1,6 +1,15 @@
 # More ways to get listing viewers logged in (no SEO risk)
 
-## Status: in progress (2026-09-30)
+## Status: in progress (updated 2026-10-05)
+
+Built: 1 (sliding sessions), 2 (resume after login), 3 (guest saves, web + app), and the
+open-in-app strip from 7. Not built yet: 4 (similar-homes alert), 5 (welcome back),
+6 (quick "I'm interested"), and the rest of 7 (scroll trigger, locked interest count, desktop
+exit prompt).
+
+On the app, a logged-out heart saves on the phone and, on the 1st and 3rd save, opens the login
+sheet titled "Keep your saved homes" with a Skip (`useGuestSaveHeart`; `requireLogin` takes an
+optional `title`). Web shows the toast described in section 3 instead.
 
 Follow-up to [listing-detail-login-nudge.md](listing-detail-login-nudge.md), which built One Tap,
 the delayed web card, the app sheet with Skip and the WhatsApp link. Same constraint as there
