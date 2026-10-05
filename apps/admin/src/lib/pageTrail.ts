@@ -80,9 +80,6 @@ const GET_APP_PLACEMENTS: Record<string, string> = {
   saved_search: "saved search",
 };
 
-/** Placements that link straight to the Play Store rather than opening the app. */
-const PLAY_STORE_PLACEMENTS = new Set(["footer", "header", "header_mobile"]);
-
 function getAppLabel(path: string): string {
   try {
     const params = new URL(path, "https://x.invalid").searchParams;
@@ -90,7 +87,8 @@ function getAppLabel(path: string): string {
     const placement = GET_APP_PLACEMENTS[placementKey] ?? (placementKey || "unknown");
     const to = params.get("to");
     if (params.get("event") === "dismiss") return `Get app — dismissed (${placement})`;
-    if (PLAY_STORE_PLACEMENTS.has(placementKey)) return `Get app — tapped Google Play (${placement})`;
+    // Only an Open-app tap carries an in-app destination; a plain Play Store link has none.
+    if (!to) return `Get app — tapped Google Play (${placement})`;
     return `Get app — tapped Open app (${placement})${to ? ` → ${to}` : ""}`;
   } catch {
     return path;

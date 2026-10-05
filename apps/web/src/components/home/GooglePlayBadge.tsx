@@ -1,22 +1,36 @@
 "use client";
 
 import { playStoreUrl } from "@/lib/appLinks";
-import { reportGetAppEvent } from "@/lib/getAppEvents";
+import { reportGetAppEvent, type GetAppPlacement } from "@/lib/getAppEvents";
 import { useIsAndroidBrowser } from "@/lib/useAppLinkEnv";
 import { Icon } from "./Icon";
 
 /** Google's own artwork is 180×53.33; its brand rules forbid recolouring or redrawing it. */
 const BADGE_ASPECT = 180 / 53.333;
 
-/** The standard "Get it on Google Play" badge, linking to the Play listing with the footer's
- * install referrer. A client island only so the tap can be reported. */
-export function GooglePlayBadge({ height, className = "" }: { height: number; className?: string }) {
+/** The standard "Get it on Google Play" badge, linking to the Play listing with this placement's
+ * install referrer, or to `href` when given (GetAppCard's open-or-install intent link). A client
+ * island only so the tap can be reported. */
+export function GooglePlayBadge({
+  placement,
+  height,
+  href,
+  appPath,
+  className = "",
+}: {
+  placement: GetAppPlacement;
+  height: number;
+  href?: string;
+  appPath?: string;
+  className?: string;
+}) {
+  const external = !href;
   return (
     <a
-      href={playStoreUrl("play_badge", "footer")}
-      target="_blank"
-      rel="noopener"
-      onClick={() => reportGetAppEvent("click", "footer")}
+      href={href ?? playStoreUrl("play_badge", placement)}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noopener" : undefined}
+      onClick={() => reportGetAppEvent("click", placement, appPath)}
       className={`shrink-0 ${className}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}

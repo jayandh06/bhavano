@@ -87,6 +87,9 @@ describe("trailEntry", () => {
     expect(trailEntry("/get-app?event=click&placement=header_mobile").text).toBe(
       "Get app — tapped Google Play (phone header icon)",
     );
+    expect(trailEntry("/get-app?event=click&placement=post_success").text).toBe(
+      "Get app — tapped Google Play (ad-posted screen)",
+    );
     expect(trailEntry("/get-app?event=click&placement=contact&to=messages%2Fabc").text).toBe(
       "Get app — tapped Open app (message thread) → messages/abc",
     );

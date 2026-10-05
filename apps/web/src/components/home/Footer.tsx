@@ -186,7 +186,7 @@ export async function Footer({
             className="hidden lg:block rounded bg-white"
           />
           <p className="hidden lg:block text-[12px] text-muted mt-1.5 mb-0 max-w-[120px]">Scan with your Android phone</p>
-          <GooglePlayBadge height={44} className="inline-block lg:hidden" />
+          <GooglePlayBadge placement="footer" height={44} className="inline-block lg:hidden" />
         </div>
       </div>
       <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-4">
