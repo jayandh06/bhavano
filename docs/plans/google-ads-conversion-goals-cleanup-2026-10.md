@@ -62,6 +62,19 @@ not name (see `ads_retire_dormant_conversion_actions.py` for why).
 Not touched: GTM's paused `Ads - instant_alerts_purchase` tag (paused since container v9, points
 at an already-removed webpage action, fires nothing).
 
+## Applied (2026-10-05)
+
+- BFF deployed first (`644e980`), so no upload could target the action being removed.
+- `ads_fix_purchase_conversions.py` then removed Instant alerts purchase and set the three
+  remaining purchase actions to `MANY_PER_CLICK`. Read back: all three ENABLED, primary,
+  counting every conversion; a re-run reports everything already done.
+
+**Signup / posting, checked at the same time:** "Post ad success" is primary (Submit lead form
+goal, 264 in 30 days), which is what the ₹75 tCPA portfolio bids on. "New registration" stays
+**secondary**, as decided on 2026-09-28 (`google-ads-performance-analysis-2026-09.md`: 41% of
+signups never post). It's the only action in the Sign-up goal, so that goal shows no primary
+action in the UI. Expected, and left as is by the user's choice.
+
 ## Follow-up
 
 - In a day or two, recheck the Goals page: Boost purchase should be clean. Subscription / Contact
