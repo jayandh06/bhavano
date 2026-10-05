@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { androidIntentUrl, appPathForWebPath, recordAdVisit } from "@/lib/appLinks";
-import { useCameFromAdRecently, useDismissedForVisit, useIsAndroidBrowser } from "@/lib/useAppLinkEnv";
+import { useCameFromAdRecently, useDismissedToday, useIsAndroidBrowser } from "@/lib/useAppLinkEnv";
 import { reportGetAppEvent } from "@/lib/getAppEvents";
 import { Icon } from "./Icon";
 
@@ -15,9 +15,8 @@ import { Icon } from "./Icon";
  * `--app-strip-h` on <html>, which pads <body> and lifts the other bottom-pinned cards
  * (ProfileCompletionBanner, ListingLoginNudge) above it instead of under it. */
 
+/** ✕ hides it until the visitor's next calendar day. */
 const DISMISS_KEY = "bhavano_open_in_app_dismissed";
-/** ✕ hides it for the rest of the visit; it's back after this long away (GA4's session gap). */
-const PAUSE_MS = 30 * 60 * 1000;
 const STRIP_HEIGHT = "56px";
 
 /** Mid-task pages where pulling someone into the app would cost the task itself (the post-ad
@@ -28,7 +27,7 @@ export function OpenInAppStrip() {
   const pathname = usePathname();
   const android = useIsAndroidBrowser();
   const fromAd = useCameFromAdRecently();
-  const { dismissed, dismiss } = useDismissedForVisit(DISMISS_KEY, PAUSE_MS, pathname);
+  const { dismissed, dismiss } = useDismissedToday(DISMISS_KEY);
 
   // On every navigation, not just mount, so an ad landing page records the visit even when the
   // strip is hidden on it anyway (e.g. an ad that lands on /post).
