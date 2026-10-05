@@ -1,6 +1,12 @@
 # Publish live listings to the Bhavano Facebook Page
 
-## Status: proposed (2026-10-05) — not started
+## Status: shipped (2026-10-05)
+
+Phase 0 done: the Bhavano Listings Page is live, with `FACEBOOK_PAGE_ID` and
+`FACEBOOK_PAGE_ACCESS_TOKEN` set in production. Phase 1 code (provider, live-posting hook, backfill
+script) is committed, merged, and deployed. Still to confirm: one real listing actually posting
+with the right image/title/price/link, and the one-time backfill for listings that were already
+live before this shipped (`backfill-facebook-posts.ts --dry-run` first).
 
 ## Context
 
