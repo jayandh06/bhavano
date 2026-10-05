@@ -64,4 +64,7 @@ banner CTR / dismiss rate.
 - **App fix shipped with it:** `listingIdFromPath` (mobile `referralLink.ts`) took the text after
   any hyphen as a listing id, so `bhavano://my-listings` or `/bengaluru/hsr-layout` would have
   opened a "listing" called `listings` / `layout`. Now matches only a cuid/uuid id, like the web's
-  `looksLikeListingSlugId`. JS-only, ships by OTA — needed before the strip's deep links work right.
+  `looksLikeListingSlugId`. Ships with the **1.0.1 native build**, not OTA: HEAD needs that build
+  anyway (`expo-linking`, App Links), and an OTA for runtime 1.0.1 reaches no installed phone. The
+  live 1.0.0 build doesn't have the bug — `ReferralLinkBridge` arrived after it — so the strip's
+  `bhavano://` links already route correctly there via expo-router.
