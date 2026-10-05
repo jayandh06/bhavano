@@ -40,8 +40,9 @@ export class FacebookProvider {
       );
       return false;
     }
+    // `||`, not `??`: docker-compose passes an unset variable through as "", not undefined.
     const apiVersion =
-      this.config.get<string>('FACEBOOK_API_VERSION') ??
+      this.config.get<string>('FACEBOOK_API_VERSION') ||
       DEFAULT_FACEBOOK_API_VERSION;
 
     const result = await postToFacebookPage({

@@ -114,6 +114,11 @@ independently of the post itself).
   ```
   No validation schema exists for env vars in this repo (`ConfigModule.forRoot({ isGlobal: true })`
   has no `validationSchema`) — nothing else to register.
+- **Compose wiring (added 2026-10-05).** `docker-compose.prod.yml` lists the bff's environment
+  one variable at a time, so the three `FACEBOOK_*` lines also have to be there, or the server
+  `.env` values never reach the container (it shipped without them at first). Compose passes an
+  unset `FACEBOOK_API_VERSION` as `""`, so the provider falls back to the default with `||`, not
+  `??`.
 
 ### Backfill script
 

@@ -58,6 +58,17 @@ describe('FacebookProvider.publishListing', () => {
     );
   });
 
+  it('falls back to the default version when FACEBOOK_API_VERSION is an empty string', async () => {
+    const fetchMock = mockFetch('{"id":"123456_789"}');
+    const { provider } = makeProvider({ FACEBOOK_API_VERSION: '' });
+
+    await provider.publishListing('msg', 'https://www.bhavano.com/x');
+
+    expect(fetchMock.mock.calls[0][0] as string).toBe(
+      'https://graph.facebook.com/v23.0/123456/feed',
+    );
+  });
+
   it.each([
     ['page id', { FACEBOOK_PAGE_ID: undefined }],
     ['access token', { FACEBOOK_PAGE_ACCESS_TOKEN: undefined }],
