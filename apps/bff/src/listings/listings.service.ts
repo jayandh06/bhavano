@@ -2803,7 +2803,7 @@ export class ListingsService {
         saved++;
       } catch (err: unknown) {
         this.logger.warn(
-          `Failed to import device save ${id} for ${userId}: ${err instanceof Error ? err.message : err}`,
+          `Failed to import device save ${id} for ${userId}: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }

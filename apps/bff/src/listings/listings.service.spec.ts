@@ -1660,6 +1660,68 @@ describe('ListingsService', () => {
     });
   });
 
+  describe('toggleFavourite with an explicit state, and importFavourites', () => {
+    it('leaves an already-saved listing saved when asked to save it', async () => {
+      const { service, prisma } = makeService();
+      (prisma.favourite.findUnique as jest.Mock).mockResolvedValue({ id: 'fav1' });
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ likeCount: 4 });
+
+      const result = await service.toggleFavourite('listing1', 'user1', true);
+
+      expect(result).toEqual({ favourited: true, likeCount: 4 });
+      expect(prisma.favourite.delete).not.toHaveBeenCalled();
+      expect(prisma.favourite.create).not.toHaveBeenCalled();
+    });
+
+    it('still flips the favourite when no state is given', async () => {
+      const { service, prisma } = makeService();
+      (prisma.favourite.findUnique as jest.Mock).mockResolvedValue({ id: 'fav1' });
+      (prisma.listing.update as jest.Mock).mockResolvedValue({ likeCount: 3 });
+
+      const result = await service.toggleFavourite('listing1', 'user1');
+
+      expect(result).toEqual({ favourited: false, likeCount: 3 });
+      expect(prisma.favourite.delete).toHaveBeenCalledWith({ where: { id: 'fav1' } });
+    });
+
+    it('throws NotFound for a missing listing when the state already matches', async () => {
+      const { service, prisma } = makeService();
+      (prisma.favourite.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.toggleFavourite('gone', 'user1', false)).rejects.toThrow(NotFoundException);
+    });
+
+    it('imports device saves, skipping the user\'s own and missing listings, without un-saving', async () => {
+      const { service, prisma } = makeService();
+      (prisma.listing.findMany as jest.Mock).mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+      (prisma.favourite.findUnique as jest.Mock).mockImplementation(
+        ({ where }: { where: { listingId_userId: { listingId: string } } }) =>
+          Promise.resolve(where.listingId_userId.listingId === 'a' ? { id: 'favA' } : null),
+      );
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ likeCount: 1 });
+      (prisma.favourite.create as jest.Mock).mockResolvedValue({});
+      (prisma.listing.update as jest.Mock).mockResolvedValue({
+        likeCount: 1,
+        title: 'B',
+        ownerId: 'owner1',
+        boostedUntil: null,
+      });
+
+      const result = await service.importFavourites('user1', ['a', 'b', 'b', 'gone']);
+
+      expect(result).toEqual({ saved: 2 });
+      expect(prisma.listing.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { in: ['a', 'b', 'gone'] }, ownerId: { not: 'user1' } },
+        }),
+      );
+      expect(prisma.favourite.delete).not.toHaveBeenCalled();
+      expect(prisma.favourite.create).toHaveBeenCalledTimes(1);
+      expect(prisma.favourite.create).toHaveBeenCalledWith({ data: { listingId: 'b', userId: 'user1' } });
+    });
+  });
+
   describe('recordInterest', () => {
     function stubListing(overrides: Record<string, unknown> = {}) {
       return {

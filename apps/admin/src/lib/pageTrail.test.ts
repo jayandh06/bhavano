@@ -82,7 +82,14 @@ describe("trailEntry", () => {
       "Get app — tapped Open app (ad-posted screen) → my-listings",
     );
     expect(trailEntry("/get-app?event=dismiss&placement=strip").text).toBe("Get app — dismissed (bottom bar)");
-    expect(trailEntry("/get-app?event=click&placement=footer").text).toBe("Get app — tapped Google Play (footer link)");
+    expect(trailEntry("/get-app?event=click&placement=footer").text).toBe("Get app — tapped Google Play (footer)");
+    expect(trailEntry("/get-app?event=click&placement=header").text).toBe("Get app — tapped Google Play (header)");
+    expect(trailEntry("/get-app?event=click&placement=header_mobile").text).toBe(
+      "Get app — tapped Google Play (phone header icon)",
+    );
+    expect(trailEntry("/get-app?event=click&placement=post_success").text).toBe(
+      "Get app — tapped Google Play (ad-posted screen)",
+    );
     expect(trailEntry("/get-app?event=click&placement=contact&to=messages%2Fabc").text).toBe(
       "Get app — tapped Open app (message thread) → messages/abc",
     );

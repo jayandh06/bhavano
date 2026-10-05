@@ -4,7 +4,7 @@ import { ENTITY_TAGLINE, entityCopyright } from "@bhavano/types/legalEntity";
 import { slugify } from "@bhavano/types/slugify";
 import { fetchCities } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
-import { FooterPlayStoreLink } from "./FooterPlayStoreLink";
+import { GooglePlayBadge } from "./GooglePlayBadge";
 
 // Today's largest seeded city has 20 curated areas — this is a defensive ceiling against a
 // future city accumulating far more user-added areas, not an active truncation. Cities are a
@@ -174,6 +174,8 @@ export async function Footer({
         </div>
         <div>
           <div className="font-bold text-[13px] text-text mb-2.5">Get the app</div>
+          {/* Desktop gets a QR (a phone camera is the easy way from there); phones and tablets
+            * get the Play badge, which opens the Play Store app directly. */}
           {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
           <img
             src="/app-qr/footer.svg"
@@ -181,9 +183,10 @@ export async function Footer({
             width={96}
             height={96}
             loading="lazy"
-            className="hidden lg:block rounded bg-white mb-2"
+            className="hidden lg:block rounded bg-white"
           />
-          <FooterPlayStoreLink />
+          <p className="hidden lg:block text-[12px] text-muted mt-1.5 mb-0 max-w-[120px]">Scan with your Android phone</p>
+          <GooglePlayBadge placement="footer" height={44} className="inline-block lg:hidden" />
         </div>
       </div>
       <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-4">

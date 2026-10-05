@@ -61,8 +61,12 @@ banner CTR / dismiss rate.
   - Hidden on `/post`, `/checkout`, `/auth/*`, `/claim/*`.
   - Web → app path mapping: `appPathForWebPath` in `apps/web/src/lib/appLinks.ts` (listing pages
     → `listing/<id>`, My listings, messages, favourites → `saved`, etc.; anything else → app home).
-- **`GetAppCard`** (`apps/web/src/components/home/GetAppCard.tsx`): Open-the-app button on
-  Android, Play Store QR on desktop (`lg:`), nothing on iOS. `placement`/`appPath`/`heading`/`body`
+- **`GetAppCard`** (`apps/web/src/components/home/GetAppCard.tsx`): Play Store QR on desktop
+  (`lg:`), the "Get it on Google Play" badge on phones and tablets, iPhones included (changed
+  2026-10-05; before, Android got an "Open the app" button and other phones nothing). On Android
+  the badge is the `intent://` link (opens the app at `appPath` if installed, Play otherwise) and
+  shows at every width; elsewhere it's a plain Play link (`utm_medium=play_badge`). Admin's trail
+  shows a tap with an app destination as "tapped Open app", one without as "tapped Google Play". `placement`/`appPath`/`heading`/`body`
   are explicit per call site (step 3 needed per-moment copy and in-app destinations, not one fixed
   pitch) — on the post-ad success screen and below active ads on My listings it's still "Never
   miss an enquiry" → `my-listings`.
@@ -79,10 +83,25 @@ banner CTR / dismiss rate.
     new matches"), widening slightly (`lg:min-w-[320px]`) to fit the QR. The standalone
     `/saved-searches` page (`SavedSearchesManager`) still just reloads — not covered here, lower
     traffic than the inline browse-page button.
-- **Footer** "Get the app" column: QR on desktop, Play Store link everywhere.
+- **Header and footer (2026-10-05): QR on desktop, Google Play on phones.** All in
+  `GooglePlayBadge.tsx`. Desktop is `lg:` and up, CSS-gated so it server-renders without a shift.
+  - **Footer** "Get the app" column: the QR (`app-qr/footer.svg`) on desktop; below `lg`,
+    Google's standard "Get it on Google Play" badge (`public/badges/google-play.svg`, the official
+    artwork, not redrawn), `utm_medium=play_badge`. Before this the footer had the QR plus a text
+    link (`footer_link`).
+  - **Desktop header**, before Favourites: "Get the app" with the QR (`app-qr/header.svg`) in a
+    popover on hover or keyboard focus. Clicking opens the Play web listing
+    (`utm_medium=header_link`), which can install to a signed-in phone. Placement `header`.
+  - **Phone header**: the Play logo (`public/badges/google-play-icon.svg`) as an icon button
+    beside Messages/Login, Android browsers only (`useIsAndroidBrowser`, so it appears after
+    hydration), `utm_medium=play_icon`, placement `header_mobile`. It goes to the Play listing,
+    not `intent://`; a play.google.com link opens the Play Store app on Android.
+  - Tablets between `sm` and `lg` see neither header control, only the footer badge.
+  - None of these are hidden after a paid-ad click, unlike the strip.
 - QR images are static SVGs in `apps/web/public/app-qr/` (one per placement — `strip` has none, it
-  doesn't need one; `post_success`, `my_listings`, `footer`, `contact`, `saved_search` all do; Play
-  referrer `utm_medium=qr&utm_campaign=<placement>`); regeneration command in `appLinks.ts`.
+  doesn't need one; `post_success`, `my_listings`, `footer`, `header`, `contact`, `saved_search`
+  all do; Play referrer `utm_medium=qr&utm_campaign=<placement>`); regeneration command in
+  `appLinks.ts`.
 - Tracking: see "How taps and installs are measured" below.
 - **App fix shipped with it:** `listingIdFromPath` (mobile `referralLink.ts`) took the text after
   any hyphen as a listing id, so `bhavano://my-listings` or `/bengaluru/hsr-layout` would have
@@ -101,7 +120,8 @@ three separate measurements. Their totals line up, but they don't connect to eac
 1. **Taps, web (GA4 + Page visits trail).** Every control calls `reportGetAppEvent`
    (`apps/web/src/lib/getAppEvents.ts`), which does two things:
    - pushes `open_in_app_click` / `open_in_app_dismiss` to the dataLayer with `placement`
-     (`strip` | `post_success` | `my_listings` | `footer` | `contact` | `saved_search`) and
+     (`strip` | `post_success` | `my_listings` | `footer` | `header` | `header_mobile` | `contact` |
+     `saved_search`) and
      `app_path`. GTM version 11 forwards both to GA4 (`gtm_build.py` `EVENTS`). GA4-only, not an
      Ads conversion.
    - writes a synthetic `/get-app?event=click|dismiss&placement=…&to=…` row into the visitor's
@@ -111,7 +131,8 @@ three separate measurements. Their totals line up, but they don't connect to eac
    A QR scan can't be seen at all: the phone camera goes straight to Play, never through
    bhavano.com.
 2. **Installs, aggregate (Play Console).** Every Play URL carries
-   `referrer=utm_source=bhavano_web&utm_medium=<qr|open_in_app_strip|get_app_card|footer_link>&utm_campaign=<placement or app page>`.
+   `referrer=utm_source=bhavano_web&utm_medium=<qr|open_in_app_strip|get_app_card|play_badge|play_icon|header_link>&utm_campaign=<placement or app page>`
+   (`footer_link` until the footer switched to the badge on 2026-10-05).
    Play Console → Statistics / Acquisition reports break installs down by these UTM values,
    including QR installs per placement.
 3. **Installs, per user (app, Android).** `recordInstallReferrerOnce`
