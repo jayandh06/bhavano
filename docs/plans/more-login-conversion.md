@@ -93,7 +93,9 @@ visitors don't see it, because their view already registers interest.
   It opens the same listing through the `bhavano://` scheme, falling back to Play Store. It's
   hidden for 30 days after dismissal. Android App Links (bhavano.com links opening the app
   directly) need `assetlinks.json` with the Play signing key's SHA-256, and a native build, so
-  they aren't done here.
+  they aren't done here. **Built 2026-10-05** as `OpenInAppStrip`, via an Android `intent://` link
+  (the Play fallback is built in) and hidden after paid-ad clicks — see
+  [`drive-users-to-android-app.md`](drive-users-to-android-app.md).
 - **Desktop exit prompt.** When the pointer leaves through the top of the window on a listing,
   once per session, a small card offers "Save this home before you go?". It uses guest save, so
   no login is needed, and the save toast then asks for login.
