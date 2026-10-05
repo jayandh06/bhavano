@@ -2197,7 +2197,12 @@ export function PostAdWizard({
             variant="prominent"
           />
 
-          <GetAppCard placement="post_success" />
+          <GetAppCard
+            placement="post_success"
+            appPath="my-listings"
+            heading="Never miss an enquiry"
+            body="The Bhavano Android app notifies you the moment someone messages about your ad, so you can reply first."
+          />
 
           <div className="w-full flex justify-center">
             <VideoManager listing={createdListing} accessToken={token ?? ""} />

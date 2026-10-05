@@ -172,7 +172,14 @@ async function MyListingsGrid({
       {activeListings.map((item) => (
         <MyListingRow key={item.id} item={item} accessToken={accessToken} referralCode={profile.id} />
       ))}
-      {activeListings.some((item) => item.status === "active") && <GetAppCard placement="my_listings" />}
+      {activeListings.some((item) => item.status === "active") && (
+        <GetAppCard
+          placement="my_listings"
+          appPath="my-listings"
+          heading="Never miss an enquiry"
+          body="The Bhavano Android app notifies you the moment someone messages about your ad, so you can reply first."
+        />
+      )}
       {pastListings.length > 0 && (
         <>
           <h2 className="font-lora text-[19px] font-semibold m-0 mt-5">Past listings</h2>
