@@ -30,14 +30,17 @@ export async function getReferralCodeIfFresh(): Promise<string | undefined> {
   return code;
 }
 
+const UUID_SUFFIX_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CUID_SUFFIX_RE = /-([a-z0-9]{20,})$/i;
+
 /** Pulls a listing id out of a bhavano.com listing URL's last path segment
- * (`/{city}/{area}/{group}/{category}/{slug}-{id}`, see packages/types/src/listingPath.ts) — the
- * id is always a cuid (no hyphens of its own), so it's exactly the text after the segment's last
- * hyphen. Returns undefined for any other path (home, browse pages, etc.) rather than guessing. */
+ * (`/{city}/{area}/{group}/{category}/{slug}-{id}`, see packages/types/src/listingPath.ts).
+ * Matches the id's own shape (a cuid, or a legacy uuid) — same rule as the web's
+ * `looksLikeListingSlugId` — because plenty of non-listing segments contain a hyphen too
+ * (`/bengaluru/hsr-layout`, `/bengaluru/rent-lease`, `bhavano://my-listings`). Returns undefined
+ * for any other path rather than guessing. */
 export function listingIdFromPath(pathname: string): string | undefined {
-  const segments = pathname.split("/").filter(Boolean);
-  const last = segments.at(-1);
-  if (!last || !last.includes("-")) return undefined;
-  const id = last.slice(last.lastIndexOf("-") + 1);
-  return id || undefined;
+  const last = pathname.split("/").filter(Boolean).at(-1);
+  if (!last) return undefined;
+  return last.match(UUID_SUFFIX_RE)?.[0] ?? last.match(CUID_SUFFIX_RE)?.[1];
 }
