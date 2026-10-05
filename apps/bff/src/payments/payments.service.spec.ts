@@ -99,7 +99,7 @@ describe('PaymentsService — purchase conversion upload', () => {
   });
 
   it.each([
-    ['instant_alerts', '7781544854'],
+    ['instant_alerts', '7781548730'],
     ['contact_reveal_credits', '7781653126'],
     ['buyer_premium', '7781648601'],
     ['agent_pro', '7781648601'],

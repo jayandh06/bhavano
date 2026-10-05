@@ -27,7 +27,10 @@ export const POST_AD_SUCCESS_CONVERSION_ACTION_ID = '7750575968';
 export const PURCHASE_CONVERSION_ACTION_IDS: Record<string, string> = {
   listing_boost: '7781548730',
   listing_publish: '7781548730',
-  instant_alerts: '7781544854',
+  // Its own action (7781544854) was removed on 2026-10-05: Instant Alerts is no longer sold
+  // separately, it comes with every boost, and only old app builds can still buy it standalone.
+  // See docs/plans/google-ads-conversion-goals-cleanup-2026-10.md.
+  instant_alerts: '7781548730',
   contact_reveal_credits: '7781653126',
   // The three subscription tiers share one action, matching how the client-side tag already
   // reports them — GA4 still separates them by `tier`.
