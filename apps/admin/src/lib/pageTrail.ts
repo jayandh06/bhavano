@@ -75,6 +75,7 @@ const GET_APP_PLACEMENTS: Record<string, string> = {
   my_listings: "My listings",
   footer: "footer link",
   contact: "message thread",
+  saved_search: "saved search",
 };
 
 function getAppLabel(path: string): string {

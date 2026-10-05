@@ -86,6 +86,9 @@ describe("trailEntry", () => {
     expect(trailEntry("/get-app?event=click&placement=contact&to=messages%2Fabc").text).toBe(
       "Get app — tapped Open app (message thread) → messages/abc",
     );
+    expect(trailEntry("/get-app?event=click&placement=saved_search&to=%2F").text).toBe(
+      "Get app — tapped Open app (saved search) → /",
+    );
   });
 
   it("labels the app's first launch by its Play install referrer", () => {

@@ -1,6 +1,6 @@
 import { pushDataLayerEvent } from "./gtm";
 
-export type GetAppPlacement = "strip" | "post_success" | "my_listings" | "footer" | "contact";
+export type GetAppPlacement = "strip" | "post_success" | "my_listings" | "footer" | "contact" | "saved_search";
 
 /** One tap on (or dismissal of) a get-the-app control, reported twice: to GTM/GA4 as
  * `open_in_app_click` / `open_in_app_dismiss`, and to the admin Page visits trail as a synthetic

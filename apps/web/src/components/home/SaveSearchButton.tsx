@@ -1,14 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { hasSessionAction } from "@/app/actions/auth";
 import { useAuthGate } from "./AuthGateProvider";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { pushDataLayerEvent } from "@/lib/gtm";
+import { appPathForWebPath } from "@/lib/appLinks";
 import { fieldClass, primaryButtonClass, secondaryButtonClass } from "@/lib/formStyles";
 import { createSavedSearchAction } from "@/app/actions/saved-searches";
 import { buttonClass } from "./BrowseFilterBar";
+import { GetAppCard } from "./GetAppCard";
 import { Icon } from "./Icon";
 
 /** The criteria this button saves — exactly what the browse page has *already* resolved from the
@@ -41,6 +44,7 @@ export function SaveSearchButton({ criteria }: { criteria: SaveSearchCriteria })
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
   useClickOutside(containerRef, () => setOpen(false));
 
   // Same two fields the standalone form requires — see SavedSearchesManager's own validation.
@@ -71,7 +75,8 @@ export function SaveSearchButton({ criteria }: { criteria: SaveSearchCriteria })
       return;
     }
     pushDataLayerEvent("save_search", { category: criteria.category, transactionType: criteria.transactionType });
-    setOpen(false);
+    // Stays open: the app pitch below replaces the name form, so saving ends on a reason to get
+    // the app rather than just closing the popup on a plain confirmation.
     setName("");
     setSaved(true);
   }
@@ -82,27 +87,51 @@ export function SaveSearchButton({ criteria }: { criteria: SaveSearchCriteria })
         <Icon name="bell" className={saved ? "text-green" : undefined} /> {saved ? "Saved" : "Save this search"}
       </button>
       {open && (
-        <div className="absolute top-[calc(100%+6px)] right-0 bg-surface border border-border rounded-[10px] p-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 min-w-[240px] max-w-[calc(100vw-2rem)]">
-          <label className="block text-[12px] font-bold text-text-soft mb-1.5">Name this search</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void onSave();
-            }}
-            placeholder="e.g. 2BHK in Koramangala"
-            autoFocus
-            className={fieldClass}
-          />
-          {error && <p className="text-[#b3413a] text-[12.5px] mt-1.5 mb-0">{error}</p>}
-          <div className="flex gap-2 mt-2.5">
-            <button onClick={() => setOpen(false)} disabled={pending} className={secondaryButtonClass}>
-              Cancel
-            </button>
-            <button onClick={onSave} disabled={pending} className={`ml-auto ${primaryButtonClass}`}>
-              {pending ? "Saving…" : "Save"}
-            </button>
-          </div>
+        <div
+          className={`absolute top-[calc(100%+6px)] right-0 bg-surface border border-border rounded-[10px] p-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)] z-50 max-w-[calc(100vw-2rem)] ${
+            saved ? "min-w-[240px] lg:min-w-[320px]" : "min-w-[240px]"
+          }`}
+        >
+          {saved ? (
+            <>
+              <p className="text-[13px] font-bold text-text m-0 mb-2">✓ Search saved</p>
+              <GetAppCard
+                placement="saved_search"
+                appPath={appPathForWebPath(pathname)}
+                heading="Be first to see new matches"
+                body="Get an instant alert in the Bhavano Android app the moment a new match is posted."
+              />
+              <button
+                onClick={() => setOpen(false)}
+                className="mt-2.5 text-[12px] text-muted bg-transparent border-0 p-0 cursor-pointer underline"
+              >
+                Done
+              </button>
+            </>
+          ) : (
+            <>
+              <label className="block text-[12px] font-bold text-text-soft mb-1.5">Name this search</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void onSave();
+                }}
+                placeholder="e.g. 2BHK in Koramangala"
+                autoFocus
+                className={fieldClass}
+              />
+              {error && <p className="text-[#b3413a] text-[12.5px] mt-1.5 mb-0">{error}</p>}
+              <div className="flex gap-2 mt-2.5">
+                <button onClick={() => setOpen(false)} disabled={pending} className={secondaryButtonClass}>
+                  Cancel
+                </button>
+                <button onClick={onSave} disabled={pending} className={`ml-auto ${primaryButtonClass}`}>
+                  {pending ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
