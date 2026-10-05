@@ -4,6 +4,7 @@ import { ENTITY_TAGLINE, entityCopyright } from "@bhavano/types/legalEntity";
 import { slugify } from "@bhavano/types/slugify";
 import { fetchCities } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
+import { playStoreUrl } from "@/lib/appLinks";
 
 // Today's largest seeded city has 20 curated areas — this is a defensive ceiling against a
 // future city accumulating far more user-added areas, not an active truncation. Cities are a
@@ -170,6 +171,26 @@ export async function Footer({
             <Link href="/help" prefetch={false}>Help centre</Link>
             <Link href="/about" prefetch={false}>About us</Link>
           </div>
+        </div>
+        <div>
+          <div className="font-bold text-[13px] text-text mb-2.5">Get the app</div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- static SVG, nothing to optimise */}
+          <img
+            src="/app-qr/footer.svg"
+            alt="QR code for the Bhavano app on Google Play"
+            width={96}
+            height={96}
+            loading="lazy"
+            className="hidden lg:block rounded bg-white mb-2"
+          />
+          <a
+            href={playStoreUrl("footer_link", "footer")}
+            target="_blank"
+            rel="noopener"
+            className="text-[13px] text-green font-bold"
+          >
+            Android app on Google Play →
+          </a>
         </div>
       </div>
       <div className="max-w-[1280px] mx-auto mt-8 pt-5 border-t border-border flex flex-wrap items-center justify-between gap-4">

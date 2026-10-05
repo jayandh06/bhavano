@@ -107,6 +107,7 @@ import { BoostPlanSelector } from "./BoostPlanSelector";
 import { BoostRecoveryDialog } from "./BoostRecoveryDialog";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
+import { GetAppCard } from "./GetAppCard";
 import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
 import { LocationMapPicker } from "./LocationMapPicker";
 import { SelectField } from "./SelectField";
@@ -2195,6 +2196,8 @@ export function PostAdWizard({
             placement="post_success"
             variant="prominent"
           />
+
+          <GetAppCard placement="post_success" />
 
           <div className="w-full flex justify-center">
             <VideoManager listing={createdListing} accessToken={token ?? ""} />

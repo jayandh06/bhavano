@@ -75,6 +75,8 @@
 
   body {
     min-height: 100%;
+    /* Set by OpenInAppStrip while it's pinned to the bottom, so it never covers the footer. */
+    padding-bottom: var(--app-strip-h, 0px);
     color: var(--text);
     background: var(--bg);
     font-family: var(--font-manrope), sans-serif;

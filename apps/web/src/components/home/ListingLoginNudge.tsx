@@ -173,7 +173,7 @@ export function ListingLoginNudge({
         <div
           role="dialog"
           aria-label="Log in"
-          className="fixed z-40 bottom-3 inset-x-3 sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-[380px] rounded-xl border border-border bg-surface text-text shadow-lg p-4"
+          className="fixed z-40 bottom-[calc(0.75rem+var(--app-strip-h,0px))] inset-x-3 sm:inset-x-auto sm:right-5 sm:bottom-5 sm:w-[380px] rounded-xl border border-border bg-surface text-text shadow-lg p-4"
         >
           <p className="font-bold text-[15px] m-0">Log in to hear back from owners faster</p>
           <p className="text-[13px] text-text-soft mt-1 mb-3">

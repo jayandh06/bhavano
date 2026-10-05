@@ -22,6 +22,7 @@ import {
 } from "@/components/home/PublishCheckoutRecovery";
 import { RenewButton } from "@/components/home/RenewButton";
 import { OwnerWhatsAppShare } from "@/components/home/OwnerWhatsAppShare";
+import { GetAppCard } from "@/components/home/GetAppCard";
 import { VideoManager } from "@/components/home/VideoManager";
 import { daysUntil } from "@/lib/listingExpiry";
 import { Icon } from "@/components/home/Icon";
@@ -171,6 +172,7 @@ async function MyListingsGrid({
       {activeListings.map((item) => (
         <MyListingRow key={item.id} item={item} accessToken={accessToken} referralCode={profile.id} />
       ))}
+      {activeListings.some((item) => item.status === "active") && <GetAppCard placement="my_listings" />}
       {pastListings.length > 0 && (
         <>
           <h2 className="font-lora text-[19px] font-semibold m-0 mt-5">Past listings</h2>

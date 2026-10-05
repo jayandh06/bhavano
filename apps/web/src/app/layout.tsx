@@ -13,6 +13,7 @@ import { ProfileCompletionDialog } from "@/components/home/ProfileCompletionDial
 import { JsConfirmation } from "@/components/home/JsConfirmation";
 import { SoftNavPageViews } from "@/components/home/SoftNavPageViews";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
+import { OpenInAppStrip } from "@/components/home/OpenInAppStrip";
 import { JsonLd } from "@/components/JsonLd";
 import "./globals.css";
 
@@ -120,6 +121,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <ProfileCompletionBanner />
                 <ProfileCompletionDialog />
                 <GuestSavesToast />
+                <OpenInAppStrip />
                 {children}
               </BoostProvider>
             </BuyCreditsProvider>
