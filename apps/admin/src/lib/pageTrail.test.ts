@@ -73,6 +73,30 @@ describe("trailEntry", () => {
       isError: false,
     });
   });
+
+  it("labels web get-the-app taps and dismissals", () => {
+    expect(trailEntry("/get-app?event=click&placement=strip&to=listing%2Fabc").text).toBe(
+      "Get app — tapped Open app (bottom bar) → listing/abc",
+    );
+    expect(trailEntry("/get-app?event=click&placement=post_success&to=my-listings").text).toBe(
+      "Get app — tapped Open app (ad-posted screen) → my-listings",
+    );
+    expect(trailEntry("/get-app?event=dismiss&placement=strip").text).toBe("Get app — dismissed (bottom bar)");
+    expect(trailEntry("/get-app?event=click&placement=footer").text).toBe("Get app — tapped Google Play (footer link)");
+  });
+
+  it("labels the app's first launch by its Play install referrer", () => {
+    expect(trailEntry("/app-install?source=bhavano_web&medium=qr&campaign=post_success").text).toBe(
+      "App installed — from QR code (post_success)",
+    );
+    expect(trailEntry("/app-install?source=bhavano_web&medium=open_in_app_strip&campaign=listing").text).toBe(
+      "App installed — from website bottom bar (listing)",
+    );
+    expect(trailEntry("/app-install?source=google-play&medium=organic").text).toBe(
+      "App installed — Play Store search/browse",
+    );
+    expect(trailEntry("/app-install").text).toBe("App installed — source unknown");
+  });
 });
 
 describe("trailEntryHref", () => {
@@ -85,5 +109,7 @@ describe("trailEntryHref", () => {
     expect(trailEntryHref("/post/boost-recovery?event=shown&trigger=idle")).toBeNull();
     expect(trailEntryHref("/post/error?stage=checkout")).toBeNull();
     expect(trailEntryHref("/login-nudge?event=shown&surface=one_tap")).toBeNull();
+    expect(trailEntryHref("/get-app?event=click&placement=strip")).toBeNull();
+    expect(trailEntryHref("/app-install?source=google-play&medium=organic")).toBeNull();
   });
 });

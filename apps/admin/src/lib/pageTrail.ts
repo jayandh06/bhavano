@@ -13,8 +13,15 @@
  * `/login-nudge?event=...&surface=...` is the same trick again, for the listing-detail login ask
  * (see reportLoginNudgeEvent in web's ListingLoginNudge.tsx) — shown/logged-in/dismissed for
  * either the dismissible card ("web_prompt") or Google One Tap ("one_tap"), the only way to see
- * whether an anonymous visitor who was pinged to log in actually did. */
+ * whether an anonymous visitor who was pinged to log in actually did.
+ *
+ * `/get-app?event=click|dismiss&placement=…&to=…` is web's get-the-app controls (reportGetAppEvent,
+ * docs/plans/drive-users-to-android-app.md); `/app-install?source=…&medium=…&campaign=…` is the
+ * mobile app's first launch after a fresh install, carrying the Play install referrer
+ * (recordInstallReferrerOnce). */
 export function trailEntry(path: string): { text: string; isError: boolean } {
+  if (path.startsWith("/get-app")) return { text: getAppLabel(path), isError: false };
+  if (path.startsWith("/app-install")) return { text: appInstallLabel(path), isError: false };
   if (path.startsWith("/login-nudge")) {
     try {
       const params = new URL(path, "https://x.invalid").searchParams;
@@ -62,14 +69,59 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
   }
 }
 
+const GET_APP_PLACEMENTS: Record<string, string> = {
+  strip: "bottom bar",
+  post_success: "ad-posted screen",
+  my_listings: "My listings",
+  footer: "footer link",
+};
+
+function getAppLabel(path: string): string {
+  try {
+    const params = new URL(path, "https://x.invalid").searchParams;
+    const placementKey = params.get("placement") ?? "";
+    const placement = GET_APP_PLACEMENTS[placementKey] ?? (placementKey || "unknown");
+    const to = params.get("to");
+    if (params.get("event") === "dismiss") return `Get app — dismissed (${placement})`;
+    if (placementKey === "footer") return "Get app — tapped Google Play (footer link)";
+    return `Get app — tapped Open app (${placement})${to ? ` → ${to}` : ""}`;
+  } catch {
+    return path;
+  }
+}
+
+const INSTALL_MEDIUMS: Record<string, string> = {
+  qr: "QR code",
+  open_in_app_strip: "website bottom bar",
+  get_app_card: "website app card",
+  footer_link: "website footer link",
+};
+
+function appInstallLabel(path: string): string {
+  try {
+    const params = new URL(path, "https://x.invalid").searchParams;
+    const source = params.get("source");
+    const medium = params.get("medium") ?? "";
+    const campaign = params.get("campaign");
+    if (source === "bhavano_web") {
+      return `App installed — from ${INSTALL_MEDIUMS[medium] ?? medium}${campaign ? ` (${campaign})` : ""}`;
+    }
+    if (source === "google-play" && medium === "organic") return "App installed — Play Store search/browse";
+    if (source) return `App installed — ${[source, medium, campaign].filter(Boolean).join(" / ")}`;
+    return "App installed — source unknown";
+  } catch {
+    return path;
+  }
+}
+
 const SITE_URL = "https://www.bhavano.com";
 
-/** The real page to open for a trail entry, or null for a `/login-nudge`/`/post/boost-recovery`/
- * `/post/error` marker (see trailEntry above) — those aren't pages anyone can visit, just an event
- * encoded as a path, so there's nothing to link to. */
+const EVENT_MARKER_PREFIXES = ["/login-nudge", "/post/boost-recovery", "/post/error", "/get-app", "/app-install"];
+
+/** The real page to open for a trail entry, or null for an event marker (see trailEntry above) —
+ * those aren't pages anyone can visit, just an event encoded as a path, so there's nothing to
+ * link to. */
 export function trailEntryHref(path: string): string | null {
-  if (path.startsWith("/login-nudge") || path.startsWith("/post/boost-recovery") || path.startsWith("/post/error")) {
-    return null;
-  }
+  if (EVENT_MARKER_PREFIXES.some((prefix) => path.startsWith(prefix))) return null;
   return `${SITE_URL}${path}`;
 }
