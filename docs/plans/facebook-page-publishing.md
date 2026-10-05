@@ -119,6 +119,15 @@ independently of the post itself).
   `.env` values never reach the container (it shipped without them at first). Compose passes an
   unset `FACEBOOK_API_VERSION` as `""`, so the provider falls back to the default with `||`, not
   `??`.
+- **Getting the two values right (prod setup, 2026-10-05).**
+  - `FACEBOOK_PAGE_ID` is the Page's **Graph** id, not the number in its `profile.php?id=…` URL —
+    the profile id returns "Object … does not exist" (error 100/33). Find the real one with
+    `GET /me/accounts?fields=id,name` using the token. Prod's is `1314700535058959` ("Bhavano").
+  - `FACEBOOK_PAGE_ACCESS_TOKEN` must be a **Page** token. A system-user token ("BhavanoServer",
+    app "Bhavano Integrations") reads fine but can't post to `/feed`; exchange it with
+    `GET /1314700535058959?fields=access_token`. A Page token issued from a never-expiring system
+    user token never expires either. `GET /debug_token` should show `type: PAGE`, `profile_id`
+    = the Page id, and `pages_manage_posts` in its scopes.
 
 ### Backfill script
 
