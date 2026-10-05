@@ -11,7 +11,8 @@ over *returning* and *high-intent* users to the app, never to block the web.
   Links API (package `com.finfolia.bhavano`, SHA-256 `83:E7:…:58:50`). Missing: a **native build**
   carrying the intent filter (OTA can't add it), and confirmation that the fingerprint is the
   **Play App Signing** key (Play Console → Test and release → App integrity), not the upload key.
-- **Built 2026-10-05: steps 2 and 4 below** (open-in-app strip, desktop QR) — see "As built".
+- **Built 2026-10-05: steps 2, 3 and 4 below** (open-in-app strip, high-intent moments, desktop QR)
+  — see "As built".
 
 ## Plan, in order of payoff
 
@@ -22,8 +23,10 @@ over *returning* and *high-intent* users to the app, never to block the web.
    dismissible, 30-day snooze; opens the same page in the app, falls back to Play Store with a
    `referrer=utm_source=web&utm_medium=banner&utm_campaign=<page>` so installs are attributable. No
    full-screen interstitial — Google demotes intrusive mobile interstitials.
-3. **Ask at high-intent moments, with a concrete reason** rather than a generic banner:
-   - after posting an ad: "Get enquiry alerts instantly — reply from the app";
+3. **Ask at high-intent moments, with a concrete reason** rather than a generic banner — done,
+   see "As built":
+   - after posting an ad: "Get enquiry alerts instantly — reply from the app" (already covered by
+     `GetAppCard` on the post-ad success screen, step 2);
    - on contact/chat: "Get the owner's reply as a notification";
    - after saving a search / Instant Alerts: "Be first to see new matches".
 4. **Desktop: QR code** on the post-ad success page, My listings, and the footer ("Scan to get the
@@ -55,11 +58,28 @@ banner CTR / dismiss rate.
   - Hidden on `/post`, `/checkout`, `/auth/*`, `/claim/*`.
   - Web → app path mapping: `appPathForWebPath` in `apps/web/src/lib/appLinks.ts` (listing pages
     → `listing/<id>`, My listings, messages, favourites → `saved`, etc.; anything else → app home).
-- **`GetAppCard`** ("Never miss an enquiry") on the post-ad success screen and below active ads on
-  My listings: Open-the-app button on Android, Play Store QR on desktop (`lg:`), nothing on iOS.
+- **`GetAppCard`** (`apps/web/src/components/home/GetAppCard.tsx`): Open-the-app button on
+  Android, Play Store QR on desktop (`lg:`), nothing on iOS. `placement`/`appPath`/`heading`/`body`
+  are explicit per call site (step 3 needed per-moment copy and in-app destinations, not one fixed
+  pitch) — on the post-ad success screen and below active ads on My listings it's still "Never
+  miss an enquiry" → `my-listings`.
+- **High-intent moments (step 3, built 2026-10-05):**
+  - **Contact/chat** — `MessageThread.tsx`'s `onSend()` sets a one-shot sessionStorage flag
+    (`bhavano_first_msg_sent_<conversationId>`) right before redirecting to the newly created
+    conversation's canonical `/messages/<id>` URL (the redirect unmounts/remounts the component,
+    so this can't be plain component state). `useConsumeSessionFlag` (`useAppLinkEnv.ts`) reads
+    and clears that flag on the next mount; while true, a `GetAppCard` ("Get the owner's reply as
+    a notification", `appPath` = the thread's own path via `appPathForWebPath`) shows above the
+    composer.
+  - **Saved search** — `SaveSearchButton.tsx`'s popup stays open after a successful save (instead
+    of closing) and swaps the name form for "✓ Search saved" + a `GetAppCard` ("Be first to see
+    new matches"), widening slightly (`lg:min-w-[320px]`) to fit the QR. The standalone
+    `/saved-searches` page (`SavedSearchesManager`) still just reloads — not covered here, lower
+    traffic than the inline browse-page button.
 - **Footer** "Get the app" column: QR on desktop, Play Store link everywhere.
-- QR images are static SVGs in `apps/web/public/app-qr/` (one per placement, Play referrer
-  `utm_medium=qr&utm_campaign=<placement>`); regeneration command in `appLinks.ts`.
+- QR images are static SVGs in `apps/web/public/app-qr/` (one per placement — `strip` has none, it
+  doesn't need one; `post_success`, `my_listings`, `footer`, `contact`, `saved_search` all do; Play
+  referrer `utm_medium=qr&utm_campaign=<placement>`); regeneration command in `appLinks.ts`.
 - Tracking: see "How taps and installs are measured" below.
 - **App fix shipped with it:** `listingIdFromPath` (mobile `referralLink.ts`) took the text after
   any hyphen as a listing id, so `bhavano://my-listings` or `/bengaluru/hsr-layout` would have
@@ -78,8 +98,9 @@ three separate measurements. Their totals line up, but they don't connect to eac
 1. **Taps, web (GA4 + Page visits trail).** Every control calls `reportGetAppEvent`
    (`apps/web/src/lib/getAppEvents.ts`), which does two things:
    - pushes `open_in_app_click` / `open_in_app_dismiss` to the dataLayer with `placement`
-     (`strip` | `post_success` | `my_listings` | `footer`) and `app_path`. GTM version 11 forwards
-     both to GA4 (`gtm_build.py` `EVENTS`). GA4-only, not an Ads conversion.
+     (`strip` | `post_success` | `my_listings` | `footer` | `contact` | `saved_search`) and
+     `app_path`. GTM version 11 forwards both to GA4 (`gtm_build.py` `EVENTS`). GA4-only, not an
+     Ads conversion.
    - writes a synthetic `/get-app?event=click|dismiss&placement=…&to=…` row into the visitor's
      Page visits trail. Admin shows it as "Get app — tapped Open app (bottom bar) → listing/…"
      (`apps/admin/src/lib/pageTrail.ts`).
