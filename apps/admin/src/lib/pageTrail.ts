@@ -73,10 +73,15 @@ const GET_APP_PLACEMENTS: Record<string, string> = {
   strip: "bottom bar",
   post_success: "ad-posted screen",
   my_listings: "My listings",
-  footer: "footer link",
+  footer: "footer",
+  header: "header",
+  header_mobile: "phone header icon",
   contact: "message thread",
   saved_search: "saved search",
 };
+
+/** Placements that link straight to the Play Store rather than opening the app. */
+const PLAY_STORE_PLACEMENTS = new Set(["footer", "header", "header_mobile"]);
 
 function getAppLabel(path: string): string {
   try {
@@ -85,7 +90,7 @@ function getAppLabel(path: string): string {
     const placement = GET_APP_PLACEMENTS[placementKey] ?? (placementKey || "unknown");
     const to = params.get("to");
     if (params.get("event") === "dismiss") return `Get app — dismissed (${placement})`;
-    if (placementKey === "footer") return "Get app — tapped Google Play (footer link)";
+    if (PLAY_STORE_PLACEMENTS.has(placementKey)) return `Get app — tapped Google Play (${placement})`;
     return `Get app — tapped Open app (${placement})${to ? ` → ${to}` : ""}`;
   } catch {
     return path;
@@ -97,6 +102,8 @@ const INSTALL_MEDIUMS: Record<string, string> = {
   open_in_app_strip: "website bottom bar",
   get_app_card: "website app card",
   footer_link: "website footer link",
+  play_badge: "website Google Play badge",
+  play_icon: "website Google Play icon",
 };
 
 function appInstallLabel(path: string): string {
