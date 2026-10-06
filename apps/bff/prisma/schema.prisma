@@ -1012,6 +1012,13 @@ model BoostPriceSetting {
   /// the card is shown, independent of showSelectorOnPreview or any platform-fee state. Defaults
   /// to true, preserving the always-skippable behavior that existed before this flag.
   allowSkippingBoost              Boolean  @default(true)
+  /// Optional price-by-listing-value overrides — see
+  /// docs/plans/boost-proof-stat-and-value-bands.md. Purely additive: null (every existing row,
+  /// until an admin explicitly sets this via the new settings UI) means every category keeps
+  /// using the flat per-tier prices above exactly as before — zero behavior change on its own.
+  /// Shape is BoostPricingRule[] from packages/types/src/boostPricing.ts; validated at the
+  /// application layer (UpdateBoostPricingDto), not by the database.
+  valueBandRules                  Json?
   updatedAt                       DateTime @updatedAt
 }
 

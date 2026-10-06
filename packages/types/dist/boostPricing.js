@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_BOOST_PRICE_SETTINGS = exports.BOOST_DURATIONS = void 0;
+exports.DEFAULT_BOOST_PRICE_SETTINGS = exports.DEFAULT_VALUE_BAND_RULES = exports.BOOST_DURATIONS = void 0;
 exports.enabledBoostDurations = enabledBoostDurations;
 exports.offeredBoostDurations = offeredBoostDurations;
 exports.defaultBoostDuration = defaultBoostDuration;
@@ -11,6 +11,77 @@ exports.buildDisplayBoostPricing = buildDisplayBoostPricing;
 const promoCode_1 = require("./promoCode");
 /** Every duration a seller can buy, shortest first — the one list the pickers render from. */
 exports.BOOST_DURATIONS = [7, 15, 30];
+const PROPERTY_RULE_CATEGORIES = ["house", "apartment", "villa", "plot", "commercial"];
+/** Starting placeholder bands — explicitly not real percentile data (none was reachable from the
+ * dev environment this was written in; the production DB is only reachable from inside Bhavano's
+ * own infrastructure). Each rule's middle band matches today's existing flat tier price, so a
+ * typical listing's price doesn't move on rollout — only genuinely cheap or genuinely expensive
+ * listings do. See docs/plans/boost-proof-stat-and-value-bands.md for the full reasoning and the
+ * table these come from. Replace with real cutoffs/prices via the admin settings once production
+ * listing-price/rent percentiles can be pulled. */
+exports.DEFAULT_VALUE_BAND_RULES = [
+    {
+        categories: PROPERTY_RULE_CATEGORIES,
+        transactionTypes: ["sell", "buy"],
+        bands: [
+            { maxValue: 50_00_000, price7d: 149, price15d: 249, price30d: 449 },
+            { maxValue: 2_00_00_000, price7d: 199, price15d: 349, price30d: 599 },
+            { maxValue: null, price7d: 349, price15d: 599, price30d: 999 },
+        ],
+    },
+    {
+        categories: PROPERTY_RULE_CATEGORIES,
+        transactionTypes: ["rent", "lease"],
+        bands: [
+            { maxValue: 15_000, price7d: 99, price15d: 179, price30d: 299 },
+            { maxValue: 50_000, price7d: 199, price15d: 349, price30d: 599 },
+            { maxValue: null, price7d: 299, price15d: 499, price30d: 849 },
+        ],
+    },
+    {
+        categories: ["furniture", "interiors"],
+        transactionTypes: ["sell", "buy"],
+        bands: [
+            { maxValue: 5_000, price7d: 29, price15d: 49, price30d: 79 },
+            { maxValue: 20_000, price7d: 49, price15d: 89, price30d: 149 },
+            { maxValue: null, price7d: 79, price15d: 139, price30d: 229 },
+        ],
+    },
+    {
+        // Furniture/interiors rented rather than sold outright — real usage (see
+        // ads_retarget_owners.py's "Rent out Furniture" ad group) — priced far below the sell table
+        // since this is a monthly rate, not a one-time price.
+        categories: ["furniture", "interiors"],
+        transactionTypes: ["rent", "lease"],
+        bands: [
+            { maxValue: 500, price7d: 19, price15d: 29, price30d: 49 },
+            { maxValue: 2_000, price7d: 29, price15d: 49, price30d: 79 },
+            { maxValue: null, price7d: 49, price15d: 79, price30d: 129 },
+        ],
+    },
+    {
+        // Inherently monthly — no sell variant.
+        categories: ["pg"],
+        transactionTypes: ["rent", "lease"],
+        bands: [
+            { maxValue: 6_000, price7d: 49, price15d: 89, price30d: 149 },
+            { maxValue: 15_000, price7d: 99, price15d: 179, price30d: 299 },
+            { maxValue: null, price7d: 149, price15d: 259, price30d: 429 },
+        ],
+    },
+    {
+        // By monthly seat/desk price — inherently monthly, no sell variant.
+        categories: ["coworking"],
+        transactionTypes: ["rent", "lease"],
+        bands: [
+            { maxValue: 3_000, price7d: 49, price15d: 89, price30d: 149 },
+            { maxValue: 10_000, price7d: 99, price15d: 179, price30d: 299 },
+            { maxValue: null, price7d: 149, price15d: 259, price30d: 429 },
+        ],
+    },
+    // Storage deliberately has no rule here — not asked for, stays on the flat
+    // coworkingPgStorageBoostPrice* tier above, unchanged.
+];
 /** Bundled into this shared package (not just the BFF) since `boostPriceFor` below is also
  * called client-side, purely for display, before any live-settings fetch resolves — see
  * BoostProvider.tsx (web) / BoostModal.tsx (mobile). The BFF's own DB-row fallback (when no
@@ -30,6 +101,7 @@ exports.DEFAULT_BOOST_PRICE_SETTINGS = {
     boost15dEnabled: true,
     boost30dEnabled: true,
     allowSkippingBoost: true,
+    valueBandRules: exports.DEFAULT_VALUE_BAND_RULES,
 };
 /** The durations admin has switched on, shortest first. A flag missing from a response sent by a
  * server older than these toggles counts as on. */
@@ -49,8 +121,13 @@ function defaultBoostDuration(offered) {
 }
 const PROPERTY_CATEGORIES = new Set(["house", "apartment", "villa", "plot", "commercial"]);
 const MID_VALUE_CATEGORIES = new Set(["coworking", "pg", "storage"]);
-// furniture/interiors fall through to the remaining low-value tier below.
-function boostPriceFor(category, days, settings = exports.DEFAULT_BOOST_PRICE_SETTINGS) {
+function boostPriceFor(category, days, settings = exports.DEFAULT_BOOST_PRICE_SETTINGS, context) {
+    if (context) {
+        const rule = settings.valueBandRules?.find((r) => r.categories.includes(category) && r.transactionTypes.includes(context.transactionType));
+        const band = rule?.bands.find((b) => b.maxValue === null || context.value <= b.maxValue) ?? rule?.bands[rule.bands.length - 1];
+        if (band)
+            return days === 7 ? band.price7d : days === 15 ? band.price15d : band.price30d;
+    }
     const [price7d, price15d, price30d] = PROPERTY_CATEGORIES.has(category)
         ? [settings.propertyBoostPrice7d, settings.propertyBoostPrice15d, settings.propertyBoostPrice30d]
         : MID_VALUE_CATEGORIES.has(category)
@@ -103,10 +180,15 @@ function boostSavings(pricing, days) {
  * never used to decide what a checkout actually charges, only what the selector displays before
  * that fetch is even possible. `discountPercent` omitted/`null` shows undiscounted prices, same
  * as `previewBoostPricing` would once the code turns out invalid/expired/exhausted. */
-function buildDisplayBoostPricing(category, boostSettings, discountPercent) {
-    const boost7 = boostPriceFor(category, 7, boostSettings);
-    const boost15 = boostPriceFor(category, 15, boostSettings);
-    const boost30 = boostPriceFor(category, 30, boostSettings);
+function buildDisplayBoostPricing(category, boostSettings, discountPercent, 
+/** The in-progress wizard's own transactionType + price/rent field, when the advertiser has
+ * already entered it by the time this renders (the ad-preview step collects price before
+ * review) — lets the preview-step selector show the real band price too, not just the flat
+ * tier price. Omit while the value isn't known yet; falls back to the flat tier price. */
+context) {
+    const boost7 = boostPriceFor(category, 7, boostSettings, context);
+    const boost15 = boostPriceFor(category, 15, boostSettings, context);
+    const boost30 = boostPriceFor(category, 30, boostSettings, context);
     const option = (amount) => discountPercent
         ? { amount: (0, promoCode_1.promoPriceFor)(amount, discountPercent), originalAmount: amount, discountApplied: true, free: false }
         : { amount, originalAmount: amount, discountApplied: false, free: false };

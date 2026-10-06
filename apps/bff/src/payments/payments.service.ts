@@ -45,6 +45,7 @@ import {
   INSTANT_ALERTS_PRICE_SETTINGS_ID,
   PLATFORM_FEE_SETTINGS_ID,
 } from '../plans/plans.constants';
+import { toBoostPriceSettings } from '../plans/boost-pricing-settings.service';
 import { platformFeeFor } from '@bhavano/types/platformFeePricing';
 import type { PurchaseSource } from '@bhavano/types/purchaseSource';
 import { ListingsService } from '../listings/listings.service';
@@ -461,12 +462,16 @@ export class PaymentsService {
       }
     }
 
-    const boostPriceSettings =
-      (await this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } })) ??
-      DEFAULT_BOOST_PRICE_SETTINGS;
+    const boostPriceSettingsRow = await this.prisma.boostPriceSetting.findUnique({
+      where: { id: BOOST_PRICE_SETTINGS_ID },
+    });
+    const boostPriceSettings = boostPriceSettingsRow ? toBoostPriceSettings(boostPriceSettingsRow) : DEFAULT_BOOST_PRICE_SETTINGS;
     this.assertBoostDurationOffered(boostDays, boostPriceSettings);
     const discount = await this.resolveDiscountCodeSafely(discountCode, userId);
-    const baseRupees = boostPriceFor(listing.category, boostDays, boostPriceSettings);
+    const baseRupees = boostPriceFor(listing.category, boostDays, boostPriceSettings, {
+      transactionType: listing.transactionType,
+      value: listing.price,
+    });
     const amountInPaise = this.applyDiscount(baseRupees * 100, discount?.discountPercent);
 
     const order = await this.getRazorpay().orders.create({
@@ -514,13 +519,25 @@ export class PaymentsService {
    * gets charged). `discountCode` is resolved via resolveDiscountCodeSafely, same as every
    * create*Order method — a bad/expired/exhausted code degrades to "no discount" rather than
    * throwing, since this and every other caller only ever passes the auto-applied ACTIVE_PROMO_CODE. */
-  async previewBoostPricing(userId: string, category: ListingCategory, discountCode?: string): Promise<BoostPricingPreviewDto> {
-    const [boostPriceSettingsRow, owner, referralCredit] = await Promise.all([
+  async previewBoostPricing(
+    userId: string,
+    category: ListingCategory,
+    discountCode?: string,
+    /** The listing this preview is for — optional only for safety against a caller that genuinely
+     * has none yet; every real caller (BoostBundlePicker/BoostBundleCard) already has one. Without
+     * it, pricing falls back to the flat per-tier price, same as before value bands existed. */
+    listingId?: string,
+  ): Promise<BoostPricingPreviewDto> {
+    const [boostPriceSettingsRow, owner, referralCredit, listing] = await Promise.all([
       this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { agentProUntil: true } }),
       this.referralsService.getRedeemableCreditSummary(userId),
+      listingId
+        ? this.prisma.listing.findUnique({ where: { id: listingId }, select: { transactionType: true, price: true } })
+        : null,
     ]);
-    const boostPriceSettings = boostPriceSettingsRow ?? DEFAULT_BOOST_PRICE_SETTINGS;
+    const boostPriceSettings = boostPriceSettingsRow ? toBoostPriceSettings(boostPriceSettingsRow) : DEFAULT_BOOST_PRICE_SETTINGS;
+    const priceContext = listing ? { transactionType: listing.transactionType, value: listing.price } : undefined;
 
     const discount = await this.resolveDiscountCodeSafely(discountCode, userId);
     const discountPercent = discount?.discountPercent;
@@ -536,9 +553,9 @@ export class PaymentsService {
       hasFreeBoostCredit = !!credit && !credit.redeemedAt;
     }
 
-    const boost7Rupees = boostPriceFor(category, 7, boostPriceSettings);
-    const boost15Rupees = boostPriceFor(category, 15, boostPriceSettings);
-    const boost30Rupees = boostPriceFor(category, 30, boostPriceSettings);
+    const boost7Rupees = boostPriceFor(category, 7, boostPriceSettings, priceContext);
+    const boost15Rupees = boostPriceFor(category, 15, boostPriceSettings, priceContext);
+    const boost30Rupees = boostPriceFor(category, 30, boostPriceSettings, priceContext);
 
     const option = (baseRupees: number, free: boolean): BoostPricingOptionDto => {
       if (free) return { amount: 0, originalAmount: 0, discountApplied: false, free: true };
@@ -628,14 +645,18 @@ export class PaymentsService {
       throw new BadRequestException('This listing is not awaiting publish checkout');
     }
 
-    const [platformFeeSettings, boostPriceSettings] = await Promise.all([
+    const [platformFeeSettings, boostPriceSettingsRow] = await Promise.all([
       this.prisma.platformFeeSetting.findUnique({ where: { id: PLATFORM_FEE_SETTINGS_ID } }),
       this.prisma.boostPriceSetting.findUnique({ where: { id: BOOST_PRICE_SETTINGS_ID } }),
     ]);
     const feeRupees = platformFeeFor(listing.category, platformFeeSettings ?? undefined);
+    const boostPriceSettings = boostPriceSettingsRow ? toBoostPriceSettings(boostPriceSettingsRow) : DEFAULT_BOOST_PRICE_SETTINGS;
     let boostRupees = 0;
     if (boostDays) {
-      boostRupees = boostPriceFor(listing.category, boostDays, boostPriceSettings ?? DEFAULT_BOOST_PRICE_SETTINGS);
+      boostRupees = boostPriceFor(listing.category, boostDays, boostPriceSettings, {
+        transactionType: listing.transactionType,
+        value: listing.price,
+      });
     }
     // feeRupees === 0 && !boostDays is a legitimate case, not a client mistake: the publish
     // checkout recovery screen lets an owner who originally picked Boost change their mind and

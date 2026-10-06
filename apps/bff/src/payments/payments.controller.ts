@@ -65,7 +65,7 @@ export class PaymentsController {
     @Query() dto: PreviewBoostPricingDto,
     @CurrentUser() user: RequestUser,
   ): Promise<BoostPricingPreviewDto> {
-    return this.paymentsService.previewBoostPricing(user.id, dto.category, dto.discountCode);
+    return this.paymentsService.previewBoostPricing(user.id, dto.category, dto.discountCode, dto.listingId);
   }
 
   @Post('subscriptions')

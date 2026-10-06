@@ -12,7 +12,9 @@ import {
   defaultBoostDuration,
   enabledBoostDurations,
   offeredBoostDurations,
+  DEFAULT_VALUE_BAND_RULES,
   type BoostPriceSettings,
+  type BoostPricingRule,
 } from '@bhavano/types/boostPricing';
 
 /** The live prices at the time of writing: property boosts ₹99 / ₹179 / ₹299. */
@@ -41,6 +43,61 @@ describe('boostPriceFor — three durations', () => {
     expect(boostPriceFor('pg', 30, LIVE)).toBe(299);
     expect(boostPriceFor('furniture', 7, LIVE)).toBe(49);
     expect(boostPriceFor('furniture', 30, LIVE)).toBe(149);
+  });
+});
+
+describe('boostPriceFor — value bands (docs/plans/boost-proof-stat-and-value-bands.md)', () => {
+  it('ignores valueBandRules entirely when no context is given — the pre-existing flat-tier path', () => {
+    const settings = { ...LIVE, valueBandRules: DEFAULT_VALUE_BAND_RULES };
+    expect(boostPriceFor('apartment', 7, settings)).toBe(99); // LIVE's flat price, not a band price
+  });
+
+  it('picks the matching band by value within a matching rule', () => {
+    const settings = { ...LIVE, valueBandRules: DEFAULT_VALUE_BAND_RULES };
+    // Property, sell: <50L, 50L-2Cr, >2Cr.
+    expect(boostPriceFor('apartment', 7, settings, { transactionType: 'sell', value: 30_00_000 })).toBe(149);
+    expect(boostPriceFor('apartment', 7, settings, { transactionType: 'sell', value: 80_00_000 })).toBe(199);
+    expect(boostPriceFor('apartment', 7, settings, { transactionType: 'sell', value: 5_00_00_000 })).toBe(349);
+  });
+
+  it('uses a different cutoff/price set for rent than for sell, even on the same category', () => {
+    const settings = { ...LIVE, valueBandRules: DEFAULT_VALUE_BAND_RULES };
+    // ₹30,00,000 is a top-band SELL price, but as a RENT value (an absurd monthly rent) it's
+    // also top-band — the point is the two rules have independent cutoffs/prices, not that this
+    // particular number lands differently; confirm with a realistic monthly rent instead.
+    expect(boostPriceFor('house', 15, settings, { transactionType: 'rent', value: 12_000 })).toBe(179);
+    expect(boostPriceFor('house', 15, settings, { transactionType: 'rent', value: 80_000 })).toBe(499);
+  });
+
+  it('PG and coworking have their own rent-based bands, not the generic property-rent ones', () => {
+    const settings = { ...LIVE, valueBandRules: DEFAULT_VALUE_BAND_RULES };
+    expect(boostPriceFor('pg', 30, settings, { transactionType: 'rent', value: 8_000 })).toBe(299);
+    expect(boostPriceFor('coworking', 30, settings, { transactionType: 'rent', value: 1_500 })).toBe(149);
+  });
+
+  it('falls back to the flat tier price when no rule matches the category/transactionType pair', () => {
+    // No rule exists for storage at all.
+    const settings = { ...LIVE, valueBandRules: DEFAULT_VALUE_BAND_RULES };
+    expect(boostPriceFor('storage', 7, settings, { transactionType: 'rent', value: 5_000 })).toBe(99);
+  });
+
+  it('falls back to the flat tier price when valueBandRules is entirely absent (an existing settings row)', () => {
+    expect(boostPriceFor('apartment', 7, LIVE, { transactionType: 'sell', value: 30_00_000 })).toBe(99);
+  });
+
+  it('uses the open-ended top band when value exceeds every explicit cutoff', () => {
+    const oneRule: BoostPricingRule[] = [
+      {
+        categories: ['apartment'],
+        transactionTypes: ['sell'],
+        bands: [
+          { maxValue: 100, price7d: 1, price15d: 2, price30d: 3 },
+          { maxValue: null, price7d: 10, price15d: 20, price30d: 30 },
+        ],
+      },
+    ];
+    const settings = { ...LIVE, valueBandRules: oneRule };
+    expect(boostPriceFor('apartment', 7, settings, { transactionType: 'sell', value: 999_999 })).toBe(10);
   });
 });
 
