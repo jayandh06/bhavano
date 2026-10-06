@@ -85,6 +85,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const medium = str(sp.medium);
   const ip = str(sp.ip);
   const landingPath = str(sp.landingPath);
+  const pagePath = str(sp.pagePath);
   const city = str(sp.city);
   const region = str(sp.region);
   const country = str(sp.country);
@@ -102,6 +103,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     medium,
     ip,
     landingPath,
+    pagePath,
     city,
     region,
     country,
@@ -134,7 +136,9 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
         <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 20px", lineHeight: 1.6 }}>
           Text filters: <Code>text</Code> contains · <Code>text%</Code> starts with · <Code>%text</Code> ends with ·{" "}
           <Code>{"{a, b, c}"}</Code> is any of (exact) · <Code>!</Code> prefix negates (e.g. <Code>!{"{google}"}</Code>,{" "}
-          <Code>!spam%</Code>). All case-insensitive.
+          <Code>!spam%</Code>). All case-insensitive. <strong>Pages</strong> matches any page view anywhere in the
+          session (not just the landing page) — e.g. <Code>/get-app%</Code> finds every session that tapped or
+          dismissed a get-the-app control.
         </p>
 
         {/* One form around both the range/identity bar and the table, so the per-column filter
@@ -270,7 +274,9 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                 <tr style={{ background: "var(--surface-alt)" }}>
                   <th style={filterThStyle} />
                   <th style={filterThStyle} />
-                  <th style={filterThStyle} />
+                  <th style={filterThStyle}>
+                    <input name="pagePath" defaultValue={pagePath} placeholder="/get-app%" style={headerInputStyle} />
+                  </th>
                   <th style={filterThStyle}>
                     <SelectField name="deviceType" defaultValue={deviceType ?? "any"} style={headerSelectStyle}>
                       {DEVICE_TYPE_OPTIONS.map((o) => (

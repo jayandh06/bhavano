@@ -494,6 +494,8 @@ export interface PageVisitsQuery {
   medium?: string;
   ip?: string;
   landingPath?: string;
+  /** Matches any page view in the session, not just the landing page — see ListPageVisitsDto. */
+  pagePath?: string;
   city?: string;
   region?: string;
   country?: string;

@@ -710,7 +710,27 @@ export class AdminService {
   async listPageVisits(query: ListPageVisitsDto): Promise<PageVisitsPage> {
     const { offset, from, to, userId, identity, deviceType, traffic, sort, limit } = query;
 
+    // Resolved up front, not a relation `some` filter: PageView.sessionId is deliberately not a
+    // Prisma relation to Visit (see PageView's own schema comment), so "any page view in this
+    // session matches X" has to go the long way — find the matching sessionIds first, then
+    // filter Visit by `sessionId: { in: … }` below. An empty result here correctly yields zero
+    // Visit rows rather than an unfiltered query: `in: []` matches nothing in Prisma.
+    const pagePathClause = parseTextFilter(query.pagePath);
+    const pagePathSessionIds = pagePathClause
+      ? (
+          await this.prisma.pageView.findMany({
+            // `parseTextFilter` is typed nullable (it's shared with nullable Visit columns);
+            // PageView.path never is — the cast is just that nullability mismatch, not a real
+            // `null` value anywhere in the clauses parseTextFilter actually produces.
+            where: { path: pagePathClause as Prisma.StringFilter<'PageView'> },
+            distinct: ['sessionId'],
+            select: { sessionId: true },
+          })
+        ).map((row) => row.sessionId)
+      : undefined;
+
     const where: Prisma.VisitWhereInput = {
+      ...(pagePathSessionIds ? { sessionId: { in: pagePathSessionIds } } : {}),
       // `humans` is `isBot: false`, not "not true" — a null (unclassified, i.e. every row from
       // before the column existed, ~99.85% of which is crawler traffic) must not pass as human.
       ...(traffic === 'humans'

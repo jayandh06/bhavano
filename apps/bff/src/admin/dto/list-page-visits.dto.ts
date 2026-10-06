@@ -132,6 +132,15 @@ export class ListPageVisitsDto {
   @MaxLength(500)
   landingPath?: string;
 
+  /** Unlike `landingPath` (the session's *first* page), this matches any `PageView` anywhere in
+   * the session — e.g. `/get-app%` finds every session that tapped or dismissed a get-the-app
+   * control, even though that's never a landing page. Same text-filter DSL. See
+   * AdminService.listPageVisits for why this can't be a relation `some` filter. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  pagePath?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(200)
