@@ -29,7 +29,7 @@ export function ListingMediaGallery({
   videos,
   title,
   tag,
-  isExpired,
+  closedLabel,
   imgColors,
   imgLabel,
   children,
@@ -38,7 +38,11 @@ export function ListingMediaGallery({
   videos: ListingVideoDto[];
   title: string;
   tag: string;
-  isExpired: boolean;
+  /** The listing's own status label ("Sold"/"Rented"/"Deactivated") when the owner/admin has
+   * explicitly closed it — `null`/`undefined` while still active. Replaces an age-based
+   * "Expired" badge (see docs/plans/explicit-close-not-auto-expire.md): nothing here is ever
+   * shown just because a listing is old, only because someone closed it. */
+  closedLabel?: string | null;
   imgColors: [string, string];
   imgLabel: string;
   /** Rendered between the hero and the thumbnail strip — the page passes its price, title and
@@ -89,8 +93,10 @@ export function ListingMediaGallery({
           <span className="font-mono text-[13px] text-[#ffffffcc] bg-[#00000030] px-3 py-1.5 rounded-md">{imgLabel}</span>
         )}
         <span className="absolute top-4 left-4 bg-green text-on-green text-xs font-bold px-3 py-[5px] rounded-md">{tag}</span>
-        {isExpired && (
-          <span className="absolute top-4 right-4 bg-[#242420] text-[#F5F1E6] text-xs font-bold px-3 py-[5px] rounded-md">Expired</span>
+        {closedLabel && (
+          <span className="absolute top-4 right-4 bg-[#242420] text-[#F5F1E6] text-xs font-bold px-3 py-[5px] rounded-md">
+            {closedLabel}
+          </span>
         )}
       </div>
 

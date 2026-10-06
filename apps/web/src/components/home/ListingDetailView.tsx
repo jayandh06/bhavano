@@ -8,7 +8,6 @@ import {
   groupFieldsBySection,
 } from "@bhavano/types/categoryFields";
 import { resolveDefaultCity } from "@/lib/defaultCity";
-import { daysUntil } from "@/lib/listingExpiry";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { buildListingPath } from "@/lib/listingPath";
@@ -20,6 +19,15 @@ import { ViewTracker } from "./ViewTracker";
 import { ListingLoginNudge } from "./ListingLoginNudge";
 import { fetchLoginNudgeSettings } from "@/lib/bff";
 import { Icon, isIconName } from "./Icon";
+
+/** Mirrors the map in my-listings/page.tsx — kept local rather than shared/exported since it's a
+ * 4-value lookup, not worth coupling the two components over. */
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  sold: "Sold",
+  rented: "Rented",
+  deactivated: "Deactivated",
+};
 
 /** A plain cached image, not the interactive Maps JavaScript API — this page is by far the
  * highest-traffic surface in the product, so cost here scales with page *views*, unlike the
@@ -140,7 +148,7 @@ export async function ListingDetailView({
               videos={listing.videos}
               title={listing.title}
               tag={listing.tag}
-              isExpired={listing.isExpired}
+              closedLabel={listing.status !== "active" ? STATUS_LABELS[listing.status] : null}
               imgColors={listing.imgColors}
               imgLabel={listing.imgLabel}
             >
@@ -200,12 +208,7 @@ export async function ListingDetailView({
             )}
             <div className="text-xs text-muted mb-4 flex gap-3.5">
               <span className="flex items-center gap-1"><Icon name="eye" /> {listing.viewCount} views</span>
-              <span>
-                {listing.isExpired
-                  ? "Expired"
-                  : `Expires in ${daysUntil(listing.expiresAt)} days`}
-              </span>
-          </div>
+            </div>
 
           {listing.description && (
             // whitespace-pre-line so the paragraph breaks the seller typed survive. They wrote it
@@ -277,9 +280,9 @@ export async function ListingDetailView({
             * bottom of the page it has always been, in the same order. A phone was never the
             * problem here — 880px does not constrain a 390px screen — so nothing changes. */}
           <aside className="lg:border lg:border-border lg:rounded-2xl lg:p-5 lg:bg-surface">
-            {listing.isExpired ? (
+            {listing.status !== "active" ? (
               <p className="text-[13px] text-muted">
-                This ad has expired and is no longer accepting responses.
+                This ad has been marked {STATUS_LABELS[listing.status]} and is no longer accepting responses.
               </p>
             ) : (
               <ListingDetailActions

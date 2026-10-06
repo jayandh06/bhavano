@@ -25,12 +25,7 @@ import { OwnerWhatsAppShare } from "@/components/home/OwnerWhatsAppShare";
 import { OwnerFacebookShare } from "@/components/home/OwnerFacebookShare";
 import { GetAppCard } from "@/components/home/GetAppCard";
 import { VideoManager } from "@/components/home/VideoManager";
-import { daysUntil } from "@/lib/listingExpiry";
 import { Icon } from "@/components/home/Icon";
-
-/** How far ahead of expiry the Renew affordance appears — mirrors the BFF's expiry-reminder
- * job, so the in-app action shows up at the same time the reminder email/SMS goes out. */
-const RENEW_WINDOW_DAYS = 7;
 
 const renewedAtFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
@@ -128,8 +123,8 @@ async function MyListingsGrid({
     );
   }
 
-  const activeListings = listings.filter((item) => !item.isExpired);
-  const pastListings = listings.filter((item) => item.isExpired);
+  const activeListings = listings.filter((item) => item.status === "active");
+  const pastListings = listings.filter((item) => item.status !== "active");
 
   // The deep-linked dialog's price, resolved server-side.
   //
@@ -185,7 +180,7 @@ async function MyListingsGrid({
         <>
           <h2 className="font-lora text-[19px] font-semibold m-0 mt-5">Past listings</h2>
           <p className="text-[13px] text-muted m-0 -mt-1">
-            These have expired and are no longer visible to buyers. Renew one to put it back up.
+            These have been marked sold, rented, or deactivated and are no longer visible to buyers.
           </p>
           {pastListings.map((item) => (
             <MyListingRow key={item.id} item={item} accessToken={accessToken} referralCode={profile.id} />
@@ -235,10 +230,9 @@ function MyListingRow({
   referralCode: string;
 }) {
   const isPendingPublish = item.publishState === "pending_checkout";
-  const daysLeft = daysUntil(item.expiresAt);
-  // A negative value still satisfies <= 7, so this covers both the pre-expiry window and any
-  // time after it lapsed — a listing never becomes un-renewable just by sitting expired.
-  const canRenew = item.status === "active" && daysLeft <= RENEW_WINDOW_DAYS;
+  // Always available while active — see docs/plans/explicit-close-not-auto-expire.md. Nothing is
+  // actually counting down anymore, so Renew is a purely optional refresh, not gated by a window.
+  const canRenew = item.status === "active";
   const lastRenewedAt = item.renewalHistory?.[0]?.renewedAt;
 
   return (
@@ -250,7 +244,7 @@ function MyListingRow({
             className="text-[11px] font-bold rounded-md px-2 py-0.5 border"
             style={{ color: STATUS_COLORS[item.status], borderColor: STATUS_COLORS[item.status] }}
           >
-            {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
+            {STATUS_LABELS[item.status]}
           </span>
           {isPendingPublish && (
             <span className="text-[11px] font-bold rounded-md px-2 py-0.5 border border-[#b3413a] text-[#b3413a]">
@@ -275,7 +269,6 @@ function MyListingRow({
               {item.interestCount} interested
             </span>
           )}
-          {canRenew && <span>{item.isExpired ? "Expired" : `Expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}</span>}
         </div>
         {item.renewCount > 0 && (
           <div className="text-[11.5px] text-muted mt-1">
@@ -299,10 +292,10 @@ function MyListingRow({
         ) : (
           <>
             {canRenew && <RenewButton listingId={item.id} />}
-            {item.status === "active" && !item.isExpired && !item.isBoosted && (
+            {item.status === "active" && !item.isBoosted && (
               <BoostButton listingId={item.id} category={item.category} />
             )}
-            {item.status === "active" && !item.isExpired && (
+            {item.status === "active" && (
               <>
                 <OwnerWhatsAppShare
                   listing={item}
@@ -332,7 +325,7 @@ function MyListingRow({
           <Icon name="edit" />
         </Link>
       </div>
-      {item.status === "active" && !item.isExpired && !isPendingPublish && (
+      {item.status === "active" && !isPendingPublish && (
         <div className="basis-full border-t border-border pt-3 mt-1">
           <VideoManager listing={item} accessToken={accessToken} />
         </div>
