@@ -614,32 +614,24 @@ export class NotificationsService {
     return sent ? 'whatsapp' : null;
   }
 
-  /** Listing expiry reminder — email if the user has one, else WhatsApp once a template exists
-   * for this (none does yet — see `notifyListingFlagged`'s comment on what that means). Fired by
-   * `ListingExpiryReminderJob`, which already logs to `ListingNotificationLog` itself on a
-   * successful send — that part predates this refactor and is untouched. */
+  /** A one-time "still live, still available?" nudge at the 30-day mark — see
+   * docs/plans/explicit-close-not-auto-expire.md. Not a countdown to anything real anymore (the
+   * listing was never going to disappear on its own): just encourages closing it if it's done, or
+   * renewing it to keep it fresh if not. Email if the user has one, else WhatsApp once a template
+   * exists for this (none does yet — see `notifyListingFlagged`'s comment on what that means).
+   * Fired by `ListingExpiryReminderJob`, which already logs to `ListingNotificationLog` itself on
+   * a successful send — that part predates this refactor and is untouched. */
   async notifyListingExpiryReminder(
     user: NotifiableUser & { name?: string | null },
     listingTitle: string,
-    expiresAt: Date,
-    daysLeft: number,
   ): Promise<'email' | 'whatsapp' | null> {
     const site =
       this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
-    const expiryDate = expiresAt.toLocaleDateString('en-IN', {
-      dateStyle: 'medium',
-    });
-    // Pluralised here, once, rather than inside the template — {{}} substitution is plain string
-    // replacement with no conditional logic, so "1 day" vs "7 days" has to arrive as one already-
-    // correct value.
-    const daysLeftText = `${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
 
     const tpl = loadTemplate('email/listing-expiry-reminder');
     const vars = {
       name: user.name ?? 'there',
       title: listingTitle,
-      expiryDate,
-      daysLeft: daysLeftText,
     };
     const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
     const buttonLabel = tpl.buttonLabel
