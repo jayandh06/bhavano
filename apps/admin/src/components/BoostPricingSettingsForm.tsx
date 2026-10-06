@@ -1,8 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { enabledBoostDurations, type BoostPriceSettings } from "@bhavano/types/boostPricing";
+import {
+  enabledBoostDurations,
+  DEFAULT_VALUE_BAND_RULES,
+  type BoostPriceSettings,
+  type BoostPricingRule,
+} from "@bhavano/types/boostPricing";
 import { updateBoostPricingAction } from "@/app/actions/admin";
+
+/** One label per rule, in the same order as DEFAULT_VALUE_BAND_RULES — purely for display; the
+ * rule itself (categories/transactionTypes) is never edited here, only its bands' cutoffs and
+ * prices. Matches docs/plans/boost-proof-stat-and-value-bands.md's 6 segments exactly. */
+const RULE_LABELS = [
+  "Property — sell/buy (by sale price)",
+  "Property — rent/lease (by monthly rent)",
+  "Furniture/Interiors — sell/buy (by sale price)",
+  "Furniture/Interiors — rent/lease (by monthly rent)",
+  "PG (by monthly rent)",
+  "Coworking (by monthly seat/desk price)",
+];
 
 export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSettings }) {
   const [propertyBoostPrice7d, setPropertyBoostPrice7d] = useState(String(initial.propertyBoostPrice7d));
@@ -31,8 +48,29 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
   const [boost15dEnabled, setBoost15dEnabled] = useState(initial.boost15dEnabled);
   const [boost30dEnabled, setBoost30dEnabled] = useState(initial.boost30dEnabled);
   const [allowSkippingBoost, setAllowSkippingBoost] = useState(initial.allowSkippingBoost);
+  // Falls back to the shipped placeholders (not an empty array) so an admin opening this for the
+  // first time sees — and can immediately start tuning — real starting bands, not a blank form
+  // that looks like the feature doesn't exist. See docs/plans/boost-proof-stat-and-value-bands.md.
+  const [valueBandRules, setValueBandRules] = useState<BoostPricingRule[]>(
+    initial.valueBandRules ?? DEFAULT_VALUE_BAND_RULES,
+  );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  function updateBand(
+    ruleIndex: number,
+    bandIndex: number,
+    field: "maxValue" | "price7d" | "price15d" | "price30d",
+    value: number | null,
+  ) {
+    setValueBandRules((rules) =>
+      rules.map((rule, ri) =>
+        ri !== ruleIndex
+          ? rule
+          : { ...rule, bands: rule.bands.map((band, bi) => (bi !== bandIndex ? band : { ...band, [field]: value })) },
+      ),
+    );
+  }
 
   const prices = {
     propertyBoostPrice7d: Number(propertyBoostPrice7d),
@@ -52,11 +90,22 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
     boost15dEnabled,
     boost30dEnabled,
     allowSkippingBoost,
+    valueBandRules,
   };
   const anyDurationOn = enabledBoostDurations(parsed).length > 0;
+  // Every band's 3 duration prices must be positive integers, and every band but the last
+  // (open-ended, maxValue null) needs a positive cutoff — these aren't part of the flat
+  // Object.values(prices) sweep above since they're nested, not top-level fields.
+  const bandsValid = valueBandRules.every((rule) =>
+    rule.bands.every(
+      (band, i) =>
+        [band.price7d, band.price15d, band.price30d].every((n) => Number.isInteger(n) && n > 0) &&
+        (i === rule.bands.length - 1 ? band.maxValue === null : Number.isInteger(band.maxValue) && (band.maxValue ?? 0) > 0),
+    ),
+  );
   // Only the price fields need this check — the toggles are booleans, not positive integers, so
   // they can't be folded into the same Object.values(...).every(...) sweep.
-  const valid = Object.values(prices).every((n) => Number.isInteger(n) && n > 0) && anyDurationOn;
+  const valid = Object.values(prices).every((n) => Number.isInteger(n) && n > 0) && anyDurationOn && bandsValid;
 
   async function onSave() {
     setSaving(true);
@@ -136,6 +185,27 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
             value={furnitureInteriorsBoostPrice30d}
             onChange={setFurnitureInteriorsBoostPrice30d}
           />
+        </div>
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Price bands by listing value</div>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 16 }}>
+          Optional, on top of the flat prices above — see docs/plans/boost-proof-stat-and-value-bands.md.
+          When a listing&apos;s category/transaction type matches a rule below, its band price is
+          charged instead of the flat tier price. The starting numbers here are placeholders, not
+          real percentile data — tune the cutoffs and prices once real listing-price/rent
+          distributions can be pulled from production.
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          {valueBandRules.map((rule, ruleIndex) => (
+            <BandRuleEditor
+              key={RULE_LABELS[ruleIndex] ?? ruleIndex}
+              label={RULE_LABELS[ruleIndex] ?? `Rule ${ruleIndex + 1}`}
+              rule={rule}
+              onChangeBand={(bandIndex, field, value) => updateBand(ruleIndex, bandIndex, field, value)}
+            />
+          ))}
         </div>
       </div>
 
@@ -221,6 +291,110 @@ function DurationToggle({
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       {label}
     </label>
+  );
+}
+
+/** One rule's bands as editable rows — cutoff + 3 duration prices each, last row's cutoff fixed
+ * to "and above" (not editable: `BoostPricingRule.bands`' last entry must have `maxValue: null`
+ * for boostPriceFor's fallback-to-top-band logic to work). Rules/bands aren't addable or
+ * removable from this UI — the 6 segments and 3-band shape are fixed by
+ * docs/plans/boost-proof-stat-and-value-bands.md; only cutoffs and prices are tunable here. */
+function BandRuleEditor({
+  label,
+  rule,
+  onChangeBand,
+}: {
+  label: string;
+  rule: BoostPricingRule;
+  onChangeBand: (bandIndex: number, field: "maxValue" | "price7d" | "price15d" | "price30d", value: number | null) => void;
+}) {
+  return (
+    <div>
+      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{label}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {rule.bands.map((band, bandIndex) => {
+          const isTopBand = bandIndex === rule.bands.length - 1;
+          return (
+            <div
+              key={bandIndex}
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "flex-end",
+                padding: 10,
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+              }}
+            >
+              <div style={{ flex: 1.2 }}>
+                <label style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 6, fontWeight: 700 }}>
+                  Up to (₹)
+                </label>
+                {isTopBand ? (
+                  <div style={{ fontSize: 13, color: "var(--muted)", padding: "10px 0" }}>and above</div>
+                ) : (
+                  <NumberField value={band.maxValue} onChange={(v) => onChangeBand(bandIndex, "maxValue", v)} />
+                )}
+              </div>
+              <NumberField
+                label="7-day (₹)"
+                value={band.price7d}
+                onChange={(v) => onChangeBand(bandIndex, "price7d", v)}
+              />
+              <NumberField
+                label="15-day (₹)"
+                value={band.price15d}
+                onChange={(v) => onChangeBand(bandIndex, "price15d", v)}
+              />
+              <NumberField
+                label="30-day (₹)"
+                value={band.price30d}
+                onChange={(v) => onChangeBand(bandIndex, "price30d", v)}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+}: {
+  label?: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
+  return (
+    <div style={{ flex: 1 }}>
+      {label && (
+        <label style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 6, fontWeight: 700 }}>
+          {label}
+        </label>
+      )}
+      <input
+        type="number"
+        min={1}
+        value={value ?? ""}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/[^0-9]/g, "");
+          onChange(digits === "" ? null : Number(digits));
+        }}
+        style={{
+          width: "100%",
+          border: "1px solid var(--border)",
+          borderRadius: 9,
+          padding: "10px 12px",
+          fontSize: 14,
+          outline: "none",
+          background: "var(--surface)",
+          color: "var(--text)",
+        }}
+      />
+    </div>
   );
 }
 
