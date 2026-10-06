@@ -116,17 +116,19 @@ $env:COMPOSE_PROJECT_NAME = $ProjectName
 $env:DOCKER_DEFAULT_PLATFORM = $Platform
 
 Write-Host "==> Ensuring buildx builder (armbuilder)"
-# No `2>&1` here: under Windows PowerShell 5.1, with $ErrorActionPreference = "Stop" above,
-# redirecting a native command's stderr into the success stream wraps each stderr line in a
-# NativeCommandError and throws — even when `docker buildx ls` exits 0. stderr prints straight to
-# the console instead; only stdout (the builder list itself) needs to be captured for the match
-# below. See docs/deployment.md's own Windows gotchas for the same issue at the outer invocation.
-$builders = docker buildx ls | Out-String
-if ($builders -notmatch "armbuilder") {
+# `buildx use` against the name directly, not a `buildx ls` text match: `ls`'s text output was
+# observed flaky under load on the .sh sibling script (2026-10-06 — the identical check against
+# identical builder state alternated found/not-found across back-to-back runs), which
+# intermittently tried to re-create a builder that already existed and aborted on Docker's own
+# "existing instance" error. No `2>&1` on this call either, same reason as before: under
+# $ErrorActionPreference = "Stop", redirecting a native command's stderr into the success stream
+# wraps each stderr line in a NativeCommandError and throws — checking $LASTEXITCODE instead
+# avoids that regardless of which branch runs. See docs/deployment.md's own Windows gotchas for
+# the same issue at the outer invocation.
+docker buildx use armbuilder | Out-Null
+if ($LASTEXITCODE -ne 0) {
   docker buildx create --name armbuilder --driver docker-container --use | Out-Null
   docker buildx inspect --bootstrap | Out-Null
-} else {
-  docker buildx use armbuilder | Out-Null
 }
 
 Write-Host "==> Building: $($Services -join ' ')"

@@ -92,12 +92,14 @@ fi
 export COMPOSE_PROJECT_NAME="$PROJECT"
 export DOCKER_DEFAULT_PLATFORM="$PLATFORM"
 
-if ! docker buildx ls 2>/dev/null | grep -q armbuilder; then
+# `buildx use` against the name directly, not a `buildx ls | grep` text match: `ls`'s output is
+# flaky under load (observed 2026-10-06 — the identical grep on the identical builder state
+# alternated found/not-found across back-to-back runs), which made this intermittently try to
+# re-create a builder that already existed and abort on Docker's own "existing instance" error.
+if ! docker buildx use armbuilder 2>/dev/null; then
   echo "==> Creating buildx armbuilder"
   docker buildx create --name armbuilder --driver docker-container --use
   docker buildx inspect --bootstrap >/dev/null
-else
-  docker buildx use armbuilder
 fi
 
 echo "==> Building"
