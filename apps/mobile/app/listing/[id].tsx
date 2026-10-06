@@ -27,9 +27,14 @@ function directionsUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 }
 
-function daysUntil(iso: string): number {
-  return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-}
+/** Mirrors the map in app/my-listings/index.tsx — kept local rather than shared since it's a
+ * 4-value lookup, not worth coupling the two screens over. */
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  sold: "Sold",
+  rented: "Rented",
+  deactivated: "Deactivated",
+};
 
 // Listing details stay open without login; useListingLoginNudge asks, with a Skip.
 export default function ListingDetailScreen() {
@@ -178,7 +183,7 @@ export default function ListingDetailScreen() {
         videos={listing.videos}
         title={listing.title}
         tag={listing.tag}
-        isExpired={listing.isExpired}
+        closedLabel={listing.status !== "active" ? STATUS_LABELS[listing.status] : null}
         imgColors={listing.imgColors}
         imgLabel={listing.imgLabel}
       />
@@ -213,9 +218,6 @@ export default function ListingDetailScreen() {
           <Icon name="eye" size={12} color={colors.muted} />
           <Text style={{ fontSize: 11.5, color: colors.muted }}>{listing.viewCount} views</Text>
         </View>
-        <Text style={{ fontSize: 11.5, color: colors.muted }}>
-          {listing.isExpired ? "Expired" : `Expires in ${daysUntil(listing.expiresAt)} days`}
-        </Text>
       </View>
 
       {listing.description ? (
@@ -255,9 +257,9 @@ export default function ListingDetailScreen() {
         />
       </View>
 
-      {listing.isExpired ? (
+      {listing.status !== "active" ? (
         <Text style={{ fontSize: 13, color: colors.muted, marginTop: 16 }}>
-          This ad has expired and is no longer accepting responses.
+          This ad has been marked {STATUS_LABELS[listing.status]} and is no longer accepting responses.
         </Text>
       ) : (
         <>

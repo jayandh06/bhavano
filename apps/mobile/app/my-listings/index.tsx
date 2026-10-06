@@ -25,14 +25,6 @@ function statusColor(status: ListingStatus, colors: { green: string; muted: stri
   return status === "active" ? colors.green : status === "deactivated" ? "#b3413a" : colors.muted;
 }
 
-/** Mirrors web's identical one-liner (apps/web/src/lib/listingExpiry.ts) — not a shared package
- * import since that file lives under apps/web, not @bhavano/types. */
-function daysUntil(iso: string): number {
-  return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-}
-
-const RENEW_WINDOW_DAYS = 7;
-
 const renewedAtFormatter = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 /** Full parity with web's /my-listings row (MyListingRow in apps/web/src/app/my-listings/
@@ -102,8 +94,9 @@ export default function MyListingsScreen() {
           data={listings}
           keyExtractor={(item) => item.id}
           renderItem={({ item }: { item: ListingDetailDto }) => {
-            const daysLeft = daysUntil(item.expiresAt);
-            const canRenew = item.status === "active" && daysLeft <= RENEW_WINDOW_DAYS;
+            // Always available while active — see docs/plans/explicit-close-not-auto-expire.md.
+            // Nothing is counting down anymore, so Renew is a purely optional refresh.
+            const canRenew = item.status === "active";
             const lastRenewedAt = item.renewalHistory?.[0]?.renewedAt;
             const renewing = renewingId === item.id;
             const isPendingPublish = item.publishState === "pending_checkout";
@@ -118,7 +111,7 @@ export default function MyListingsScreen() {
                 <View style={styles.badgeRow}>
                   <View style={[styles.badge, { borderColor: statusColor(item.status, colors) }]}>
                     <Text style={{ fontSize: 11, fontWeight: "700", color: statusColor(item.status, colors) }}>
-                      {item.isExpired && item.status === "active" ? "Expired" : STATUS_LABELS[item.status]}
+                      {STATUS_LABELS[item.status]}
                     </Text>
                   </View>
                   {isPendingPublish && (
@@ -157,11 +150,6 @@ export default function MyListingsScreen() {
                   {(item.interestCount ?? 0) > 0 && (
                     <Text style={{ fontSize: 11.5, fontWeight: "700", color: colors.green }}>
                       {item.interestCount} interested
-                    </Text>
-                  )}
-                  {canRenew && (
-                    <Text style={{ fontSize: 11.5, color: colors.muted }}>
-                      {item.isExpired ? "Expired" : `Expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
                     </Text>
                   )}
                 </View>
@@ -205,7 +193,7 @@ export default function MyListingsScreen() {
                         </Text>
                       </Pressable>
                     )}
-                    {!isPendingPublish && item.status === "active" && !item.isExpired && !item.isBoosted && accessToken && (
+                    {!isPendingPublish && item.status === "active" && !item.isBoosted && accessToken && (
                       <BoostButton listingId={item.id} category={item.category} accessToken={accessToken} />
                     )}
                   </View>
