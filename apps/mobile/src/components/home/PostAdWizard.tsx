@@ -27,6 +27,7 @@ import {
   sellerTypeFromBroker,
 } from "@bhavano/types/sellerType";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import {
   brokerageFeeIssue,
@@ -398,6 +399,7 @@ export function PostAdWizard({
     instantAlerts: InstantAlertsPriceSettings;
     platformFee: PlatformFeeSettings;
     activeDiscountPercent: number | null;
+    boostEffectiveness: BoostEffectivenessDto | null;
   } | null>(null);
   const [publishCheckoutError, setPublishCheckoutError] = useState<string | null>(null);
   // A boost/instant-alerts choice made ahead of time on the review step — null means the
@@ -558,17 +560,20 @@ export function PostAdWizard({
     };
   }, []);
 
-  const previewBoostDisplay = useMemo(
-    () =>
-      category && planPricingSettings
-        ? buildDisplayBoostPricing(
-            category,
-            planPricingSettings.boost,
-            planPricingSettings.activeDiscountPercent,
-          )
-        : null,
-    [category, planPricingSettings],
-  );
+  const previewBoostDisplay = useMemo(() => {
+    if (!category || !planPricingSettings) return null;
+    // Only once the seller has actually entered a number — see web PostAdWizard's identical
+    // comment on this same guard.
+    const value = Number(price);
+    const priceContext =
+      transactionType && price && Number.isFinite(value) && value > 0 ? { transactionType, value } : undefined;
+    return buildDisplayBoostPricing(
+      category,
+      planPricingSettings.boost,
+      planPricingSettings.activeDiscountPercent,
+      priceContext,
+    );
+  }, [category, planPricingSettings, transactionType, price]);
 
   const showPublishPanelOnReview = !!(
     category &&
@@ -2032,6 +2037,7 @@ export function PostAdWizard({
                 category={createdListing.category}
                 accessToken={postAccessToken}
                 onActivating={() => setBundleActivating(true)}
+                effectiveness={planPricingSettings?.boostEffectiveness ?? null}
               />
             )
           )}

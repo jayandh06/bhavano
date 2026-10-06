@@ -1,4 +1,5 @@
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
+import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
@@ -223,6 +224,7 @@ export function fetchPlanPricing(): Promise<{
   instantAlerts: InstantAlertsPriceSettings;
   platformFee: import("@bhavano/types/platformFeePricing").PlatformFeeSettings;
   activeDiscountPercent: number | null;
+  boostEffectiveness: BoostEffectivenessDto | null;
 }> {
   return bffFetch("/plans/pricing");
 }
@@ -917,9 +919,11 @@ export function previewBoostPricing(
   accessToken: string,
   category: ListingCategory,
   discountCode?: string,
+  listingId?: string,
 ): Promise<BoostPricingPreviewDto> {
   const params = new URLSearchParams({ category });
   if (discountCode) params.set("discountCode", discountCode);
+  if (listingId) params.set("listingId", listingId);
   return authedBffFetch(accessToken, `/payments/boost-pricing-preview?${params.toString()}`);
 }
 

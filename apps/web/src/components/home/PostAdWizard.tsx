@@ -719,17 +719,21 @@ export function PostAdWizard({
     };
   }, []);
 
-  const previewBoostDisplay = useMemo(
-    () =>
-      category && planPricingSettings
-        ? buildDisplayBoostPricing(
-            category,
-            planPricingSettings.boost,
-            planPricingSettings.activeDiscountPercent,
-          )
-        : null,
-    [category, planPricingSettings],
-  );
+  const previewBoostDisplay = useMemo(() => {
+    if (!category || !planPricingSettings) return null;
+    // Only once the seller has actually entered a number — an empty/partial price field (still
+    // being typed) must not band-price off NaN/0, which would land in the cheapest band and
+    // understate the real price the success screen will charge.
+    const value = Number(price);
+    const priceContext =
+      transactionType && price && Number.isFinite(value) && value > 0 ? { transactionType, value } : undefined;
+    return buildDisplayBoostPricing(
+      category,
+      planPricingSettings.boost,
+      planPricingSettings.activeDiscountPercent,
+      priceContext,
+    );
+  }, [category, planPricingSettings, transactionType, price]);
 
   const showPublishPanelOnReview = !assistedMode && !!(
     category &&
@@ -2188,7 +2192,11 @@ export function PostAdWizard({
              * combination (including the current promo code and the Agent Pro free-credit case)
              * are fetched up front; adding Instant Alerts checks out as a single payment via
              * createBoostOrder's `includeInstantAlerts`, not two payments back to back. */
-            <BoostBundlePicker listingId={createdListing.id} category={createdListing.category} />
+            <BoostBundlePicker
+              listingId={createdListing.id}
+              category={createdListing.category}
+              effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+            />
           )}
 
           <OwnerWhatsAppShare

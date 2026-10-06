@@ -114,12 +114,15 @@ export type PreviewBoostPricingResult =
   | { success: true; pricing: BoostPricingPreviewDto }
   | { success: false; error: string };
 
-export async function previewBoostPricingAction(category: ListingCategory): Promise<PreviewBoostPricingResult> {
+export async function previewBoostPricingAction(
+  category: ListingCategory,
+  listingId?: string,
+): Promise<PreviewBoostPricingResult> {
   const session = await auth();
   if (!session?.accessToken) return { success: false, error: "You must be logged in." };
 
   try {
-    const pricing = await previewBoostPricing(session.accessToken, category, ACTIVE_PROMO_CODE);
+    const pricing = await previewBoostPricing(session.accessToken, category, ACTIVE_PROMO_CODE, listingId);
     return { success: true, pricing };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load pricing" };

@@ -10,6 +10,8 @@ import {
   offeredBoostDurations,
   type BoostDurationDays,
 } from "@bhavano/types/boostPricing";
+import { boostRecoveryMessage } from "@bhavano/types/boostEffectiveness";
+import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { previewBoostPricingAction, redeemReferralBoostAction } from "@/app/actions/payments";
@@ -27,6 +29,7 @@ export function BoostBundlePicker({
   onActivating,
   initialPricing,
   source,
+  effectiveness,
 }: {
   listingId: string;
   category: ListingCategory;
@@ -40,6 +43,11 @@ export function BoostBundlePicker({
    * success screen swaps this picker for a "Boost pending…" style state while the webhook
    * catches up, same contract BoostButton/BoostProvider already use elsewhere. */
   onActivating?: () => void;
+  /** The same real boosted-vs-unboosted stats BoostRecoveryDialog already shows on the review
+   * step (docs/plans/boost-offer-conversion-2026-09.md's own finding: the ~12x-views lift is the
+   * strongest argument for boosting and wasn't shown here before) — null before the nightly job's
+   * first run, or while either cohort is still below MIN_SAMPLE_SIZE. */
+  effectiveness?: BoostEffectivenessDto | null;
 }) {
   const router = useRouter();
   const [pricing, setPricing] = useState<BoostPricingPreviewDto | null>(initialPricing ?? null);
@@ -71,7 +79,7 @@ export function BoostBundlePicker({
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
 
-    previewBoostPricingAction(category).then((result) => {
+    previewBoostPricingAction(category, listingId).then((result) => {
       if (cancelled) return;
       if (result.success) {
         setPricing(result.pricing);
@@ -91,7 +99,7 @@ export function BoostBundlePicker({
       cancelled = true;
       if (retry) clearTimeout(retry);
     };
-  }, [category, fetchKey, initialPricing]);
+  }, [category, listingId, fetchKey, initialPricing]);
 
   // Logging in via the Google OAuth popup steals focus for the whole flow, so by the time the
   // visitor is back on this tab the backoff above may have already exhausted its retries (or the
@@ -220,6 +228,14 @@ export function BoostBundlePicker({
           </li>
         ))}
       </ul>
+
+      {/* The real proof point, not just a listed benefit — docs/plans/boost-offer-conversion-2026-09.md
+        * found this was the strongest argument for boosting and the thing missing from this exact
+        * card. Same message BoostRecoveryDialog already shows on the review step, same honest
+        * fallback when either cohort is still below MIN_SAMPLE_SIZE. */}
+      <p className="text-[12.5px] font-bold text-[color:var(--gold)] mt-0 mb-3">
+        {boostRecoveryMessage(effectiveness ?? null).headline}
+      </p>
 
       {freeBoostBlock}
 

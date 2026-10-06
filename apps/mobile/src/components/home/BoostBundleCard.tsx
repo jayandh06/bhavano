@@ -8,6 +8,7 @@ import {
   offeredBoostDurations,
   type BoostDurationDays,
 } from "@bhavano/types/boostPricing";
+import { boostRecoveryMessage, type BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import { ACTIVE_PROMO_CODE, discountPercentFor } from "@bhavano/types/promoCode";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -41,6 +42,7 @@ export function BoostBundleCard({
   onActivating,
   source,
   ignorePlacementSetting = false,
+  effectiveness,
 }: {
   listingId: string;
   category: ListingCategory;
@@ -54,6 +56,11 @@ export function BoostBundleCard({
    * swaps this card for its own "pending" state while the webhook confirms, same contract
    * BoostModal/InstantAlertsModal already use. */
   onActivating: () => void;
+  /** The same real boosted-vs-unboosted stats the web review step already shows
+   * (docs/plans/boost-offer-conversion-2026-09.md's own finding: the ~12x-views lift is the
+   * strongest argument for boosting, and wasn't shown on this card before) — null before the
+   * nightly job's first run, or while either cohort is still below MIN_SAMPLE_SIZE. */
+  effectiveness?: BoostEffectivenessDto | null;
 }) {
   const { colors } = useAppTheme();
   const [pricing, setPricing] = useState<BoostPricingPreviewDto | null>(null);
@@ -65,7 +72,7 @@ export function BoostBundleCard({
 
   useEffect(() => {
     let cancelled = false;
-    previewBoostPricing(accessToken, category, ACTIVE_PROMO_CODE)
+    previewBoostPricing(accessToken, category, ACTIVE_PROMO_CODE, listingId)
       .then((result) => {
         if (!cancelled) setPricing(result);
       })
@@ -73,7 +80,7 @@ export function BoostBundleCard({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, category]);
+  }, [accessToken, category, listingId]);
 
   const offered = offeredBoostDurations(pricing);
   // A duration admin has switched off falls back to the default rather than staying selected.
@@ -155,6 +162,13 @@ export function BoostBundleCard({
           )}
         </Text>
       </View>
+
+      {/* The real proof point, not just a listed benefit — see the prop's own comment. Same
+        * message the web side already shows on its review-step recovery dialog, same honest
+        * fallback when either cohort is still below MIN_SAMPLE_SIZE. */}
+      <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.gold, marginBottom: 12 }}>
+        {boostRecoveryMessage(effectiveness ?? null).headline}
+      </Text>
 
       {freeBoost}
 

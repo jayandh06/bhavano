@@ -759,9 +759,11 @@ export function previewBoostPricing(
   accessToken: string,
   category: ListingCategory,
   discountCode?: string,
+  listingId?: string,
 ): Promise<BoostPricingPreviewDto> {
   const params = new URLSearchParams({ category });
   if (discountCode) params.set("discountCode", discountCode);
+  if (listingId) params.set("listingId", listingId);
   return authedBffFetch(accessToken, `/payments/boost-pricing-preview?${params.toString()}`, { cache: "no-store" });
 }
 
