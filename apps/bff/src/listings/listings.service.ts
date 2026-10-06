@@ -616,7 +616,9 @@ export class ListingsService {
       status: 'active',
       publishState: 'live',
       moderationState: 'approved',
-      expiresAt: { gt: new Date() },
+      // No expiresAt gate — see docs/plans/explicit-close-not-auto-expire.md. A listing only
+      // leaves the grid when its own status changes (owner/admin closes it), never just from
+      // age; `status: 'active'` above is the only visibility gate now.
       ...(cityId ? { cityId } : {}),
       ...(ownerId ? { ownerId } : {}),
       // `areaIds` (the multi-select browse filter) wins over the single `areaId` (the SEO
@@ -990,7 +992,6 @@ export class ListingsService {
       createdAt: listing.createdAt.toISOString(),
       updatedAt: listing.updatedAt.toISOString(),
       expiresAt: listing.expiresAt.toISOString(),
-      isExpired: listing.expiresAt.getTime() < Date.now(),
     };
   }
 
@@ -2605,7 +2606,7 @@ export class ListingsService {
         status: 'active',
         publishState: 'live',
         moderationState: 'approved',
-        expiresAt: { gt: new Date() },
+        // No expiresAt gate — see docs/plans/explicit-close-not-auto-expire.md.
         ...(cityId ? { cityId } : {}),
       },
       _sum: { viewCount: true },
@@ -2630,14 +2631,15 @@ export class ListingsService {
       .filter((g): g is PopularSearchDto => g.cityName !== '');
   }
 
-  /** Minimal fields for every active, non-expired listing — feeds the web app's sitemap.xml. */
+  /** Minimal fields for every active listing — feeds the web app's sitemap.xml. See
+   * docs/plans/explicit-close-not-auto-expire.md — no expiresAt gate; a listing stays in the
+   * sitemap until its own status changes, never just from age. */
   async findAllForSitemap(): Promise<ListingSitemapEntry[]> {
     const listings = await this.prisma.listing.findMany({
       where: {
         status: 'active',
         publishState: 'live',
         moderationState: 'approved',
-        expiresAt: { gt: new Date() },
       },
       include: { city: true, area: true },
       orderBy: { updatedAt: 'desc' },
@@ -3535,7 +3537,6 @@ export class ListingsService {
       createdAt: listing.createdAt.toISOString(),
       updatedAt: listing.updatedAt.toISOString(),
       expiresAt: listing.expiresAt.toISOString(),
-      isExpired: listing.expiresAt.getTime() < Date.now(),
       // publicVariantUrl, not variantUrl — the cache-busting ?t=<updatedAt> is what makes a
       // rotated photo actually show up correctly here (not just in the admin panel) instead of
       // waiting out Cloudflare's edge cache AND Next.js's own separate image-optimizer cache,

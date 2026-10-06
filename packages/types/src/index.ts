@@ -260,7 +260,6 @@ export interface ListingDetailDto extends ListingCardDto {
   createdAt: string;
   updatedAt: string;
   expiresAt: string;
-  isExpired: boolean;
   /** Full-size (1600px-wide) variant URLs, same order as `photos` (the preview variants) —
    * used for the detail page gallery instead of the card-sized preview images. */
   photosFull: string[];
@@ -839,7 +838,6 @@ export interface AdminListingRowDto {
   createdAt: string;
   updatedAt: string;
   expiresAt: string;
-  isExpired: boolean;
 }
 
 export interface AdminListingsPage {
@@ -1721,8 +1719,10 @@ export interface RequirementDto {
   status: RequirementStatus;
   closedReason?: RequirementClosedReason;
   expiresAt: string;
-  /** Derived from `expiresAt` on every read, like ListingDetailDto.isExpired — a row can be past
-   * its date for hours before any job gets to it, and every reader needs the same answer. */
+  /** Derived from `expiresAt` on every read — a row can be past its date for hours before any job
+   * gets to it, and every reader needs the same answer. Unlike `Listing.expiresAt` (see
+   * docs/plans/explicit-close-not-auto-expire.md), a `PropertyRequirement`'s own expiry is a
+   * real, independent deadline and is out of scope for that change. */
   isExpired: boolean;
   /** Whether an alert was created alongside — false when the seeker had used up their free
    * allowance, in which case nothing notifies them automatically and the follow-up is manual. */

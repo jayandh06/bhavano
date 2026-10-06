@@ -261,6 +261,59 @@ describe('ListingsService.list — amenity filter', () => {
   });
 });
 
+describe('ListingsService.list — no expiresAt visibility gate', () => {
+  // See docs/plans/explicit-close-not-auto-expire.md: a listing only leaves the grid when its
+  // own status changes, never just from age — so `list()`'s where clause must never filter on
+  // expiresAt, only on status/publishState/moderationState.
+  function makeListService() {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const count = jest.fn<Promise<number>, [{ where: Prisma.ListingWhereInput }]>().mockResolvedValue(0);
+    const prisma = {
+      listing: { findMany, count },
+      $queryRaw: jest.fn().mockResolvedValue([]),
+    } as unknown as PrismaService;
+    const contactRevealService = {
+      getRevealStatesForListings: jest.fn().mockResolvedValue(new Map()),
+    } as unknown as ContactRevealService;
+    const service = new ListingsService(
+      prisma,
+      {} as ModerationService,
+      { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
+      {} as NotificationsService,
+      {} as SavedSearchesService,
+      {} as LocationsService,
+      {} as R2StorageService,
+      {} as CdnPurgeService,
+      {} as ListingSlotsService,
+      {} as GoogleAdsConversionProvider,
+      contactRevealService,
+      {
+        getSettings: jest.fn().mockResolvedValue({
+          propertyListingFee: 0,
+          coworkingPgStorageListingFee: 0,
+          furnitureInteriorsListingFee: 0,
+          allowLivePublishWithPendingPayment: false,
+        }),
+      } as unknown as PlatformFeeSettingsService,
+      { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+      { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
+      { recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined), revokeIfTakenDown: jest.fn().mockResolvedValue(undefined) } as unknown as ReferralsService,
+    );
+    return { service, count, findMany };
+  }
+
+  it('never includes expiresAt in the where clause, however old a listing is', async () => {
+    const { service, count, findMany } = makeListService();
+
+    await service.list({ offset: 0, limit: 20 });
+
+    const where = count.mock.calls[0][0].where;
+    expect(where).not.toHaveProperty('expiresAt');
+    expect(findMany.mock.calls[0][0].where).not.toHaveProperty('expiresAt');
+    expect(where.status).toBe('active');
+  });
+});
+
 describe('recentMixGroupKey', () => {
   it('groups All/Buy/Rent & Lease by property category, plus city when browsing all cities', () => {
     const listing = { category: 'apartment' as const, attributes: {}, cityId: 'city1' };

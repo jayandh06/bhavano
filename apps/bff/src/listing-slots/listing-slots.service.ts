@@ -19,11 +19,12 @@ export class ListingSlotsService {
     );
   }
 
-  activeListingWhere(ownerId: string, now = new Date()) {
+  // No expiresAt gate — see docs/plans/explicit-close-not-auto-expire.md. A slot only frees up
+  // when the owner/admin explicitly changes status away from 'active', never just from age.
+  activeListingWhere(ownerId: string) {
     return {
       ownerId,
       status: 'active' as const,
-      expiresAt: { gt: now },
     };
   }
 

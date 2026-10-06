@@ -100,4 +100,19 @@ describe('ListingSlotsService', () => {
       await expect(service.assertCanPublish('u1')).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
+
+  describe('activeListingWhere — no expiresAt gate', () => {
+    // See docs/plans/explicit-close-not-auto-expire.md: a slot only frees up when the owner/admin
+    // explicitly changes status away from 'active', never just from age.
+    it('counts active listings regardless of how old they are', async () => {
+      const prisma = makePrisma(baseUser, 2);
+      const service = new ListingSlotsService(prisma);
+
+      await service.getSummary('u1');
+
+      const where = (prisma.listing.count as jest.Mock).mock.calls[0][0].where;
+      expect(where).not.toHaveProperty('expiresAt');
+      expect(where).toMatchObject({ ownerId: 'u1', status: 'active' });
+    });
+  });
 });
