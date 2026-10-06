@@ -35,6 +35,7 @@ import type {
   ListingStatus,
   LoginMethod,
   MessageDto,
+  OsFamily,
   PageVisitsPage,
   PaymentPurpose,
   PaymentStatus,
@@ -490,6 +491,7 @@ export interface PageVisitsQuery {
   identity?: AdminPageVisitIdentity;
   traffic?: AdminPageVisitTraffic;
   deviceType?: DeviceType;
+  os?: OsFamily;
   source?: string;
   medium?: string;
   ip?: string;

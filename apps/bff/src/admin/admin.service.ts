@@ -20,6 +20,7 @@ import type {
   ListingStatus,
   LoginMethod,
   MessageDto,
+  OsFamily,
   PageVisitSessionLogin,
   PageVisitsPage,
   RateLimitSettingsDto,
@@ -708,7 +709,7 @@ export class AdminService {
    * strings (the admin page turns its IST date pickers into `+05:30` bounds), so a plain
    * `new Date()` here lands on the right instant. */
   async listPageVisits(query: ListPageVisitsDto): Promise<PageVisitsPage> {
-    const { offset, from, to, userId, identity, deviceType, traffic, sort, limit } = query;
+    const { offset, from, to, userId, identity, deviceType, os, traffic, sort, limit } = query;
 
     // Resolved up front, not a relation `some` filter: PageView.sessionId is deliberately not a
     // Prisma relation to Visit (see PageView's own schema comment), so "any page view in this
@@ -754,6 +755,7 @@ export class AdminService {
             ? { userId }
             : {}),
       ...(deviceType ? { deviceType } : {}),
+      ...(os ? { os } : {}),
     };
 
     for (const [field, raw] of [
@@ -860,6 +862,7 @@ export class AdminService {
         ipRegion: row.ipRegion,
         ipCountry: row.ipCountry,
         deviceType: row.deviceType as DeviceType | null,
+        os: row.os as OsFamily | null,
         jsConfirmedAt: row.jsConfirmedAt?.toISOString() ?? null,
         pageViewCount: pageViewCountBySessionId.get(row.sessionId) ?? 0,
         sessionLogins: loginsBySessionId.get(row.sessionId) ?? [],
@@ -925,6 +928,7 @@ export class AdminService {
         ipRegion: visit.ipRegion,
         ipCountry: visit.ipCountry,
         deviceType: visit.deviceType as DeviceType | null,
+        os: visit.os as OsFamily | null,
         jsConfirmedAt: visit.jsConfirmedAt?.toISOString() ?? null,
         pageViewCount,
         sessionLogins,

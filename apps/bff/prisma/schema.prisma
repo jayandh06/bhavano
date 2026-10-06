@@ -927,6 +927,13 @@ model Visit {
    * Terms/Privacy — see apps/mobile/src/lib/appWebUrl.ts) tag themselves with `app=1` that
    * middleware turns into the same flag. */
   deviceType  String?
+  /** "android" / "ios", best-effort from the same User-Agent header `deviceType` reads (see
+   * `osFromUserAgent` in device-type.ts) — orthogonal to deviceType, since a phone or tablet can
+   * be either. Null for desktop UAs and anything unrecognised, same "not classified" precedent as
+   * `isBot`. Not meaningful yet for `deviceType: 'mobile_app'` rows: there is no iOS app to tell
+   * apart from Android, so every one of those is Android today regardless of what UA-sniffing
+   * happens to return — revisit once an iOS app ships. */
+  os          String?
   createdAt   DateTime @default(now())
 
   @@index([userId])

@@ -807,6 +807,9 @@ export interface FlagListingInput {
 }
 /** Mirrors the BFF's DEVICE_TYPES (apps/bff/src/analytics/device-type.ts). */
 export type DeviceType = "desktop" | "mobile" | "tablet" | "mobile_app";
+/** Mirrors the BFF's OS_FAMILIES (apps/bff/src/analytics/device-type.ts) — best-effort OS guess,
+ * orthogonal to DeviceType (a `mobile`/`tablet` row can be either). */
+export type OsFamily = "android" | "ios";
 /** One row per user (not per login event) for the admin "Recent logins" screen — every user who
  * has ever logged in at least once, with their whole login history collapsed into one summary
  * row. See AdminService.listRecentLogins's own doc comment for why this is computed from real
@@ -864,6 +867,9 @@ export interface PageVisitDto {
     ipCountry: string | null;
     /** Null only for rows written before this field existed. */
     deviceType: DeviceType | null;
+    /** "android" / "ios" — see Visit.os's own schema comment, including why this isn't meaningful
+     * yet for a `deviceType: 'mobile_app'` row. Null for desktop and anything unrecognised. */
+    os: OsFamily | null;
     /** When a real browser engine confirmed it executed JavaScript on this session — see
      * `Visit.jsConfirmedAt`. Null covers "never confirmed" without distinguishing why (pre-dates
      * the column, JS never ran, or the beacon didn't land), so treat it as "unconfirmed", never as

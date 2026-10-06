@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { DeviceType } from "@bhavano/types";
+import type { DeviceType, OsFamily } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   AdminPageVisitIdentity,
@@ -64,6 +64,13 @@ const DEVICE_TYPE_OPTIONS: { value: DeviceType | "any"; label: string }[] = [
   { value: "mobile_app", label: "Mobile App" },
 ];
 
+/** Orthogonal to DEVICE_TYPE_OPTIONS — see Visit.os's own schema comment. */
+const OS_OPTIONS: { value: OsFamily | "any"; label: string }[] = [
+  { value: "any", label: "Any OS" },
+  { value: "android", label: "Android" },
+  { value: "ios", label: "iOS" },
+];
+
 export default async function PageVisitsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accessToken } = await requireAdmin();
   const sp = await searchParams;
@@ -76,6 +83,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const traffic = (str(sp.traffic) as AdminPageVisitTraffic | undefined) ?? DEFAULT_TRAFFIC;
   const deviceTypeRaw = str(sp.deviceType);
   const deviceType = deviceTypeRaw && deviceTypeRaw !== "any" ? (deviceTypeRaw as DeviceType) : undefined;
+  const osRaw = str(sp.os);
+  const os = osRaw && osRaw !== "any" ? (osRaw as OsFamily) : undefined;
   // Same silent-default pattern as DEFAULT_TRAFFIC above: absent from/to defaults to a 1-day
   // window rather than unbounded history, but doesn't redirect the URL to show it — the URL only
   // gains ?from=&to= once the visitor actually picks a range (a preset or Custom).
@@ -99,6 +108,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     identity,
     traffic,
     deviceType,
+    os,
     source,
     medium,
     ip,
@@ -278,13 +288,25 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                     <input name="pagePath" defaultValue={pagePath} placeholder="/get-app%" style={headerInputStyle} />
                   </th>
                   <th style={filterThStyle}>
-                    <SelectField name="deviceType" defaultValue={deviceType ?? "any"} style={headerSelectStyle}>
-                      {DEVICE_TYPE_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </SelectField>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <SelectField name="deviceType" defaultValue={deviceType ?? "any"} style={headerSelectStyle}>
+                        {DEVICE_TYPE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </SelectField>
+                      {/* Orthogonal to deviceType (a mobile/tablet row can be either OS) — see
+                          Visit.os's own schema comment. Stacked here, not its own column: it only
+                          ever shows alongside the Device cell in the table body too. */}
+                      <SelectField name="os" defaultValue={os ?? "any"} style={headerSelectStyle}>
+                        {OS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </SelectField>
+                    </div>
                   </th>
                   <th style={filterThStyle}>
                     <input name="source" defaultValue={source} placeholder="google" style={headerInputStyle} />

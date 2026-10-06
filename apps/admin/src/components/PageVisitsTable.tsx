@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react";
 import Link from "next/link";
-import type { DeviceType, PageVisitDto, SessionTrailDto } from "@bhavano/types";
+import type { DeviceType, OsFamily, PageVisitDto, SessionTrailDto } from "@bhavano/types";
 import { fetchSessionTrailAction } from "@/app/actions/admin";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { trailEntry, trailEntryHref } from "@/lib/pageTrail";
@@ -14,6 +14,14 @@ const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   mobile: "Mobile",
   tablet: "Tablet",
   mobile_app: "Mobile App",
+};
+
+/** Appended onto the Device cell, not a column of its own — see page.tsx's OS filter for why
+ * it's a separate dimension (`os`) from `deviceType` even though it only ever shows alongside
+ * it. Not meaningful yet for `mobile_app` rows — see Visit.os's own schema comment. */
+const OS_LABELS: Record<OsFamily, string> = {
+  android: "Android",
+  ios: "iOS",
 };
 
 /** The page-visits table body, split out of page.tsx so the row-expand state (which session's
@@ -82,7 +90,10 @@ export function PageVisitsTable({
                   {v.pageViewCount}
                 </button>
               </td>
-              <td style={tdStyle}>{v.deviceType ? DEVICE_TYPE_LABELS[v.deviceType] : dash}</td>
+              <td style={tdStyle}>
+                {v.deviceType ? DEVICE_TYPE_LABELS[v.deviceType] : dash}
+                {v.os && ` (${OS_LABELS[v.os]})`}
+              </td>
               <td style={tdStyle}>{v.source ?? dash}</td>
               <td style={tdStyle}>{v.medium ?? dash}</td>
               <td style={tdStyle}>{v.campaign ?? dash}</td>

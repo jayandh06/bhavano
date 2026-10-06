@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
-import { DEVICE_TYPES } from '../../analytics/device-type';
+import { DEVICE_TYPES, OS_FAMILIES } from '../../analytics/device-type';
 
 /** One asc/desc pair per sortable column, so the admin table's headers can each be a sort
  * toggle. `pageViewCount` is deliberately absent: it isn't a column on Visit at all — it's
@@ -111,6 +111,12 @@ export class ListPageVisitsDto {
   @IsOptional()
   @IsIn(DEVICE_TYPES)
   deviceType?: (typeof DEVICE_TYPES)[number];
+
+  /** "android" / "ios" — see `osFromUserAgent`. Orthogonal to `deviceType`: a `mobile` or
+   * `tablet` row can be either, so this is a separate dropdown, not a value of deviceType. */
+  @IsOptional()
+  @IsIn(OS_FAMILIES)
+  os?: (typeof OS_FAMILIES)[number];
 
   @IsOptional()
   @IsString()

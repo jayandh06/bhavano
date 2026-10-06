@@ -6,7 +6,7 @@ import { RecordPageViewDto } from './dto/record-pageview.dto';
 import { RecordSearchDto } from './dto/record-search.dto';
 import { GeoIpService } from './geoip.service';
 import { isBotUserAgent } from '@bhavano/types/botUserAgent';
-import { deviceTypeFromUserAgent } from './device-type';
+import { deviceTypeFromUserAgent, osFromUserAgent } from './device-type';
 
 /** How close together two views of the same path in the same session have to be before the
  * second is treated as a double-fire rather than a real re-visit. Two seconds: short enough that
@@ -100,13 +100,14 @@ export class AnalyticsService {
     await this.prisma.$executeRaw`
       INSERT INTO "Visit" (
         "id", "sessionId", "source", "medium", "campaign", "gclid", "campaignId", "adGroupId",
-        "adId", "landingPath", "ip", "ipCity", "ipRegion", "ipCountry", "deviceType", "isBot"
+        "adId", "landingPath", "ip", "ipCity", "ipRegion", "ipCountry", "deviceType", "os", "isBot"
       ) VALUES (
         ${newVisitId()}, ${dto.sessionId}, ${dto.source ?? null}, ${dto.medium ?? null},
         ${dto.campaign ?? null}, ${dto.gclid ?? null}, ${dto.campaignId ?? null},
         ${dto.adGroupId ?? null}, ${dto.adId ?? null}, ${dto.landingPath ?? null},
         ${dto.ip ?? null}, ${geo?.city ?? null}, ${geo?.region ?? null}, ${geo?.country ?? null},
-        ${deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false) ?? null}, ${isBot}
+        ${deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false) ?? null},
+        ${osFromUserAgent(dto.userAgent)}, ${isBot}
       )
       ON CONFLICT ("sessionId") DO UPDATE SET
         "source"      = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."source"      ELSE "Visit"."source"      END,
@@ -126,6 +127,7 @@ export class AnalyticsService {
         "ipRegion"    = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."ipRegion"    ELSE "Visit"."ipRegion"    END,
         "ipCountry"   = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."ipCountry"   ELSE "Visit"."ipCountry"   END,
         "deviceType"  = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."deviceType"  ELSE "Visit"."deviceType"  END,
+        "os"          = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."os"          ELSE "Visit"."os"          END,
         "isBot"       = CASE WHEN "Visit"."source" IS NULL THEN EXCLUDED."isBot"       ELSE "Visit"."isBot"       END
     `;
   }
@@ -188,7 +190,7 @@ export class AnalyticsService {
     const geo = this.geoIp.lookupCity(dto.ip);
     await this.prisma.$executeRaw`
       INSERT INTO "Visit" (
-        "id", "sessionId", "landingPath", "ip", "ipCity", "ipRegion", "ipCountry", "deviceType", "isBot"
+        "id", "sessionId", "landingPath", "ip", "ipCity", "ipRegion", "ipCountry", "deviceType", "os", "isBot"
       ) VALUES (
         ${newVisitId()},
         ${dto.sessionId},
@@ -199,6 +201,7 @@ export class AnalyticsService {
         -- is legitimately still theirs, so these stay accurate.
         ${dto.ip ?? null}, ${geo?.city ?? null}, ${geo?.region ?? null}, ${geo?.country ?? null},
         ${deviceTypeFromUserAgent(dto.userAgent, dto.fromApp ?? false)},
+        ${osFromUserAgent(dto.userAgent)},
         ${dto.userAgent ? isBotUserAgent(dto.userAgent) : null}
       )
       ON CONFLICT ("sessionId") DO NOTHING
