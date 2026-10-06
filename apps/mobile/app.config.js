@@ -94,6 +94,10 @@ module.exports = {
         NSUserTrackingUsageDescription:
           "Bhavano uses this to measure how well our ads are working, so we can keep posting free for everyone.",
       },
+      // Firebase project's iOS client config — required for GA4-for-Firebase (see the
+      // "@react-native-firebase/app" plugin entry below); registered 2026-10 in the same
+      // `finfolia` Firebase project the Android google-services.json below already uses.
+      googleServicesFile: "./GoogleService-Info.plist",
     },
     android: {
       // Without this, the whole window neither pans nor resizes when the keyboard opens, so it
@@ -200,14 +204,20 @@ module.exports = {
       // it) — reusing the iOS client's already-registered scheme from `scheme` above rather than
       // registering a second, functionally-identical one; the plugin's own de-dupe check
       // (IOSConfig.Scheme.hasScheme) is what keeps this a no-op on iOS's Info.plist. Passing this
-      // option is also what avoids the alternative "Firebase" mode, which needs a
-      // google-services.json this repo has never had any reason to set up.
+      // option is also what avoids the alternative "Firebase" mode — which does now have a real
+      // reason to exist (see "@react-native-firebase/app" below), but this plugin's own sign-in
+      // flow stays on the explicit-scheme path regardless; the two are unrelated.
       [
         "@react-native-google-signin/google-signin",
         {
           iosUrlScheme: "com.googleusercontent.apps.336986668125-vs9rfncotlefvtc9e7rsl15r5lhmjfht",
         },
       ],
+      // GA4-for-Firebase, so a real in-app conversion (post_ad_success, see PostAdWizard.tsx)
+      // exists for a Google Ads App campaign to optimize toward, instead of raw install count —
+      // see docs/plans/firebase-analytics-and-app-campaign.md. No options needed here: the
+      // google-services.json/GoogleService-Info.plist below are what the native module reads.
+      "@react-native-firebase/app",
       withGradleJvmArgs,
     ],
     extra: {

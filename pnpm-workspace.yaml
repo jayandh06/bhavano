@@ -10,8 +10,10 @@ overrides:
   expo-file-system: 57.0.0
   expo-modules-core: 57.0.3
 allowBuilds:
+  '@firebase/util': true
   '@prisma/engines': true
   esbuild: true
   prisma: true
+  protobufjs: true
   sharp: true
   unrs-resolver: true

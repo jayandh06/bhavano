@@ -68,6 +68,7 @@ import {
   uploadVideo,
 } from "../../lib/bffClient";
 import { getAnalyticsSessionId, recordAppPageView } from "../../lib/analyticsSession";
+import { logPostAdSuccess } from "../../lib/firebaseAnalytics";
 import {
   clearPostAdDraft,
   loadPostAdDraft,
@@ -1310,6 +1311,7 @@ export function PostAdWizard({
         const published = await finishPublishCheckout(listing, activeToken);
         if (!published) return;
       }
+      void logPostAdSuccess({ category: listing.category, transactionType: listing.transactionType });
       setStep("success");
     } catch (e) {
       setError(friendlyErrorMessage(e, "Failed to create listing"));
