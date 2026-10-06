@@ -7,7 +7,7 @@
  *
  * Harmless for SEO: listing and browse pages set their own canonical, which drops the params.
  */
-export type ShareChannel = "whatsapp" | "copy" | "email" | "share_sheet";
+export type ShareChannel = "whatsapp" | "copy" | "email" | "share_sheet" | "facebook";
 
 /** `owner_share`: the owner sharing their own ad. `listing_share`: anyone else passing one on.
  * `referral_invite`: the invite link on the Referrals page, not tied to an ad. */
@@ -33,4 +33,12 @@ export function taggedShareUrl(
 /** A ready-to-send WhatsApp message, so sharing is one tap rather than composing text. */
 export function whatsappShareHref(text: string, url: string): string {
   return `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`;
+}
+
+/** Facebook's share dialog takes a URL only, no pre-filled text — the preview card it builds
+ * comes from the listing page's own Open Graph tags (same mechanism the Bhavano Page's own
+ * auto-post relies on, see docs/plans/facebook-page-publishing.md), not anything this link
+ * controls. */
+export function facebookShareHref(url: string): string {
+  return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
 }

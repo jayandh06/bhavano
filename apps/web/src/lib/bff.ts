@@ -861,7 +861,7 @@ export function recordShareTap(
   accessToken: string,
   sessionId: string,
   listingId?: string,
-  channel?: "whatsapp" | "copy" | "share_sheet" | "email",
+  channel?: "whatsapp" | "copy" | "share_sheet" | "email" | "facebook",
 ): Promise<{ success: true }> {
   return authedBffFetch(accessToken, "/referrals/share-tap", {
     method: "POST",

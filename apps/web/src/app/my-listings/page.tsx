@@ -22,6 +22,7 @@ import {
 } from "@/components/home/PublishCheckoutRecovery";
 import { RenewButton } from "@/components/home/RenewButton";
 import { OwnerWhatsAppShare } from "@/components/home/OwnerWhatsAppShare";
+import { OwnerFacebookShare } from "@/components/home/OwnerFacebookShare";
 import { GetAppCard } from "@/components/home/GetAppCard";
 import { VideoManager } from "@/components/home/VideoManager";
 import { daysUntil } from "@/lib/listingExpiry";
@@ -302,12 +303,15 @@ function MyListingRow({
               <BoostButton listingId={item.id} category={item.category} />
             )}
             {item.status === "active" && !item.isExpired && (
-              <OwnerWhatsAppShare
-                listing={item}
-                placement="my_listings"
-                variant="compact"
-                referralCode={referralCode}
-              />
+              <>
+                <OwnerWhatsAppShare
+                  listing={item}
+                  placement="my_listings"
+                  variant="compact"
+                  referralCode={referralCode}
+                />
+                <OwnerFacebookShare listing={item} placement="my_listings" referralCode={referralCode} />
+              </>
             )}
             <Link
               href={buildListingPath(item)}

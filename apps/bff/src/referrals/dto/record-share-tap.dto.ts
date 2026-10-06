@@ -1,6 +1,6 @@
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
-const SHARE_CHANNELS = ['whatsapp', 'copy', 'share_sheet', 'email'] as const;
+const SHARE_CHANNELS = ['whatsapp', 'copy', 'share_sheet', 'email', 'facebook'] as const;
 
 export class RecordShareTapDto {
   /** The referrer's own per-session id — same field RecordReferralClickDto uses; the referrer is

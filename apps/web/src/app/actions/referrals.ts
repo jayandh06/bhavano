@@ -10,7 +10,7 @@ import { recordShareTap } from "@/lib/bff";
  * itself, same stance every other best-effort analytics call in this app takes. */
 export async function recordShareTapAction(
   listingId?: string,
-  channel?: "whatsapp" | "copy" | "share_sheet" | "email",
+  channel?: "whatsapp" | "copy" | "share_sheet" | "email" | "facebook",
 ): Promise<void> {
   const session = await auth();
   if (!session?.accessToken) return;
