@@ -179,7 +179,6 @@ export function AdminListingsTable({
       render: (item) => (
         <ListingStatusBadge
           status={item.status}
-          isExpired={item.isExpired}
           publishState={item.publishState}
         />
       ),
@@ -810,31 +809,27 @@ const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
 
 /** The listing's own lifecycle state (active/sold/rented/deactivated) — distinct from the
  * moderation "Status" column next to it (needs review/reviewed/flagged), which is about admin
- * review, not whether the listing itself is live. A listing can be `status: active` and still
- * past its own `expiresAt` (isExpired) — the public `list()` only ever shows approved, active,
- * unexpired listings, so "Active" alone would be misleading for one a real visitor can no longer
- * see; shown as "Expired" instead in that case, since that's the more actionable fact here.
+ * review, not whether the listing itself is live. A listing only ever leaves the public grid when
+ * its own status changes — never just from its `expiresAt` passing (see
+ * docs/plans/explicit-close-not-auto-expire.md) — so "Active" here always means publicly visible,
+ * with no separate "Expired" state to show.
  *
  * `publishState: pending_checkout` is shown as a second badge beside lifecycle status — create()
  * still stores `status: active`, but the ad is not buyer-visible until publish payment completes. */
 function ListingStatusBadge({
   status,
-  isExpired,
   publishState,
 }: {
   status: ListingStatus;
-  isExpired: boolean;
   publishState: ListingPublishState;
 }) {
-  const statusLabel = status === "active" && isExpired ? "Expired" : LISTING_STATUS_LABELS[status];
+  const statusLabel = LISTING_STATUS_LABELS[status];
   const statusColor =
-    status === "active" && isExpired
-      ? "var(--danger)"
-      : status === "active"
-        ? "var(--green)"
-        : status === "deactivated"
-          ? "var(--danger)"
-          : "var(--muted)";
+    status === "active"
+      ? "var(--green)"
+      : status === "deactivated"
+        ? "var(--danger)"
+        : "var(--muted)";
 
   return (
     <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
