@@ -304,6 +304,16 @@ function RequiredLabel({ text }: { text: string }) {
   );
 }
 
+/** Right beside its field's label, not at the far end of the row — a control for *that specific
+ * field* reads as attached to it only when it's actually adjacent to it. Gold, not the plain
+ * muted secondaryButtonClass every other inline action here uses: this is the one button on this
+ * step that does something no other control does (writes the field for you), and the quieter
+ * style made it easy to miss sitting at the end of a 720px-wide row. Gold is already this app's
+ * "something special is happening here" accent (the boost icon elsewhere uses the same color),
+ * reused rather than inventing a second one. */
+const aiGenerateButtonClass =
+  "inline-flex items-center gap-1 text-[11px] font-bold text-[color:var(--gold)] border border-[color:var(--gold)]/50 bg-[color:var(--gold)]/10 rounded-full px-2.5 py-1 cursor-pointer disabled:opacity-50 shrink-0";
+
 const optionButtonClass = (active: boolean) =>
   `flex items-center gap-2.5 w-full text-left border-[1.5px] rounded-[10px] px-4 py-3.5 text-sm font-bold text-text cursor-pointer ${
     active ? "border-green bg-surface-alt" : "border-border bg-surface"
@@ -1823,12 +1833,24 @@ export function PostAdWizard({
       {step === "details" && category && transactionType && (
         <div className="flex flex-col gap-4">
           <div>
-            <RequiredLabel text="Title" />
-            {/* Counter sits beside the input rather than sharing the label's row — reads as
-              * attached to the text box it's counting, not as a second label. Counts up rather
-              * than down, so it reads as progress rather than a warning, and turns amber near
-              * the cap instead of only at it — a poster who has run out of room mid-sentence
-              * wants to know a few characters earlier. */}
+            <div className="flex items-center gap-2 mb-1.5">
+              <label className="text-[13px] font-bold text-text-soft">
+                Title <span className="text-[#b3413a]">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleGenerateCopy("title")}
+                disabled={!canGenerateCopy || generatingTitle}
+                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
+                className={aiGenerateButtonClass}
+              >
+                {generatingTitle ? "Generating…" : "✨ AI Generate"}
+              </button>
+            </div>
+            {/* Counter sits beside the input — reads as attached to the text box it's counting.
+              * Counts up rather than down, so it reads as progress rather than a warning, and
+              * turns amber near the cap instead of only at it — a poster who has run out of room
+              * mid-sentence wants to know a few characters earlier. */}
             <div className="flex items-center gap-2 max-w-[720px]">
               <input
                 required
@@ -1842,15 +1864,6 @@ export function PostAdWizard({
               >
                 {title.length}/{TITLE_MAX_LENGTH}
               </span>
-              <button
-                type="button"
-                onClick={() => void handleGenerateCopy("title")}
-                disabled={!canGenerateCopy || generatingTitle}
-                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
-                className={`${secondaryButtonClass} shrink-0 text-xs py-1.5 px-2.5`}
-              >
-                {generatingTitle ? "Generating…" : "✨ Generate"}
-              </button>
             </div>
           </div>
 
@@ -1919,16 +1932,18 @@ export function PostAdWizard({
           </div>
 
           <div>
-            <div className="flex items-center justify-between max-w-[720px]">
-              <RequiredLabel text="Description" />
+            <div className="flex items-center gap-2 mb-1.5">
+              <label className="text-[13px] font-bold text-text-soft">
+                Description <span className="text-[#b3413a]">*</span>
+              </label>
               <button
                 type="button"
                 onClick={() => void handleGenerateCopy("description")}
                 disabled={!canGenerateCopy || generatingDescription}
                 title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
-                className={`${secondaryButtonClass} shrink-0 text-xs py-1.5 px-2.5`}
+                className={aiGenerateButtonClass}
               >
-                {generatingDescription ? "Generating…" : "✨ Generate"}
+                {generatingDescription ? "Generating…" : "✨ AI Generate"}
               </button>
             </div>
             <textarea
@@ -2424,9 +2439,13 @@ export function PostAdWizard({
                     })
                   }
                   disabled={generatingDescription}
-                  className={secondaryButtonClass}
+                  className={aiGenerateButtonClass}
                 >
-                  {generatingDescription ? "Generating…" : regeneratedDescriptionReady ? "Regenerate" : "Generate"}
+                  {generatingDescription
+                    ? "Generating…"
+                    : regeneratedDescriptionReady
+                      ? "✨ AI Regenerate"
+                      : "✨ AI Generate"}
                 </button>
               </div>
 

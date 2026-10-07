@@ -1655,11 +1655,33 @@ export function PostAdWizard({
 
       {step === "details" && category && transactionType && detailsReady && (
         <View style={{ gap: 4 }}>
-          <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
-            <Text style={[styles.label, { color: colors.textSoft }]}>
-              Title
-              <RequiredMark />
-            </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            {/* The AI-Generate button sits right beside its own label, not below the input it
+                fills — a control for *this field* only reads as attached to it when it's
+                actually adjacent. Gold, not a plain bordered chip: this is the one control on
+                this screen that writes the field for you, and the quieter style made it easy to
+                miss. Gold is already this app's "something special" accent (colors.gold, reused
+                from the boost/Featured badges above), not a second one invented here. */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={[styles.label, { color: colors.textSoft, marginTop: 0, marginBottom: 0 }]}>
+                Title
+                <RequiredMark />
+              </Text>
+              <Pressable
+                onPress={() => void handleGenerateCopy("title")}
+                disabled={!canGenerateCopy || generatingTitle}
+                style={[
+                  styles.aiGenerateButton,
+                  { borderColor: colors.gold, backgroundColor: `${colors.gold}1a`, marginTop: 0, opacity: !canGenerateCopy || generatingTitle ? 0.5 : 1 },
+                ]}
+              >
+                {generatingTitle ? (
+                  <ActivityIndicator size="small" color={colors.gold} />
+                ) : (
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: colors.gold }}>✨ AI Generate</Text>
+                )}
+              </Pressable>
+            </View>
             {/* Counts up rather than down, so it reads as progress instead of a warning, and
                 turns amber before the cap rather than at it — running out mid-sentence is worth
                 knowing a few characters early. */}
@@ -1683,20 +1705,6 @@ export function PostAdWizard({
             onChangeText={(v) => setTitle(v.slice(0, TITLE_MAX_LENGTH))}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
-          <Pressable
-            onPress={() => void handleGenerateCopy("title")}
-            disabled={!canGenerateCopy || generatingTitle}
-            style={[
-              styles.aiGenerateButton,
-              { borderColor: colors.border, backgroundColor: colors.surfaceAlt, opacity: !canGenerateCopy || generatingTitle ? 0.5 : 1 },
-            ]}
-          >
-            {generatingTitle ? (
-              <ActivityIndicator size="small" color={colors.green} />
-            ) : (
-              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text }}>✨ Generate</Text>
-            )}
-          </Pressable>
 
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Pin your exact location (optional — helps buyers find you, and auto-fills City/Area below)
@@ -1785,10 +1793,26 @@ export function PostAdWizard({
 
           {/* No Specs box, as on the website: the card's chips come from the category fields below
             * (deriveCardSpecs), so a typed "3 Beds" only repeated them in another spelling. */}
-          <Text style={[styles.label, { color: colors.textSoft }]}>
-            Description
-            <RequiredMark />
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={[styles.label, { color: colors.textSoft }]}>
+              Description
+              <RequiredMark />
+            </Text>
+            <Pressable
+              onPress={() => void handleGenerateCopy("description")}
+              disabled={!canGenerateCopy || generatingDescription}
+              style={[
+                styles.aiGenerateButton,
+                { borderColor: colors.gold, backgroundColor: `${colors.gold}1a`, marginTop: 0, opacity: !canGenerateCopy || generatingDescription ? 0.5 : 1 },
+              ]}
+            >
+              {generatingDescription ? (
+                <ActivityIndicator size="small" color={colors.gold} />
+              ) : (
+                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.gold }}>✨ AI Generate</Text>
+              )}
+            </Pressable>
+          </View>
           <TextInput
             value={description}
             onChangeText={(v) => setDescription(v.slice(0, DESCRIPTION_MAX_LENGTH))}
@@ -1803,20 +1827,6 @@ export function PostAdWizard({
           <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
             At least {DESCRIPTION_MIN_LENGTH} characters — ads with a real description get more responses.
           </Text>
-          <Pressable
-            onPress={() => void handleGenerateCopy("description")}
-            disabled={!canGenerateCopy || generatingDescription}
-            style={[
-              styles.aiGenerateButton,
-              { borderColor: colors.border, backgroundColor: colors.surfaceAlt, opacity: !canGenerateCopy || generatingDescription ? 0.5 : 1 },
-            ]}
-          >
-            {generatingDescription ? (
-              <ActivityIndicator size="small" color={colors.green} />
-            ) : (
-              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text }}>✨ Generate</Text>
-            )}
-          </Pressable>
           {aiGenerateError ? (
             <Text style={{ fontSize: 12, color: "#b3413a", marginTop: 4 }}>{aiGenerateError}</Text>
           ) : null}
@@ -2246,7 +2256,11 @@ export function PostAdWizard({
                   style={[styles.submitButton, { backgroundColor: colors.green, opacity: generatingDescription ? 0.6 : 1 }]}
                 >
                   <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13 }}>
-                    {generatingDescription ? "Generating…" : regeneratedDescriptionReady ? "Regenerate" : "Generate"}
+                    {generatingDescription
+                      ? "Generating…"
+                      : regeneratedDescriptionReady
+                        ? "✨ AI Regenerate"
+                        : "✨ AI Generate"}
                   </Text>
                 </Pressable>
               </View>
