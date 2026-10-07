@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
@@ -19,7 +19,7 @@ import { ListingPrice } from "./PriceWithWords";
  * message, contact reveal, view/like counts) that doesn't exist yet for an unsubmitted listing.
  */
 export function ListingPreviewCard({
-  photoUri,
+  photoUris,
   category,
   transactionType,
   title,
@@ -32,7 +32,7 @@ export function ListingPreviewCard({
   attributes,
   featured = false,
 }: {
-  photoUri: string;
+  photoUris: string[];
   category: ListingCategory;
   transactionType: TransactionType;
   title: string;
@@ -63,6 +63,24 @@ export function ListingPreviewCard({
     pulse.setValue(1);
     Animated.timing(pulse, { toValue: 0, duration: 600, useNativeDriver: true }).start();
   }, [featured, pulse]);
+
+  // Same cycle as the real ListingCard.tsx, gated the same way — only Featured with more than one
+  // photo gets it. No isVisible prop here unlike the real card's FlatList-driven one: this is the
+  // one card on screen while actively editing the form, not a row that could be scrolled away
+  // unseen, so it just runs for as long as the condition holds, no visibility check needed.
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const canCyclePhotos = featured && photoUris.length > 1;
+  useEffect(() => {
+    if (!canCyclePhotos) {
+      setPhotoIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setPhotoIndex((i) => (i + 1) % photoUris.length);
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [canCyclePhotos, photoUris.length]);
+
   const priceNum = Number(price);
   const exactPrice =
     priceNum > 0 ? `₹${groupInr(priceNum)}${priceUnit ? `/${areaUnitShortLabel(priceUnit, priceNum)}` : ""}` : "Contact for price";
@@ -75,65 +93,86 @@ export function ListingPreviewCard({
   const specs = deriveCardSpecs(category, attributes);
 
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.surface },
-        featured ? { borderColor: colors.gold, borderWidth: 1.5 } : { borderColor: colors.border, borderWidth: 1 },
-      ]}
-    >
-      {/* Gold ring that flashes in and fades on every featured/unfeatured toggle — see the pulse
-        * useEffect above. Pointer-events none + absolute so it never affects layout or taps. */}
-      <Animated.View
-        pointerEvents="none"
+    <View>
+      {/* Named explicitly, not left to the border alone to communicate — matches web's identical
+        * caption above ListingPreviewCard.tsx's card. */}
+      <Text
+        style={{
+          textAlign: "center",
+          fontSize: 12.5,
+          fontWeight: "700",
+          color: featured ? colors.gold : colors.muted,
+          marginBottom: 8,
+        }}
+      >
+        {featured ? "✨ Preview — Featured" : "Preview — standard listing"}
+      </Text>
+      <View
         style={[
-          StyleSheet.absoluteFill,
-          styles.pulseRing,
-          { borderColor: colors.gold, opacity: pulse, borderRadius: styles.card.borderRadius },
+          styles.card,
+          { backgroundColor: colors.surface },
+          featured ? { borderColor: colors.gold, borderWidth: 1.5 } : { borderColor: colors.border, borderWidth: 1 },
         ]}
-      />
-      <View style={styles.imageArea}>
-        <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} />
-        <View style={styles.tagRow}>
-          <View style={[styles.tag, { backgroundColor: colors.green }]}>
-            <Text style={{ color: colors.onGreen, fontSize: 10, fontWeight: "700" }}>
-              {deriveTag({ category, transactionType })}
+      >
+        {/* Gold ring that flashes in and fades on every featured/unfeatured toggle — see the pulse
+          * useEffect above. Pointer-events none + absolute so it never affects layout or taps. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            styles.pulseRing,
+            { borderColor: colors.gold, opacity: pulse, borderRadius: styles.card.borderRadius },
+          ]}
+        />
+        <View style={styles.imageArea}>
+          <Image source={{ uri: photoUris[photoIndex] ?? photoUris[0] }} style={StyleSheet.absoluteFill} />
+          <View style={styles.tagRow}>
+            <View style={[styles.tag, { backgroundColor: colors.green }]}>
+              <Text style={{ color: colors.onGreen, fontSize: 10, fontWeight: "700" }}>
+                {deriveTag({ category, transactionType })}
+              </Text>
+            </View>
+            {featured && (
+              <View style={[styles.tag, styles.featuredTag, { backgroundColor: colors.gold }]}>
+                <Icon name="featured" size={11} color="#3a2e0f" filled />
+                <Text style={{ color: "#3a2e0f", fontSize: 10, fontWeight: "700" }}>Featured</Text>
+              </View>
+            )}
+          </View>
+          {canCyclePhotos && (
+            <View style={styles.photoCountBadge}>
+              <Icon name="camera" size={11} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 10.5, fontWeight: "700" }}>{photoUris.length}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.body}>
+          <View style={styles.priceRow}>
+            <ListingPrice item={{ price: exactPrice, priceInWords: wordsPrice, totalPrice }} fontSize={17} />
+            {!!priceQualifier && (
+              <View style={[styles.qualifierChip, { backgroundColor: colors.surfaceAlt }]}>
+                <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.muted }}>{priceQualifier}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>{title || "Untitled listing"}</Text>
+          <View style={styles.metaRow}>
+            <Icon name="pin" size={11} color={colors.muted} />
+            <Text style={{ fontSize: 12, color: colors.muted }}>
+              {areaName}, {cityName}
             </Text>
           </View>
-          {featured && (
-            <View style={[styles.tag, styles.featuredTag, { backgroundColor: colors.gold }]}>
-              <Icon name="featured" size={11} color="#3a2e0f" filled />
-              <Text style={{ color: "#3a2e0f", fontSize: 10, fontWeight: "700" }}>Featured</Text>
+          {specs.length > 0 && (
+            <View style={styles.specsRow}>
+              {specs.map((spec) => (
+                <Text key={spec} style={{ fontSize: 11.5, fontWeight: "600", color: colors.textSoft }}>
+                  {spec}
+                </Text>
+              ))}
             </View>
           )}
         </View>
-      </View>
-
-      <View style={styles.body}>
-        <View style={styles.priceRow}>
-          <ListingPrice item={{ price: exactPrice, priceInWords: wordsPrice, totalPrice }} fontSize={17} />
-          {!!priceQualifier && (
-            <View style={[styles.qualifierChip, { backgroundColor: colors.surfaceAlt }]}>
-              <Text style={{ fontSize: 10.5, fontWeight: "700", color: colors.muted }}>{priceQualifier}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>{title || "Untitled listing"}</Text>
-        <View style={styles.metaRow}>
-          <Icon name="pin" size={11} color={colors.muted} />
-          <Text style={{ fontSize: 12, color: colors.muted }}>
-            {areaName}, {cityName}
-          </Text>
-        </View>
-        {specs.length > 0 && (
-          <View style={styles.specsRow}>
-            {specs.map((spec) => (
-              <Text key={spec} style={{ fontSize: 11.5, fontWeight: "600", color: colors.textSoft }}>
-                {spec}
-              </Text>
-            ))}
-          </View>
-        )}
       </View>
     </View>
   );
@@ -148,6 +187,18 @@ const styles = StyleSheet.create({
   tag: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5 },
   featuredTag: { flexDirection: "row", alignItems: "center", gap: 3 },
   pulseRing: { borderWidth: 2 },
+  photoCountBadge: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#00000099",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
   body: { padding: 14, gap: 8 },
   priceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
   qualifierChip: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5 },

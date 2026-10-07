@@ -1932,7 +1932,7 @@ export function PostAdWizard({
             * obvious here rather than after the ad is already live. Matches the web wizard's own
             * ListingPreviewCard. */}
           <ListingPreviewCard
-            photoUri={photoUris[0]}
+            photoUris={photoUris}
             category={category}
             transactionType={transactionType}
             title={title}
