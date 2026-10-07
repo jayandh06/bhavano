@@ -112,9 +112,13 @@ services:
       # Google Maps — server-side reverse geocoding for the map pin-picker (see
       # docs/plans/google-maps-location-picker.md). Never sent to any client.
       GOOGLE_MAPS_SERVER_KEY: ${GOOGLE_MAPS_SERVER_KEY}
-      # OpenAI — posting wizard's AI title/description "Generate" assist (see
-      # docs/plans/ai-listing-copy-assist.md). Blank/unset falls back to a deterministic stub.
+      # OpenAI and/or Gemini — posting wizard's AI title/description "Generate" assist (see
+      # docs/plans/ai-listing-copy-assist.md). Both blank/unset falls back to a deterministic
+      # stub; with both set, Gemini wins unless AI_LISTING_COPY_PROVIDER pins one.
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      AI_LISTING_COPY_PROVIDER: ${AI_LISTING_COPY_PROVIDER}
+      GEMINI_MODEL: ${GEMINI_MODEL}
       # Google Ads — server-side conversion upload for signup/post-ad via the Data Manager API,
       # using the gclid captured by web's middleware.ts (see
       # docs/plans/server-side-google-ads-conversion-upload.md). Same OAuth client the root

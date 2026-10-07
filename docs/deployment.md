@@ -739,6 +739,25 @@ Both scripts need `AUTH_JWT_SECRET`/`GOOGLE_MAPS_SERVER_KEY` (Google) or `APIFY_
 the script reads it directly via `load_dotenv`, see its own module docstring). No
 admin-triggered scraping UI exists — this is still a manual, deliberate SSH step.
 
+## AI listing-copy assist (OpenAI / Gemini)
+
+The posting wizard's AI "Generate" assist for title/description (see
+`docs/plans/ai-listing-copy-assist.md`) needs no setup to deploy — with no key set it runs on a
+deterministic stub, so this section only matters once real generation is actually wanted live.
+
+Both `OPENAI_API_KEY` and `GEMINI_API_KEY` are supported, not either/or: add either one (or both)
+to `.env` on the app instance, then `docker compose -f docker-compose.prod.yml up -d bff` (a plain
+recreate — these are runtime vars, no rebuild needed, same as `R2_*`). With only one key set, that
+provider runs; with both set, Gemini is preferred by default (stronger on the Indic
+`secondLanguage` descriptions this feature offers) unless `AI_LISTING_COPY_PROVIDER` pins
+`"openai"` or `"gemini"` explicitly. `GEMINI_MODEL` optionally overrides the pinned default
+(`gemini-2.5-flash`).
+
+The Featured-tier nearby-landmarks narration (either provider) reuses the existing
+`GOOGLE_MAPS_SERVER_KEY` — no separate credential — but needs the (new) Places API enabled on
+that same GCP project first, a one-time Console step. Until that's done, Featured generation just
+degrades gracefully (drops the landmarks section) rather than failing.
+
 ## SEO: Search Console verification + analytics
 
 **Google Search Console** — verify via a DNS TXT record (not a meta tag), so the whole domain

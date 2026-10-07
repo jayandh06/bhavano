@@ -61,6 +61,18 @@ exists, call the landmarks provider wrapped in `try/catch` (same graceful-degrad
 generation, it just drops the landmarks) → call the LLM provider for description with tier +
 landmarks + optional `secondLanguage`.
 
+**Update (2026-10-07): both OpenAI and Gemini are real, supported providers, not a single
+hardcoded choice.** `ListingCopyLlmProvider` was already designed to be swappable (see below) —
+`GeminiListingCopyProvider` is a second real implementation of the same interface, sharing its
+prompt text with `OpenAiListingCopyProvider` via `listing-copy-prompts.ts` so the two never drift.
+`resolveListingCopyProvider` (`listing-copy-llm.provider.ts`) is the pure selection function the
+`ai.module.ts` factory calls: with one key configured that provider runs; with both configured,
+Gemini wins by default (picked for stronger output on the Indic `secondLanguage` descriptions,
+not because OpenAI is deprecated) unless `AI_LISTING_COPY_PROVIDER` (`"openai"` | `"gemini"`)
+pins one explicitly. An override naming an unconfigured provider falls back to the stub, same
+"assist, not core functionality" stance as everything else here. See `docs/deployment.md`'s "AI
+listing-copy assist" section for the ops-side setup.
+
 **Provider interfaces** (so real calls are swappable for deterministic stubs in dev/tests):
 ```ts
 interface ListingCopyLlmProvider {
@@ -160,7 +172,8 @@ any manual edit — auto-*offered*, never auto-*applied*.
 
 ## Critical files
 - `apps/web/src/components/home/PostAdWizard.tsx` / `apps/mobile/src/components/home/PostAdWizard.tsx`
-- `apps/bff/src/ai/` (new: module, controller, service, DTO, providers)
+- `apps/bff/src/ai/` (new: module, controller, service, DTO, providers — including
+  `listing-copy-prompts.ts`, shared between the OpenAI and Gemini providers)
 - `apps/bff/src/rate-limit/rate-limit.service.ts`
 - `apps/bff/src/listings/listings.service.ts` (boost-check consolidation)
 - `packages/types/src/listingCopyAssist.ts`, `packages/types/src/index.ts`
