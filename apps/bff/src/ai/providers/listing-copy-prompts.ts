@@ -13,6 +13,13 @@ function placeText(input: Pick<StructuredListingFields, 'cityName' | 'areaName'>
   return input.cityName ?? input.areaName ?? 'an unspecified location';
 }
 
+/** Replaces English, doesn't add to it — see StructuredListingFields.language's own doc comment
+ * for why this is a different concept from buildDescriptionPrompt's `secondLanguage`. Empty
+ * string when unset, so every caller can just interpolate it with no `if` of its own. */
+function languageInstruction(language: IndianLanguage | undefined): string {
+  return language ? ` Write it entirely in ${INDIAN_LANGUAGE_LABELS[language]}, not English.` : '';
+}
+
 /** `allowFormatting` is false for the title call: a title is one line shown in a listing card's
  * header, where a bullet or a blank line would just break the layout — buildTitlePrompt already
  * separately says "plain text, no markdown" for the same reason, so this isn't the only guard,
@@ -34,7 +41,7 @@ export function buildSystemPrompt(expectedFields: string[], allowFormatting: boo
 
 export function buildTitlePrompt(input: StructuredListingFields): string {
   return (
-    `Write a short, honest classified-ad title for a real-estate listing in India, as plain text with no quotes or markdown.\n` +
+    `Write a short, honest classified-ad title for a real-estate listing in India, as plain text with no quotes or markdown.${languageInstruction(input.language)}\n` +
     `Category: ${input.category}\nTransaction: ${input.transactionType}\nLocation: ${placeText(input)}\n` +
     (input.price ? `Price: ₹${input.price}${input.priceQualifier ? ` ${input.priceQualifier}` : ''}\n` : '') +
     (input.attributes ? `Attributes: ${JSON.stringify(input.attributes)}\n` : '') +
@@ -59,14 +66,20 @@ export function buildDescriptionPrompt(
   const secondLanguageInstruction = input.secondLanguage
     ? `Also provide a "secondLanguageText" field: the same description translated naturally into ${INDIAN_LANGUAGE_LABELS[input.secondLanguage]}.`
     : '';
+  // Mutually exclusive by construction (AiService never sets both on the same request — see
+  // StructuredListingFields.language's own doc comment) — this just picks the right word for
+  // whichever one applies, rather than always saying "the English description" when it isn't.
+  const lengthInstruction = input.language
+    ? 'Keep the description between roughly 100 and 300 words.'
+    : 'Keep the English description between roughly 100 and 300 words.';
 
   return (
-    `${style}\n` +
+    `${style}${languageInstruction(input.language)}\n` +
     `This is for a real-estate classified ad in India. Category: ${input.category}\nTransaction: ${input.transactionType}\n` +
     `Location: ${placeText(input)}\n` +
     (input.price ? `Price: ₹${input.price}${input.priceQualifier ? ` ${input.priceQualifier}` : ''}\n` : '') +
     (input.attributes ? `Attributes: ${JSON.stringify(input.attributes)}\n` : '') +
     `${landmarksInstruction}\n${secondLanguageInstruction}\n` +
-    `Keep the English description between roughly 100 and 300 words. Never invent a fact not given above.`
+    `${lengthInstruction} Never invent a fact not given above.`
   );
 }

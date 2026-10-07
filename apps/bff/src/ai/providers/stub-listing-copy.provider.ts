@@ -21,7 +21,11 @@ export class StubListingCopyProvider implements ListingCopyLlmProvider {
   async generateTitle(input: StructuredListingFields): Promise<string> {
     const place = input.areaName ? `${input.areaName}, ${input.cityName}` : input.cityName;
     const phrase = TRANSACTION_PHRASE[input.transactionType] ?? '';
-    return `${capitalize(input.category)} ${phrase} in ${place ?? 'your city'}`.slice(0, 100);
+    const title = `${capitalize(input.category)} ${phrase} in ${place ?? 'your city'}`.slice(0, 100);
+    // Doesn't actually translate — a deterministic marker is all dev/CI needs to confirm the
+    // language field reached generateTitle at all, same "stay exercisable, not realistic" stance
+    // as the rest of this stub.
+    return input.language ? `[${input.language}] ${title}` : title;
   }
 
   async generateDescription(
@@ -37,12 +41,13 @@ export class StubListingCopyProvider implements ListingCopyLlmProvider {
     // Exercises the bullets block type too — downstream rendering (ListingDescription on every
     // platform) needs a realistic fixture, not just a single plain paragraph, same "stay
     // exercisable in dev/CI" reasoning as the rest of this stub.
+    const marker = input.language ? `[stub-generated, ${input.language}]` : '[stub-generated]';
     const text =
       input.tier === 'featured'
         ? `${intro}\n\n- Good natural light\n- Close to daily essentials${
             input.landmarks.length > 0 ? `\n- Near ${input.landmarks.slice(0, 2).join(', ')}` : ''
-          }\n\nA solid choice for anyone looking in this area. [stub-generated]`
-        : `${intro} [stub-generated]`;
+          }\n\nA solid choice for anyone looking in this area. ${marker}`
+        : `${intro} ${marker}`;
     return {
       text,
       secondLanguageText: input.secondLanguage ? `${text} (stub ${input.secondLanguage} translation)` : undefined,

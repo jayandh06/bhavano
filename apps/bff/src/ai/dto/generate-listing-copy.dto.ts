@@ -69,4 +69,12 @@ export class GenerateListingCopyDto {
   @IsOptional()
   @IsIn(INDIAN_LANGUAGES)
   secondLanguage?: IndianLanguage;
+
+  /** Free tier only — see GenerateListingCopyInput's own doc comment in
+   * @bhavano/types/listingCopyAssist for why this is a separate field from `secondLanguage`,
+   * not an overload of it. AiService ignores this whenever a real `listingId` is given, same as
+   * every other structured field. */
+  @IsOptional()
+  @IsIn(INDIAN_LANGUAGES)
+  language?: IndianLanguage;
 }

@@ -99,6 +99,7 @@ export class AiService {
         cityName: dto.cityName,
         areaName: dto.areaName,
         attributes: dto.attributes,
+        language: dto.language,
       },
       tier: 'free',
       lat: dto.lat,

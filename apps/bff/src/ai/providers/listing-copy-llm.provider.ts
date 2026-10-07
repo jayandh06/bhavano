@@ -9,6 +9,13 @@ export interface StructuredListingFields {
   cityName?: string;
   areaName?: string;
   attributes?: Record<string, unknown>;
+  /** Free tier only (AiService never sets this from a `listingId` request) — write the whole
+   * title/description in this language instead of English. Deliberately on the base type, not
+   * bolted onto generateDescription's own extra params the way `secondLanguage` is: a title and
+   * a description generated for the same request must agree on language, and the cleanest way to
+   * guarantee that is one field both methods already receive, not two call sites that have to be
+   * kept in sync by hand. */
+  language?: IndianLanguage;
 }
 
 export const LISTING_COPY_LLM_PROVIDER = 'LISTING_COPY_LLM_PROVIDER';

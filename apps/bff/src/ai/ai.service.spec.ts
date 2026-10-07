@@ -174,4 +174,34 @@ describe('AiService.generate', () => {
     expect(result.description).toBeUndefined();
     expect(llm.generateDescription).not.toHaveBeenCalled();
   });
+
+  it('passes a free-tier language choice to both generateTitle and generateDescription', async () => {
+    const { service, llm } = makeService();
+
+    await service.generate(
+      {
+        fields: ['title', 'description'],
+        category: 'apartment',
+        transactionType: 'rent',
+        cityName: 'Bengaluru',
+        language: 'hi',
+      } as GenerateListingCopyDto,
+      'owner1',
+    );
+
+    expect(llm.generateTitle).toHaveBeenCalledWith(expect.objectContaining({ language: 'hi' }));
+    expect(llm.generateDescription).toHaveBeenCalledWith(expect.objectContaining({ language: 'hi' }));
+  });
+
+  it('ignores a client-sent language for a listingId (Featured-regenerate) request', async () => {
+    const boosted = makeListing({ boostedUntil: new Date(Date.now() + 86_400_000) });
+    const { service, llm } = makeService({ listing: boosted });
+
+    // A listingId request has no `language` field at all in GenerateListingCopyDto's own typing
+    // for this shape — this confirms AiService doesn't smuggle one in from anywhere else (e.g.
+    // a stale default) when resolving fields from the DB row.
+    await service.generate({ listingId: 'listing1', fields: ['title'] } as GenerateListingCopyDto, 'owner1');
+
+    expect(llm.generateTitle).toHaveBeenCalledWith(expect.not.objectContaining({ language: expect.anything() }));
+  });
 });

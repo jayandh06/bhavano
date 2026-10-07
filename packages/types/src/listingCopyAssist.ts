@@ -47,6 +47,16 @@ export interface GenerateListingCopyInput {
   lng?: number;
   /** Only meaningful when `description` is requested and the resolved tier is `featured`. */
   secondLanguage?: IndianLanguage;
+  /** The single language to generate Title **and** Description in — Free tier only (ignored
+   * whenever a real `listingId` is given, same as every other structured field). Omitted means
+   * English, the default; given, it *replaces* English rather than adding to it — unlike
+   * `secondLanguage` above, there is no English fallback alongside it. The two are deliberately
+   * separate fields rather than one overloaded one: Free's choice is "post the whole ad in this
+   * language," Featured's is "also give me a second version," and conflating them would make a
+   * Free-tier request that happened to set `secondLanguage` silently do nothing (today it's
+   * already ignored server-side for Free; a shared field would make that same mistake produce a
+   * *different* silent no-op instead of a clear one). */
+  language?: IndianLanguage;
 }
 
 export interface GenerateListingCopyResult {
