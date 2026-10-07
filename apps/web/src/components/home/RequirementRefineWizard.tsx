@@ -5,6 +5,7 @@ import type { Area, RefineRequirementInput, RequirementAnswers, RequirementDto }
 import { convertArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { bedroomLabel } from "@bhavano/types/bedrooms";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
+import { requirementBudgetIssue } from "@bhavano/types/priceBounds";
 import {
   INTENT_CATEGORIES,
   INTENT_TRANSACTION_CHOICES,
@@ -189,6 +190,17 @@ export function RequirementRefineWizard({
     (id) => areaById.get(id)?.name ?? current.areaNames[current.areaIds.indexOf(id)] ?? "",
   );
   const position = steps.indexOf(stepKey);
+
+  // Floor-only — a seeker's upper budget can legitimately run above a typical listing ask (see
+  // requirementBudgetIssue's own doc comment), but ₹7/month for an apartment was never a real
+  // figure either way. Computed here (not just inside BudgetStep below) so the Next button can
+  // block on it too, not only show the warning text.
+  const budgetIssue =
+    draft.category && draft.transactionType
+      ? (parseAmount(budgetMin) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMin)!)) ||
+        (parseAmount(budgetMax) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMax)!)) ||
+        null
+      : null;
 
   function detailsPatch() {
     const min = parseSize(sizeMin);
@@ -603,6 +615,7 @@ export function RequirementRefineWizard({
             {max !== undefined && <span className="text-[11.5px] text-muted">{formatInrWithWords(max)}</span>}
           </label>
         </div>
+        {budgetIssue && <p className="m-0 text-[12.5px] text-danger">{budgetIssue}</p>}
       </div>
     );
   }
@@ -737,7 +750,7 @@ export function RequirementRefineWizard({
         <button
           type="button"
           onClick={() => void saveAndNext()}
-          disabled={saving || (stepKey !== "review" && !canLeaveStep(stepKey, draft))}
+          disabled={saving || (stepKey !== "review" && !canLeaveStep(stepKey, draft)) || (stepKey === "budget" && !!budgetIssue)}
           className={`${primaryButtonClass} shrink-0`}
         >
           {saving ? "Saving…" : stepKey !== "review" ? "Next" : mode.kind === "create" ? "Find this for me" : "Done"}
