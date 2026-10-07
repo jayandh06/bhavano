@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -61,6 +61,7 @@ import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
 import {
   createListing,
+  fetchAiGenerateUsage,
   fetchAreas,
   fetchPlanPricing,
   friendlyErrorMessage,
@@ -70,7 +71,7 @@ import {
   uploadPhoto,
   uploadVideo,
 } from "../../lib/bffClient";
-import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
+import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type AiGenerateUsageDto, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
 import { getAnalyticsSessionId, recordAppPageView } from "../../lib/analyticsSession";
 import { logPostAdSuccess } from "../../lib/firebaseAnalytics";
 import {
@@ -355,6 +356,9 @@ export function PostAdWizard({
   // English and applies to both Title and Description, read fresh on every Generate tap.
   const [generationLanguage, setGenerationLanguage] = useState<IndianLanguage | "">("");
   const [generationLanguagePickerOpen, setGenerationLanguagePickerOpen] = useState(false);
+  // See web's identical state for the full reasoning — shown next to the language picker so a
+  // seller knows their daily cap before hitting it.
+  const [aiUsage, setAiUsage] = useState<AiGenerateUsageDto | null>(null);
   const [secondLanguageChoice, setSecondLanguageChoice] = useState<IndianLanguage | "">("");
   const [secondLanguageDescription, setSecondLanguageDescription] = useState<string | null>(null);
   const [activeDescriptionLang, setActiveDescriptionLang] = useState<"en" | IndianLanguage>("en");
@@ -584,6 +588,22 @@ export function PostAdWizard({
       cancelled = true;
     };
   }, []);
+
+  // Re-fetches on token too, not just once on reaching the step — see web's identical effect for
+  // why (a seller usually isn't logged in yet here, so the first attempt comes back empty).
+  useEffect(() => {
+    const activeToken = accessToken ?? postAccessToken;
+    if (step !== "details" || !activeToken) return;
+    let cancelled = false;
+    fetchAiGenerateUsage(activeToken)
+      .then((usage) => {
+        if (!cancelled) setAiUsage(usage);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [step, accessToken, postAccessToken]);
 
   const previewBoostDisplay = useMemo(() => {
     if (!category || !planPricingSettings) return null;
@@ -1210,15 +1230,51 @@ export function PostAdWizard({
   })();
   const detailsValid = !detailsIssue;
 
-  // Enough to generate from, independent of detailsValid above — see web's identical reasoning
-  // in PostAdWizard.tsx. No listingId sent here: this component's own listingId is a
+  // Mirrors detailsIssue above, minus the title/description checks — see web's identical
+  // reasoning in PostAdWizard.tsx. No listingId sent here: this component's own listingId is a
   // client-generated UUID for upload storage, not a real row yet.
-  const canGenerateCopy = !!category && !!transactionType && Number(price) > 0 && !!cityId;
+  const canGenerateCopy = (() => {
+    if (!category || !transactionType) return false;
+    if (!cityId) return false;
+    if (areaQuery.trim().length === 0) return false;
+    if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH) return false;
+    if (categoryHasPostedBy && !sellerTypeFromBroker(attributes.fromBroker)) return false;
+    if (listingAttributesIssue(category, transactionType, attributes)) return false;
+    if (!priceIsValid(price, category)) return false;
+    if (priceIssue) return false;
+    if (brokerageFeeIssue(transactionType, totalPrice, attributes)) return false;
+    if (photoUris.length < MIN_PHOTOS) return false;
+    if (askSellerType && !postedAs) return false;
+    return true;
+  })();
 
   // `opts.listingId` switches this to the post-creation "regenerate with Featured" shape — see
   // docs/plans/ai-listing-copy-assist.md.
   async function handleGenerateCopy(field: "title" | "description", opts?: { listingId?: string; secondLanguage?: IndianLanguage }) {
     if (!opts?.listingId && (!canGenerateCopy || !category || !transactionType)) return;
+
+    // Only guards the details-step call (no listingId) — see web's identical check for why the
+    // Featured-regenerate banner's own call is exempt.
+    if (!opts?.listingId) {
+      const existing = field === "title" ? title : description;
+      if (existing.trim()) {
+        const confirmed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            `Replace your current ${field === "title" ? "Title" : "Description"}?`,
+            "This will overwrite what you've typed with an AI-generated version.",
+            [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Replace", onPress: () => resolve(true) },
+            ],
+            // Android back-press dismisses without a button tap — without this the promise above
+            // would hang and the field would silently never get replaced.
+            { cancelable: true, onDismiss: () => resolve(false) },
+          );
+        });
+        if (!confirmed) return;
+      }
+    }
+
     setAiGenerateError(null);
 
     let activeToken = accessToken ?? postAccessToken;
@@ -1268,6 +1324,9 @@ export function PostAdWizard({
       setAiGenerateError(friendlyErrorMessage(error, "Failed to generate"));
     } finally {
       setGenerating(false);
+      // The BFF's RateLimitGuard records a hit for any request that gets this far (success or
+      // not) — see web's identical comment on handleGenerateCopy for the one excluded case.
+      setAiUsage((prev) => (prev ? { ...prev, used: Math.min(prev.limit, prev.used + 1), remaining: Math.max(0, prev.remaining - 1) } : prev));
     }
   }
 
@@ -1940,6 +1999,19 @@ export function PostAdWizard({
                 </Pressable>
               ))}
             </View>
+          )}
+          {aiUsage && (
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: aiUsage.remaining <= 0 ? "700" : "400",
+                color: aiUsage.remaining <= 0 ? "#c0554b" : aiUsage.remaining <= 2 ? colors.gold : colors.muted,
+              }}
+            >
+              {aiUsage.remaining <= 0
+                ? "You've used today's AI-generate limit — try again tomorrow, or write it yourself."
+                : `${aiUsage.remaining} of ${aiUsage.limit} AI generations left today.`}
+            </Text>
           )}
 
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>

@@ -2,7 +2,7 @@ import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
-import type { GenerateListingCopyInput, GenerateListingCopyResult } from "@bhavano/types/listingCopyAssist";
+import type { AiGenerateUsageDto, GenerateListingCopyInput, GenerateListingCopyResult } from "@bhavano/types/listingCopyAssist";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import {
   encodeRequirementFeedQuery,
@@ -472,6 +472,11 @@ export function generateListingCopy(
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+/** Backs the wizard's "N left today" label — a plain read, never records a hit itself. */
+export function fetchAiGenerateUsage(accessToken: string): Promise<AiGenerateUsageDto> {
+  return authedBffFetch<AiGenerateUsageDto>(accessToken, "/ai/listing-copy/usage");
 }
 
 const MIME_BY_EXT: Record<string, string> = {
