@@ -309,6 +309,22 @@ nudged locally (`used + 1`/`remaining - 1`, clamped) rather than re-fetched: `Ra
 records a hit for any request that gets past auth, success or not, so this is accurate for every
 outcome except the client-side-detected "not logged in" case, which never reached the BFF at all.
 
+**Update (2026-10-07): clicking either AI Generate button can fill both fields in one call,
+opportunistically.** Previously each button always sent `fields: [thatField]` — generating both
+meant two separate requests and two rate-limit hits, even though `GenerateListingCopyInput.fields`
+already accepted both at once (`AiService.generate` already looped over whichever fields were
+asked for). `handleGenerateCopy` now bundles the *other* field into the same request, but **only
+when that other field is still empty** — never when it already has content, since a bonus result
+for an already-filled field would just be discarded, paying for an LLM call that helped nothing.
+This makes the common "fresh ad" case (both fields blank) one call / one hit filling both, while
+every other case — one or both fields already have text — behaves exactly as before, one call per
+button, no wasted generation. Both buttons show "Generating…" (and are disabled) together whenever
+a bundled call is in flight, so a second click on the other button can't fire a redundant
+concurrent request; the field whose button was actually clicked always overwrites (after the
+existing confirm-if-non-empty check), while the bundled other field only ever fills in if it's
+still empty at response time too (re-checked via the functional `setState` form, in case the
+seller typed into it during the await) — it can never clobber something typed in the meantime.
+
 ## Critical files
 - `apps/web/src/components/home/PostAdWizard.tsx` / `apps/mobile/src/components/home/PostAdWizard.tsx`
 - `apps/bff/src/ai/` (new: module, controller, service, DTO, providers — including
