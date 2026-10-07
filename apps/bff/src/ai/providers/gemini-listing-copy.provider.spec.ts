@@ -34,7 +34,7 @@ describe('GeminiListingCopyProvider', () => {
     await provider.generateTitle(fields);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({ 'X-Goog-Api-Key': 'test-gemini-key' }),

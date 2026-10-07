@@ -8,8 +8,10 @@ import { buildDescriptionPrompt, buildSystemPrompt, buildTitlePrompt } from './l
 
 // Pinned, with an escape hatch — same reasoning as WhatsappProvider's DEFAULT_API_VERSION: a
 // silently-shifting "latest" model is how a working integration changes behaviour on a date
-// nobody wrote down. Override with GEMINI_MODEL if this one is retired.
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+// nobody wrote down. Override with GEMINI_MODEL if this one is retired. (Confirmed live
+// 2026-10-07 against the real Generative Language API: gemini-2.5-flash is no longer available
+// to new API keys — Google's own 404 pointed at this one instead.)
+const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
 interface GeminiGenerateContentResponse {
   candidates?: { content?: { parts?: { text?: string }[] } }[];

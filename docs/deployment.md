@@ -751,7 +751,7 @@ recreate — these are runtime vars, no rebuild needed, same as `R2_*`). With on
 provider runs; with both set, Gemini is preferred by default (stronger on the Indic
 `secondLanguage` descriptions this feature offers) unless `AI_LISTING_COPY_PROVIDER` pins
 `"openai"` or `"gemini"` explicitly. `GEMINI_MODEL` optionally overrides the pinned default
-(`gemini-2.5-flash`).
+(`gemini-3.8-flash`).
 
 The Featured-tier nearby-landmarks narration (either provider) reuses the existing
 `GOOGLE_MAPS_SERVER_KEY` — no separate credential — but needs the (new) Places API enabled on
