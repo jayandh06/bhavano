@@ -97,25 +97,59 @@ export class AccountMergeService {
     await this.prisma.$transaction(async (tx) => {
       const to = { userId: winnerId };
 
-      // Favourites are (userId, listingId) unique, so a listing both accounts favourited would
-      // collide — drop the loser's duplicates first rather than failing the whole merge.
-      const winnerFavs = await tx.favourite.findMany({
-        where: { userId: winnerId },
-        select: { listingId: true },
-      });
+      // Every (userId, X) pair that's unique and could plausibly exist on both sides — a listing
+      // both accounts favourited/showed interest in/revealed the contact for, or a calendar month
+      // both hold an Agent Pro boost credit for. Same fix each time: drop the loser's duplicate
+      // before repointing, rather than letting the whole merge fail on the constraint.
+      const winnerFavs = await tx.favourite.findMany({ where: { userId: winnerId }, select: { listingId: true } });
       await tx.favourite.deleteMany({
+        where: { userId: loserId, listingId: { in: winnerFavs.map((f) => f.listingId) } },
+      });
+
+      const winnerInterests = await tx.listingInterest.findMany({ where: { userId: winnerId }, select: { listingId: true } });
+      await tx.listingInterest.deleteMany({
+        where: { userId: loserId, listingId: { in: winnerInterests.map((i) => i.listingId) } },
+      });
+
+      const winnerReveals = await tx.contactReveal.findMany({ where: { userId: winnerId }, select: { listingId: true } });
+      await tx.contactReveal.deleteMany({
+        where: { userId: loserId, listingId: { in: winnerReveals.map((r) => r.listingId) } },
+      });
+
+      const winnerBoostCredits = await tx.proBoostCredit.findMany({ where: { userId: winnerId }, select: { monthKey: true } });
+      await tx.proBoostCredit.deleteMany({
+        where: { userId: loserId, monthKey: { in: winnerBoostCredits.map((c) => c.monthKey) } },
+      });
+
+      // BlockedUser has two FKs to User, so a collision can happen on either side, and a
+      // self-block (winner had blocked loser, or vice versa) becomes nonsensical once both sides
+      // are the same id — dropped outright rather than merged into a row nobody should see.
+      await tx.blockedUser.deleteMany({
         where: {
-          userId: loserId,
-          listingId: { in: winnerFavs.map((f) => f.listingId) },
+          OR: [
+            { blockerId: winnerId, blockedId: loserId },
+            { blockerId: loserId, blockedId: winnerId },
+          ],
         },
       });
+      const winnerBlocked = await tx.blockedUser.findMany({ where: { blockerId: winnerId }, select: { blockedId: true } });
+      await tx.blockedUser.deleteMany({
+        where: { blockerId: loserId, blockedId: { in: winnerBlocked.map((b) => b.blockedId) } },
+      });
+      const winnerBlockedBy = await tx.blockedUser.findMany({ where: { blockedId: winnerId }, select: { blockerId: true } });
+      await tx.blockedUser.deleteMany({
+        where: { blockedId: loserId, blockerId: { in: winnerBlockedBy.map((b) => b.blockerId) } },
+      });
+      await Promise.all([
+        tx.blockedUser.updateMany({ where: { blockerId: loserId }, data: { blockerId: winnerId } }),
+        tx.blockedUser.updateMany({ where: { blockedId: loserId }, data: { blockedId: winnerId } }),
+      ]);
 
       await Promise.all([
         tx.listing.updateMany({
           where: { ownerId: loserId },
           data: { ownerId: winnerId },
         }),
-        tx.favourite.updateMany({ where: { userId: loserId }, data: to }),
         tx.message.updateMany({
           where: { senderId: loserId },
           data: { senderId: winnerId },
@@ -128,13 +162,16 @@ export class AccountMergeService {
           where: { inquirerId: loserId },
           data: { inquirerId: winnerId },
         }),
+        tx.favourite.updateMany({ where: { userId: loserId }, data: to }),
+        tx.listingInterest.updateMany({ where: { userId: loserId }, data: to }),
+        tx.contactReveal.updateMany({ where: { userId: loserId }, data: to }),
+        tx.proBoostCredit.updateMany({ where: { userId: loserId }, data: to }),
         tx.payment.updateMany({ where: { userId: loserId }, data: to }),
         tx.userSubscription.updateMany({
           where: { userId: loserId },
           data: to,
         }),
         tx.savedSearch.updateMany({ where: { userId: loserId }, data: to }),
-        tx.proBoostCredit.updateMany({ where: { userId: loserId }, data: to }),
         tx.loginEvent.updateMany({ where: { userId: loserId }, data: to }),
         tx.visit.updateMany({ where: { userId: loserId }, data: to }),
         tx.supportTicket.updateMany({ where: { userId: loserId }, data: to }),
@@ -142,11 +179,23 @@ export class AccountMergeService {
           where: { createdById: loserId },
           data: { createdById: winnerId },
         }),
+        tx.requirement.updateMany({ where: { seekerId: loserId }, data: { seekerId: winnerId } }),
+        tx.pushToken.updateMany({ where: { userId: loserId }, data: to }),
+        tx.contactRevealCreditBatch.updateMany({ where: { userId: loserId }, data: to }),
+        tx.discountCodeRedemption.updateMany({ where: { userId: loserId }, data: to }),
+        tx.listingEditLog.updateMany({ where: { actorId: loserId }, data: { actorId: winnerId } }),
+        tx.userNotificationLog.updateMany({ where: { userId: loserId }, data: to }),
+        tx.searchEvent.updateMany({ where: { userId: loserId }, data: to }),
+        tx.referral.updateMany({ where: { referrerId: loserId }, data: { referrerId: winnerId } }),
+        tx.referralClick.updateMany({ where: { referrerId: loserId }, data: { referrerId: winnerId } }),
+        tx.referralCreditBatch.updateMany({ where: { userId: loserId }, data: to }),
+        tx.referralAdminAction.updateMany({ where: { targetUserId: loserId }, data: { targetUserId: winnerId } }),
       ]);
 
-      // outreachContact is 1:1 on userId. If the winner already has one, the loser's is left in
-      // place pointing at the retired row rather than colliding — it is attribution data, and
-      // the retired row is kept precisely so such references stay valid.
+      // outreachContact and referralAsReferred are both 1:1 on userId. If the winner already has
+      // one, the loser's is left in place pointing at the retired row rather than colliding — in
+      // both cases it's attribution data (which campaign reached them, who referred them in) that
+      // stays meaningful attached to the retired row, which is kept precisely so this works.
       const winnerContact = await tx.outreachContact.findUnique({
         where: { userId: winnerId },
       });
@@ -155,6 +204,10 @@ export class AccountMergeService {
           where: { userId: loserId },
           data: to,
         });
+      }
+      const winnerReferred = await tx.referral.findUnique({ where: { referredUserId: winnerId } });
+      if (!winnerReferred) {
+        await tx.referral.updateMany({ where: { referredUserId: loserId }, data: { referredUserId: winnerId } });
       }
 
       // Release the identifiers FIRST, preserving them for the audit trail. This has to precede
@@ -200,6 +253,43 @@ export class AccountMergeService {
     });
 
     this.logger.log(`Merged account ${loserId} into ${winnerId}`);
+  }
+
+  /** Admin-initiated merge — see docs/plans/account-linking-phone-and-email.md's admin-merge
+   * addendum. `confirmByIdentifier` below re-proves ownership with a fresh OTP/emailed code; an
+   * admin picking two rows in the Users table has no equivalent proof, so this substitutes admin
+   * judgement for cryptographic verification — which is exactly why every call is logged to
+   * `UserMergeAction` (who, which two accounts, why) rather than executed silently the way the
+   * self-service path is. Refuses staff accounts and anything already retired (merged or
+   * self-deleted) — this tool is for "the same person signed up twice," not for touching staff
+   * accounts or re-litigating a previous merge/deletion.
+   */
+  async mergeAsAdmin(adminId: string, winnerId: string, loserId: string, reason?: string): Promise<void> {
+    if (winnerId === loserId) {
+      throw new BadRequestException('Pick two different accounts to merge');
+    }
+    const [winner, loser] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: winnerId },
+        select: { role: true, mergedIntoUserId: true, deletedAt: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: loserId },
+        select: { role: true, mergedIntoUserId: true, deletedAt: true },
+      }),
+    ]);
+    if (!winner || !loser) throw new NotFoundException('Account not found');
+    if (winner.role === 'admin' || loser.role === 'admin') {
+      throw new BadRequestException('Staff accounts cannot be merged from here');
+    }
+    if (winner.mergedIntoUserId || winner.deletedAt || loser.mergedIntoUserId || loser.deletedAt) {
+      throw new BadRequestException('One of these accounts has already been merged or deleted');
+    }
+
+    await this.merge(winnerId, loserId);
+    await this.prisma.userMergeAction.create({
+      data: { adminId, winnerId, loserId, reason: reason ?? null },
+    });
   }
 
   /** Executes a merge the user approved.

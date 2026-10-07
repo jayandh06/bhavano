@@ -40,13 +40,32 @@ function makeTx() {
       deleteMany: record('favourite.deleteMany'),
       updateMany: record('favourite.updateMany'),
     },
+    listingInterest: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: record('listingInterest.deleteMany'),
+      updateMany: record('listingInterest.updateMany'),
+    },
+    contactReveal: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: record('contactReveal.deleteMany'),
+      updateMany: record('contactReveal.updateMany'),
+    },
+    proBoostCredit: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: record('proBoostCredit.deleteMany'),
+      updateMany: record('proBoostCredit.updateMany'),
+    },
+    blockedUser: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: record('blockedUser.deleteMany'),
+      updateMany: record('blockedUser.updateMany'),
+    },
     listing: { updateMany: record('listing.updateMany') },
     message: { updateMany: record('message.updateMany') },
     conversation: { updateMany: record('conversation.updateMany') },
     payment: { updateMany: record('payment.updateMany') },
     userSubscription: { updateMany: record('userSubscription.updateMany') },
     savedSearch: { updateMany: record('savedSearch.updateMany') },
-    proBoostCredit: { updateMany: record('proBoostCredit.updateMany') },
     loginEvent: { updateMany: record('loginEvent.updateMany') },
     visit: { updateMany: record('visit.updateMany') },
     supportTicket: { updateMany: record('supportTicket.updateMany') },
@@ -55,6 +74,20 @@ function makeTx() {
       findUnique: jest.fn().mockResolvedValue(null),
       updateMany: record('outreachContact.updateMany'),
     },
+    requirement: { updateMany: record('requirement.updateMany') },
+    pushToken: { updateMany: record('pushToken.updateMany') },
+    contactRevealCreditBatch: { updateMany: record('contactRevealCreditBatch.updateMany') },
+    discountCodeRedemption: { updateMany: record('discountCodeRedemption.updateMany') },
+    listingEditLog: { updateMany: record('listingEditLog.updateMany') },
+    userNotificationLog: { updateMany: record('userNotificationLog.updateMany') },
+    searchEvent: { updateMany: record('searchEvent.updateMany') },
+    referral: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      updateMany: record('referral.updateMany'),
+    },
+    referralClick: { updateMany: record('referralClick.updateMany') },
+    referralCreditBatch: { updateMany: record('referralCreditBatch.updateMany') },
+    referralAdminAction: { updateMany: record('referralAdminAction.updateMany') },
     user: { update: record('user.update') },
   };
   return tx;
@@ -225,10 +258,157 @@ describe('AccountMergeService.merge', () => {
     );
   });
 
+  it('leaves a colliding 1:1 referral-as-referred on the retired row', async () => {
+    const tx = makeTx();
+    tx.referral.findUnique.mockResolvedValue({ referredUserId: 'winner' });
+    await makeService(tx).merge('winner', 'loser');
+    // referral.updateMany is also called unconditionally for referrerId (referrals the loser
+    // made, a separate relation) — only the referredUserId-keyed call should be suppressed.
+    expect(tx.calls.some((c) => c.model === 'referral.updateMany' && 'referredUserId' in (c.args.where ?? {}))).toBe(
+      false,
+    );
+  });
+
+  it('repoints the referral-as-referred when only the loser has one', async () => {
+    const tx = makeTx();
+    tx.referral.findUnique.mockResolvedValue(null);
+    await makeService(tx).merge('winner', 'loser');
+    const update = tx.calls.find((c) => c.model === 'referral.updateMany' && 'referredUserId' in (c.args.where ?? {}));
+    expect(update?.args.where).toEqual({ referredUserId: 'loser' });
+    expect(update?.args.data).toEqual({ referredUserId: 'winner' });
+  });
+
+  it.each([
+    ['listingInterest', 'listingId'],
+    ['contactReveal', 'listingId'],
+    ['proBoostCredit', 'monthKey'],
+  ])('drops the duplicate %s before repointing, since it is unique per user', async (model, key) => {
+    const tx = makeTx();
+    (tx as unknown as Record<string, { findMany: jest.Mock }>)[model].findMany.mockResolvedValue([{ [key]: 'shared' }]);
+    await makeService(tx).merge('winner', 'loser');
+
+    const deleteIdx = tx.calls.findIndex((c) => c.model === `${model}.deleteMany`);
+    const updateIdx = tx.calls.findIndex((c) => c.model === `${model}.updateMany`);
+    expect(deleteIdx).toBeGreaterThanOrEqual(0);
+    expect(deleteIdx).toBeLessThan(updateIdx);
+    expect((tx.calls[deleteIdx].args.where?.[key] as { in: string[] }).in).toContain('shared');
+  });
+
+  it('drops a self-block in either direction, since both sides become the same account', async () => {
+    const tx = makeTx();
+    await makeService(tx).merge('winner', 'loser');
+    const selfBlockDelete = tx.calls.find(
+      (c) =>
+        c.model === 'blockedUser.deleteMany' &&
+        (c.args.where as { OR?: unknown[] })?.OR?.length === 2,
+    );
+    expect(selfBlockDelete).toBeDefined();
+  });
+
+  it('drops the duplicate block of a shared third party before repointing either direction', async () => {
+    const tx = makeTx();
+    tx.blockedUser.findMany
+      .mockResolvedValueOnce([{ blockedId: 'third-party' }]) // winner's own blocks
+      .mockResolvedValueOnce([]); // who blocked winner
+    await makeService(tx).merge('winner', 'loser');
+
+    const dedupDelete = tx.calls.find(
+      (c) => c.model === 'blockedUser.deleteMany' && (c.args.where as { blockerId?: string })?.blockerId === 'loser',
+    );
+    expect((dedupDelete?.args.where as { blockedId: { in: string[] } }).blockedId.in).toContain('third-party');
+
+    const blockerMove = tx.calls.find(
+      (c) => c.model === 'blockedUser.updateMany' && (c.args.where as { blockerId?: string })?.blockerId === 'loser',
+    );
+    const blockedMove = tx.calls.find(
+      (c) => c.model === 'blockedUser.updateMany' && (c.args.where as { blockedId?: string })?.blockedId === 'loser',
+    );
+    expect(blockerMove).toBeDefined();
+    expect(blockedMove).toBeDefined();
+  });
+
+  it('moves the rest of the account — requirements, contact-reveal credits, referrals, and the rest', async () => {
+    const tx = makeTx();
+    await makeService(tx).merge('winner', 'loser');
+
+    for (const model of [
+      'requirement',
+      'pushToken',
+      'contactRevealCreditBatch',
+      'discountCodeRedemption',
+      'listingEditLog',
+      'userNotificationLog',
+      'searchEvent',
+      'referralClick',
+      'referralCreditBatch',
+      'referralAdminAction',
+    ]) {
+      expect(tx.calls.some((c) => c.model === `${model}.updateMany`)).toBe(true);
+    }
+  });
+
   it('does nothing when both ids are the same', async () => {
     const tx = makeTx();
     await makeService(tx).merge('winner', 'winner');
     expect(tx.calls).toHaveLength(0);
+  });
+});
+
+describe('AccountMergeService.mergeAsAdmin', () => {
+  function makeAdminService(overrides: { winner?: Record<string, unknown>; loser?: Record<string, unknown> } = {}) {
+    const tx = makeTx();
+    const users: Record<string, Record<string, unknown>> = {
+      winner: { ...WINNER, role: 'user', mergedIntoUserId: null, deletedAt: null, ...overrides.winner },
+      loser: { ...LOSER, role: 'user', mergedIntoUserId: null, deletedAt: null, ...overrides.loser },
+    };
+    const userMergeActionCreate = jest.fn().mockResolvedValue({});
+    const prisma = {
+      user: {
+        findUnique: jest.fn(({ where }: { where: { id: string } }) => Promise.resolve(users[where.id] ?? null)),
+      },
+      userMergeAction: { create: userMergeActionCreate },
+      $transaction: jest.fn((fn: (t: unknown) => Promise<unknown>) => fn(tx)),
+    } as unknown as PrismaService;
+    return { service: new AccountMergeService(prisma), tx, userMergeActionCreate };
+  }
+
+  it('merges and logs who did it, which two accounts, and why', async () => {
+    const { service, tx, userMergeActionCreate } = makeAdminService();
+    await service.mergeAsAdmin('admin1', 'winner', 'loser', 'Same person, two logins — confirmed by phone');
+
+    expect(tx.calls.some((c) => c.model === 'listing.updateMany')).toBe(true);
+    expect(userMergeActionCreate).toHaveBeenCalledWith({
+      data: { adminId: 'admin1', winnerId: 'winner', loserId: 'loser', reason: 'Same person, two logins — confirmed by phone' },
+    });
+  });
+
+  it('refuses to merge an account into itself', async () => {
+    const { service } = makeAdminService();
+    await expect(service.mergeAsAdmin('admin1', 'winner', 'winner')).rejects.toThrow(/different accounts/);
+  });
+
+  it.each([
+    ['winner', { winner: { role: 'admin' } }],
+    ['loser', { loser: { role: 'admin' } }],
+  ])('refuses when the %s account is staff', async (_label, overrides) => {
+    const { service } = makeAdminService(overrides);
+    await expect(service.mergeAsAdmin('admin1', 'winner', 'loser')).rejects.toThrow(/Staff accounts/);
+  });
+
+  it.each([
+    ['winner already merged', { winner: { mergedIntoUserId: 'someone-else' } }],
+    ['loser already merged', { loser: { mergedIntoUserId: 'someone-else' } }],
+    ['winner self-deleted', { winner: { deletedAt: new Date() } }],
+    ['loser self-deleted', { loser: { deletedAt: new Date() } }],
+  ])('refuses when %s', async (_label, overrides) => {
+    const { service } = makeAdminService(overrides);
+    await expect(service.mergeAsAdmin('admin1', 'winner', 'loser')).rejects.toThrow(/already been merged or deleted/);
+  });
+
+  it('never logs a UserMergeAction when the merge is refused', async () => {
+    const { service, userMergeActionCreate } = makeAdminService({ winner: { role: 'admin' } });
+    await expect(service.mergeAsAdmin('admin1', 'winner', 'loser')).rejects.toThrow();
+    expect(userMergeActionCreate).not.toHaveBeenCalled();
   });
 });
 
