@@ -194,12 +194,16 @@ export function ListingCard({
           ? "border-[1.5px] border-gold/70 shadow-[0_2px_10px_rgba(201,161,90,0.22)] sm:hover:border-gold"
           : "border border-border/70 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.04)] sm:hover:border-green/40"
       }`}
+      // On the whole card, not just the photo — a visitor's mouse is just as often over the
+      // price/title/buttons below as over the photo itself, and all of that still reads as
+      // "looking at this card." cardPhotoRef (IntersectionObserver's target, for touch) stays on
+      // the photo div below; only the hover trigger itself moves up.
+      onMouseEnter={startPhotoCycle}
+      onMouseLeave={stopCycle}
     >
       <div
         ref={cardPhotoRef}
         className="relative h-[200px]"
-        onMouseEnter={startPhotoCycle}
-        onMouseLeave={stopCycle}
         // Dynamic per-listing placeholder gradient stays inline — it's data, not a static style.
         style={
           item.photos[0]

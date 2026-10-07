@@ -2083,7 +2083,7 @@ export function PostAdWizard({
               * through) is obvious here rather than after the ad is already live. */}
             <div className="w-full sm:max-w-[340px] sm:shrink-0">
               <ListingPreviewCard
-                photoUrl={photos[0].previewUrl}
+                photoUrls={photos.map((p) => p.previewUrl)}
                 category={category}
                 transactionType={transactionType}
                 title={title}

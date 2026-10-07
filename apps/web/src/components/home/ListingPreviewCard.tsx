@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
@@ -17,12 +18,12 @@ import { ListingPrice } from "./PriceWithWords";
  * `deriveCardSpecs` helpers the real card's data is built from server-side, so the badge and
  * specs chips can never drift from what the listing will actually show.
  *
- * The photo is a local `URL.createObjectURL` blob, not a hosted `cdn.bhavano.com` URL — plain
+ * The photos are local `URL.createObjectURL` blobs, not hosted `cdn.bhavano.com` URLs — plain
  * `<img>`, not next/image, since next.config.ts's `images.remotePatterns` only allows that one
  * remote host and a blob: URL is neither local-import nor a matching remote pattern.
  */
 export function ListingPreviewCard({
-  photoUrl,
+  photoUrls,
   category,
   transactionType,
   title,
@@ -35,7 +36,7 @@ export function ListingPreviewCard({
   attributes,
   featured = false,
 }: {
-  photoUrl: string;
+  photoUrls: string[];
   category: ListingCategory;
   transactionType: TransactionType;
   title: string;
@@ -69,56 +70,122 @@ export function ListingPreviewCard({
       : null;
   const specs = deriveCardSpecs(category, attributes);
 
+  // Same cycle as the real ListingCard.tsx, gated the same way — only a Featured listing with
+  // more than one photo gets it, since that's exactly what the real card will (or won't) do once
+  // this is live. Unlike the real grid, there's no IntersectionObserver path for touch here: this
+  // is the one card on screen while actively editing the form, not one of dozens that might be
+  // scrolled past unseen, so "is it visible" is never in question — only "does this device have
+  // a hover gesture to trigger it with" is, which is what the effect below answers instead.
+  const [hoverPhotoIndex, setHoverPhotoIndex] = useState(0);
+  const hoverIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const canCyclePhotos = featured && photoUrls.length > 1;
+
+  const startPhotoCycle = useCallback(() => {
+    if (!canCyclePhotos || hoverIntervalRef.current) return;
+    hoverIntervalRef.current = setInterval(() => {
+      setHoverPhotoIndex((i) => (i + 1) % photoUrls.length);
+    }, 1200);
+  }, [canCyclePhotos, photoUrls.length]);
+
+  const stopPhotoCycle = useCallback(() => {
+    if (hoverIntervalRef.current) {
+      clearInterval(hoverIntervalRef.current);
+      hoverIntervalRef.current = null;
+    }
+    setHoverPhotoIndex(0);
+  }, []);
+
+  // Mobile browsers (and anything else with no real pointer) never fire onMouseEnter below, so
+  // they'd otherwise never see the cycle at all — auto-starts it instead on any device without a
+  // true hover gesture, same `(hover: hover)` idiom the real grid card and CategoryTabs.tsx both
+  // already use to tell the two cases apart. A device WITH real hover skips this entirely and
+  // keeps getting the cycle from actually hovering, same as before.
+  useEffect(() => {
+    if (!canCyclePhotos) return;
+    if (typeof window === "undefined" || window.matchMedia("(hover: hover)").matches) return;
+    startPhotoCycle();
+    return stopPhotoCycle;
+  }, [canCyclePhotos, startPhotoCycle, stopPhotoCycle]);
+
+  useEffect(() => {
+    return () => {
+      if (hoverIntervalRef.current) clearInterval(hoverIntervalRef.current);
+    };
+  }, []);
+
   return (
-    // max-w matches ListingGrid's own column floor (minmax(min(340px,100%),1fr)) — without a cap
-    // this stretched to the full width of whatever wide container the wizard's other steps use
-    // (the details step's inputs go up to 720px), which no card in the real grid is ever that
-    // wide. mx-auto centers it in the leftover space rather than sitting flush left, since
-    // nothing else on this screen anchors it to an edge.
-    <div
-      key={featured ? "featured" : "unfeatured"}
-      className={`w-full max-w-[340px] mx-auto bg-surface rounded-2xl overflow-hidden flex flex-col transition-[box-shadow,border-color] duration-300 animate-[featurePulse_0.6s_ease-out] ${
-        featured
-          ? "border-[1.5px] border-gold/70 shadow-[0_2px_10px_rgba(201,161,90,0.22)]"
-          : "border border-border/70"
-      }`}
-    >
-      <div className="relative h-[200px]">
-        {/* eslint-disable-next-line @next/next/no-img-element -- local blob: preview, not a next/image-eligible remote URL */}
-        <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute top-3 left-3 flex gap-1.5">
-          <span className="bg-green text-on-green text-[11px] font-bold px-2.5 py-1 rounded-md">
-            {deriveTag({ category, transactionType })}
-          </span>
-          {featured && (
-            <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
-              <Icon name="featured" filled /> Featured
+    <div>
+      {/* Named explicitly, not left to the border alone to communicate — a 1.5px color
+        * difference is easy to miss at a glance, especially the first time someone sees this
+        * screen at all. */}
+      <div
+        key={featured ? "featured-caption" : "unfeatured-caption"}
+        className={`text-center text-[12.5px] font-bold mb-2 animate-[fadein_0.4s_ease_both] ${featured ? "text-gold" : "text-muted"}`}
+      >
+        {featured ? "✨ Preview — Featured" : "Preview — standard listing"}
+      </div>
+      {/* max-w matches ListingGrid's own column floor (minmax(min(340px,100%),1fr)) — without a
+        * cap this stretched to the full width of whatever wide container the wizard's other
+        * steps use (the details step's inputs go up to 720px), which no card in the real grid is
+        * ever that wide. mx-auto centers it in the leftover space rather than sitting flush
+        * left, since nothing else on this screen anchors it to an edge. */}
+      <div
+        key={featured ? "featured" : "unfeatured"}
+        className={`w-full max-w-[340px] mx-auto bg-surface rounded-2xl overflow-hidden flex flex-col transition-[box-shadow,border-color] duration-300 animate-[featurePulse_0.6s_ease-out] ${
+          featured
+            ? "border-[1.5px] border-gold/70 shadow-[0_2px_10px_rgba(201,161,90,0.22)]"
+            : "border border-border/70"
+        }`}
+        // On the whole card, not just the photo — matches the real ListingCard.tsx's identical fix.
+        onMouseEnter={startPhotoCycle}
+        onMouseLeave={stopPhotoCycle}
+      >
+        <div className="relative h-[200px]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- local blob: preview, not a next/image-eligible remote URL */}
+          <img
+            src={photoUrls[hoverPhotoIndex] ?? photoUrls[0]}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute top-3 left-3 flex gap-1.5">
+            <span className="bg-green text-on-green text-[11px] font-bold px-2.5 py-1 rounded-md">
+              {deriveTag({ category, transactionType })}
+            </span>
+            {featured && (
+              <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
+                <Icon name="featured" filled /> Featured
+              </span>
+            )}
+          </div>
+          {canCyclePhotos && (
+            <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 bg-[#00000099] text-white text-[11px] font-bold px-2 py-1 rounded-md pointer-events-none">
+              <Icon name="camera" /> {photoUrls.length}
             </span>
           )}
         </div>
-      </div>
-      <div className="p-[18px] flex flex-col gap-2.5">
-        <div className="flex justify-between items-start gap-2.5">
-          <div className="font-lora text-xl font-bold text-green">
-            <ListingPrice item={{ price: exactPrice, priceInWords: wordsPrice, totalPrice }} />
+        <div className="p-[18px] flex flex-col gap-2.5">
+          <div className="flex justify-between items-start gap-2.5">
+            <div className="font-lora text-xl font-bold text-green">
+              <ListingPrice item={{ price: exactPrice, priceInWords: wordsPrice, totalPrice }} />
+            </div>
+            {priceQualifier && (
+              <div className="text-xs font-bold text-muted bg-surface-alt px-2.5 py-1 rounded-md whitespace-nowrap">
+                {priceQualifier}
+              </div>
+            )}
           </div>
-          {priceQualifier && (
-            <div className="text-xs font-bold text-muted bg-surface-alt px-2.5 py-1 rounded-md whitespace-nowrap">
-              {priceQualifier}
+          <div className="text-[15px] font-bold text-text leading-[1.35]">{title || "Untitled listing"}</div>
+          <div className="text-[13px] text-muted flex items-center gap-[5px]">
+            <Icon name="pin" /> {areaName}, {cityName}
+          </div>
+          {specs.length > 0 && (
+            <div className="flex gap-3.5 text-[13px] text-text-soft font-semibold pt-0.5">
+              {specs.map((spec) => (
+                <span key={spec}>{spec}</span>
+              ))}
             </div>
           )}
         </div>
-        <div className="text-[15px] font-bold text-text leading-[1.35]">{title || "Untitled listing"}</div>
-        <div className="text-[13px] text-muted flex items-center gap-[5px]">
-          <Icon name="pin" /> {areaName}, {cityName}
-        </div>
-        {specs.length > 0 && (
-          <div className="flex gap-3.5 text-[13px] text-text-soft font-semibold pt-0.5">
-            {specs.map((spec) => (
-              <span key={spec}>{spec}</span>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
