@@ -103,6 +103,21 @@ syntax still parses as a single plain paragraph, so this is a no-op for existing
 Verified live against the real Gemini API (prompt → real response → parsed through the actual
 `parseListingDescription` → correct paragraph/bullets/bold structure).
 
+**Update (2026-10-07): Free tier gets its own single-language picker, deliberately separate from
+`secondLanguage`.** `GenerateListingCopyInput.language` (`packages/types/src/listingCopyAssist.ts`)
+is a new field, Free-tier only (`AiService.resolveFields` only ever sets it in the no-`listingId`
+branch — a `listingId` request ignores it exactly like every other structured field). Unlike
+`secondLanguage`, which is additive (English generates regardless; a second language is a bonus
+version shown via the in-page tab toggle described below), `language` *replaces* English for both
+`title` and `description` — a Free poster picks one language up front
+("✨ AI-generate in: [English ▾]", English as the default) and both fields are generated in it.
+The two fields are kept separate rather than overloaded onto one, specifically so a Free request
+that happened to set `secondLanguage` keeps silently no-op'ing exactly as it already did (never
+read outside the `featured` branch) instead of that same mistake producing a different, harder to
+debug no-op. `languageInstruction()` in `listing-copy-prompts.ts` wires it into both
+`buildTitlePrompt` and `buildDescriptionPrompt`. Mirrored on mobile with a Pressable-based picker
+list (no native `<select>` there) backed by `generationLanguage`/`generationLanguagePickerOpen`.
+
 **Provider interfaces** (so real calls are swappable for deterministic stubs in dev/tests):
 ```ts
 interface ListingCopyLlmProvider {
@@ -183,22 +198,42 @@ any manual edit — auto-*offered*, never auto-*applied*.
 
 ## Web/mobile UI
 
-- Two "Generate" buttons on the details step, next to `title` and next to the `description`
-  textarea (~`PostAdWizard.tsx:1796` on web, mirrored on mobile) — each enabled once the minimum
-  structured fields exist (`category && transactionType && price > 0 && cityId`), independent of
-  title/description themselves already being filled.
+- Two "✨ AI Generate" buttons on the details step, immediately beside the `Title`/`Description`
+  labels (not at the far end of the field row) — each enabled once the minimum structured fields
+  exist (`category && transactionType && price > 0 && cityId`), independent of title/description
+  themselves already being filled. **Update (2026-10-07):** renamed from plain "Generate" and given
+  a distinct gold pill style (`aiGenerateButtonClass` on web, `styles.aiGenerateButton` on mobile)
+  so the one control on this screen that writes the field for you doesn't read as just another
+  button — both changes (renamed label + adjacent placement) came from direct feedback that the
+  original "Generate" buttons, sitting far from their field's label, were easy to miss. The same
+  renamed/restyled button is reused on the Featured-regenerate success-step banner ("✨ AI
+  Generate"/"✨ AI Regenerate").
 - An optional second-language picker next to the description Generate button: **English is always
   generated; a dropdown offers one additional Indian language, default "None."** When a second
   language is chosen, the result is shown via an **in-page tab toggle** ("English" / "हिन्दी", etc.)
   switching the visible textarea content in place — **not a new browser tab** (a real new-tab/window
   is unusual UX here and would raise an SEO question of its own, needing a separate URL + hreflang
   per language that a v1 doesn't need; one canonical URL, one stored description value picked by
-  toggle, stays simplest).
+  toggle, stays simplest). This is Featured-only and additive — see the Free-tier `language` picker
+  described above, which is a different, replacing concept.
 - Handler calls the new BFF endpoint (modeled on `createListingAction`'s token/login-gate pattern,
   `requireLogin({ onSuccess: () => void handleGenerateCopy(field) })` on a missing token) and
   populates `title`/`description` state on success — both remain freely editable afterward.
 - Mirror every change in `apps/mobile/src/components/home/PostAdWizard.tsx` — identical structure
   confirmed (`listingId`/`selectedBoostPlan`/`boostCheckoutOutcome`/success step all present).
+
+**Update (2026-10-07): the "details" step was reordered so richer context exists by the time a
+seller reaches Title/Description.** Originally Title/Description came first (right after Category),
+before any of the category-specific attributes, pricing, photos, or video — meaning "AI Generate"
+had the least possible structured context to work with at the exact moment it was most likely to
+be used. New order on both web and mobile: Location pin → City/Area → category-specific attributes
++ pricing (`CategoryFieldsAccordion`) → Photos → Video → the Free-tier language picker → Title →
+Description → "Owner or Agent?" → Preview/Back. Location and City/Area stay early (title/description
+generation doesn't depend on them the way it depends on category/price/attributes, and they're
+needed to drive the city/area autocomplete regardless); only the Title/Description/language-picker
+block itself moved, to immediately before the seller-type question and the Preview button. No
+state, validation (`detailsIssue`/`detailsValid`), or `photoSectionRef` logic changed — this was a
+pure JSX reorder, confirmed with `tsc --noEmit` on both apps after moving the blocks.
 
 ## Critical files
 - `apps/web/src/components/home/PostAdWizard.tsx` / `apps/mobile/src/components/home/PostAdWizard.tsx`
