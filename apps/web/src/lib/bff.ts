@@ -7,7 +7,7 @@ import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import type { CreateListingPublishOrderResponseDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
-import type { GenerateListingCopyInput, GenerateListingCopyResult } from "@bhavano/types/listingCopyAssist";
+import type { AiGenerateUsageDto, GenerateListingCopyInput, GenerateListingCopyResult } from "@bhavano/types/listingCopyAssist";
 import type {
   AgentStorefrontDto,
   Area,
@@ -420,6 +420,11 @@ export function generateListingCopy(
   accessToken: string,
 ): Promise<GenerateListingCopyResult> {
   return authedBffFetch(accessToken, "/ai/listing-copy", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** Backs the wizard's "N left today" label — a plain read, never records a hit itself. */
+export function fetchAiGenerateUsage(accessToken: string): Promise<AiGenerateUsageDto> {
+  return authedBffFetch(accessToken, "/ai/listing-copy/usage", { cache: "no-store" });
 }
 
 export function fetchSellerAttention(accessToken: string): Promise<SellerAttentionDto> {

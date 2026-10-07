@@ -46,8 +46,8 @@ import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
-import { generateListingCopyAction } from "@/app/actions/ai";
-import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
+import { fetchAiGenerateUsageAction, generateListingCopyAction } from "@/app/actions/ai";
+import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type AiGenerateUsageDto, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
 import { reportClientErrorAction } from "@/app/actions/clientErrors";
 import {
   createAssistedListingAction,
@@ -409,6 +409,10 @@ export function PostAdWizard({
   // applies to both fields, and is read fresh by handleGenerateCopy on every click rather than
   // being passed in per-call, so changing it mid-step doesn't require re-wiring either button.
   const [generationLanguage, setGenerationLanguage] = useState<IndianLanguage | "">("");
+  // Shown next to the language picker so a seller knows their daily cap before hitting it, not
+  // only from a failed generate call. `null` while unknown/unauthenticated — the label is just
+  // hidden then, same as any other optional-session UI on this step.
+  const [aiUsage, setAiUsage] = useState<AiGenerateUsageDto | null>(null);
   const [secondLanguageChoice, setSecondLanguageChoice] = useState<IndianLanguage | "">("");
   const [secondLanguageDescription, setSecondLanguageDescription] = useState<string | null>(null);
   const [activeDescriptionLang, setActiveDescriptionLang] = useState<"en" | IndianLanguage>("en");
@@ -759,6 +763,22 @@ export function PostAdWizard({
       cancelled = true;
     };
   }, []);
+
+  // Re-fetches on `token` too, not just once on reaching the step: a seller usually isn't logged
+  // in yet here (posting doesn't require it until Preview), so the first fetch comes back null —
+  // this picks up the real count once handleGenerateCopy's own login gate gets them a token.
+  useEffect(() => {
+    if (step !== "details") return;
+    let cancelled = false;
+    fetchAiGenerateUsageAction()
+      .then((usage) => {
+        if (!cancelled) setAiUsage(usage);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [step, token]);
 
   const previewBoostDisplay = useMemo(() => {
     if (!category || !planPricingSettings) return null;
@@ -1281,19 +1301,51 @@ export function PostAdWizard({
   })();
   const detailsValid = !detailsIssue && !preparingMedia;
 
-  // Enough to generate from — independent of whether title/description themselves are already
-  // filled, unlike detailsValid above. No listingId sent at this point: the posting wizard's own
-  // `listingId` state (above) is a client-generated UUID for upload storage, not a real row —
-  // sending it would 404. Tier is always 'free' here regardless (see
-  // docs/plans/ai-listing-copy-assist.md); the regenerate-with-Featured flow lives on the
-  // success step, once a real, possibly-boosted listing exists.
-  const canGenerateCopy = !!category && !!transactionType && Number(price) > 0 && !!cityId;
+  // Mirrors detailsIssue above, minus the title/description checks — AI Generate's whole purpose
+  // is to fill those two, so requiring them first would be circular. Computed independently
+  // (not derived from detailsIssue) so a check added or reordered here never silently changes
+  // which message detailsIssue shows first when several things are missing at once. No
+  // listingId sent at this point: the posting wizard's own `listingId` state (above) is a
+  // client-generated UUID for upload storage, not a real row — sending it would 404. Tier is
+  // always 'free' here regardless (see docs/plans/ai-listing-copy-assist.md); the
+  // regenerate-with-Featured flow lives on the success step, once a real, possibly-boosted
+  // listing exists.
+  const canGenerateCopy = (() => {
+    if (!category || !transactionType) return false;
+    if (!cityId) return false;
+    if (areaQuery.trim().length === 0) return false;
+    if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH) return false;
+    if (categoryHasPostedBy && !assistedMode && !sellerTypeFromBroker(attributes.fromBroker)) return false;
+    if (listingAttributesIssue(category, transactionType, attributes)) return false;
+    if (!(Number(price) > 0) && !priceOnRequestAllowed) return false;
+    if (priceIssue) return false;
+    if (brokerageFeeIssue(transactionType, totalPrice, attributes)) return false;
+    if (photos.length < MIN_PHOTOS) return false;
+    if (askSellerType && !postedAs) return false;
+    if (assistedMode && assistedSellerProblem(assistedSeller)) return false;
+    return true;
+  })();
 
   // `opts.listingId` switches this to the post-creation "regenerate with Featured" shape (see
   // the success step below) — structured fields are omitted entirely in that case, since the BFF
   // re-derives everything (and the real tier) from the DB row rather than trusting the client.
   async function handleGenerateCopy(field: "title" | "description", opts?: { listingId?: string; secondLanguage?: IndianLanguage }) {
     if (!opts?.listingId && (!canGenerateCopy || !category || !transactionType)) return;
+
+    // Only guards the details-step call (no listingId) — the Featured-regenerate banner's own
+    // call is already an explicit "regenerate this" action on its own preview buffer, not a field
+    // the seller hand-typed, so confirming there a second time would be redundant. Checked before
+    // the API call (not after), so cancelling costs nothing — no token fetch, no rate-limit hit.
+    if (!opts?.listingId) {
+      const existing = field === "title" ? title : description;
+      if (
+        existing.trim() &&
+        !window.confirm(`Replace your current ${field === "title" ? "Title" : "Description"} with an AI-generated one?`)
+      ) {
+        return;
+      }
+    }
+
     setAiGenerateError(null);
 
     let activeToken = token;
@@ -1326,6 +1378,14 @@ export function PostAdWizard({
           },
     );
     setGenerating(false);
+
+    // The BFF's RateLimitGuard records a hit for any request that gets past auth, success or
+    // not — NEEDS_LOGIN_ERROR is the one outcome where the request never actually reached it (see
+    // generateListingCopyAction), so it's the one case excluded here. A 429 here harmlessly
+    // decrements into the same `remaining: 0` the clamp below already lands on.
+    if (result.success || result.error !== NEEDS_LOGIN_ERROR) {
+      setAiUsage((prev) => (prev ? { ...prev, used: Math.min(prev.limit, prev.used + 1), remaining: Math.max(0, prev.remaining - 1) } : prev));
+    }
 
     if (!result.success) {
       if (result.error === NEEDS_LOGIN_ERROR) {
@@ -2115,6 +2175,17 @@ export function PostAdWizard({
             </SelectField>
             <span className="text-xs text-muted">Applies to both Title and Description below.</span>
           </div>
+          {aiUsage && (
+            <p
+              className={`text-xs m-0 -mt-1 ${
+                aiUsage.remaining <= 0 ? "text-[#b3413a] font-bold" : aiUsage.remaining <= 2 ? "text-gold" : "text-muted"
+              }`}
+            >
+              {aiUsage.remaining <= 0
+                ? "You've used today's AI-generate limit — try again tomorrow, or write it yourself."
+                : `${aiUsage.remaining} of ${aiUsage.limit} AI generations left today.`}
+            </p>
+          )}
 
           <div>
             <div className="flex items-center gap-2 mb-1.5">
@@ -2125,7 +2196,7 @@ export function PostAdWizard({
                 type="button"
                 onClick={() => void handleGenerateCopy("title")}
                 disabled={!canGenerateCopy || generatingTitle}
-                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
+                title={canGenerateCopy ? undefined : "Fill in the required details above first"}
                 className={aiGenerateButtonClass}
               >
                 {generatingTitle ? "Generating…" : "✨ AI Generate"}
@@ -2160,7 +2231,7 @@ export function PostAdWizard({
                 type="button"
                 onClick={() => void handleGenerateCopy("description")}
                 disabled={!canGenerateCopy || generatingDescription}
-                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
+                title={canGenerateCopy ? undefined : "Fill in the required details above first"}
                 className={aiGenerateButtonClass}
               >
                 {generatingDescription ? "Generating…" : "✨ AI Generate"}
