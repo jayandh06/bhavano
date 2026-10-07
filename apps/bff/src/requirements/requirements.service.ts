@@ -12,6 +12,7 @@ import {
   type RequirementAttributes,
   type RequirementCriteria,
 } from '@bhavano/types/requirementQuestions';
+import { requirementBudgetIssue } from '@bhavano/types/priceBounds';
 import { Prisma, type Area, type City, type Requirement } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -218,6 +219,12 @@ export class RequirementsService {
     if (dto.minPrice !== undefined && dto.maxPrice !== undefined && dto.minPrice > dto.maxPrice) {
       throw new BadRequestException('The lowest budget is higher than the highest');
     }
+    if (category && transactionType) {
+      const budgetIssue =
+        (dto.minPrice != null && requirementBudgetIssue(category, transactionType, dto.minPrice)) ||
+        (dto.maxPrice != null && requirementBudgetIssue(category, transactionType, dto.maxPrice));
+      if (budgetIssue) throw new BadRequestException(budgetIssue);
+    }
     const attributes = category && dto.attributes
       ? sanitizeRequirementAttributes(category, transactionType, dto.attributes).attributes
       : {};
@@ -408,6 +415,15 @@ export class RequirementsService {
     const maxPrice = pick(dto.maxPrice, existing.maxPrice);
     if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
       throw new BadRequestException('The lowest budget is higher than the highest');
+    }
+    // Only the field(s) this patch actually sets, not the merged minPrice/maxPrice above — a
+    // refine that doesn't touch budget at all must never start failing because a pre-existing
+    // row already has a bad value stored (e.g. one saved before this check existed).
+    if (category && transactionType) {
+      const budgetIssue =
+        (dto.minPrice != null && requirementBudgetIssue(category, transactionType, dto.minPrice)) ||
+        (dto.maxPrice != null && requirementBudgetIssue(category, transactionType, dto.maxPrice));
+      if (budgetIssue) throw new BadRequestException(budgetIssue);
     }
 
     let attributes: RequirementAttributes = {};

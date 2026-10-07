@@ -183,6 +183,17 @@ describe('RequirementsService.create', () => {
     await expect(service.create('u1', { ...dto, minPrice: 50000, maxPrice: 40000 })).rejects.toThrow(/budget/);
   });
 
+  it('refuses a budget below the category/transaction floor — ₹7/month for an apartment rental is never real', async () => {
+    const { service } = make();
+    await expect(service.create('u1', { ...dto, minPrice: undefined, maxPrice: 7 })).rejects.toThrow(/below the typical range/);
+  });
+
+  it('accepts a budget comfortably inside the floor', async () => {
+    const { service, requirementCreate } = make();
+    await service.create('u1', { ...dto, minPrice: 20000, maxPrice: 40000 });
+    expect(requirementCreate.mock.calls[0][0].data).toMatchObject({ minPrice: 20000, maxPrice: 40000 });
+  });
+
   it('still captures when the seeker has no alert allowance left', async () => {
     const { service, requirementCreate, savedSearchCreate, notifyRequirementCaptured } = make({ allowance: null });
 
@@ -360,6 +371,21 @@ describe('RequirementsService.refineMine', () => {
     await service.refineMine('u1', 'r1', { complete: true });
 
     expect(requirementUpdate.mock.calls[0][0].data.refinedAt).toBeInstanceOf(Date);
+  });
+
+  it('refuses a budget below the category/transaction floor', async () => {
+    const { service } = setup();
+    await expect(service.refineMine('u1', 'r1', { maxPrice: 7 })).rejects.toThrow(/below the typical range/);
+  });
+
+  it('never re-validates a budget already stored, when this patch does not touch it', async () => {
+    // A row saved before this check existed (the exact ₹7/month case this was added for) must
+    // stay editable for everything else — refusing every future refine because of a value this
+    // specific patch never sent would strand it.
+    const { service, requirementUpdate } = setup({ minPrice: null, maxPrice: 7 });
+
+    await expect(service.refineMine('u1', 'r1', { areaIds: ['a1'] })).resolves.toMatchObject({ id: 'r1' });
+    expect(requirementUpdate.mock.calls[0][0].data).toMatchObject({ areaIds: ['a1'] });
   });
 
   it('says what is missing in the label when it is still vague', async () => {
