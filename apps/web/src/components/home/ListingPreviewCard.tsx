@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { deriveCardSpecs } from "@bhavano/types/cardSpecs";
 import { deriveTag } from "@bhavano/types/listingTag";
@@ -70,48 +70,29 @@ export function ListingPreviewCard({
       : null;
   const specs = deriveCardSpecs(category, attributes);
 
-  // Same cycle as the real ListingCard.tsx, gated the same way — only a Featured listing with
-  // more than one photo gets it, since that's exactly what the real card will (or won't) do once
-  // this is live. Unlike the real grid, there's no IntersectionObserver path for touch here: this
-  // is the one card on screen while actively editing the form, not one of dozens that might be
-  // scrolled past unseen, so "is it visible" is never in question — only "does this device have
-  // a hover gesture to trigger it with" is, which is what the effect below answers instead.
-  const [hoverPhotoIndex, setHoverPhotoIndex] = useState(0);
-  const hoverIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Same cycle as the real ListingCard.tsx, gated the same way on *whether* it runs at all — only
+  // a Featured listing with more than one photo gets it, since that's exactly what the real card
+  // will (or won't) do once this is live. Unlike the real grid, it isn't gated on hover or
+  // visibility at all: this is the one card on screen while actively editing the form, not one of
+  // dozens competing for LCP budget, so there's no reason to wait for a gesture — it just always
+  // runs, on every device, the moment the condition holds.
+  const [cyclePhotoIndex, setCyclePhotoIndex] = useState(0);
+  const cycleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const canCyclePhotos = featured && photoUrls.length > 1;
 
-  const startPhotoCycle = useCallback(() => {
-    if (!canCyclePhotos || hoverIntervalRef.current) return;
-    hoverIntervalRef.current = setInterval(() => {
-      setHoverPhotoIndex((i) => (i + 1) % photoUrls.length);
-    }, 1200);
-  }, [canCyclePhotos, photoUrls.length]);
-
-  const stopPhotoCycle = useCallback(() => {
-    if (hoverIntervalRef.current) {
-      clearInterval(hoverIntervalRef.current);
-      hoverIntervalRef.current = null;
-    }
-    setHoverPhotoIndex(0);
-  }, []);
-
-  // Mobile browsers (and anything else with no real pointer) never fire onMouseEnter below, so
-  // they'd otherwise never see the cycle at all — auto-starts it instead on any device without a
-  // true hover gesture, same `(hover: hover)` idiom the real grid card and CategoryTabs.tsx both
-  // already use to tell the two cases apart. A device WITH real hover skips this entirely and
-  // keeps getting the cycle from actually hovering, same as before.
   useEffect(() => {
     if (!canCyclePhotos) return;
-    if (typeof window === "undefined" || window.matchMedia("(hover: hover)").matches) return;
-    startPhotoCycle();
-    return stopPhotoCycle;
-  }, [canCyclePhotos, startPhotoCycle, stopPhotoCycle]);
-
-  useEffect(() => {
+    cycleIntervalRef.current = setInterval(() => {
+      setCyclePhotoIndex((i) => (i + 1) % photoUrls.length);
+    }, 1200);
     return () => {
-      if (hoverIntervalRef.current) clearInterval(hoverIntervalRef.current);
+      if (cycleIntervalRef.current) {
+        clearInterval(cycleIntervalRef.current);
+        cycleIntervalRef.current = null;
+      }
+      setCyclePhotoIndex(0);
     };
-  }, []);
+  }, [canCyclePhotos, photoUrls.length]);
 
   return (
     <div>
@@ -136,14 +117,11 @@ export function ListingPreviewCard({
             ? "border-[1.5px] border-gold/70 shadow-[0_2px_10px_rgba(201,161,90,0.22)]"
             : "border border-border/70"
         }`}
-        // On the whole card, not just the photo — matches the real ListingCard.tsx's identical fix.
-        onMouseEnter={startPhotoCycle}
-        onMouseLeave={stopPhotoCycle}
       >
         <div className="relative h-[200px]">
           {/* eslint-disable-next-line @next/next/no-img-element -- local blob: preview, not a next/image-eligible remote URL */}
           <img
-            src={photoUrls[hoverPhotoIndex] ?? photoUrls[0]}
+            src={photoUrls[cyclePhotoIndex] ?? photoUrls[0]}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
           />
