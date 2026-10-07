@@ -268,18 +268,25 @@ block itself moved, to immediately before the seller-type question and the Previ
 state, validation (`detailsIssue`/`detailsValid`), or `photoSectionRef` logic changed — this was a
 pure JSX reorder, confirmed with `tsc --noEmit` on both apps after moving the blocks.
 
-**Update (2026-10-07): `canGenerateCopy` now mirrors `detailsIssue`, minus the title/description
-checks, instead of the original loose `category && transactionType && price > 0 && cityId`.**
-AI Generate was enabled well before the ad actually had enough structured information to write a
-non-generic title/description from — area/locality, category-specific attributes, photos, and the
-owner/agent answer could all still be missing. Both wizards now gate the button on every
-`detailsIssue` check except the title/description ones (area, category attributes, price validity,
-brokerage, photo count, seller type, and web's own assisted-mode check), computed as its own
-independent function rather than derived from `detailsIssue` — so a check added or reordered there
-later can't silently change which message `detailsIssue` itself shows first. The tooltip on a
-disabled button changed from the stale "Pick a category, transaction type, price, and city first"
-to "Fill in the required details above first" (accurate now that the reorder above put those
-fields above Title/Description).
+**Update (2026-10-07): `canGenerateCopy` now requires every other field on the step, instead of
+the original loose `category && transactionType && price > 0 && cityId`.** AI Generate was enabled
+well before the ad actually had enough structured information to write a non-generic
+title/description from — area/locality, category-specific attributes, photos, and the owner/agent
+answer could all still be missing. The tooltip on a disabled button changed from the stale "Pick a
+category, transaction type, price, and city first" to "Fill in the required details above first"
+(accurate now that the reorder above put those fields above Title/Description).
+
+**Update (2026-10-07): Title/Description moved to the *end* of `detailsIssue`'s own check order,
+to match.** Both wizards now split the step's validation into `otherFieldsIssue` (area, category
+attributes, price validity, brokerage, photo count, seller type, and web's own assisted-mode
+check — everything `canGenerateCopy` needs) and the title/description checks, with
+`detailsIssue = otherFieldsIssue ?? (title/description checks)`. `canGenerateCopy` reads only
+`otherFieldsIssue`, so AI Generate still never waits on the two fields it exists to fill — but the
+Preview button's own validation message now surfaces anything else missing first, and only ever
+asks for Title/Description once every other required field is already in. Originally title was
+the very first check (a holdover from when Title/Description sat at the top of the step, before
+the reorder above moved them to the end) — this was the one piece of `detailsIssue` that reorder
+hadn't caught up to.
 
 **Update (2026-10-07): a seller with text already in Title/Description is asked before AI Generate
 overwrites it.** `handleGenerateCopy` had no such check — a click silently replaced whatever was
