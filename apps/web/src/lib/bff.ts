@@ -7,6 +7,7 @@ import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import type { CreateListingPublishOrderResponseDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
+import type { GenerateListingCopyInput, GenerateListingCopyResult } from "@bhavano/types/listingCopyAssist";
 import type {
   AgentStorefrontDto,
   Area,
@@ -409,6 +410,16 @@ export function createListing(input: CreateListingInput, accessToken?: string): 
 
 export function fetchMyListings(accessToken: string): Promise<ListingDetailDto[]> {
   return authedBffFetch(accessToken, "/users/me/listings", { cache: "no-store" });
+}
+
+/** Always authenticated, unlike createListing above — the BFF endpoint requires AuthGuard (a
+ * real LLM/Places cost needs a real rate-limited user, not an anonymous caller). See
+ * docs/plans/ai-listing-copy-assist.md. */
+export function generateListingCopy(
+  input: GenerateListingCopyInput,
+  accessToken: string,
+): Promise<GenerateListingCopyResult> {
+  return authedBffFetch(accessToken, "/ai/listing-copy", { method: "POST", body: JSON.stringify(input) });
 }
 
 export function fetchSellerAttention(accessToken: string): Promise<SellerAttentionDto> {

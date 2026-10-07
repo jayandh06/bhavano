@@ -46,11 +46,14 @@ import { MAX_VIDEO_BYTES } from "@bhavano/types/videoLimits";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES, MIN_PHOTOS } from "@bhavano/types/photoLimits";
 import { getAccessTokenAction } from "@/app/actions/auth";
 import { getUserContactAction } from "@/app/actions/users";
+import { generateListingCopyAction } from "@/app/actions/ai";
+import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
 import { reportClientErrorAction } from "@/app/actions/clientErrors";
 import {
   createAssistedListingAction,
   createListingAction,
   fetchMyListingAction,
+  updateListingAction,
   uploadPhotoAction,
 } from "@/app/actions/listings";
 import {
@@ -384,6 +387,16 @@ export function PostAdWizard({
   const areaFieldRef = useRef<HTMLDivElement | null>(null);
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   const [description, setDescription] = useState("");
+  // AI "Generate" assist for title/description — see docs/plans/ai-listing-copy-assist.md.
+  // `secondLanguageDescription`/`activeDescriptionLang` only matter once a second-language
+  // version has actually been generated (Featured tier) — `description` itself is always the
+  // single value that gets submitted, swapped in place by the language tab toggle below.
+  const [generatingTitle, setGeneratingTitle] = useState(false);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
+  const [aiGenerateError, setAiGenerateError] = useState<string | null>(null);
+  const [secondLanguageChoice, setSecondLanguageChoice] = useState<IndianLanguage | "">("");
+  const [secondLanguageDescription, setSecondLanguageDescription] = useState<string | null>(null);
+  const [activeDescriptionLang, setActiveDescriptionLang] = useState<"en" | IndianLanguage>("en");
   const [attributes, setAttributes] = useState<
     Record<string, string | string[]>
   >({});
@@ -466,6 +479,13 @@ export function PostAdWizard({
   // null until a checkout attempt (auto-fired right after posting, or a manual retry) resolves —
   // drives the narrow "Finish boosting this listing" retry prompt on the success step.
   const [boostCheckoutOutcome, setBoostCheckoutOutcome] = useState<"succeeded" | "failed" | null>(null);
+  // "Your ad is now Featured — regenerate with nearby landmarks?" banner on the success step —
+  // see docs/plans/ai-listing-copy-assist.md. Dismissible, and only ever offered, never applied
+  // automatically: "Apply" below still goes through ModerationService.moderate() like any edit.
+  const [showRegenerateBanner, setShowRegenerateBanner] = useState(false);
+  const [regeneratedDescriptionReady, setRegeneratedDescriptionReady] = useState(false);
+  const [regenerateApplying, setRegenerateApplying] = useState(false);
+  const [regenerateApplied, setRegenerateApplied] = useState(false);
   const boostAutoFiredRef = useRef(false);
   // Draft autosave (lib/postAdDraft.ts): nothing is saved until the restore attempt has run, so
   // an empty first render can't overwrite a saved draft; and nothing after the listing exists.
@@ -896,7 +916,9 @@ export function PostAdWizard({
       duration: selectedBoostPlan.duration,
       includeInstantAlerts: selectedBoostPlan.includeInstantAlerts,
     }).then((result) => {
-      setBoostCheckoutOutcome(result.outcome === "activated" || result.outcome === "paid" ? "succeeded" : "failed");
+      const succeeded = result.outcome === "activated" || result.outcome === "paid";
+      setBoostCheckoutOutcome(succeeded ? "succeeded" : "failed");
+      if (succeeded) setShowRegenerateBanner(true);
     });
   }, [createdListing, category, selectedBoostPlan, previewBoostDisplay]);
 
@@ -914,7 +936,9 @@ export function PostAdWizard({
       duration: selectedBoostPlan.duration,
       includeInstantAlerts: selectedBoostPlan.includeInstantAlerts,
     }).then((result) => {
-      setBoostCheckoutOutcome(result.outcome === "activated" || result.outcome === "paid" ? "succeeded" : "failed");
+      const succeeded = result.outcome === "activated" || result.outcome === "paid";
+      setBoostCheckoutOutcome(succeeded ? "succeeded" : "failed");
+      if (succeeded) setShowRegenerateBanner(true);
     });
   }
 
@@ -1241,6 +1265,97 @@ export function PostAdWizard({
     return null;
   })();
   const detailsValid = !detailsIssue && !preparingMedia;
+
+  // Enough to generate from — independent of whether title/description themselves are already
+  // filled, unlike detailsValid above. No listingId sent at this point: the posting wizard's own
+  // `listingId` state (above) is a client-generated UUID for upload storage, not a real row —
+  // sending it would 404. Tier is always 'free' here regardless (see
+  // docs/plans/ai-listing-copy-assist.md); the regenerate-with-Featured flow lives on the
+  // success step, once a real, possibly-boosted listing exists.
+  const canGenerateCopy = !!category && !!transactionType && Number(price) > 0 && !!cityId;
+
+  // `opts.listingId` switches this to the post-creation "regenerate with Featured" shape (see
+  // the success step below) — structured fields are omitted entirely in that case, since the BFF
+  // re-derives everything (and the real tier) from the DB row rather than trusting the client.
+  async function handleGenerateCopy(field: "title" | "description", opts?: { listingId?: string; secondLanguage?: IndianLanguage }) {
+    if (!opts?.listingId && (!canGenerateCopy || !category || !transactionType)) return;
+    setAiGenerateError(null);
+
+    let activeToken = token;
+    if (!activeToken) {
+      activeToken = await getAccessTokenAction();
+      setToken(activeToken);
+    }
+    if (!activeToken) {
+      requireLogin({ onSuccess: () => void handleGenerateCopy(field, opts) });
+      return;
+    }
+
+    const setGenerating = field === "title" ? setGeneratingTitle : setGeneratingDescription;
+    setGenerating(true);
+    const result = await generateListingCopyAction(
+      opts?.listingId
+        ? { listingId: opts.listingId, fields: [field], secondLanguage: opts.secondLanguage }
+        : {
+            fields: [field],
+            category: category!,
+            transactionType: transactionType!,
+            price: Number(price) || undefined,
+            priceQualifier: priceQualifier || undefined,
+            cityName: cities.find((c) => c.id === cityId)?.name,
+            areaName: areaQuery.trim() || undefined,
+            attributes,
+            lat: pin?.lat,
+            lng: pin?.lng,
+          },
+    );
+    setGenerating(false);
+
+    if (!result.success) {
+      if (result.error === NEEDS_LOGIN_ERROR) {
+        requireLogin({ onSuccess: () => void handleGenerateCopy(field, opts) });
+        return;
+      }
+      setAiGenerateError(result.error);
+      return;
+    }
+
+    if (field === "title" && result.result.title) setTitle(result.result.title.slice(0, TITLE_MAX_LENGTH));
+    if (field === "description" && result.result.description) {
+      // Reuses the same `description` state the details-step textarea binds to — nothing else
+      // reads it once the listing already exists (we're on the success step here), so it
+      // doubles as the editable preview buffer for this regenerate-then-Apply flow.
+      setDescription(result.result.description.slice(0, DESCRIPTION_MAX_LENGTH));
+      setSecondLanguageDescription(result.result.descriptionSecondLanguage ?? null);
+      setActiveDescriptionLang("en");
+      if (opts?.listingId) {
+        setRegeneratedDescriptionReady(true);
+        setRegenerateApplied(false);
+      }
+    }
+  }
+
+  async function applyRegeneratedDescription() {
+    if (!createdListing) return;
+    setRegenerateApplying(true);
+    const result = await updateListingAction(createdListing.id, { description });
+    setRegenerateApplying(false);
+    if (result.success) setRegenerateApplied(true);
+    else setAiGenerateError(result.error);
+  }
+
+  // Switches which language's text the single description textarea shows. `secondLanguageDescription`
+  // always holds whichever language ISN'T currently active (not literally "the non-English one")
+  // — both stay cached locally so either can be reselected without a second AI call. Whichever
+  // text is visible when the ad is submitted is what gets saved; see
+  // docs/plans/ai-listing-copy-assist.md on why this is an in-page toggle, not a second browser
+  // tab or a second indexed URL.
+  function switchDescriptionLang(lang: "en" | IndianLanguage) {
+    if (lang === activeDescriptionLang || secondLanguageDescription === null) return;
+    setDescription(secondLanguageDescription);
+    setSecondLanguageDescription(description);
+    setActiveDescriptionLang(lang);
+  }
 
   /**
    * "Preview Ad" — where the account is first asked for.
@@ -1727,6 +1842,15 @@ export function PostAdWizard({
               >
                 {title.length}/{TITLE_MAX_LENGTH}
               </span>
+              <button
+                type="button"
+                onClick={() => void handleGenerateCopy("title")}
+                disabled={!canGenerateCopy || generatingTitle}
+                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
+                className={`${secondaryButtonClass} shrink-0 text-xs py-1.5 px-2.5`}
+              >
+                {generatingTitle ? "Generating…" : "✨ Generate"}
+              </button>
             </div>
           </div>
 
@@ -1795,7 +1919,18 @@ export function PostAdWizard({
           </div>
 
           <div>
-            <RequiredLabel text="Description" />
+            <div className="flex items-center justify-between max-w-[720px]">
+              <RequiredLabel text="Description" />
+              <button
+                type="button"
+                onClick={() => void handleGenerateCopy("description")}
+                disabled={!canGenerateCopy || generatingDescription}
+                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
+                className={`${secondaryButtonClass} shrink-0 text-xs py-1.5 px-2.5`}
+              >
+                {generatingDescription ? "Generating…" : "✨ Generate"}
+              </button>
+            </div>
             <textarea
               required
               value={description}
@@ -1808,6 +1943,7 @@ export function PostAdWizard({
             <p className="text-xs text-muted mt-1">
               At least {DESCRIPTION_MIN_LENGTH} characters — ads with a real description get more responses.
             </p>
+            {aiGenerateError && <p className="text-xs text-[#b3413a] mt-1">{aiGenerateError}</p>}
           </div>
 
           {/* No "specs" box. The card's chips are derived from the category fields below, which
@@ -2247,7 +2383,95 @@ export function PostAdWizard({
               listingId={createdListing.id}
               category={createdListing.category}
               effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+              onActivating={() => setShowRegenerateBanner(true)}
             />
+          )}
+
+          {showRegenerateBanner && (
+            <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5 flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-bold text-text m-0">
+                  ✨ Your ad is now Featured — want a richer AI description with nearby landmarks?
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowRegenerateBanner(false)}
+                  className="text-xs font-bold text-muted hover:text-text transition-colors shrink-0"
+                >
+                  Dismiss
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={secondLanguageChoice}
+                  onChange={(e) => setSecondLanguageChoice(e.target.value as IndianLanguage | "")}
+                  className={`${fieldClass} w-auto`}
+                >
+                  <option value="">English only</option>
+                  {INDIAN_LANGUAGES.map((lang) => (
+                    <option key={lang} value={lang}>
+                      + {INDIAN_LANGUAGE_LABELS[lang]}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleGenerateCopy("description", {
+                      listingId: createdListing.id,
+                      secondLanguage: secondLanguageChoice || undefined,
+                    })
+                  }
+                  disabled={generatingDescription}
+                  className={secondaryButtonClass}
+                >
+                  {generatingDescription ? "Generating…" : regeneratedDescriptionReady ? "Regenerate" : "Generate"}
+                </button>
+              </div>
+
+              {aiGenerateError && <p className="text-xs text-[#b3413a] m-0">{aiGenerateError}</p>}
+
+              {regeneratedDescriptionReady && (
+                <div className="flex flex-col gap-2">
+                  {secondLanguageDescription !== null && secondLanguageChoice && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => switchDescriptionLang("en")}
+                        className={`text-xs font-bold px-2.5 py-1 rounded-full ${activeDescriptionLang === "en" ? "bg-green text-on-green" : "bg-surface text-muted"}`}
+                      >
+                        English
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => switchDescriptionLang(secondLanguageChoice)}
+                        className={`text-xs font-bold px-2.5 py-1 rounded-full ${activeDescriptionLang === secondLanguageChoice ? "bg-green text-on-green" : "bg-surface text-muted"}`}
+                      >
+                        {INDIAN_LANGUAGE_LABELS[secondLanguageChoice]}
+                      </button>
+                    </div>
+                  )}
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
+                    rows={5}
+                    className={`${fieldClass} resize-y min-h-[100px]`}
+                  />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => void applyRegeneratedDescription()}
+                      disabled={regenerateApplying}
+                      className={primaryButtonClass}
+                    >
+                      {regenerateApplying ? "Saving…" : "Apply to my ad"}
+                    </button>
+                    {regenerateApplied && <span className="text-xs font-bold text-green">Saved ✓</span>}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           <OwnerWhatsAppShare
