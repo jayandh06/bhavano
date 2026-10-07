@@ -110,9 +110,23 @@ requirement can never ask for a value no listing can hold.
 
 ### Step 5: budget presets
 
-Stored as plain `minPrice`/`maxPrice` rupees. As shipped, the only check is min ≤ max, not
-`PRICE_BOUNDS` (those bound what a listing may ask, not what a seeker may offer). The preset set
-depends on how that transaction is priced:
+Stored as plain `minPrice`/`maxPrice` rupees. As shipped, the only check was min ≤ max, not
+`PRICE_BOUNDS` (those bound what a listing may ask, not what a seeker may offer).
+
+**Update (2026-10-07): added a floor check, after a real example got through with no validation
+at all** — "2 BHK apartment for rent in JP Nagar, Bengaluru · up to ₹7/month". The reasoning above
+(a seeker's budget isn't a listing's ask) still holds for the *ceiling* — a seeker can legitimately
+want to spend more than a typical listing in the category asks, so `PRICE_BOUNDS`' max is still
+never applied here. But a value below `PRICE_BOUNDS`' *min* for the category/transaction (₹7 for
+an apartment) was never a real figure either way — `requirementBudgetIssue()`
+(`packages/types/src/priceBounds.ts`) checks only that floor, called from `RequirementsService.
+create()`/`refineMine()` (BFF, the authority) and mirrored client-side in both wizards
+(`RequirementRefineWizard.tsx`, web + mobile) so the warning shows at the budget step itself
+rather than only after submitting. Scoped to the field(s) a given patch actually sets — a refine
+that doesn't touch budget never re-validates whatever a pre-existing row already has stored, so a
+row saved before this check existed (the exact ₹7 case above) stays editable for everything else.
+
+The preset set depends on how that transaction is priced:
 
 | Transaction / category | Unit shown | Presets |
 |---|---|---|
