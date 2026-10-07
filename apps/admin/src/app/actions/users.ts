@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { ListingOwnerDto, SendWelcomeResponseDto, WelcomeChannel } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { deleteUser, grantAgentPro, searchUsers, sendWelcome, setReraVerified } from "@/lib/bff";
+import { deleteUser, grantAgentPro, mergeUsers, searchUsers, sendWelcome, setReraVerified } from "@/lib/bff";
 
 export type ActionResult = { success: true } | { success: false; error: string };
 
@@ -17,6 +17,20 @@ export async function deleteUserAction(userId: string): Promise<ActionResult> {
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to delete user" };
+  }
+}
+
+/** Combines two accounts the admin has judged to belong to the same person — see BFF
+ * AccountMergeService.mergeAsAdmin. Revalidates the list so both rows (the survivor's filled-in
+ * data, the retired one now showing as merged) reflect the result immediately. */
+export async function mergeUsersAction(winnerId: string, loserId: string, reason?: string): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await mergeUsers(accessToken, { winnerId, loserId, reason });
+    revalidatePath("/users");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to merge these accounts" };
   }
 }
 

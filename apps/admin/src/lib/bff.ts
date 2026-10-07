@@ -308,6 +308,16 @@ export function deleteUser(accessToken: string, id: string): Promise<void> {
   return authedBffFetch(accessToken, `/admin/users/${id}`, { method: "DELETE" });
 }
 
+/** Combines two accounts an admin has judged to belong to the same person — see BFF
+ * AccountMergeService.mergeAsAdmin. `winnerId` survives; `loserId`'s row is retained but
+ * retired (never hard-deleted), its data relocated onto the winner. */
+export function mergeUsers(
+  accessToken: string,
+  input: { winnerId: string; loserId: string; reason?: string },
+): Promise<void> {
+  return authedBffFetch(accessToken, `/admin/users/merge`, { method: "POST", body: JSON.stringify(input) });
+}
+
 export function grantAgentPro(
   accessToken: string,
   id: string,

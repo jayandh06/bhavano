@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SendWelcomeResponseDto, UserSummaryDto, WelcomeChannel } from "@bhavano/types";
 import { postedByLabel } from "@bhavano/types/sellerType";
-import { sendWelcomeAction } from "@/app/actions/users";
+import { mergeUsersAction, sendWelcomeAction } from "@/app/actions/users";
 import { formatDateTime } from "@/lib/formatDateTime";
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
@@ -18,6 +18,7 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<WelcomeChannel | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
 
   const allSelected = users.length > 0 && users.every((u) => selected.has(u.id));
 
@@ -87,7 +88,33 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
           <button onClick={() => onSend("whatsapp")} disabled={pending !== null} style={actionButtonStyle}>
             {pending === "whatsapp" ? "Sending…" : "Send welcome WhatsApp"}
           </button>
+          {selected.size === 2 && (
+            <button
+              onClick={() => setMergeDialogOpen(true)}
+              disabled={pending !== null || Array.from(selected).some((id) => users.find((u) => u.id === id)?.role === "admin")}
+              style={{ ...actionButtonStyle, background: "var(--surface-alt)", color: "var(--text)", border: "1px solid var(--border)" }}
+              title={
+                Array.from(selected).some((id) => users.find((u) => u.id === id)?.role === "admin")
+                  ? "Staff accounts can't be merged from here"
+                  : undefined
+              }
+            >
+              Merge these 2 users…
+            </button>
+          )}
         </div>
+      )}
+
+      {mergeDialogOpen && selected.size === 2 && (
+        <MergeUsersDialog
+          users={Array.from(selected).map((id) => users.find((u) => u.id === id)!) as [UserSummaryDto, UserSummaryDto]}
+          onClose={() => setMergeDialogOpen(false)}
+          onMerged={() => {
+            setMergeDialogOpen(false);
+            setSelected(new Set());
+            router.refresh();
+          }}
+        />
       )}
 
       {summary && (
@@ -189,3 +216,136 @@ const actionButtonStyle: React.CSSProperties = {
   fontWeight: 700,
   cursor: "pointer",
 };
+
+/** Confirmation for AdminService.mergeUsers — shows what each account holds (from the already-
+ * loaded table rows, no extra fetch needed) so the admin's winner choice is informed, not a
+ * coin flip. Unlike the self-service merge a user can trigger on themselves (which re-proves
+ * ownership with a fresh OTP/emailed code), nothing here proves these two accounts are really
+ * the same person — that judgement is the admin's, which is exactly why a reason is asked for
+ * and every merge is logged (UserMergeAction). See docs/plans/account-linking-phone-and-email.md. */
+function MergeUsersDialog({
+  users,
+  onClose,
+  onMerged,
+}: {
+  users: [UserSummaryDto, UserSummaryDto];
+  onClose: () => void;
+  onMerged: () => void;
+}) {
+  // Defaults to whichever has more live listings — mirrors AccountMergeService.pickWinner's own
+  // "the account holding listings wins" rule, as a starting point the admin can override, not a
+  // decision made for them.
+  const [winnerId, setWinnerId] = useState(users[0].liveListings >= users[1].liveListings ? users[0].id : users[1].id);
+  const [reason, setReason] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const loser = users.find((u) => u.id !== winnerId)!;
+
+  async function onConfirm() {
+    setPending(true);
+    setError(null);
+    const result = await mergeUsersAction(winnerId, loser.id, reason.trim() || undefined);
+    setPending(false);
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    onMerged();
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        zIndex: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface)",
+          borderRadius: 12,
+          padding: 20,
+          width: "100%",
+          maxWidth: 560,
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+        }}
+      >
+        <div style={{ fontSize: 16, fontWeight: 700 }}>Merge these two accounts?</div>
+        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: 0 }}>
+          The account you pick below keeps its id; everything on the other account (listings, payments,
+          messages, favourites, requirements, and more) moves onto it. The other row is never deleted —
+          it stays as a retired, merged record. This can&apos;t be undone from here.
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {users.map((u) => (
+            <label
+              key={u.id}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                border: `1.5px solid ${winnerId === u.id ? "var(--green)" : "var(--border)"}`,
+                borderRadius: 8,
+                padding: "10px 12px",
+                cursor: "pointer",
+              }}
+            >
+              <input type="radio" checked={winnerId === u.id} onChange={() => setWinnerId(u.id)} style={{ marginTop: 3 }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontWeight: 700, fontSize: 13 }}>
+                  {u.name ?? u.phone ?? u.email ?? u.id}
+                  {winnerId === u.id && <span style={{ color: "var(--green)", fontWeight: 700 }}> — keep this one</span>}
+                </span>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                  {u.phone ?? dash} · {u.email ?? dash} · {u.liveListings} live ad{u.liveListings === 1 ? "" : "s"} ·{" "}
+                  {u.enquiries} enquir{u.enquiries === 1 ? "y" : "ies"} · {u.cityName ?? "no city"} · joined{" "}
+                  {formatDateTime(u.createdAt)}
+                </span>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>Reason (kept for the audit log)</span>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+            placeholder="e.g. Same person — confirmed by phone, has both a Google and an OTP login"
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              padding: "8px 10px",
+              fontSize: 12.5,
+              fontFamily: "inherit",
+              resize: "vertical",
+            }}
+          />
+        </label>
+
+        {error && <p style={{ fontSize: 12.5, color: "var(--danger)", margin: 0 }}>{error}</p>}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button onClick={onClose} disabled={pending} style={{ ...actionButtonStyle, background: "transparent", color: "var(--muted)" }}>
+            Cancel
+          </button>
+          <button onClick={() => void onConfirm()} disabled={pending} style={{ ...actionButtonStyle, background: "var(--danger)" }}>
+            {pending ? "Merging…" : `Merge into ${users.find((u) => u.id === winnerId)?.name ?? users.find((u) => u.id === winnerId)?.phone ?? "this account"}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
