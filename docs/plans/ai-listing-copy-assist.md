@@ -226,8 +226,8 @@ any manual edit — auto-*offered*, never auto-*applied*.
 ## Web/mobile UI
 
 - Two "✨ AI Generate" buttons on the details step, immediately beside the `Title`/`Description`
-  labels (not at the far end of the field row) — each enabled once the minimum structured fields
-  exist (`category && transactionType && price > 0 && cityId`), independent of title/description
+  labels (not at the far end of the field row) — enabled once every other required field on the
+  step is filled in (see the `canGenerateCopy` update below), independent of title/description
   themselves already being filled. **Update (2026-10-07):** renamed from plain "Generate" and given
   a distinct gold pill style (`aiGenerateButtonClass` on web, `styles.aiGenerateButton` on mobile)
   so the one control on this screen that writes the field for you doesn't read as just another
@@ -267,6 +267,40 @@ needed to drive the city/area autocomplete regardless); only the Title/Descripti
 block itself moved, to immediately before the seller-type question and the Preview button. No
 state, validation (`detailsIssue`/`detailsValid`), or `photoSectionRef` logic changed — this was a
 pure JSX reorder, confirmed with `tsc --noEmit` on both apps after moving the blocks.
+
+**Update (2026-10-07): `canGenerateCopy` now mirrors `detailsIssue`, minus the title/description
+checks, instead of the original loose `category && transactionType && price > 0 && cityId`.**
+AI Generate was enabled well before the ad actually had enough structured information to write a
+non-generic title/description from — area/locality, category-specific attributes, photos, and the
+owner/agent answer could all still be missing. Both wizards now gate the button on every
+`detailsIssue` check except the title/description ones (area, category attributes, price validity,
+brokerage, photo count, seller type, and web's own assisted-mode check), computed as its own
+independent function rather than derived from `detailsIssue` — so a check added or reordered there
+later can't silently change which message `detailsIssue` itself shows first. The tooltip on a
+disabled button changed from the stale "Pick a category, transaction type, price, and city first"
+to "Fill in the required details above first" (accurate now that the reorder above put those
+fields above Title/Description).
+
+**Update (2026-10-07): a seller with text already in Title/Description is asked before AI Generate
+overwrites it.** `handleGenerateCopy` had no such check — a click silently replaced whatever was
+typed, with no undo but the browser/OS's own native text-field undo. Now, for the details-step call
+only (not the Featured-regenerate banner, which is already an explicit "regenerate this" action on
+its own preview buffer, not a hand-typed field), a non-empty field prompts `window.confirm` on web
+/ `Alert.alert` on mobile before the request fires — checked before the network call, so cancelling
+costs nothing (no token fetch, no rate-limit hit).
+
+**Update (2026-10-07): the wizard shows "N of 10 AI generations left today" next to the language
+picker**, so a seller learns about the daily cap before hitting it rather than only from a failed
+generate call. New read-only `GET /ai/listing-copy/usage` (`AuthGuard` only, deliberately no
+`RateLimitGuard` — reading the counter must never itself consume from it) backed by
+`RateLimitService.getUsage`, sharing its window/limit lookup with `checkAndRecordHit` so the two can
+never read different settings columns for the same `kind`. Fetched once the wizard reaches the
+details step (and again whenever the access token changes, since a seller usually isn't logged in
+yet at that point — the first attempt comes back `null` and the real count only appears once
+`handleGenerateCopy`'s own login gate gets a token). After every generate attempt the count is
+nudged locally (`used + 1`/`remaining - 1`, clamped) rather than re-fetched: `RateLimitGuard`
+records a hit for any request that gets past auth, success or not, so this is accurate for every
+outcome except the client-side-detected "not logged in" case, which never reached the BFF at all.
 
 ## Critical files
 - `apps/web/src/components/home/PostAdWizard.tsx` / `apps/mobile/src/components/home/PostAdWizard.tsx`

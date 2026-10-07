@@ -59,6 +59,13 @@ Related: [`google-ads-performance-analysis-2026-09.md`](google-ads-performance-a
   - It appears as a compact button on each active listing in `/my-listings`.
   - GTM event: `owner_share_whatsapp {listingId, placement}`. `share_listing` now also carries
     `owner`.
+  - **Facebook (web only, `OwnerFacebookShare.tsx`):** same `owner_share` tagging/logging pattern,
+    pointed at Facebook's share dialog instead of `wa.me`. On `/my-listings` it's a small
+    icon-only button (`variant="compact"`, the default) sitting beside the WhatsApp icon in the
+    same row. On the "Your ad is live!" prominent block it originally sat squeezed beside the
+    full-width "Share on WhatsApp" button instead of getting equal billing — **fixed 2026-10-07**:
+    `variant="prominent"` gives it the same full-width green button treatment as WhatsApp's own,
+    stacked on its own line below it (`OwnerWhatsAppShare.tsx`'s `flex flex-col gap-2` wrapper).
 - **Mobile:** `sharedWebUrl()` in `apps/mobile/src/lib/appWebUrl.ts` tags app shares
   (`utm_source=app_share`). The post-success screen has the same "Get enquiries sooner" card
   (`apps/mobile/src/components/home/OwnerWhatsAppShare.tsx`), which opens `wa.me` with the message
