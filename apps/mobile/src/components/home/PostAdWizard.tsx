@@ -1200,17 +1200,15 @@ export function PostAdWizard({
 
   // Everything the BFF would reject on Post ad, checked here instead, in form order — same list
   // as the web wizard's. `missing` is just not filled in yet; anything else has to change.
-  const detailsIssue: { text: string; missing: boolean } | null = (() => {
-    if (title.trim().length === 0) return { text: "Add a title", missing: true };
-    if (title.trim().length < TITLE_MIN_LENGTH)
-      return { text: `Title needs at least ${TITLE_MIN_LENGTH} characters`, missing: false };
+  // Every required-field check on this step except title/description, in display order — see
+  // web's identical `otherFieldsIssue` for the full reasoning. Single source of truth for both
+  // canGenerateCopy below and detailsIssue, which falls through to title/description only once
+  // these are all satisfied.
+  const otherFieldsIssue: { text: string; missing: boolean } | null = (() => {
     if (!cityId) return { text: "Pick a city", missing: true };
     if (areaQuery.trim().length === 0) return { text: "Add the area / locality", missing: true };
     if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
       return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
-    if (description.trim().length === 0) return { text: "Add a description", missing: true };
-    if (description.trim().length < DESCRIPTION_MIN_LENGTH)
-      return { text: `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`, missing: false };
     // Checked before the generic attribute sweep below so this field's own friendlier copy wins
     // over the generic "Posted by Broker / Agent is required" listingAttributesIssue would
     // otherwise produce — see the web wizard's identical comment for why.
@@ -1228,25 +1226,24 @@ export function PostAdWizard({
     if (askSellerType && !postedAs) return { text: "Choose Owner or Agent / broker", missing: true };
     return null;
   })();
+
+  const detailsIssue: { text: string; missing: boolean } | null =
+    otherFieldsIssue ??
+    (() => {
+      if (title.trim().length === 0) return { text: "Add a title", missing: true };
+      if (title.trim().length < TITLE_MIN_LENGTH)
+        return { text: `Title needs at least ${TITLE_MIN_LENGTH} characters`, missing: false };
+      if (description.trim().length === 0) return { text: "Add a description", missing: true };
+      if (description.trim().length < DESCRIPTION_MIN_LENGTH)
+        return { text: `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`, missing: false };
+      return null;
+    })();
   const detailsValid = !detailsIssue;
 
-  // Mirrors detailsIssue above, minus the title/description checks — see web's identical
-  // reasoning in PostAdWizard.tsx. No listingId sent here: this component's own listingId is a
-  // client-generated UUID for upload storage, not a real row yet.
-  const canGenerateCopy = (() => {
-    if (!category || !transactionType) return false;
-    if (!cityId) return false;
-    if (areaQuery.trim().length === 0) return false;
-    if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH) return false;
-    if (categoryHasPostedBy && !sellerTypeFromBroker(attributes.fromBroker)) return false;
-    if (listingAttributesIssue(category, transactionType, attributes)) return false;
-    if (!priceIsValid(price, category)) return false;
-    if (priceIssue) return false;
-    if (brokerageFeeIssue(transactionType, totalPrice, attributes)) return false;
-    if (photoUris.length < MIN_PHOTOS) return false;
-    if (askSellerType && !postedAs) return false;
-    return true;
-  })();
+  // AI Generate's whole purpose is to fill title/description, so requiring them first would be
+  // circular — hence `otherFieldsIssue` alone. No listingId sent here: this component's own
+  // listingId is a client-generated UUID for upload storage, not a real row yet.
+  const canGenerateCopy = !!category && !!transactionType && !otherFieldsIssue;
 
   // `opts.listingId` switches this to the post-creation "regenerate with Featured" shape — see
   // docs/plans/ai-listing-copy-assist.md.

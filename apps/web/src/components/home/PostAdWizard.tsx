@@ -1267,17 +1267,16 @@ export function PostAdWizard({
   // Everything the BFF would reject on Post ad, checked here instead, in form order, so the
   // seller fixes it beside the field rather than meeting it on the preview. `missing` is just
   // not filled in yet (a muted hint); anything else is a value that has to change (red).
-  const detailsIssue: { text: string; missing: boolean } | null = (() => {
-    if (title.trim().length === 0) return { text: "Add a title", missing: true };
-    if (title.trim().length < TITLE_MIN_LENGTH)
-      return { text: `Title needs at least ${TITLE_MIN_LENGTH} characters`, missing: false };
+  // Every required-field check on this step except title/description, in display order — the
+  // single source of truth for both canGenerateCopy below (nothing else needed there) and
+  // detailsIssue (checked first, falling through to title/description only once these are all
+  // satisfied — so the Preview button's message always surfaces something else missing before it
+  // ever asks for Title/Description, now that those two sit at the end of the step).
+  const otherFieldsIssue: { text: string; missing: boolean } | null = (() => {
     if (!cityId) return { text: "Pick a city", missing: true };
     if (areaQuery.trim().length === 0) return { text: "Add the area / locality", missing: true };
     if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH)
       return { text: `Area / locality must be ${AREA_NAME_MAX_LENGTH} characters or fewer`, missing: false };
-    if (description.trim().length === 0) return { text: "Add a description", missing: true };
-    if (description.trim().length < DESCRIPTION_MIN_LENGTH)
-      return { text: `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`, missing: false };
     // The assisted panel's own Owner/Agent answer overrides this field on submit. Checked before
     // the generic attribute sweep below so this field's own friendlier copy wins over the generic
     // "Posted by Broker / Agent is required" listingAttributesIssue would otherwise produce — the
@@ -1299,32 +1298,27 @@ export function PostAdWizard({
     if (assistedProblem) return { text: assistedProblem, missing: false };
     return null;
   })();
+
+  const detailsIssue: { text: string; missing: boolean } | null =
+    otherFieldsIssue ??
+    (() => {
+      if (title.trim().length === 0) return { text: "Add a title", missing: true };
+      if (title.trim().length < TITLE_MIN_LENGTH)
+        return { text: `Title needs at least ${TITLE_MIN_LENGTH} characters`, missing: false };
+      if (description.trim().length === 0) return { text: "Add a description", missing: true };
+      if (description.trim().length < DESCRIPTION_MIN_LENGTH)
+        return { text: `Description needs at least ${DESCRIPTION_MIN_LENGTH} characters`, missing: false };
+      return null;
+    })();
   const detailsValid = !detailsIssue && !preparingMedia;
 
-  // Mirrors detailsIssue above, minus the title/description checks — AI Generate's whole purpose
-  // is to fill those two, so requiring them first would be circular. Computed independently
-  // (not derived from detailsIssue) so a check added or reordered here never silently changes
-  // which message detailsIssue shows first when several things are missing at once. No
-  // listingId sent at this point: the posting wizard's own `listingId` state (above) is a
-  // client-generated UUID for upload storage, not a real row — sending it would 404. Tier is
-  // always 'free' here regardless (see docs/plans/ai-listing-copy-assist.md); the
-  // regenerate-with-Featured flow lives on the success step, once a real, possibly-boosted
-  // listing exists.
-  const canGenerateCopy = (() => {
-    if (!category || !transactionType) return false;
-    if (!cityId) return false;
-    if (areaQuery.trim().length === 0) return false;
-    if (!areaId && areaQuery.trim().length > AREA_NAME_MAX_LENGTH) return false;
-    if (categoryHasPostedBy && !assistedMode && !sellerTypeFromBroker(attributes.fromBroker)) return false;
-    if (listingAttributesIssue(category, transactionType, attributes)) return false;
-    if (!(Number(price) > 0) && !priceOnRequestAllowed) return false;
-    if (priceIssue) return false;
-    if (brokerageFeeIssue(transactionType, totalPrice, attributes)) return false;
-    if (photos.length < MIN_PHOTOS) return false;
-    if (askSellerType && !postedAs) return false;
-    if (assistedMode && assistedSellerProblem(assistedSeller)) return false;
-    return true;
-  })();
+  // AI Generate's whole purpose is to fill title/description, so requiring them first would be
+  // circular — hence `otherFieldsIssue` alone, not `detailsIssue`. No listingId sent at this
+  // point: the posting wizard's own `listingId` state (above) is a client-generated UUID for
+  // upload storage, not a real row — sending it would 404. Tier is always 'free' here regardless
+  // (see docs/plans/ai-listing-copy-assist.md); the regenerate-with-Featured flow lives on the
+  // success step, once a real, possibly-boosted listing exists.
+  const canGenerateCopy = !!category && !!transactionType && !otherFieldsIssue;
 
   // `opts.listingId` switches this to the post-creation "regenerate with Featured" shape (see
   // the success step below) — structured fields are omitted entirely in that case, since the BFF
