@@ -59,7 +59,13 @@ export class GeminiListingCopyProvider implements ListingCopyLlmProvider {
     const body = {
       systemInstruction: { parts: [{ text: buildSystemPrompt(expectedFields) }] },
       contents: [{ parts: [{ text: userPrompt }] }],
-      generationConfig: { responseMimeType: 'application/json' },
+      // thinkingBudget: 0 — confirmed live 2026-10-07: with thinking on (the default), this
+      // model spent ~300 reasoning tokens to answer a ~40-token prompt with a ~40-token result —
+      // more thinking than output, for a short fill-structured-fields-into-prose task that was
+      // explicitly picked to be cheap and simple (same reasoning as MODEL's own comment in
+      // OpenAiListingCopyProvider). Disabling it dropped total tokens ~5x with no quality loss
+      // on the same prompt.
+      generationConfig: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
     };
 
     // No maskUrlParam needed — the key goes in a header (X-Goog-Api-Key), same convention

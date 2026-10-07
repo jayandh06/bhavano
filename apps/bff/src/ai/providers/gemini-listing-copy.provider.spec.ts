@@ -41,7 +41,10 @@ describe('GeminiListingCopyProvider', () => {
       }),
     );
     const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-    expect(body.generationConfig).toEqual({ responseMimeType: 'application/json' });
+    expect(body.generationConfig).toEqual({
+      responseMimeType: 'application/json',
+      thinkingConfig: { thinkingBudget: 0 },
+    });
   });
 
   it('honours a GEMINI_MODEL override', async () => {
