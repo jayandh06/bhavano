@@ -16,4 +16,12 @@ export class UpdateRateLimitsDto {
   @IsInt()
   @Min(1)
   viewWindowMinutes!: number;
+
+  @IsInt()
+  @Min(1)
+  aiGenerateLimit!: number;
+
+  @IsInt()
+  @Min(1)
+  aiGenerateWindowMinutes!: number;
 }

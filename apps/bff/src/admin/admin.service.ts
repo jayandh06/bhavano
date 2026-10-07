@@ -86,6 +86,7 @@ import { MessagingGateway } from '../messaging/messaging.gateway';
 import { STAFF_SENDER_LABEL } from '../messaging/messaging.service';
 import { boostMessagePath, buildBoostMessageBody, buildBoostMessageCard, type BoostMessageInput } from './boost-message';
 import { buildUserSearchOr } from './user-search';
+import { isListingBoosted } from '../listings/listing-boost.util';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
@@ -1268,7 +1269,7 @@ export class AdminService {
       }
       // Instant Alerts is part of every boost, so a boosted ad has already bought everything the
       // message offers.
-      if ((listing.boostedUntil?.getTime() ?? 0) > now) {
+      if (isListingBoosted(listing, now)) {
         results.push({ listingId, success: false, error: 'Already boosted' });
         continue;
       }

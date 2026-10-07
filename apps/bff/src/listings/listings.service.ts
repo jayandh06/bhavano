@@ -68,6 +68,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { ReferralsService } from '../referrals/referrals.service';
+import { isListingBoosted } from './listing-boost.util';
 import { Prisma } from '@prisma/client';
 import type {
   Area,
@@ -980,7 +981,7 @@ export class ListingsService {
       cityName: listing.city.name,
       area: listing.area.name,
       owner: listing.owner,
-      isBoosted: (listing.boostedUntil?.getTime() ?? 0) > Date.now(),
+      isBoosted: isListingBoosted(listing),
       boostedUntil: listing.boostedUntil?.toISOString() ?? null,
       price: this.formatListingPrice(listing),
       priceInWords: this.formatListingPriceInWords(listing),
@@ -2781,7 +2782,7 @@ export class ListingsService {
 
     // Push for every favourite of someone else's ad (mobile advertiser signal). Email/WhatsApp
     // stays boost-only inside notifyOwnerOfLike — unboosted likes as email would be noisy.
-    const isBoosted = (listing.boostedUntil?.getTime() ?? 0) > Date.now();
+    const isBoosted = isListingBoosted(listing);
     if (listing.ownerId !== userId) {
       void this.notifyOwnerOfLike(listingId, listing.ownerId, userId, listing.title, isBoosted).catch(
         () => undefined,
@@ -3679,7 +3680,7 @@ export class ListingsService {
       viewCount: listing.viewCount,
       likeCount: listing.likeCount,
       isFavourited: favouritedIds?.has(listing.id) ?? false,
-      isBoosted: (listing.boostedUntil?.getTime() ?? 0) > Date.now(),
+      isBoosted: isListingBoosted(listing),
       hasInstantAlerts: (listing.instantAlertsUntil?.getTime() ?? 0) > Date.now(),
       isOwner: viewerId !== undefined && viewerId === listing.ownerId,
       ...(viewerId !== undefined && viewerId === listing.ownerId && !isBulkImportOwner(listing.owner)

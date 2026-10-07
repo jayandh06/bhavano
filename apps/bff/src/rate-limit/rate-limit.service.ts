@@ -10,6 +10,8 @@ const DEFAULTS: RateLimitSettingsDto = {
   publishWindowMinutes: 1440,
   viewLimit: 200,
   viewWindowMinutes: 60,
+  aiGenerateLimit: 10,
+  aiGenerateWindowMinutes: 1440,
 };
 
 @Injectable()
@@ -37,8 +39,10 @@ export class RateLimitService {
     if (kind === 'publish') return;
 
     const settings = await this.getSettings();
-    const limit = settings.viewLimit;
-    const windowMinutes = settings.viewWindowMinutes;
+    const { limit, windowMinutes } =
+      kind === 'ai_generate'
+        ? { limit: settings.aiGenerateLimit, windowMinutes: settings.aiGenerateWindowMinutes }
+        : { limit: settings.viewLimit, windowMinutes: settings.viewWindowMinutes };
     const identity = `user:${userId}`;
     const windowStart = new Date(Date.now() - windowMinutes * 60_000);
 

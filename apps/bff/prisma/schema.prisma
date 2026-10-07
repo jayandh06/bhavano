@@ -46,18 +46,22 @@ enum ListingCondition {
   used
 }
 
-/** How the ad itself was created — admin-visible provenance, not shown to public
+/**
+ * How the ad itself was created — admin-visible provenance, not shown to public
  * viewers. direct = the owner posted it through the normal wizard (the only path that
  * exists today, and the default for every row). manual/google_api are for future admin
  * tooling (an admin-created listing, or one seeded from a Google Places import) — added
- * now so the column exists ahead of those write paths. */
+ * now so the column exists ahead of those write paths.
+ */
 enum ListingSource {
   direct
   manual
   google_api
 }
 
-/** Which outreach channel's claim link was actually clicked — see Listing.claimSource. */
+/**
+ * Which outreach channel's claim link was actually clicked — see Listing.claimSource.
+ */
 enum ClaimSource {
   email
   whatsapp
@@ -70,15 +74,19 @@ enum UserRole {
   admin
 }
 
-/** approved = normal/visible; flagged = an admin took it offline pending a fix from the
- * owner (this IS the soft-delete — there's no separate deleted state). */
+/**
+ * approved = normal/visible; flagged = an admin took it offline pending a fix from the
+ * owner (this IS the soft-delete — there's no separate deleted state).
+ */
 enum ModerationState {
   approved
   flagged
 }
 
-/** inquiry = buyer/seller chat about a listing; moderation = admin↔owner thread about a
- * flagged listing. Kept distinct so an admin's thread can't collide with a real buyer's. */
+/**
+ * inquiry = buyer/seller chat about a listing; moderation = admin↔owner thread about a
+ * flagged listing. Kept distinct so an admin's thread can't collide with a real buyer's.
+ */
 enum ConversationType {
   inquiry
   moderation
@@ -88,27 +96,39 @@ enum ConversationType {
   announcement
 }
 
-/** Phase 0 of docs/plans/property-requirements-demand-side.md. `open` = captured, nobody has
+/**
+ * Phase 0 of docs/plans/property-requirements-demand-side.md. `open` = captured, nobody has
  * worked it yet; `working` = someone is matching it by hand or recruiting an owner for it;
  * `closed` = dealt with, or the seeker went quiet. Deliberately an internal workflow state, not
- * a moderation state: a Requirement is not public content yet. */
+ * a moderation state: a Requirement is not public content yet.
+ */
 enum RequirementStatus {
   open
   working
   closed
 }
 
-/** Why a requirement stopped being live — set whenever `status` becomes `closed`, so "we found
+/**
+ * Why a requirement stopped being live — set whenever `status` becomes `closed`, so "we found
  * them something" is distinguishable from "they gave up" and from "nobody got to it in time".
- * That distinction is the only measure of whether Phase 0/1 actually works. */
+ * That distinction is the only measure of whether Phase 0/1 actually works.
+ */
 enum RequirementClosedReason {
-  /** The seeker got what they were looking for. */
+  /**
+   * The seeker got what they were looking for.
+   */
   fulfilled
-  /** The seeker withdrew it themselves. */
+  /**
+   * The seeker withdrew it themselves.
+   */
   withdrawn
-  /** It aged out without being renewed — see REQUIREMENT_DURATION_DAYS. */
+  /**
+   * It aged out without being renewed — see REQUIREMENT_DURATION_DAYS.
+   */
   expired
-  /** An admin closed it: a duplicate, a test, or unreachable. */
+  /**
+   * An admin closed it: a duplicate, a test, or unreachable.
+   */
   dismissed
 }
 
@@ -121,6 +141,7 @@ enum LoginMethod {
 enum RateLimitKind {
   publish
   view
+  ai_generate
 }
 
 enum PaymentStatus {
@@ -151,8 +172,10 @@ enum SellerType {
   agent
 }
 
-/** Where an outreach contact came from — kept as provenance so a bad import batch can be
- * identified and undone. See docs/plans/outreach-campaign-contacts.md. */
+/**
+ * Where an outreach contact came from — kept as provenance so a bad import batch can be
+ * identified and undone. See docs/plans/outreach-campaign-contacts.md.
+ */
 enum ContactSource {
   google_maps
   scrape
@@ -170,9 +193,11 @@ enum ContactStatus {
   bounced
 }
 
-/** Consent basis for contacting someone. `opted_out` is terminal — the send path refuses it,
+/**
+ * Consent basis for contacting someone. `opted_out` is terminal — the send path refuses it,
  * and a matching SuppressionEntry keeps the opt-out alive even if the contact row is deleted
- * and re-imported by a later scrape. */
+ * and re-imported by a later scrape.
+ */
 enum ConsentState {
   none
   implied
@@ -204,35 +229,35 @@ enum SendStatus {
 }
 
 model City {
-  id        String    @id @default(cuid())
-  name      String
-  state     String
-  lat       Float
-  lng       Float
+  id               String             @id @default(cuid())
+  name             String
+  state            String
+  lat              Float
+  lng              Float
   /// One of the 11 cities the Google Ads campaigns target now (seedCities.ts): listed first in the
   /// pickers, header, footer and /cities. Not the reach — see catchmentKm. See
   /// docs/plans/focus-on-ad-target-cities.md.
-  isPopular Boolean   @default(false)
-  source    String    @default("curated")
+  isPopular        Boolean            @default(false)
+  source           String             @default("curated")
   /// How far from this city's centroid a dropped pin still counts as this city, in kilometres.
   /// A ward Google labels as its own locality stays an area of this city when the pin is inside
   /// the circle. For a served city this is its reach: 75 km for the big metros (Delhi NCR 90),
   /// 40 km for the rest. See docs/plans/serve-only-ad-targeted-cities.md.
-  catchmentKm Int     @default(25)
+  catchmentKm      Int                @default(25)
   /// One of the 37 markets the Google Ads campaigns targeted at launch. A pin within a served city's reach is
   /// filed under it before any other city is considered, and only served cities are listed in the
   /// city pickers. Census towns keep their rows for listings already filed under them.
-  isServed  Boolean   @default(false)
-  listings  Listing[]
-  areas     Area[]
-  users     User[]
-  savedSearches SavedSearch[]
-  requirements Requirement[]
-  searchEvents SearchEvent[]
+  isServed         Boolean            @default(false)
+  listings         Listing[]
+  areas            Area[]
+  users            User[]
+  savedSearches    SavedSearch[]
+  requirements     Requirement[]
+  searchEvents     SearchEvent[]
   outreachContacts OutreachContact[]
-  placesFetchLogs PlacesFetchLog[]
-  localityAliases LocalityAlias[]
-  slugRedirects CitySlugRedirect[]
+  placesFetchLogs  PlacesFetchLog[]
+  localityAliases  LocalityAlias[]
+  slugRedirects    CitySlugRedirect[]
 
   @@unique([name, state])
 }
@@ -261,184 +286,233 @@ model LocalityAlias {
 }
 
 model Area {
-  id       String    @id @default(cuid())
-  name     String
-  cityId   String
-  city     City      @relation(fields: [cityId], references: [id])
-  lat      Float?
-  lng      Float?
-  source   String    @default("curated")
-  listings Listing[]
-  requirements Requirement[]
+  id               String            @id @default(cuid())
+  name             String
+  cityId           String
+  city             City              @relation(fields: [cityId], references: [id])
+  lat              Float?
+  lng              Float?
+  source           String            @default("curated")
+  listings         Listing[]
+  requirements     Requirement[]
   outreachContacts OutreachContact[]
-  placesFetchLogs PlacesFetchLog[]
+  placesFetchLogs  PlacesFetchLog[]
 
   @@unique([name, cityId])
   @@index([cityId])
 }
 
 model User {
-  id                    String         @id @default(cuid())
-  phone                 String?        @unique
-  phoneVerifiedAt       DateTime?
-  email                 String?        @unique
-  /** Non-null once the address was actually proven — set by Google sign-in (Google asserts it)
+  id                          String                     @id @default(cuid())
+  phone                       String?                    @unique
+  phoneVerifiedAt             DateTime?
+  email                       String?                    @unique
+  /**
+   * Non-null once the address was actually proven — set by Google sign-in (Google asserts it)
    * or by completing the emailed-code flow. An email typed into the profile form stays null:
    * useful for reaching the user, but NOT evidence of identity, so account adoption in
    * loginWithGoogle keys on this rather than on `email`. See
-   * docs/plans/account-linking-phone-and-email.md. */
-  emailVerifiedAt       DateTime?
-  googleId              String?        @unique
-  /** Apple's per-app-per-user subject id (the identity token's `sub` claim) — mirrors googleId.
+   * docs/plans/account-linking-phone-and-email.md.
+   */
+  emailVerifiedAt             DateTime?
+  googleId                    String?                    @unique
+  /**
+   * Apple's per-app-per-user subject id (the identity token's `sub` claim) — mirrors googleId.
    * See AuthService.loginWithApple: Apple only ever returns a name/email on the very first
-   * authorization, so unlike Google this can't be re-derived from a later login. */
-  appleId               String?        @unique
-  name                  String?
-  role                  UserRole       @default(user)
-  cityId                String?
-  city                  City?          @relation(fields: [cityId], references: [id])
-  createdAt             DateTime       @default(now())
-  /** Non-null once the first-login welcome email/SMS/WhatsApp has been dispatched — gates
+   * authorization, so unlike Google this can't be re-derived from a later login.
+   */
+  appleId                     String?                    @unique
+  name                        String?
+  role                        UserRole                   @default(user)
+  cityId                      String?
+  city                        City?                      @relation(fields: [cityId], references: [id])
+  createdAt                   DateTime                   @default(now())
+  /**
+   * Non-null once the first-login welcome email/SMS/WhatsApp has been dispatched — gates
    * AuthService from sending it again. Backfilled to createdAt for pre-existing users so they
-   * don't retroactively get a "Welcome!" message. */
-  welcomedAt            DateTime?
-  /** Drives the deferred profile-completion dialog (docs/plans/profile-completion-dialog.md).
+   * don't retroactively get a "Welcome!" message.
+   */
+  welcomedAt                  DateTime?
+  /**
+   * Drives the deferred profile-completion dialog (docs/plans/profile-completion-dialog.md).
    * The dialog shows on a return login when the profile is missing an email or phone AND now is
    * past this instant; "Not now" pushes it a week out and bumps `profileNudgeCount`. Once the
    * count hits the cap the dialog never shows again — only the dismissible banner remains. A
-   * complete profile makes the check false regardless of either field. */
-  profileNudgeSnoozedUntil DateTime?
-  profileNudgeCount        Int          @default(0)
-  listings              Listing[]
-  favourites            Favourite[]
-  conversationsAsPoster Conversation[] @relation("ConversationPoster")
-  conversationsAsInquirer Conversation[] @relation("ConversationInquirer")
-  messages              Message[]
-  blockedUsers          BlockedUser[]  @relation("BlockerOf")
-  blockedByUsers        BlockedUser[]  @relation("BlockedBy")
-  loginEvents           LoginEvent[]
-  /** Send log for notifications with no listing to attach to — today, just "welcome". See
+   * complete profile makes the check false regardless of either field.
+   */
+  profileNudgeSnoozedUntil    DateTime?
+  profileNudgeCount           Int                        @default(0)
+  listings                    Listing[]
+  favourites                  Favourite[]
+  conversationsAsPoster       Conversation[]             @relation("ConversationPoster")
+  conversationsAsInquirer     Conversation[]             @relation("ConversationInquirer")
+  messages                    Message[]
+  blockedUsers                BlockedUser[]              @relation("BlockerOf")
+  blockedByUsers              BlockedUser[]              @relation("BlockedBy")
+  loginEvents                 LoginEvent[]
+  /**
+   * Send log for notifications with no listing to attach to — today, just "welcome". See
    * `ListingNotificationLog` for the listing-scoped equivalent; kept as a separate table rather
    * than one shared table with an optional listingId, since that would have meant touching
    * ListingNotificationLog's existing, already-working callers (the expiry-reminder job) to widen
-   * its shape for a case that doesn't need it. */
-  notificationLogs      UserNotificationLog[]
-  /** Registered Expo push tokens for this user's mobile devices — one row per device. Used only
-   * to deliver a "new message" push; see PushService. */
-  pushTokens            PushToken[]
-  payments              Payment[]
-  subscriptions         UserSubscription[]
-  savedSearches         SavedSearch[]
-  requirements          Requirement[]
-  searchEvents          SearchEvent[]
-  /** Denormalized from the latest active UserSubscription (tier: buyerPremium) — cheap reads
+   * its shape for a case that doesn't need it.
+   */
+  notificationLogs            UserNotificationLog[]
+  /**
+   * Registered Expo push tokens for this user's mobile devices — one row per device. Used only
+   * to deliver a "new message" push; see PushService.
+   */
+  pushTokens                  PushToken[]
+  payments                    Payment[]
+  subscriptions               UserSubscription[]
+  savedSearches               SavedSearch[]
+  requirements                Requirement[]
+  searchEvents                SearchEvent[]
+  /**
+   * Denormalized from the latest active UserSubscription (tier: buyerPremium) — cheap reads
    * everywhere else in the app (header/messaging badge, profile page); UserSubscription is
-   * the audit trail. Null means never subscribed or lapsed. */
-  premiumUntil          DateTime?
-  /** Same denormalization for tier: agentPro — listing slot allowance + storefront badge. */
-  agentProUntil         DateTime?
-  /** Stacked Agent Pro blocks (each ₹499/month → +20 slots) while agentProUntil is active. */
-  agentProUnits         Int            @default(1)
-  /** Denormalized seller add-on (10 concurrent slots) — see sellerSlotPack subscription tier. */
-  sellerSlotPackUntil   DateTime?
-  /** Owner or agent/broker, as the user declared it — asked once when posting, changeable in the
+   * the audit trail. Null means never subscribed or lapsed.
+   */
+  premiumUntil                DateTime?
+  /**
+   * Same denormalization for tier: agentPro — listing slot allowance + storefront badge.
+   */
+  agentProUntil               DateTime?
+  /**
+   * Stacked Agent Pro blocks (each ₹499/month → +20 slots) while agentProUntil is active.
+   */
+  agentProUnits               Int                        @default(1)
+  /**
+   * Denormalized seller add-on (10 concurrent slots) — see sellerSlotPack subscription tier.
+   */
+  sellerSlotPackUntil         DateTime?
+  /**
+   * Owner or agent/broker, as the user declared it — asked once when posting, changeable in the
    * profile. Null until they answer (and for every account before this existed), which shows no
-   * label on their listings. See docs/plans/broker-paid-bundles.md, Phase 0. */
-  sellerType            SellerType?
-  /** Agents only, optional — shown beside the "Agent" label on their listings. */
-  agencyName            String?
-  /** Agents only, optional — RERA registration number as typed. */
-  reraNumber            String?
-  /** When an admin checked `reraNumber` against the state RERA register — shows the "RERA verified"
-   * badge. Cleared whenever the number changes or the user switches to owner. */
-  reraVerifiedAt        DateTime?
-  proBoostCredits       ProBoostCredit[]
-  contactRevealCreditBatches ContactRevealCreditBatch[]
-  contactReveals        ContactReveal[]
-  discountCodeRedemptions DiscountCodeRedemption[]
-  listingEditLogs       ListingEditLog[]
-  listingInterests      ListingInterest[]
-  /** First-touch attribution: the UTM source/medium/campaign of the link the user first landed
+   * label on their listings. See docs/plans/broker-paid-bundles.md, Phase 0.
+   */
+  sellerType                  SellerType?
+  /**
+   * Agents only, optional — shown beside the "Agent" label on their listings.
+   */
+  agencyName                  String?
+  /**
+   * Agents only, optional — RERA registration number as typed.
+   */
+  reraNumber                  String?
+  /**
+   * When an admin checked `reraNumber` against the state RERA register — shows the "RERA verified"
+   * badge. Cleared whenever the number changes or the user switches to owner.
+   */
+  reraVerifiedAt              DateTime?
+  proBoostCredits             ProBoostCredit[]
+  contactRevealCreditBatches  ContactRevealCreditBatch[]
+  contactReveals              ContactReveal[]
+  discountCodeRedemptions     DiscountCodeRedemption[]
+  listingEditLogs             ListingEditLog[]
+  listingInterests            ListingInterest[]
+  /**
+   * First-touch attribution: the UTM source/medium/campaign of the link the user first landed
    * on, or the external Referer hostname with medium "referral" if untagged, or source "direct"
    * if neither was present. Captured by apps/web's middleware.ts on the user's very first visit
    * and written here only when this row is first created (see AuthService.verifyOtp /
    * loginWithGoogle) — never overwritten afterward, so it reflects how the user originally found
    * Bhavano rather than the source of their most recent login.
-   *
    * The four Google Ads fields below are captured the same way, independent of the UTM fields
    * above — a Google Ads click carries its own `gclid`/campaign/ad-group/ad ids (via the Final
-   * URL suffix) whether or not the link was also UTM-tagged. */
-  acquisitionSource     String?
-  acquisitionMedium     String?
-  acquisitionCampaign   String?
-  acquisitionGclid      String?
-  acquisitionCampaignId String?
-  acquisitionAdGroupId  String?
-  acquisitionAdId       String?
-  /** Non-null once this user's signup conversion has been uploaded to Google Ads
+   * URL suffix) whether or not the link was also UTM-tagged.
+   */
+  acquisitionSource           String?
+  acquisitionMedium           String?
+  acquisitionCampaign         String?
+  acquisitionGclid            String?
+  acquisitionCampaignId       String?
+  acquisitionAdGroupId        String?
+  acquisitionAdId             String?
+  /**
+   * Non-null once this user's signup conversion has been uploaded to Google Ads
    * (GoogleAdsConversionProvider.uploadClickConversion) — set immediately before the upload
    * attempt (see AuthService.reportSignupConversion), same idempotency-guard pattern as
    * welcomedAt, so a concurrent duplicate login can't double-fire the upload. Set regardless of
    * whether the upload actually succeeded (no gclid, or a real API failure) — this guards against
    * re-attempting the call, not against re-attribution; a permanently-failed upload is not
-   * retried. */
-  adsConversionUploadedAt DateTime?
-  visits                Visit[]
-  /** Set when this user was first reached as an outreach prospect — the attribution link back
-   * to a campaign. Null for organic signups. */
-  outreachContact       OutreachContact?
-  outreachCampaigns     OutreachCampaign[]
-  supportTickets        SupportTicket[]
-  /** Non-null once this account was merged into another — the row is kept, never deleted, so the
+   * retried.
+   */
+  adsConversionUploadedAt     DateTime?
+  visits                      Visit[]
+  /**
+   * Set when this user was first reached as an outreach prospect — the attribution link back
+   * to a campaign. Null for organic signups.
+   */
+  outreachContact             OutreachContact?
+  outreachCampaigns           OutreachCampaign[]
+  supportTickets              SupportTicket[]
+  /**
+   * Non-null once this account was merged into another — the row is kept, never deleted, so the
    * payments and listings that used to hang off it stay auditable and a bad merge stays
    * recoverable. Points at the survivor rather than being a bare `deletedAt` so support can
    * follow the chain. Sessions for a merged row resolve to the survivor (see AuthGuard).
-   * See docs/plans/account-linking-phone-and-email.md. */
-  mergedIntoUserId      String?
-  mergedInto            User?          @relation("UserMerge", fields: [mergedIntoUserId], references: [id])
-  mergedFrom            User[]         @relation("UserMerge")
-  mergedAt              DateTime?
-  /** phone/email/googleId are @unique, so a retained row would keep holding the identifiers the
+   * See docs/plans/account-linking-phone-and-email.md.
+   */
+  mergedIntoUserId            String?
+  mergedInto                  User?                      @relation("UserMerge", fields: [mergedIntoUserId], references: [id])
+  mergedFrom                  User[]                     @relation("UserMerge")
+  mergedAt                    DateTime?
+  /**
+   * phone/email/googleId are @unique, so a retained row would keep holding the identifiers the
    * surviving account needs — which is the entire point of merging. They are released (nulled)
-   * and preserved here instead. */
-  mergedPhone           String?
-  mergedEmail           String?
-  /** Non-null once the user deleted their own account. The row survives — it is the audit trail
+   * and preserved here instead.
+   */
+  mergedPhone                 String?
+  mergedEmail                 String?
+  /**
+   * Non-null once the user deleted their own account. The row survives — it is the audit trail
    * behind their payments — but every identifying field is cleared and the identifiers released,
    * so the account is unusable and holds no personal data. Required by App Store guideline
-   * 5.1.1(v) and by the DPDP Act's erasure right; see docs/plans/ios-app-store-release.md. */
-  deletedAt             DateTime?
-  /** Referrals this user has made (they're the one who shared the link) — see
-   * docs/plans/bhavano-referral-program-implementation.md. */
-  referralsAsReferrer   Referral[] @relation("ReferralsAsReferrer")
-  /** The single referral that brought this user in, if any — null for an organic signup. */
-  referralAsReferred    Referral?  @relation("ReferralsAsReferred")
-  referralClicks        ReferralClick[] @relation("ReferralClicks")
-  referralCreditBatches ReferralCreditBatch[] @relation("ReferralCreditBatches")
-  /** The device key (`bhavano.viewerKey`) this account's very first signup request carried, if
+   * 5.1.1(v) and by the DPDP Act's erasure right; see docs/plans/ios-app-store-release.md.
+   */
+  deletedAt                   DateTime?
+  /**
+   * Referrals this user has made (they're the one who shared the link) — see
+   * docs/plans/bhavano-referral-program-implementation.md.
+   */
+  referralsAsReferrer         Referral[]                 @relation("ReferralsAsReferrer")
+  /**
+   * The single referral that brought this user in, if any — null for an organic signup.
+   */
+  referralAsReferred          Referral?                  @relation("ReferralsAsReferred")
+  referralClicks              ReferralClick[]            @relation("ReferralClicks")
+  referralCreditBatches       ReferralCreditBatch[]      @relation("ReferralCreditBatches")
+  /**
+   * The device key (`bhavano.viewerKey`) this account's very first signup request carried, if
    * any — set once, at creation, never updated. Referral program BR-3 (Phase 4): if a new signup
    * shares this value with the referrer's own account, that's a strong signal they're the same
    * physical device, not just the same person browsing twice — flagged for admin review (never
    * auto-blocked, since a resettable per-install key is not real device fingerprinting). Not the
    * same thing as ListingView.viewerKey, which gets overwritten to `user:<id>` once linked and so
    * can't answer "which account first signed up from this device" after the fact — this column
-   * exists because that question has no other answer in the schema. */
-  firstSeenViewerKey    String?
-  /** Non-null freezes this user's ability to earn *new* referral credits (BR-9, admin action) —
+   * exists because that question has no other answer in the schema.
+   */
+  firstSeenViewerKey          String?
+  /**
+   * Non-null freezes this user's ability to earn *new* referral credits (BR-9, admin action) —
    * already-granted unused credits are still spendable; freezing stops further suspected abuse,
-   * it isn't a clawback. See docs/plans/bhavano-referral-program-implementation.md, Phase 4. */
-  referralFrozenAt       DateTime?
-  referralFrozenReason   String?
-  referralAdminActionsByAdmin ReferralAdminAction[] @relation("ReferralAdminActionsByAdmin")
-  referralAdminActionsOnUser  ReferralAdminAction[] @relation("ReferralAdminActionsOnUser")
-  /** Admin-initiated merges this user carried out, won, or lost — see UserMergeAction and
+   * it isn't a clawback. See docs/plans/bhavano-referral-program-implementation.md, Phase 4.
+   */
+  referralFrozenAt            DateTime?
+  referralFrozenReason        String?
+  referralAdminActionsByAdmin ReferralAdminAction[]      @relation("ReferralAdminActionsByAdmin")
+  referralAdminActionsOnUser  ReferralAdminAction[]      @relation("ReferralAdminActionsOnUser")
+  /**
+   * Admin-initiated merges this user carried out, won, or lost — see UserMergeAction and
    * docs/plans/account-linking-phone-and-email.md's "admin-initiated merge" addendum. Distinct
    * from mergedInto/mergedFrom above (the merge's actual effect on this row) — this is the audit
    * trail of who did it and why, which survives even though the merge itself is self-service-
-   * capable too and doesn't always go through here. */
-  userMergeActionsByAdmin  UserMergeAction[] @relation("UserMergeActionsByAdmin")
-  userMergeActionsAsWinner UserMergeAction[] @relation("UserMergeActionsWinner")
-  userMergeActionsAsLoser  UserMergeAction[] @relation("UserMergeActionsLoser")
+   * capable too and doesn't always go through here.
+   */
+  userMergeActionsByAdmin     UserMergeAction[]          @relation("UserMergeActionsByAdmin")
+  userMergeActionsAsWinner    UserMergeAction[]          @relation("UserMergeActionsWinner")
+  userMergeActionsAsLoser     UserMergeAction[]          @relation("UserMergeActionsLoser")
 
   @@index([cityId])
   @@index([mergedIntoUserId])
@@ -446,72 +520,72 @@ model User {
 }
 
 model Listing {
-  id               String            @id @default(cuid())
-  category         ListingCategory
-  transactionType  TransactionType
-  status           ListingStatus     @default(active)
+  id                   String                   @id @default(cuid())
+  category             ListingCategory
+  transactionType      TransactionType
+  status               ListingStatus            @default(active)
   /// Gates browse visibility and deferred post-live side effects until publish checkout completes.
-  publishState     ListingPublishState @default(live)
-  publishedAt      DateTime?
-  moderationState  ModerationState   @default(approved)
-  adminReviewed    Boolean           @default(false)
-  moderatedAt      DateTime?
-  condition        ListingCondition?
-  source           ListingSource     @default(direct)
-  price            Int
-  priceQualifier   String            @default("")
+  publishState         ListingPublishState      @default(live)
+  publishedAt          DateTime?
+  moderationState      ModerationState          @default(approved)
+  adminReviewed        Boolean                  @default(false)
+  moderatedAt          DateTime?
+  condition            ListingCondition?
+  source               ListingSource            @default(direct)
+  price                Int
+  priceQualifier       String                   @default("")
   /// Set only for sell/lease listings whose category has an area field (Plot, Commercial) when
   /// the seller chose to express price per unit of area rather than as a lump sum — one of the
   /// AreaUnit codes ("sqft"/"acre"/"cent"/"hectare"/"sqm"), or null for a plain whole-price
   /// listing (every listing before this column existed, and the default going forward). `price`
   /// itself always stays the whole-rupee total either way — this only changes how it's entered
   /// and displayed, never what it's compared against for sorting/filtering/moderation bounds.
-  priceUnit        String?
-  title            String
-  slug             String
-  areaId           String
-  area             Area              @relation(fields: [areaId], references: [id])
-  cityId           String
-  city             City              @relation(fields: [cityId], references: [id])
-  lat              Float?
-  lng              Float?
-  tag              String
+  priceUnit            String?
+  title                String
+  slug                 String
+  areaId               String
+  area                 Area                     @relation(fields: [areaId], references: [id])
+  cityId               String
+  city                 City                     @relation(fields: [cityId], references: [id])
+  lat                  Float?
+  lng                  Float?
+  tag                  String
   /// Short chips for the listing card — "3 Beds", "1450 sqft". Kept separate from `description`:
   /// they render in one non-wrapping row, so they have to stay short.
-  specs            String[]          @default([])
+  specs                String[]                 @default([])
   /// The seller's own prose about the listing. Nullable — most listings predate the field.
-  description      String?
-  attributes       Json              @default("{}")
-  ownerId          String
-  owner            User              @relation(fields: [ownerId], references: [id])
+  description          String?
+  attributes           Json                     @default("{}")
+  ownerId              String
+  owner                User                     @relation(fields: [ownerId], references: [id])
   /// Set only on a bulk-imported listing (bulk_upload_listings.py) — the OutreachContact it was
   /// created from, so the real business's phone number can be checked against whoever tries to
   /// claim ownership (POST /listings/:id/claim). @unique: one claimable listing per contact.
-  claimContactId   String?           @unique
-  claimContact     OutreachContact?  @relation(fields: [claimContactId], references: [id])
+  claimContactId       String?                  @unique
+  claimContact         OutreachContact?         @relation(fields: [claimContactId], references: [id])
   /// Null until a real claim succeeds — see ListingsService.claimListing. Distinguishes "never
   /// claimable" (claimContactId null) from "claimable but not yet claimed" (claimedAt null) from
   /// "claimed" (both set).
-  claimedAt        DateTime?
+  claimedAt            DateTime?
   /// Which outreach channel's link was actually clicked to complete the claim — set from the
   /// `?via=` param on the claim link (email and WhatsApp each send their own tagged link to the
   /// same listing), for the admin-visible email-vs-WhatsApp claim-rate breakdown. Null for a
   /// claim reached without that param (e.g. someone pasted the bare /claim/<id> URL).
-  claimSource      ClaimSource?
+  claimSource          ClaimSource?
   /// Admin-assisted listings only (publishState awaiting_claim until claimed): the E.164 phone
   /// that may claim it, the seller's name and Owner/Agent answer as staff took them down, and
   /// the admin who prepared it. claimListing checks claimContact's phone first, then this one.
   /// createdByAdminId has no relation on purpose: Listing→User already has `owner`, and the
   /// 'created' ListingEditLog row names the same admin as its actor.
-  claimPhoneE164   String?
-  claimName        String?
-  claimSellerType  SellerType?
-  createdByAdminId String?
-  relatedListingId String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  expiresAt        DateTime
-  viewCount        Int               @default(0)
+  claimPhoneE164       String?
+  claimName            String?
+  claimSellerType      SellerType?
+  createdByAdminId     String?
+  relatedListingId     String?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  expiresAt            DateTime
+  viewCount            Int                      @default(0)
   /// Denormalized distinct-viewerKey count — "organic" in the admin sense, since recordView is
   /// never called for an admin viewer (see ListingsController.recordView), so no ListingView row
   /// for this listing was ever written by staff browsing it. Incremented in recordView only the
@@ -520,18 +594,18 @@ model Listing {
   /// (linkListingViewsToUser) does not recount: a person who browsed anonymously under two
   /// different anon keys before ever logging in is still counted twice, the same known tradeoff
   /// viewCount itself already accepts by not deduping at write time.
-  uniqueViewerCount Int              @default(0)
-  likeCount        Int               @default(0)
+  uniqueViewerCount    Int                      @default(0)
+  likeCount            Int                      @default(0)
   // Denormalized from ListingBoost (the audit trail) so the hot-path browse query never needs
   // a join just to check boost status — null means not currently boosted. boostRank is bumped
   // by a periodic job to rotate tie-order among simultaneously-boosted listings, rather than
   // whoever paid first/most permanently squatting the top slot.
-  boostedUntil     DateTime?
-  boostRank        Float?
+  boostedUntil         DateTime?
+  boostRank            Float?
   /// Denormalized from ListingInstantAlert (the audit trail), same reasoning as boostedUntil —
   /// null means Instant Alerts isn't active. Read by MessagingService on every new message to
   /// decide whether to email/WhatsApp the owner.
-  instantAlertsUntil DateTime?
+  instantAlertsUntil   DateTime?
   /// Atomically incremented ({ increment: 1 }) on every post-creation photo add, never
   /// decremented on delete. ListingPhoto.photoNo is baked into this listing's R2 storage keys
   /// (apps/bff/src/uploads/photo-keys.ts) and ListingPhoto rows are hard-deleted with no
@@ -539,20 +613,20 @@ model Listing {
   /// number — colliding with (or resurrecting a stale CDN copy of) its old R2 objects. Set at
   /// creation to MAX(photo.photoNo) among the initial photos; backfilled for pre-existing
   /// listings in the migration that added this column.
-  photoNoCounter   Int               @default(0)
-  listingPhotos    ListingPhoto[]
-  listingVideos    ListingVideo[]
-  views            ListingView[]
-  favourites       Favourite[]
-  conversations    Conversation[]
-  payments         Payment[]
-  listingBoosts    ListingBoost[]
+  photoNoCounter       Int                      @default(0)
+  listingPhotos        ListingPhoto[]
+  listingVideos        ListingVideo[]
+  views                ListingView[]
+  favourites           Favourite[]
+  conversations        Conversation[]
+  payments             Payment[]
+  listingBoosts        ListingBoost[]
   listingInstantAlerts ListingInstantAlert[]
-  notificationLogs ListingNotificationLog[]
-  listingRenewals  ListingRenewal[]
-  contactReveals   ContactReveal[]
-  editLogs         ListingEditLog[]
-  interests        ListingInterest[]
+  notificationLogs     ListingNotificationLog[]
+  listingRenewals      ListingRenewal[]
+  contactReveals       ContactReveal[]
+  editLogs             ListingEditLog[]
+  interests            ListingInterest[]
 
   @@index([cityId, category])
   @@index([cityId, transactionType])
@@ -564,12 +638,14 @@ model Listing {
   @@index([areaId])
 }
 
-/** One row per view — logged-in user id or anonymous device key, plus when. No longer deduped
+/**
+ * One row per view — logged-in user id or anonymous device key, plus when. No longer deduped
  * per (listingId, viewerKey): Listing.viewCount now counts every visit, not unique viewers, so
  * every recordView call writes a new row here rather than being a no-op on a repeat visit. This
  * is deliberately the more information-preserving shape — a future move back to a unique-viewer
  * count is just `count(distinct viewerKey)` over these same rows; deduping at write time (the old
- * shape) can never be undone to recover raw visit counts later. */
+ * shape) can never be undone to recover raw visit counts later.
+ */
 model ListingView {
   id        String   @id @default(cuid())
   listingId String
@@ -581,10 +657,12 @@ model ListingView {
   @@index([viewerKey])
 }
 
-/** Identified buyer interest on a listing — one row per (listing, user). Created by the
+/**
+ * Identified buyer interest on a listing — one row per (listing, user). Created by the
  * "I'm interested" CTA or the first Message; drives owner My listings "who's interested" and
  * Instant Alerts / push (see docs/plans/login-gated-listing-interest-owner-notify.md). Distinct
- * from ListingView (raw visits, including anonymous). */
+ * from ListingView (raw visits, including anonymous).
+ */
 model ListingInterest {
   id             String    @id @default(cuid())
   listingId      String
@@ -612,42 +690,51 @@ model Favourite {
   @@unique([listingId, userId])
 }
 
-/** Bhavano Plus's early-access alerts — a Plus-gated buyer sets criteria here, and every
+/**
+ * Bhavano Plus's early-access alerts — a Plus-gated buyer sets criteria here, and every
  * newly-created listing matching them fires a notification immediately (see
  * ListingsService.create() -> SavedSearchesService.notifyMatchingBuyers), instead of the buyer
  * having to keep re-checking browse pages themselves. All filter fields are optional/nullable —
- * an unset field means "don't filter on this", not "must be null". */
+ * an unset field means "don't filter on this", not "must be null".
+ */
 model SavedSearch {
   id              String           @id @default(cuid())
   userId          String
   user            User             @relation(fields: [userId], references: [id])
-  /** How this alert was allowed: "plus" = an active Bhavano Plus subscription paid for it;
+  /**
+   * How this alert was allowed: "plus" = an active Bhavano Plus subscription paid for it;
    * "free" = it came out of the per-user free quota (SavedSearchSetting.freeAlertsPerUser),
    * which is what lets the empty-result prompt promise a real alert to someone who has never
    * paid. Mirrors ContactReveal.source, and for the same reason: the quota is counted by
    * counting rows, so the row has to remember which bucket it came from.
-   *
    * The matcher notifies a "free" row regardless of subscription state, and a "plus" row only
    * while that subscription is live — so someone who lapses keeps the free allowance working and
-   * loses the rest, rather than silently keeping everything or losing everything. */
+   * loses the rest, rather than silently keeping everything or losing everything.
+   */
   source          String           @default("plus")
   name            String
   category        ListingCategory?
   transactionType TransactionType?
-  /** Kept nullable in the DB — a value pre-dating the 2026-09-30 "city and price are mandatory"
+  /**
+   * Kept nullable in the DB — a value pre-dating the 2026-09-30 "city and price are mandatory"
    * rule (or one written by `RequirementsService.alertCriteria`, which deliberately stays looser
    * than what a human fills in on the form) still has to be representable. The rule itself lives
-   * in the create DTO/web form, not a DB constraint. */
+   * in the create DTO/web form, not a DB constraint.
+   */
   cityId          String?
   city            City?            @relation(fields: [cityId], references: [id])
-  /** Up to MAX_REQUIREMENT_AREAS (`@bhavano/types/requirementQuestions`) — same array-of-ids
+  /**
+   * Up to MAX_REQUIREMENT_AREAS (`@bhavano/types/requirementQuestions`) — same array-of-ids
    * convention as `Requirement.areaIds`/`SearchEvent.areaIds`, replacing the single `areaId` this
-   * used to carry. Empty = the whole city. */
+   * used to carry. Empty = the whole city.
+   */
   areaIds         String[]         @default([])
   minPrice        Int?
   maxPrice        Int?
-  /** BHK buckets, 5 = "5+" — same convention as `Requirement.bedroomOptions`, replacing the single
-   * `bedrooms` value this used to carry. Empty = any. */
+  /**
+   * BHK buckets, 5 = "5+" — same convention as `Requirement.bedroomOptions`, replacing the single
+   * `bedrooms` value this used to carry. Empty = any.
+   */
   bedroomOptions  Int[]            @default([])
   createdAt       DateTime         @default(now())
   lastNotifiedAt  DateTime?
@@ -658,16 +745,16 @@ model SavedSearch {
 }
 
 model Conversation {
-  id          String           @id @default(cuid())
-  listingId   String
-  listing     Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  posterId    String
-  poster      User             @relation("ConversationPoster", fields: [posterId], references: [id])
-  inquirerId  String
-  inquirer    User             @relation("ConversationInquirer", fields: [inquirerId], references: [id])
-  type        ConversationType @default(inquiry)
-  createdAt   DateTime         @default(now())
-  messages    Message[]
+  id         String           @id @default(cuid())
+  listingId  String
+  listing    Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  posterId   String
+  poster     User             @relation("ConversationPoster", fields: [posterId], references: [id])
+  inquirerId String
+  inquirer   User             @relation("ConversationInquirer", fields: [inquirerId], references: [id])
+  type       ConversationType @default(inquiry)
+  createdAt  DateTime         @default(now())
+  messages   Message[]
 
   @@unique([listingId, inquirerId, type])
 }
@@ -679,8 +766,10 @@ model Message {
   senderId       String
   sender         User         @relation(fields: [senderId], references: [id])
   body           String
-  /** MessageCardDto for staff messages that render as a card (the Boost offer); `body` keeps
-   * the same content as plain text for clients that don't know the card. */
+  /**
+   * MessageCardDto for staff messages that render as a card (the Boost offer); `body` keeps
+   * the same content as plain text for clients that don't know the card.
+   */
   card           Json?
   createdAt      DateTime     @default(now())
   readAt         DateTime?
@@ -689,11 +778,13 @@ model Message {
   @@index([conversationId, createdAt])
 }
 
-/** One-directional block between two users who share a conversation — checked in both
+/**
+ * One-directional block between two users who share a conversation — checked in both
  * directions (either party may have blocked the other) before a new message can be sent. See
  * MessagingService's own doc comment on where this is enforced. Scoped to a user pair, not a
  * conversation: blocking someone stops them messaging you about *any* listing, not just the one
- * you blocked them from. */
+ * you blocked them from.
+ */
 model BlockedUser {
   id        String   @id @default(cuid())
   blockerId String
@@ -706,38 +797,46 @@ model BlockedUser {
   @@index([blockedId])
 }
 
-/** One row per photo on a listing — ordered by photoNo, hash retained for the existing
+/**
+ * One row per photo on a listing — ordered by photoNo, hash retained for the existing
  * near-duplicate check at moderation time. Variant URLs (preview/full) are never stored
- * here; they're fully derived from listingId + photoNo (see apps/bff/src/uploads/photo-keys.ts). */
+ * here; they're fully derived from listingId + photoNo (see apps/bff/src/uploads/photo-keys.ts).
+ */
 model ListingPhoto {
-  id        String   @id @default(cuid())
-  listingId String
-  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  photoNo   Int
-  hash      String
-  /** Admin-applied manual correction on top of the automatic EXIF orientation, in degrees
+  id           String   @id @default(cuid())
+  listingId    String
+  listing      Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  photoNo      Int
+  hash         String
+  /**
+   * Admin-applied manual correction on top of the automatic EXIF orientation, in degrees
    * clockwise (0/90/180/270) — see docs/plans/listing-photo-orientation.md. Always 0 for a
    * freshly uploaded photo; only the admin rotate endpoint ever changes it. Re-applied every
    * time PhotoProcessingService regenerates this photo's variants from the stored original,
-   * so it survives a reprocess rather than being baked into a one-off file edit. */
-  rotation  Int      @default(0)
-  createdAt DateTime @default(now())
-  /** Bumped on every write to this row, including a rotate that lands back on rotation:0 — the
+   * so it survives a reprocess rather than being baked into a one-off file edit.
+   */
+  rotation     Int      @default(0)
+  createdAt    DateTime @default(now())
+  /**
+   * Bumped on every write to this row, including a rotate that lands back on rotation:0 — the
    * admin UI cache-busts each image URL with this, NOT with `rotation` itself. `rotation` cycles
    * (0→90→180→270→0→…) and every photo starts at 0, so a plain photo has *already* been fetched
    * once at ?r=0 before any admin ever rotates it; wrapping back around to 0 would collide with
    * that original request under either browser or CDN caching (CDN_BASE_URL is Cloudflare-backed,
    * which caches static file types like .webp at the edge, by URL+query string, by default,
    * independent of origin Cache-Control) and silently serve stale, pre-rotation content. See
-   * docs/plans/listing-photo-orientation.md. */
-  updatedAt DateTime @updatedAt
-  /** Gallery position — defaults to `photoNo` at creation, so every existing photo's order is
+   * docs/plans/listing-photo-orientation.md.
+   */
+  updatedAt    DateTime @updatedAt
+  /**
+   * Gallery position — defaults to `photoNo` at creation, so every existing photo's order is
    * unchanged until someone explicitly picks a different cover. Deliberately separate from
    * `photoNo`: `photoNo` is baked into this photo's storage keys (see
    * apps/bff/src/uploads/photo-keys.ts) and must never change once assigned, or its R2 objects
    * stop resolving. "Set as cover" means giving a photo a displayOrder lower than every other
    * photo on the listing — never touching photoNo or anything in storage. See
-   * docs/plans/listing-photo-cover-and-owner-controls.md. */
+   * docs/plans/listing-photo-cover-and-owner-controls.md.
+   */
   displayOrder Int
 
   @@unique([listingId, photoNo])
@@ -757,9 +856,11 @@ enum PhotoJobStatus {
   failed
 }
 
-/** Durable work queue for async photo resizing — polled in-process (no Redis/queue infra).
+/**
+ * Durable work queue for async photo resizing — polled in-process (no Redis/queue infra).
  * No FK to Listing: jobs are only created once the listing already exists (from
- * ListingsService.create(), not from the upload step, which runs before the listing does). */
+ * ListingsService.create(), not from the upload step, which runs before the listing does).
+ */
 model PhotoVariantJob {
   id        String           @id @default(cuid())
   listingId String
@@ -782,40 +883,50 @@ enum VideoStatus {
   failed
 }
 
-/** One uploaded video per row, carrying its own processing state — deliberately NOT split into a
+/**
+ * One uploaded video per row, carrying its own processing state — deliberately NOT split into a
  * separate job table the way ListingPhoto/PhotoVariantJob are. That split exists for photos
  * because the upload step runs before the listing exists; every video attach path (the wizard, or
  * the post-creation add-video endpoint) runs after the Listing row already exists, so there's
  * nothing to decouple — and splitting would mean downloading + decoding the (large) original once
- * per output variant instead of once. See docs/plans/listing-video-uploads.md. */
+ * per output variant instead of once. See docs/plans/listing-video-uploads.md.
+ */
 model ListingVideo {
-  id        String      @id @default(cuid())
-  listingId String
-  listing   Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  /** Display order only — never appears in a storage key, so reusing a videoNo after a delete
-   * (e.g. via `max(videoNo)+1`) is harmless. */
-  videoNo   Int
-  /** Opaque, server-minted, the ONLY identifier in the R2 key (see video-keys.ts) — keeps keys
+  id          String      @id @default(cuid())
+  listingId   String
+  listing     Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  /**
+   * Display order only — never appears in a storage key, so reusing a videoNo after a delete
+   * (e.g. via `max(videoNo)+1`) is harmless.
+   */
+  videoNo     Int
+  /**
+   * Opaque, server-minted, the ONLY identifier in the R2 key (see video-keys.ts) — keeps keys
    * write-once even though videos are deletable, so a delete + re-add can never resolve to a key
-   * Cloudflare's edge cache still has a stale copy of (there's no app-level cache-purge hook). */
-  storageId String      @unique
-  ext       String
-  /** ffprobe-verified server-side, never client-reported — this is the tier-enforcement value. */
+   * Cloudflare's edge cache still has a stale copy of (there's no app-level cache-purge hook).
+   */
+  storageId   String      @unique
+  ext         String
+  /**
+   * ffprobe-verified server-side, never client-reported — this is the tier-enforcement value.
+   */
   durationSec Int
-  sizeBytes Int
-  status    VideoStatus @default(pending)
-  attempts  Int         @default(0)
-  error     String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  sizeBytes   Int
+  status      VideoStatus @default(pending)
+  attempts    Int         @default(0)
+  error       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@unique([listingId, videoNo])
   @@index([status, createdAt])
   @@index([listingId])
 }
 
-/** Emailed verification codes, mirroring OtpChallenge for phone. Scoped to a user because an
- * email is only ever verified from inside a logged-in session — there is no email login. */
+/**
+ * Emailed verification codes, mirroring OtpChallenge for phone. Scoped to a user because an
+ * email is only ever verified from inside a logged-in session — there is no email login.
+ */
 model EmailChallenge {
   id        String   @id @default(cuid())
   userId    String
@@ -844,17 +955,18 @@ model LoginEvent {
   userId    String
   user      User        @relation(fields: [userId], references: [id])
   method    LoginMethod
-  /** The browser session (`bhavano_sid`) this login happened in, when the caller knew one —
+  /**
+   * The browser session (`bhavano_sid`) this login happened in, when the caller knew one —
    * null for mobile-app logins, which never touch apps/web's middleware and so have no session
    * cookie, and for every row written before this field existed.
-   *
    * Deliberately NOT a relation to Visit: a Visit holds exactly one `userId`, so a session where
    * two different accounts log in (a shared desktop, or one person signing up by phone and then
    * by Google seconds later) can only ever record the first — which is how a real signup came to
    * be invisible on the admin Page visits screen despite 743 page views in that session. Keeping
    * the fact here, one row per login, is what lets that screen show every account a session saw,
    * and makes "two accounts, one session" a queryable duplicate signal for
-   * docs/plans/account-linking-phone-and-email.md's merge flow. */
+   * docs/plans/account-linking-phone-and-email.md's merge flow.
+   */
   sessionId String?
   createdAt DateTime    @default(now())
 
@@ -863,92 +975,106 @@ model LoginEvent {
   @@index([sessionId])
 }
 
-/** One row per browser session (not per page load) — apps/web's middleware.ts fires this the
+/**
+ * One row per browser session (not per page load) — apps/web's middleware.ts fires this the
  * first time it sees a request without a `bhavano_sid` cookie, i.e. once per "sitting" (a new
  * session starts after the browser/tab is closed and reopened). `userId` starts null for an
  * anonymous visitor and is filled in later by AuthService if that same session goes on to log in
  * — never reattributed once set. Distinct from `User.acquisition*` (a permanent, 30-day-cookie
  * first-ever-touch summary): this is the full per-session audit log, covering every visit
- * including ones that never convert to a signup. */
+ * including ones that never convert to a signup.
+ */
 model Visit {
-  id          String   @id @default(cuid())
-  sessionId   String   @unique
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id])
-  source      String?
-  medium      String?
-  campaign    String?
-  /** Google Ads click-identifying params, from the account's Final URL suffix
+  id            String    @id @default(cuid())
+  sessionId     String    @unique
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+  source        String?
+  medium        String?
+  campaign      String?
+  /**
+   * Google Ads click-identifying params, from the account's Final URL suffix
    * (gclid={gclid}&campaignid={campaignid}&adgroupid={adgroupid}&adid={creative}) — captured
-   * independently of source/medium/campaign above; see the matching User.acquisition* fields. */
-  gclid       String?
-  campaignId  String?
-  adGroupId   String?
-  adId        String?
-  landingPath String?
-  /** The visitor's IP as seen by Caddy. Personal data under the DPDP Act — /privacy discloses
+   * independently of source/medium/campaign above; see the matching User.acquisition* fields.
+   */
+  gclid         String?
+  campaignId    String?
+  adGroupId     String?
+  adId          String?
+  landingPath   String?
+  /**
+   * The visitor's IP as seen by Caddy. Personal data under the DPDP Act — /privacy discloses
    * it. Nullable, since a request reaching the BFF without a usable X-Forwarded-For should still
-   * record its visit rather than fail. */
-  ip          String?
-  /** Best-effort city/region/country guess from `ip` via a local MaxMind GeoLite2 lookup
+   * record its visit rather than fail.
+   */
+  ip            String?
+  /**
+   * Best-effort city/region/country guess from `ip` via a local MaxMind GeoLite2 lookup
    * (GeoIpService), done once at write time. Free text, NOT a foreign key to City — GeoIP naming
    * doesn't reliably match this app's slugified city list (e.g. "Bangalore" vs "Bengaluru"), so
    * don't join against City on these. Null when ip is null, the IP isn't in the database, or the
    * database file isn't present — see docs/plans/visit-ip-city-logging.md. Admin-analytics label
    * only; never used to decide what a visitor sees (contrast with the removed IP-based city
-   * *default*, see docs/plans/remove-automatic-ip-city-detection.md). */
-  ipCity      String?
-  ipRegion    String?
-  ipCountry   String?
-  /** Whether the User-Agent that opened this session looks like a crawler (isBotUserAgent).
-   *
+   * *default*, see docs/plans/remove-automatic-ip-city-detection.md).
+   */
+  ipCity        String?
+  ipRegion      String?
+  ipCountry     String?
+  /**
+   * Whether the User-Agent that opened this session looks like a crawler (isBotUserAgent).
    * Nullable on purpose, and null means *not classified* rather than "human": every row written
    * before this column existed has no stored User-Agent to judge after the fact, and 99.85% of
    * those are in fact bot traffic (see isBotUserAgent's own doc). Defaulting them to false would
    * relabel a bot log as a human one. apps/web's middleware now drops known crawlers before they
    * ever reach `/analytics/visit`, so this should be false for nearly every new row — it earns
    * its place by catching whatever that list misses, which is exactly what can't be found later
-   * otherwise. */
-  isBot       Boolean?
-  /** When a real browser engine confirmed it had executed JavaScript on this session, from the
+   * otherwise.
+   */
+  isBot         Boolean?
+  /**
+   * When a real browser engine confirmed it had executed JavaScript on this session, from the
    * once-per-session beacon in apps/web (JsConfirmation -> /api/analytics/confirm). Null means
    * never confirmed, which covers three different things and deliberately doesn't distinguish
    * them: the session predates this column, or JS never ran (most scripted clients), or the
    * beacon itself didn't land.
-   *
    * This is the strongest human signal available here, and the only one not derived from a header
    * the client chooses for itself — `isBot` above is a substring match on a self-declared
    * User-Agent, so a scraper announcing itself as Safari passes it (measured: datacentre hosts in
    * 43.159.0.0/16 logging as `deviceType: mobile`, `isBot: false`). Executing a JS engine is a
    * capability, not a claim.
-   *
    * A timestamp rather than a boolean because it costs the same and says more — the gap from
    * `createdAt` shows how long after the request the page actually came alive. Never written
-   * false: absence *is* the negative case. */
+   * false: absence *is* the negative case.
+   */
   jsConfirmedAt DateTime?
-  /** "desktop" / "mobile" / "tablet" / "mobile_app", derived once at write time from the
+  /**
+   * "desktop" / "mobile" / "tablet" / "mobile_app", derived once at write time from the
    * request's User-Agent header (see `deviceTypeFromUserAgent` in analytics.service.ts) — only
    * the coarse label is kept, not the raw header, same "derive once, discard the raw input"
    * precedent as ipCity/ipRegion/ipCountry above. "mobile_app" isn't a UA distinction at all:
    * the native app posts `/analytics/visit` + `/analytics/pageview` with `fromApp: true` (see
    * apps/mobile SoftNavAppPageViews), and system-browser opens from the app (Boost checkout,
    * Terms/Privacy — see apps/mobile/src/lib/appWebUrl.ts) tag themselves with `app=1` that
-   * middleware turns into the same flag. */
-  deviceType  String?
-  /** "android" / "ios", best-effort from the same User-Agent header `deviceType` reads (see
+   * middleware turns into the same flag.
+   */
+  deviceType    String?
+  /**
+   * "android" / "ios", best-effort from the same User-Agent header `deviceType` reads (see
    * `osFromUserAgent` in device-type.ts) — orthogonal to deviceType, since a phone or tablet can
    * be either. Null for desktop UAs and anything unrecognised, same "not classified" precedent as
    * `isBot`. Not meaningful yet for `deviceType: 'mobile_app'` rows: there is no iOS app to tell
    * apart from Android, so every one of those is Android today regardless of what UA-sniffing
-   * happens to return — revisit once an iOS app ships. */
-  os          String?
-  createdAt   DateTime @default(now())
+   * happens to return — revisit once an iOS app ships.
+   */
+  os            String?
+  createdAt     DateTime  @default(now())
 
   @@index([userId])
   @@index([createdAt])
 }
 
-/** One row per real (non-prefetch) page navigation within a browsing session — the full trail
+/**
+ * One row per real (non-prefetch) page navigation within a browsing session — the full trail
  * behind `Visit.landingPath`, which only ever captures the first page. Written by web's
  * middleware.ts on every matching request (and SoftNavPageViews for client-side navigations),
  * and by the mobile app's SoftNavAppPageViews / PostAdWizard for in-app routes (including the
@@ -957,10 +1083,10 @@ model Visit {
  * `Visit` row that hasn't been created yet. Not pruned — same non-cleanup precedent as
  * `RateLimitHit` below — and, being one row per page view rather than per session, grows faster
  * than `Visit`; worth a retention job if volume ever becomes a concern.
- *
  * A caveat worth keeping in mind reading this data: a client-side navigation to a route Next.js
  * had already prefetched (cached) never reaches the server, so this sees most but not literally
- * every page change — same "best effort" precedent as `Visit.ipCity`'s coarse GeoIP guess. */
+ * every page change — same "best effort" precedent as `Visit.ipCity`'s coarse GeoIP guess.
+ */
 model PageView {
   id        String   @id @default(cuid())
   sessionId String
@@ -971,9 +1097,11 @@ model PageView {
   @@index([createdAt])
 }
 
-/** One row per rate-limited action attempt, counted over a rolling window at check time —
+/**
+ * One row per rate-limited action attempt, counted over a rolling window at check time —
  * not pruned (same non-cleanup precedent as OtpChallenge). Anonymous requests never reach
- * the guard that writes these, so `identity` is always "user:<id>". */
+ * the guard that writes these, so `identity` is always "user:<id>".
+ */
 model RateLimitHit {
   id        String        @id @default(cuid())
   identity  String
@@ -983,20 +1111,31 @@ model RateLimitHit {
   @@index([identity, kind, createdAt])
 }
 
-/** Singleton row (fixed id "singleton", upserted) — the admin-editable rate limits. */
+/**
+ * Singleton row (fixed id "singleton", upserted) — the admin-editable rate limits.
+ */
 model RateLimitSetting {
-  id                   String   @id
-  publishLimit         Int      @default(5)
-  publishWindowMinutes Int      @default(1440)
-  viewLimit            Int      @default(200)
-  viewWindowMinutes    Int      @default(60)
-  updatedAt            DateTime @updatedAt
+  id                      String   @id
+  publishLimit            Int      @default(5)
+  publishWindowMinutes    Int      @default(1440)
+  viewLimit               Int      @default(200)
+  viewWindowMinutes       Int      @default(60)
+  /**
+   * Bounds the AI title/description "Generate" button — see docs/plans/ai-listing-copy-assist.md.
+   * Default 10/day: a Featured-tier call can hit a paid Places lookup (~$0.032 each), so this
+   * bounds worst-case per-user cost to ~$0.32/day.
+   */
+  aiGenerateLimit         Int      @default(10)
+  aiGenerateWindowMinutes Int      @default(1440)
+  updatedAt               DateTime @updatedAt
 }
 
-/** Singleton row (fixed id "singleton", upserted) — admin-editable boost prices. Column groups
+/**
+ * Singleton row (fixed id "singleton", upserted) — admin-editable boost prices. Column groups
  * mirror the three category value-tiers boostPricing.ts has always used (property / coworking-
  * pg-storage / furniture-interiors) — which categories fall into which group is a code concept,
- * not something admins reassign. See docs/plans/admin-manage-plans-pricing.md. */
+ * not something admins reassign. See docs/plans/admin-manage-plans-pricing.md.
+ */
 model BoostPriceSetting {
   id                              String   @id
   propertyBoostPrice7d            Int      @default(199)
@@ -1038,43 +1177,49 @@ model BoostPriceSetting {
 /// (see @bhavano/types/boostEffectiveness's MIN_SAMPLE_SIZE) rather than ever showing a stat
 /// computed from a handful of listings.
 model BoostEffectivenessStat {
-  id                    String   @id
+  id                     String   @id
   /// Average ListingView count in a listing's first 7 days live.
-  avgViews7dBoosted     Float
-  avgViews7dUnboosted   Float
+  avgViews7dBoosted      Float
+  avgViews7dUnboosted    Float
   /// Share (0-1) of listings with at least one ListingInterest row in their first 7 days live.
-  contactRate7dBoosted  Float
+  contactRate7dBoosted   Float
   contactRate7dUnboosted Float
-  boostedSampleSize     Int
-  unboostedSampleSize   Int
-  computedAt            DateTime @updatedAt
+  boostedSampleSize      Int
+  unboostedSampleSize    Int
+  computedAt             DateTime @updatedAt
 }
 
-/** Singleton row (fixed id "singleton", upserted) — admin-editable Instant Alerts price. Flat,
+/**
+ * Singleton row (fixed id "singleton", upserted) — admin-editable Instant Alerts price. Flat,
  * no category tiers (unlike boost) since the value proposition doesn't scale with listing price
- * the way boost visibility does. See docs/plans/instant-alerts-paid-message-notifications.md. */
+ * the way boost visibility does. See docs/plans/instant-alerts-paid-message-notifications.md.
+ */
 model InstantAlertsPriceSetting {
   id                 String   @id
   instantAlertsPrice Int      @default(25)
   updatedAt          DateTime @updatedAt
 }
 
-/** Singleton — mandatory listing platform fee per category tier when > 0. See
- * docs/plans/listing-platform-fee-and-checkout-gate.md. */
+/**
+ * Singleton — mandatory listing platform fee per category tier when > 0. See
+ * docs/plans/listing-platform-fee-and-checkout-gate.md.
+ */
 model PlatformFeeSetting {
-  id                                  String   @id
-  propertyListingFee                  Int      @default(0)
-  coworkingPgStorageListingFee        Int      @default(0)
-  furnitureInteriorsListingFee        Int      @default(0)
+  id                                 String   @id
+  propertyListingFee                 Int      @default(0)
+  coworkingPgStorageListingFee       Int      @default(0)
+  furnitureInteriorsListingFee       Int      @default(0)
   /// When true, create() skips pending_checkout even if fee > 0 or boost is selected.
-  allowLivePublishWithPendingPayment  Boolean  @default(false)
-  updatedAt                           DateTime @updatedAt
+  allowLivePublishWithPendingPayment Boolean  @default(false)
+  updatedAt                          DateTime @updatedAt
 }
 
-/** Singleton row (fixed id "singleton", upserted) — admin-editable subscription tier prices and
+/**
+ * Singleton row (fixed id "singleton", upserted) — admin-editable subscription tier prices and
  * concurrent-listing-slot counts. Bundled together since the slot counts are a property of these
  * same tiers, not a separate concern. `buyerPremium*` is the "Bhavano Plus" buyer-side tier; see
- * docs/plans/admin-manage-plans-pricing.md. */
+ * docs/plans/admin-manage-plans-pricing.md.
+ */
 model SubscriptionPlanSetting {
   id                          String   @id
   freeListingSlots            Int      @default(5)
@@ -1088,92 +1233,118 @@ model SubscriptionPlanSetting {
   updatedAt                   DateTime @updatedAt
 }
 
-/** Central payment ledger — the single source of truth for whether a purchase actually
+/**
+ * Central payment ledger — the single source of truth for whether a purchase actually
  * succeeded. The Razorpay webhook (never a client-side "payment succeeded" callback) is what
  * flips a row to `paid`; `razorpayPaymentId` is unique so webhook redelivery is always a safe
  * no-op. `listingId`/`boostDays` are purpose-specific fields (only meaningful for
  * `listing_boost`) — left nullable rather than modeled generically, same pattern as
  * `Listing.condition` being furniture-only; future purposes add their own nullable fields in
- * their own migration instead of retrofitting a generic column now. */
+ * their own migration instead of retrofitting a generic column now.
+ */
 model Payment {
-  id                String         @id @default(cuid())
-  userId            String
-  user              User           @relation(fields: [userId], references: [id])
-  razorpayOrderId   String         @unique
-  razorpayPaymentId String?        @unique
-  amount            Int
-  currency          String         @default("INR")
-  status            PaymentStatus  @default(created)
-  purpose           PaymentPurpose
-  listingId         String?
-  listing           Listing?       @relation(fields: [listingId], references: [id])
-  boostDays         Int?
-  /** Only meaningful for `listing_boost` payments — set when this was bought as the "Boost +
+  id                         String                    @id @default(cuid())
+  userId                     String
+  user                       User                      @relation(fields: [userId], references: [id])
+  razorpayOrderId            String                    @unique
+  razorpayPaymentId          String?                   @unique
+  amount                     Int
+  currency                   String                    @default("INR")
+  status                     PaymentStatus             @default(created)
+  purpose                    PaymentPurpose
+  listingId                  String?
+  listing                    Listing?                  @relation(fields: [listingId], references: [id])
+  boostDays                  Int?
+  /**
+   * Only meaningful for `listing_boost` payments — set when this was bought as the "Boost +
    * Instant Alerts" bundle on the post-ad success screen, so the webhook's listing_boost branch
    * also activates Instant Alerts and sends one combined confirmation once this is paid, instead
-   * of leaving it to a second, separate instant_alerts payment. */
-  boostIncludesInstantAlerts Boolean @default(false)
-  /** Only meaningful for buyer_premium/agent_pro — same "purpose-specific nullable field"
-   * convention as boostDays above. */
-  subscriptionMonths Int?
-  /** agent_pro orders only — number of ₹499 blocks purchased (20 slots each). */
-  agentProUnits     Int?
-  /** Whether this buyer's device allowed ad tracking, captured from `x-tracking-authorized` when
+   * of leaving it to a second, separate instant_alerts payment.
+   */
+  boostIncludesInstantAlerts Boolean                   @default(false)
+  /**
+   * Only meaningful for buyer_premium/agent_pro — same "purpose-specific nullable field"
+   * convention as boostDays above.
+   */
+  subscriptionMonths         Int?
+  /**
+   * agent_pro orders only — number of ₹499 blocks purchased (20 slots each).
+   */
+  agentProUnits              Int?
+  /**
+   * Whether this buyer's device allowed ad tracking, captured from `x-tracking-authorized` when
    * the order was created. The Razorpay webhook that later reports this purchase to Google Ads is
    * a server-to-server callback with no such header, so the decision has to be carried on the row
    * — the alternative is uploading a conversion for someone who denied App Tracking Transparency.
-   * Null means never asked (web, or a mobile build predating the prompt), which is authorized. */
-  adsTrackingAuthorized Boolean?
-  /** "web" or "app", from `x-client` — null for clients that don't send it, including every
+   * Null means never asked (web, or a mobile build predating the prompt), which is authorized.
+   */
+  adsTrackingAuthorized      Boolean?
+  /**
+   * "web" or "app", from `x-client` — null for clients that don't send it, including every
    * mobile build shipped before that header existed. Feeds the upload's `eventSource` and answers
    * a question the data could not previously: nine boost purchases from ad clicks recorded zero
-   * conversions, and whether that was mobile or a broken web tag was unknowable. */
-  platform          String?
-  /** Where the checkout was started from, when it's a place we measure — one of PURCHASE_SOURCES
-   * in @bhavano/types/purchaseSource (e.g. "admin_boost_message"). Null for everything else. */
-  source            String?
-  /** contact_reveal_credits orders only — how many credits this order buys, read from
-   * ContactRevealSetting at order-creation time (never client-supplied). */
-  creditPackSize    Int?
-  /** Set when a DiscountCode was applied at order-creation. The redemption row itself
+   * conversions, and whether that was mobile or a broken web tag was unknowable.
+   */
+  platform                   String?
+  /**
+   * Where the checkout was started from, when it's a place we measure — one of PURCHASE_SOURCES
+   * in @bhavano/types/purchaseSource (e.g. "admin_boost_message"). Null for everything else.
+   */
+  source                     String?
+  /**
+   * contact_reveal_credits orders only — how many credits this order buys, read from
+   * ContactRevealSetting at order-creation time (never client-supplied).
+   */
+  creditPackSize             Int?
+  /**
+   * Set when a DiscountCode was applied at order-creation. The redemption row itself
    * (DiscountCodeRedemption) is only created once the webhook confirms `paid` — an abandoned
-   * checkout must not consume a redemption slot. */
-  discountCodeId    String?
-  discountCode      DiscountCode?  @relation(fields: [discountCodeId], references: [id])
-  createdAt         DateTime       @default(now())
-  paidAt            DateTime?
-  listingBoost      ListingBoost?
-  listingInstantAlert ListingInstantAlert?
-  subscription      UserSubscription?
-  contactRevealCreditBatch ContactRevealCreditBatch?
-  discountCodeRedemption   DiscountCodeRedemption?
-  referralCreditRedemption ReferralCreditBatch?
+   * checkout must not consume a redemption slot.
+   */
+  discountCodeId             String?
+  discountCode               DiscountCode?             @relation(fields: [discountCodeId], references: [id])
+  createdAt                  DateTime                  @default(now())
+  paidAt                     DateTime?
+  listingBoost               ListingBoost?
+  listingInstantAlert        ListingInstantAlert?
+  subscription               UserSubscription?
+  contactRevealCreditBatch   ContactRevealCreditBatch?
+  discountCodeRedemption     DiscountCodeRedemption?
+  referralCreditRedemption   ReferralCreditBatch?
 
   @@index([userId, createdAt])
 }
 
-/** One row per activated buyer_premium/agent_pro purchase — the audit trail; User.premiumUntil/
+/**
+ * One row per activated buyer_premium/agent_pro purchase — the audit trail; User.premiumUntil/
  * agentProUntil are the cheap denormalized reads used everywhere else (same pattern as
- * ListingBoost/Listing.boostedUntil below). */
+ * ListingBoost/Listing.boostedUntil below).
+ */
 model UserSubscription {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id])
-  tier      SubscriptionTier
-  startsAt  DateTime         @default(now())
-  endsAt    DateTime
-  /** Null for an admin grant (see `grantReason`), which has no payment behind it. */
-  paymentId String?          @unique
-  payment   Payment?         @relation(fields: [paymentId], references: [id])
-  /** Admin grants only — e.g. "founding_broker". See docs/plans/broker-paid-bundles.md, Phase 1. */
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  tier        SubscriptionTier
+  startsAt    DateTime         @default(now())
+  endsAt      DateTime
+  /**
+   * Null for an admin grant (see `grantReason`), which has no payment behind it.
+   */
+  paymentId   String?          @unique
+  payment     Payment?         @relation(fields: [paymentId], references: [id])
+  /**
+   * Admin grants only — e.g. "founding_broker". See docs/plans/broker-paid-bundles.md, Phase 1.
+   */
   grantReason String?
 
   @@index([userId])
 }
 
-/** One row per activated boost — the history/audit trail. `Listing.boostedUntil` is the
+/**
+ * One row per activated boost — the history/audit trail. `Listing.boostedUntil` is the
  * denormalized field the hot-path browse query actually reads, kept in sync here so listing
- * queries never need a join just to check boost status. */
+ * queries never need a join just to check boost status.
+ */
 model ListingBoost {
   id           String   @id @default(cuid())
   listingId    String
@@ -1186,11 +1357,13 @@ model ListingBoost {
   @@index([listingId])
 }
 
-/** One row per activated Instant Alerts purchase — the history/audit trail, same convention as
+/**
+ * One row per activated Instant Alerts purchase — the history/audit trail, same convention as
  * ListingBoost above. `Listing.instantAlertsUntil` is the denormalized field actually read at
  * message-send time. `activeUntil` is always set to the listing's own `expiresAt` at activation
  * time (no seller-chosen duration, unlike boost's 7d/15d) — see
- * docs/plans/instant-alerts-paid-message-notifications.md. */
+ * docs/plans/instant-alerts-paid-message-notifications.md.
+ */
 model ListingInstantAlert {
   id            String   @id @default(cuid())
   listingId     String
@@ -1203,8 +1376,10 @@ model ListingInstantAlert {
   @@index([listingId])
 }
 
-/** One row per renewal — the audit trail for "how many times, and from what date to what date"
- * a listing was renewed. See docs/plans/finish-listing-renewal-ui-and-history.md. */
+/**
+ * One row per renewal — the audit trail for "how many times, and from what date to what date"
+ * a listing was renewed. See docs/plans/finish-listing-renewal-ui-and-history.md.
+ */
 model ListingRenewal {
   id                String   @id @default(cuid())
   listingId         String
@@ -1216,18 +1391,19 @@ model ListingRenewal {
   @@index([listingId])
 }
 
-/** One row per mutation to a listing — created, an owner's own edit, an admin moderation action,
+/**
+ * One row per mutation to a listing — created, an owner's own edit, an admin moderation action,
  * or a status change. `changes` holds a before/after diff per changed field (null only for
  * `created`, which has no "before"). `actorId` is a User.id for both 'owner' and 'admin' — an
  * owner editing their own listing and an admin moderating someone else's listing are both real
  * User rows, just playing different roles for this one action; 'system' (no actorId) is reserved
  * for anything not attributable to a specific logged-in actor, which nothing currently writes but
  * keeps the shape honest for e.g. a future scheduled job.
- *
  * Deliberately NOT written on ListingsService.deleteListing — a hard delete cascades this table
  * away with the rest of the listing's rows, so logging a delete here would just delete itself;
  * an audit trail that must survive the listing being gone needs a different, non-cascading
- * design, out of scope for now (see docs/plans/listing-edit-history.md). */
+ * design, out of scope for now (see docs/plans/listing-edit-history.md).
+ */
 model ListingEditLog {
   id        String   @id @default(cuid())
   listingId String
@@ -1235,43 +1411,52 @@ model ListingEditLog {
   actorType String // 'owner' | 'admin' | 'system'
   actorId   String?
   actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
-  /** 'created' | 'updated' | 'approved' | 'flagged' | 'status_changed' | 'photo_added' |
+  /**
+   * 'created' | 'updated' | 'approved' | 'flagged' | 'status_changed' | 'photo_added' |
    * 'photo_removed' | 'video_added' | 'video_removed'. Plain string, not an enum — same reasoning
-   * as ListingNotificationLog.kind: a new action never needs a migration to log through here. */
+   * as ListingNotificationLog.kind: a new action never needs a migration to log through here.
+   */
   action    String
-  /** { fieldName: { before, after } } — arbitrary JSON since different actions touch completely
+  /**
+   * { fieldName: { before, after } } — arbitrary JSON since different actions touch completely
    * different fields (a price edit vs. a moderationState flip vs. a photo being added). Null for
-   * 'created' (nothing to diff against). */
+   * 'created' (nothing to diff against).
+   */
   changes   Json?
   createdAt DateTime @default(now())
 
   @@index([listingId, createdAt])
 }
 
-/** Send log for every listing-scoped notification — "posted", "liked", "expiry_reminder_7d",
+/**
+ * Send log for every listing-scoped notification — "posted", "liked", "expiry_reminder_7d",
  * "expiry_reminder_1d", and so on; `kind` is a plain string rather than an enum so a new
  * notification type never needs a migration to log through here.
- *
  * Not unique on (listingId, kind): a one-shot kind (posted, either expiry reminder) naturally
  * ends up with a single row because nothing re-triggers it, but a recurring one (liked — once per
  * person who favourites a boosted listing) needs to log every occurrence. The expiry-reminder
  * job's own "have I already sent this" check (`notificationLogs: { none: { kind } }`) works
  * identically either way, since it looks for existing rows rather than relying on the database to
- * enforce there being at most one. */
+ * enforce there being at most one.
+ */
 model ListingNotificationLog {
-  id        String   @id @default(cuid())
-  listingId String
-  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  kind      String
-  channel   String
-  sentAt    DateTime @default(now())
-  /** MSG91's id for this specific WhatsApp send, when `channel` is "whatsapp" — the key a later
+  id                String    @id @default(cuid())
+  listingId         String
+  listing           Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  kind              String
+  channel           String
+  sentAt            DateTime  @default(now())
+  /**
+   * MSG91's id for this specific WhatsApp send, when `channel` is "whatsapp" — the key a later
    * delivery/read status webhook event correlates back to this row by. Null for email sends and
-   * for any WhatsApp send from before this field existed. */
+   * for any WhatsApp send from before this field existed.
+   */
   providerMessageId String?
-  /** sent (this row's own existence already means that) / delivered / read / failed — advanced
+  /**
+   * sent (this row's own existence already means that) / delivered / read / failed — advanced
    * by WhatsappStatusWebhookController as MSG91 forwards status events. Null until the first
-   * event arrives; stays null forever for a channel MSG91 doesn't report status for (email). */
+   * event arrives; stays null forever for a channel MSG91 doesn't report status for (email).
+   */
   deliveryStatus    String?
   deliveryStatusAt  DateTime?
 
@@ -1280,23 +1465,27 @@ model ListingNotificationLog {
   @@index([providerMessageId])
 }
 
-/** Raw capture of every inbound MSG91 WhatsApp status webhook call, kept regardless of whether
+/**
+ * Raw capture of every inbound MSG91 WhatsApp status webhook call, kept regardless of whether
  * it could be parsed/correlated to a ListingNotificationLog row. Exists because MSG91's actual
  * webhook payload shape isn't documented anywhere reliable in this codebase yet (the same
  * "trust the dashboard, not generic docs" lesson Msg91Provider's own comments already learned
  * once, for the send side) — this table is how that shape gets learned for the receive side,
  * from real events, before WhatsappStatusWebhookController's parsing logic is trusted. Safe to
- * prune old rows once that parsing is confirmed correct; nothing depends on this table long-term. */
+ * prune old rows once that parsing is confirmed correct; nothing depends on this table long-term.
+ */
 model WhatsappWebhookEvent {
   id         String   @id @default(cuid())
   rawBody    Json
   receivedAt DateTime @default(now())
 }
 
-/** `ListingNotificationLog`'s counterpart for a notification with no listing — today, just
+/**
+ * `ListingNotificationLog`'s counterpart for a notification with no listing — today, just
  * "welcome". Not unique on (userId, kind): "welcome" is genuinely one-shot in practice, gated by
  * `User.welcomedAt` before this ever gets a chance to run, but nothing here assumes that stays
- * true forever the way a DB constraint would. */
+ * true forever the way a DB constraint would.
+ */
 model UserNotificationLog {
   id      String   @id @default(cuid())
   userId  String
@@ -1309,10 +1498,12 @@ model UserNotificationLog {
   @@index([sentAt])
 }
 
-/** One Expo push token per mobile device. `token` is unique so a device that logs into a
+/**
+ * One Expo push token per mobile device. `token` is unique so a device that logs into a
  * different account re-points its existing row (upsert on token) rather than leaving the message
  * push going to the previous user. Deleted on logout, and pruned when Expo reports the token as
- * `DeviceNotRegistered`. */
+ * `DeviceNotRegistered`.
+ */
 model PushToken {
   id         String   @id @default(cuid())
   userId     String
@@ -1325,7 +1516,9 @@ model PushToken {
   @@index([userId])
 }
 
-/** One unredeemed row per Agent Pro user per calendar month (UTC) — 7-day boost credit. */
+/**
+ * One unredeemed row per Agent Pro user per calendar month (UTC) — 7-day boost credit.
+ */
 model ProBoostCredit {
   id         String    @id @default(cuid())
   userId     String
@@ -1342,30 +1535,34 @@ model ProBoostCredit {
 /// Contact reveal credits + discount codes — see docs/plans/contact-reveal-credits.md
 /// ---------------------------------------------------------------------------
 
-/** One row per purchased credit pack — a real balance ledger, not a flat counter, so credits can
+/**
+ * One row per purchased credit pack — a real balance ledger, not a flat counter, so credits can
  * expire correctly: spending always draws from the batch with the earliest `expiresAt` first
  * among ones with `creditsRemaining > 0`, and an expired batch's leftover credits just stop being
- * selected — no cleanup job needed. */
+ * selected — no cleanup job needed.
+ */
 model ContactRevealCreditBatch {
-  id               String   @id @default(cuid())
+  id               String          @id @default(cuid())
   userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  paymentId        String   @unique
-  payment          Payment  @relation(fields: [paymentId], references: [id])
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentId        String          @unique
+  payment          Payment         @relation(fields: [paymentId], references: [id])
   creditsGranted   Int
   creditsRemaining Int
-  purchasedAt      DateTime @default(now())
+  purchasedAt      DateTime        @default(now())
   expiresAt        DateTime
   reveals          ContactReveal[]
 
   @@index([userId, expiresAt])
 }
 
-/** One row per (user, listing) contact reveal — permanent once created, same "derive current
+/**
+ * One row per (user, listing) contact reveal — permanent once created, same "derive current
  * state by querying the log, never trust a cached boolean" convention as the admin Users page's
  * `welcomed` derivation from UserNotificationLog. `source` is a plain string ("free" | "credit"),
  * matching ListingNotificationLog/UserNotificationLog's `kind`/`channel` convention rather than
- * its own enum. */
+ * its own enum.
+ */
 model ContactReveal {
   id            String                    @id @default(cuid())
   listingId     String
@@ -1381,8 +1578,10 @@ model ContactReveal {
   @@index([userId, createdAt])
 }
 
-/** Singleton row (fixed id "singleton", upserted) — the admin-editable contact-reveal settings,
- * same convention as RateLimitSetting. */
+/**
+ * Singleton row (fixed id "singleton", upserted) — the admin-editable contact-reveal settings,
+ * same convention as RateLimitSetting.
+ */
 model ContactRevealSetting {
   id                    String   @id
   freeRevealsPerUser    Int      @default(2)
@@ -1392,25 +1591,29 @@ model ContactRevealSetting {
   updatedAt             DateTime @updatedAt
 }
 
-/** Admin-managed coupon — not tied to a referring user — redeemable across every paid purpose
+/**
+ * Admin-managed coupon — not tied to a referring user — redeemable across every paid purpose
  * (listing_boost, buyer_premium, agent_pro, seller_slot_pack, contact_reveal_credits). `code` is
- * stored/matched uppercase. */
+ * stored/matched uppercase.
+ */
 model DiscountCode {
-  id                    String    @id @default(cuid())
-  code                  String    @unique
+  id                    String                   @id @default(cuid())
+  code                  String                   @unique
   discountPercent       Int
   maxRedemptions        Int?
-  maxRedemptionsPerUser Int       @default(1)
+  maxRedemptionsPerUser Int                      @default(1)
   expiresAt             DateTime?
-  active                Boolean   @default(true)
-  createdAt             DateTime  @default(now())
+  active                Boolean                  @default(true)
+  createdAt             DateTime                 @default(now())
   payments              Payment[]
   redemptions           DiscountCodeRedemption[]
 }
 
-/** Created only once a Payment reaches `paid` (in the webhook), never at order-creation — an
+/**
+ * Created only once a Payment reaches `paid` (in the webhook), never at order-creation — an
  * abandoned checkout must not consume a redemption slot. Mirrors ListingBoost/UserSubscription
- * being created in the webhook branch rather than in createXOrder. */
+ * being created in the webhook branch rather than in createXOrder.
+ */
 model DiscountCodeRedemption {
   id             String       @id @default(cuid())
   discountCodeId String
@@ -1428,7 +1631,8 @@ model DiscountCodeRedemption {
 /// Referral program — see docs/plans/bhavano-referral-program-implementation.md
 /// ---------------------------------------------------------------------------
 
-/** One row per attributed referral — created the moment a referred visitor signs up (not at
+/**
+ * One row per attributed referral — created the moment a referred visitor signs up (not at
  * click time; an anonymous click with no signup is only ever counted via ReferralClick below).
  * `status` is a plain string progressing through the funnel
  * (clicked|signed_up|ad_posted|ad_approved|rewarded|blocked|reversed), matching this schema's
@@ -1436,125 +1640,150 @@ model DiscountCodeRedemption {
  * checks (Phase 4) and `reversed` by an admin action (Phase 5), neither of which this phase
  * writes yet. The later timestamp fields are nullable and filled in by Phase 3's approval hook and
  * Phase 2's reward grant respectively — present now so this model doesn't need a later migration
- * just to add them. */
+ * just to add them.
+ */
 model Referral {
-  id               String    @id @default(cuid())
-  referrerId       String
-  referrer         User      @relation("ReferralsAsReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
-  /** Null until the attributed visitor actually completes signup — see ReferralsService.
+  id                  String                @id @default(cuid())
+  referrerId          String
+  referrer            User                  @relation("ReferralsAsReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  /**
+   * Null until the attributed visitor actually completes signup — see ReferralsService.
    * attributeSignupIfReferred, which is the only place this row is created. @unique because each
    * user can only ever be the *referred* party once (their referrer, once set, is fixed — see the
-   * source doc's "latest link wins before signup, fixed after" attribution rule). */
-  referredUserId   String    @unique
-  referredUser     User      @relation("ReferralsAsReferred", fields: [referredUserId], references: [id], onDelete: Cascade)
-  status           String    @default("signed_up")
-  clickedAt        DateTime?
-  signedUpAt       DateTime  @default(now())
-  firstAdPostedAt  DateTime?
-  firstAdApprovedAt DateTime?
-  rewardedAt       DateTime?
-  /** Why the first approved ad earned no credit (same_device, phone_already_rewarded,
+   * source doc's "latest link wins before signup, fixed after" attribution rule).
+   */
+  referredUserId      String                @unique
+  referredUser        User                  @relation("ReferralsAsReferred", fields: [referredUserId], references: [id], onDelete: Cascade)
+  status              String                @default("signed_up")
+  clickedAt           DateTime?
+  signedUpAt          DateTime              @default(now())
+  firstAdPostedAt     DateTime?
+  firstAdApprovedAt   DateTime?
+  rewardedAt          DateTime?
+  /**
+   * Why the first approved ad earned no credit (same_device, phone_already_rewarded,
    * referrer_frozen, referrer_no_approved_ad, monthly_cap, …) — see ReferralRewardSkipReason.
-   * Null while undecided or once rewarded. Phase 4. */
+   * Null while undecided or once rewarded. Phase 4.
+   */
   rewardSkippedReason String?
-  createdAt        DateTime  @default(now())
-  /** Set once the reward actually fires (Phase 3's approval hook) — see ReferralCreditBatch. */
-  creditBatch      ReferralCreditBatch?
-  phoneLedgerEntry ReferralPhoneLedger?
-  adminActions     ReferralAdminAction[]
+  createdAt           DateTime              @default(now())
+  /**
+   * Set once the reward actually fires (Phase 3's approval hook) — see ReferralCreditBatch.
+   */
+  creditBatch         ReferralCreditBatch?
+  phoneLedgerEntry    ReferralPhoneLedger?
+  adminActions        ReferralAdminAction[]
 
   @@index([referrerId, status])
 }
 
-/** Anonymous pre-signup click log — feeds the funnel's "clicks" count (ReferralsService.
+/**
+ * Anonymous pre-signup click log — feeds the funnel's "clicks" count (ReferralsService.
  * getFunnelStats, Phase 5) for referral links that never convert to a signup at all, which never
  * get a Referral row. Deliberately a log, not a dedup'd counter — same "every event gets its own
- * row" convention as SearchEvent/Visit. */
+ * row" convention as SearchEvent/Visit.
+ */
 model ReferralClick {
   id               String   @id @default(cuid())
   referrerId       String
   referrer         User     @relation("ReferralClicks", fields: [referrerId], references: [id], onDelete: Cascade)
-  /** The visitor's per-session id (web's `bhavano_sid` cookie, or the mobile app's in-process
+  /**
+   * The visitor's per-session id (web's `bhavano_sid` cookie, or the mobile app's in-process
    * session id) — not a foreign key to Visit, since a click can arrive before any Visit row for
-   * this session exists yet. */
+   * this session exists yet.
+   */
   sessionId        String
   landingListingId String?
-  /** "open" (default) — someone opened the referrer's shared link (ReferralsService.recordClick,
+  /**
+   * "open" (default) — someone opened the referrer's shared link (ReferralsService.recordClick,
    * public/unauthenticated). "share_tap" — the referrer themselves tapped a Share button
    * (ReferralsService.recordShareTap, authenticated) — recorded so admin can see "did they try to
    * share" independent of "did anyone open it", which `attributeSignupIfReferred`'s matching-click
    * lookup also relies on staying `kind:'open'`-only in practice (a share-tap row's `referrerId`
    * is the sharer, same person as any `open` row for their own link, so the two are never
-   * confused by id alone). */
+   * confused by id alone).
+   */
   kind             String   @default("open")
-  /** Only meaningful for `kind:'share_tap'` — "whatsapp" | "copy" | "share_sheet" | "email",
-   * whichever button/menu entry was tapped. Null for `kind:'open'`. */
+  /**
+   * Only meaningful for `kind:'share_tap'` — "whatsapp" | "copy" | "share_sheet" | "email",
+   * whichever button/menu entry was tapped. Null for `kind:'open'`.
+   */
   channel          String?
   createdAt        DateTime @default(now())
 
   @@index([referrerId, createdAt])
 }
 
-/** One row per granted boost credit — a real ledger, same "spend from the batch nearest expiry
+/**
+ * One row per granted boost credit — a real ledger, same "spend from the batch nearest expiry
  * first, an expired one just stops being selected, no cleanup job" discipline as
  * ContactRevealCreditBatch, except one batch is always exactly one credit here (this program
  * grants exactly 1 boost per successful referral, never a pack), so there's no `creditsRemaining`
  * counter to track — `redeemedAt`/`revokedAt` being null is itself "this credit is spendable".
  * `daysGranted` snapshots `ReferralSetting.boostDays` at grant time so a later admin change to the
  * setting never retroactively changes an already-granted credit's length. Phase 2 of
- * docs/plans/bhavano-referral-program-implementation.md. */
+ * docs/plans/bhavano-referral-program-implementation.md.
+ */
 model ReferralCreditBatch {
-  id                String    @id @default(cuid())
-  userId            String
-  user              User      @relation("ReferralCreditBatches", fields: [userId], references: [id], onDelete: Cascade)
-  referralId        String    @unique
-  referral          Referral  @relation(fields: [referralId], references: [id], onDelete: Cascade)
-  daysGranted       Int
-  grantedAt         DateTime  @default(now())
-  expiresAt         DateTime
-  redeemedAt        DateTime?
-  redeemedListingId String?
-  redeemedPaymentId String?   @unique
-  redeemedPayment   Payment?  @relation(fields: [redeemedPaymentId], references: [id])
-  revokedAt         DateTime?
-  revokedReason     String?
-  /** Set once ReferralCreditExpiryReminderJob has reminded the owner about this credit — one
-   * reminder per credit, ever. Phase 6. */
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation("ReferralCreditBatches", fields: [userId], references: [id], onDelete: Cascade)
+  referralId           String    @unique
+  referral             Referral  @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  daysGranted          Int
+  grantedAt            DateTime  @default(now())
+  expiresAt            DateTime
+  redeemedAt           DateTime?
+  redeemedListingId    String?
+  redeemedPaymentId    String?   @unique
+  redeemedPayment      Payment?  @relation(fields: [redeemedPaymentId], references: [id])
+  revokedAt            DateTime?
+  revokedReason        String?
+  /**
+   * Set once ReferralCreditExpiryReminderJob has reminded the owner about this credit — one
+   * reminder per credit, ever. Phase 6.
+   */
   expiryReminderSentAt DateTime?
-  /** Non-null for a bonus credit (3rd/5th-referral-in-a-month tier, Phase 4) not tied 1:1 to a
+  /**
+   * Non-null for a bonus credit (3rd/5th-referral-in-a-month tier, Phase 4) not tied 1:1 to a
    * single referral the way the base credit above is — "referrals_3" / "referrals_5", a plain
    * string matching this schema's `kind`/`source` convention rather than a Prisma enum. Null for
-   * the ordinary one-credit-per-referral case this phase builds. */
-  bonusTier         String?
+   * the ordinary one-credit-per-referral case this phase builds.
+   */
+  bonusTier            String?
 
   @@index([userId, expiresAt])
 }
 
-/** Singleton row (fixed id "singleton", upserted) — the admin-editable referral program settings,
+/**
+ * Singleton row (fixed id "singleton", upserted) — the admin-editable referral program settings,
  * same convention as LoginNudgeSetting/ContactRevealSetting. Field defaults match
  * docs/plans/bhavano-referral-program.md's own stated defaults (3-day boost, 60-day credit expiry,
- * 5/month cap, bonus at 3/5 referrals, 30-day attribution window). */
+ * 5/month cap, bonus at 3/5 referrals, 30-day attribution window).
+ */
 model ReferralSetting {
-  id                         String   @id
-  boostDays                  Int      @default(3)
-  creditExpiryDays           Int      @default(60)
-  monthlyCapPerReferrer      Int      @default(5)
-  bonusExtraBoostAtReferrals Int      @default(3)
-  topAgentBadgeAtReferrals   Int      @default(5)
-  welcomeRewardEnabled       Boolean  @default(false)
-  welcomeRewardFeaturedDays  Int      @default(1)
-  attributionWindowDays      Int      @default(30)
-  takedownRevocationWindowDays Int    @default(14)
-  updatedAt                  DateTime @updatedAt
+  id                           String   @id
+  boostDays                    Int      @default(3)
+  creditExpiryDays             Int      @default(60)
+  monthlyCapPerReferrer        Int      @default(5)
+  bonusExtraBoostAtReferrals   Int      @default(3)
+  topAgentBadgeAtReferrals     Int      @default(5)
+  welcomeRewardEnabled         Boolean  @default(false)
+  welcomeRewardFeaturedDays    Int      @default(1)
+  attributionWindowDays        Int      @default(30)
+  takedownRevocationWindowDays Int      @default(14)
+  updatedAt                    DateTime @updatedAt
 }
 
-/** BR-2: "a phone number can be referred only once, ever, even if the account is deleted and
+/**
+ * BR-2: "a phone number can be referred only once, ever, even if the account is deleted and
  * recreated." Deliberately append-only and outliving the `User` row it was written from —
  * `User.deletedAt`'s own erasure flow nulls `phone` on deletion (by design, for DPDP Act
  * compliance), which would otherwise let a deleted phone number be referred again. `phoneHash` is
  * a salted SHA-256 (see ReferralsService's hashing helper), never the raw phone — a one-way
  * fingerprint used only to answer "has this number already earned a referral reward," not
- * recoverable back to the number itself. Written once, at `grantReward` time. */
+ * recoverable back to the number itself. Written once, at `grantReward` time.
+ */
 model ReferralPhoneLedger {
   id         String    @id @default(cuid())
   phoneHash  String    @unique
@@ -1563,9 +1792,11 @@ model ReferralPhoneLedger {
   rewardedAt DateTime  @default(now())
 }
 
-/** "Never silent" audit trail for referral-program admin actions (freeze/unfreeze a user, reverse
+/**
+ * "Never silent" audit trail for referral-program admin actions (freeze/unfreeze a user, reverse
  * a referral) — same convention as ListingEditLog's actorType/actorId shape. Phase 5 builds the
- * admin screens that write here; the freeze/unfreeze actions themselves land in Phase 4. */
+ * admin screens that write here; the freeze/unfreeze actions themselves land in Phase 4.
+ */
 model ReferralAdminAction {
   id           String    @id @default(cuid())
   adminId      String
@@ -1581,14 +1812,16 @@ model ReferralAdminAction {
   @@index([targetUserId, createdAt])
 }
 
-/** Audit trail for an admin-initiated account merge — see the admin-merge addendum in
+/**
+ * Audit trail for an admin-initiated account merge — see the admin-merge addendum in
  * docs/plans/account-linking-phone-and-email.md. The merge's actual DB effect (relocated
  * listings/payments/etc., the retired row's mergedIntoUserId) is AccountMergeService.merge()'s
  * job, same code path self-service merging uses; this model exists only so "who merged which two
  * accounts, when, and why" has a durable answer when an admin — not the user themself re-proving
  * ownership — is the one who triggered it. winnerId/loserId are snapshot at merge time; both rows
  * survive (merge never hard-deletes), so this is never left pointing at a row that no longer
- * exists. */
+ * exists.
+ */
 model UserMergeAction {
   id        String   @id @default(cuid())
   adminId   String
@@ -1608,134 +1841,174 @@ model UserMergeAction {
 /// Outreach / marketing campaigns — see docs/plans/outreach-campaign-contacts.md
 /// ---------------------------------------------------------------------------
 
-/** A durable audit trail of every Google Places search get_pg_coworking_leads.py has run — one
+/**
+ * A durable audit trail of every Google Places search get_pg_coworking_leads.py has run — one
  * row per (city, area, category) query actually made, replacing the old fetched_state.json local
  * file (see docs/plans/pg-coworking-places-fetch-log.md). Deliberately a log, not a cache: a
  * combo that's been searched more than once (e.g. re-run with --force to pick up new listings)
  * gets a new row each time rather than overwriting the last one, so "how many times, and when,
  * have we searched Koramangala for pg" stays a real answerable question. "Already fetched" (the
  * skip-unless---force check) means "does at least one row exist for this combo", same semantics
- * the JSON file had. */
+ * the JSON file had.
+ */
 model PlacesFetchLog {
-  id               String    @id @default(cuid())
-  /** The --cities entry as typed, always present even when it didn't resolve to a real City
-   * (an unseeded city gets searched at the city level, cityId stays null). */
+  id               String            @id @default(cuid())
+  /**
+   * The --cities entry as typed, always present even when it didn't resolve to a real City
+   * (an unseeded city gets searched at the city level, cityId stays null).
+   */
   citySearched     String
   cityId           String?
-  city             City?     @relation(fields: [cityId], references: [id])
-  /** Null means a city-level-only query (--no-areas, or the city has no curated areas yet) —
-   * mirrors get_pg_coworking_leads.py's own CITY_LEVEL sentinel. */
+  city             City?             @relation(fields: [cityId], references: [id])
+  /**
+   * Null means a city-level-only query (--no-areas, or the city has no curated areas yet) —
+   * mirrors get_pg_coworking_leads.py's own CITY_LEVEL sentinel.
+   */
   areaSearched     String?
   areaId           String?
-  area             Area?     @relation(fields: [areaId], references: [id])
+  area             Area?             @relation(fields: [areaId], references: [id])
   businessCategory String
-  /** The search term itself — "PG accommodation" (the plain category default) or a custom one
+  /**
+   * The search term itself — "PG accommodation" (the plain category default) or a custom one
    * like "Gents PG" / "Ladies PG" / "Coliving PG" via get_pg_coworking_leads.py's
    * --query-prefix. Stored separately from `query` below (which has city/area already baked in)
    * specifically so runs can be grouped/filtered by *what* was searched for, independent of
    * *where*. Part of the fetched-pairs skip check, alongside (areaId, businessCategory) — a
    * different prefix for an already-scraped area is a genuinely new thing to search, not a
-   * repeat. */
+   * repeat.
+   */
   queryPrefix      String
-  /** The literal Places Text Search query string sent to Google, e.g.
+  /**
+   * The literal Places Text Search query string sent to Google, e.g.
    * "Gents PG in Koramangala, Bengaluru" — kept for debugging a surprising result count without
-   * having to reconstruct it from the other columns. */
+   * having to reconstruct it from the other columns.
+   */
   query            String
-  /** Raw Text Search result count, before any --min-rating filtering. Defaults to 0: the row is
+  /**
+   * Raw Text Search result count, before any --min-rating filtering. Defaults to 0: the row is
    * created *before* the search actually runs (see contacts' own placesFetchLogId below, which
    * needs this row's id to exist first), then patched with the real counts once known —
-   * PATCH /admin/outreach/places-fetch-log/:id. */
-  resultsFound     Int       @default(0)
-  /** How many of those actually became new/updated OutreachContact rows — smaller than
+   * PATCH /admin/outreach/places-fetch-log/:id.
+   */
+  resultsFound     Int               @default(0)
+  /**
+   * How many of those actually became new/updated OutreachContact rows — smaller than
    * resultsFound whenever --min-rating filtered some out, or a place was already known (an
-   * upsert still counts here; this is "results that mattered", not "results that were new"). */
-  resultsImported  Int       @default(0)
-  /** Null when --min-rating wasn't used for this run. */
+   * upsert still counts here; this is "results that mattered", not "results that were new").
+   */
+  resultsImported  Int               @default(0)
+  /**
+   * Null when --min-rating wasn't used for this run.
+   */
   minRatingFilter  Float?
-  fetchedAt        DateTime  @default(now())
-  /** The actual contacts this specific run produced — precise, unlike matching on
+  fetchedAt        DateTime          @default(now())
+  /**
+   * The actual contacts this specific run produced — precise, unlike matching on
    * OutreachContact.sourceRef/query text, which can't tell apart two separate runs of the same
-   * (city, area, category) that happen to share the same query string. */
+   * (city, area, category) that happen to share the same query string.
+   */
   contacts         OutreachContact[]
 
   @@index([cityId, areaId, businessCategory])
   @@index([fetchedAt])
 }
 
-/** A prospective customer sourced externally (Google Maps, scraping, CSV upload) — deliberately
+/**
+ * A prospective customer sourced externally (Google Maps, scraping, CSV upload) — deliberately
  * NOT a User row: these never authenticate, and mixing them into User would leak marketing
  * prospects into every auth/listing/payment query. `userId` links a prospect to the User they
- * eventually become, which is the only way to attribute a signup back to outreach spend. */
+ * eventually become, which is the only way to attribute a signup back to outreach spend.
+ */
 model OutreachContact {
-  id                String         @id @default(cuid())
-  name              String
-  phone             String?
-  /** E.164 (+91XXXXXXXXXX), derived from `phone` on write. Dedupe and suppression key off this,
-   * never the raw string — the same number arrives formatted a dozen different ways. */
-  phoneE164         String?
-  email             String?
-  address           String?
-  lat               Float?
-  lng               Float?
-  /** Reuses the existing City/Area geography so campaigns can target "agents in Pune" with the
-   * same vocabulary the listing side already uses, instead of substring-matching `address`. */
-  cityId            String?
-  city              City?          @relation(fields: [cityId], references: [id])
-  areaId            String?
-  area              Area?          @relation(fields: [areaId], references: [id])
+  id        String  @id @default(cuid())
+  name      String
+  phone     String?
+  /**
+   * E.164 (+91XXXXXXXXXX), derived from `phone` on write. Dedupe and suppression key off this,
+   * never the raw string — the same number arrives formatted a dozen different ways.
+   */
+  phoneE164 String?
+  email     String?
+  address   String?
+  lat       Float?
+  lng       Float?
+  /**
+   * Reuses the existing City/Area geography so campaigns can target "agents in Pune" with the
+   * same vocabulary the listing side already uses, instead of substring-matching `address`.
+   */
+  cityId    String?
+  city      City?   @relation(fields: [cityId], references: [id])
+  areaId    String?
+  area      Area?   @relation(fields: [areaId], references: [id])
 
   googleRating      Float?
   googleReviewCount Int?
-  /** Ratings drift, so a bare rating with no as-of date is unreadable months later. */
+  /**
+   * Ratings drift, so a bare rating with no as-of date is unreadable months later.
+   */
   googleRatingAt    DateTime?
-  /** The natural dedupe key for anything Maps-sourced — unique so re-running a scrape upserts
-   * instead of duplicating the same business. */
-  googlePlaceId     String?        @unique
-  /** e.g. "real_estate_agency" — the primary targeting dimension alongside city. */
+  /**
+   * The natural dedupe key for anything Maps-sourced — unique so re-running a scrape upserts
+   * instead of duplicating the same business.
+   */
+  googlePlaceId     String?   @unique
+  /**
+   * e.g. "real_estate_agency" — the primary targeting dimension alongside city.
+   */
   businessCategory  String?
-  /** Google's own OPERATIONAL / CLOSED_TEMPORARILY / CLOSED_PERMANENTLY, straight from Place
+  /**
+   * Google's own OPERATIONAL / CLOSED_TEMPORARILY / CLOSED_PERMANENTLY, straight from Place
    * Details — the admin contacts page's "Create listing" action refuses anything not
    * OPERATIONAL (and null, no status known yet, is left selectable rather than blocked, since
    * that's "unknown" not "known closed"). Previously only ever landed as unstructured text
-   * inside `notes`. */
+   * inside `notes`.
+   */
   businessStatus    String?
   website           String?
 
-  /** The exact scrape run this contact came from — precise version of sourceRef (which just
+  /**
+   * The exact scrape run this contact came from — precise version of sourceRef (which just
    * carries the query text, ambiguous across repeated --force runs of the same area). Null for
-   * anything not from get_pg_coworking_leads.py (manual/CSV imports). */
-  placesFetchLogId  String?
-  placesFetchLog    PlacesFetchLog? @relation(fields: [placesFetchLogId], references: [id])
+   * anything not from get_pg_coworking_leads.py (manual/CSV imports).
+   */
+  placesFetchLogId String?
+  placesFetchLog   PlacesFetchLog? @relation(fields: [placesFetchLogId], references: [id])
 
-  source            ContactSource
-  /** The query/URL/filename that produced this row, so a bad import can be traced and undone. */
-  sourceRef         String?
-  status            ContactStatus  @default(new)
-  tags              String[]       @default([])
-  notes             String?
+  source    ContactSource
+  /**
+   * The query/URL/filename that produced this row, so a bad import can be traced and undone.
+   */
+  sourceRef String?
+  status    ContactStatus @default(new)
+  tags      String[]      @default([])
+  notes     String?
 
-  consentState      ConsentState   @default(none)
-  consentSource     String?
-  consentAt         DateTime?
-  optedOutAt        DateTime?
+  consentState  ConsentState @default(none)
+  consentSource String?
+  consentAt     DateTime?
+  optedOutAt    DateTime?
 
-  /** Denormalized from CampaignSend for list views and the "don't contact more often than every
+  /**
+   * Denormalized from CampaignSend for list views and the "don't contact more often than every
    * N days" check — CampaignSend stays the audit trail. Same pattern as Listing.boostedUntil
-   * vs ListingBoost. */
-  lastContactedAt   DateTime?
-  contactedCount    Int            @default(0)
+   * vs ListingBoost.
+   */
+  lastContactedAt DateTime?
+  contactedCount  Int       @default(0)
 
-  /** Set once a prospect signs up — the link between outreach and a real user. */
-  userId            String?        @unique
-  user              User?          @relation(fields: [userId], references: [id])
+  /**
+   * Set once a prospect signs up — the link between outreach and a real user.
+   */
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
 
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  sends             CampaignSend[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  sends          CampaignSend[]
   /// The bulk-imported Listing this contact's business corresponds to, if any — the other side
   /// of Listing.claimContactId. A contact can be linked to at most one claimable listing today
   /// (bulk_upload_listings.py creates one Listing per OutreachContact).
-  claimedListing    Listing?
+  claimedListing Listing?
 
   @@index([cityId, businessCategory])
   @@index([phoneE164])
@@ -1743,43 +2016,59 @@ model OutreachContact {
   @@index([placesFetchLogId])
 }
 
-/** A promotional campaign. The audience is stored as a *filter*, not a frozen contact list, so a
- * recurring campaign automatically picks up contacts imported after it was created. */
+/**
+ * A promotional campaign. The audience is stored as a *filter*, not a frozen contact list, so a
+ * recurring campaign automatically picks up contacts imported after it was created.
+ */
 model OutreachCampaign {
-  id                  String           @id @default(cuid())
+  id                  String          @id @default(cuid())
   name                String
   channel             OutreachChannel
-  status              CampaignStatus   @default(draft)
-  /** Body with {{name}}/{{city}} placeholders, resolved per contact at send time. */
+  status              CampaignStatus  @default(draft)
+  /**
+   * Body with {{name}}/{{city}} placeholders, resolved per contact at send time.
+   */
   bodyTemplate        String
   subject             String?
-  /** DLT-registered template id. Indian marketing SMS/WhatsApp is rejected without one (see
-   * Msg91Provider's note), so activation refuses to proceed if this is missing on sms/whatsapp. */
+  /**
+   * DLT-registered template id. Indian marketing SMS/WhatsApp is rejected without one (see
+   * Msg91Provider's note), so activation refuses to proceed if this is missing on sms/whatsapp.
+   */
   dltTemplateId       String?
-  /** { cityIds, businessCategories, tags, minRating, status } — resolved by OutreachService. */
-  audienceFilter      Json             @default("{}")
-  /** Cron expression for a recurring campaign; null means one-shot at scheduledAt. */
+  /**
+   * { cityIds, businessCategories, tags, minRating, status } — resolved by OutreachService.
+   */
+  audienceFilter      Json            @default("{}")
+  /**
+   * Cron expression for a recurring campaign; null means one-shot at scheduledAt.
+   */
   cadenceCron         String?
   scheduledAt         DateTime?
   lastRunAt           DateTime?
-  /** Guard rails against burning an entire audience on a bad template. */
-  maxSendsPerRun      Int              @default(200)
-  minDaysBetweenSends Int              @default(14)
-  /** When true the runner records what it *would* have sent without calling the provider —
-   * the default, so a new campaign can never blast real messages on its first tick. */
-  dryRun              Boolean          @default(true)
+  /**
+   * Guard rails against burning an entire audience on a bad template.
+   */
+  maxSendsPerRun      Int             @default(200)
+  minDaysBetweenSends Int             @default(14)
+  /**
+   * When true the runner records what it *would* have sent without calling the provider —
+   * the default, so a new campaign can never blast real messages on its first tick.
+   */
+  dryRun              Boolean         @default(true)
   createdById         String
-  createdBy           User             @relation(fields: [createdById], references: [id])
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  createdBy           User            @relation(fields: [createdById], references: [id])
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
   sends               CampaignSend[]
 
   @@index([status, scheduledAt])
 }
 
-/** One row per contact per campaign run — the audit trail answering "who was sent what, when".
+/**
+ * One row per contact per campaign run — the audit trail answering "who was sent what, when".
  * Suppressed/opted-out contacts get a row too (rather than being silently skipped) so a campaign
- * report can explain the gap between audience size and messages actually delivered. */
+ * report can explain the gap between audience size and messages actually delivered.
+ */
 model CampaignSend {
   id            String           @id @default(cuid())
   campaignId    String
@@ -1788,13 +2077,19 @@ model CampaignSend {
   contact       OutreachContact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
   channel       OutreachChannel
   status        SendStatus       @default(queued)
-  /** Identifies one scheduled run of a recurring campaign (e.g. "2026-07-30", or "once"). Part
+  /**
+   * Identifies one scheduled run of a recurring campaign (e.g. "2026-07-30", or "once"). Part
    * of the unique key below, which is what makes a crashed/retried run idempotent — the same
-   * guarantee ListingNotificationLog gets from @@unique([listingId, kind]). */
+   * guarantee ListingNotificationLog gets from @@unique([listingId, kind]).
+   */
   runKey        String
-  /** Provider message id, for reconciling delivery webhooks back to this row. */
+  /**
+   * Provider message id, for reconciling delivery webhooks back to this row.
+   */
   providerRef   String?
-  /** The body actually sent, after placeholder resolution — kept for audit/disputes. */
+  /**
+   * The body actually sent, after placeholder resolution — kept for audit/disputes.
+   */
   renderedBody  String
   sentAt        DateTime?
   deliveredAt   DateTime?
@@ -1806,23 +2101,28 @@ model CampaignSend {
   @@index([campaignId, status])
 }
 
-/** Opt-out keyed on the phone/email itself rather than on a contact row, so it survives the
+/**
+ * Opt-out keyed on the phone/email itself rather than on a contact row, so it survives the
  * contact being deleted and re-imported by a later scrape — without this, the next Google Maps
- * pull would resurrect someone who unsubscribed and start messaging them again. */
+ * pull would resurrect someone who unsubscribed and start messaging them again.
+ */
 model SuppressionEntry {
   id        String           @id @default(cuid())
-  /** phoneE164 or lowercased email. */
+  /**
+   * phoneE164 or lowercased email.
+   */
   value     String           @unique
   channel   OutreachChannel?
   reason    String
   createdAt DateTime         @default(now())
 }
 
-/** Contact Us form submissions — see docs/plans/contact-us-support-form.md.
- *
+/**
+ * Contact Us form submissions — see docs/plans/contact-us-support-form.md.
  * Persisted before the notification email is attempted, deliberately: EmailProvider.send() logs
  * and returns on failure rather than throwing, which is right for moderation notifications but
- * would silently lose a user's only copy of a bug report. */
+ * would silently lose a user's only copy of a bug report.
+ */
 enum ContactTopic {
   posting
   posting_feedback
@@ -1848,14 +2148,18 @@ model SupportTicket {
   listingUrl  String?
   paymentId   String?
   message     String              @db.Text
-  /** Set when the form was submitted while logged in; null for anonymous reports (which is the
-   * whole point of leaving the endpoint public — "I can't log in" is one of the topics). */
+  /**
+   * Set when the form was submitted while logged in; null for anonymous reports (which is the
+   * whole point of leaving the endpoint public — "I can't log in" is one of the topics).
+   */
   userId      String?
   user        User?               @relation(fields: [userId], references: [id])
   emailSent   Boolean             @default(false)
   userAgent   String?
-  /** Hashed, never the raw address — enough to correlate abuse from one source without holding
-   * personal data we have no reason to keep. */
+  /**
+   * Hashed, never the raw address — enough to correlate abuse from one source without holding
+   * personal data we have no reason to keep.
+   */
   ipHash      String?
   attachments SupportAttachment[]
   createdAt   DateTime            @default(now())
@@ -1868,9 +2172,11 @@ model SupportAttachment {
   id        String        @id @default(cuid())
   ticketId  String
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  /** R2 object key. Never served publicly — the CDN fronts this bucket, so linking these would
+  /**
+   * R2 object key. Never served publicly — the CDN fronts this bucket, so linking these would
    * turn an anonymous upload endpoint into public file hosting. Support receives the files as
-   * email attachments instead; this copy is the durable record. */
+   * email attachments instead; this copy is the durable record.
+   */
   r2Key     String
   filename  String
   mimeType  String
@@ -1880,92 +2186,123 @@ model SupportAttachment {
   @@index([ticketId])
 }
 
-/** What a seeker asked for and could not find — captured from the empty-result prompt (see
+/**
+ * What a seeker asked for and could not find — captured from the empty-result prompt (see
  * ListingGrid) and worked by hand.
- *
  * Phase 0 of docs/plans/property-requirements-demand-side.md, and deliberately *not* public: at
  * 320 listings across 39 cities with six repeat owners, there is no audience for a demand feed,
  * so this exists to be read by an admin who then searches the catalogue, calls the seeker, or
  * points the outreach module at owners in that exact area. The public feed, the moderation state
  * and the paid contact path all come later, once these rows prove seekers actually post.
- *
  * Criteria columns mirror SavedSearch's exactly, on purpose — the same vocabulary the matcher
  * already speaks, so a Requirement can graduate into an alert (and vice versa) without a
- * translation layer. */
+ * translation layer.
+ */
 model Requirement {
-  id              String            @id @default(cuid())
-  seekerId        String
-  seeker          User              @relation(fields: [seekerId], references: [id])
-  cityId          String?
-  city            City?             @relation(fields: [cityId], references: [id])
-  areaId          String?
-  area            Area?             @relation(fields: [areaId], references: [id])
-  category        ListingCategory?
-  transactionType TransactionType?
-  minPrice        Int?
-  maxPrice        Int?
-  bedrooms        Int?
-  /** The search as the seeker saw it described — e.g. "2 BHK apartments for rent in Koramangala,
+  id               String                   @id @default(cuid())
+  seekerId         String
+  seeker           User                     @relation(fields: [seekerId], references: [id])
+  cityId           String?
+  city             City?                    @relation(fields: [cityId], references: [id])
+  areaId           String?
+  area             Area?                    @relation(fields: [areaId], references: [id])
+  category         ListingCategory?
+  transactionType  TransactionType?
+  minPrice         Int?
+  maxPrice         Int?
+  bedrooms         Int?
+  /**
+   * The search as the seeker saw it described — e.g. "2 BHK apartments for rent in Koramangala,
    * Bengaluru". Stored verbatim rather than re-derived, so an admin reading this months later
-   * sees what the seeker was actually shown, even if the heading logic changes. */
-  searchLabel     String
-  /** Where they were when the search came up empty — the strongest hint about intent, and what
-   * makes "which areas do we have no supply in" answerable. */
-  landingPath     String?
-  /** The alert created alongside this, when the seeker was within their free quota (or has Plus).
+   * sees what the seeker was actually shown, even if the heading logic changes.
+   */
+  searchLabel      String
+  /**
+   * Where they were when the search came up empty — the strongest hint about intent, and what
+   * makes "which areas do we have no supply in" answerable.
+   */
+  landingPath      String?
+  /**
+   * The alert created alongside this, when the seeker was within their free quota (or has Plus).
    * Null means they hit the quota: their requirement was still captured, but nothing will notify
-   * them automatically, so it is entirely on the manual follow-up. */
-  savedSearchId   String?
-  savedSearch     SavedSearch?      @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
-  /** The seeker's own words, when they added any — Phase 1's form asks for it, and the Phase 0
+   * them automatically, so it is entirely on the manual follow-up.
+   */
+  savedSearchId    String?
+  savedSearch      SavedSearch?             @relation(fields: [savedSearchId], references: [id], onDelete: SetNull)
+  /**
+   * The seeker's own words, when they added any — Phase 1's form asks for it, and the Phase 0
    * one-tap capture leaves it null rather than forcing a form at the moment that worked precisely
-   * because it wasn't one. */
-  note            String?
-  /** When they need it by. The demand-side signal a listing has no equivalent of, and the field
-   * that makes "who is urgent" answerable when the queue is longer than a day's work. */
-  moveInBy        DateTime?
-  /** Same 30-day life as a listing (REQUIREMENT_DURATION_DAYS), renewable by the seeker.
+   * because it wasn't one.
+   */
+  note             String?
+  /**
+   * When they need it by. The demand-side signal a listing has no equivalent of, and the field
+   * that makes "who is urgent" answerable when the queue is longer than a day's work.
+   */
+  moveInBy         DateTime?
+  /**
+   * Same 30-day life as a listing (REQUIREMENT_DURATION_DAYS), renewable by the seeker.
    * Requirements have to age out: a stale one is worse than none, because an owner who wastes a
-   * call on someone who moved months ago stops trusting the whole queue. */
-  expiresAt       DateTime
-  status          RequirementStatus @default(open)
-  closedReason    RequirementClosedReason?
-  adminNote       String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  /** Last time matching owners were told about this, so the notifier never messages the same
-   * owners about the same requirement twice — see RequirementMatchJob. */
+   * call on someone who moved months ago stops trusting the whole queue.
+   */
+  expiresAt        DateTime
+  status           RequirementStatus        @default(open)
+  closedReason     RequirementClosedReason?
+  adminNote        String?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  /**
+   * Last time matching owners were told about this, so the notifier never messages the same
+   * owners about the same requirement twice — see RequirementMatchJob.
+   */
   ownersNotifiedAt DateTime?
-  /** When the seeker agreed that owners and agents with a matching property may contact them
+  /**
+   * When the seeker agreed that owners and agents with a matching property may contact them
    * directly. Null means they declined (or the row predates the question), and that is a real
    * restriction, not a default to work around: without it the follow-up is Bhavano contacting
    * them, never their number going out.
-   *
    * A timestamp rather than a boolean because consent is a thing that happened at a moment — it
-   * is the record of *when* they agreed, which a bare flag cannot answer. */
+   * is the record of *when* they agreed, which a bare flag cannot answer.
+   */
   contactConsentAt DateTime?
 
   // The refinement questions — docs/plans/requirement-refinement-questions.md. `areaId` and
   // `bedrooms` above stay populated (first area, smallest BHK) for readers that only understand
   // one of each.
-  /** Every area named, in the order chosen, at most MAX_REQUIREMENT_AREAS. Empty = the whole city. */
+  /**
+   * /** Every area named, in the order chosen, at most MAX_REQUIREMENT_AREAS. Empty = the whole city.
+   */
   areaIds             String[]  @default([])
-  /** BHK buckets, 5 = "5+" — the browse filter's convention. */
+  /**
+   * BHK buckets, 5 = "5+" — the browse filter's convention.
+   */
   bedroomOptions      Int[]     @default([])
-  /** Plot / commercial / storage size, normalized to sqft so it can be compared. */
+  /**
+   * Plot / commercial / storage size, normalized to sqft so it can be compared.
+   */
   minAreaSqft         Int?
   maxAreaSqft         Int?
-  /** The unit the size was entered in — display only. */
+  /**
+   * The unit the size was entered in — display only.
+   */
   areaUnit            String?
-  /** Category-specific wants, keys and values from REQUIREMENT_ATTRIBUTE_QUESTIONS (every value a
-   * list read as "any of"), plus `amenities`. Validated per category on every write. */
+  /**
+   * Category-specific wants, keys and values from REQUIREMENT_ATTRIBUTE_QUESTIONS (every value a
+   * list read as "any of"), plus `amenities`. Validated per category on every write.
+   */
   attributes          Json?
-  /** The page label at capture, before refinement rewrote `searchLabel` — "what they searched" vs
-   * "what they actually wanted". */
+  /**
+   * The page label at capture, before refinement rewrote `searchLabel` — "what they searched" vs
+   * "what they actually wanted".
+   */
   originalSearchLabel String?
-  /** When the seeker reached the review step. Null with answers saved = partly refined. */
+  /**
+   * When the seeker reached the review step. Null with answers saved = partly refined.
+   */
   refinedAt           DateTime?
-  /** The one "finish your requirement" reminder, for rows still not lead-ready after capture. */
+  /**
+   * The one "finish your requirement" reminder, for rows still not lead-ready after capture.
+   */
   refineNudgedAt      DateTime?
 
   @@index([status, createdAt])
@@ -1974,24 +2311,27 @@ model Requirement {
   @@index([seekerId])
 }
 
-/** Singleton settings row for saved-search alerts — same shape and id convention as
+/**
+ * Singleton settings row for saved-search alerts — same shape and id convention as
  * ContactRevealSetting, so the admin form works the same way.
- *
  * `freeAlertsPerUser` exists because alerts were Plus-only on both create and match, and there
  * have never been any Plus subscribers — so a built feature had never been used once, and the
  * empty-result prompt could not honestly promise "we will tell you when one appears". A small
  * free quota makes that promise true for the people most likely to act on it, while keeping a
  * reason to subscribe beyond it. Tunable from admin so it can be dialled down without a deploy,
- * exactly like freeRevealsPerUser. */
+ * exactly like freeRevealsPerUser.
+ */
 model SavedSearchSetting {
   id                String   @id
   freeAlertsPerUser Int      @default(2)
   updatedAt         DateTime @updatedAt
 }
 
-/** Singleton settings row for the dismissible login ask on listing detail — same id convention
+/**
+ * Singleton settings row for the dismissible login ask on listing detail — same id convention
  * as ContactRevealSetting. The listing page itself is never gated (SEO and Ads landing pages);
- * these only tune when the ask appears. See docs/plans/listing-detail-login-nudge.md. */
+ * these only tune when the ask appears. See docs/plans/listing-detail-login-nudge.md.
+ */
 model LoginNudgeSetting {
   id                        String   @id
   webOneTapEnabled          Boolean  @default(false)
@@ -2008,52 +2348,61 @@ model LoginNudgeSetting {
 
 /**
  * One search a real visitor ran, with what they asked for and how many results they got.
- *
  * Nothing recorded this before. `PageView` stores only (sessionId, path, createdAt) and the
  * middleware deliberately drops the query string, so every filter lived in a query param and was
  * therefore invisible: search text, price range, furnishing, sort, multi-area selection, and the
  * entire homepage (whose city and category tabs are all query params). A homepage session where
  * someone picked a city, typed a search, chose Rent & Lease and set a budget logged exactly one
  * row — `path: "/"` — and nothing about what they wanted.
- *
  * `resultCount` is the point of the table. "Searched and found nothing" is the inventory-gap
  * signal that tells you which area and category to recruit owners into, and it is the only field
  * here that no other table could ever reconstruct.
- *
  * Written from the browser (see SearchTracker -> /api/analytics/search), not from the middleware:
  * the criteria are already resolved server-side by then, so nothing has to be re-parsed out of a
  * URL, and a client-side write means crawlers are excluded for free — the same property that
  * makes Visit.jsConfirmedAt trustworthy.
  */
 model SearchEvent {
-  id              String            @id @default(cuid())
-  /** The `bhavano_sid` cookie, read server-side by the route handler — the client never sees it
-   * (it is httpOnly) and so cannot claim somebody else's session. */
+  id              String           @id @default(cuid())
+  /**
+   * The `bhavano_sid` cookie, read server-side by the route handler — the client never sees it
+   * (it is httpOnly) and so cannot claim somebody else's session.
+   */
   sessionId       String
   userId          String?
-  user            User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
-  /** Where the search was run, so homepage searches are distinguishable from browse-page ones. */
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /**
+   * Where the search was run, so homepage searches are distinguishable from browse-page ones.
+   */
   path            String
-  /** Free text the visitor typed. Personal data in the sense that anything can be typed into a
-   * search box, so it is length-capped at the DTO and never shown outside the admin dashboard. */
+  /**
+   * Free text the visitor typed. Personal data in the sense that anything can be typed into a
+   * search box, so it is length-capped at the DTO and never shown outside the admin dashboard.
+   */
   q               String?
   cityId          String?
-  city            City?             @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  /** The multi-select area filter, as ids. Empty means no area narrowing ("all areas"); one or
+  city            City?            @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  /**
+   * The multi-select area filter, as ids. Empty means no area narrowing ("all areas"); one or
    * more means exactly those. Kept as an array rather than a single id because "any of these
-   * five" is a real thing someone searched for. */
+   * five" is a real thing someone searched for.
+   */
   areaIds         String[]
   category        ListingCategory?
   transactionType TransactionType?
   minPrice        Int?
   maxPrice        Int?
-  /** BHK buckets, matching ListingsQuery.bedrooms — a set, not one value. */
+  /**
+   * BHK buckets, matching ListingsQuery.bedrooms — a set, not one value.
+   */
   bedrooms        Int[]
   furnished       String?
   sort            String?
-  /** How many listings came back. Zero is the interesting case. */
+  /**
+   * How many listings came back. Zero is the interesting case.
+   */
   resultCount     Int
-  createdAt       DateTime          @default(now())
+  createdAt       DateTime         @default(now())
 
   @@index([createdAt])
   @@index([cityId, category])
