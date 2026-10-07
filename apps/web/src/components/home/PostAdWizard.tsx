@@ -1915,7 +1915,7 @@ export function PostAdWizard({
             <p className="text-xs text-muted mt-0.5 mb-1.5">
               Up to {videoEntitlement.maxDurationSec}s each.
               {videoEntitlement.canUpgradeByBoosting &&
-                " Boost this listing after posting to add up to 3 videos, up to 2 minutes each."}
+                " Feature this listing after posting to add up to 3 videos, up to 2 minutes each."}
             </p>
             {assistedMode && (
               <p className="text-xs text-muted mt-0 mb-1.5">
@@ -2173,14 +2173,14 @@ export function PostAdWizard({
             selectedBoostPlan && (boostCheckoutInFlight || boostCheckoutOutcome === "failed") && (
               <div className="w-full rounded-2xl border border-[color:var(--gold)]/40 bg-surface-alt/60 p-4 sm:p-5">
                 {boostCheckoutInFlight ? (
-                  <p className="text-sm font-bold text-green m-0">Finishing your boost purchase…</p>
+                  <p className="text-sm font-bold text-green m-0">Finishing your Feature purchase…</p>
                 ) : (
                   <>
                     <p className="text-[13px] text-text-soft mt-0 mb-3">
-                      {`Payment for your ${selectedBoostPlan.duration}-day Boost didn’t go through.`}
+                      {`Payment for your ${selectedBoostPlan.duration}-day Feature didn’t go through.`}
                     </p>
                     <button onClick={retryBoostCheckout} className={primaryButtonClass}>
-                      Finish boosting this listing
+                      Finish featuring this listing
                     </button>
                   </>
                 )}

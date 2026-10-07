@@ -202,14 +202,14 @@ function ReferralBanner({ referrals }: { referrals: MyReferralsDto }) {
         {soonest ? (
           <span>
             <span className="font-bold text-text">
-              {credits.length === 1 ? "You have a free boost" : `You have ${credits.length} free boosts`}
+              {credits.length === 1 ? "You have a free Feature" : `You have ${credits.length} free Features`}
             </span>{" "}
-            — tap Boost on any ad to use it. Expires {renewedAtFormatter.format(new Date(soonest.expiresAt))}.
+            — tap Feature on any ad to use it. Expires {renewedAtFormatter.format(new Date(soonest.expiresAt))}.
           </span>
         ) : (
           <span>
-            <span className="font-bold text-text">Share your ad and earn free boosts.</span> When a friend joins from
-            your link and posts their own ad, you get a free {referrals.boostDays}-day boost.
+            <span className="font-bold text-text">Share your ad and earn free Features.</span> When a friend joins from
+            your link and posts their own ad, you get a free {referrals.boostDays}-day Feature.
           </span>
         )}
       </div>

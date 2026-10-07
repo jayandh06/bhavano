@@ -79,11 +79,11 @@ export function OwnerWhatsAppShare({
       {code ? (
         <div>
           <div className="text-[15px] font-bold text-text flex items-center gap-1.5">
-            <Icon name="boost" className="text-[color:var(--gold)]" /> Share your ad and earn a free boost
+            <Icon name="boost" className="text-[color:var(--gold)]" /> Share your ad and earn a free Feature
           </div>
           <p className="text-[13px] text-text-soft m-0 mt-1">
             Send it to your society, office or family WhatsApp groups to get enquiries sooner. When someone
-            joins Bhavano from your link and their first ad is approved, you get a free boost for any of your
+            joins Bhavano from your link and their first ad is approved, you get a free Feature for any of your
             ads.
           </p>
         </div>

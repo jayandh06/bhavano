@@ -103,7 +103,7 @@ export async function redeemReferralBoostAction(listingId: string, source?: Purc
     );
     return { success: true, order };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Couldn't use your free boost" };
+    return { success: false, error: error instanceof Error ? error.message : "Couldn't use your free Feature" };
   }
 }
 

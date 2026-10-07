@@ -22,7 +22,7 @@ import { redirect } from "next/navigation";
  * `withAlerts`, and a value nobody reads is better than a redirect that 404s on an unfamiliar one.
  */
 export const metadata: Metadata = {
-  title: "Boost your ad",
+  title: "Feature your ad",
   // A redirect has nothing to index, and an indexed /checkout competing with /my-listings would be
   // worse than nothing.
   robots: { index: false, follow: false },

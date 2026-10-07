@@ -18,7 +18,7 @@ describe("boostRecoveryMessage", () => {
   it("falls back to the honest non-numeric message before the first computation has ever run", () => {
     const msg = boostRecoveryMessage(null);
     expect(msg.hasEnoughData).toBe(false);
-    expect(msg.headline).toBe("Boosted ads get priority placement and reach more buyers.");
+    expect(msg.headline).toBe("Featured ads get priority placement and reach more buyers.");
   });
 
   it("falls back when the boosted cohort hasn't reached the minimum sample size", () => {

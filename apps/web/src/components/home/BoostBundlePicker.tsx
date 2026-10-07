@@ -174,7 +174,7 @@ export function BoostBundlePicker({
     <div className="mb-4 rounded-[10px] border-[1.5px] border-green bg-green/10 p-3.5 flex flex-col gap-2.5">
       <div className="text-[13.5px] text-text">
         <span className="font-bold">
-          You have {referralCredit.available === 1 ? "a free boost" : `${referralCredit.available} free boosts`}
+          You have {referralCredit.available === 1 ? "a free Feature" : `${referralCredit.available} free Features`}
         </span>{" "}
         from referring friends. Use one now for {referralCredit.days} days, free.{" "}
         <span className="text-muted" suppressHydrationWarning>
@@ -187,9 +187,9 @@ export function BoostBundlePicker({
         disabled={pending}
         className="w-full bg-green text-on-green border-0 rounded-lg px-4 py-2.5 text-sm font-bold cursor-pointer disabled:opacity-60"
       >
-        {pending ? "Activating…" : `Use free ${referralCredit.days}-day boost`}
+        {pending ? "Activating…" : `Use free ${referralCredit.days}-day Feature`}
       </button>
-      {!paidOptionsHidden && <div className="text-[12px] text-muted text-center">or pay for a longer boost below</div>}
+      {!paidOptionsHidden && <div className="text-[12px] text-muted text-center">or pay for a longer Feature below</div>}
     </div>
   );
 
@@ -256,7 +256,7 @@ export function BoostBundlePicker({
             >
               <span className="flex flex-col items-start gap-0.5 text-left">
                 <span className="flex items-center gap-2">
-                  Boost {days} days
+                  Feature for {days} days
                   {days === 30 && saving && (
                     <span className="text-[10.5px] font-bold text-on-green bg-green rounded-md px-1.5 py-[1px]">
                       Best value

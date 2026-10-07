@@ -13,7 +13,7 @@ import { Icon } from "@/components/home/Icon";
 
 // A signed-in dashboard: nothing here for a crawler. Set per page rather than in robots.txt.
 export const metadata: Metadata = {
-  title: "Referrals & free boosts",
+  title: "Referrals & free Features",
   robots: { index: false, follow: false },
 };
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 const STATUS_LABELS: Record<ReferralStatus, { label: string; className: string }> = {
   signed_up: { label: "Joined — waiting for their first ad", className: "text-muted" },
   ad_approved: { label: "Posted an ad", className: "text-text-soft" },
-  rewarded: { label: "You earned a free boost", className: "text-green" },
+  rewarded: { label: "You earned a free Feature", className: "text-green" },
   blocked: { label: "Under review", className: "text-muted" },
   reversed: { label: "Not counted", className: "text-muted" },
 };
@@ -46,10 +46,10 @@ export default async function ReferralsPage({
         <Link href="/profile" className="text-[13px] text-muted mb-4 inline-block">
           ← Back to profile
         </Link>
-        <h1 className="font-lora text-[26px] font-semibold m-0 mb-1">Referrals &amp; free boosts</h1>
+        <h1 className="font-lora text-[26px] font-semibold m-0 mb-1">Referrals &amp; free Features</h1>
         <p className="text-[13px] text-muted mb-6">
           Invite people to Bhavano. When someone joins from your link and their first ad goes live, you get a free
-          boost for any of your ads.
+          Feature for any of your ads.
         </p>
 
         {!loggedIn || !accessToken ? (
@@ -84,10 +84,10 @@ async function ReferralsDashboard({ accessToken }: { accessToken: string }) {
           <Icon name="boost" className="text-[color:var(--gold)] text-lg" />
           <span className="font-lora font-bold text-[17px]">
             {credits.length === 0
-              ? "No free boosts yet"
+              ? "No free Features yet"
               : credits.length === 1
-                ? "You have 1 free boost"
-                : `You have ${credits.length} free boosts`}
+                ? "You have 1 free Feature"
+                : `You have ${credits.length} free Features`}
           </span>
         </div>
         {soonest ? (
@@ -96,12 +96,12 @@ async function ReferralsDashboard({ accessToken }: { accessToken: string }) {
             <Link href="/my-listings" className="font-bold text-green">
               My listings
             </Link>{" "}
-            — tap Boost on any ad.
+            — tap Feature on any ad.
           </p>
         ) : (
           <p className="text-[13px] text-text-soft m-0">
             Each friend who joins from your link and gets their first ad approved earns you a free{" "}
-            {data.boostDays}-day boost.
+            {data.boostDays}-day Feature.
           </p>
         )}
       </section>
@@ -123,7 +123,7 @@ async function ReferralsDashboard({ accessToken }: { accessToken: string }) {
           [
             ["Joined", data.counts.signedUp],
             ["Posted an ad", data.counts.firstAdApproved],
-            ["Boosts earned", data.counts.rewarded],
+            ["Features earned", data.counts.rewarded],
           ] as const
         ).map(([label, value]) => (
           <div key={label} className="rounded-xl border border-border bg-surface p-4 text-center">
@@ -161,12 +161,12 @@ async function ReferralsDashboard({ accessToken }: { accessToken: string }) {
       <section className="flex flex-col gap-1.5 text-[12.5px] text-muted">
         <h2 className="text-[13px] font-bold text-text m-0">How it works</h2>
         <p className="m-0">
-          You earn one free {data.boostDays}-day boost for each person who signs up from your link and has their first
-          ad approved. Free boosts expire {data.creditExpiryDays} days after you earn them, and you can
+          You earn one free {data.boostDays}-day Feature for each person who signs up from your link and has their first
+          ad approved. Free Features expire {data.creditExpiryDays} days after you earn them, and you can
           earn up to {data.monthlyCap} a month ({data.creditsThisMonth} so far this month).
         </p>
         <p className="m-0">
-          Boosts have no cash value and can&apos;t be transferred. Referrals from the same phone or device as yours
+          Features have no cash value and can&apos;t be transferred. Referrals from the same phone or device as yours
           don&apos;t count.
         </p>
       </section>

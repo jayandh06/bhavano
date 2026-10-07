@@ -44,9 +44,9 @@ function sellerRows(settings: SubscriptionPlanSettings): { label: string; free: 
     },
     { label: "Public storefront page", free: "Basic", pack: "Basic", pro: "Branded + Pro badge" },
     { label: "Elevated video (3 × 120s)", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
-    { label: "Monthly 7-day boost credit", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
+    { label: "Monthly 7-day Feature credit", free: { type: "no" }, pack: { type: "no" }, pro: { type: "yes" } },
     {
-      label: "Pay-per-listing boost (Featured)",
+      label: "Pay-per-listing Feature",
       free: "Optional",
       pack: "Optional",
       pro: "Optional (+ credit)",
@@ -130,7 +130,7 @@ export function PlanComparisonTable({
       <div>
         <h2 className="font-lora text-lg font-semibold m-0 mb-1">Selling — compare plans</h2>
         <p className="text-[13px] text-muted m-0 mb-4">
-          Active listings use a slot until the ad expires (~30 days) or you remove it. Boosts are separate — buy
+          Active listings use a slot until the ad expires (~30 days) or you remove it. Features are separate — buy
           from My listings anytime.
         </p>
         <HorizontalScroller ariaLabel="plan comparison" contentClassName="border border-border rounded-2xl bg-surface overflow-hidden">

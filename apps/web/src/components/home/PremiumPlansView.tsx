@@ -129,7 +129,7 @@ export function PremiumPlansView({
             </li>
             <li>Public storefront with Bhavano Pro badge</li>
             <li>Elevated video limits when posting</li>
-            <li>One 7-day boost credit per month</li>
+            <li>One 7-day Feature credit per month</li>
           </ul>
           {isAgentPro && agentProUntil && profile ? (
             <div className="flex flex-col gap-2 items-start">

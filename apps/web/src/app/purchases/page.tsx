@@ -10,7 +10,7 @@ import { HorizontalScroller } from "@/components/home/HorizontalScroller";
 import type { PaymentHistoryItemDto, PaymentPurpose, PaymentStatus } from "@bhavano/types";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
-  listing_boost: "Listing boost",
+  listing_boost: "Listing Feature",
   listing_publish: "Publish listing",
   buyer_premium: "Bhavano Plus",
   agent_pro: "Agent/Broker Pro",
@@ -35,8 +35,8 @@ function detailFor(item: PaymentHistoryItemDto): string {
   switch (item.purpose) {
     case "listing_boost":
       return item.listingTitle
-        ? `${item.boostDays ?? "?"}-day boost — ${item.listingTitle}`
-        : `${item.boostDays ?? "?"}-day boost`;
+        ? `${item.boostDays ?? "?"}-day Feature — ${item.listingTitle}`
+        : `${item.boostDays ?? "?"}-day Feature`;
     case "buyer_premium":
     case "seller_slot_pack":
       return `${item.subscriptionMonths ?? "?"} month${item.subscriptionMonths === 1 ? "" : "s"}`;
@@ -70,7 +70,7 @@ export default async function PurchasesPage({
         </Link>
         <h1 className="font-lora text-[26px] font-semibold m-0 mb-1">Purchase history</h1>
         <p className="text-[13px] text-muted mb-6">
-          Every boost, subscription, and contact-reveal credit pack you&apos;ve bought — including attempts that didn&apos;t
+          Every Feature, subscription, and contact-reveal credit pack you&apos;ve bought — including attempts that didn&apos;t
           go through.
         </p>
 

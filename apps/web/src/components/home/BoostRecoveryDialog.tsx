@@ -58,7 +58,7 @@ export function BoostRecoveryDialog({
         <p className="text-[14px] text-text leading-[1.5] mb-1 mt-3">{message.headline}</p>
         {!message.hasEnoughData && (
           <p className="text-[12px] text-muted leading-[1.5] mb-0">
-            Boost puts your ad higher in search and gives it a badge buyers notice.
+            Feature puts your ad higher in search and gives it a badge buyers notice.
           </p>
         )}
 
@@ -68,7 +68,7 @@ export function BoostRecoveryDialog({
             onClick={onAddBoost}
             className="flex items-center justify-between gap-3 border-0 rounded-lg px-4 py-3 text-sm font-bold cursor-pointer bg-green text-on-green"
           >
-            <span>Add {duration}-day Boost</span>
+            <span>Add {duration}-day Feature</span>
             <span>{priceText}</span>
           </button>
           <button
@@ -76,7 +76,7 @@ export function BoostRecoveryDialog({
             onClick={onSkip}
             className="bg-transparent border-0 p-0 text-[12.5px] font-bold text-muted underline cursor-pointer"
           >
-            No thanks, post without boosting
+            No thanks, post without featuring
           </button>
         </div>
       </div>

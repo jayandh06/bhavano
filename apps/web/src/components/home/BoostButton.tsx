@@ -29,7 +29,7 @@ export function BoostButton({
   if (pendingActivation) {
     return (
       <span className="inline-flex items-center justify-center gap-1.5 text-[13px] font-bold text-green whitespace-nowrap">
-        <Icon name="boost" /> Boost pending…
+        <Icon name="boost" /> Featuring…
       </span>
     );
   }
@@ -39,7 +39,7 @@ export function BoostButton({
       onClick={() => boost({ listingId, category, onActivating: () => setPendingActivation(true) })}
       className={className}
     >
-      <Icon name="boost" /> Boost Ad
+      <Icon name="boost" /> Feature Ad
     </button>
   );
 }

@@ -86,7 +86,7 @@ export function BoostPlanSelector({
       <div className="flex items-center gap-2 mb-3">
         <Icon name="boost" className="text-[color:var(--gold)] text-lg" />
         <span className="font-lora font-bold text-[15px] text-text">
-          Boost this ad
+          Feature this ad
           {/* Computed from the option's own amount/originalAmount rather than hardcoded — the
             * real percent lives on an admin-edited DiscountCode row, so this can't go stale. */}
           {option.discountApplied && (
@@ -113,7 +113,7 @@ export function BoostPlanSelector({
             >
               <span className="flex flex-col items-start gap-0.5 text-left">
                 <span className="flex items-center gap-2">
-                  Boost {days} days
+                  Feature for {days} days
                   {days === 30 && saving && (
                     <span className="text-[10.5px] font-bold text-on-green bg-green rounded-md px-1.5 py-[1px]">
                       Best value
@@ -135,7 +135,7 @@ export function BoostPlanSelector({
       </div>
       <p className="text-[12.5px] text-text-soft mt-2.5 mb-0">Instant Alerts is included: you are emailed and WhatsApp&apos;d the moment someone messages you.</p>
 
-      <p className="text-[13px] font-bold text-green mt-3 mb-0">{value ? `Boost add-on: ${priceText(option)}` : "Not boosting this ad"}</p>
+      <p className="text-[13px] font-bold text-green mt-3 mb-0">{value ? `Feature add-on: ${priceText(option)}` : "Not featuring this ad"}</p>
 
       {pricing.allowSkippingBoost !== false && (
         <button
@@ -143,7 +143,7 @@ export function BoostPlanSelector({
           onClick={() => onChange(value ? null : effective)}
           className="mt-2.5 bg-transparent border-0 p-0 text-[12.5px] font-bold text-muted underline cursor-pointer"
         >
-          {value ? "Skip — post without boosting" : "Add it back"}
+          {value ? "Skip — post without featuring" : "Add it back"}
         </button>
       )}
         </>

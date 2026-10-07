@@ -100,7 +100,7 @@ export function VideoManager({
 
   const addTrigger = atCap ? (
     entitlement.canUpgradeByBoosting && (
-      <p className="text-xs text-muted m-0">Boost this listing to add up to 3 videos, up to 2 minutes each.</p>
+      <p className="text-xs text-muted m-0">Feature this listing to add up to 3 videos, up to 2 minutes each.</p>
     )
   ) : expanded ? (
     <UploadZone
