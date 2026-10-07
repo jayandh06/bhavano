@@ -161,6 +161,33 @@ place" instruction. Flag this as a prompt-review item, not a programmatically-en
   (`AuthGuard`, not `OptionalAuthGuard` — `RateLimitGuard` no-ops without a `request.user.id`, so an
   anonymous caller must be rejected before the guard, not allowed through unlimited).
 
+**Update (2026-10-07): two production bugs found via live testing right after this feature's
+button/reorder changes shipped, both now fixed:**
+- **Raw `ThrottlerException: Too Many Requests` was reaching the user verbatim.** Both web's
+  `bffFetch` and mobile's `BffError.userMessage` surface a 4xx response's `message` field as-is —
+  `ThrottlerException`'s own default message is literally its class name, not something a seller
+  can act on. `rate-limit.service.ts` now passes `ThrottlerException` a kind-specific, readable
+  message ("You've reached today's AI-generate limit — try again tomorrow, or write it yourself
+  for now.") instead of leaving it at the default. The underlying limit itself (10/day/user) is
+  unchanged — a seller hitting this during normal use (two hits per Generate: title *and*
+  description, plus any regenerate) is expected at the current cap, not a bug; raise
+  `aiGenerateLimit` via the admin rate-limit settings if that cap turns out too tight in practice.
+- **An uncaught `SyntaxError` was reaching the user as a raw 500 "Internal server error".** Both
+  `GeminiListingCopyProvider` and `OpenAiListingCopyProvider` ask the model for a formatted
+  description ("a blank line between paragraphs" — `buildSystemPrompt`'s `allowFormatting`), and
+  despite `responseMimeType`/`response_format: json_object`, the model sometimes emits that blank
+  line as a literal unescaped newline **byte** inside the JSON string value instead of the
+  required `\n` escape. Strict `JSON.parse` rejects a raw control character inside a string
+  outright ("Bad control character in string literal in JSON"), which was an unhandled
+  `SyntaxError` → Nest's default 500 for a generation that had actually succeeded upstream.
+  Confirmed live in production logs the same day. Fixed with a shared `parseModelJson` helper
+  (`listing-copy-prompts.ts`, used by both providers, same "shared so the two never drift" reasoning
+  as the prompt builders themselves): tries a straight parse first, retries once after escaping any
+  control character found strictly inside a string literal (tracking quote/escape state, so real
+  whitespace between JSON tokens is left alone), and only then throws a clean
+  `ServiceUnavailableException` if the reply is unrecoverably broken (e.g. truncated by a token
+  limit) — never a raw `SyntaxError` past this point.
+
 **Consolidate the duplicated boost check while touching this area**: add
 `apps/bff/src/listings/listing-boost.util.ts` exporting `isListingBoosted(listing)` —
 `(listing.boostedUntil?.getTime() ?? 0) > Date.now()` is currently copy-pasted 4× across
@@ -215,7 +242,13 @@ any manual edit — auto-*offered*, never auto-*applied*.
   is unusual UX here and would raise an SEO question of its own, needing a separate URL + hreflang
   per language that a v1 doesn't need; one canonical URL, one stored description value picked by
   toggle, stays simplest). This is Featured-only and additive — see the Free-tier `language` picker
-  described above, which is a different, replacing concept.
+  described above, which is a different, replacing concept. **Update (2026-10-07):** both this
+  picker and the Free-tier one now use the shared `SelectField` component
+  (`apps/web/src/components/home/SelectField.tsx`, `narrow` prop) instead of a bare `<select>` —
+  the bare element rendered the browser's native grey arrow pinned to the far edge of an
+  auto-width control, visibly inconsistent with every other dropdown on this page (City,
+  Price qualifier, …), which all already go through `SelectField` for its themed `▾` drawn right
+  next to the value. Caught via direct feedback right after the Free-tier picker shipped.
 - Handler calls the new BFF endpoint (modeled on `createListingAction`'s token/login-gate pattern,
   `requireLogin({ onSuccess: () => void handleGenerateCopy(field) })` on a missing token) and
   populates `title`/`description` state on success — both remain freely editable afterward.
