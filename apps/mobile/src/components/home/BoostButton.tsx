@@ -32,7 +32,7 @@ export function BoostButton({
   if (pendingActivation) {
     return (
       <Text style={[styles.pending, { color: colors.green }]}>
-        <Icon name="boost" size={13} color={colors.green} /> Boost pending…
+        <Icon name="boost" size={13} color={colors.green} /> Featuring…
       </Text>
     );
   }
@@ -48,7 +48,7 @@ export function BoostButton({
         style={[styles.button, { borderColor: colors.green }]}
       >
         <Icon name="boost" size={13} color={colors.green} />
-        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>Boost Ad</Text>
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>Feature Ad</Text>
       </Pressable>
       {Platform.OS === "android" && (
         <BoostModal

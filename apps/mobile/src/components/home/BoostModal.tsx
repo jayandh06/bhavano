@@ -95,7 +95,7 @@ export function BoostModal({
         currency: order.currency,
         order_id: order.razorpayOrderId,
         name: "Bhavano",
-        description: `Boost this ad for ${days} days`,
+        description: `Feature this ad for ${days} days`,
       });
 
       onActivating();
@@ -119,7 +119,7 @@ export function BoostModal({
           style={{ width: "100%", maxWidth: 360, backgroundColor: colors.surface, borderRadius: 16, padding: 20 }}
         >
           <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 17, color: colors.text, marginBottom: 4 }}>
-            Boost this ad
+            Feature this ad
           </Text>
           <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>
             Featured listings rank ahead of regular ones and rotate through the top slots fairly

@@ -57,11 +57,11 @@ export function OwnerWhatsAppShare({
         <View style={{ gap: 4 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Icon name="boost" size={15} color={colors.gold} />
-            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>Share your ad and earn a free boost</Text>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>Share your ad and earn a free Feature</Text>
           </View>
           <Text style={{ fontSize: 13, color: colors.textSoft }}>
             Send it to your society, office or family WhatsApp groups to get enquiries sooner. When someone joins
-            Bhavano from your link and their first ad is approved, you get a free boost for any of your ads.
+            Bhavano from your link and their first ad is approved, you get a free Feature for any of your ads.
           </Text>
         </View>
       ) : (

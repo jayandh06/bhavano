@@ -38,7 +38,7 @@ export function ReferralFreeBoost({
       await redeemReferralBoost(accessToken, listingId, source);
       onActivated();
     } catch {
-      setError("Couldn't use your free boost — please try again.");
+      setError("Couldn't use your free Feature — please try again.");
     } finally {
       setPending(false);
     }
@@ -58,7 +58,7 @@ export function ReferralFreeBoost({
     >
       <Text style={{ fontSize: 13.5, color: colors.text }}>
         <Text style={{ fontWeight: "700" }}>
-          {credit.available === 1 ? "You have a free boost" : `You have ${credit.available} free boosts`}
+          {credit.available === 1 ? "You have a free Feature" : `You have ${credit.available} free Features`}
         </Text>{" "}
         from referring friends. Use one now for {credit.days} days, free.{" "}
         <Text style={{ color: colors.muted }}>Expires {expiryFormatter.format(new Date(credit.expiresAt))}.</Text>
@@ -77,12 +77,12 @@ export function ReferralFreeBoost({
         {pending ? (
           <ActivityIndicator color={colors.onGreen} />
         ) : (
-          <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Use free {credit.days}-day boost</Text>
+          <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Use free {credit.days}-day Feature</Text>
         )}
       </Pressable>
       {error && <Text style={{ color: "#c0554b", fontSize: 13 }}>{error}</Text>}
       {showPaidHint && (
-        <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>or pay for a longer boost below</Text>
+        <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>or pay for a longer Feature below</Text>
       )}
     </View>
   );

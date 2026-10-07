@@ -193,7 +193,7 @@ export function BoostBundleCard({
             >
               <View style={{ flex: 1, gap: 2 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>Boost {days} days</Text>
+                  <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>Feature for {days} days</Text>
                   {days === 30 && saving && (
                     <Text
                       style={{

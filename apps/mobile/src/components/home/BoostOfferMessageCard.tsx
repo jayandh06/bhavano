@@ -70,7 +70,7 @@ export function BoostOfferMessageCard({
         ))}
         {activating ? (
           <Text style={{ marginTop: 14, textAlign: "center", fontWeight: "700", color: colors.green }}>
-            Boost pending…
+            Featuring…
           </Text>
         ) : (
           <Pressable onPress={onBoost} style={[styles.button, { backgroundColor: colors.green }]}>

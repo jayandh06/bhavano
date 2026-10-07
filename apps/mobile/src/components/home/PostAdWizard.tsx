@@ -789,7 +789,7 @@ export function PostAdWizard({
     if (durationSec !== undefined && durationSec > videoEntitlement.maxDurationSec) {
       setVideoError(
         videoEntitlement.canUpgradeByBoosting
-          ? `That video is longer than ${videoEntitlement.maxDurationSec}s. Boost this listing after posting to add longer videos.`
+          ? `That video is longer than ${videoEntitlement.maxDurationSec}s. Feature this listing after posting to add longer videos.`
           : `That video is longer than the ${videoEntitlement.maxDurationSec}s limit.`,
       );
       return;
@@ -1784,7 +1784,7 @@ export function PostAdWizard({
           <Text style={{ color: colors.muted, fontSize: 12 }}>
             Up to {videoEntitlement.maxDurationSec}s each.
             {videoEntitlement.canUpgradeByBoosting
-              ? " Boost this listing after posting to add up to 3 videos, up to 2 minutes each."
+              ? " Feature this listing after posting to add up to 3 videos, up to 2 minutes each."
               : ""}
           </Text>
           {videos.length < videoEntitlement.maxVideos && (
@@ -1994,7 +1994,7 @@ export function PostAdWizard({
                   style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
                 >
                   <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>
-                    Boost this listing{priceSuffix(iosPricing?.boost7)}
+                    Feature this listing{priceSuffix(iosPricing?.boost7)}
                   </Text>
                 </Pressable>
               </View>
@@ -2011,15 +2011,15 @@ export function PostAdWizard({
                 {boostCheckoutPending ? (
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
                     <ActivityIndicator color={colors.green} />
-                    <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Finishing your boost purchase…</Text>
+                    <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Finishing your Feature purchase…</Text>
                   </View>
                 ) : (
                   <>
                     <Text style={{ fontSize: 13, color: colors.textSoft, marginBottom: 12 }}>
-                      {`Payment for your ${selectedBoostPlan.duration}-day Boost didn’t go through.`}
+                      {`Payment for your ${selectedBoostPlan.duration}-day Feature didn’t go through.`}
                     </Text>
                     <Pressable onPress={retryBoostCheckout} style={[styles.submitButton, { backgroundColor: colors.green }]}>
-                      <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Finish boosting this listing</Text>
+                      <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Finish featuring this listing</Text>
                     </Pressable>
                   </>
                 )}
@@ -2028,7 +2028,7 @@ export function PostAdWizard({
           ) : bundleActivating ? (
             <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }]}>
               <Icon name="boost" size={16} color={colors.green} />
-              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Boost pending…</Text>
+              <Text style={{ color: colors.green, fontWeight: "700", fontSize: 14 }}>Featuring…</Text>
             </View>
           ) : (
             postAccessToken && (

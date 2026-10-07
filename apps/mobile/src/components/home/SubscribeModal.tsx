@@ -23,7 +23,7 @@ const TIER_LABELS: Record<SubscriptionTier, string> = {
 
 const TIER_BLURBS: Record<SubscriptionTier, string> = {
   buyerPremium: "Early-access saved-search alerts, a Verified Buyer badge, and priority in sellers' inboxes.",
-  agentPro: "More active listings, a branded storefront, elevated video limits, and a monthly boost credit.",
+  agentPro: "More active listings, a branded storefront, elevated video limits, and a monthly Feature credit.",
   sellerSlotPack: "More active ads at once. Slots free up when an ad expires or you remove it.",
 };
 

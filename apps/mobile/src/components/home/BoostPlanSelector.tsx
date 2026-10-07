@@ -103,7 +103,7 @@ export function BoostPlanSelector({
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <Icon name="boost" size={17} color={colors.gold} />
         <Text style={{ fontFamily: "serif", fontWeight: "700", fontSize: 15, color: colors.text }}>
-          Boost this ad
+          Feature this ad
           {/* Appended only while a discount is actually live on the option being shown, and
               computed from its own amount/originalAmount rather than a hardcoded "50" — the real
               percent lives on an admin-edited DiscountCode row, so this can't quietly go stale. */}
@@ -132,7 +132,7 @@ export function BoostPlanSelector({
             >
               <View style={{ flex: 1, gap: 2 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>Boost {days} days</Text>
+                  <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text }}>Feature for {days} days</Text>
                   {days === 30 && saving && (
                     <Text
                       style={{
@@ -178,14 +178,14 @@ export function BoostPlanSelector({
             Total: <PriceText opt={option} />
           </>
         ) : (
-          "Not boosting this ad"
+          "Not featuring this ad"
         )}
       </Text>
 
       {pricing.allowSkippingBoost !== false && (
         <Pressable onPress={() => onChange(value ? null : effective)} style={{ marginTop: 10 }}>
           <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.muted, textDecorationLine: "underline" }}>
-            {value ? "Skip — post without boosting" : "Add it back"}
+            {value ? "Skip — post without featuring" : "Add it back"}
           </Text>
         </Pressable>
       )}
