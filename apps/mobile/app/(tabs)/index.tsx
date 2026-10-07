@@ -1,5 +1,17 @@
 import { useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, RefreshControl, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Keyboard,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+  type ViewToken,
+} from "react-native";
 import { useRouter } from "expo-router";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../src/theme/ThemeContext";
@@ -35,6 +47,16 @@ export default function HomeScreen() {
   const [filters, setFilters] = useState<AppliedFilters>(EMPTY_FILTERS);
   const propertyType = category === "buy" || category === "rentLease" ? filters.propertyType : undefined;
   const [sort, setSort] = useState<SortValue>("auto");
+
+  // Which cards ListingCard's own isVisible prop should treat as "on screen right now" — see its
+  // doc comment. minimumViewTime debounces this to once the visible set has actually settled,
+  // not on every scroll frame; viewabilityConfig/onViewableItemsChanged must stay referentially
+  // stable across renders (useRef, not useState+inline) — FlatList warns/misbehaves otherwise.
+  const [visibleIds, setVisibleIds] = useState<ReadonlySet<string>>(new Set());
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60, minimumViewTime: 400 }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    setVisibleIds(new Set(viewableItems.map((v) => v.item.id as string)));
+  }).current;
 
   const filterSheetRef = useRef<BottomSheetModal>(null);
   const sortSheetRef = useRef<BottomSheetModal>(null);
@@ -158,6 +180,8 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         onEndReached={() => hasNextPage && fetchNextPage()}
         onEndReachedThreshold={0.5}
+        viewabilityConfig={viewabilityConfig}
+        onViewableItemsChanged={onViewableItemsChanged}
         ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 20 }} color={colors.green} /> : null}
         // Only once the first page has actually resolved — otherwise this would flash the
         // "nothing found" card for every category/filter change while the new query is still
@@ -167,7 +191,7 @@ export default function HomeScreen() {
         }
         renderItem={({ item }) => (
           <View style={numColumns > 1 ? styles.gridItem : styles.singleItem}>
-            <ListingCard item={item} />
+            <ListingCard item={item} isVisible={visibleIds.has(item.id)} />
           </View>
         )}
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Image, Pressable, Share, StyleSheet, Text, View, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import type { ListingCardDto } from "@bhavano/types";
@@ -13,7 +13,20 @@ import { useGuestSaveHeart } from "../../lib/useGuestSaveHeart";
 import { Icon } from "../Icon";
 import { ListingPrice } from "./PriceWithWords";
 
-export function ListingCard({ item }: { item: ListingCardDto }) {
+export function ListingCard({
+  item,
+  /** Mirrors web ListingCard.tsx's hover-cycle, touch's equivalent: there's no mouse to hover
+   * here either, so the parent list reports actual on-screen visibility instead (FlatList's
+   * `onViewableItemsChanged`) — same reasoning as web's IntersectionObserver path: only a
+   * Featured card someone is actually scrolled to should tick, never every Featured card in the
+   * list at once. Defaults to false, not true — a screen that doesn't wire up viewability (no
+   * FlatList, or one that hasn't been updated yet) gets no cycling rather than cycling for every
+   * rendered card unconditionally, which is the one thing this is specifically guarding against. */
+  isVisible = false,
+}: {
+  item: ListingCardDto;
+  isVisible?: boolean;
+}) {
   const { colors } = useAppTheme();
   const { requireLogin, accessToken, userId } = useHomeSheets();
   const router = useRouter();
@@ -25,6 +38,23 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   const [contactRevealed, setContactRevealed] = useState(item.contactRevealed);
   const [ownerPhone, setOwnerPhone] = useState(item.ownerPhone);
   const [revealPending, setRevealPending] = useState(false);
+
+  // Same "cheap benefit of being Featured, not a full carousel" reasoning as web's
+  // ListingCard.tsx: cycling every photo for every Featured card up front would mean loading N
+  // images per card on a list that renders many at once — real cost for cards nobody's actually
+  // scrolled to. isVisible (see above) is what keeps this to only the cards currently on screen.
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const canCyclePhotos = item.isBoosted && item.photos.length > 1;
+  useEffect(() => {
+    if (!canCyclePhotos || !isVisible) {
+      setPhotoIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setPhotoIndex((i) => (i + 1) % item.photos.length);
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [canCyclePhotos, isVisible, item.photos.length]);
 
   // TEMP(auth-gate): viewing listing details is open without login for now.
   const openDetail = () => router.push(`/listing/${item.id}`);
@@ -99,7 +129,16 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
   }
 
   return (
-    <Pressable onPress={openDetail} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <Pressable
+      onPress={openDetail}
+      style={[
+        styles.card,
+        { backgroundColor: colors.surface },
+        // Matches web ListingCard.tsx's resting-state gold border — "wins attention at rest, not
+        // only on tap," same reasoning, since there's no hover state here to fall back on either.
+        item.isBoosted ? { borderColor: colors.gold, borderWidth: 1.5 } : { borderColor: colors.border, borderWidth: 1 },
+      ]}
+    >
       <View
         style={[
           styles.imageArea,
@@ -108,7 +147,7 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
       >
         <View style={[styles.imageOverlayA, { backgroundColor: item.imgColors[1] }]} />
         {item.photos[0] ? (
-          <Image source={{ uri: item.photos[0] }} style={StyleSheet.absoluteFill} />
+          <Image source={{ uri: item.photos[photoIndex] ?? item.photos[0] }} style={StyleSheet.absoluteFill} />
         ) : (
           <Text style={styles.imageCaption}>{item.imgLabel}</Text>
         )}
@@ -123,6 +162,14 @@ export function ListingCard({ item }: { item: ListingCardDto }) {
             </View>
           )}
         </View>
+        {/* Same resting hint as web's camera-count badge — there's more than one photo, whether
+          * or not this card happens to be cycling right now. */}
+        {canCyclePhotos && (
+          <View style={styles.photoCountBadge}>
+            <Icon name="camera" size={11} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 10.5, fontWeight: "700" }}>{item.photos.length}</Text>
+          </View>
+        )}
         {/* Sits here rather than the actions row below so it's visible on your own listing too,
           * unlike Message/Contact there — sharing your own ad is a real use case those aren't. */}
         <Pressable onPress={onShare} style={styles.shareButton}>
@@ -237,6 +284,18 @@ const styles = StyleSheet.create({
   tagRow: { position: "absolute", top: 10, left: 10, flexDirection: "row", gap: 6 },
   tag: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5 },
   featuredTag: { flexDirection: "row", alignItems: "center", gap: 3 },
+  photoCountBadge: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#00000099",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
   heartButton: {
     position: "absolute",
     top: 8,
