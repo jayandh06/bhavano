@@ -404,6 +404,11 @@ export function PostAdWizard({
   const [generatingTitle, setGeneratingTitle] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [aiGenerateError, setAiGenerateError] = useState<string | null>(null);
+  // This step's own choice, not the Featured-regenerate banner's secondLanguageChoice below —
+  // that one is additive (English + a toggle to a second version); this one *replaces* English,
+  // applies to both fields, and is read fresh by handleGenerateCopy on every click rather than
+  // being passed in per-call, so changing it mid-step doesn't require re-wiring either button.
+  const [generationLanguage, setGenerationLanguage] = useState<IndianLanguage | "">("");
   const [secondLanguageChoice, setSecondLanguageChoice] = useState<IndianLanguage | "">("");
   const [secondLanguageDescription, setSecondLanguageDescription] = useState<string | null>(null);
   const [activeDescriptionLang, setActiveDescriptionLang] = useState<"en" | IndianLanguage>("en");
@@ -1317,6 +1322,7 @@ export function PostAdWizard({
             attributes,
             lat: pin?.lat,
             lng: pin?.lng,
+            language: generationLanguage || undefined,
           },
     );
     setGenerating(false);
@@ -1832,41 +1838,6 @@ export function PostAdWizard({
 
       {step === "details" && category && transactionType && (
         <div className="flex flex-col gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <label className="text-[13px] font-bold text-text-soft">
-                Title <span className="text-[#b3413a]">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => void handleGenerateCopy("title")}
-                disabled={!canGenerateCopy || generatingTitle}
-                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
-                className={aiGenerateButtonClass}
-              >
-                {generatingTitle ? "Generating…" : "✨ AI Generate"}
-              </button>
-            </div>
-            {/* Counter sits beside the input — reads as attached to the text box it's counting.
-              * Counts up rather than down, so it reads as progress rather than a warning, and
-              * turns amber near the cap instead of only at it — a poster who has run out of room
-              * mid-sentence wants to know a few characters earlier. */}
-            <div className="flex items-center gap-2 max-w-[720px]">
-              <input
-                required
-                value={title}
-                maxLength={TITLE_MAX_LENGTH}
-                onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
-                className={`${fieldClass} flex-1`}
-              />
-              <span
-                className={`text-xs tabular-nums shrink-0 ${title.length >= TITLE_MAX_LENGTH ? "text-[#b3413a]" : title.length > TITLE_MAX_LENGTH - 20 ? "text-gold" : "text-muted"}`}
-              >
-                {title.length}/{TITLE_MAX_LENGTH}
-              </span>
-            </div>
-          </div>
-
           <div className="max-w-[720px]">
             <label className={labelClass}>
               Pin your exact location (optional — helps buyers find you, and
@@ -1931,38 +1902,8 @@ export function PostAdWizard({
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <label className="text-[13px] font-bold text-text-soft">
-                Description <span className="text-[#b3413a]">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => void handleGenerateCopy("description")}
-                disabled={!canGenerateCopy || generatingDescription}
-                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
-                className={aiGenerateButtonClass}
-              >
-                {generatingDescription ? "Generating…" : "✨ AI Generate"}
-              </button>
-            </div>
-            <textarea
-              required
-              value={description}
-              onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
-              maxLength={DESCRIPTION_MAX_LENGTH}
-              rows={5}
-              placeholder="Describe the place in your own words — the layout, what the neighbourhood is like, what's nearby, why someone would want to live here."
-              className={`${fieldClass} resize-y min-h-[120px] max-w-[720px]`}
-            />
-            <p className="text-xs text-muted mt-1">
-              At least {DESCRIPTION_MIN_LENGTH} characters — ads with a real description get more responses.
-            </p>
-            {aiGenerateError && <p className="text-xs text-[#b3413a] mt-1">{aiGenerateError}</p>}
-          </div>
-
-          {/* No "specs" box. The card's chips are derived from the category fields below, which
-            * the seller is already filling in — asking again produced "3bhk", "3 BHK" and
+          {/* No "specs" box. The card's chips are derived from the category fields right below,
+            * which the seller is about to fill in — asking again produced "3bhk", "3 BHK" and
             * "3 Beds" as three spellings of the same number. See deriveCardSpecs. */}
 
           <div className="border-t border-border pt-4">
@@ -2152,6 +2093,92 @@ export function PostAdWizard({
             {videoError && (
               <p className="text-[#b3413a] text-[13px] mt-2">{videoError}</p>
             )}
+          </div>
+
+          {/* Governs both AI Generate buttons below, not just one — a single choice up front
+            * rather than two pickers that could disagree. Replaces English rather than adding to
+            * it (unlike the Featured-regenerate banner's own language picker on the success
+            * step, which is deliberately additive) — see generationLanguage's own comment above. */}
+          <div className="flex items-center gap-2 max-w-[720px] flex-wrap">
+            <label className="text-[13px] font-bold text-text-soft shrink-0">✨ AI-generate in:</label>
+            <select
+              value={generationLanguage}
+              onChange={(e) => setGenerationLanguage(e.target.value as IndianLanguage | "")}
+              className={`${fieldClass} w-auto`}
+            >
+              <option value="">English</option>
+              {INDIAN_LANGUAGES.map((lang) => (
+                <option key={lang} value={lang}>
+                  {INDIAN_LANGUAGE_LABELS[lang]}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-muted">Applies to both Title and Description below.</span>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <label className="text-[13px] font-bold text-text-soft">
+                Title <span className="text-[#b3413a]">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleGenerateCopy("title")}
+                disabled={!canGenerateCopy || generatingTitle}
+                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
+                className={aiGenerateButtonClass}
+              >
+                {generatingTitle ? "Generating…" : "✨ AI Generate"}
+              </button>
+            </div>
+            {/* Counter sits beside the input — reads as attached to the text box it's counting.
+              * Counts up rather than down, so it reads as progress rather than a warning, and
+              * turns amber near the cap instead of only at it — a poster who has run out of room
+              * mid-sentence wants to know a few characters earlier. */}
+            <div className="flex items-center gap-2 max-w-[720px]">
+              <input
+                required
+                value={title}
+                maxLength={TITLE_MAX_LENGTH}
+                onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
+                className={`${fieldClass} flex-1`}
+              />
+              <span
+                className={`text-xs tabular-nums shrink-0 ${title.length >= TITLE_MAX_LENGTH ? "text-[#b3413a]" : title.length > TITLE_MAX_LENGTH - 20 ? "text-gold" : "text-muted"}`}
+              >
+                {title.length}/{TITLE_MAX_LENGTH}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <label className="text-[13px] font-bold text-text-soft">
+                Description <span className="text-[#b3413a]">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleGenerateCopy("description")}
+                disabled={!canGenerateCopy || generatingDescription}
+                title={canGenerateCopy ? undefined : "Pick a category, transaction type, price, and city first"}
+                className={aiGenerateButtonClass}
+              >
+                {generatingDescription ? "Generating…" : "✨ AI Generate"}
+              </button>
+            </div>
+            <textarea
+              required
+              value={description}
+              onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
+              maxLength={DESCRIPTION_MAX_LENGTH}
+              rows={5}
+              placeholder="Describe the place in your own words — the layout, what the neighbourhood is like, what's nearby, why someone would want to live here."
+              className={`${fieldClass} resize-y min-h-[120px] max-w-[720px]`}
+            />
+            <p className="text-xs text-muted mt-1">
+              At least {DESCRIPTION_MIN_LENGTH} characters — ads with a real description get more responses.
+            </p>
+            {aiGenerateError && <p className="text-xs text-[#b3413a] mt-1">{aiGenerateError}</p>}
           </div>
 
           {/* Asked here, before Preview, not on the preview itself: there it sat under the ad card
