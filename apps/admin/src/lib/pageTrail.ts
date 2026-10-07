@@ -47,7 +47,7 @@ export function trailEntry(path: string): { text: string; isError: boolean } {
       const trigger = params.get("trigger");
       const label =
         event === "shown"
-          ? `Boost recovery shown${trigger ? ` (${trigger === "idle" ? "60s idle" : "tapped Post ad"})` : ""}`
+          ? `Boost recovery shown${trigger ? ` (${trigger === "idle" ? "60s idle" : trigger === "skip" ? "tapped Skip" : "tapped Post ad"})` : ""}`
           : event === "accepted"
             ? "Boost recovery — added Boost"
             : event === "dismissed"
