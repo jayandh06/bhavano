@@ -34,7 +34,7 @@ export interface BoostRecoveryMessage {
 export function boostRecoveryMessage(stats: BoostEffectivenessDto | null): BoostRecoveryMessage {
   const fallback: BoostRecoveryMessage = {
     hasEnoughData: false,
-    headline: "Boosted ads get priority placement and reach more buyers.",
+    headline: "Featured ads get priority placement and reach more buyers.",
   };
   if (!stats) return fallback;
   if (stats.boostedSampleSize < MIN_SAMPLE_SIZE || stats.unboostedSampleSize < MIN_SAMPLE_SIZE) return fallback;
@@ -44,7 +44,7 @@ export function boostRecoveryMessage(stats: BoostEffectivenessDto | null): Boost
     if (lift > 1.05) {
       return {
         hasEnoughData: true,
-        headline: `Boosted ads got contacted ${lift.toFixed(1)}x more often in their first week, on Bhavano's last month of listings.`,
+        headline: `Featured ads got contacted ${lift.toFixed(1)}x more often in their first week, on Bhavano's last month of listings.`,
       };
     }
   }
@@ -53,7 +53,7 @@ export function boostRecoveryMessage(stats: BoostEffectivenessDto | null): Boost
     if (lift > 1.05) {
       return {
         hasEnoughData: true,
-        headline: `Boosted ads got ${lift.toFixed(1)}x more views in their first week, on Bhavano's last month of listings.`,
+        headline: `Featured ads got ${lift.toFixed(1)}x more views in their first week, on Bhavano's last month of listings.`,
       };
     }
   }

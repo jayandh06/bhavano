@@ -71,7 +71,7 @@ export class NotificationsService {
     listingTitle: string,
     likerName: string,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `${likerName} liked your boosted ad`;
+    const subject = `${likerName} liked your Featured ad`;
     const body = `${likerName} just added your listing "${listingTitle}" to their favourites on Bhavano.`;
 
     return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });

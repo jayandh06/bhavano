@@ -291,7 +291,7 @@ describe('PaymentsService.createBoostOrder — redeeming a referral credit', () 
     const { service, razorpayCreate, referralsService } = makePaymentsWithReferralCredit(null);
 
     await expect(service.createBoostOrder('u1', 'l1', 7, undefined, {}, true)).rejects.toThrow(
-      'No free boost credit available to use.',
+      'No free Feature credit available to use.',
     );
     expect(razorpayCreate).not.toHaveBeenCalled();
     expect(referralsService.markCreditRedeemed).not.toHaveBeenCalled();

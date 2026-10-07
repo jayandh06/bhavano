@@ -391,7 +391,7 @@ export class PaymentsService {
     if (useReferralCredit) {
       const credit = await this.referralsService.findRedeemableCredit(userId);
       if (!credit) {
-        throw new BadRequestException('No free boost credit available to use.');
+        throw new BadRequestException('No free Feature credit available to use.');
       }
       const payment = await this.prisma.payment.create({
         data: {

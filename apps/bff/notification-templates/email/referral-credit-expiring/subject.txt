@@ -1,1 +1,1 @@
-Your free boost expires on {{expiresAt}}
+Your free Feature expires on {{expiresAt}}

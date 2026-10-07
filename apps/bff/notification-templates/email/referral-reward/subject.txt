@@ -1,1 +1,1 @@
-You earned a free {{days}} boost
+You earned a free {{days}} Feature

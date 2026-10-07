@@ -1,1 +1,1 @@
-Boost from ₹{{boostPrice}} for {{boostDays}} days. Instant Alerts included.
+Feature from ₹{{boostPrice}} for {{boostDays}} days. Instant Alerts included.

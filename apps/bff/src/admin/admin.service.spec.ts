@@ -557,11 +557,11 @@ describe('AdminService.sendBoostPromotion — in-app channel', () => {
     expect(messagingService.sendAnnouncement).toHaveBeenCalledWith(
       'listing1',
       'admin1',
-      expect.stringContaining('boost it for 7 days for ₹199'),
+      expect.stringContaining('feature it for 7 days for ₹199'),
       expect.objectContaining({
         kind: 'boost_offer',
         listingId: 'listing1',
-        ctaLabel: 'Boost my ad · ₹199',
+        ctaLabel: 'Feature my ad · ₹199',
         ctaPath: '/my-listings?openBoost=listing1&src=admin_boost_message',
       }),
     );

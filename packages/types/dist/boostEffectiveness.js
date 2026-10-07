@@ -14,7 +14,7 @@ exports.MIN_SAMPLE_SIZE = 10;
 function boostRecoveryMessage(stats) {
     const fallback = {
         hasEnoughData: false,
-        headline: "Boosted ads get priority placement and reach more buyers.",
+        headline: "Featured ads get priority placement and reach more buyers.",
     };
     if (!stats)
         return fallback;
@@ -25,7 +25,7 @@ function boostRecoveryMessage(stats) {
         if (lift > 1.05) {
             return {
                 hasEnoughData: true,
-                headline: `Boosted ads got contacted ${lift.toFixed(1)}x more often in their first week, on Bhavano's last month of listings.`,
+                headline: `Featured ads got contacted ${lift.toFixed(1)}x more often in their first week, on Bhavano's last month of listings.`,
             };
         }
     }
@@ -34,7 +34,7 @@ function boostRecoveryMessage(stats) {
         if (lift > 1.05) {
             return {
                 hasEnoughData: true,
-                headline: `Boosted ads got ${lift.toFixed(1)}x more views in their first week, on Bhavano's last month of listings.`,
+                headline: `Featured ads got ${lift.toFixed(1)}x more views in their first week, on Bhavano's last month of listings.`,
             };
         }
     }

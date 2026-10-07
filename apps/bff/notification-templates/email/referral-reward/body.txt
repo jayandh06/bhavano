@@ -1,3 +1,1 @@
-Someone you referred just had their first ad approved, so you have earned a free {{days}} boost.
-
-Use it on any of your ads from My listings. It is valid until {{expiresAt}}.
+Someone you referred just had their first ad approved, so you have earned a free {{days}} Feature.

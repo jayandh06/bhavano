@@ -1,1 +1,1 @@
-{{discountPercent}}% off boosting "{{title}}"
+{{discountPercent}}% off featuring "{{title}}"

@@ -1,5 +1,5 @@
 Hi {{name}},
 
-Your ad "{{title}}" is live. Until {{offerEnds}} you can boost it at {{discountPercent}}% off. The discount is applied for you, no code needed.
+Your ad "{{title}}" is live. Until {{offerEnds}} you can Feature it at {{discountPercent}}% off. The discount is applied for you, no code needed.
 
-A boost puts your ad above unboosted listings in {{location}}, with a Featured label, and it includes Instant Alerts, so you hear the moment someone messages you about it. You can pick 7, 15 or 30 days before paying. Either way your ad stays live and free for its full term.
+Feature puts your ad above other listings in {{location}}, with a Featured badge, and it includes Instant Alerts, so you hear the moment someone messages you about it. You can pick 7, 15 or 30 days before paying. Either way your ad stays live and free for its full term.

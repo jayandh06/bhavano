@@ -1,5 +1,5 @@
 Hi {{name}},
 
-Your ad "{{title}}" is live. A boost puts it above unboosted listings in {{location}}, with a Featured label, and it includes Instant Alerts, so you hear the moment someone messages you about it.
+Your ad "{{title}}" is live. Feature puts it above other listings in {{location}}, with a Featured badge, and it includes Instant Alerts, so you hear the moment someone messages you about it.
 
-Boost for {{boostDays}} days from ₹{{boostPrice}}, or pick 15 or 30 days for a lower price per day. One-time payment, no subscription. Either way your ad stays live and free for its full term.
+Feature it for {{boostDays}} days from ₹{{boostPrice}}, or pick 15 or 30 days for a lower price per day. One-time payment, no subscription. Either way your ad stays live and free for its full term.

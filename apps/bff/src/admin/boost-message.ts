@@ -19,9 +19,9 @@ const ADMIN_BOOST_MESSAGE_SOURCE: PurchaseSource = 'admin_boost_message';
  * live…" would be cut off before it said anything worth acting on.
  *
  * Nothing here promises a placement the product does not guarantee: the featured tier is capped
- * (BOOST_FEATURED_CAP), so the copy says "above unboosted listings, with a Featured label", the
- * same wording the email uses, not "top of results". Instant Alerts is part of every boost, so it
- * is described as included, never as an extra. */
+ * (BOOST_FEATURED_CAP), so the copy says "above other listings, with a Featured badge", the
+ * same wording the email uses, not "top of results". Instant Alerts is part of every Feature, so
+ * it is described as included, never as an extra. */
 export interface BoostMessageInput {
   /** The ad's title, quoted so the seller knows which ad it is about. */
   title: string;
@@ -39,8 +39,8 @@ export interface BoostMessageInput {
 
 function bodyParagraphs({ location, longer }: BoostMessageInput): string[] {
   return [
-    `Ads without a boost get very few views in their first week. A boosted ad is shown above ` +
-      `unboosted listings in ${location}, with a Featured label, and Instant Alerts is included, so you ` +
+    `Ads without Feature get very few views in their first week. A Featured ad is shown above ` +
+      `other listings in ${location}, with a Featured badge, and Instant Alerts is included, so you ` +
       `hear the moment someone messages you about it.`,
     ...(longer ? [`Want it to run longer? ${longer.days} days is ₹${longer.price}, a lower price per day.`] : []),
     `One-time payment, no subscription. Your ad stays live and free either way.`,
@@ -51,11 +51,11 @@ export function buildBoostMessageBody(input: BoostMessageInput): string {
   const { title, boostPrice, boostDays, offer, boostLink } = input;
 
   const opening = offer
-    ? `Get more views on "${title}": boost it for ${boostDays} days at ₹${boostPrice} (was ₹${offer.boostBasePrice}). ` +
+    ? `Get more views on "${title}": feature it for ${boostDays} days at ₹${boostPrice} (was ₹${offer.boostBasePrice}). ` +
       `${offer.discountPercent}% off until ${offer.endsOn}, applied for you, no code needed.`
-    : `Get more views on "${title}": boost it for ${boostDays} days for ₹${boostPrice}.`;
+    : `Get more views on "${title}": feature it for ${boostDays} days for ₹${boostPrice}.`;
 
-  return [opening, ...bodyParagraphs(input), `Boost my ad: ${boostLink}`].join('\n\n');
+  return [opening, ...bodyParagraphs(input), `Feature my ad: ${boostLink}`].join('\n\n');
 }
 
 export function buildBoostMessageCard(
@@ -70,12 +70,12 @@ export function buildBoostMessageCard(
     title,
     location,
     imageUrl: listing.imageUrl,
-    headline: `Boost it for ${boostDays} days ${offer ? 'at' : 'for'} ₹${boostPrice}`,
+    headline: `Feature it for ${boostDays} days ${offer ? 'at' : 'for'} ₹${boostPrice}`,
     offerNote: offer
       ? `${offer.discountPercent}% off until ${offer.endsOn} · was ₹${offer.boostBasePrice} · applied for you, no code needed`
       : null,
     paragraphs: bodyParagraphs(input),
-    ctaLabel: `Boost my ad · ₹${boostPrice}`,
+    ctaLabel: `Feature my ad · ₹${boostPrice}`,
     ctaPath: boostMessagePath(listing.id),
   };
 }
