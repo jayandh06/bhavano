@@ -102,4 +102,28 @@ describe('GeminiListingCopyProvider', () => {
 
     await expect(provider.generateTitle(fields)).rejects.toThrow(ServiceUnavailableException);
   });
+
+  // Regression for a real production 500: Gemini's own responseMimeType: 'application/json'
+  // doesn't stop it occasionally emitting the "blank line between paragraphs" our own formatting
+  // instruction asks for as a literal, unescaped newline byte inside the JSON string value,
+  // instead of the required `\n` escape — which a strict JSON.parse rejects outright. Confirmed
+  // live 2026-10-07 (prod logs: "Bad control character in string literal in JSON"). The malformed
+  // string below is constructed the same way: a real newline character sitting raw inside the
+  // quotes, not a JSON-escaped one.
+  it('repairs a raw control character Gemini left unescaped inside a formatted reply', async () => {
+    const malformed = '{"text":"Paragraph one.\n\nParagraph two, after what should have been an escaped blank line."}';
+    mockFetchOk(malformed);
+    const { provider } = makeProvider();
+
+    const result = await provider.generateDescription({ ...fields, tier: 'free', landmarks: [] });
+
+    expect(result.text).toBe('Paragraph one.\n\nParagraph two, after what should have been an escaped blank line.');
+  });
+
+  it('throws ServiceUnavailableException, not a raw SyntaxError, when the reply is unrecoverably invalid JSON', async () => {
+    mockFetchOk('{"text": not even close to json');
+    const { provider } = makeProvider();
+
+    await expect(provider.generateTitle(fields)).rejects.toThrow(ServiceUnavailableException);
+  });
 });

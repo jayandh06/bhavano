@@ -49,7 +49,17 @@ export class RateLimitService {
     const recentHits = await this.prisma.rateLimitHit.count({
       where: { identity, kind, createdAt: { gte: windowStart } },
     });
-    if (recentHits >= limit) throw new ThrottlerException();
+    if (recentHits >= limit) {
+      // ThrottlerException's own default message ("ThrottlerException: Too Many Requests") is
+      // the bare class name — both bffFetch (web) and BffError.userMessage (mobile) surface a
+      // 4xx's `message` field verbatim to the user, so the default was reaching people as literal
+      // exception-speak instead of something they could act on. Confirmed live 2026-10-07.
+      throw new ThrottlerException(
+        kind === 'ai_generate'
+          ? "You've reached today's AI-generate limit — try again tomorrow, or write it yourself for now."
+          : 'Too many requests — please wait a bit and try again.',
+      );
+    }
 
     await this.prisma.rateLimitHit.create({ data: { identity, kind } });
   }

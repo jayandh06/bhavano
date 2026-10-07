@@ -1,3 +1,4 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import { INDIAN_LANGUAGE_LABELS, type IndianLanguage } from '@bhavano/types/listingCopyAssist';
 import type { StructuredListingFields } from './listing-copy-llm.provider';
 
@@ -5,7 +6,8 @@ import type { StructuredListingFields } from './listing-copy-llm.provider';
  * Prompt text shared by every real `ListingCopyLlmProvider` implementation (OpenAI, Gemini, ...)
  * — the wording a provider sends is what actually determines generation quality/consistency, so
  * this lives in one place rather than being copy-pasted per provider and drifting between them.
- * Each provider only differs in how it calls its API and parses the response.
+ * Each provider only differs in how it calls its API and how it parses the model's JSON reply
+ * (see `parseModelJson` below, shared for the same reason).
  */
 
 function placeText(input: Pick<StructuredListingFields, 'cityName' | 'areaName'>): string {
@@ -82,4 +84,61 @@ export function buildDescriptionPrompt(
     `${landmarksInstruction}\n${secondLanguageInstruction}\n` +
     `${lengthInstruction} Never invent a fact not given above.`
   );
+}
+
+/** Escapes a raw control character (an un-escaped newline, carriage return, or tab) found
+ * strictly inside a JSON string literal, leaving everything else untouched. Tracks quote/escape
+ * state char-by-char rather than a blind global replace, which would also mangle any real
+ * whitespace sitting between tokens outside a string.
+ *
+ * Needed because both providers ask the model for a formatted (`buildSystemPrompt`'s
+ * `allowFormatting`) description with "a blank line between paragraphs" — and despite
+ * `response_format`/`responseMimeType: 'application/json'`, a model sometimes emits that blank
+ * line as a literal raw newline byte inside the JSON string value instead of the required
+ * `\n` escape. Strict `JSON.parse` rejects a raw control character inside a string outright
+ * ("Bad control character in string literal"), which otherwise surfaces as an uncaught
+ * `SyntaxError` → a raw 500 for a generation that actually succeeded upstream. Confirmed live
+ * 2026-10-07 against production logs. */
+function escapeControlCharactersInStrings(raw: string): string {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+  for (const char of raw) {
+    if (inString && !escaped) {
+      const code = char.codePointAt(0) ?? 0;
+      if (code < 0x20) {
+        result += char === '\n' ? '\\n' : char === '\r' ? '\\r' : char === '\t' ? '\\t' : `\\u${code.toString(16).padStart(4, '0')}`;
+        continue;
+      }
+    }
+    result += char;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+    } else if (char === '"') {
+      inString = true;
+    }
+  }
+  return result;
+}
+
+/** Shared JSON.parse for the model's own reply content (as opposed to the provider API's outer
+ * envelope, which is well-formed JSON from Google/OpenAI's own serializer, not model-generated
+ * freeform text, and doesn't need this). Tries a straight parse first — the common case — and
+ * only pays for `escapeControlCharactersInStrings` on the retry, so a well-formed reply isn't
+ * slowed down by a repair it never needed. Throws a clean `ServiceUnavailableException` instead
+ * of letting a raw `SyntaxError` escape as an unhandled 500 when even the repaired text won't
+ * parse (e.g. a response truncated mid-field by a token limit). */
+export function parseModelJson<T>(content: string, logger: { warn: (msg: string) => void }): T {
+  try {
+    return JSON.parse(content) as T;
+  } catch {
+    try {
+      return JSON.parse(escapeControlCharactersInStrings(content)) as T;
+    } catch (error) {
+      logger.warn(`Model reply was not valid JSON even after repair: ${error}`);
+      throw new ServiceUnavailableException('AI copy generation returned invalid output');
+    }
+  }
 }

@@ -43,6 +43,18 @@ describe('RateLimitService.checkAndRecordHit', () => {
     await expect(service.checkAndRecordHit('user1', 'ai_generate')).rejects.toThrow(ThrottlerException);
   });
 
+  // ThrottlerException's own default message is the bare class name
+  // ("ThrottlerException: Too Many Requests") — both bffFetch (web) and BffError.userMessage
+  // (mobile) surface a 4xx's `message` field verbatim, so that default was reaching users as
+  // literal exception-speak. Confirmed live 2026-10-07.
+  it('throws a user-readable message, not the default exception-name text, for ai_generate', async () => {
+    const { service } = makeService({ aiGenerateLimit: 3 }, 3);
+
+    await expect(service.checkAndRecordHit('user1', 'ai_generate')).rejects.toThrow(
+      "You've reached today's AI-generate limit — try again tomorrow, or write it yourself for now.",
+    );
+  });
+
   it('view hits are unaffected by a tight ai_generate limit', async () => {
     const { service, prisma } = makeService({ aiGenerateLimit: 1, viewLimit: 200 }, 50);
 

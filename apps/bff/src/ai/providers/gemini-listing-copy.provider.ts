@@ -4,7 +4,7 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import type { IndianLanguage } from '@bhavano/types/listingCopyAssist';
 import { logThirdPartyCall } from '../../logging/thirdPartyCallLogger';
 import type { ListingCopyLlmProvider, StructuredListingFields } from './listing-copy-llm.provider';
-import { buildDescriptionPrompt, buildSystemPrompt, buildTitlePrompt } from './listing-copy-prompts';
+import { buildDescriptionPrompt, buildSystemPrompt, buildTitlePrompt, parseModelJson } from './listing-copy-prompts';
 
 // Pinned, with an escape hatch — same reasoning as WhatsappProvider's DEFAULT_API_VERSION: a
 // silently-shifting "latest" model is how a working integration changes behaviour on a date
@@ -119,6 +119,6 @@ export class GeminiListingCopyProvider implements ListingCopyLlmProvider {
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!content) throw new ServiceUnavailableException('AI copy generation returned an empty response');
 
-    return JSON.parse(content) as T;
+    return parseModelJson<T>(content, this.logger);
   }
 }

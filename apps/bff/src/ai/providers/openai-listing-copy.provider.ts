@@ -4,7 +4,7 @@ import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import type { IndianLanguage } from '@bhavano/types/listingCopyAssist';
 import { logThirdPartyCall, maskUrlParam } from '../../logging/thirdPartyCallLogger';
 import type { ListingCopyLlmProvider, StructuredListingFields } from './listing-copy-llm.provider';
-import { buildDescriptionPrompt, buildSystemPrompt, buildTitlePrompt } from './listing-copy-prompts';
+import { buildDescriptionPrompt, buildSystemPrompt, buildTitlePrompt, parseModelJson } from './listing-copy-prompts';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 // Cheap, fast — this is a short "fill structured fields into fluent prose" task, not deep
@@ -96,6 +96,6 @@ export class OpenAiListingCopyProvider implements ListingCopyLlmProvider {
     const content = data.choices?.[0]?.message?.content;
     if (!content) throw new ServiceUnavailableException('AI copy generation returned an empty response');
 
-    return JSON.parse(content) as T;
+    return parseModelJson<T>(content, this.logger);
   }
 }
