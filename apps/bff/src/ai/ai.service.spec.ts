@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { PrismaService } from '../prisma/prisma.service';
+import type { RateLimitService } from '../rate-limit/rate-limit.service';
 import type { ListingCopyLlmProvider } from './providers/listing-copy-llm.provider';
 import type { NearbyLandmarksProvider } from './providers/nearby-landmarks.provider';
 import type { GenerateListingCopyDto } from './dto/generate-listing-copy.dto';
@@ -45,8 +46,10 @@ function makeService(opts: {
       : jest.fn().mockResolvedValue(opts.landmarks ?? ['Some Mall']),
   };
 
-  const service = new AiService(prisma, llm, landmarks);
-  return { service, prisma, llm, landmarks };
+  const rateLimit = { getUsage: jest.fn().mockResolvedValue({ used: 0, limit: 10, windowMinutes: 1440 }) } as unknown as RateLimitService;
+
+  const service = new AiService(prisma, rateLimit, llm, landmarks);
+  return { service, prisma, rateLimit, llm, landmarks };
 }
 
 describe('AiService.generate', () => {
@@ -203,5 +206,26 @@ describe('AiService.generate', () => {
     await service.generate({ listingId: 'listing1', fields: ['title'] } as GenerateListingCopyDto, 'owner1');
 
     expect(llm.generateTitle).toHaveBeenCalledWith(expect.not.objectContaining({ language: expect.anything() }));
+  });
+});
+
+describe('AiService.getUsage', () => {
+  it('derives remaining from the rate limiter, never records a hit itself', async () => {
+    const { service, rateLimit } = makeService();
+    (rateLimit.getUsage as jest.Mock).mockResolvedValue({ used: 4, limit: 10, windowMinutes: 1440 });
+
+    const usage = await service.getUsage('owner1');
+
+    expect(usage).toEqual({ used: 4, limit: 10, remaining: 6, windowMinutes: 1440 });
+    expect(rateLimit.getUsage).toHaveBeenCalledWith('owner1', 'ai_generate');
+  });
+
+  it('floors remaining at 0 rather than going negative once over the limit', async () => {
+    const { service, rateLimit } = makeService();
+    (rateLimit.getUsage as jest.Mock).mockResolvedValue({ used: 12, limit: 10, windowMinutes: 1440 });
+
+    const usage = await service.getUsage('owner1');
+
+    expect(usage.remaining).toBe(0);
   });
 });

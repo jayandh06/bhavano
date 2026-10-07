@@ -1,5 +1,5 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
-import type { GenerateListingCopyResult } from '@bhavano/types/listingCopyAssist';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import type { AiGenerateUsageDto, GenerateListingCopyResult } from '@bhavano/types/listingCopyAssist';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
@@ -22,5 +22,12 @@ export class AiController {
     @CurrentUser() user: RequestUser,
   ): Promise<GenerateListingCopyResult> {
     return this.aiService.generate(dto, user.id);
+  }
+
+  // No RateLimitGuard here — a read of the counter must never itself consume from it.
+  @Get('listing-copy/usage')
+  @UseGuards(AuthGuard)
+  getUsage(@CurrentUser() user: RequestUser): Promise<AiGenerateUsageDto> {
+    return this.aiService.getUsage(user.id);
   }
 }

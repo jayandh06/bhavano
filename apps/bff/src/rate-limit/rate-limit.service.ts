@@ -34,15 +34,18 @@ export class RateLimitService {
     });
   }
 
+  private async limitFor(kind: RateLimitKind): Promise<{ limit: number; windowMinutes: number }> {
+    const settings = await this.getSettings();
+    return kind === 'ai_generate'
+      ? { limit: settings.aiGenerateLimit, windowMinutes: settings.aiGenerateWindowMinutes }
+      : { limit: settings.viewLimit, windowMinutes: settings.viewWindowMinutes };
+  }
+
   /** Listing publish rate limits were replaced by concurrent slot caps — publish kind is unused. */
   async checkAndRecordHit(userId: string, kind: RateLimitKind): Promise<void> {
     if (kind === 'publish') return;
 
-    const settings = await this.getSettings();
-    const { limit, windowMinutes } =
-      kind === 'ai_generate'
-        ? { limit: settings.aiGenerateLimit, windowMinutes: settings.aiGenerateWindowMinutes }
-        : { limit: settings.viewLimit, windowMinutes: settings.viewWindowMinutes };
+    const { limit, windowMinutes } = await this.limitFor(kind);
     const identity = `user:${userId}`;
     const windowStart = new Date(Date.now() - windowMinutes * 60_000);
 
@@ -62,5 +65,20 @@ export class RateLimitService {
     }
 
     await this.prisma.rateLimitHit.create({ data: { identity, kind } });
+  }
+
+  /** Read-only counterpart to `checkAndRecordHit` — lets a caller show "N left" up front instead
+   * of a seller only ever finding out they're capped from a failed generate call. Never records a
+   * hit itself; sharing `limitFor` with `checkAndRecordHit` is what keeps the two from drifting on
+   * which settings columns a given `kind` reads. */
+  async getUsage(userId: string, kind: RateLimitKind): Promise<{ used: number; limit: number; windowMinutes: number }> {
+    const { limit, windowMinutes } = await this.limitFor(kind);
+    const identity = `user:${userId}`;
+    const windowStart = new Date(Date.now() - windowMinutes * 60_000);
+
+    const used = await this.prisma.rateLimitHit.count({
+      where: { identity, kind, createdAt: { gte: windowStart } },
+    });
+    return { used, limit, windowMinutes };
   }
 }

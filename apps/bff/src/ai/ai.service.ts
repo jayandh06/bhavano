@@ -1,7 +1,8 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, Logger } from '@nestjs/common';
-import type { GenerateListingCopyResult } from '@bhavano/types/listingCopyAssist';
+import type { AiGenerateUsageDto, GenerateListingCopyResult } from '@bhavano/types/listingCopyAssist';
 import { PrismaService } from '../prisma/prisma.service';
 import { isListingBoosted } from '../listings/listing-boost.util';
+import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { GenerateListingCopyDto } from './dto/generate-listing-copy.dto';
 import { LISTING_COPY_LLM_PROVIDER, type ListingCopyLlmProvider, type StructuredListingFields } from './providers/listing-copy-llm.provider';
 import { NEARBY_LANDMARKS_PROVIDER, type NearbyLandmarksProvider } from './providers/nearby-landmarks.provider';
@@ -12,9 +13,17 @@ export class AiService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly rateLimit: RateLimitService,
     @Inject(LISTING_COPY_LLM_PROVIDER) private readonly llm: ListingCopyLlmProvider,
     @Inject(NEARBY_LANDMARKS_PROVIDER) private readonly landmarks: NearbyLandmarksProvider,
   ) {}
+
+  /** Backs the wizard's "N left today" label (`GET /ai/listing-copy/usage`) — read-only, never
+   * records a hit itself. See RateLimitService.getUsage's own doc comment. */
+  async getUsage(userId: string): Promise<AiGenerateUsageDto> {
+    const { used, limit, windowMinutes } = await this.rateLimit.getUsage(userId, 'ai_generate');
+    return { used, limit, remaining: Math.max(0, limit - used), windowMinutes };
+  }
 
   async generate(dto: GenerateListingCopyDto, userId: string): Promise<GenerateListingCopyResult> {
     const { fields: structured, tier, lat, lng } = await this.resolveFields(dto, userId);

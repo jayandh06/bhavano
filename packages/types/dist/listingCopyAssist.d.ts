@@ -55,3 +55,13 @@ export interface GenerateListingCopyResult {
      * on its own. */
     landmarksUsed: string[];
 }
+/** `GET /ai/listing-copy/usage` — lets the wizard show "N left today" *before* a seller hits the
+ * limit, rather than only ever finding out from a failed call. `remaining` is sent pre-computed
+ * (not left for the client to derive from `used`/`limit`) so a future admin-configured change in
+ * how it's floored/rounded only has to happen server-side. */
+export interface AiGenerateUsageDto {
+    used: number;
+    limit: number;
+    remaining: number;
+    windowMinutes: number;
+}
