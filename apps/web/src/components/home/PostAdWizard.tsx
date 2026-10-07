@@ -1352,13 +1352,25 @@ export function PostAdWizard({
       return;
     }
 
+    // Details-step only (never the listingId/regenerate-banner call, which is always
+    // description-only): bundles the other field into the same request *only* when it's still
+    // empty — one call, one rate-limit hit, and both fields filled for the common "fresh ad"
+    // case, with zero wasted LLM cost when it wouldn't help (the other field already has content
+    // and a bonus result for it would just be discarded). Never bundles when the other field
+    // already has text, which is also exactly today's single-field behaviour.
+    const otherField = field === "title" ? "description" : "title";
+    const bundleOther = !opts?.listingId && (otherField === "title" ? title : description).trim().length === 0;
+    const fields: ("title" | "description")[] = bundleOther ? [field, otherField] : [field];
+
     const setGenerating = field === "title" ? setGeneratingTitle : setGeneratingDescription;
+    const setOtherGenerating = otherField === "title" ? setGeneratingTitle : setGeneratingDescription;
     setGenerating(true);
+    if (bundleOther) setOtherGenerating(true);
     const result = await generateListingCopyAction(
       opts?.listingId
         ? { listingId: opts.listingId, fields: [field], secondLanguage: opts.secondLanguage }
         : {
-            fields: [field],
+            fields,
             category: category!,
             transactionType: transactionType!,
             price: Number(price) || undefined,
@@ -1372,6 +1384,7 @@ export function PostAdWizard({
           },
     );
     setGenerating(false);
+    if (bundleOther) setOtherGenerating(false);
 
     // The BFF's RateLimitGuard records a hit for any request that gets past auth, success or
     // not — NEEDS_LOGIN_ERROR is the one outcome where the request never actually reached it (see
@@ -1402,6 +1415,14 @@ export function PostAdWizard({
         setRegeneratedDescriptionReady(true);
         setRegenerateApplied(false);
       }
+    }
+    // Bonus fill for the other, still-empty field — re-checked here (not just at the top) via the
+    // functional setState form, in case the seller typed something into it during the await.
+    if (bundleOther && otherField === "title" && result.result.title) {
+      setTitle((prev) => (prev.trim() ? prev : result.result.title!.slice(0, TITLE_MAX_LENGTH)));
+    }
+    if (bundleOther && otherField === "description" && result.result.description) {
+      setDescription((prev) => (prev.trim() ? prev : result.result.description!.slice(0, DESCRIPTION_MAX_LENGTH)));
     }
   }
 

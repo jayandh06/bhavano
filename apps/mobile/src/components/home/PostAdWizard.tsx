@@ -1283,14 +1283,23 @@ export function PostAdWizard({
       return;
     }
 
+    // Details-step only — see web's identical comment for the full reasoning. Bundles the other
+    // field into the same request only while it's still empty: one call, one rate-limit hit, both
+    // fields filled for the common "fresh ad" case, with no wasted LLM cost when it wouldn't help.
+    const otherField = field === "title" ? "description" : "title";
+    const bundleOther = !opts?.listingId && (otherField === "title" ? title : description).trim().length === 0;
+    const fields: ("title" | "description")[] = bundleOther ? [field, otherField] : [field];
+
     const setGenerating = field === "title" ? setGeneratingTitle : setGeneratingDescription;
+    const setOtherGenerating = otherField === "title" ? setGeneratingTitle : setGeneratingDescription;
     setGenerating(true);
+    if (bundleOther) setOtherGenerating(true);
     try {
       const result = await generateListingCopy(
         opts?.listingId
           ? { listingId: opts.listingId, fields: [field], secondLanguage: opts.secondLanguage }
           : {
-              fields: [field],
+              fields,
               category: category!,
               transactionType: transactionType!,
               price: Number(price) || undefined,
@@ -1317,10 +1326,19 @@ export function PostAdWizard({
           setRegenerateApplied(false);
         }
       }
+      // Bonus fill for the other, still-empty field — re-checked here via the functional setState
+      // form, in case the seller typed something into it during the await.
+      if (bundleOther && otherField === "title" && result.title) {
+        setTitle((prev) => (prev.trim() ? prev : result.title!.slice(0, TITLE_MAX_LENGTH)));
+      }
+      if (bundleOther && otherField === "description" && result.description) {
+        setDescription((prev) => (prev.trim() ? prev : result.description!.slice(0, DESCRIPTION_MAX_LENGTH)));
+      }
     } catch (error) {
       setAiGenerateError(friendlyErrorMessage(error, "Failed to generate"));
     } finally {
       setGenerating(false);
+      if (bundleOther) setOtherGenerating(false);
       // The BFF's RateLimitGuard records a hit for any request that gets this far (success or
       // not) — see web's identical comment on handleGenerateCopy for the one excluded case.
       setAiUsage((prev) => (prev ? { ...prev, used: Math.min(prev.limit, prev.used + 1), remaining: Math.max(0, prev.remaining - 1) } : prev));
