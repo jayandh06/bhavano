@@ -12,6 +12,7 @@ import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { buildListingPath } from "@/lib/listingPath";
 import { ListingDetailActions } from "./ListingDetailActions";
+import { ListingDescription } from "./ListingDescription";
 import { ListingMediaGallery } from "./ListingMediaGallery";
 import { ListingReportButton } from "./ListingReportButton";
 import { ListingPrice } from "./PriceWithWords";
@@ -210,13 +211,7 @@ export async function ListingDetailView({
               <span className="flex items-center gap-1"><Icon name="eye" /> {listing.viewCount} views</span>
             </div>
 
-          {listing.description && (
-            // whitespace-pre-line so the paragraph breaks the seller typed survive. They wrote it
-            // in a textarea; collapsing it into one block loses the shape they gave it.
-            <div className="text-sm text-text-soft leading-[1.6] whitespace-pre-line mb-6">
-              {listing.description}
-            </div>
-          )}
+          {listing.description && <ListingDescription text={listing.description} className="mb-6" />}
 
           {/* No chip row here. It repeated what the labelled sections below already say — a
             * "3bhk" chip a few hundred pixels above "Bedrooms: 3", in the seller's spelling

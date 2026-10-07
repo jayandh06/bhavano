@@ -21,7 +21,7 @@ export class OpenAiListingCopyProvider implements ListingCopyLlmProvider {
   ) {}
 
   async generateTitle(input: StructuredListingFields): Promise<string> {
-    const { text } = await this.complete<{ text: string }>('generateTitle', buildTitlePrompt(input), ['text']);
+    const { text } = await this.complete<{ text: string }>('generateTitle', buildTitlePrompt(input), ['text'], false);
     return text.trim().slice(0, 150);
   }
 
@@ -33,17 +33,23 @@ export class OpenAiListingCopyProvider implements ListingCopyLlmProvider {
       'generateDescription',
       buildDescriptionPrompt(input),
       fields,
+      true,
     );
     return { text: result.text.trim(), secondLanguageText: result.secondLanguageText?.trim() };
   }
 
-  private async complete<T>(method: string, userPrompt: string, expectedFields: string[]): Promise<T> {
+  private async complete<T>(
+    method: string,
+    userPrompt: string,
+    expectedFields: string[],
+    allowFormatting: boolean,
+  ): Promise<T> {
     const apiKey = this.config.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
       throw new ServiceUnavailableException('AI copy generation is not configured on this server yet');
     }
 
-    const systemPrompt = buildSystemPrompt(expectedFields);
+    const systemPrompt = buildSystemPrompt(expectedFields, allowFormatting);
 
     const body = {
       model: MODEL,

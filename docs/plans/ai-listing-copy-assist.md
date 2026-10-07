@@ -73,6 +73,22 @@ pins one explicitly. An override naming an unconfigured provider falls back to t
 "assist, not core functionality" stance as everything else here. See `docs/deployment.md`'s "AI
 listing-copy assist" section for the ops-side setup.
 
+**Update (2026-10-07): the description is formatted, not one dense paragraph.** Free tier gets
+1-2 short paragraphs with occasional `**bold**` on a standout fact; Featured gets an opening
+paragraph, a `- ` bullet list of 3-5 highlights, and a closing paragraph, with 1-3 bolded phrases.
+`buildSystemPrompt` (now taking an `allowFormatting` flag — false for titles, which stay plain
+one-liners) instructs the model to use exactly these three marks and no others. The shared parser
+(`packages/types/src/listingDescriptionFormat.ts`, `parseListingDescription`) turns that text into
+typed blocks (`paragraph` | `bullets`, each with bold/plain runs) — same "shared parsing, separate
+per-platform renderer" split as this package's own `messageFormat.ts`/`MessageBody`. Each platform
+has its own `ListingDescription` component consuming those blocks: `apps/web/src/components/home/`,
+`apps/mobile/src/components/home/`, and `apps/admin/src/components/` (admin's inline-styled, the
+others Tailwind/RN-styled) — all three replace what used to be a plain `whitespace-pre-line`
+div / RN `<Text>` / `whiteSpace: "pre-wrap"` `<p>`. A hand-typed description with no markdown-ish
+syntax still parses as a single plain paragraph, so this is a no-op for existing listings.
+Verified live against the real Gemini API (prompt → real response → parsed through the actual
+`parseListingDescription` → correct paragraph/bullets/bold structure).
+
 **Provider interfaces** (so real calls are swappable for deterministic stubs in dev/tests):
 ```ts
 interface ListingCopyLlmProvider {

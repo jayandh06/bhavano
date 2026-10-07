@@ -13,6 +13,7 @@ import { publicWebUrl } from "../../src/lib/appWebUrl";
 import { useListingLoginNudge } from "../../src/lib/useListingLoginNudge";
 import { useGuestSaveHeart } from "../../src/lib/useGuestSaveHeart";
 import { Icon } from "../../src/components/Icon";
+import { ListingDescription } from "../../src/components/home/ListingDescription";
 import { ListingMediaGallery } from "../../src/components/home/ListingMediaGallery";
 import { ListingAttributeSections } from "../../src/components/home/ListingAttributeSections";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
@@ -221,9 +222,9 @@ export default function ListingDetailScreen() {
       </View>
 
       {listing.description ? (
-        <Text style={{ fontSize: 14, lineHeight: 21, color: colors.textSoft, marginTop: 16 }}>
-          {listing.description}
-        </Text>
+        <View style={{ marginTop: 16 }}>
+          <ListingDescription text={listing.description} style={{ fontSize: 14, lineHeight: 21, color: colors.textSoft }} />
+        </View>
       ) : null}
 
       {/* No chip row. It repeated the labelled details below it — a "3bhk" chip above

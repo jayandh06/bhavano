@@ -13,10 +13,22 @@ function placeText(input: Pick<StructuredListingFields, 'cityName' | 'areaName'>
   return input.cityName ?? input.areaName ?? 'an unspecified location';
 }
 
-export function buildSystemPrompt(expectedFields: string[]): string {
+/** `allowFormatting` is false for the title call: a title is one line shown in a listing card's
+ * header, where a bullet or a blank line would just break the layout — buildTitlePrompt already
+ * separately says "plain text, no markdown" for the same reason, so this isn't the only guard,
+ * but the system prompt shouldn't contradict it by blanket-allowing marks it then has to recall
+ * per-call. */
+export function buildSystemPrompt(expectedFields: string[], allowFormatting: boolean): string {
+  const formattingClause = allowFormatting
+    ? `Inside a "text"-type value, you may use exactly three formatting marks, and no others: a ` +
+      `blank line between paragraphs, "**word or phrase**" to bold it, and a line starting with ` +
+      `"- " for one item of a bullet list. Never use markdown headings, numbered lists, tables, or ` +
+      `any other syntax — these three are the only marks a renderer on the other end understands.`
+    : `Plain text only — no markdown, no bullets, no blank lines.`;
   return (
     `You write concise, honest real-estate classified-ad copy for the Indian market. ` +
-    `Reply with ONLY a JSON object with exactly these keys: ${expectedFields.join(', ')}. No other text.`
+    `Reply with ONLY a JSON object with exactly these keys: ${expectedFields.join(', ')}. No other text. ` +
+    formattingClause
   );
 }
 
@@ -35,8 +47,11 @@ export function buildDescriptionPrompt(
 ): string {
   const style =
     input.tier === 'featured'
-      ? 'Write a richer, more persuasive multi-paragraph description that highlights what makes this place appealing.'
-      : 'Write a plain, factual single-paragraph description.';
+      ? 'Write a richer, more persuasive description: an opening paragraph, then a bullet list of ' +
+        '3-5 standout highlights (amenities, condition, standout facts), then a closing paragraph. ' +
+        'Bold the 1-3 most compelling phrases.'
+      : 'Write a plain, factual description in 1-2 short paragraphs. You may bold at most one or ' +
+        'two genuinely standout facts — don\'t overuse it. No bullet list at this tier.';
   const landmarksInstruction =
     input.landmarks.length > 0
       ? `These real nearby places were found near the property: ${input.landmarks.join(', ')}. You may mention some of them naturally. Do NOT name any other place, landmark, mall, school, or station that is not in this exact list.`

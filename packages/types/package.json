@@ -141,6 +141,10 @@
       "types": "./dist/messageFormat.d.ts",
       "default": "./dist/messageFormat.js"
     },
+    "./listingDescriptionFormat": {
+      "types": "./dist/listingDescriptionFormat.d.ts",
+      "default": "./dist/listingDescriptionFormat.js"
+    },
     "./guestSaves": {
       "types": "./dist/guestSaves.d.ts",
       "default": "./dist/guestSaves.js"

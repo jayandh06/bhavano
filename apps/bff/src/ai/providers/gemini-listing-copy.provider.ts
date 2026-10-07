@@ -32,7 +32,7 @@ export class GeminiListingCopyProvider implements ListingCopyLlmProvider {
   ) {}
 
   async generateTitle(input: StructuredListingFields): Promise<string> {
-    const { text } = await this.complete<{ text: string }>('generateTitle', buildTitlePrompt(input), ['text']);
+    const { text } = await this.complete<{ text: string }>('generateTitle', buildTitlePrompt(input), ['text'], false);
     return text.trim().slice(0, 150);
   }
 
@@ -44,11 +44,17 @@ export class GeminiListingCopyProvider implements ListingCopyLlmProvider {
       'generateDescription',
       buildDescriptionPrompt(input),
       fields,
+      true,
     );
     return { text: result.text.trim(), secondLanguageText: result.secondLanguageText?.trim() };
   }
 
-  private async complete<T>(method: string, userPrompt: string, expectedFields: string[]): Promise<T> {
+  private async complete<T>(
+    method: string,
+    userPrompt: string,
+    expectedFields: string[],
+    allowFormatting: boolean,
+  ): Promise<T> {
     const apiKey = this.config.get<string>('GEMINI_API_KEY');
     if (!apiKey) {
       throw new ServiceUnavailableException('AI copy generation is not configured on this server yet');
@@ -57,7 +63,7 @@ export class GeminiListingCopyProvider implements ListingCopyLlmProvider {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const body = {
-      systemInstruction: { parts: [{ text: buildSystemPrompt(expectedFields) }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt(expectedFields, allowFormatting) }] },
       contents: [{ parts: [{ text: userPrompt }] }],
       // thinkingBudget: 0 — confirmed live 2026-10-07: with thinking on (the default), this
       // model spent ~300 reasoning tokens to answer a ~40-token prompt with a ~40-token result —

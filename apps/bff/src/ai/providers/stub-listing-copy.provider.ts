@@ -33,12 +33,16 @@ export class StubListingCopyProvider implements ListingCopyLlmProvider {
   ): Promise<{ text: string; secondLanguageText?: string }> {
     const place = input.areaName ? `${input.areaName}, ${input.cityName}` : input.cityName ?? 'a great location';
     const phrase = TRANSACTION_PHRASE[input.transactionType] ?? '';
-    const base = `A well-kept ${input.category} ${phrase} in ${place}. This listing offers good connectivity and a comfortable living space suited to everyday needs.`;
-    const landmarksSentence =
-      input.tier === 'featured' && input.landmarks.length > 0
-        ? ` Close to ${input.landmarks.slice(0, 3).join(', ')}.`
-        : '';
-    const text = `${base}${landmarksSentence} [stub-generated]`;
+    const intro = `A **well-kept ${input.category}** ${phrase} in ${place}. This listing offers good connectivity and a comfortable living space suited to everyday needs.`;
+    // Exercises the bullets block type too — downstream rendering (ListingDescription on every
+    // platform) needs a realistic fixture, not just a single plain paragraph, same "stay
+    // exercisable in dev/CI" reasoning as the rest of this stub.
+    const text =
+      input.tier === 'featured'
+        ? `${intro}\n\n- Good natural light\n- Close to daily essentials${
+            input.landmarks.length > 0 ? `\n- Near ${input.landmarks.slice(0, 2).join(', ')}` : ''
+          }\n\nA solid choice for anyone looking in this area. [stub-generated]`
+        : `${intro} [stub-generated]`;
     return {
       text,
       secondLanguageText: input.secondLanguage ? `${text} (stub ${input.secondLanguage} translation)` : undefined,

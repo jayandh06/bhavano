@@ -1,6 +1,7 @@
 "use client";
 
 import type { ListingDetailDto } from "@bhavano/types";
+import { ListingDescription } from "./ListingDescription";
 
 /** The expanded panel for one row of AdminListingsTable — description, photos, video status,
  * attributes, renewal history, and contact-reveal info: exactly the fields the list query used to
@@ -49,7 +50,7 @@ export function ListingRowDetail({ state }: { state: ListingDetailDto | "loading
 
       {listing.description && (
         <Section label="Description">
-          <p style={{ fontSize: 13, margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{listing.description}</p>
+          <ListingDescription text={listing.description} />
         </Section>
       )}
 
