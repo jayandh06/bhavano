@@ -1349,15 +1349,10 @@ export function PostAdWizard({
 
     // A verified phone is required to publish (buyers reach the seller by phone; it is also the
     // spam control) but login no longer collects one, so a Google/Apple account arrives here
-    // without it. Ask now, before any upload, and resume this same call once it is verified.
-    // The BFF re-checks authoritatively on create — see the result handling below.
+    // without it. Checked below, after the uploads it has no dependency on have already started —
+    // see the result handling below. The BFF re-checks authoritatively on create.
     // Not for an assisted ad: the seller proves their phone when they claim it.
-    const publisher = assistedMode ? null : await getUserContactAction();
-    if (publisher && !publisher.phone) {
-      setPending(false);
-      requireVerifiedPhone({ onSuccess: () => void onSubmit() });
-      return;
-    }
+    const publisherPromise = assistedMode ? Promise.resolve(null) : getUserContactAction();
 
     // Uploaded with up to 3 in flight at once (runWithConcurrency) rather than one at a time —
     // see docs/plans/posting-speed-and-progress.md: sequential upload of every photo then every
@@ -1374,7 +1369,7 @@ export function PostAdWizard({
     type PhotoFailure = { kind: "unreadable" | "needsLogin" | "other"; photoNo: number; message?: string };
     let photosCompleted = 0;
     let photoFailure: PhotoFailure | null = null;
-    const photoResults = await runWithConcurrency(photos, 3, async (picked, i) => {
+    const photoResultsPromise = runWithConcurrency(photos, 3, async (picked, i) => {
       const photoNo = i + 1;
       if (photoFailure) return null;
       // Read up front so a photo whose file iOS has since deleted fails here, by number, instead
@@ -1404,6 +1399,45 @@ export function PostAdWizard({
       return { photoNo, hash: uploadResult.hash, ext: uploadResult.ext };
     });
 
+    // Video never blocks the post — if a single upload fails, drop it and continue rather than
+    // aborting the whole submission the way a failed photo upload does (photos are required,
+    // video is additive). ListingsService.create() also re-validates and silently trims against
+    // the caller's current entitlement, so this array is best-effort even before it gets there.
+    // Concurrency 2, not 3 like photos — matches the BFF's own global video-upload cap
+    // (MAX_CONCURRENT_VIDEO_UPLOADS in video-upload.guard-rails.ts) exactly; going higher only
+    // trades client-side parallelism for more 503s from that shared limit.
+    const videosToUpload = assistedMode ? [] : videos;
+    let videosCompleted = 0;
+    const videoResultsPromise = runWithConcurrency(videosToUpload, 2, async (video, i) => {
+      try {
+        const result = await uploadVideoDirect(video.file, listingId, activeToken, (fraction) =>
+          setUploadProgress({ phase: "video", current: i + 1, total: videosToUpload.length, fraction }),
+        );
+        videosCompleted++;
+        setUploadProgress({ phase: "video", current: videosCompleted, total: videosToUpload.length });
+        return result;
+      } catch (uploadError) {
+        setError(uploadError instanceof Error ? uploadError.message : "Failed to upload a video");
+        return null;
+      }
+    });
+
+    // The phone check and both upload pools share nothing — none reads a value the others
+    // produce — so they run together rather than one after another. (The video pool only ever
+    // started after photos fully finished before this change, even though it needs nothing from
+    // them either.)
+    const [publisher, photoResults, uploadedVideoResults] = await Promise.all([
+      publisherPromise,
+      photoResultsPromise,
+      videoResultsPromise,
+    ]);
+
+    if (publisher && !publisher.phone) {
+      setPending(false);
+      requireVerifiedPhone({ onSuccess: () => void onSubmit() });
+      return;
+    }
+
     // Asserted, not just annotated — TS's control-flow narrowing gets confused by a `let`
     // mutated only inside the pool's async closures above (it can't see that `await
     // runWithConcurrency(...)` guarantees every worker already ran), and otherwise narrows
@@ -1426,29 +1460,6 @@ export function PostAdWizard({
       return;
     }
     const uploadedPhotos = photoResults.filter((r): r is NonNullable<typeof r> => r !== null);
-
-    // Video never blocks the post — if a single upload fails, drop it and continue rather than
-    // aborting the whole submission the way a failed photo upload does (photos are required,
-    // video is additive). ListingsService.create() also re-validates and silently trims against
-    // the caller's current entitlement, so this array is best-effort even before it gets there.
-    // Concurrency 2, not 3 like photos — matches the BFF's own global video-upload cap
-    // (MAX_CONCURRENT_VIDEO_UPLOADS in video-upload.guard-rails.ts) exactly; going higher only
-    // trades client-side parallelism for more 503s from that shared limit.
-    const videosToUpload = assistedMode ? [] : videos;
-    let videosCompleted = 0;
-    const uploadedVideoResults = await runWithConcurrency(videosToUpload, 2, async (video, i) => {
-      try {
-        const result = await uploadVideoDirect(video.file, listingId, activeToken, (fraction) =>
-          setUploadProgress({ phase: "video", current: i + 1, total: videosToUpload.length, fraction }),
-        );
-        videosCompleted++;
-        setUploadProgress({ phase: "video", current: videosCompleted, total: videosToUpload.length });
-        return result;
-      } catch (uploadError) {
-        setError(uploadError instanceof Error ? uploadError.message : "Failed to upload a video");
-        return null;
-      }
-    });
     const uploadedVideos = uploadedVideoResults.filter((r): r is NonNullable<typeof r> => r !== null);
 
     const needsCheckout =

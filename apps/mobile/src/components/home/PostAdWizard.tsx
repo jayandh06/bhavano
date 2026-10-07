@@ -1254,7 +1254,7 @@ export function PostAdWizard({
       // way a single failed request aborted this loop before — no extra bookkeeping needed to keep
       // "a failed photo aborts the whole submit" working.
       let photosCompleted = 0;
-      const uploadedPhotos = await runWithConcurrency(photoUris, 3, async (uri, i) => {
+      const photosPromise = runWithConcurrency(photoUris, 3, async (uri, i) => {
         const photoNo = i + 1;
         const upload = await uploadPhoto(uri, listingId, photoNo, activeToken);
         photosCompleted++;
@@ -1270,7 +1270,7 @@ export function PostAdWizard({
       // (MAX_CONCURRENT_VIDEO_UPLOADS in video-upload.guard-rails.ts) exactly; going higher only
       // trades client-side parallelism for more 503s from that shared limit.
       let videosCompleted = 0;
-      const uploadedVideoResults = await runWithConcurrency(videos, 2, async (video, i) => {
+      const videosPromise = runWithConcurrency(videos, 2, async (video, i) => {
         try {
           const result = await uploadVideo(video.uri, listingId, activeToken, (fraction) =>
             setUploadProgress({ phase: "video", current: i + 1, total: videos.length, fraction }),
@@ -1283,6 +1283,11 @@ export function PostAdWizard({
           return null;
         }
       });
+
+      // Neither pool reads anything the other produces (both only need listingId/activeToken,
+      // already resolved above) — run them together rather than finishing every photo before
+      // starting the first video.
+      const [uploadedPhotos, uploadedVideoResults] = await Promise.all([photosPromise, videosPromise]);
       const uploadedVideos = uploadedVideoResults.filter((r): r is CreatedVideoInput => r !== null);
 
       setUploadProgress({ phase: "creating", current: 1, total: 1 });
