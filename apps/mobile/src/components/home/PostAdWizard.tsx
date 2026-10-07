@@ -1250,9 +1250,26 @@ export function PostAdWizard({
   async function handleGenerateCopy(field: "title" | "description", opts?: { listingId?: string; secondLanguage?: IndianLanguage }) {
     if (!opts?.listingId && (!canGenerateCopy || !category || !transactionType)) return;
 
-    // Only guards the details-step call (no listingId) — see web's identical check for why the
-    // Featured-regenerate banner's own call is exempt.
+    // Details-step call (no listingId) always generates both fields together now that there's a
+    // single combined button for it — see web's identical reasoning. `field` is still threaded
+    // through for the listingId/regenerate-banner call below, which stays single-field
+    // (description only, Featured-tier) and unrelated to this.
     if (!opts?.listingId) {
+      if (title.trim() || description.trim()) {
+        const confirmed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            "Replace your current Title and Description?",
+            "This will overwrite what you've typed with AI-generated versions.",
+            [
+              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+              { text: "Replace", onPress: () => resolve(true) },
+            ],
+            { cancelable: true, onDismiss: () => resolve(false) },
+          );
+        });
+        if (!confirmed) return;
+      }
+    } else {
       const existing = field === "title" ? title : description;
       if (existing.trim()) {
         const confirmed = await new Promise<boolean>((resolve) => {
@@ -1283,21 +1300,17 @@ export function PostAdWizard({
       return;
     }
 
-    // Details-step only — see web's identical comment for the full reasoning. Bundles the other
-    // field into the same request only while it's still empty: one call, one rate-limit hit, both
-    // fields filled for the common "fresh ad" case, with no wasted LLM cost when it wouldn't help.
-    const otherField = field === "title" ? "description" : "title";
-    const bundleOther = !opts?.listingId && (otherField === "title" ? title : description).trim().length === 0;
-    const fields: ("title" | "description")[] = bundleOther ? [field, otherField] : [field];
-
-    const setGenerating = field === "title" ? setGeneratingTitle : setGeneratingDescription;
-    const setOtherGenerating = otherField === "title" ? setGeneratingTitle : setGeneratingDescription;
-    setGenerating(true);
-    if (bundleOther) setOtherGenerating(true);
+    const fields: ("title" | "description")[] = opts?.listingId ? [field] : ["title", "description"];
+    if (!opts?.listingId) {
+      setGeneratingTitle(true);
+      setGeneratingDescription(true);
+    } else {
+      (field === "title" ? setGeneratingTitle : setGeneratingDescription)(true);
+    }
     try {
       const result = await generateListingCopy(
         opts?.listingId
-          ? { listingId: opts.listingId, fields: [field], secondLanguage: opts.secondLanguage }
+          ? { listingId: opts.listingId, fields, secondLanguage: opts.secondLanguage }
           : {
               fields,
               category: category!,
@@ -1313,8 +1326,8 @@ export function PostAdWizard({
             },
         activeToken,
       );
-      if (field === "title" && result.title) setTitle(result.title.slice(0, TITLE_MAX_LENGTH));
-      if (field === "description" && result.description) {
+      if (result.title) setTitle(result.title.slice(0, TITLE_MAX_LENGTH));
+      if (result.description) {
         // Reuses the same `description` state the details-step input binds to — nothing else
         // reads it once the listing already exists (success step), so it doubles as the
         // editable preview buffer for the regenerate-then-Apply flow.
@@ -1326,19 +1339,15 @@ export function PostAdWizard({
           setRegenerateApplied(false);
         }
       }
-      // Bonus fill for the other, still-empty field — re-checked here via the functional setState
-      // form, in case the seller typed something into it during the await.
-      if (bundleOther && otherField === "title" && result.title) {
-        setTitle((prev) => (prev.trim() ? prev : result.title!.slice(0, TITLE_MAX_LENGTH)));
-      }
-      if (bundleOther && otherField === "description" && result.description) {
-        setDescription((prev) => (prev.trim() ? prev : result.description!.slice(0, DESCRIPTION_MAX_LENGTH)));
-      }
     } catch (error) {
       setAiGenerateError(friendlyErrorMessage(error, "Failed to generate"));
     } finally {
-      setGenerating(false);
-      if (bundleOther) setOtherGenerating(false);
+      if (!opts?.listingId) {
+        setGeneratingTitle(false);
+        setGeneratingDescription(false);
+      } else {
+        (field === "title" ? setGeneratingTitle : setGeneratingDescription)(false);
+      }
       // The BFF's RateLimitGuard records a hit for any request that gets this far (success or
       // not) — see web's identical comment on handleGenerateCopy for the one excluded case.
       setAiUsage((prev) => (prev ? { ...prev, used: Math.min(prev.limit, prev.used + 1), remaining: Math.max(0, prev.remaining - 1) } : prev));
@@ -1988,8 +1997,7 @@ export function PostAdWizard({
 
           {error && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{error}</Text>}
 
-          {/* Governs both AI Generate buttons below, not just one — a single choice up front
-              rather than two pickers that could disagree. Replaces English (unlike the
+          {/* Governs the combined AI Generate button below. Replaces English (unlike the
               Featured-regenerate banner's own picker further down, which is additive) — see
               generationLanguage's own comment above. */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -2015,6 +2023,29 @@ export function PostAdWizard({
               ))}
             </View>
           )}
+          {/* One button, not two — a single tap fills both fields together (handleGenerateCopy
+              always requests both for this no-listingId call). Gold, not a plain bordered chip:
+              this is the one control on this screen that writes fields for you, and a quieter
+              style made it easy to miss. Gold is already this app's "something special" accent
+              (colors.gold, reused from the boost/Featured badges above). */}
+          <Pressable
+            onPress={() => void handleGenerateCopy("title")}
+            disabled={!canGenerateCopy || generatingTitle || generatingDescription}
+            style={[
+              styles.aiGenerateButton,
+              {
+                borderColor: colors.gold,
+                backgroundColor: `${colors.gold}1a`,
+                opacity: !canGenerateCopy || generatingTitle || generatingDescription ? 0.5 : 1,
+              },
+            ]}
+          >
+            {generatingTitle || generatingDescription ? (
+              <ActivityIndicator size="small" color={colors.gold} />
+            ) : (
+              <Text style={{ fontSize: 11, fontWeight: "700", color: colors.gold }}>✨ AI Generate Title + Description</Text>
+            )}
+          </Pressable>
           {aiUsage && (
             <Text
               style={{
@@ -2030,32 +2061,10 @@ export function PostAdWizard({
           )}
 
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            {/* The AI-Generate button sits right beside its own label, not below the input it
-                fills — a control for *this field* only reads as attached to it when it's
-                actually adjacent. Gold, not a plain bordered chip: this is the one control on
-                this screen that writes the field for you, and the quieter style made it easy to
-                miss. Gold is already this app's "something special" accent (colors.gold, reused
-                from the boost/Featured badges above), not a second one invented here. */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={[styles.label, { color: colors.textSoft, marginTop: 0, marginBottom: 0 }]}>
-                Title
-                <RequiredMark />
-              </Text>
-              <Pressable
-                onPress={() => void handleGenerateCopy("title")}
-                disabled={!canGenerateCopy || generatingTitle}
-                style={[
-                  styles.aiGenerateButton,
-                  { borderColor: colors.gold, backgroundColor: `${colors.gold}1a`, marginTop: 0, opacity: !canGenerateCopy || generatingTitle ? 0.5 : 1 },
-                ]}
-              >
-                {generatingTitle ? (
-                  <ActivityIndicator size="small" color={colors.gold} />
-                ) : (
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: colors.gold }}>✨ AI Generate</Text>
-                )}
-              </Pressable>
-            </View>
+            <Text style={[styles.label, { color: colors.textSoft, marginTop: 0, marginBottom: 0 }]}>
+              Title
+              <RequiredMark />
+            </Text>
             {/* Counts up rather than down, so it reads as progress instead of a warning, and
                 turns amber before the cap rather than at it — running out mid-sentence is worth
                 knowing a few characters early. */}
@@ -2080,26 +2089,10 @@ export function PostAdWizard({
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
 
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Text style={[styles.label, { color: colors.textSoft }]}>
-              Description
-              <RequiredMark />
-            </Text>
-            <Pressable
-              onPress={() => void handleGenerateCopy("description")}
-              disabled={!canGenerateCopy || generatingDescription}
-              style={[
-                styles.aiGenerateButton,
-                { borderColor: colors.gold, backgroundColor: `${colors.gold}1a`, marginTop: 0, opacity: !canGenerateCopy || generatingDescription ? 0.5 : 1 },
-              ]}
-            >
-              {generatingDescription ? (
-                <ActivityIndicator size="small" color={colors.gold} />
-              ) : (
-                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.gold }}>✨ AI Generate</Text>
-              )}
-            </Pressable>
-          </View>
+          <Text style={[styles.label, { color: colors.textSoft }]}>
+            Description
+            <RequiredMark />
+          </Text>
           <TextInput
             value={description}
             onChangeText={(v) => setDescription(v.slice(0, DESCRIPTION_MAX_LENGTH))}

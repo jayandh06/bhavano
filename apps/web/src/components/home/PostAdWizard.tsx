@@ -1326,11 +1326,19 @@ export function PostAdWizard({
   async function handleGenerateCopy(field: "title" | "description", opts?: { listingId?: string; secondLanguage?: IndianLanguage }) {
     if (!opts?.listingId && (!canGenerateCopy || !category || !transactionType)) return;
 
-    // Only guards the details-step call (no listingId) — the Featured-regenerate banner's own
-    // call is already an explicit "regenerate this" action on its own preview buffer, not a field
-    // the seller hand-typed, so confirming there a second time would be redundant. Checked before
-    // the API call (not after), so cancelling costs nothing — no token fetch, no rate-limit hit.
+    // Details-step call (no listingId) always generates both fields together now that there's a
+    // single combined button for it — `field` is still threaded through for the listingId/
+    // regenerate-banner call below, which stays single-field (description only, Featured-tier)
+    // and unrelated to this. Checked before the API call, so cancelling costs nothing — no token
+    // fetch, no rate-limit hit.
     if (!opts?.listingId) {
+      if (
+        (title.trim() || description.trim()) &&
+        !window.confirm("Replace your current Title and Description with AI-generated versions?")
+      ) {
+        return;
+      }
+    } else {
       const existing = field === "title" ? title : description;
       if (
         existing.trim() &&
@@ -1352,23 +1360,16 @@ export function PostAdWizard({
       return;
     }
 
-    // Details-step only (never the listingId/regenerate-banner call, which is always
-    // description-only): bundles the other field into the same request *only* when it's still
-    // empty — one call, one rate-limit hit, and both fields filled for the common "fresh ad"
-    // case, with zero wasted LLM cost when it wouldn't help (the other field already has content
-    // and a bonus result for it would just be discarded). Never bundles when the other field
-    // already has text, which is also exactly today's single-field behaviour.
-    const otherField = field === "title" ? "description" : "title";
-    const bundleOther = !opts?.listingId && (otherField === "title" ? title : description).trim().length === 0;
-    const fields: ("title" | "description")[] = bundleOther ? [field, otherField] : [field];
-
-    const setGenerating = field === "title" ? setGeneratingTitle : setGeneratingDescription;
-    const setOtherGenerating = otherField === "title" ? setGeneratingTitle : setGeneratingDescription;
-    setGenerating(true);
-    if (bundleOther) setOtherGenerating(true);
+    const fields: ("title" | "description")[] = opts?.listingId ? [field] : ["title", "description"];
+    if (!opts?.listingId) {
+      setGeneratingTitle(true);
+      setGeneratingDescription(true);
+    } else {
+      (field === "title" ? setGeneratingTitle : setGeneratingDescription)(true);
+    }
     const result = await generateListingCopyAction(
       opts?.listingId
-        ? { listingId: opts.listingId, fields: [field], secondLanguage: opts.secondLanguage }
+        ? { listingId: opts.listingId, fields, secondLanguage: opts.secondLanguage }
         : {
             fields,
             category: category!,
@@ -1383,8 +1384,12 @@ export function PostAdWizard({
             language: generationLanguage || undefined,
           },
     );
-    setGenerating(false);
-    if (bundleOther) setOtherGenerating(false);
+    if (!opts?.listingId) {
+      setGeneratingTitle(false);
+      setGeneratingDescription(false);
+    } else {
+      (field === "title" ? setGeneratingTitle : setGeneratingDescription)(false);
+    }
 
     // The BFF's RateLimitGuard records a hit for any request that gets past auth, success or
     // not — NEEDS_LOGIN_ERROR is the one outcome where the request never actually reached it (see
@@ -1403,8 +1408,8 @@ export function PostAdWizard({
       return;
     }
 
-    if (field === "title" && result.result.title) setTitle(result.result.title.slice(0, TITLE_MAX_LENGTH));
-    if (field === "description" && result.result.description) {
+    if (result.result.title) setTitle(result.result.title.slice(0, TITLE_MAX_LENGTH));
+    if (result.result.description) {
       // Reuses the same `description` state the details-step textarea binds to — nothing else
       // reads it once the listing already exists (we're on the success step here), so it
       // doubles as the editable preview buffer for this regenerate-then-Apply flow.
@@ -1415,14 +1420,6 @@ export function PostAdWizard({
         setRegeneratedDescriptionReady(true);
         setRegenerateApplied(false);
       }
-    }
-    // Bonus fill for the other, still-empty field — re-checked here (not just at the top) via the
-    // functional setState form, in case the seller typed something into it during the await.
-    if (bundleOther && otherField === "title" && result.result.title) {
-      setTitle((prev) => (prev.trim() ? prev : result.result.title!.slice(0, TITLE_MAX_LENGTH)));
-    }
-    if (bundleOther && otherField === "description" && result.result.description) {
-      setDescription((prev) => (prev.trim() ? prev : result.result.description!.slice(0, DESCRIPTION_MAX_LENGTH)));
     }
   }
 
@@ -2170,9 +2167,8 @@ export function PostAdWizard({
             )}
           </div>
 
-          {/* Governs both AI Generate buttons below, not just one — a single choice up front
-            * rather than two pickers that could disagree. Replaces English rather than adding to
-            * it (unlike the Featured-regenerate banner's own language picker on the success
+          {/* Governs the combined AI Generate button below — replaces English rather than adding
+            * to it (unlike the Featured-regenerate banner's own language picker on the success
             * step, which is deliberately additive) — see generationLanguage's own comment above. */}
           <div className="flex items-center gap-2 max-w-[720px] flex-wrap">
             <label className="text-[13px] font-bold text-text-soft shrink-0">✨ AI-generate in:</label>
@@ -2188,7 +2184,20 @@ export function PostAdWizard({
                 </option>
               ))}
             </SelectField>
-            <span className="text-xs text-muted">Applies to both Title and Description below.</span>
+          </div>
+          {/* One button, not two — a single click fills both fields together (handleGenerateCopy
+            * always requests both for this no-listingId call), so there's one action instead of
+            * "generate title, then separately remember to also generate description." */}
+          <div className="flex items-center gap-2 max-w-[720px] flex-wrap">
+            <button
+              type="button"
+              onClick={() => void handleGenerateCopy("title")}
+              disabled={!canGenerateCopy || generatingTitle || generatingDescription}
+              title={canGenerateCopy ? undefined : "Fill in the required details above first"}
+              className={aiGenerateButtonClass}
+            >
+              {generatingTitle || generatingDescription ? "Generating…" : "✨ AI Generate Title + Description"}
+            </button>
           </div>
           {aiUsage && (
             <p
@@ -2203,20 +2212,9 @@ export function PostAdWizard({
           )}
 
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <label className="text-[13px] font-bold text-text-soft">
-                Title <span className="text-[#b3413a]">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => void handleGenerateCopy("title")}
-                disabled={!canGenerateCopy || generatingTitle}
-                title={canGenerateCopy ? undefined : "Fill in the required details above first"}
-                className={aiGenerateButtonClass}
-              >
-                {generatingTitle ? "Generating…" : "✨ AI Generate"}
-              </button>
-            </div>
+            <label className={labelClass}>
+              Title <span className="text-[#b3413a]">*</span>
+            </label>
             {/* Counter sits beside the input — reads as attached to the text box it's counting.
               * Counts up rather than down, so it reads as progress rather than a warning, and
               * turns amber near the cap instead of only at it — a poster who has run out of room
@@ -2238,20 +2236,9 @@ export function PostAdWizard({
           </div>
 
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <label className="text-[13px] font-bold text-text-soft">
-                Description <span className="text-[#b3413a]">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => void handleGenerateCopy("description")}
-                disabled={!canGenerateCopy || generatingDescription}
-                title={canGenerateCopy ? undefined : "Fill in the required details above first"}
-                className={aiGenerateButtonClass}
-              >
-                {generatingDescription ? "Generating…" : "✨ AI Generate"}
-              </button>
-            </div>
+            <label className={labelClass}>
+              Description <span className="text-[#b3413a]">*</span>
+            </label>
             <textarea
               required
               value={description}
