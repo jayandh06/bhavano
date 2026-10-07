@@ -309,21 +309,33 @@ nudged locally (`used + 1`/`remaining - 1`, clamped) rather than re-fetched: `Ra
 records a hit for any request that gets past auth, success or not, so this is accurate for every
 outcome except the client-side-detected "not logged in" case, which never reached the BFF at all.
 
-**Update (2026-10-07): clicking either AI Generate button can fill both fields in one call,
-opportunistically.** Previously each button always sent `fields: [thatField]` — generating both
-meant two separate requests and two rate-limit hits, even though `GenerateListingCopyInput.fields`
-already accepted both at once (`AiService.generate` already looped over whichever fields were
-asked for). `handleGenerateCopy` now bundles the *other* field into the same request, but **only
-when that other field is still empty** — never when it already has content, since a bonus result
-for an already-filled field would just be discarded, paying for an LLM call that helped nothing.
-This makes the common "fresh ad" case (both fields blank) one call / one hit filling both, while
-every other case — one or both fields already have text — behaves exactly as before, one call per
-button, no wasted generation. Both buttons show "Generating…" (and are disabled) together whenever
-a bundled call is in flight, so a second click on the other button can't fire a redundant
-concurrent request; the field whose button was actually clicked always overwrites (after the
-existing confirm-if-non-empty check), while the bundled other field only ever fills in if it's
-still empty at response time too (re-checked via the functional `setState` form, in case the
-seller typed into it during the await) — it can never clobber something typed in the meantime.
+**Update (2026-10-07): the two per-field buttons were replaced with one "✨ AI Generate Title +
+Description" button.** This went through two iterations the same day:
+
+1. First, `handleGenerateCopy` kept the two buttons but opportunistically bundled the *other*
+   field into the same request when it was still empty — one call filling both for a fresh ad,
+   falling back to today's one-call-per-button behaviour once either field already had text.
+2. That was then replaced with a single combined button, on the premise that there's no longer a
+   reason to keep two: `GenerateListingCopyInput.fields` always accepted both at once
+   (`AiService.generate` already looped over whichever fields were asked for), so one button that
+   always requests `["title", "description"]` together is simpler than two buttons each deciding
+   whether to opportunistically bundle the other.
+
+**Current behaviour:** one button, sitting where the two used to (right after the language
+picker, before Title). A click always requests both fields for the no-listingId (details-step)
+call — the `field` parameter `handleGenerateCopy` still takes is now only meaningful for the
+listingId/regenerate-banner call, which stays single-field (description only, Featured-tier) and
+is unrelated to this. The confirm-before-overwrite check (web: `window.confirm`, mobile:
+`Alert.alert`) now asks about replacing *both* Title and Description whenever either already has
+content, rather than checking one field at a time. Both `generatingTitle` and
+`generatingDescription` are set together for this call (disabling the single button, which reads
+either), even though there's only one button to show it on now — kept as two booleans rather than
+introduced as a new combined one so the listingId/regenerate-banner call (still single-field)
+didn't need its own separate state. Net effect versus the original two-button design: the common
+"fresh ad" case still costs one call / one rate-limit hit for both fields (same as the
+opportunistic version), but now *every* case does, including "regenerate just the title, leave my
+hand-written description alone" — which this button no longer offers; a seller who wants to
+redo only one field edits it by hand instead.
 
 ## Critical files
 - `apps/web/src/components/home/PostAdWizard.tsx` / `apps/mobile/src/components/home/PostAdWizard.tsx`
