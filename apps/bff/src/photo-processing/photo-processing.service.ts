@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Interval } from '@nestjs/schedule';
 import sharp from 'sharp';
+import type { PhotoVariantJob } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { R2StorageService } from '../storage/r2-storage.service';
 import { CdnPurgeService } from '../storage/cdn-purge.service';
@@ -42,74 +43,83 @@ export class PhotoProcessingService {
         take: BATCH_SIZE,
       });
 
-      for (const job of jobs) {
-        await this.prisma.photoVariantJob.update({ where: { id: job.id }, data: { status: 'processing' } });
-        try {
-          const original = await this.storage.getObject(originalKey(job.listingId, job.photoNo, job.ext));
-          const { width, quality } = PHOTO_VARIANTS[job.variant as PhotoVariant];
-          const photo = await this.prisma.listingPhoto.findUnique({
-            where: { listingId_photoNo: { listingId: job.listingId, photoNo: job.photoNo } },
-            select: { rotation: true },
-          });
-          // .rotate() with no args bakes in the EXIF orientation tag before webp encoding
-          // strips it — without this, a photo a phone tagged "rotate 90°" rather than actually
-          // rotating comes out sideways once re-encoded. A second, explicit .rotate(angle) applies
-          // the admin's manual correction (see ListingPhoto.rotation) on top, for the rarer case
-          // where EXIF was missing/wrong and the automatic pass alone didn't fix it.
-          let pipeline = sharp(original).rotate();
-          if (photo?.rotation) pipeline = pipeline.rotate(photo.rotation);
-          const { data: resizedRaw, info } = await pipeline
-            .resize(width, null, { withoutEnlargement: true })
-            .toBuffer({ resolveWithObject: true });
-          const watermark = buildWatermarkSvg(info.width, info.height);
-          const resized = await sharp(resizedRaw)
-            .composite([{ input: watermark, top: 0, left: 0 }])
-            .webp({ quality })
-            .toBuffer();
-          await this.storage.putObject(
-            variantKey(job.listingId, job.photoNo, job.variant as PhotoVariant),
-            resized,
-            'image/webp',
-          );
-          // Cloudflare (CDN_BASE_URL) applies its own default edge cache to .webp files
-          // regardless of anything set above — a rotate rewrites this same URL, so without an
-          // explicit purge the public site keeps serving pre-rotation bytes at it for up to that
-          // cache's TTL. Best-effort: a failed/unconfigured purge doesn't affect correctness, only
-          // how long a stale copy lingers publicly — the file itself is already right in R2.
-          const cdnBase = this.config.get<string>('CDN_BASE_URL') ?? '';
-          await this.cdnPurge.purgeUrls([variantUrl(cdnBase, job.listingId, job.photoNo, job.variant as PhotoVariant)]);
-          // updateMany + a status:'processing' guard, not a plain update: if an admin clicked
-          // rotate again while this run was still mid-flight (a real possibility — this loop just
-          // did a network round trip to R2 for both the download and the upload), AdminService
-          // .rotatePhoto() already reset this same row back to 'pending' for the newer rotation.
-          // A plain update here would stomp that reset with 'done', permanently orphaning the
-          // newer request: the row would sit at 'done' with content that was already stale the
-          // moment it was written, and the poller would never look at it again. Matching on
-          // status:'processing' means we only ever mark our own claim done, never someone else's.
-          const { count } = await this.prisma.photoVariantJob.updateMany({
-            where: { id: job.id, status: 'processing' },
-            data: { status: 'done' },
-          });
-          if (count === 0) {
-            this.logger.log(`Photo variant job ${job.id} was reset mid-flight — leaving its newer 'pending' status alone.`);
-          }
-        } catch (error) {
-          const attempts = job.attempts + 1;
-          this.logger.warn(`Photo variant job ${job.id} failed (attempt ${attempts}): ${error}`);
-          // Same guard as the success path above — don't let a stale failure clobber a newer
-          // rotate click's 'pending' reset.
-          await this.prisma.photoVariantJob.updateMany({
-            where: { id: job.id, status: 'processing' },
-            data: {
-              attempts,
-              status: attempts >= MAX_ATTEMPTS ? 'failed' : 'pending',
-              error: error instanceof Error ? error.message : String(error),
-            },
-          });
-        }
-      }
+      // Concurrent, not sequential — this used to be a plain for-of with an await per job, so a
+      // tick's whole BATCH_SIZE ran one at a time (R2 download, sharp resize/composite/encode, R2
+      // upload, CDN purge — each a real network/CPU cost) before the next job even started. A
+      // 6-photo listing (2 jobs per photo: preview + full) could take several ticks just from
+      // this serialization, which is most of why photos visibly trickled in one at a time rather
+      // than appearing together. allSettled, not all: one job's failure (already handled inside
+      // processJob, never thrown) must never cancel its siblings' results.
+      await Promise.allSettled(jobs.map((job) => this.processJob(job)));
     } finally {
       this.running = false;
+    }
+  }
+
+  private async processJob(job: PhotoVariantJob): Promise<void> {
+    await this.prisma.photoVariantJob.update({ where: { id: job.id }, data: { status: 'processing' } });
+    try {
+      const original = await this.storage.getObject(originalKey(job.listingId, job.photoNo, job.ext));
+      const { width, quality } = PHOTO_VARIANTS[job.variant as PhotoVariant];
+      const photo = await this.prisma.listingPhoto.findUnique({
+        where: { listingId_photoNo: { listingId: job.listingId, photoNo: job.photoNo } },
+        select: { rotation: true },
+      });
+      // .rotate() with no args bakes in the EXIF orientation tag before webp encoding
+      // strips it — without this, a photo a phone tagged "rotate 90°" rather than actually
+      // rotating comes out sideways once re-encoded. A second, explicit .rotate(angle) applies
+      // the admin's manual correction (see ListingPhoto.rotation) on top, for the rarer case
+      // where EXIF was missing/wrong and the automatic pass alone didn't fix it.
+      let pipeline = sharp(original).rotate();
+      if (photo?.rotation) pipeline = pipeline.rotate(photo.rotation);
+      const { data: resizedRaw, info } = await pipeline
+        .resize(width, null, { withoutEnlargement: true })
+        .toBuffer({ resolveWithObject: true });
+      const watermark = buildWatermarkSvg(info.width, info.height);
+      const resized = await sharp(resizedRaw)
+        .composite([{ input: watermark, top: 0, left: 0 }])
+        .webp({ quality })
+        .toBuffer();
+      await this.storage.putObject(
+        variantKey(job.listingId, job.photoNo, job.variant as PhotoVariant),
+        resized,
+        'image/webp',
+      );
+      // Cloudflare (CDN_BASE_URL) applies its own default edge cache to .webp files
+      // regardless of anything set above — a rotate rewrites this same URL, so without an
+      // explicit purge the public site keeps serving pre-rotation bytes at it for up to that
+      // cache's TTL. Best-effort: a failed/unconfigured purge doesn't affect correctness, only
+      // how long a stale copy lingers publicly — the file itself is already right in R2.
+      const cdnBase = this.config.get<string>('CDN_BASE_URL') ?? '';
+      await this.cdnPurge.purgeUrls([variantUrl(cdnBase, job.listingId, job.photoNo, job.variant as PhotoVariant)]);
+      // updateMany + a status:'processing' guard, not a plain update: if an admin clicked
+      // rotate again while this run was still mid-flight (a real possibility — this loop just
+      // did a network round trip to R2 for both the download and the upload), AdminService
+      // .rotatePhoto() already reset this same row back to 'pending' for the newer rotation.
+      // A plain update here would stomp that reset with 'done', permanently orphaning the
+      // newer request: the row would sit at 'done' with content that was already stale the
+      // moment it was written, and the poller would never look at it again. Matching on
+      // status:'processing' means we only ever mark our own claim done, never someone else's.
+      const { count } = await this.prisma.photoVariantJob.updateMany({
+        where: { id: job.id, status: 'processing' },
+        data: { status: 'done' },
+      });
+      if (count === 0) {
+        this.logger.log(`Photo variant job ${job.id} was reset mid-flight — leaving its newer 'pending' status alone.`);
+      }
+    } catch (error) {
+      const attempts = job.attempts + 1;
+      this.logger.warn(`Photo variant job ${job.id} failed (attempt ${attempts}): ${error}`);
+      // Same guard as the success path above — don't let a stale failure clobber a newer
+      // rotate click's 'pending' reset.
+      await this.prisma.photoVariantJob.updateMany({
+        where: { id: job.id, status: 'processing' },
+        data: {
+          attempts,
+          status: attempts >= MAX_ATTEMPTS ? 'failed' : 'pending',
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
     }
   }
 }
