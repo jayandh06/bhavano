@@ -73,6 +73,20 @@ pins one explicitly. An override naming an unconfigured provider falls back to t
 "assist, not core functionality" stance as everything else here. See `docs/deployment.md`'s "AI
 listing-copy assist" section for the ops-side setup.
 
+**Gemini model: the smallest tier that does the job, confirmed live, not guessed.**
+`DEFAULT_GEMINI_MODEL` went through three live checks against the real Generative Language API
+before landing on `gemini-3.5-flash-lite`: `gemini-2.5-flash` (what training data would suggest)
+had been retired for new API keys; `gemini-3.8-flash` (the flagship the retirement error pointed
+at) worked but is more model than this "fill structured fields into a short, templated
+description" task needs — the same "cheap, fast, not deep reasoning" stance
+`OpenAiListingCopyProvider`'s own `MODEL` comment already takes; `gemini-3.5-flash-lite` (the
+newest tier with a "lite" variant — 3.6/3.7/3.8 don't have one yet) produced the same
+structure/quality on the full Featured-tier prompt (bullets, bold, a second language) at a
+fraction of the size, and rejects `thinkingConfig` outright (400) since it has no hidden
+"thinking" step to disable in the first place — simpler than `gemini-3.8-flash`, which needed the
+`thinkingConfig: { thinkingBudget: 0 }` workaround to avoid spending more tokens thinking than
+answering.
+
 **Update (2026-10-07): the description is formatted, not one dense paragraph.** Free tier gets
 1-2 short paragraphs with occasional `**bold**` on a standout fact; Featured gets an opening
 paragraph, a `- ` bullet list of 3-5 highlights, and a closing paragraph, with 1-3 bolded phrases.

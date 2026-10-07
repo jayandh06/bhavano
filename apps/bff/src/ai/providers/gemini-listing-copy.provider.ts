@@ -8,10 +8,19 @@ import { buildDescriptionPrompt, buildSystemPrompt, buildTitlePrompt } from './l
 
 // Pinned, with an escape hatch — same reasoning as WhatsappProvider's DEFAULT_API_VERSION: a
 // silently-shifting "latest" model is how a working integration changes behaviour on a date
-// nobody wrote down. Override with GEMINI_MODEL if this one is retired. (Confirmed live
-// 2026-10-07 against the real Generative Language API: gemini-2.5-flash is no longer available
-// to new API keys — Google's own 404 pointed at this one instead.)
-const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+// nobody wrote down. Override with GEMINI_MODEL if this one is retired.
+//
+// The smallest tier that actually does the job, not the flagship one: this is a "fill structured
+// fields into a short, templated description" task, the same "cheap, fast, not deep reasoning"
+// stance OpenAiListingCopyProvider's own MODEL comment takes. Confirmed live 2026-10-07 against
+// the real Generative Language API — the full Featured-tier prompt (bullets + bold + a second
+// language) on gemini-3.5-flash-lite produced the same structure and quality as gemini-3.8-flash
+// (the next tier up) at a fraction of the size, and with no thinkingConfig workaround needed:
+// this tier has no hidden "thinking" step to disable in the first place — it actively rejects
+// `thinkingConfig` with a 400, which is why that field isn't sent below. (gemini-2.5-flash, tried
+// first, 404'd as retired for new keys; 3.6/3.7/3.8 don't have a "lite" tier yet, so 3.5 is the
+// newest one that does.)
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 interface GeminiGenerateContentResponse {
   candidates?: { content?: { parts?: { text?: string }[] } }[];
@@ -65,13 +74,12 @@ export class GeminiListingCopyProvider implements ListingCopyLlmProvider {
     const body = {
       systemInstruction: { parts: [{ text: buildSystemPrompt(expectedFields, allowFormatting) }] },
       contents: [{ parts: [{ text: userPrompt }] }],
-      // thinkingBudget: 0 — confirmed live 2026-10-07: with thinking on (the default), this
-      // model spent ~300 reasoning tokens to answer a ~40-token prompt with a ~40-token result —
-      // more thinking than output, for a short fill-structured-fields-into-prose task that was
-      // explicitly picked to be cheap and simple (same reasoning as MODEL's own comment in
-      // OpenAiListingCopyProvider). Disabling it dropped total tokens ~5x with no quality loss
-      // on the same prompt.
-      generationConfig: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
+      // No thinkingConfig: DEFAULT_GEMINI_MODEL's own comment covers why — this tier has no
+      // hidden "thinking" step to disable (confirmed live: it 400s if you send thinkingConfig at
+      // all). The flag only mattered on gemini-3.8-flash, the bigger tier this replaced, where it
+      // cut total tokens ~5x with no quality loss. A GEMINI_MODEL override back to a
+      // thinking-capable model would need this re-added.
+      generationConfig: { responseMimeType: 'application/json' },
     };
 
     // No maskUrlParam needed — the key goes in a header (X-Goog-Api-Key), same convention

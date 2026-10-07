@@ -34,17 +34,16 @@ describe('GeminiListingCopyProvider', () => {
     await provider.generateTitle(fields);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({ 'X-Goog-Api-Key': 'test-gemini-key' }),
       }),
     );
     const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-    expect(body.generationConfig).toEqual({
-      responseMimeType: 'application/json',
-      thinkingConfig: { thinkingBudget: 0 },
-    });
+    // No thinkingConfig — the default model (a "lite" tier) rejects it outright with a 400;
+    // see DEFAULT_GEMINI_MODEL's own comment in the provider.
+    expect(body.generationConfig).toEqual({ responseMimeType: 'application/json' });
   });
 
   it('honours a GEMINI_MODEL override', async () => {
