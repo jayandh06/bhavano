@@ -1887,7 +1887,7 @@ export class ListingsService {
     }
 
     const hash = await computeDHash(file.buffer);
-    if (await this.moderationService.isDuplicatePhotoHash(hash)) {
+    if (await this.moderationService.isDuplicatePhotoHash(hash, listing.cityId)) {
       throw new BadRequestException(
         'This photo appears to already be in use on another listing',
       );

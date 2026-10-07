@@ -41,7 +41,7 @@ export class ModerationService {
     if (priceIssue) return { ok: false, reason: priceIssue };
 
     if (input.photos.length) {
-      const isDuplicate = await this.hasDuplicatePhotoHashes(input.photos.map((p) => p.hash));
+      const isDuplicate = await this.hasDuplicatePhotoHashes(input.photos.map((p) => p.hash), input.cityId);
       if (isDuplicate) {
         return { ok: false, reason: 'One of the uploaded photos appears to already be in use on another listing' };
       }
@@ -51,15 +51,22 @@ export class ModerationService {
   }
 
   /** Single-hash convenience wrapper for ListingsService.addPhoto (a post-creation add), which
-   * has no full CreateListingInput to hand `moderate()`. */
-  async isDuplicatePhotoHash(hash: string): Promise<boolean> {
-    return this.hasDuplicatePhotoHashes([hash]);
+   * has no full CreateListingInput to hand `moderate()` — only the listing's own cityId. */
+  async isDuplicatePhotoHash(hash: string, cityId: string): Promise<boolean> {
+    return this.hasDuplicatePhotoHashes([hash], cityId);
   }
 
-  /** Scans against all existing photo hashes — fine at current data volume; if the
-   * ListingPhoto table grows large, scope this by city/category first. */
-  private async hasDuplicatePhotoHashes(hashes: string[]): Promise<boolean> {
-    const existing = await this.prisma.listingPhoto.findMany({ select: { hash: true } });
+  /** Scoped to the same city, via the indexed Listing.cityId (see @@index([cityId, category])) —
+   * this used to scan every ListingPhoto row in the whole table on every single listing create,
+   * comparing each against every uploaded hash with an O(n) Hamming distance in JS. The repost
+   * fraud this guards against (the same stolen photos reused across fake listings) is realistically
+   * same-market, so scoping by city bounds the scan per-city as the table grows instead of letting
+   * it grow unbounded with total listings nationwide. */
+  private async hasDuplicatePhotoHashes(hashes: string[], cityId: string): Promise<boolean> {
+    const existing = await this.prisma.listingPhoto.findMany({
+      where: { listing: { cityId } },
+      select: { hash: true },
+    });
     return hashes.some((newHash) => existing.some((row) => hammingDistanceHex(newHash, row.hash) <= DUPLICATE_HAMMING_THRESHOLD));
   }
 }
