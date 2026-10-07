@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ListingCardDto } from "@bhavano/types";
@@ -49,14 +49,18 @@ export function ListingCard({
   // A small, cheap benefit of being Featured, not a full swipeable carousel: cycling through
   // every photo would mean loading N images per boosted card up front, on a page that can show a
   // couple dozen cards at once — real risk to LCP on browse pages, which are this site's
-  // SEO-critical routes. Hovering is the one interaction that's already "I'm actually looking at
-  // this card" without costing anything for cards nobody hovers — one extra image request at a
-  // time, only while genuinely being looked at. `(hover: hover)` (same idiom CategoryTabs.tsx
-  // already uses) keeps this off touch devices entirely: a tap-triggered synthetic hover there
-  // would fire the cycle right before navigating away, for no benefit and a wasted request.
+  // SEO-critical routes. Two different gestures stand in for "I'm actually looking at this card"
+  // depending on the device, each costing nothing for cards nobody is: hovering, for a device
+  // with a real pointer (`(hover: hover)`, same idiom CategoryTabs.tsx already uses — a
+  // tap-triggered synthetic hover on touch would fire the cycle right before navigating away, for
+  // no benefit and a wasted request, which is why this guard still excludes touch from *this*
+  // path specifically); the card actually being on screen, via IntersectionObserver, for a touch
+  // device/mobile browser with no such gesture (see the effect below) — gated per-card either way,
+  // never every Featured card on the page at once.
   const [hoverPhotoIndex, setHoverPhotoIndex] = useState(0);
   const hoverIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const canCyclePhotos = item.isBoosted && item.photos.length > 1;
+  const cardPhotoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
@@ -64,21 +68,52 @@ export function ListingCard({
     };
   }, []);
 
-  function startPhotoCycle() {
-    if (!canCyclePhotos) return;
-    if (typeof window === "undefined" || !window.matchMedia("(hover: hover)").matches) return;
+  const startCycle = useCallback(() => {
+    if (hoverIntervalRef.current) return;
     hoverIntervalRef.current = setInterval(() => {
       setHoverPhotoIndex((i) => (i + 1) % item.photos.length);
     }, 1200);
-  }
+  }, [item.photos.length]);
 
-  function stopPhotoCycle() {
+  const stopCycle = useCallback(() => {
     if (hoverIntervalRef.current) {
       clearInterval(hoverIntervalRef.current);
       hoverIntervalRef.current = null;
     }
     setHoverPhotoIndex(0);
+  }, []);
+
+  function startPhotoCycle() {
+    if (!canCyclePhotos) return;
+    if (typeof window === "undefined" || !window.matchMedia("(hover: hover)").matches) return;
+    startCycle();
   }
+
+  // Touch/mobile-browser equivalent of hovering above — a real pointer device gets the cycle from
+  // mouseenter; a device with no true hover (phones, most tablets) has no equivalent gesture that
+  // means "genuinely looking at this one," so it gets the cycle instead from the card actually
+  // being on screen, via IntersectionObserver — scoped per-card, so only the Featured cards
+  // actually in view tick, not every Featured card on the page at once (the same LCP/wasted-
+  // request concern the comment above already explains, just solved differently for touch).
+  // `(hover: hover)` skips this path entirely on a device that already gets it from hovering.
+  useEffect(() => {
+    if (!canCyclePhotos) return;
+    if (typeof window === "undefined" || window.matchMedia("(hover: hover)").matches) return;
+    const el = cardPhotoRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) startCycle();
+        else stopCycle();
+      },
+      { threshold: 0.6 },
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      stopCycle();
+    };
+  }, [canCyclePhotos, startCycle, stopCycle]);
 
   // Logged out, the heart saves on this device (GuestSavesToast then offers a login that moves it
   // to the account) instead of stopping the visitor at a login dialog.
@@ -161,9 +196,10 @@ export function ListingCard({
       }`}
     >
       <div
+        ref={cardPhotoRef}
         className="relative h-[200px]"
         onMouseEnter={startPhotoCycle}
-        onMouseLeave={stopPhotoCycle}
+        onMouseLeave={stopCycle}
         // Dynamic per-listing placeholder gradient stays inline — it's data, not a static style.
         style={
           item.photos[0]
@@ -182,10 +218,11 @@ export function ListingCard({
             className="object-cover"
           />
         )}
-        {/* The resting hint that hovering does something, and mobile/no-hover's only signal that
-          * more photos exist at all, since it never gets the cycle above. Static — a dot-per-photo
-          * indicator that tracked hoverPhotoIndex would be reaching back toward carousel
-          * territory for a benefit nobody but a hovering desktop visitor could even see change. */}
+        {/* The resting hint that there's more than one photo, on every device — including the
+          * moment before a touch device's own cycle has started (not yet scrolled into the 60%
+          * threshold above). Static — a dot-per-photo indicator that tracked hoverPhotoIndex
+          * would be reaching back toward carousel territory for a benefit most visitors, hovering
+          * or not, wouldn't be looking at the card continuously enough to even see change. */}
         {canCyclePhotos && (
           <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 bg-[#00000099] text-white text-[11px] font-bold px-2 py-1 rounded-md pointer-events-none">
             <Icon name="camera" /> {item.photos.length}
