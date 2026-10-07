@@ -64,10 +64,13 @@ import {
   fetchAreas,
   fetchPlanPricing,
   friendlyErrorMessage,
+  generateListingCopy,
   previewBoostPricing,
+  updateListing,
   uploadPhoto,
   uploadVideo,
 } from "../../lib/bffClient";
+import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
 import { getAnalyticsSessionId, recordAppPageView } from "../../lib/analyticsSession";
 import { logPostAdSuccess } from "../../lib/firebaseAnalytics";
 import {
@@ -343,6 +346,18 @@ export function PostAdWizard({
   const [areaSuggestions, setAreaSuggestions] = useState<Area[]>([]);
   const areaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [description, setDescription] = useState("");
+  // AI "Generate" assist for title/description — see docs/plans/ai-listing-copy-assist.md.
+  const [generatingTitle, setGeneratingTitle] = useState(false);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
+  const [aiGenerateError, setAiGenerateError] = useState<string | null>(null);
+  const [secondLanguageChoice, setSecondLanguageChoice] = useState<IndianLanguage | "">("");
+  const [secondLanguageDescription, setSecondLanguageDescription] = useState<string | null>(null);
+  const [activeDescriptionLang, setActiveDescriptionLang] = useState<"en" | IndianLanguage>("en");
+  const [showRegenerateBanner, setShowRegenerateBanner] = useState(false);
+  const [regeneratedDescriptionReady, setRegeneratedDescriptionReady] = useState(false);
+  const [regenerateApplying, setRegenerateApplying] = useState(false);
+  const [regenerateApplied, setRegenerateApplied] = useState(false);
+  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
   // string[] for multi-select fields (preferredTenantTypes); the attributes column is JSONB and
   // typed Record<string, unknown> on the wire, so an array round-trips as-is.
@@ -682,7 +697,9 @@ export function PostAdWizard({
       discountCode: ACTIVE_PROMO_CODE,
     }).then((result) => {
       setBoostCheckoutPending(false);
-      setBoostCheckoutOutcome(result.outcome === "activated" || result.outcome === "paid" ? "succeeded" : "failed");
+      const succeeded = result.outcome === "activated" || result.outcome === "paid";
+      setBoostCheckoutOutcome(succeeded ? "succeeded" : "failed");
+      if (succeeded) setShowRegenerateBanner(true);
     });
   }, [createdListing, postAccessToken, selectedBoostPlan, previewBoostDisplay]);
 
@@ -701,7 +718,9 @@ export function PostAdWizard({
       discountCode: ACTIVE_PROMO_CODE,
     }).then((result) => {
       setBoostCheckoutPending(false);
-      setBoostCheckoutOutcome(result.outcome === "activated" || result.outcome === "paid" ? "succeeded" : "failed");
+      const succeeded = result.outcome === "activated" || result.outcome === "paid";
+      setBoostCheckoutOutcome(succeeded ? "succeeded" : "failed");
+      if (succeeded) setShowRegenerateBanner(true);
     });
   }
 
@@ -1186,6 +1205,89 @@ export function PostAdWizard({
   })();
   const detailsValid = !detailsIssue;
 
+  // Enough to generate from, independent of detailsValid above — see web's identical reasoning
+  // in PostAdWizard.tsx. No listingId sent here: this component's own listingId is a
+  // client-generated UUID for upload storage, not a real row yet.
+  const canGenerateCopy = !!category && !!transactionType && Number(price) > 0 && !!cityId;
+
+  // `opts.listingId` switches this to the post-creation "regenerate with Featured" shape — see
+  // docs/plans/ai-listing-copy-assist.md.
+  async function handleGenerateCopy(field: "title" | "description", opts?: { listingId?: string; secondLanguage?: IndianLanguage }) {
+    if (!opts?.listingId && (!canGenerateCopy || !category || !transactionType)) return;
+    setAiGenerateError(null);
+
+    let activeToken = accessToken ?? postAccessToken;
+    if (!activeToken) {
+      activeToken = (await SecureStore.getItemAsync(TOKEN_KEY)) ?? undefined;
+    }
+    if (!activeToken) {
+      requireLogin({ onSuccess: () => void handleGenerateCopy(field, opts) });
+      return;
+    }
+
+    const setGenerating = field === "title" ? setGeneratingTitle : setGeneratingDescription;
+    setGenerating(true);
+    try {
+      const result = await generateListingCopy(
+        opts?.listingId
+          ? { listingId: opts.listingId, fields: [field], secondLanguage: opts.secondLanguage }
+          : {
+              fields: [field],
+              category: category!,
+              transactionType: transactionType!,
+              price: Number(price) || undefined,
+              priceQualifier: priceQualifier || undefined,
+              cityName: cities.find((c) => c.id === cityId)?.name,
+              areaName: areaQuery.trim() || undefined,
+              attributes,
+              lat: pin?.lat,
+              lng: pin?.lng,
+            },
+        activeToken,
+      );
+      if (field === "title" && result.title) setTitle(result.title.slice(0, TITLE_MAX_LENGTH));
+      if (field === "description" && result.description) {
+        // Reuses the same `description` state the details-step input binds to — nothing else
+        // reads it once the listing already exists (success step), so it doubles as the
+        // editable preview buffer for the regenerate-then-Apply flow.
+        setDescription(result.description.slice(0, DESCRIPTION_MAX_LENGTH));
+        setSecondLanguageDescription(result.descriptionSecondLanguage ?? null);
+        setActiveDescriptionLang("en");
+        if (opts?.listingId) {
+          setRegeneratedDescriptionReady(true);
+          setRegenerateApplied(false);
+        }
+      }
+    } catch (error) {
+      setAiGenerateError(friendlyErrorMessage(error, "Failed to generate"));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  // See web's identical function for the full reasoning on why this swap, not a new field.
+  function switchDescriptionLang(lang: "en" | IndianLanguage) {
+    if (lang === activeDescriptionLang || secondLanguageDescription === null) return;
+    setDescription(secondLanguageDescription);
+    setSecondLanguageDescription(description);
+    setActiveDescriptionLang(lang);
+  }
+
+  async function applyRegeneratedDescription() {
+    if (!createdListing) return;
+    const activeToken = accessToken ?? postAccessToken;
+    if (!activeToken) return;
+    setRegenerateApplying(true);
+    try {
+      await updateListing(activeToken, createdListing.id, { description });
+      setRegenerateApplied(true);
+    } catch (error) {
+      setAiGenerateError(friendlyErrorMessage(error, "Failed to save"));
+    } finally {
+      setRegenerateApplying(false);
+    }
+  }
+
   /**
    * "Preview Ad" — where the account is first asked for, matching the website's own
    * PostAdWizard. Nothing in this form touches the server before Submit, so the login waits until
@@ -1581,6 +1683,20 @@ export function PostAdWizard({
             onChangeText={(v) => setTitle(v.slice(0, TITLE_MAX_LENGTH))}
             style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
           />
+          <Pressable
+            onPress={() => void handleGenerateCopy("title")}
+            disabled={!canGenerateCopy || generatingTitle}
+            style={[
+              styles.aiGenerateButton,
+              { borderColor: colors.border, backgroundColor: colors.surfaceAlt, opacity: !canGenerateCopy || generatingTitle ? 0.5 : 1 },
+            ]}
+          >
+            {generatingTitle ? (
+              <ActivityIndicator size="small" color={colors.green} />
+            ) : (
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text }}>✨ Generate</Text>
+            )}
+          </Pressable>
 
           <Text style={[styles.label, { color: colors.textSoft }]}>
             Pin your exact location (optional — helps buyers find you, and auto-fills City/Area below)
@@ -1687,6 +1803,23 @@ export function PostAdWizard({
           <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
             At least {DESCRIPTION_MIN_LENGTH} characters — ads with a real description get more responses.
           </Text>
+          <Pressable
+            onPress={() => void handleGenerateCopy("description")}
+            disabled={!canGenerateCopy || generatingDescription}
+            style={[
+              styles.aiGenerateButton,
+              { borderColor: colors.border, backgroundColor: colors.surfaceAlt, opacity: !canGenerateCopy || generatingDescription ? 0.5 : 1 },
+            ]}
+          >
+            {generatingDescription ? (
+              <ActivityIndicator size="small" color={colors.green} />
+            ) : (
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text }}>✨ Generate</Text>
+            )}
+          </Pressable>
+          {aiGenerateError ? (
+            <Text style={{ fontSize: 12, color: "#b3413a", marginTop: 4 }}>{aiGenerateError}</Text>
+          ) : null}
 
           <View style={[styles.divider, { borderColor: colors.border }]}>
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
@@ -2073,10 +2206,129 @@ export function PostAdWizard({
                 listingId={createdListing.id}
                 category={createdListing.category}
                 accessToken={postAccessToken}
-                onActivating={() => setBundleActivating(true)}
+                onActivating={() => {
+                  setBundleActivating(true);
+                  setShowRegenerateBanner(true);
+                }}
                 effectiveness={planPricingSettings?.boostEffectiveness ?? null}
               />
             )
+          )}
+
+          {showRegenerateBanner && (
+            <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt, gap: 10 }]}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <Text style={{ flex: 1, fontSize: 13, fontWeight: "700", color: colors.text }}>
+                  ✨ Your ad is now Featured — want a richer AI description with nearby landmarks?
+                </Text>
+                <Pressable onPress={() => setShowRegenerateBanner(false)}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.muted }}>Dismiss</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <Pressable
+                  onPress={() => setLanguagePickerOpen((open) => !open)}
+                  style={[styles.readOnlyRow, { borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 0 }]}
+                >
+                  <Text style={{ fontSize: 13, color: colors.text }}>
+                    {secondLanguageChoice ? `+ ${INDIAN_LANGUAGE_LABELS[secondLanguageChoice]}` : "English only"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() =>
+                    void handleGenerateCopy("description", {
+                      listingId: createdListing.id,
+                      secondLanguage: secondLanguageChoice || undefined,
+                    })
+                  }
+                  disabled={generatingDescription}
+                  style={[styles.submitButton, { backgroundColor: colors.green, opacity: generatingDescription ? 0.6 : 1 }]}
+                >
+                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13 }}>
+                    {generatingDescription ? "Generating…" : regeneratedDescriptionReady ? "Regenerate" : "Generate"}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {languagePickerOpen && (
+                <View style={[styles.readOnlyRow, { flexDirection: "column", alignItems: "stretch", borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <Pressable onPress={() => { setSecondLanguageChoice(""); setLanguagePickerOpen(false); }} style={{ paddingVertical: 8 }}>
+                    <Text style={{ fontSize: 13, color: colors.text }}>English only</Text>
+                  </Pressable>
+                  {INDIAN_LANGUAGES.map((lang) => (
+                    <Pressable key={lang} onPress={() => { setSecondLanguageChoice(lang); setLanguagePickerOpen(false); }} style={{ paddingVertical: 8 }}>
+                      <Text style={{ fontSize: 13, color: colors.text }}>+ {INDIAN_LANGUAGE_LABELS[lang]}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              {aiGenerateError ? <Text style={{ fontSize: 12, color: "#b3413a" }}>{aiGenerateError}</Text> : null}
+
+              {regeneratedDescriptionReady && (
+                <View style={{ gap: 8 }}>
+                  {secondLanguageDescription !== null && secondLanguageChoice ? (
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <Pressable
+                        onPress={() => switchDescriptionLang("en")}
+                        style={{
+                          paddingVertical: 4,
+                          paddingHorizontal: 10,
+                          borderRadius: 999,
+                          backgroundColor: activeDescriptionLang === "en" ? colors.green : colors.surface,
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: "700", color: activeDescriptionLang === "en" ? colors.onGreen : colors.muted }}>
+                          English
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => switchDescriptionLang(secondLanguageChoice)}
+                        style={{
+                          paddingVertical: 4,
+                          paddingHorizontal: 10,
+                          borderRadius: 999,
+                          backgroundColor: activeDescriptionLang === secondLanguageChoice ? colors.green : colors.surface,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "700",
+                            color: activeDescriptionLang === secondLanguageChoice ? colors.onGreen : colors.muted,
+                          }}
+                        >
+                          {INDIAN_LANGUAGE_LABELS[secondLanguageChoice]}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                  <TextInput
+                    value={description}
+                    onChangeText={(v) => setDescription(v.slice(0, DESCRIPTION_MAX_LENGTH))}
+                    multiline
+                    numberOfLines={5}
+                    textAlignVertical="top"
+                    style={[styles.input, { minHeight: 100, borderColor: colors.border, color: colors.text, backgroundColor: colors.surface }]}
+                  />
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <Pressable
+                      onPress={() => void applyRegeneratedDescription()}
+                      disabled={regenerateApplying}
+                      style={[styles.submitButton, { backgroundColor: colors.green, opacity: regenerateApplying ? 0.6 : 1 }]}
+                    >
+                      <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 13 }}>
+                        {regenerateApplying ? "Saving…" : "Apply to my ad"}
+                      </Text>
+                    </Pressable>
+                    {regenerateApplied ? (
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: colors.green }}>Saved ✓</Text>
+                    ) : null}
+                  </View>
+                </View>
+              )}
+            </View>
           )}
 
           <OwnerWhatsAppShare listing={createdListing} />
@@ -2165,6 +2417,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginBottom: 8,
+  },
+  aiGenerateButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginTop: 6,
   },
   sectionHeading: {
     fontSize: 12,

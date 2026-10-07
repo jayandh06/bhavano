@@ -2,6 +2,7 @@ import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
+import type { GenerateListingCopyInput, GenerateListingCopyResult } from "@bhavano/types/listingCopyAssist";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import {
   encodeRequirementFeedQuery,
@@ -459,6 +460,18 @@ export function deletePushToken(accessToken: string, token: string): Promise<voi
 // TEMP(auth-gate): posting is open without login for now.
 export function createListing(input: CreateListingInput, accessToken: string): Promise<ListingDetailDto> {
   return authedBffFetch<ListingDetailDto>(accessToken, "/listings", { method: "POST", body: JSON.stringify(input) });
+}
+
+/** Posting wizard's AI title/description "Generate" assist — see
+ * docs/plans/ai-listing-copy-assist.md. */
+export function generateListingCopy(
+  input: GenerateListingCopyInput,
+  accessToken: string,
+): Promise<GenerateListingCopyResult> {
+  return authedBffFetch<GenerateListingCopyResult>(accessToken, "/ai/listing-copy", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 const MIME_BY_EXT: Record<string, string> = {
