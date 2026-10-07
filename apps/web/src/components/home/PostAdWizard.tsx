@@ -239,7 +239,7 @@ function reportPostError(stage: string, message: string) {
  * (docs/plans/boost-recovery-dialog.md) — GTM/GA4 sees these via pushDataLayerEvent at each call
  * site, but that's a separate system from the admin's own Page visits trail, which only reads
  * PageView rows. Decoded by the admin app's trailEntry() into readable text. */
-function reportBoostRecoveryEvent(event: "shown" | "accepted" | "dismissed", trigger?: "idle" | "submit") {
+function reportBoostRecoveryEvent(event: "shown" | "accepted" | "dismissed", trigger?: "idle" | "submit" | "skip") {
   const query = trigger ? `event=${event}&trigger=${trigger}` : `event=${event}`;
   void fetch("/api/analytics/pageview", {
     method: "POST",
@@ -457,6 +457,12 @@ export function PostAdWizard({
   // below, after showBoostOnReview exists.
   const [showBoostRecovery, setShowBoostRecovery] = useState(false);
   const boostRecoveryShownRef = useRef(false);
+  // Which of the three trigger points opened the dialog currently showing — the idle timer and
+  // tapping Post ad both proceed straight to posting either way (onAddBoost/onSkip below), but
+  // clicking Skip itself defers the actual skip until this dialog resolves, so neither of its
+  // buttons should post anything — they only resolve the pending choice and return to the review
+  // screen. null whenever showBoostRecovery is false.
+  const [boostRecoveryTrigger, setBoostRecoveryTrigger] = useState<"idle" | "submit" | "skip" | null>(null);
   // null until a checkout attempt (auto-fired right after posting, or a manual retry) resolves —
   // drives the narrow "Finish boosting this listing" retry prompt on the success step.
   const [boostCheckoutOutcome, setBoostCheckoutOutcome] = useState<"succeeded" | "failed" | null>(null);
@@ -764,6 +770,7 @@ export function PostAdWizard({
     if (boostRecoveryShownRef.current) return;
     const timer = window.setTimeout(() => {
       boostRecoveryShownRef.current = true;
+      setBoostRecoveryTrigger("idle");
       setShowBoostRecovery(true);
       pushDataLayerEvent("boost_recovery_shown", { trigger: "idle" });
       reportBoostRecoveryEvent("shown", "idle");
@@ -774,6 +781,7 @@ export function PostAdWizard({
   function handlePostAdClick() {
     if (previewBoostDisplay?.showSelectorOnPreview && selectedBoostPlan === null && !boostRecoveryShownRef.current) {
       boostRecoveryShownRef.current = true;
+      setBoostRecoveryTrigger("submit");
       setShowBoostRecovery(true);
       pushDataLayerEvent("boost_recovery_shown", { trigger: "submit" });
       reportBoostRecoveryEvent("shown", "submit");
@@ -782,10 +790,29 @@ export function PostAdWizard({
     void onSubmit();
   }
 
+  // Clicking "Skip — post without featuring" itself (BoostPlanSelector's onSkipAttempt) — makes
+  // the case before the skip is even committed, not after. Always shows (no boostRecoveryShownRef
+  // gate): it's a deliberate click each time, not a passive timer that could otherwise re-fire.
+  // Marks the ref anyway once resolved, so the idle/submit triggers above — which can now only
+  // ever see selectedBoostPlan === null as a result of this same flow already having run — never
+  // double up on the pitch.
+  function handleBoostSkipAttempt() {
+    setBoostRecoveryTrigger("skip");
+    setShowBoostRecovery(true);
+    pushDataLayerEvent("boost_recovery_shown", { trigger: "skip" });
+    reportBoostRecoveryEvent("shown", "skip");
+  }
+
   function handleBoostRecoveryAddBoost() {
     setShowBoostRecovery(false);
     pushDataLayerEvent("boost_recovery_accepted", {});
     reportBoostRecoveryEvent("accepted");
+    const skipTriggered = boostRecoveryTrigger === "skip";
+    boostRecoveryShownRef.current = true;
+    setBoostRecoveryTrigger(null);
+    // Skip-click trigger: selectedBoostPlan was never cleared, so there's nothing to restore —
+    // just close the dialog and stay on the review screen with the existing choice intact.
+    if (skipTriggered) return;
     const duration = previewBoostDisplay ? defaultBoostDuration(offeredBoostDurations(previewBoostDisplay)) : 15;
     setSelectedBoostPlan({ duration: duration as BoostPlanSelection["duration"], includeInstantAlerts: true });
     void onSubmit();
@@ -795,6 +822,15 @@ export function PostAdWizard({
     setShowBoostRecovery(false);
     pushDataLayerEvent("boost_recovery_dismissed", {});
     reportBoostRecoveryEvent("dismissed");
+    const skipTriggered = boostRecoveryTrigger === "skip";
+    boostRecoveryShownRef.current = true;
+    setBoostRecoveryTrigger(null);
+    // Skip-click trigger: this is the deferred commit — confirm the skip now, stay on the review
+    // screen. The idle/submit triggers instead proceed straight to posting without Feature.
+    if (skipTriggered) {
+      setSelectedBoostPlan(null);
+      return;
+    }
     void onSubmit();
   }
 
@@ -2070,6 +2106,7 @@ export function PostAdWizard({
                   category={category}
                   platformFeeSettings={planPricingSettings.platformFee}
                   showBoostOptions={showBoostOnReview}
+                  onSkipAttempt={handleBoostSkipAttempt}
                 />
               </div>
             )}
@@ -2126,6 +2163,8 @@ export function PostAdWizard({
           effectiveness={planPricingSettings?.boostEffectiveness ?? null}
           onAddBoost={handleBoostRecoveryAddBoost}
           onSkip={handleBoostRecoverySkip}
+          addLabel={boostRecoveryTrigger === "skip" ? "Apply Feature" : undefined}
+          cancelLabel={boostRecoveryTrigger === "skip" ? "Cancel" : undefined}
         />
       )}
 

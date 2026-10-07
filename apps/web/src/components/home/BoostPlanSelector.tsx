@@ -31,6 +31,7 @@ export function BoostPlanSelector({
   category,
   platformFeeSettings,
   showBoostOptions = true,
+  onSkipAttempt,
 }: {
   pricing: BoostPricingPreviewDto;
   value: BoostPlanSelection | null;
@@ -39,6 +40,11 @@ export function BoostPlanSelector({
   platformFeeSettings?: PlatformFeeSettings;
   /** When false, only the mandatory platform fee row is shown (fee-only publish). */
   showBoostOptions?: boolean;
+  /** Called instead of `onChange(null)` when Skip is clicked from a selected state, so the parent
+   * can interpose a dialog before actually committing to skipping — see PostAdWizard.tsx's
+   * handleBoostSkipAttempt. Omit to skip immediately (the old, direct behavior); "Add it back"
+   * (the opposite direction) is always direct, never intercepted. */
+  onSkipAttempt?: () => void;
 }) {
   const platformFeeRupees =
     platformFeeSettings &&
@@ -140,7 +146,7 @@ export function BoostPlanSelector({
       {pricing.allowSkippingBoost !== false && (
         <button
           type="button"
-          onClick={() => onChange(value ? null : effective)}
+          onClick={() => (value ? (onSkipAttempt ? onSkipAttempt() : onChange(null)) : onChange(effective))}
           className="mt-2.5 bg-transparent border-0 p-0 text-[12.5px] font-bold text-muted underline cursor-pointer"
         >
           {value ? "Skip — post without featuring" : "Add it back"}

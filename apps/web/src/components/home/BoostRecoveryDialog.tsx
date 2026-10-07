@@ -6,25 +6,33 @@ import { boostRecoveryMessage, type BoostEffectivenessDto } from "@bhavano/types
 import { Icon } from "./Icon";
 
 /**
- * One-time interstitial on the post-ad preview step, for a seller who's skipped Boost and is
- * either about to submit anyway or has sat idle for a while — see
- * docs/plans/boost-recovery-dialog.md. Makes the case with a real, computed number when there's
- * enough history to trust one (boostRecoveryMessage's own sample-size gate), and an honest
- * non-numeric line otherwise. Never a hard gate: both buttons proceed with posting, the only
- * difference is whether Boost gets added first.
+ * Interstitial making the case for Feature before a seller actually leaves without it — see
+ * docs/plans/boost-recovery-dialog.md. Three trigger points share this one component (idle on the
+ * review step, tapping Post ad, and clicking the Skip link itself — PostAdWizard tracks which),
+ * and only differ in what onAddBoost/onSkip actually do: the idle/submit triggers proceed straight
+ * to posting either way (the only difference is whether Feature gets added first), while the
+ * skip-click trigger just resolves the pending choice and returns to the review screen — neither
+ * button there posts anything. addLabel/cancelLabel let that one call site use wording that
+ * matches ("Apply Feature" / "Cancel") instead of the posting-flow default.
  */
 export function BoostRecoveryDialog({
   pricing,
   effectiveness,
   onAddBoost,
   onSkip,
+  addLabel,
+  cancelLabel = "No thanks, post without featuring",
 }: {
   pricing: BoostPricingPreviewDto;
   effectiveness: BoostEffectivenessDto | null;
-  /** Add the default duration's boost, then continue posting. */
+  /** Resolve in favor of Feature — label and consequence both depend on the trigger (see above). */
   onAddBoost: () => void;
-  /** Continue posting without boosting. */
+  /** Resolve against Feature — label and consequence both depend on the trigger (see above). */
   onSkip: () => void;
+  /** Defaults to "Add {duration}-day Feature — {price}"; pass to override for a trigger where
+   * nothing is being charged right now (the skip-click case just restores a selection). */
+  addLabel?: string;
+  cancelLabel?: string;
 }) {
   const duration = defaultBoostDuration(offeredBoostDurations(pricing));
   const option = boostOptionFor(pricing, duration);
@@ -68,15 +76,15 @@ export function BoostRecoveryDialog({
             onClick={onAddBoost}
             className="flex items-center justify-between gap-3 border-0 rounded-lg px-4 py-3 text-sm font-bold cursor-pointer bg-green text-on-green"
           >
-            <span>Add {duration}-day Feature</span>
-            <span>{priceText}</span>
+            <span>{addLabel ?? `Add ${duration}-day Feature`}</span>
+            {!addLabel && <span>{priceText}</span>}
           </button>
           <button
             type="button"
             onClick={onSkip}
             className="bg-transparent border-0 p-0 text-[12.5px] font-bold text-muted underline cursor-pointer"
           >
-            No thanks, post without featuring
+            {cancelLabel}
           </button>
         </div>
       </div>
