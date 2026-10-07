@@ -12,6 +12,12 @@ import { buildWatermarkSvg } from './watermark';
 const BATCH_SIZE = 5;
 const MAX_ATTEMPTS = 5;
 const POLL_INTERVAL_MS = 3000;
+/** Cloudflare's purge_cache doesn't guarantee instant propagation to every edge PoP (their own
+ * docs note it can take tens of seconds) — long enough that a PoP which hadn't yet received the
+ * first purge, or which re-cached a fresh 404 from a request racing just behind it, can still
+ * serve stale bytes (or a stale "not found") well after this job reports done. See
+ * docs/plans/photo-upload-stale-cdn-404.md. */
+const DELAYED_PURGE_MS = 60_000;
 
 @Injectable()
 export class PhotoProcessingService {
@@ -90,8 +96,20 @@ export class PhotoProcessingService {
       // explicit purge the public site keeps serving pre-rotation bytes at it for up to that
       // cache's TTL. Best-effort: a failed/unconfigured purge doesn't affect correctness, only
       // how long a stale copy lingers publicly — the file itself is already right in R2.
+      //
+      // Also covers first-time creation, not just rotate: if something requests this exact URL
+      // in the few-second gap between the job being created and this line running, R2 genuinely
+      // 404s that request, and Cloudflare can cache the 404 at that edge PoP. This purge clears
+      // it — but purge_cache isn't instant everywhere, so a second, delayed purge below catches
+      // a PoP that hadn't propagated yet, or that raced a second 404 in right behind this one.
       const cdnBase = this.config.get<string>('CDN_BASE_URL') ?? '';
-      await this.cdnPurge.purgeUrls([variantUrl(cdnBase, job.listingId, job.photoNo, job.variant as PhotoVariant)]);
+      const url = variantUrl(cdnBase, job.listingId, job.photoNo, job.variant as PhotoVariant);
+      await this.cdnPurge.purgeUrls([url]);
+      // .unref() so this timer never keeps the process (or a test run) alive on its own —
+      // it's pure cache hygiene, nothing waits on it.
+      setTimeout(() => {
+        this.cdnPurge.purgeUrls([url]).catch(() => undefined);
+      }, DELAYED_PURGE_MS).unref();
       // updateMany + a status:'processing' guard, not a plain update: if an admin clicked
       // rotate again while this run was still mid-flight (a real possibility — this loop just
       // did a network round trip to R2 for both the download and the upload), AdminService

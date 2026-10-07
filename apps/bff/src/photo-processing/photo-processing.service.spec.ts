@@ -253,4 +253,54 @@ describe('PhotoProcessingService', () => {
       'https://cdn.example.com/photos/l1_1_full.webp',
     ]);
   });
+
+  /** Regression test for a real production incident: Cloudflare's purge_cache call above
+   * succeeded, but a different edge PoP still served a stale cached 404 for ~15 minutes
+   * afterward (the window before this job finished writing the object) — see
+   * docs/plans/photo-upload-stale-cdn-404.md. purge_cache propagation isn't instant everywhere,
+   * so a second, delayed purge for the same URL catches a PoP the first one missed. */
+  it('schedules a second, delayed purge of the same URL to catch slow cache propagation', async () => {
+    jest.useFakeTimers();
+    try {
+      const job = makeJob({ status: 'processing', variant: 'full' });
+      const { fn: updateMany } = trackedUpdateMany('processing');
+      const prisma = {
+        photoVariantJob: {
+          findMany: jest.fn().mockResolvedValueOnce([job]),
+          update: jest.fn(),
+          updateMany,
+        },
+        listingPhoto: {
+          findUnique: jest.fn().mockResolvedValue({ rotation: 0 }),
+        },
+      } as unknown as PrismaService;
+      const storage = {
+        getObject: jest.fn().mockResolvedValue(original),
+        putObject: jest.fn().mockResolvedValue(undefined),
+      } as unknown as R2StorageService;
+      const purgeUrls = jest.fn().mockResolvedValue(true);
+      const cdnPurge = { purgeUrls } as unknown as CdnPurgeService;
+      const config = {
+        get: jest.fn().mockReturnValue('https://cdn.example.com'),
+      } as unknown as ConfigService;
+
+      const service = new PhotoProcessingService(
+        prisma,
+        storage,
+        cdnPurge,
+        config,
+      );
+      await service.processPending();
+
+      // The immediate purge (already covered by the previous test) has run once by here.
+      expect(purgeUrls).toHaveBeenCalledTimes(1);
+      jest.advanceTimersByTime(60_000);
+      expect(purgeUrls).toHaveBeenCalledTimes(2);
+      expect(purgeUrls).toHaveBeenLastCalledWith([
+        'https://cdn.example.com/photos/l1_1_full.webp',
+      ]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
