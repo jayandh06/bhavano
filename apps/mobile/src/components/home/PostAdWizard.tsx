@@ -90,6 +90,7 @@ import { ScreenHeader } from "./ScreenHeader";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { BoostBundleCard } from "./BoostBundleCard";
 import { BoostPlanSelector } from "./BoostPlanSelector";
+import { BoostRecoveryDialog } from "./BoostRecoveryDialog";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
 import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
@@ -406,6 +407,10 @@ export function PostAdWizard({
   // advertiser explicitly skipped it (see selectCategory's pre-fill and BoostPlanSelector's own
   // "Skip" affordance). Only ever read/acted on when previewBoostDisplay?.showSelectorOnPreview.
   const [selectedBoostPlan, setSelectedBoostPlan] = useState<BoostPlanSelection | null>(null);
+  // Shown by BoostPlanSelector's onSkipAttempt the moment Skip is tapped, before the skip is
+  // actually committed — see BoostRecoveryDialog.tsx. selectedBoostPlan is untouched while this is
+  // open; Cancel is the deferred commit, Apply Feature just closes with the selection intact.
+  const [showBoostRecovery, setShowBoostRecovery] = useState(false);
   const [boostCheckoutPending, setBoostCheckoutPending] = useState(false);
   // null until a checkout attempt (auto-fired right after posting, or a manual retry) resolves.
   // Drives the narrow "Finish boosting this listing" retry prompt on the success step — see that
@@ -594,6 +599,22 @@ export function PostAdWizard({
   // real purchase decision is made from it: needsCheckout below, the checkoutIntent sent to
   // create(), and finishPublishCheckout's own boostSelection. See the web wizard's identical fix.
   const boostIntent = previewBoostDisplay?.showSelectorOnPreview ? selectedBoostPlan : null;
+
+  // BoostPlanSelector's onSkipAttempt — makes the case before the skip is committed, not after.
+  function handleBoostSkipAttempt() {
+    setShowBoostRecovery(true);
+  }
+
+  // Dialog's Cancel — the deferred commit the Skip tap didn't make directly.
+  function handleBoostRecoveryCancel() {
+    setShowBoostRecovery(false);
+    setSelectedBoostPlan(null);
+  }
+
+  // Dialog's Apply Feature — selectedBoostPlan was never cleared, so there's nothing to restore.
+  function handleBoostRecoveryApplyFeature() {
+    setShowBoostRecovery(false);
+  }
 
   async function waitForListingLive(listingId: string, token: string): Promise<boolean> {
     for (let i = 0; i < 20; i++) {
@@ -1932,6 +1953,16 @@ export function PostAdWizard({
               category={category}
               platformFeeSettings={planPricingSettings.platformFee}
               showBoostOptions={showBoostOnReview}
+              onSkipAttempt={handleBoostSkipAttempt}
+            />
+          )}
+
+          {showBoostRecovery && previewBoostDisplay && (
+            <BoostRecoveryDialog
+              pricing={previewBoostDisplay}
+              effectiveness={planPricingSettings?.boostEffectiveness ?? null}
+              onApplyFeature={handleBoostRecoveryApplyFeature}
+              onCancel={handleBoostRecoveryCancel}
             />
           )}
 

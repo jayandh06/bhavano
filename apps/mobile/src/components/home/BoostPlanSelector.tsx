@@ -31,6 +31,7 @@ export function BoostPlanSelector({
   category,
   platformFeeSettings,
   showBoostOptions = true,
+  onSkipAttempt,
 }: {
   pricing: BoostPricingPreviewDto;
   value: BoostPlanSelection | null;
@@ -38,6 +39,10 @@ export function BoostPlanSelector({
   category: ListingCategory;
   platformFeeSettings?: PlatformFeeSettings;
   showBoostOptions?: boolean;
+  /** Called instead of `onChange(null)` when Skip is tapped from a selected state, so the parent
+   * can show a dialog before actually committing to skipping — mirrors web's identical prop on
+   * BoostPlanSelector.tsx. Omit to skip immediately; "Add it back" is always direct. */
+  onSkipAttempt?: () => void;
 }) {
   const { colors } = useAppTheme();
   const offered = offeredBoostDurations(pricing);
@@ -183,7 +188,10 @@ export function BoostPlanSelector({
       </Text>
 
       {pricing.allowSkippingBoost !== false && (
-        <Pressable onPress={() => onChange(value ? null : effective)} style={{ marginTop: 10 }}>
+        <Pressable
+          onPress={() => (value ? (onSkipAttempt ? onSkipAttempt() : onChange(null)) : onChange(effective))}
+          style={{ marginTop: 10 }}
+        >
           <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.muted, textDecorationLine: "underline" }}>
             {value ? "Skip — post without featuring" : "Add it back"}
           </Text>
