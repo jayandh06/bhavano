@@ -172,12 +172,17 @@ function buildRelatedLinks(input: BrowseSeoCopyInput): BrowseSeoLink[] {
 function buildIntroParagraphs(input: BrowseSeoCopyInput): string[] {
   const { heading, cityName, areaName, listingTotal, segments } = input;
 
-  // Nothing on a zero-result page: the RequirementPrompt card says "nothing matching X right
-  // now" in the same words, offers to go and find it, and carries the Post-an-ad action that the
-  // second sentence used to describe. Two paragraphs restating the card above them read as a
-  // malfunction. The related links below still render — they are the useful half of this block on
-  // a page with no inventory.
-  if (listingTotal === 0) return [];
+  // One honest sentence on a zero-result page, not the usual two — the RequirementPrompt card
+  // right below already carries the "tell us what you want" CTA, so a second paragraph
+  // describing that same action would be redundant. But saying nothing at all left this block as
+  // the one spot on the page where Google — crawling in from a real page's own "explore nearby"
+  // link, since sitemap.ts never submits a zero-inventory URL directly — found no text at all
+  // backing the title/heading, which is exactly the shape its soft-404 heuristic flags (see
+  // generateMetadata's own `robots: noindex` comment for the other half of this fix). The related
+  // links below still render regardless — useful on a page with no inventory either way.
+  if (listingTotal === 0) {
+    return [`There are no active listings for ${heading.toLowerCase()} right now — check back soon.`];
+  }
 
   const paragraphs = [
     `Browse ${listingTotal} listings for ${heading.toLowerCase()} on Bhavano. Ads are posted directly by owners and agents — no login required to search.`,

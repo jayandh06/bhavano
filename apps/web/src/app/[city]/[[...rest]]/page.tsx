@@ -498,6 +498,15 @@ export async function generateMetadata({
     alternates: { canonical: canonicalPath },
     openGraph: { title, description },
     twitter: { title, description },
+    // A valid city/area/category/bhk combination with zero current listings still renders a real
+    // 200 (RequirementPrompt + nearby links, not a dead end — see BrowseListingsView's own
+    // comment on why page-1 zero-results is an intentional 200, not a 404) but has no listing
+    // content to back the title/heading it still shows. Left un-signalled, Google crawls it via
+    // every real page's own "explore nearby" links (sitemap.ts never submits these directly —
+    // only combinations with real inventory), judges the thin boilerplate a soft 404, and flags
+    // it in Search Console. `follow: true` keeps link equity moving through those nearby links to
+    // the real, indexable pages instead of dead-ending it here.
+    ...(total === 0 ? { robots: { index: false, follow: true } } : {}),
   };
 }
 

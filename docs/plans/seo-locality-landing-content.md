@@ -1,5 +1,18 @@
 # Locality long-tail SEO: landing copy, links, and metadata
 
+**Update (2026-10-07):** the zero-listings branch below shipped as "no intro copy at all"
+instead of the honest-copy spec — `browseSeoCopy.ts`'s `buildIntroParagraphs` returned `[]` for
+`listingTotal === 0`, reasoning that the `RequirementPrompt` card already carried the "nothing
+matching" message. That gap, combined with no `robots: noindex` ever being set on this route
+regardless of listing count, is what Search Console flagged as **Soft 404** across 449
+zero-inventory `/{city}/{area}/{transactionGroup}/{category}/{facet}` combinations (reachable via
+every real page's own unconditional "explore nearby"/BHK-facet links, never via sitemap.xml,
+which only emits combinations with real inventory). Fixed in the same pass:
+`buildIntroParagraphs` now returns the originally-specced one-sentence honest copy instead of `[]`,
+and `generateMetadata` (`apps/web/src/app/[city]/[[...rest]]/page.tsx`) now sets
+`robots: { index: false, follow: true }` whenever the canonical query's `total` is 0 — `follow`
+so link equity still flows to the city/area/category pages that do have inventory.
+
 ## Context
 
 Bhavano’s **URL and heading model** already targets locality + intent queries (e.g. “3 BHK for sale in Koramangala”) via the city-first hierarchy documented in [`city-first-seo-url-hierarchy.md`](./city-first-seo-url-hierarchy.md):
