@@ -28,7 +28,7 @@ export type ModerationState = "approved" | "flagged";
  * can't be mistaken for a moderation warning. */
 export type ConversationType = "inquiry" | "moderation" | "announcement";
 export type LoginMethod = "otp" | "google" | "apple";
-export type RateLimitKind = "publish" | "view";
+export type RateLimitKind = "publish" | "view" | "ai_generate";
 /** Internal workflow state for a captured requirement — not a moderation state, since a
  * Requirement is not public content yet. */
 export type RequirementStatus = "open" | "working" | "closed";
@@ -1059,6 +1059,11 @@ export interface RateLimitSettingsDto {
     publishWindowMinutes: number;
     viewLimit: number;
     viewWindowMinutes: number;
+    /** Bounds the AI title/description "Generate" button — each call may run an LLM request and
+     * (Featured tier only) a paid Google Places lookup, so this is tighter than view's by default.
+     * See docs/plans/ai-listing-copy-assist.md. */
+    aiGenerateLimit: number;
+    aiGenerateWindowMinutes: number;
 }
 export type UpdateRateLimitSettingsInput = RateLimitSettingsDto;
 export interface CreateBoostOrderInput {

@@ -33,6 +33,10 @@
       "types": "./dist/listingLimits.d.ts",
       "default": "./dist/listingLimits.js"
     },
+    "./listingCopyAssist": {
+      "types": "./dist/listingCopyAssist.d.ts",
+      "default": "./dist/listingCopyAssist.js"
+    },
     "./postCategories": {
       "types": "./dist/postCategories.d.ts",
       "default": "./dist/postCategories.js"
