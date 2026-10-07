@@ -2,6 +2,26 @@
 
 ## Status: approved 2026-10-01, building now
 
+**Update (2026-10-07): third trigger added — clicking Skip itself.** The original two triggers
+(idle timeout, Post-ad submit-intercept) only caught someone who had *already* skipped and was
+now trying to leave. A seller who clicked "Skip — post without featuring" and then kept scrolling
+the review screen — never idling 60s, never tapping Post ad again before changing their mind some
+other way — never saw the pitch at all. Fixed by making the Skip link itself open the dialog
+*before* committing to the skip (`BoostPlanSelector`'s new `onSkipAttempt` prop, both platforms),
+with two outcomes that both just return to the review screen rather than posting anything:
+"Apply Feature" (closes the dialog, selection untouched — it was never cleared) or "Cancel" (the
+deferred commit — `selectedBoostPlan` becomes `null` only now). This made the original two
+triggers effectively unreachable in practice (skip can now only happen via this same flow, which
+already marks the "shown once" ref), but they're left in place as a safety net rather than removed.
+
+Also landed on **mobile**, despite this doc's original "web only" scope — the Guideline 3.1.1
+constraint that scoped the idle/submit triggers out of mobile is about the *checkout* flow
+(BoostModal's native-vs-redirect split), which this skip-click dialog never touches: both its
+outcomes just change local selection state, no payment, no redirect. Mobile gets a standalone,
+narrower `BoostRecoveryDialog.tsx` (just this one trigger, named `onApplyFeature`/`onCancel`
+instead of web's posting-flow-oriented `onAddBoost`/`onSkip`) rather than porting the idle-timer/
+submit-intercept machinery, which mobile still doesn't have.
+
 ## Goal
 
 When `showSelectorOnPreview` is on and a seller skips Boost (or is about to leave without
