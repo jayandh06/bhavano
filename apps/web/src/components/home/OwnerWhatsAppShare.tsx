@@ -96,17 +96,17 @@ export function OwnerWhatsAppShare({
           </p>
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2">
         <a
           href={href}
           target="_blank"
           rel="noopener noreferrer"
           onClick={onClick}
-          className="flex-1 bg-green text-on-green rounded-lg px-5 py-3 text-[15px] font-bold text-center inline-flex items-center justify-center gap-2"
+          className="bg-green text-on-green rounded-lg px-5 py-3 text-[15px] font-bold text-center inline-flex items-center justify-center gap-2"
         >
           <Icon name="message" /> Share on WhatsApp
         </a>
-        <OwnerFacebookShare listing={listing} placement={placement} referralCode={code} />
+        <OwnerFacebookShare listing={listing} placement={placement} referralCode={code} variant="prominent" />
       </div>
       {code && (
         <Link href="/referrals" className="text-[12.5px] font-bold text-green self-start">

@@ -18,8 +18,7 @@ type ShareableListing = Parameters<typeof buildListingPath>[0] & {
  * Bhavano Page's own auto-post (docs/plans/facebook-page-publishing.md), which only reaches the
  * Page's followers, not the owner's friends/family/local groups. Same `owner_share` pattern as
  * OwnerWhatsAppShare (tagged link, referral credit, tap logging), just pointed at Facebook's
- * share dialog instead of wa.me — compact-only, since it always sits beside an existing WhatsApp
- * share action rather than needing its own full card.
+ * share dialog instead of wa.me.
  *
  * Facebook's share dialog takes no pre-filled text (see facebookShareHref), so there's no message
  * to compose here the way OwnerWhatsAppShare has one.
@@ -28,11 +27,17 @@ export function OwnerFacebookShare({
   listing,
   placement,
   referralCode,
+  variant = "compact",
 }: {
   listing: ShareableListing;
   /** Which screen it was tapped on, for the `owner_share_facebook` event. */
   placement: "post_success" | "my_listings";
   referralCode?: string;
+  /** "prominent": its own full-width button, same treatment as OwnerWhatsAppShare's own
+   * prominent variant — used on the post-success share card, on its own line below WhatsApp's
+   * button rather than squeezed beside it as a small icon. "compact" (default): the small
+   * icon-only button used inline (e.g. the My Listings row). */
+  variant?: "prominent" | "compact";
 }) {
   const code = referralCode ?? listing.viewerReferralCode;
   const url = taggedShareUrl(`${SITE_URL}${buildListingPath(listing)}`, "facebook", "owner_share", code);
@@ -41,6 +46,20 @@ export function OwnerFacebookShare({
     pushDataLayerEvent("owner_share_facebook", { listingId: listing.id, placement });
     void recordShareTapAction(listing.id, "facebook");
   };
+
+  if (variant === "prominent") {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onClick}
+        className="w-full bg-green text-on-green rounded-lg px-5 py-3 text-[15px] font-bold text-center inline-flex items-center justify-center gap-2"
+      >
+        <FacebookIcon /> Share on Facebook
+      </a>
+    );
+  }
 
   return (
     <a
