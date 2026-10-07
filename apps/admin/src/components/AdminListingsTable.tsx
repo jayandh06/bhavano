@@ -309,14 +309,14 @@ export function AdminListingsTable({
     },
     {
       key: "boostPromo",
-      label: "Boost promo",
+      label: "Feature promo",
       render: (item) => <BoostPromoBadge promo={item.boostPromo} />,
       defaultVisible: true,
       nowrap: true,
     },
     {
       key: "boosted",
-      label: "Boosted",
+      label: "Featured",
       sortField: "boosted",
       render: (item) => <BoostedBadge boostedUntil={item.boostedUntil} isBoosted={item.isBoosted} />,
       defaultVisible: true,
@@ -474,9 +474,9 @@ export function AdminListingsTable({
             onClick={() => void onSend(sendBoostPromotionAction)}
             disabled={pending}
             style={secondaryActionButtonStyle}
-            title="Emails (or WhatsApps) the owner a Boost / Instant Alerts offer linking straight to checkout for that ad"
+            title="Emails (or WhatsApps) the owner a Feature / Instant Alerts offer linking straight to checkout for that ad"
           >
-            {pending ? "Sending…" : "Send boost promo"}
+            {pending ? "Sending…" : "Send Feature promo"}
           </button>
           {/* The same offer as an in-app message from "Bhavano Admin" in the owner's inbox (plus a
             * push if they have the app). Free, and it has its own cooldown, so it can follow an
@@ -486,9 +486,9 @@ export function AdminListingsTable({
             onClick={() => void onSend(sendBoostMessageAction)}
             disabled={pending}
             style={secondaryActionButtonStyle}
-            title="Sends the owner an in-app Boost / Instant Alerts message from Bhavano Admin (push notification if they have the app). Free — the admin's own name is never shown."
+            title="Sends the owner an in-app Feature / Instant Alerts message from Bhavano Admin (push notification if they have the app). Free — the admin's own name is never shown."
           >
-            {pending ? "Sending…" : "Send boost message (in-app)"}
+            {pending ? "Sending…" : "Send Feature message (in-app)"}
           </button>
           {pendingPostedCount > 0 && (
             <span style={{ fontSize: 11.5, color: "var(--muted)" }}>

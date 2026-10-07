@@ -113,22 +113,22 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
     const result = await updateBoostPricingAction(parsed);
     setSaving(false);
     setMessage(
-      result.success ? { type: "success", text: "Boost prices updated." } : { type: "error", text: result.error },
+      result.success ? { type: "success", text: "Feature prices updated." } : { type: "error", text: result.error },
     );
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Durations offered in the Boost card</div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Durations offered in the Feature card</div>
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 12 }}>
-          Unchecked durations are hidden from every boost picker (web and app) and can&apos;t be bought.
-          An Agent Pro member with an unused free monthly boost still sees the 7-day option.
+          Unchecked durations are hidden from every Feature picker (web and app) and can&apos;t be bought.
+          An Agent Pro member with an unused free monthly Feature still sees the 7-day option.
         </div>
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-          <DurationToggle label="7-day boost" checked={boost7dEnabled} onChange={setBoost7dEnabled} />
-          <DurationToggle label="15-day boost" checked={boost15dEnabled} onChange={setBoost15dEnabled} />
-          <DurationToggle label="30-day boost" checked={boost30dEnabled} onChange={setBoost30dEnabled} />
+          <DurationToggle label="7-day Feature" checked={boost7dEnabled} onChange={setBoost7dEnabled} />
+          <DurationToggle label="15-day Feature" checked={boost15dEnabled} onChange={setBoost15dEnabled} />
+          <DurationToggle label="30-day Feature" checked={boost30dEnabled} onChange={setBoost30dEnabled} />
         </div>
         {!anyDurationOn && (
           <div style={{ fontSize: 12.5, color: "var(--danger)", marginTop: 10 }}>
@@ -140,9 +140,9 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
       <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>House / Apartment / Villa / Plot / Commercial</div>
         <div style={{ display: "flex", gap: 12 }}>
-          <Field label="7-day boost (₹)" value={propertyBoostPrice7d} onChange={setPropertyBoostPrice7d} />
-          <Field label="15-day boost (₹)" value={propertyBoostPrice15d} onChange={setPropertyBoostPrice15d} />
-          <Field label="30-day boost (₹)" value={propertyBoostPrice30d} onChange={setPropertyBoostPrice30d} />
+          <Field label="7-day Feature (₹)" value={propertyBoostPrice7d} onChange={setPropertyBoostPrice7d} />
+          <Field label="15-day Feature (₹)" value={propertyBoostPrice15d} onChange={setPropertyBoostPrice15d} />
+          <Field label="30-day Feature (₹)" value={propertyBoostPrice30d} onChange={setPropertyBoostPrice30d} />
         </div>
       </div>
 
@@ -150,17 +150,17 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Coworking / PG / Storage</div>
         <div style={{ display: "flex", gap: 12 }}>
           <Field
-            label="7-day boost (₹)"
+            label="7-day Feature (₹)"
             value={coworkingPgStorageBoostPrice7d}
             onChange={setCoworkingPgStorageBoostPrice7d}
           />
           <Field
-            label="15-day boost (₹)"
+            label="15-day Feature (₹)"
             value={coworkingPgStorageBoostPrice15d}
             onChange={setCoworkingPgStorageBoostPrice15d}
           />
           <Field
-            label="30-day boost (₹)"
+            label="30-day Feature (₹)"
             value={coworkingPgStorageBoostPrice30d}
             onChange={setCoworkingPgStorageBoostPrice30d}
           />
@@ -171,17 +171,17 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Furniture / Interiors</div>
         <div style={{ display: "flex", gap: 12 }}>
           <Field
-            label="7-day boost (₹)"
+            label="7-day Feature (₹)"
             value={furnitureInteriorsBoostPrice7d}
             onChange={setFurnitureInteriorsBoostPrice7d}
           />
           <Field
-            label="15-day boost (₹)"
+            label="15-day Feature (₹)"
             value={furnitureInteriorsBoostPrice15d}
             onChange={setFurnitureInteriorsBoostPrice15d}
           />
           <Field
-            label="30-day boost (₹)"
+            label="30-day Feature (₹)"
             value={furnitureInteriorsBoostPrice30d}
             onChange={setFurnitureInteriorsBoostPrice30d}
           />
@@ -219,7 +219,7 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
           />
           <span>
             <span style={{ fontWeight: 700, fontSize: 14, display: "block" }}>
-              Show the Boost selector on the ad Preview step
+              Show the Feature selector on the ad Preview step
             </span>
             <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
               When checked, advertisers pick a plan before posting instead of being offered one
@@ -239,11 +239,11 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
             style={{ marginTop: 3 }}
           />
           <span>
-            <span style={{ fontWeight: 700, fontSize: 14, display: "block" }}>Allow skipping Boost</span>
+            <span style={{ fontWeight: 700, fontSize: 14, display: "block" }}>Allow skipping Feature</span>
             <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
-              When checked, the Boost card shows a &quot;Skip — post without boosting&quot; link, on
+              When checked, the Feature card shows a &quot;Skip — post without featuring&quot; link, on
               both the ad-preview step and the publish-checkout recovery screen. Uncheck to make
-              Boost mandatory wherever the card is shown — independent of the platform fee or the
+              Feature mandatory wherever the card is shown — independent of the platform fee or the
               preview-selector setting above.
             </span>
           </span>
@@ -271,7 +271,7 @@ export function BoostPricingSettingsForm({ initial }: { initial: BoostPriceSetti
           opacity: saving || !valid ? 0.6 : 1,
         }}
       >
-        {saving ? "Saving…" : "Save boost prices"}
+        {saving ? "Saving…" : "Save Feature prices"}
       </button>
     </div>
   );

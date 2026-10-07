@@ -7,10 +7,10 @@ import { updateReferralSettingsAction } from "@/app/actions/referrals";
 type NumericKey = Exclude<keyof ReferralSettingsDto, "welcomeRewardEnabled">;
 
 const NUMERIC_FIELDS: { key: NumericKey; label: string; min: number; max?: number }[] = [
-  { key: "boostDays", label: "Boost length (days)", min: 1, max: 30 },
+  { key: "boostDays", label: "Feature length (days)", min: 1, max: 30 },
   { key: "creditExpiryDays", label: "Credit expires after (days)", min: 1, max: 365 },
   { key: "monthlyCapPerReferrer", label: "Credits per referrer per month", min: 0, max: 100 },
-  { key: "bonusExtraBoostAtReferrals", label: "Bonus boost at N referrals / month", min: 1 },
+  { key: "bonusExtraBoostAtReferrals", label: "Bonus Feature at N referrals / month", min: 1 },
   { key: "topAgentBadgeAtReferrals", label: "Top agent badge at N referrals / month", min: 1 },
   { key: "attributionWindowDays", label: "Attribution window (days)", min: 1, max: 365 },
   { key: "takedownRevocationWindowDays", label: "Revoke if referred ad removed within (days)", min: 0, max: 365 },
@@ -91,7 +91,7 @@ export function ReferralSettingsForm({ initial }: { initial: ReferralSettingsDto
       </div>
 
       <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-        Changes apply to credits granted from now on. A credit already granted keeps the boost length
+        Changes apply to credits granted from now on. A credit already granted keeps the Feature length
         and expiry it was given.
       </p>
 

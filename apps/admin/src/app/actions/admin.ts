@@ -269,7 +269,7 @@ export async function updateBoostPricingAction(input: BoostPriceSettings): Promi
     revalidatePath("/settings/plans");
     return { success: true };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Failed to update boost pricing" };
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update Feature pricing" };
   }
 }
 
@@ -348,7 +348,7 @@ export async function revokeBoostAction(listingId: string): Promise<ActionResult
     revalidatePath("/subscriptions");
     return { success: true };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Failed to revoke boost" };
+    return { success: false, error: error instanceof Error ? error.message : "Failed to revoke Feature" };
   }
 }
 

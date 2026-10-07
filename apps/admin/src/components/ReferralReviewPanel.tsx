@@ -55,7 +55,7 @@ export function ReferralReviewPanel({
   }
 
   function onReverse() {
-    const credit = creditUnused ? " The unused boost credit will be revoked." : "";
+    const credit = creditUnused ? " The unused Feature credit will be revoked." : "";
     const reason = askReason(`Reverse this referral?${credit} Reason (required):`);
     if (reason) void run("reverse", () => reverseReferralAction(referralId, reason));
   }

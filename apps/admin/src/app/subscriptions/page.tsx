@@ -26,7 +26,7 @@ import { FullPageLink } from "@/components/FullPageLink";
 const DEFAULT_SORT: AdminPaymentSort = "createdAt_desc";
 
 const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
-  listing_boost: "Boost",
+  listing_boost: "Feature",
   listing_publish: "Publish listing",
   buyer_premium: "Bhavano Plus",
   agent_pro: "Agent/Broker Pro",
@@ -37,7 +37,7 @@ const PURPOSE_LABELS: Record<PaymentPurpose, string> = {
 
 const PURPOSE_OPTIONS: { value: PaymentPurpose | "any"; label: string }[] = [
   { value: "any", label: "All types" },
-  { value: "listing_boost", label: "Boost" },
+  { value: "listing_boost", label: "Feature" },
   { value: "buyer_premium", label: "Bhavano Plus" },
   { value: "agent_pro", label: "Agent/Broker Pro" },
   { value: "seller_slot_pack", label: "Seller Slot Pack" },
@@ -121,8 +121,8 @@ export default async function SubscriptionsPage({ searchParams }: { searchParams
         </FullPageLink>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>Subscriptions</h1>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 20px" }}>
-          Every purchase — Boost, Bhavano Plus, Agent/Broker Pro, Seller Slot Pack, Contact Reveal Credits, and
-          Instant Alerts — in one feed, not just Boosts. {result.total.toLocaleString()} match the current filters.
+          Every purchase — Feature, Bhavano Plus, Agent/Broker Pro, Seller Slot Pack, Contact Reveal Credits, and
+          Instant Alerts — in one feed, not just Features. {result.total.toLocaleString()} match the current filters.
           Times and the date range are IST.
         </p>
 
