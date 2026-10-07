@@ -1943,6 +1943,7 @@ export function PostAdWizard({
             areaName={areaQuery}
             cityName={cityOptions.find((c) => c.id === cityId)?.name ?? ""}
             attributes={attributes}
+            featured={!!boostIntent}
           />
 
           {showPublishPanelOnReview && previewBoostDisplay && category && planPricingSettings && (
