@@ -9,6 +9,7 @@ import { BoostPricingSettingsService } from '../plans/boost-pricing-settings.ser
 import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
 import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pricing-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
+import type { AccountMergeService } from '../users/account-merge.service';
 import type { PushService } from '../push/push.service';
 import type { MessagingGateway } from '../messaging/messaging.gateway';
 import type { SavedSearchesService } from '../saved-searches/saved-searches.service';
@@ -84,6 +85,7 @@ function makeService(
   } as unknown as MessagingService;
   const pushService = { notifyNewMessage: jest.fn().mockResolvedValue(undefined) } as unknown as PushService;
   const messagingGateway = { broadcastMessage: jest.fn(), notifyUnread: jest.fn() } as unknown as MessagingGateway;
+  const accountMergeService = { mergeAsAdmin: jest.fn().mockResolvedValue(undefined) } as unknown as AccountMergeService;
 
   const service = new AdminService(
     prisma,
@@ -97,11 +99,12 @@ function makeService(
     instantAlertsPricingSettingsService,
     { getSettings: jest.fn().mockResolvedValue({ propertyListingFee: 0, coworkingPgStorageListingFee: 0, furnitureInteriorsListingFee: 0, allowLivePublishWithPendingPayment: false }) } as unknown as import('../plans/platform-fee-settings.service').PlatformFeeSettingsService,
     {} as AccountDeletionService,
+    accountMergeService,
     {} as SavedSearchesService,
     pushService,
     messagingGateway,
   );
-  return { service, prisma, notificationsService, messagingService, pushService, messagingGateway };
+  return { service, prisma, notificationsService, messagingService, pushService, messagingGateway, accountMergeService };
 }
 
 function listingRow(overrides: Record<string, unknown> = {}) {
@@ -783,5 +786,23 @@ describe('AdminService.listRecentLogins — one row per user, not per LoginEvent
     expect(u1?.isNewUser).toBe(false); // returning user, older login just outside the window
     expect(u2?.isNewUser).toBe(true); // genuinely only ever logged in once, within the window
     expect(groupBy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('AdminService.mergeUsers', () => {
+  it('delegates to AccountMergeService.mergeAsAdmin with the acting admin, both ids, and the reason', async () => {
+    const { service, accountMergeService } = makeService();
+
+    await service.mergeUsers({ winnerId: 'u1', loserId: 'u2', reason: 'Same person, confirmed by phone' }, 'admin1');
+
+    expect(accountMergeService.mergeAsAdmin).toHaveBeenCalledWith('admin1', 'u1', 'u2', 'Same person, confirmed by phone');
+  });
+
+  it('passes undefined through when no reason was given', async () => {
+    const { service, accountMergeService } = makeService();
+
+    await service.mergeUsers({ winnerId: 'u1', loserId: 'u2' }, 'admin1');
+
+    expect(accountMergeService.mergeAsAdmin).toHaveBeenCalledWith('admin1', 'u1', 'u2', undefined);
   });
 });

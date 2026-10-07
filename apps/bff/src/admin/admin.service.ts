@@ -57,6 +57,8 @@ import { UpdatePlatformFeeDto } from './dto/update-platform-fee.dto';
 import { InstantAlertsPricingSettingsService } from '../plans/instant-alerts-pricing-settings.service';
 import { SubscriptionPlanSettingsService } from '../plans/subscription-plan-settings.service';
 import { AccountDeletionService } from '../users/account-deletion.service';
+import { AccountMergeService } from '../users/account-merge.service';
+import { MergeUsersDto } from './dto/merge-users.dto';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { areaNamesFor, toRequirementDto } from '../requirements/requirements.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
@@ -278,6 +280,7 @@ export class AdminService {
     private readonly instantAlertsPricingSettingsService: InstantAlertsPricingSettingsService,
     private readonly platformFeeSettingsService: PlatformFeeSettingsService,
     private readonly accountDeletion: AccountDeletionService,
+    private readonly accountMerge: AccountMergeService,
     private readonly savedSearchesService: SavedSearchesService,
     private readonly pushService: PushService,
     private readonly messagingGateway: MessagingGateway,
@@ -391,6 +394,10 @@ export class AdminService {
     }
 
     await this.accountDeletion.deleteOwnAccount(userId);
+  }
+
+  mergeUsers(dto: MergeUsersDto, adminId: string): Promise<void> {
+    return this.accountMerge.mergeAsAdmin(adminId, dto.winnerId, dto.loserId, dto.reason);
   }
 
   async approveListing(id: string, adminId: string): Promise<ListingDetailDto> {

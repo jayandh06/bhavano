@@ -57,6 +57,7 @@ import { ListListingConversationsDto } from './dto/list-listing-conversations.dt
 import { FlagListingDto } from './dto/flag-listing.dto';
 import { SetReviewedDto } from './dto/set-reviewed.dto';
 import { SetListingStatusDto } from './dto/set-listing-status.dto';
+import { MergeUsersDto } from './dto/merge-users.dto';
 import { AdminUpdateListingDto } from '../listings/dto/update-listing.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
@@ -208,6 +209,16 @@ export class AdminController {
   @HttpCode(204)
   deleteUser(@Param('id') id: string, @CurrentUser() user: RequestUser): Promise<void> {
     return this.adminService.deleteUser(id, user.id);
+  }
+
+  /** Combines two accounts an admin has judged to belong to the same person (e.g. one Google
+   * login, one phone login) — the admin-initiated counterpart to the self-service merge a user
+   * can trigger themselves after re-proving ownership. See AccountMergeService.mergeAsAdmin and
+   * docs/plans/account-linking-phone-and-email.md's admin-merge addendum. */
+  @Post('users/merge')
+  @HttpCode(204)
+  mergeUsers(@Body() dto: MergeUsersDto, @CurrentUser() user: RequestUser): Promise<void> {
+    return this.adminService.mergeUsers(dto, user.id);
   }
 
   @Patch('listings/:id/status')
