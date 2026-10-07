@@ -18,6 +18,7 @@ import type { Area, RefineRequirementInput, RequirementAnswers, RequirementDto }
 import { areaUnitShortLabel, convertArea, type AreaUnit } from "@bhavano/types/areaUnit";
 import { bedroomLabel } from "@bhavano/types/bedrooms";
 import { formatInrWithWords } from "@bhavano/types/priceWords";
+import { requirementBudgetIssue } from "@bhavano/types/priceBounds";
 import {
   INTENT_CATEGORIES,
   INTENT_TRANSACTION_CHOICES,
@@ -237,7 +238,15 @@ export function RequirementRefineWizard({
   );
   const position = steps.indexOf(stepKey);
   const cityName = current.cityName ?? "the city";
-  const canContinue = stepKey === "review" || canLeaveStep(stepKey, draft);
+  // Floor-only — see requirementBudgetIssue's own doc comment. Computed here, not just inside
+  // renderBudget below, so canContinue can block on it too, not only show the warning text.
+  const budgetIssue =
+    draft.category && draft.transactionType
+      ? (parseAmount(budgetMin) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMin)!)) ||
+        (parseAmount(budgetMax) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMax)!)) ||
+        null
+      : null;
+  const canContinue = stepKey === "review" || (canLeaveStep(stepKey, draft) && !(stepKey === "budget" && budgetIssue));
 
   function detailsPatch() {
     const min = parseSize(sizeMin);
@@ -686,6 +695,7 @@ export function RequirementRefineWizard({
             {max !== undefined && <Hint colors={colors}>{formatInrWithWords(max)}</Hint>}
           </View>
         </View>
+        {budgetIssue && <Text style={{ color: "#c0554b", fontSize: 12.5 }}>{budgetIssue}</Text>}
       </View>
     );
   }
