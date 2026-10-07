@@ -431,6 +431,14 @@ model User {
   referralFrozenReason   String?
   referralAdminActionsByAdmin ReferralAdminAction[] @relation("ReferralAdminActionsByAdmin")
   referralAdminActionsOnUser  ReferralAdminAction[] @relation("ReferralAdminActionsOnUser")
+  /** Admin-initiated merges this user carried out, won, or lost — see UserMergeAction and
+   * docs/plans/account-linking-phone-and-email.md's "admin-initiated merge" addendum. Distinct
+   * from mergedInto/mergedFrom above (the merge's actual effect on this row) — this is the audit
+   * trail of who did it and why, which survives even though the merge itself is self-service-
+   * capable too and doesn't always go through here. */
+  userMergeActionsByAdmin  UserMergeAction[] @relation("UserMergeActionsByAdmin")
+  userMergeActionsAsWinner UserMergeAction[] @relation("UserMergeActionsWinner")
+  userMergeActionsAsLoser  UserMergeAction[] @relation("UserMergeActionsLoser")
 
   @@index([cityId])
   @@index([mergedIntoUserId])
@@ -1571,6 +1579,29 @@ model ReferralAdminAction {
   createdAt    DateTime  @default(now())
 
   @@index([targetUserId, createdAt])
+}
+
+/** Audit trail for an admin-initiated account merge — see the admin-merge addendum in
+ * docs/plans/account-linking-phone-and-email.md. The merge's actual DB effect (relocated
+ * listings/payments/etc., the retired row's mergedIntoUserId) is AccountMergeService.merge()'s
+ * job, same code path self-service merging uses; this model exists only so "who merged which two
+ * accounts, when, and why" has a durable answer when an admin — not the user themself re-proving
+ * ownership — is the one who triggered it. winnerId/loserId are snapshot at merge time; both rows
+ * survive (merge never hard-deletes), so this is never left pointing at a row that no longer
+ * exists. */
+model UserMergeAction {
+  id        String   @id @default(cuid())
+  adminId   String
+  admin     User     @relation("UserMergeActionsByAdmin", fields: [adminId], references: [id])
+  winnerId  String
+  winner    User     @relation("UserMergeActionsWinner", fields: [winnerId], references: [id])
+  loserId   String
+  loser     User     @relation("UserMergeActionsLoser", fields: [loserId], references: [id])
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([winnerId])
+  @@index([loserId])
 }
 
 /// ---------------------------------------------------------------------------
