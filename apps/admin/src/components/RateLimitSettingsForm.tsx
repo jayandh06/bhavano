@@ -9,6 +9,8 @@ export function RateLimitSettingsForm({ initial }: { initial: RateLimitSettingsD
   const [publishWindowMinutes, setPublishWindowMinutes] = useState(String(initial.publishWindowMinutes));
   const [viewLimit, setViewLimit] = useState(String(initial.viewLimit));
   const [viewWindowMinutes, setViewWindowMinutes] = useState(String(initial.viewWindowMinutes));
+  const [aiGenerateLimit, setAiGenerateLimit] = useState(String(initial.aiGenerateLimit));
+  const [aiGenerateWindowMinutes, setAiGenerateWindowMinutes] = useState(String(initial.aiGenerateWindowMinutes));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -17,6 +19,8 @@ export function RateLimitSettingsForm({ initial }: { initial: RateLimitSettingsD
     publishWindowMinutes: Number(publishWindowMinutes),
     viewLimit: Number(viewLimit),
     viewWindowMinutes: Number(viewWindowMinutes),
+    aiGenerateLimit: Number(aiGenerateLimit),
+    aiGenerateWindowMinutes: Number(aiGenerateWindowMinutes),
   };
   const valid = Object.values(parsed).every((n) => Number.isInteger(n) && n > 0);
 
@@ -45,6 +49,14 @@ export function RateLimitSettingsForm({ initial }: { initial: RateLimitSettingsD
         <div style={{ display: "flex", gap: 12 }}>
           <Field label="Max views" value={viewLimit} onChange={setViewLimit} />
           <Field label="Per (minutes)" value={viewWindowMinutes} onChange={setViewWindowMinutes} />
+        </div>
+      </div>
+
+      <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, background: "var(--surface)" }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>AI title/description generation</div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Field label="Max generations" value={aiGenerateLimit} onChange={setAiGenerateLimit} />
+          <Field label="Per (minutes)" value={aiGenerateWindowMinutes} onChange={setAiGenerateWindowMinutes} />
         </div>
       </div>
 
