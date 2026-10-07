@@ -2094,6 +2094,7 @@ export function PostAdWizard({
                 areaName={areaQuery}
                 cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
                 attributes={attributes}
+                featured={!!boostIntent}
               />
             </div>
 

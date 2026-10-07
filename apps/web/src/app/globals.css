@@ -151,6 +151,22 @@
   }
 }
 
+/* ListingPreviewCard's featured/unfeatured toggle (post-ad review step) — a gold ring that
+   expands out and fades, drawing the eye to the border change rather than letting it just snap.
+   Same gold RGB as ListingCard.tsx's resting shadow (rgba(201,161,90,...)), so the pulse and the
+   border it's announcing read as the same color. */
+@keyframes featurePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(201, 161, 90, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(201, 161, 90, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 161, 90, 0);
+  }
+}
+
 /* Hides the horizontal scrollbar on the category tab row, which is scrolled by its own arrows
    or a swipe (see CategoryTabs). A bar drawn under the tabs reads as a second border. The row
    stays keyboard- and wheel-scrollable — this hides the indicator, not the behaviour. */

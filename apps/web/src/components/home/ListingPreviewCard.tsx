@@ -33,6 +33,7 @@ export function ListingPreviewCard({
   areaName,
   cityName,
   attributes,
+  featured = false,
 }: {
   photoUrl: string;
   category: ListingCategory;
@@ -49,6 +50,13 @@ export function ListingPreviewCard({
   areaName: string;
   cityName: string;
   attributes: Record<string, unknown>;
+  /** Mirrors `ListingCardDto.isBoosted` — whatever the wizard's Feature selection currently is
+   * (`!!boostIntent` in PostAdWizard), not a persisted field, since this listing doesn't exist
+   * yet. Drives the exact same border/badge treatment as the real `ListingCard` (see its own
+   * `item.isBoosted` block) so this preview never promises a look the real card won't have. The
+   * `key` below remounts on every toggle purely to replay the pulse animation — same blob: URL,
+   * so the image itself doesn't re-fetch. */
+  featured?: boolean;
 }) {
   const priceNum = Number(price);
   const exactPrice =
@@ -67,14 +75,26 @@ export function ListingPreviewCard({
     // (the details step's inputs go up to 720px), which no card in the real grid is ever that
     // wide. mx-auto centers it in the leftover space rather than sitting flush left, since
     // nothing else on this screen anchors it to an edge.
-    <div className="w-full max-w-[340px] mx-auto bg-surface border border-border/70 rounded-2xl overflow-hidden flex flex-col">
+    <div
+      key={featured ? "featured" : "unfeatured"}
+      className={`w-full max-w-[340px] mx-auto bg-surface rounded-2xl overflow-hidden flex flex-col transition-[box-shadow,border-color] duration-300 animate-[featurePulse_0.6s_ease-out] ${
+        featured
+          ? "border-[1.5px] border-gold/70 shadow-[0_2px_10px_rgba(201,161,90,0.22)]"
+          : "border border-border/70"
+      }`}
+    >
       <div className="relative h-[200px]">
         {/* eslint-disable-next-line @next/next/no-img-element -- local blob: preview, not a next/image-eligible remote URL */}
         <img src={photoUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 flex gap-1.5">
           <span className="bg-green text-on-green text-[11px] font-bold px-2.5 py-1 rounded-md">
             {deriveTag({ category, transactionType })}
           </span>
+          {featured && (
+            <span className="bg-gold text-[#3a2e0f] text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
+              <Icon name="featured" filled /> Featured
+            </span>
+          )}
         </div>
       </div>
       <div className="p-[18px] flex flex-col gap-2.5">
