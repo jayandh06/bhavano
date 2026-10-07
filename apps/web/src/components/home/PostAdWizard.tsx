@@ -2101,10 +2101,10 @@ export function PostAdWizard({
             * step, which is deliberately additive) — see generationLanguage's own comment above. */}
           <div className="flex items-center gap-2 max-w-[720px] flex-wrap">
             <label className="text-[13px] font-bold text-text-soft shrink-0">✨ AI-generate in:</label>
-            <select
+            <SelectField
+              narrow
               value={generationLanguage}
               onChange={(e) => setGenerationLanguage(e.target.value as IndianLanguage | "")}
-              className={`${fieldClass} w-auto`}
             >
               <option value="">English</option>
               {INDIAN_LANGUAGES.map((lang) => (
@@ -2112,7 +2112,7 @@ export function PostAdWizard({
                   {INDIAN_LANGUAGE_LABELS[lang]}
                 </option>
               ))}
-            </select>
+            </SelectField>
             <span className="text-xs text-muted">Applies to both Title and Description below.</span>
           </div>
 
@@ -2445,10 +2445,10 @@ export function PostAdWizard({
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <select
+                <SelectField
+                  narrow
                   value={secondLanguageChoice}
                   onChange={(e) => setSecondLanguageChoice(e.target.value as IndianLanguage | "")}
-                  className={`${fieldClass} w-auto`}
                 >
                   <option value="">English only</option>
                   {INDIAN_LANGUAGES.map((lang) => (
@@ -2456,7 +2456,7 @@ export function PostAdWizard({
                       + {INDIAN_LANGUAGE_LABELS[lang]}
                     </option>
                   ))}
-                </select>
+                </SelectField>
                 <button
                   type="button"
                   onClick={() =>
