@@ -1,5 +1,38 @@
 # Account linking: one human, two login methods
 
+## Addendum (2026-10-07): admin-initiated merge
+
+An admin-triggered merge now exists alongside the self-service one — the admin Users table
+(`UsersTable.tsx`) lets staff select exactly two rows, pick which one survives, and merge, via
+`AccountMergeService.mergeAsAdmin` (`POST /admin/users/merge`). This deliberately does **not**
+reuse the trust model this doc built for self-service: "never merge without a fresh verification
+in the same session" (below) assumes the *user themself* is proving ownership of both accounts.
+An admin clicking "merge" on two rows they picked has no equivalent proof — they're substituting
+judgement (a support ticket, a phone call, matching PII across two profiles) for cryptographic
+verification. That's a materially different trust model, which is why `mergeAsAdmin`:
+
+- Refuses staff accounts (`role: 'admin'`) and anything already retired (merged or
+  self-deleted) — this tool is for "the same person signed up twice," not for touching staff
+  accounts or re-litigating a previous merge/deletion.
+- Logs every call to a new `UserMergeAction` row (admin id, both account ids, a free-text reason)
+  — the self-service path logs nothing beyond the merge's own effect, since the user approving it
+  *is* the record; an admin acting on someone else's behalf needs its own durable "who did this
+  and why."
+- Lets the admin pick the winner explicitly (defaulting to whichever holds more listings, same
+  heuristic as `pickWinner` below, but overridable) rather than always trusting the automatic
+  heuristic — an admin may know something the data doesn't, e.g. a support conversation naming
+  which account the person actually wants to keep.
+
+The underlying `merge()` transaction is shared by both paths, not forked — any future call site
+benefits from the same completeness and collision-safety, and there's only one place that can
+drift from what's actually in the schema. See Phase 3's table below, extended from this doc's
+original scope to cover every FK onto `User` as of the 2026-10-07 audit (it shipped with a visible
+gap before then — `Requirement.seekerId` and nine other relations weren't being moved).
+
+**Out of scope here too, same reasoning as the self-service "Out of scope" section below**:
+detecting duplicates automatically. This addition is purely a *mechanism* for a merge an admin has
+already decided on by other means — it doesn't do or improve detection.
+
 ## The problem
 
 Someone who signs in with Google and later signs in with phone OTP ends up with **two separate
@@ -240,24 +273,32 @@ answer to a regulator.
 ## Phase 3 — What merging actually has to move
 
 Every row pointing at the losing account has to be repointed, in one transaction. From
-`schema.prisma`'s `User` back-relations:
+`schema.prisma`'s `User` back-relations (table below current as of the 2026-10-07 admin-merge
+addendum's audit — nine relations in the lower half were a real gap before then, found and closed
+while building the admin path):
 
 | Relation | Notes |
 |---|---|
 | `listings` | the valuable one — losing these is unacceptable |
-| `favourites` | dedupe: both accounts may favourite the same listing |
+| `favourites`, `listingInterests`, `contactReveals` | each `(userId, listingId)`-unique — dedupe before repointing, same fix each time |
+| `proBoostCredits` | `(userId, monthKey)`-unique — same dedupe |
+| `blockedUsers` / `blockedByUsers` | two FKs; drop a self-block in either direction (nonsensical once both sides are the winner), dedupe a shared third party, then repoint both sides |
 | `messages` | reassign author |
 | `conversationsAsPoster` / `conversationsAsInquirer` | two FKs, both need moving |
-| `payments`, `subscriptions`, `proBoostCredits` | financial — audit-sensitive, never drop |
+| `payments`, `subscriptions` | financial — audit-sensitive, never drop |
 | `savedSearches`, `supportTickets`, `loginEvents`, `visits` | straightforward reassign |
 | `outreachContact` | **1:1** — a conflict if both accounts have one |
 | `outreachCampaigns` | reassign |
+| `requirements` | the demand-side equivalent of listings — missed in the original build |
+| `pushTokens`, `contactRevealCreditBatches`, `discountCodeRedemptions`, `listingEditLogs` (actor), `notificationLogs`, `searchEvents` | straightforward reassign, all missed originally |
+| `referralsAsReferrer`, `referralClicks`, `referralCreditBatches`, `referralAdminActionsOnUser` | reassign; missed originally |
+| `referralAsReferred` | **1:1** — same conflict pattern as `outreachContact`; missed originally |
 
 Plus the denormalised entitlement columns on `User` itself — `premiumUntil`, `agentProUntil`,
 `agentProUnits`, `sellerSlotPackUntil` — which must take the **more generous** of the two rather
 than the winner's blindly, or the user loses paid entitlement.
 
-Only then delete the losing row.
+The losing row is never deleted — see "Soft delete is a rule, not a grace period" above.
 
 **Order the work so the account with listings always wins**, regardless of which one the user is
 logged into. Merging away the account holding their ads is the one outcome worth engineering
