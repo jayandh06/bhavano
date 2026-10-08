@@ -539,8 +539,11 @@ size stays optional.
   is what lets a multi-step wizard save progress before every field exists yet.
 
 **Not done in A or B.** The analytics events under *Measurement* aren't emitted yet.
-`RequirementMatchJob` does not yet skip rows that aren't lead-ready (Phase C), so vague rows still
-reach owners as before.
+
+~~`RequirementMatchJob` does not yet skip rows that aren't lead-ready (Phase C), so vague rows
+still reach owners as before.~~ **Done 2026-10-08** — see `RequirementMatchJob`'s own doc comment;
+closed as a direct follow-up to *Budget became required* above, since a legacy row with no
+budget would otherwise have kept reaching owners regardless of the new required-field.
 
 ## Open decisions
 
