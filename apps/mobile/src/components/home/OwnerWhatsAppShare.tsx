@@ -7,6 +7,7 @@ import { useHomeSheets } from "../../context/HomeSheetsProvider";
 import { sharedWebUrl } from "../../lib/appWebUrl";
 import { recordAppPageView } from "../../lib/analyticsSession";
 import { Icon } from "../Icon";
+import { WhatsAppIcon } from "../WhatsAppIcon";
 
 /**
  * The owner sending their own ad to WhatsApp with the message already written — the app's twin of
@@ -86,7 +87,7 @@ export function OwnerWhatsAppShare({
           backgroundColor: colors.green,
         }}
       >
-        <Icon name="message" size={16} color={colors.onGreen} />
+        <WhatsAppIcon size={16} />
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Share on WhatsApp</Text>
       </Pressable>
       {code && (
