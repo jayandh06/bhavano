@@ -884,6 +884,11 @@ export function PostAdWizard({
     // screen. The idle/submit triggers instead proceed straight to posting without Feature.
     if (skipTriggered) {
       setSelectedBoostPlan(null);
+      // A prior "Post ad" attempt can have left the listing in pending_checkout with a failed
+      // payment showing here (platform fee + the boost just skipped, bundled into one checkout) —
+      // its "Retry payment" button would otherwise still offer to pay for a boost the advertiser
+      // just said they don't want. Clearing it lets "Post ad" start a clean attempt instead.
+      setPublishCheckoutError(null);
       return;
     }
     void onSubmit();

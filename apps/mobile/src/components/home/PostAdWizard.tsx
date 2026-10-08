@@ -649,6 +649,10 @@ export function PostAdWizard({
   function handleBoostRecoveryCancel() {
     setShowBoostRecovery(false);
     setSelectedBoostPlan(null);
+    // A prior "Post ad" attempt can have left pending_checkout payment failed here (platform fee
+    // + the boost just skipped, bundled into one checkout) — see web's identical comment in
+    // PostAdWizard.tsx's handleBoostRecoverySkip. Clearing it lets "Post ad" start a clean retry.
+    setPublishCheckoutError(null);
   }
 
   // Dialog's Apply Feature — selectedBoostPlan was never cleared, so there's nothing to restore.
