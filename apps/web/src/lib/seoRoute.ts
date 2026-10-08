@@ -409,6 +409,8 @@ export function segmentsForHomeCategory(tab: HomeTabValue): {
       return { transactionGroup: "rent-lease" };
     case "pg":
       return { transactionGroup: "rent-lease", category: "pg" };
+    case "coworking":
+      return { transactionGroup: "rent-lease", category: "coworking" };
     case "furniture":
       // No group: furniture is postable as both sell and rent, and `/furniture` now exists
       // precisely so this tab does not have to pick one and hide the other half.

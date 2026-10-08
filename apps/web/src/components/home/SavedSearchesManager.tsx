@@ -21,8 +21,9 @@ const CATEGORY_OPTIONS: { value: ListingCategory; label: string }[] = [
   { value: "storage", label: "Storage space" },
   { value: "coworking", label: "Coworking" },
   { value: "commercial", label: "Commercial space" },
-  { value: "furniture", label: "Furniture" },
-  { value: "interiors", label: "Interiors" },
+  // Furniture/Interiors deliberately hidden for now — see homeCategories.ts's comment and
+  // docs/plans/furniture-interiors-paused.md. Any saved search already created for one of these
+  // keeps running; this just stops a new one being set up here.
 ];
 
 const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }[] = [

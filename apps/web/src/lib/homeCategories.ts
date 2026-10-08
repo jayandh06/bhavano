@@ -72,8 +72,6 @@ function singleLinkColumn1Item(value: string, label: string, link: Omit<MegaMenu
 }
 
 const PG_SHARING_OPTIONS = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key === "sharingType")!.options!;
-const FURNITURE_CONDITION_OPTIONS = CATEGORY_FIELD_CONFIG.furniture.find((f) => f.key === "condition")!.options!;
-const INTERIORS_SERVICE_OPTIONS = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")!.options!;
 
 export const HOME_TABS: HomeTab[] = [
   // First, and the default. Before this existed a city root like /bengaluru rendered "All
@@ -106,7 +104,6 @@ export const HOME_TABS: HomeTab[] = [
       bhkColumn1Item("rent-lease", "Rent", "apartment", "Apartment"),
       bhkColumn1Item("rent-lease", "Rent", "villa", "Villa"),
       singleLinkColumn1Item("storage", "Storage", { transactionGroup: "rent-lease", category: "storage" }),
-      singleLinkColumn1Item("coworking", "Coworking", { transactionGroup: "rent-lease", category: "coworking" }),
       singleLinkColumn1Item("commercial", "Commercial", { transactionGroup: "rent-lease", category: "commercial" }),
     ],
   },
@@ -119,25 +116,17 @@ export const HOME_TABS: HomeTab[] = [
     ),
   },
   {
-    value: "furniture",
-    label: "Furniture",
-    icon: "sofa",
-    // No transactionGroup — furniture is postable as both sell and rent, and the bare
-    // `/furniture/{condition}` path deliberately means "either" (see buildQueryForSegments), so
-    // the condition label alone already shows every listing of that condition; no Buy/Rent
-    // breakdown underneath it.
-    column1: FURNITURE_CONDITION_OPTIONS.map((opt) =>
-      singleLinkColumn1Item(opt.value, opt.label, { category: "furniture", facetValue: opt.value }),
-    ),
+    value: "coworking",
+    label: "Coworking",
+    icon: "building",
+    // No further breakdown (like PG's sharing types or Furniture's conditions) — Coworking has
+    // nothing narrower to offer, so this tab is a plain link with no dropdown, same shape as "all".
+    column1: [],
   },
-  {
-    value: "interiors",
-    label: "Interiors",
-    icon: "paint",
-    column1: INTERIORS_SERVICE_OPTIONS.map((opt) =>
-      singleLinkColumn1Item(opt.value, opt.label, { transactionGroup: "buy", category: "interiors", facetValue: opt.value }),
-    ),
-  },
+  // Furniture/Interiors deliberately hidden for now — low inventory, focus is on core real
+  // estate first. Not removed from ListingCategory/HomeCategoryFilter, so any existing listings
+  // and their browse pages keep working exactly as before; this only hides them from nav/new
+  // posts. See docs/plans/furniture-interiors-paused.md.
 ];
 
 /** `cityName` is omitted for national browsing, giving `/buy/apartment/2bhk` rather than
