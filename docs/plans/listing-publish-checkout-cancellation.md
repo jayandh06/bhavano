@@ -53,8 +53,10 @@ Exposed as `POST /payments/listing-publish-order/:listingId/cancel`
 On the web side (`apps/web/src/components/home/PostAdWizard.tsx`), the Review step's cancelled-
 checkout banner now shows **two** buttons instead of one:
 - **Retry payment** (existing) — re-opens Razorpay against the same `pending_checkout` listing.
-- **Post without Featured** (new) — calls the action above via
-  `cancelListingPublishCheckoutAction` (`apps/web/src/app/actions/payments.ts`), then moves straight
+- **Post without Featured** (new) — opens the same `BoostRecoveryDialog` used by the Skip link
+  (see docs/plans/boost-recovery-dialog.md's 2026-10-08 update), rather than acting immediately.
+  "Add Feature" there retries the payment already in flight; "No thanks" calls
+  `cancelListingPublishCheckoutAction` (`apps/web/src/app/actions/payments.ts`) and moves straight
   to the success step with the now-live listing.
 
 ## What this does and doesn't change

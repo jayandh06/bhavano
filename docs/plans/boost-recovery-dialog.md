@@ -22,6 +22,17 @@ narrower `BoostRecoveryDialog.tsx` (just this one trigger, named `onApplyFeature
 instead of web's posting-flow-oriented `onAddBoost`/`onSkip`) rather than porting the idle-timer/
 submit-intercept machinery, which mobile still doesn't have.
 
+**Update (2026-10-08): fourth trigger added — "Post without Featured" after a cancelled publish
+checkout.** See docs/plans/listing-publish-checkout-cancellation.md for why that button exists at
+all. Web only (the only platform with this failure mode): clicking it shows the same dialog instead
+of acting immediately, same reasoning as the skip-click trigger — "post without Feature" shouldn't
+be a one-click accident here either. Unlike every other trigger, the listing already exists in
+`pending_checkout` by this point, so resolving the dialog never calls `onSubmit()` again (that
+would try to recreate the same listing id); "Add Feature" retries the payment already in flight,
+"No thanks" actually calls the cancel-and-publish-without-boost action. Both labels use the
+component's own defaults rather than the skip-click trigger's override — "Add N-day Feature —
+price" reads correctly here since it really would charge them.
+
 ## Goal
 
 When `showSelectorOnPreview` is on and a seller skips Boost (or is about to leave without

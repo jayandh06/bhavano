@@ -7,13 +7,18 @@ import { Icon } from "./Icon";
 
 /**
  * Interstitial making the case for Feature before a seller actually leaves without it — see
- * docs/plans/boost-recovery-dialog.md. Three trigger points share this one component (idle on the
- * review step, tapping Post ad, and clicking the Skip link itself — PostAdWizard tracks which),
- * and only differ in what onAddBoost/onSkip actually do: the idle/submit triggers proceed straight
- * to posting either way (the only difference is whether Feature gets added first), while the
- * skip-click trigger just resolves the pending choice and returns to the review screen — neither
- * button there posts anything. addLabel/cancelLabel let that one call site use wording that
- * matches ("Apply Feature" / "Cancel") instead of the posting-flow default.
+ * docs/plans/boost-recovery-dialog.md. Four trigger points share this one component (idle on the
+ * review step, tapping Post ad, clicking the Skip link itself, and clicking "Post without
+ * Featured" after backing out of the publish checkout — PostAdWizard tracks which), and only
+ * differ in what onAddBoost/onSkip actually do: the idle/submit triggers proceed straight to
+ * posting either way (the only difference is whether Feature gets added first); the skip-click
+ * trigger just resolves the pending choice and returns to the review screen, posting nothing; the
+ * cancelled-checkout trigger instead drives the checkout already in flight — retry payment, or
+ * actually post without Feature — since the listing already exists at that point. addLabel/
+ * cancelLabel let the skip-click call site use wording that matches ("Apply Feature" / "Cancel")
+ * instead of the posting-flow default; the cancelled-checkout trigger uses that default, since
+ * "Add N-day Feature — price" and "No thanks, post without featuring" both read correctly there
+ * too (it really would charge them, unlike the pre-submit skip-click case).
  */
 export function BoostRecoveryDialog({
   pricing,

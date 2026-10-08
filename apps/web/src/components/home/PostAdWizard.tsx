@@ -243,7 +243,10 @@ function reportPostError(stage: string, message: string) {
  * (docs/plans/boost-recovery-dialog.md) — GTM/GA4 sees these via pushDataLayerEvent at each call
  * site, but that's a separate system from the admin's own Page visits trail, which only reads
  * PageView rows. Decoded by the admin app's trailEntry() into readable text. */
-function reportBoostRecoveryEvent(event: "shown" | "accepted" | "dismissed", trigger?: "idle" | "submit" | "skip") {
+function reportBoostRecoveryEvent(
+  event: "shown" | "accepted" | "dismissed",
+  trigger?: "idle" | "submit" | "skip" | "cancelled",
+) {
   const query = trigger ? `event=${event}&trigger=${trigger}` : `event=${event}`;
   void fetch("/api/analytics/pageview", {
     method: "POST",
@@ -501,7 +504,9 @@ export function PostAdWizard({
   // clicking Skip itself defers the actual skip until this dialog resolves, so neither of its
   // buttons should post anything — they only resolve the pending choice and return to the review
   // screen. null whenever showBoostRecovery is false.
-  const [boostRecoveryTrigger, setBoostRecoveryTrigger] = useState<"idle" | "submit" | "skip" | null>(null);
+  const [boostRecoveryTrigger, setBoostRecoveryTrigger] = useState<
+    "idle" | "submit" | "skip" | "cancelled" | null
+  >(null);
   // null until a checkout attempt (auto-fired right after posting, or a manual retry) resolves —
   // drives the narrow "Finish boosting this listing" retry prompt on the success step.
   const [boostCheckoutOutcome, setBoostCheckoutOutcome] = useState<"succeeded" | "failed" | null>(null);
@@ -865,13 +870,31 @@ export function PostAdWizard({
     reportBoostRecoveryEvent("shown", "skip");
   }
 
+  // Same interstitial, for the same reason, at the one other point an advertiser can end up
+  // posting without Feature: backing out of the publish checkout entirely (handled below by
+  // cancelledTriggered) rather than ever clicking Skip. The listing already exists in
+  // pending_checkout here, so — unlike every other trigger — resolving this one never calls
+  // onSubmit() again (that would try to recreate the same listing id); it instead drives the
+  // checkout that's already in flight: retry payment, or actually post without Feature.
+  function handlePostWithoutFeaturedAttempt() {
+    setBoostRecoveryTrigger("cancelled");
+    setShowBoostRecovery(true);
+    pushDataLayerEvent("boost_recovery_shown", { trigger: "cancelled" });
+    reportBoostRecoveryEvent("shown", "cancelled");
+  }
+
   function handleBoostRecoveryAddBoost() {
     setShowBoostRecovery(false);
     pushDataLayerEvent("boost_recovery_accepted", {});
     reportBoostRecoveryEvent("accepted");
     const skipTriggered = boostRecoveryTrigger === "skip";
+    const cancelledTriggered = boostRecoveryTrigger === "cancelled";
     boostRecoveryShownRef.current = true;
     setBoostRecoveryTrigger(null);
+    if (cancelledTriggered) {
+      if (createdListing) void finishPublishCheckout(createdListing).then((ok) => ok && setStep("success"));
+      return;
+    }
     // Skip-click trigger: selectedBoostPlan was never cleared, so there's nothing to restore —
     // just close the dialog and stay on the review screen with the existing choice intact.
     if (skipTriggered) return;
@@ -885,8 +908,13 @@ export function PostAdWizard({
     pushDataLayerEvent("boost_recovery_dismissed", {});
     reportBoostRecoveryEvent("dismissed");
     const skipTriggered = boostRecoveryTrigger === "skip";
+    const cancelledTriggered = boostRecoveryTrigger === "cancelled";
     boostRecoveryShownRef.current = true;
     setBoostRecoveryTrigger(null);
+    if (cancelledTriggered) {
+      if (createdListing) void handlePostWithoutFeatured(createdListing.id);
+      return;
+    }
     // Skip-click trigger: this is the deferred commit — confirm the skip now, stay on the review
     // screen. The idle/submit triggers instead proceed straight to posting without Feature.
     if (skipTriggered) {
@@ -2444,7 +2472,7 @@ export function PostAdWizard({
                     type="button"
                     className={secondaryButtonClass}
                     disabled={postWithoutFeaturedPending}
-                    onClick={() => void handlePostWithoutFeatured(createdListing.id)}
+                    onClick={handlePostWithoutFeaturedAttempt}
                   >
                     {postWithoutFeaturedPending ? "Posting…" : "Post without Featured"}
                   </button>
