@@ -172,7 +172,7 @@ function makePayments(
     },
     user: { findUnique: jest.fn().mockResolvedValue({ agentProUntil: overrides.agentProUntil ?? null }) },
     boostPriceSetting: { findUnique: jest.fn().mockResolvedValue(overrides.settings ?? LIVE) },
-    payment: { create: jest.fn().mockResolvedValue({ id: 'pay1' }) },
+    payment: { create: jest.fn().mockResolvedValue({ id: 'pay1' }), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
     listingInstantAlert: { create: jest.fn().mockResolvedValue({}) },
     proBoostCredit: { findUnique: jest.fn().mockResolvedValue(null) },
     discountCode: { findUnique: jest.fn() },
@@ -249,7 +249,7 @@ describe('PaymentsService.createBoostOrder — redeeming a referral credit', () 
         update: jest.fn().mockResolvedValue({}),
       },
       user: { findUnique: jest.fn().mockResolvedValue({ agentProUntil: null }) },
-      payment: { create: jest.fn().mockResolvedValue({ id: 'pay1' }) },
+      payment: { create: jest.fn().mockResolvedValue({ id: 'pay1' }), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
       listingBoost: { create: jest.fn().mockResolvedValue({}) },
       listingInstantAlert: { create: jest.fn().mockResolvedValue({}) },
     } as unknown as PrismaService;
