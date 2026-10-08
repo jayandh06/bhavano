@@ -122,3 +122,12 @@ from it; they most likely come from a different Google Ads account sending traff
 The static approach means this will recur whenever a campaign or ad group is added or renamed:
 re-run the GAQL in `campaign-names.ts`'s header comment. A scheduled sync from the API would
 remove that chore if it becomes frequent.
+
+## Update 2026-10-08 — two more campaigns added
+
+Regenerated again — the account gained `Metro-Seeker Intent` (6 ad groups: Bengaluru/Pune/Kolkata
+× Rent/Buy Seekers — see `docs/plans/seeker-intent-campaign.md`) and
+`Other-Metro-Lease Property-MaxConv` (2 ad groups, mirroring the original Lease 3.1/3.2 — the
+original `Other-Metro-Lease Property` is now paused, suggesting this is an A/B split testing
+Maximize Conversions against the shared Target CPA portfolio). 12 campaigns, 35 ad groups, 1 asset
+group total now.

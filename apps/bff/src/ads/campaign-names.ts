@@ -7,7 +7,7 @@
  *   SELECT campaign.id, campaign.name, ad_group.id, ad_group.name FROM ad_group
  *   SELECT campaign.id, campaign.name, asset_group.id, asset_group.name FROM asset_group
  * (via ads_report.py's make_client() pattern) and updating the two maps below. Last regenerated
- * 2026-09-26. */
+ * 2026-10-08. */
 export const CAMPAIGN_NAMES: Record<string, string> = {
   '24181952825': 'Leads-Performance Max-1', // paused
   '24186759508': 'Leads-Search-1', // paused
@@ -16,9 +16,11 @@ export const CAMPAIGN_NAMES: Record<string, string> = {
   '24185962743': 'Metro-Rent Out Property (Owners)',
   '24196652086': 'Metro-Sell Property (Owners/Agents)',
   '24285013659': 'Other-Metro-Generic Post Ad Intent',
-  '24296211541': 'Other-Metro-Lease Property',
+  '24296211541': 'Other-Metro-Lease Property', // paused
   '24296141500': 'Other-Metro-Rent Out Property (Owners)',
   '24284961543': 'Other-Metro-Sell Property (Owners/Agents)',
+  '24297610212': 'Metro-Seeker Intent',
+  '24334335817': 'Other-Metro-Lease Property-MaxConv',
 };
 
 export const AD_GROUP_NAMES: Record<string, string> = {
@@ -50,4 +52,12 @@ export const AD_GROUP_NAMES: Record<string, string> = {
   '200422013893': 'Ad Group 1.4 — Sell Plot/Land', // Other-Metro-Sell Property (Owners/Agents)
   '200422014133': 'Ad Group 1.5 — Sell Commercial Property', // Other-Metro-Sell Property (Owners/Agents)
   '6742871063': 'Asset Group 1', // Leads-Performance Max-1 (Performance Max has no ad groups)
+  '199354221574': 'Ad Group — Bengaluru Rent Seekers', // Metro-Seeker Intent
+  '199354221734': 'Ad Group — Bengaluru Buy Seekers', // Metro-Seeker Intent
+  '199354221774': 'Ad Group — Pune Rent Seekers', // Metro-Seeker Intent
+  '199354221814': 'Ad Group — Pune Buy Seekers', // Metro-Seeker Intent
+  '202226465882': 'Ad Group — Kolkata Rent Seekers', // Metro-Seeker Intent
+  '202226465922': 'Ad Group — Kolkata Buy Seekers', // Metro-Seeker Intent
+  '201054972699': 'Ad Group 3.1 — Lease Commercial/Office', // Other-Metro-Lease Property-MaxConv
+  '201054972659': 'Ad Group 3.2 — Lease Residential/Long-term', // Other-Metro-Lease Property-MaxConv
 };
