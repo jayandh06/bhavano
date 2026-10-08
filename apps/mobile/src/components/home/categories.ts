@@ -28,8 +28,6 @@ export interface HomeTab {
 // apps/web/src/lib/homeCategories.ts) — sharing type, condition, service type all come from
 // CATEGORY_FIELD_CONFIG so the two apps can't drift on what options exist.
 const PG_SHARING_OPTIONS = CATEGORY_FIELD_CONFIG.pg.find((f) => f.key === "sharingType")!.options!;
-const FURNITURE_CONDITION_OPTIONS = CATEGORY_FIELD_CONFIG.furniture.find((f) => f.key === "condition")!.options!;
-const INTERIORS_SERVICE_OPTIONS = CATEGORY_FIELD_CONFIG.interiors.find((f) => f.key === "serviceType")!.options!;
 
 export const HOME_TABS: HomeTab[] = [
   // First, and the default — the mixed feed across every category. Matches the web app, where a
@@ -62,22 +60,14 @@ export const HOME_TABS: HomeTab[] = [
         { value: "apartment", label: "Apartment" },
         { value: "villa", label: "Villa" },
         { value: "storage", label: "Storage" },
-        { value: "coworking", label: "Coworking" },
         { value: "commercial", label: "Commercial" },
       ],
     },
   },
   { value: "pg", label: "PG", icon: "bed", subFilter: { paramKey: "sharingType", options: PG_SHARING_OPTIONS } },
-  {
-    value: "furniture",
-    label: "Furniture",
-    icon: "sofa",
-    subFilter: { paramKey: "condition", options: FURNITURE_CONDITION_OPTIONS },
-  },
-  {
-    value: "interiors",
-    label: "Interiors",
-    icon: "paint",
-    subFilter: { paramKey: "serviceType", options: INTERIORS_SERVICE_OPTIONS },
-  },
+  // Promoted to its own tab (was a Rent & Lease sub-option) — nothing narrower to offer, same
+  // shape as "all".
+  { value: "coworking", label: "Coworking", icon: "building", subFilter: { paramKey: "propertyType", options: [] } },
+  // Furniture/Interiors deliberately hidden for now — see web's homeCategories.ts comment and
+  // docs/plans/furniture-interiors-paused.md.
 ];
