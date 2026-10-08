@@ -69,6 +69,7 @@ import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import { startListingPublishCheckout } from "@/lib/listingPublishCheckout";
 import { NEEDS_LOGIN_ERROR, PHONE_VERIFICATION_REQUIRED_MESSAGE } from "@/lib/postAdErrors";
 import {
+  cancelListingPublishCheckoutAction,
   fetchPostAdPlanPricingAction,
 } from "@/app/actions/payments";
 import { startBoostCheckout } from "@/lib/boostCheckout";
@@ -476,6 +477,7 @@ export function PostAdWizard({
     boostEffectiveness: BoostEffectivenessDto | null;
   } | null>(null);
   const [publishCheckoutError, setPublishCheckoutError] = useState<string | null>(null);
+  const [postWithoutFeaturedPending, setPostWithoutFeaturedPending] = useState(false);
   // Every error the wizard shows at the review/publish step is also reported (see
   // reportPostError). Keyed on the message itself so a retry that fails the same way still
   // reports once per new failure, not once per render.
@@ -931,6 +933,22 @@ export function PostAdWizard({
       }
     }
     return true;
+  }
+
+  // The explicit, named alternative to "Retry payment" on the cancellation screen — publishes
+  // the already-created listing exactly as a non-boosted post, same outcome as never having
+  // requested Featured, instead of leaving the cancelled checkout as a silent dead end.
+  async function handlePostWithoutFeatured(listingId: string) {
+    setPostWithoutFeaturedPending(true);
+    const result = await cancelListingPublishCheckoutAction(listingId);
+    setPostWithoutFeaturedPending(false);
+    if (!result.success) {
+      setPublishCheckoutError(result.error);
+      return;
+    }
+    setPublishCheckoutError(null);
+    setCreatedListing(result.listing);
+    setStep("success");
   }
 
   // Derived, not its own state: true from the moment the listing exists (with a plan selected)
@@ -2414,13 +2432,23 @@ export function PostAdWizard({
             <div className="flex flex-col gap-2">
               <p className="text-[#b3413a] text-[13px] m-0">{publishCheckoutError}</p>
               {createdListing?.publishState === "pending_checkout" && (
-                <button
-                  type="button"
-                  className={primaryButtonClass}
-                  onClick={() => void finishPublishCheckout(createdListing).then((ok) => ok && setStep("success"))}
-                >
-                  Retry payment
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={primaryButtonClass}
+                    onClick={() => void finishPublishCheckout(createdListing).then((ok) => ok && setStep("success"))}
+                  >
+                    Retry payment
+                  </button>
+                  <button
+                    type="button"
+                    className={secondaryButtonClass}
+                    disabled={postWithoutFeaturedPending}
+                    onClick={() => void handlePostWithoutFeatured(createdListing.id)}
+                  >
+                    {postWithoutFeaturedPending ? "Posting…" : "Post without Featured"}
+                  </button>
+                </>
               )}
             </div>
           ) : null}

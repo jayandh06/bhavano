@@ -18,7 +18,8 @@ import type { ReferralsService } from '../referrals/referrals.service';
 function make(overrides: { user?: Record<string, unknown> | null } = {}) {
   const uploadClickConversion = jest.fn().mockResolvedValue(undefined);
   const prisma = {
-    payment: { findUnique: jest.fn(), update: jest.fn() },
+    payment: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
+    listing: { findUnique: jest.fn() },
     discountCode: { findUnique: jest.fn() },
     discountCodeRedemption: { count: jest.fn().mockResolvedValue(0) },
     user: {
@@ -30,15 +31,17 @@ function make(overrides: { user?: Record<string, unknown> | null } = {}) {
     },
   } as unknown as PrismaService;
 
+  const completePendingPublish = jest.fn().mockResolvedValue(undefined);
+  const getMine = jest.fn();
   const service = new PaymentsService(
     prisma,
     { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
     {} as NotificationsService,
     { uploadClickConversion } as unknown as GoogleAdsConversionProvider,
-    { completePendingPublish: jest.fn() } as unknown as ListingsService,
+    { completePendingPublish, getMine } as unknown as ListingsService,
     { getRedeemableCreditSummary: jest.fn().mockResolvedValue(null) } as unknown as ReferralsService,
   );
-  return { service, uploadClickConversion, prisma };
+  return { service, uploadClickConversion, prisma, completePendingPublish, getMine };
 }
 
 const PAID = {
@@ -231,5 +234,57 @@ describe('PaymentsService — resolveDiscountCodeSafely', () => {
     const { service } = make();
 
     await expect(resolveSafely(service, undefined)).resolves.toBeNull();
+  });
+});
+
+/**
+ * The "Post without Featured" fallback on the Review step's cancelled-checkout screen — see
+ * docs/plans/listing-publish-checkout-cancellation.md. Must only ever act on the caller's own,
+ * still-unresolved listing, and must close out the abandoned order rather than leaving it at
+ * `created` forever.
+ */
+describe('PaymentsService — cancelListingPublishCheckout', () => {
+  const PENDING_LISTING = { id: 'l1', ownerId: 'u1', publishState: 'pending_checkout' };
+
+  it('marks the abandoned order failed and publishes the listing without a boost', async () => {
+    const { service, prisma, completePendingPublish, getMine } = make();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue(PENDING_LISTING);
+    getMine.mockResolvedValue({ id: 'l1', publishState: 'live' });
+
+    const result = await service.cancelListingPublishCheckout('u1', 'l1');
+
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+      where: { listingId: 'l1', purpose: 'listing_publish', status: 'created' },
+      data: { status: 'failed' },
+    });
+    expect(completePendingPublish).toHaveBeenCalledWith('l1');
+    expect(result).toEqual({ id: 'l1', publishState: 'live' });
+  });
+
+  it('refuses a listing that does not belong to the caller', async () => {
+    const { service, prisma, completePendingPublish } = make();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue(PENDING_LISTING);
+
+    await expect(service.cancelListingPublishCheckout('someone-else', 'l1')).rejects.toThrow(
+      "You don't own this listing",
+    );
+    expect(completePendingPublish).not.toHaveBeenCalled();
+  });
+
+  it('refuses a listing that already went live or was never pending checkout', async () => {
+    const { service, prisma, completePendingPublish } = make();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({ ...PENDING_LISTING, publishState: 'live' });
+
+    await expect(service.cancelListingPublishCheckout('u1', 'l1')).rejects.toThrow(
+      'This listing is not awaiting publish checkout',
+    );
+    expect(completePendingPublish).not.toHaveBeenCalled();
+  });
+
+  it('404s rather than silently no-op-ing on an id that does not exist', async () => {
+    const { service, prisma } = make();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await expect(service.cancelListingPublishCheckout('u1', 'missing')).rejects.toThrow('not found');
   });
 });

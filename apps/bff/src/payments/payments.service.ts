@@ -17,6 +17,7 @@ import type {
   CreateListingPublishOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
   ListingCategory,
+  ListingDetailDto,
   PaymentHistoryPage,
   SubscriptionTier,
 } from '@bhavano/types';
@@ -766,6 +767,30 @@ export class PaymentsService {
       amount: amountInPaise,
       currency: 'INR',
     };
+  }
+
+  /** The owner's explicit "no thanks, just post it" after backing out of the listing-publish
+   * Razorpay checkout — called from the Review step's cancellation screen, never automatically.
+   * Closes out the abandoned order (so it stops sitting at `created` forever — see
+   * docs/plans/listing-publish-checkout-cancellation.md) and publishes the listing exactly as if
+   * no boost/fee had ever been requested, same as `createListingPublishOrder`'s own
+   * amountInPaise === 0 branch. Deliberately does not touch `boostDays` on the payment row — it
+   * stays as a record of what was abandoned, not what happened. */
+  async cancelListingPublishCheckout(userId: string, listingId: string): Promise<ListingDetailDto> {
+    const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
+    if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
+    if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
+    if (listing.publishState !== 'pending_checkout') {
+      throw new BadRequestException('This listing is not awaiting publish checkout');
+    }
+
+    await this.prisma.payment.updateMany({
+      where: { listingId, purpose: 'listing_publish', status: 'created' },
+      data: { status: 'failed' },
+    });
+
+    await this.listingsService.completePendingPublish(listingId);
+    return this.listingsService.getMine(userId, listingId);
   }
 
   private async tryRedeemProBoostCreditForListing(userId: string, listingId: string): Promise<void> {

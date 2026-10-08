@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Headers, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Headers, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import type {
@@ -8,6 +8,7 @@ import type {
   CreateInstantAlertsOrderResponseDto,
   CreateListingPublishOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
+  ListingDetailDto,
 } from '@bhavano/types';
 import { CreateListingPublishOrderDto } from './dto/create-listing-publish-order.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -101,6 +102,18 @@ export class PaymentsController {
       dto.discountCode,
       purchaseContext(tracking, client),
     );
+  }
+
+  /** The Review step's "Post without Featured" button, after the advertiser backs out of the
+   * listing-publish Razorpay checkout — see docs/plans/listing-publish-checkout-cancellation.md.
+   * Owner-scoped, not the webhook: this is an explicit choice, not a payment confirmation. */
+  @Post('listing-publish-order/:listingId/cancel')
+  @UseGuards(AuthGuard)
+  cancelListingPublishCheckout(
+    @Param('listingId') listingId: string,
+    @CurrentUser() user: RequestUser,
+  ): Promise<ListingDetailDto> {
+    return this.paymentsService.cancelListingPublishCheckout(user.id, listingId);
   }
 
   @Post('instant-alerts')

@@ -771,6 +771,17 @@ export function createListingPublishOrder(
   });
 }
 
+/** The Review step's "Post without Featured" fallback after a cancelled publish checkout — see
+ * PaymentsService.cancelListingPublishCheckout. */
+export function cancelListingPublishCheckout(
+  accessToken: string,
+  listingId: string,
+): Promise<ListingDetailDto> {
+  return authedBffFetch(accessToken, `/payments/listing-publish-order/${listingId}/cancel`, {
+    method: "POST",
+  });
+}
+
 /** Live pricing for the post-ad success screen's Boost/Instant Alerts picker — see
  * PaymentsService.previewBoostPricing. */
 export function previewBoostPricing(

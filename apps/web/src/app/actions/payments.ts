@@ -7,6 +7,7 @@ import type {
   CreateListingPublishOrderResponseDto,
   CreateSubscriptionOrderResponseDto,
   ListingCategory,
+  ListingDetailDto,
   SubscriptionTier,
 } from "@bhavano/types";
 import type { BoostDurationDays, BoostPriceSettings } from "@bhavano/types/boostPricing";
@@ -17,6 +18,7 @@ import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
 import { parsePurchaseSource, type PurchaseSource } from "@bhavano/types/purchaseSource";
 import { auth } from "@/auth";
 import {
+  cancelListingPublishCheckout,
   createBoostOrder,
   createContactRevealCreditsOrder,
   createListingPublishOrder,
@@ -164,6 +166,26 @@ export async function createListingPublishOrderAction(
     return { success: true, order };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to start checkout" };
+  }
+}
+
+export type CancelListingPublishCheckoutResult =
+  | { success: true; listing: ListingDetailDto }
+  | { success: false; error: string };
+
+/** "Post without Featured" after backing out of the publish checkout — see
+ * PaymentsService.cancelListingPublishCheckout. */
+export async function cancelListingPublishCheckoutAction(
+  listingId: string,
+): Promise<CancelListingPublishCheckoutResult> {
+  const session = await auth();
+  if (!session?.accessToken) return { success: false, error: "You must be logged in." };
+
+  try {
+    const listing = await cancelListingPublishCheckout(session.accessToken, listingId);
+    return { success: true, listing };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to post the ad" };
   }
 }
 
