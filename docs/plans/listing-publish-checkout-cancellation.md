@@ -75,3 +75,42 @@ checkout banner now shows **two** buttons instead of one:
 
 Implemented (BFF method + endpoint, web action + UI). Not yet deployed. The admin flag flip and the
 historical-backfill cleanup are both intentionally left as separate, later decisions.
+
+## Same gap, different purpose: `listing_boost` orders (fixed 2026-10-08)
+
+With the flag **on**, the listing posts `live` at creation time regardless of Featured — so the
+Razorpay checkout the advertiser sees afterward on the Review/success step isn't the listing-publish
+one this doc describes at all, it's `PaymentsService.createBoostOrder`'s add-on purchase
+(`purpose: listing_boost`). That path never had the cleanup step 2 above describes: every retry
+(`retryBoostCheckout` in `PostAdWizard.tsx`) called `createBoostOrder` again, and each call
+unconditionally inserted a new `Payment` row with no check for an existing unresolved one. Two
+cancelled attempts therefore left two `created` rows, both permanently stuck (the webhook only ever
+resolves a row by its own `razorpayOrderId`, so an abandoned order has nothing that marks it
+`failed`) and both showing as "Pending" on admin's Subscriptions page (`apps/admin/src/app/subscriptions/page.tsx`,
+which lists every `Payment` row by purpose, not just `UserSubscription`).
+
+Fixed by giving `createBoostOrder` the same opening step `cancelListingPublishCheckout` already had:
+before creating a new order, mark any of this listing's existing `created`/`listing_boost` rows
+`failed` (`apps/bff/src/payments/payments.service.ts`, right after the ownership check). A retry now
+always fails the previous attempt first, so at most one `listing_boost` row per listing is ever
+"Pending" at a time. Same historical-backfill caveat as above: rows already stuck from before this
+shipped aren't retroactively cleaned up.
+
+## "Post without Featured" reopened Razorpay anyway (fixed 2026-10-08)
+
+Reported live: tapping "Post without Featured" → "No thanks, post without featuring" in the
+recovery dialog (the `cancelledTriggered` branch of `handleBoostRecoverySkip`) correctly cancelled
+the checkout and posted the ad live — but then immediately opened a **second**, unrelated Razorpay
+checkout, for the Feature the advertiser had just declined.
+
+Cause: that branch calls `handlePostWithoutFeatured`, which updates `createdListing` to the
+now-`live` listing, but — unlike the sibling `skipTriggered` branch right below it — never cleared
+`selectedBoostPlan`. The legacy post-success boost-checkout auto-fire effect
+(`PostAdWizard.tsx`, keyed on `createdListing`/`category`/`selectedBoostPlan`) only refuses to fire
+while `publishState === "pending_checkout"`; the moment `createdListing` flipped to `"live"` with a
+boost plan still selected, that guard opened and the effect fired a fresh boost purchase on its own.
+
+Fixed by clearing `selectedBoostPlan` to `null` in the `cancelledTriggered` branch before posting
+without Featured, matching what `skipTriggered` already did. Web only — mobile never got the
+"Post without Featured after cancelling checkout" recovery path this bug lived in, so it was never
+exposed to this.

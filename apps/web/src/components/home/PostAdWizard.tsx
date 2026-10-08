@@ -912,6 +912,11 @@ export function PostAdWizard({
     boostRecoveryShownRef.current = true;
     setBoostRecoveryTrigger(null);
     if (cancelledTriggered) {
+      // Must clear this before createdListing flips to "live" below, or the legacy boost-checkout
+      // auto-fire effect (createdListing, category, selectedBoostPlan) sees a live listing with a
+      // boost plan still selected and opens a brand-new Razorpay checkout for the Feature this
+      // skip just declined — the very "Razorpay again" bug this fixed.
+      setSelectedBoostPlan(null);
       if (createdListing) void handlePostWithoutFeatured(createdListing.id);
       return;
     }
