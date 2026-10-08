@@ -191,10 +191,10 @@ export function RequirementRefineWizard({
   );
   const position = steps.indexOf(stepKey);
 
-  // Floor-only — a seeker's upper budget can legitimately run above a typical listing ask (see
-  // requirementBudgetIssue's own doc comment), but ₹7/month for an apartment was never a real
-  // figure either way. Computed here (not just inside BudgetStep below) so the Next button can
-  // block on it too, not only show the warning text.
+  // Full category/transaction bounds now (see requirementBudgetIssue's own doc comment) — budget
+  // became a required step 2026-10-08, so a figure outside the plausible range is blocked the
+  // same way an out-of-range listing price already is. Computed here (not just inside BudgetStep
+  // below) so the Next button can block on it too, not only show the warning text.
   const budgetIssue =
     draft.category && draft.transactionType
       ? (parseAmount(budgetMin) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMin)!)) ||
@@ -733,8 +733,8 @@ export function RequirementRefineWizard({
       {error && <p className="m-0 text-[12.5px] text-danger">{error}</p>}
 
       {/* Sticky so Next stays reachable under a long area list, whether the scroller is the
-          dialog or (on the refine page) the window. City, areas, what and property type have no
-          Skip: without them a requirement is too vague for anyone to act on. */}
+          dialog or (on the refine page) the window. City, areas, what, property type and budget
+          have no Skip: without them a requirement is too vague for anyone to act on. */}
       <div className="sticky bottom-0 z-10 -mb-1 flex items-center gap-3 border-t border-border bg-surface pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {position !== 0 && (
           <button type="button" onClick={goBack} disabled={saving} className={`${linkButtonClass} shrink-0`}>

@@ -62,17 +62,18 @@ export function listingPriceIssue(
 }
 
 /**
- * Why a requirement's budget figure can't be used, or null — a floor-only check, deliberately not
- * the ceiling `listingPriceIssue` enforces: a seeker's upper budget can legitimately run well
- * above what a typical listing in this category asks (see
- * docs/plans/requirement-refinement-questions.md's own note on why PRICE_BOUNDS was originally
- * left out of requirement validation entirely — its ceiling governs what a listing may ask, not
- * what a seeker may offer, but its floor is a different question: a value below it, like ₹7/month
- * for an apartment, was never a real budget either way). minPrice/maxPrice are optional on a
- * requirement, so this is only ever called when a value is actually given.
+ * Why a requirement's budget figure can't be used, or null — the same category/transaction-aware
+ * bounds `listingPriceIssue` enforces on a listing's own price, applied to each end of the
+ * seeker's range independently. Price range is mandatory on a requirement (see
+ * docs/plans/requirement-refinement-questions.md's 2026-10-08 update): an owner or agent
+ * reviewing a lead needs a believable figure to judge whether their own listing is even in the
+ * right range, so a budget outside the category's plausible range is as unusable to them as no
+ * budget at all — this used to be a floor-only check for exactly that reason (a ceiling didn't
+ * matter when budget was optional either way), until budget became required.
  */
 export function requirementBudgetIssue(category: ListingCategory, transactionType: TransactionType, value: number): string | null {
   const bounds = PRICE_BOUNDS[category][transactionType === "buy" || transactionType === "sell" ? "sale" : "rental"];
-  if (value >= bounds.min) return null;
-  return `₹${groupInr(value)} is below the typical range for this category (starts around ${formatInrWithWords(bounds.min)})`;
+  if (value >= bounds.min && value <= bounds.max) return null;
+  const range = `${formatInrWithWords(bounds.min)} to ${formatInrWithWords(bounds.max)}`;
+  return `₹${groupInr(value)} is outside the typical range for this category (${range})`;
 }

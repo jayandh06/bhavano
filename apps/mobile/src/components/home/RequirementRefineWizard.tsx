@@ -238,8 +238,9 @@ export function RequirementRefineWizard({
   );
   const position = steps.indexOf(stepKey);
   const cityName = current.cityName ?? "the city";
-  // Floor-only — see requirementBudgetIssue's own doc comment. Computed here, not just inside
-  // renderBudget below, so canContinue can block on it too, not only show the warning text.
+  // Full category/transaction bounds now — see requirementBudgetIssue's own doc comment; budget
+  // became a required step 2026-10-08. Computed here, not just inside renderBudget below, so
+  // canContinue can block on it too, not only show the warning text.
   const budgetIssue =
     draft.category && draft.transactionType
       ? (parseAmount(budgetMin) !== undefined && requirementBudgetIssue(draft.category, draft.transactionType, parseAmount(budgetMin)!)) ||
@@ -820,8 +821,8 @@ export function RequirementRefineWizard({
           </Pressable>
         )}
         <View style={{ flex: 1 }} />
-        {/* City, areas, what and property type have no Skip: without them a requirement is too
-            vague for anyone to act on. */}
+        {/* City, areas, what, property type and budget have no Skip: without them a requirement
+            is too vague for anyone to act on. */}
         {stepKey !== "review" && !REQUIRED_REQUIREMENT_STEPS.has(stepKey) && (
           <Pressable onPress={() => goNext()} disabled={saving} hitSlop={8} style={{ flexShrink: 1 }}>
             <Text style={{ color: colors.muted, fontSize: 13.5, textDecorationLine: "underline" }} numberOfLines={1}>

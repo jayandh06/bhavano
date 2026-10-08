@@ -409,7 +409,13 @@ export function answeredSteps(c: RequirementCriteria): Set<RequirementStep> {
 /** The steps a requirement is not complete without (see `missingForLead`). They have no Skip,
  * and are asked even when the search had answered them if the answer has since gone — a new city
  * empties the areas. */
-export const REQUIRED_REQUIREMENT_STEPS: ReadonlySet<RequirementStep> = new Set<RequirementStep>(["city", "areas", "intent", "category"]);
+export const REQUIRED_REQUIREMENT_STEPS: ReadonlySet<RequirementStep> = new Set<RequirementStep>([
+  "city",
+  "areas",
+  "intent",
+  "category",
+  "budget",
+]);
 
 /**
  * The steps to walk through, in order: every applicable step the search had not answered when the
@@ -431,7 +437,7 @@ export function canLeaveStep(step: RequirementStep, draft: RequirementCriteria):
 // Completeness and the label
 // ---------------------------------------------------------------------------
 
-export type RequirementGap = "city" | "area" | "transaction" | "propertyType";
+export type RequirementGap = "city" | "area" | "transaction" | "propertyType" | "budget";
 
 /** Short, for the label's "— … not specified" and the admin badge. */
 export const REQUIREMENT_GAP_LABELS: Record<RequirementGap, string> = {
@@ -439,6 +445,7 @@ export const REQUIREMENT_GAP_LABELS: Record<RequirementGap, string> = {
   area: "area",
   transaction: "buy or rent",
   propertyType: "property type",
+  budget: "budget",
 };
 
 /** For a sentence addressed to the seeker: "Needs {a} and {b} before owners and agents…". */
@@ -447,21 +454,26 @@ export const REQUIREMENT_GAP_PHRASES: Record<RequirementGap, string> = {
   area: "at least one area",
   transaction: "whether you're buying or renting",
   propertyType: "the property type",
+  budget: "a budget",
 };
 
 /**
- * What a requirement still lacks before it is complete. Four things, and without any one of them
+ * What a requirement still lacks before it is complete. Five things, and without any one of them
  * it is vague: the city; at least one area (at most `MAX_REQUIREMENT_AREAS`); what they want to do
- * (buy, rent, lease — PG, furniture and interiors each imply one); and the property type (house,
- * apartment, plot… — PG, furniture and interiors are their own). Budget, size and the rest make a
- * requirement better, but their absence does not make it vague.
- */
+ * (buy, rent, lease — PG, furniture and interiors each imply one); the property type (house,
+ * apartment, plot… — PG, furniture and interiors are their own); and a budget (just one of
+ * minPrice/maxPrice is enough — see `answeredSteps`'s identical test). Budget joined this list
+ * 2026-10-08 (see docs/plans/requirement-refinement-questions.md): an owner or agent reviewing a
+ * lead needs a number to judge whether their own listing is even in the right range, the same way
+ * they need an area to judge whether it's in the right place. Size and the rest still make a
+ * requirement better without being required. */
 export function missingForLead(c: RequirementCriteria): RequirementGap[] {
   const missing: RequirementGap[] = [];
   if (!c.cityId) missing.push("city");
   if (!c.areaIds?.length) missing.push("area");
   if (!c.transactionType) missing.push("transaction");
   if (!c.category) missing.push("propertyType");
+  if (c.minPrice === undefined && c.maxPrice === undefined) missing.push("budget");
   return missing;
 }
 

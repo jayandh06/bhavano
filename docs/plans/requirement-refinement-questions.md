@@ -3,7 +3,8 @@
 **Status: Phases A (web + backend) and B (mobile) built 2026-09-28, not yet deployed.** The
 migration `20260928090000_requirement_refinement` has to be applied on deploy. Phases C–D are
 still plans. Where the build differs from the design below, see *What shipped in Phases A and B*,
-near the end. Extends
+near the end. Budget joined the required-fields set and got full price-sanity bounds on
+2026-10-08 — see *Budget became required*, below *Created at the end, complete*. Extends
 [property-requirements-demand-side.md](property-requirements-demand-side.md) — read that first; this
 doc assumes its Phase 0/1 design (one-tap capture, consent, 30-day expiry, `RequirementMatchJob`).
 What a refined requirement is *for*, a lead to brokers and agents in the named areas, is planned in
@@ -454,14 +455,15 @@ mapper, `requirementCriteriaFromBrowse` in `requirementQuestions.ts`:
   tablets included.
 - The footer is sticky, with the safe-area inset, and Skip truncates on narrow phones.
 
-**City first, and what makes a requirement complete (2026-09-28).** Replaces parts of the flow
-table and step 4 above.
-- A requirement is **complete** only with all four of: a city; 1–5 areas; what they want to do
-  (buy / rent / lease, implied by PG, furniture and interiors); and the property type (house,
-  apartment, plot…, again implied by PG, furniture and interiors). Anything less is vague. Budget
-  and size are optional. `missingForLead` returns `city | area | transaction | propertyType`, and
-  `REQUIREMENT_GAP_LABELS` / `describeRequirementGaps` give the shared wording for the label, the
-  seeker's card and the admin badge.
+**City first, and what makes a requirement complete (2026-09-28; budget joined 2026-10-08 — see
+*Budget became required* below).** Replaces parts of the flow table and step 4 above.
+- A requirement is **complete** only with all five of: a city; 1–5 areas; what they want to do
+  (buy / rent / lease, implied by PG, furniture and interiors); the property type (house,
+  apartment, plot…, again implied by PG, furniture and interiors); and a budget (just one of
+  minPrice/maxPrice is enough). Anything less is vague. Size is still optional. `missingForLead`
+  returns `city | area | transaction | propertyType | budget`, and `REQUIREMENT_GAP_LABELS` /
+  `describeRequirementGaps` give the shared wording for the label, the seeker's card and the
+  admin badge.
 - **No requirement without a city.** "All cities (India)" pages and the mobile home screen with no
   city show "Which city?" on the capture card (popular cities as chips, plus a search), and "Yes,
   find this for me" stays disabled until one is picked. The label is then rebuilt around the city
@@ -472,12 +474,12 @@ table and step 4 above.
   timeline.** Where comes first because nothing else is actionable without it. The city step only
   shows for rows saved before a city was required; `PATCH …/criteria` accepts `cityId` (set, never
   cleared), and a new city drops the old areas unless new ones come with it.
-- **The four required steps have no Skip**, and Next stays disabled until each is answered.
+- **The required steps have no Skip**, and Next stays disabled until each is answered.
   "Anywhere in {city}" is gone (open decision 3, resolved: not allowed). `stepsToAsk` also brings
   back a required step the search had answered if its answer has since gone (a new city empties
   the areas). Optional steps keep Skip.
-- `PATCH …/criteria` with `complete: true` returns 400 ("Add at least one area and the property
-  type first") while anything required is missing, so `refinedAt` means complete.
+- `PATCH …/criteria` with `complete: true` returns 400 ("Add at least one area, the property type
+  and a budget first") while anything required is missing, so `refinedAt` means complete.
 - Save-first was unchanged at this point; see the next section.
 
 **Created at the end, complete (2026-09-28).** Replaces save-first. Creating a row after only the
@@ -510,6 +512,31 @@ written once, at the review, with every answer.
   reminder (`refineNudgedAt`) now only matters for legacy rows. **Old app builds** still create first
   and refine after, so their captures without an area or property type get the 400 until users
   update.
+
+**Budget became required (2026-10-08).** Reverses this doc's own original call ("Budget, size and
+the rest make a requirement better, but their absence does not make it vague") for budget only —
+size stays optional.
+- **Why:** an owner or agent reviewing a lead needs a believable figure to judge whether their
+  own listing is even in the right range, the same reason area is required — "2 BHK in Vadgaon
+  Budruk" with no budget is still a real lead an owner can act on, but it's missing exactly the
+  one thing that lets them self-select out before calling. Raised directly from an admin looking
+  at a real requirement row with no budget shown.
+- **What changed:** `missingForLead` (`packages/types/src/requirementQuestions.ts`) gained
+  `budget` as a fifth gap (one of minPrice/maxPrice is enough, matching `answeredSteps`' own
+  test); `REQUIRED_REQUIREMENT_STEPS` gained `"budget"`, which — being the single shared gate
+  both wizards' Skip-button and Next-button logic already read from — removed the budget step's
+  Skip and gated Next on it with no further wizard code change needed on either platform.
+- **Price-sanity got stricter too.** `requirementBudgetIssue` (`packages/types/src/priceBounds.ts`)
+  was a floor-only check before this — deliberately, since an optional budget's ceiling didn't
+  matter either way. Now it enforces the full category/transaction bounds `listingPriceIssue`
+  already enforces on a listing's own price (both floor and ceiling), "as we do in ad creation."
+  A pre-existing row with an out-of-range stored value stays editable for anything that doesn't
+  touch budget, same non-retroactive guard as before (`requirements.service.ts`'s `refineMine`
+  only re-validates the field(s) a given patch actually sets).
+- **Not changed:** the DTOs (`create-requirement.dto.ts`/`refine-requirement.dto.ts`) still mark
+  `minPrice`/`maxPrice` `@IsOptional()` — same as `areaId` already did before this — because the
+  mandatory enforcement lives in `missingForLead`'s business-logic gate, not the DTO shape, which
+  is what lets a multi-step wizard save progress before every field exists yet.
 
 **Not done in A or B.** The analytics events under *Measurement* aren't emitted yet.
 `RequirementMatchJob` does not yet skip rows that aren't lead-ready (Phase C), so vague rows still

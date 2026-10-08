@@ -345,7 +345,13 @@ function answeredSteps(c) {
 /** The steps a requirement is not complete without (see `missingForLead`). They have no Skip,
  * and are asked even when the search had answered them if the answer has since gone — a new city
  * empties the areas. */
-exports.REQUIRED_REQUIREMENT_STEPS = new Set(["city", "areas", "intent", "category"]);
+exports.REQUIRED_REQUIREMENT_STEPS = new Set([
+    "city",
+    "areas",
+    "intent",
+    "category",
+    "budget",
+]);
 /**
  * The steps to walk through, in order: every applicable step the search had not answered when the
  * questions opened, plus any required step that is unanswered now.
@@ -364,6 +370,7 @@ exports.REQUIREMENT_GAP_LABELS = {
     area: "area",
     transaction: "buy or rent",
     propertyType: "property type",
+    budget: "budget",
 };
 /** For a sentence addressed to the seeker: "Needs {a} and {b} before owners and agents…". */
 exports.REQUIREMENT_GAP_PHRASES = {
@@ -371,14 +378,18 @@ exports.REQUIREMENT_GAP_PHRASES = {
     area: "at least one area",
     transaction: "whether you're buying or renting",
     propertyType: "the property type",
+    budget: "a budget",
 };
 /**
- * What a requirement still lacks before it is complete. Four things, and without any one of them
+ * What a requirement still lacks before it is complete. Five things, and without any one of them
  * it is vague: the city; at least one area (at most `MAX_REQUIREMENT_AREAS`); what they want to do
- * (buy, rent, lease — PG, furniture and interiors each imply one); and the property type (house,
- * apartment, plot… — PG, furniture and interiors are their own). Budget, size and the rest make a
- * requirement better, but their absence does not make it vague.
- */
+ * (buy, rent, lease — PG, furniture and interiors each imply one); the property type (house,
+ * apartment, plot… — PG, furniture and interiors are their own); and a budget (just one of
+ * minPrice/maxPrice is enough — see `answeredSteps`'s identical test). Budget joined this list
+ * 2026-10-08 (see docs/plans/requirement-refinement-questions.md): an owner or agent reviewing a
+ * lead needs a number to judge whether their own listing is even in the right range, the same way
+ * they need an area to judge whether it's in the right place. Size and the rest still make a
+ * requirement better without being required. */
 function missingForLead(c) {
     const missing = [];
     if (!c.cityId)
@@ -389,6 +400,8 @@ function missingForLead(c) {
         missing.push("transaction");
     if (!c.category)
         missing.push("propertyType");
+    if (c.minPrice === undefined && c.maxPrice === undefined)
+        missing.push("budget");
     return missing;
 }
 /**

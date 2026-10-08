@@ -167,7 +167,7 @@ describe('RequirementsService.create', () => {
       category: 'plot',
       transactionType: 'buy',
       bedrooms: undefined,
-      maxPrice: undefined,
+      maxPrice: 5_000_000,
       minAreaSqft: 1200,
       maxAreaSqft: 2400,
       areaUnit: 'sqft',
@@ -185,7 +185,7 @@ describe('RequirementsService.create', () => {
 
   it('refuses a budget below the category/transaction floor — ₹7/month for an apartment rental is never real', async () => {
     const { service } = make();
-    await expect(service.create('u1', { ...dto, minPrice: undefined, maxPrice: 7 })).rejects.toThrow(/below the typical range/);
+    await expect(service.create('u1', { ...dto, minPrice: undefined, maxPrice: 7 })).rejects.toThrow(/outside the typical range/);
   });
 
   it('accepts a budget comfortably inside the floor', async () => {
@@ -366,7 +366,7 @@ describe('RequirementsService.refineMine', () => {
   });
 
   it('stamps refinedAt only when the seeker completes the questions', async () => {
-    const { service, requirementUpdate } = setup({ areaIds: ['a1'], areaId: 'a1' });
+    const { service, requirementUpdate } = setup({ areaIds: ['a1'], areaId: 'a1', maxPrice: 20000 });
 
     await service.refineMine('u1', 'r1', { complete: true });
 
@@ -375,7 +375,7 @@ describe('RequirementsService.refineMine', () => {
 
   it('refuses a budget below the category/transaction floor', async () => {
     const { service } = setup();
-    await expect(service.refineMine('u1', 'r1', { maxPrice: 7 })).rejects.toThrow(/below the typical range/);
+    await expect(service.refineMine('u1', 'r1', { maxPrice: 7 })).rejects.toThrow(/outside the typical range/);
   });
 
   it('never re-validates a budget already stored, when this patch does not touch it', async () => {
@@ -398,21 +398,25 @@ describe('RequirementsService.refineMine', () => {
     );
   });
 
-  it('refuses to complete a requirement missing a city, an area, buy/rent or the property type', async () => {
+  it('refuses to complete a requirement missing a city, an area, buy/rent, the property type or a budget', async () => {
     const { service, requirementUpdate } = setup({ category: null });
 
     await expect(service.refineMine('u1', 'r1', { complete: true })).rejects.toThrow(
-      'Add at least one area and the property type first',
+      'Add at least one area, the property type and a budget first',
     );
     expect(requirementUpdate).not.toHaveBeenCalled();
   });
 
-  it('does not need a budget or size to be complete', async () => {
+  it('needs a budget but not size to be complete', async () => {
     const { service, requirementUpdate } = setup({ areaIds: ['a1'], areaId: 'a1', bedroomOptions: [], bedrooms: null });
 
-    const result = await service.refineMine('u1', 'r1', { complete: true });
+    // No budget yet (default row has minPrice/maxPrice null) — still refused.
+    await expect(service.refineMine('u1', 'r1', { complete: true })).rejects.toThrow('Add a budget first');
+    expect(requirementUpdate).not.toHaveBeenCalled();
 
-    expect(requirementUpdate.mock.calls[0][0].data.searchLabel).toBe('House for rent in Area a1, Bengaluru');
+    const result = await service.refineMine('u1', 'r1', { complete: true, maxPrice: 20000 });
+
+    expect(requirementUpdate.mock.calls[0][0].data.searchLabel).toBe('House for rent in Area a1, Bengaluru · up to ₹20k/month');
     expect(result.isLeadReady).toBe(true);
   });
 
@@ -430,7 +434,7 @@ describe('RequirementsService.refineMine', () => {
 
     const data = requirementUpdate.mock.calls[0][0].data;
     expect(data.cityId).toBe('c2');
-    expect(data.searchLabel).toBe('2 BHK house for rent in Chennai — area not specified');
+    expect(data.searchLabel).toBe('2 BHK house for rent in Chennai — area and budget not specified');
   });
 
   it('drops the old areas when the city changes, unless new ones come with it', async () => {

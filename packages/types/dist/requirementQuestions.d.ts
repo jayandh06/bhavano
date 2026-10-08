@@ -144,18 +144,21 @@ export declare const REQUIRED_REQUIREMENT_STEPS: ReadonlySet<RequirementStep>;
 export declare function stepsToAsk(draft: RequirementCriteria, answeredAtOpen: Set<RequirementStep>): RequirementStep[];
 /** Whether a required step has what it needs to move on — other steps can always be skipped. */
 export declare function canLeaveStep(step: RequirementStep, draft: RequirementCriteria): boolean;
-export type RequirementGap = "city" | "area" | "transaction" | "propertyType";
+export type RequirementGap = "city" | "area" | "transaction" | "propertyType" | "budget";
 /** Short, for the label's "— … not specified" and the admin badge. */
 export declare const REQUIREMENT_GAP_LABELS: Record<RequirementGap, string>;
 /** For a sentence addressed to the seeker: "Needs {a} and {b} before owners and agents…". */
 export declare const REQUIREMENT_GAP_PHRASES: Record<RequirementGap, string>;
 /**
- * What a requirement still lacks before it is complete. Four things, and without any one of them
+ * What a requirement still lacks before it is complete. Five things, and without any one of them
  * it is vague: the city; at least one area (at most `MAX_REQUIREMENT_AREAS`); what they want to do
- * (buy, rent, lease — PG, furniture and interiors each imply one); and the property type (house,
- * apartment, plot… — PG, furniture and interiors are their own). Budget, size and the rest make a
- * requirement better, but their absence does not make it vague.
- */
+ * (buy, rent, lease — PG, furniture and interiors each imply one); the property type (house,
+ * apartment, plot… — PG, furniture and interiors are their own); and a budget (just one of
+ * minPrice/maxPrice is enough — see `answeredSteps`'s identical test). Budget joined this list
+ * 2026-10-08 (see docs/plans/requirement-refinement-questions.md): an owner or agent reviewing a
+ * lead needs a number to judge whether their own listing is even in the right range, the same way
+ * they need an area to judge whether it's in the right place. Size and the rest still make a
+ * requirement better without being required. */
 export declare function missingForLead(c: RequirementCriteria): RequirementGap[];
 /**
  * Complete, and so specific enough to be a lead — see `missingForLead`. A city-wide requirement
