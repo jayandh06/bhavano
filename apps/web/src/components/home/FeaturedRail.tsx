@@ -1,6 +1,7 @@
 import type { ListingCardDto } from "@bhavano/types";
 import { ListingCard } from "./ListingCard";
 import { Icon } from "./Icon";
+import { FeaturedRailScroller } from "./FeaturedRailScroller";
 
 /**
  * A horizontal showcase of boosted listings above the main grid — a boosted listing's only
@@ -10,9 +11,11 @@ import { Icon } from "./Icon";
  * unmissable strip instead, fed by `ListListingsDto.featuredOnly` (round-robin'd by category, so
  * one boost-heavy category can't fill the whole rail either).
  *
- * Plain CSS scroll-snap, not a carousel library or client-side state — this is fundamentally "a
- * row the visitor can drag/swipe through," which `overflow-x-auto` already does on its own, on
- * both touch and a mouse wheel, with zero JS.
+ * The scroll itself is plain CSS scroll-snap (`overflow-x-auto`, below) — the edge fades and
+ * arrow buttons live in FeaturedRailScroller, a separate client component, specifically so this
+ * one stays server-rendered: every item's markup (title, price, link) is still real server HTML,
+ * only the scroll chrome around it is client-side. See FeaturedRailScroller's own doc comment for
+ * why desktop needed that chrome at all (people weren't noticing the row scrolls).
  */
 export function FeaturedRail({ items }: { items: ListingCardDto[] }) {
   if (items.length === 0) return null;
@@ -23,18 +26,18 @@ export function FeaturedRail({ items }: { items: ListingCardDto[] }) {
         <Icon name="featured" filled className="text-gold" />
         Featured listings
       </div>
-      {/* items-stretch (the flex default, stated explicitly rather than relied on) is what makes
-        * every card match the row's tallest — ListingCard's own `fixedHeight` prop is what lets
-        * each card actually fill that height instead of sitting at its natural size inside a now-
-        * taller wrapper, with its own Contact button pinned to the bottom via mt-auto rather than
-        * wherever its own (title-length-dependent) content happened to end. */}
-      <div className="flex items-stretch gap-4 overflow-x-auto pb-2 snap-x snap-mandatory [scrollbar-width:thin] -mx-4 px-4 sm:mx-0 sm:px-0">
+      <FeaturedRailScroller>
+        {/* items-stretch (the flex default, stated explicitly rather than relied on) is what
+          * makes every card match the row's tallest — ListingCard's own `fixedHeight` prop is
+          * what lets each card actually fill that height instead of sitting at its natural size
+          * inside a now-taller wrapper, with its own Contact button pinned to the bottom via
+          * mt-auto rather than wherever its own (title-length-dependent) content happened to end. */}
         {items.map((item) => (
           <div key={item.id} className="shrink-0 snap-start w-[250px] sm:w-[290px]">
             <ListingCard item={item} fixedHeight />
           </div>
         ))}
-      </div>
+      </FeaturedRailScroller>
     </div>
   );
 }
