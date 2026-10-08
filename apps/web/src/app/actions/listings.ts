@@ -12,6 +12,7 @@ import type {
 } from "@bhavano/types";
 import type { ListingSlotCapErrorBody } from "@bhavano/types/listingSlots";
 import { ListingSlotCapError } from "@/lib/listingSlotErrors";
+import { DuplicatePhotoError } from "@/lib/duplicatePhotoErrors";
 import { auth } from "@/auth";
 import {
   BffAuthError,
@@ -44,7 +45,7 @@ import { NEEDS_LOGIN_ERROR } from "@/lib/postAdErrors";
 
 export type CreateListingResult =
   | { success: true; listing: ListingDetailDto }
-  | { success: false; error: string; slotCap?: ListingSlotCapErrorBody };
+  | { success: false; error: string; slotCap?: ListingSlotCapErrorBody; duplicatePhotoNos?: number[] };
 
 // Doesn't redirect on success — PostAdWizard shows a boost-benefits step first, so the client
 // decides when to navigate to the listing, not the server action.
@@ -65,6 +66,9 @@ export async function createListingAction(input: CreateListingInput): Promise<Cr
   } catch (error) {
     if (error instanceof ListingSlotCapError) {
       return { success: false, error: error.message, slotCap: error.body };
+    }
+    if (error instanceof DuplicatePhotoError) {
+      return { success: false, error: error.message, duplicatePhotoNos: error.body.duplicatePhotoNos };
     }
     return { success: false, error: error instanceof Error ? error.message : "Failed to create listing" };
   }

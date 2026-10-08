@@ -451,6 +451,11 @@ export function PostAdWizard({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [slotCap, setSlotCap] = useState<ListingSlotCapErrorBody | null>(null);
+  // 1-based photoNo values the server flagged as already in use elsewhere — cleared on any photo
+  // list mutation (add/remove/re-cover) since photoNo is derived from array position at submit
+  // time (see onSubmit below) and would otherwise point at the wrong thumbnail once the list
+  // changes shape.
+  const [duplicatePhotoNos, setDuplicatePhotoNos] = useState<number[]>([]);
   const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(
     null,
   );
@@ -1028,6 +1033,7 @@ export function PostAdWizard({
     if (!files || files.length === 0) return;
     setError(null);
     setPhotoNotice(null);
+    setDuplicatePhotoNos([]);
 
     const room = MAX_PHOTOS - photos.length;
     const candidates = Array.from(files).slice(0, room);
@@ -1071,6 +1077,7 @@ export function PostAdWizard({
   function onRemovePhoto(index: number) {
     // Removing a photo is the fix for "too many photos", so the note about it goes with it.
     setPhotoNotice(null);
+    setDuplicatePhotoNos([]);
     setPhotos((prev) => {
       URL.revokeObjectURL(prev[index].previewUrl);
       return prev.filter((_, i) => i !== index);
@@ -1085,6 +1092,7 @@ export function PostAdWizard({
    * needs. */
   function onSetCoverPhoto(index: number) {
     setPhotoNotice(null);
+    setDuplicatePhotoNos([]);
     setPhotos((prev) => {
       if (index === 0) return prev;
       const next = [...prev];
@@ -1732,6 +1740,15 @@ export function PostAdWizard({
         requireVerifiedPhone({ onSuccess: () => void onSubmit() });
         return;
       }
+      // Same "bounce back to Details with something to actually do about it" reasoning as the
+      // MIN_PHOTOS check in publish() above — Review has no photo-add/remove UI of its own, so
+      // leaving the error here would be a dead end that only fails the same way again.
+      if (result.duplicatePhotoNos?.length) {
+        setDuplicatePhotoNos(result.duplicatePhotoNos);
+        backToDetails();
+        setTimeout(() => photoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+        return;
+      }
       setSlotCap(result.slotCap ?? null);
       setError(result.error ?? "Failed to create listing");
       return;
@@ -2076,6 +2093,12 @@ export function PostAdWizard({
                 hint={`JPG, PNG or WebP · up to ${PHOTO_SIZE_LABEL} each · ${MAX_PHOTOS - photos.length} more allowed`}
               />
             )}
+            {duplicatePhotoNos.length > 0 && (
+              <p className="text-xs text-[#b3413a] font-bold mt-1.5 mb-0">
+                {duplicatePhotoNos.length === 1 ? "The photo outlined in red" : "The photos outlined in red"} appear{duplicatePhotoNos.length === 1 ? "s" : ""} to
+                already be in use on another listing — remove {duplicatePhotoNos.length === 1 ? "it" : "them"} or replace with a different photo.
+              </p>
+            )}
             {photos.length > 0 && (
               <div className="flex flex-wrap gap-2.5 mt-2.5">
                 {photos.map((photo, i) => (
@@ -2084,7 +2107,9 @@ export function PostAdWizard({
                     <img
                       src={photo.previewUrl}
                       alt={`Photo ${i + 1}`}
-                      className="h-[100px] w-[100px] object-cover rounded-lg"
+                      className={`h-[100px] w-[100px] object-cover rounded-lg ${
+                        duplicatePhotoNos.includes(i + 1) ? "ring-2 ring-[#b3413a] ring-offset-2" : ""
+                      }`}
                     />
                     {/* Top-left, same placement/style EditListingPhotos uses for the same job
                       * post-creation — index 0 is the cover by construction (see

@@ -65,6 +65,7 @@ import type { CreateSupportTicketResponse } from "@bhavano/types/support";
 import type { RequirementFeedDto, RequirementFeedSummaryDto } from "@bhavano/types/requirementFeed";
 import type { LinkIdentifierResult } from "@bhavano/types";
 import { isListingSlotCapErrorBody, ListingSlotCapError } from "@/lib/listingSlotErrors";
+import { isDuplicatePhotoErrorBody, DuplicatePhotoError } from "@/lib/duplicatePhotoErrors";
 
 const BFF_URL = process.env.BFF_INTERNAL_URL ?? "http://localhost:4000";
 
@@ -134,18 +135,19 @@ async function bffFetch<T>(path: string, init?: RequestInit): Promise<T> {
           code?: string;
           activeCount?: number;
         };
-        if (res.status === 403) {
-          const nested =
-            parsed.message && typeof parsed.message === "object" && !Array.isArray(parsed.message)
-              ? parsed.message
-              : parsed;
-          if (isListingSlotCapErrorBody(nested)) {
-            throw new ListingSlotCapError(nested);
-          }
+        const nested =
+          parsed.message && typeof parsed.message === "object" && !Array.isArray(parsed.message)
+            ? parsed.message
+            : parsed;
+        if (res.status === 403 && isListingSlotCapErrorBody(nested)) {
+          throw new ListingSlotCapError(nested);
+        }
+        if (res.status === 400 && isDuplicatePhotoErrorBody(nested)) {
+          throw new DuplicatePhotoError(nested);
         }
         return Array.isArray(parsed.message) ? parsed.message.join(", ") : typeof parsed.message === "string" ? parsed.message : undefined;
       } catch (error) {
-        if (error instanceof ListingSlotCapError) throw error;
+        if (error instanceof ListingSlotCapError || error instanceof DuplicatePhotoError) throw error;
         return undefined;
       }
     })();
