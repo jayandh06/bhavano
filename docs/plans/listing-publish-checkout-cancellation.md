@@ -114,3 +114,26 @@ Fixed by clearing `selectedBoostPlan` to `null` in the `cancelledTriggered` bran
 without Featured, matching what `skipTriggered` already did. Web only — mobile never got the
 "Post without Featured after cancelling checkout" recovery path this bug lived in, so it was never
 exposed to this.
+
+## Tapping "Post ad" again after a cancelled checkout crashed with a 500 (fixed 2026-10-08)
+
+Caught live in a real Google Ads session (admin Page visits, 2026-10-08 ~9:15pm IST): cancelled the
+publish checkout twice, then — instead of "Retry payment" or "Post without Featured" — tapped
+**"Post ad"** again (it's always visible in the Review step's footer, independent of the
+cancelled-checkout banner above it). That re-ran the whole upload+create flow and crashed twice in
+a row with a bare `"Internal server error"`; the advertiser gave up with no ad ever live.
+
+Cause: `PostAdWizard`'s `listingId` is one `crypto.randomUUID()` generated at mount and reused on
+every submit attempt for the same draft (web and mobile both). `ListingsService.create()` did a
+plain `prisma.listing.create({ data: { id: input.id, ... } })` with no check for an existing row —
+a retry's INSERT collides on the primary key, Prisma throws an unhandled
+`PrismaClientKnownRequestError` (P2002), and `AllExceptionsFilter` has no special case for it, so it
+falls through to Nest's default 500 response.
+
+Fixed in `ListingsService.create()`: right after the deleted-account check, look up `input.id`; if a
+listing with that id already exists and belongs to the same owner, return it as-is (`toDetailDto`)
+instead of attempting the insert — the retry is the same draft, not a new one, so handing back what
+already exists is correct regardless of which attempt "won". Skips slot-cap/moderation/etc. on that
+path since nothing is actually being created. No existing test coverage for `create()` to extend
+(it has none today); verify manually after deploy by cancelling a publish checkout and tapping
+"Post ad" again.

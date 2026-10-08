@@ -1486,6 +1486,26 @@ export class ListingsService {
     if (owner?.deletedAt) {
       throw new UnauthorizedException('This account was deleted');
     }
+
+    // A retried submission of the exact same client-generated draft id — most commonly "Post ad"
+    // tapped again after a cancelled publish checkout, since the wizard (web and mobile) keeps the
+    // same id across every attempt on one draft. Without this, the retry's INSERT collides on the
+    // primary key and crashes with a raw Prisma unique-constraint error, which nothing catches —
+    // it surfaces to the advertiser as a bare "Internal server error" and the listing never goes
+    // live. Handing back what already exists instead is correct either way: it's the same draft.
+    const existing = await this.prisma.listing.findUnique({
+      where: { id: input.id },
+      include: { city: true, area: true, ...LISTING_MEDIA_INCLUDE },
+    });
+    if (existing) {
+      if (existing.ownerId !== ownerId) {
+        throw new BadRequestException('This listing could not be created. Please try again.');
+      }
+      return assisted
+        ? { ...this.toDetailDto(existing, undefined, true, false), assisted: await this.assistedInfo(existing) }
+        : this.toDetailDto(existing, undefined, true, true);
+    }
+
     await this.listingSlotsService.assertCanPublish(ownerId);
     const inputAttributes = normalizeBrokerageAttributes(input.transactionType, input.attributes ?? {});
     // For an assisted listing the answer is the seller's, not the Bulk Import account's: it fills
