@@ -61,6 +61,7 @@ import { listingPriceIssue } from '@bhavano/types/priceBounds';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { resolveVideoEntitlement } from '@bhavano/types/videoLimits';
 import { MAX_PHOTOS, MIN_PHOTOS } from '@bhavano/types/photoLimits';
+import type { DuplicatePhotoErrorBody } from '@bhavano/types/duplicatePhoto';
 import { PrismaService } from '../prisma/prisma.service';
 import { toE164India } from '../outreach/phone';
 import { ModerationService } from '../moderation/moderation.service';
@@ -1516,8 +1517,20 @@ export class ListingsService {
     this.assertPriceInRange(input.category, input.transactionType, input.price, resolvedPrice);
     this.assertBrokerageFitsPrice(input.transactionType, resolvedPrice.price, attributes);
 
-    const moderation = await this.moderationService.moderate({ ...input, price: resolvedPrice.price });
-    if (!moderation.ok) throw new BadRequestException(moderation.reason);
+    const moderation = await this.moderationService.moderate({ ...input, price: resolvedPrice.price }, ownerId);
+    if (!moderation.ok) {
+      // Structured, not just a plain message, when it's the duplicate-photo case — see
+      // DuplicatePhotoErrorBody's own doc comment — so the client can point at exactly which
+      // photo(s) to remove instead of the seller guessing which of up to MAX_PHOTOS it was.
+      if (moderation.duplicatePhotoNos?.length) {
+        throw new BadRequestException({
+          code: 'DUPLICATE_PHOTO',
+          message: moderation.reason,
+          duplicatePhotoNos: moderation.duplicatePhotoNos,
+        } satisfies DuplicatePhotoErrorBody);
+      }
+      throw new BadRequestException(moderation.reason);
+    }
 
     const areaId =
       input.areaId ??
@@ -1888,7 +1901,7 @@ export class ListingsService {
     }
 
     const hash = await computeDHash(file.buffer);
-    if (await this.moderationService.isDuplicatePhotoHash(hash, listing.cityId)) {
+    if (await this.moderationService.isDuplicatePhotoHash(hash, listing.cityId, ownerId)) {
       throw new BadRequestException(
         'This photo appears to already be in use on another listing',
       );

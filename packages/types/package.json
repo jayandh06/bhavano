@@ -125,6 +125,10 @@
       "types": "./dist/listingSlots.d.ts",
       "default": "./dist/listingSlots.js"
     },
+    "./duplicatePhoto": {
+      "types": "./dist/duplicatePhoto.d.ts",
+      "default": "./dist/duplicatePhoto.js"
+    },
     "./sellerType": {
       "types": "./dist/sellerType.d.ts",
       "default": "./dist/sellerType.js"
