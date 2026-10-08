@@ -15,6 +15,16 @@ const SELL_OPTIONS: PriceQualifierOption[] = [
 
 const MONTHLY_OPTIONS: PriceQualifierOption[] = [{ value: "/month", label: "Per month" }];
 
+/** Lease is offered as its own transaction type, distinct from (and alongside) Rent — Rent is
+ * already the monthly-recurring case, so Lease's own price is a lump sum valid for the whole
+ * term, not a rate. First/default option is deliberately NOT worded "per lease term": "per"
+ * reads as a recurring rate (like "per month"), which is exactly the wrong signal for a one-time
+ * amount that covers the entire term and isn't paid again until it's renewed. `/month` stays
+ * offered, not removed, for a lease that genuinely is quoted as a monthly rent over a fixed term
+ * (common for commercial leases) — just no longer the default. */
+const LEASE_TERM_OPTION: PriceQualifierOption = { value: "for lease term", label: "For the lease term" };
+const LEASE_OPTIONS: PriceQualifierOption[] = [LEASE_TERM_OPTION, { value: "/month", label: "Per month" }];
+
 /** PG plans commonly run shorter than a month (a trial week, a per-day short stay) or vary enough
  * by sharing type that the owner wants to signal "starting from" rather than a single fixed rate
  * — see PRICE_ON_REQUEST_CATEGORIES's own note on why PG/coworking pricing doesn't fit one number
@@ -43,16 +53,18 @@ const FURNITURE_RENT_OPTIONS: PriceQualifierOption[] = [
  * `POSTABLE_TRANSACTION_TYPES` in postingRules.ts — the single source of truth the wizard's
  * step-3 price qualifier dropdown, the edit form, and the BFF's validation all read from. */
 export const PRICE_QUALIFIER_OPTIONS: Record<ListingCategory, Partial<Record<TransactionType, PriceQualifierOption[]>>> = {
-  house: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
-  apartment: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
-  villa: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
+  house: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
+  apartment: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
+  villa: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
   pg: { rent: PG_RENT_OPTIONS },
-  storage: { rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
-  coworking: { rent: COWORKING_RENT_OPTIONS, lease: COWORKING_RENT_OPTIONS },
+  storage: { rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
+  // Lease here keeps the per-seat/per-month options too (a coworking lease is still commonly
+  // billed that way) — just with the lease-term lump sum offered first, as the default.
+  coworking: { rent: COWORKING_RENT_OPTIONS, lease: [LEASE_TERM_OPTION, ...COWORKING_RENT_OPTIONS] },
   furniture: { sell: SELL_OPTIONS, rent: FURNITURE_RENT_OPTIONS },
   interiors: { sell: SELL_OPTIONS },
   plot: { sell: SELL_OPTIONS },
-  commercial: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: MONTHLY_OPTIONS },
+  commercial: { sell: SELL_OPTIONS, rent: MONTHLY_OPTIONS, lease: LEASE_OPTIONS },
 };
 
 export function getPriceQualifierOptions(
