@@ -56,7 +56,7 @@ export function OwnerFacebookShare({
         onClick={onClick}
         className="w-full bg-green text-on-green rounded-lg px-5 py-3 text-[15px] font-bold text-center inline-flex items-center justify-center gap-2"
       >
-        <FacebookIcon /> Share on Facebook
+        <FacebookIcon size={22} /> Share on Facebook
       </a>
     );
   }
@@ -71,7 +71,7 @@ export function OwnerFacebookShare({
       title="Share on Facebook"
       className="text-[15px] font-bold text-green border-[1.5px] border-green rounded-lg px-2.5 py-2 inline-flex items-center"
     >
-      <FacebookIcon />
+      <FacebookIcon size={20} />
     </a>
   );
 }

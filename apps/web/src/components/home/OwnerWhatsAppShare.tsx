@@ -66,7 +66,7 @@ export function OwnerWhatsAppShare({
         title="Share on WhatsApp"
         className="text-[15px] font-bold text-green border-[1.5px] border-green rounded-lg px-2.5 py-2 inline-flex items-center"
       >
-        <WhatsAppIcon />
+        <WhatsAppIcon size={20} />
       </a>
     );
   }
@@ -105,7 +105,7 @@ export function OwnerWhatsAppShare({
           onClick={onClick}
           className="bg-green text-on-green rounded-lg px-5 py-3 text-[15px] font-bold text-center inline-flex items-center justify-center gap-2"
         >
-          <WhatsAppIcon /> Share on WhatsApp
+          <WhatsAppIcon size={22} /> Share on WhatsApp
         </a>
         <OwnerFacebookShare listing={listing} placement={placement} referralCode={code} variant="prominent" />
       </div>

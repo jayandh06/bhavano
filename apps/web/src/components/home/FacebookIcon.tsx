@@ -4,12 +4,12 @@
  * require), this is just a share-button affordance, where "unmistakably Facebook" matters more
  * than pixel-exact typography.
  */
-export function FacebookIcon({ className = "" }: { className?: string }) {
+export function FacebookIcon({ className = "", size = "1em" }: { className?: string; size?: string | number }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      width="1em"
-      height="1em"
+      width={size}
+      height={size}
       className={`inline-block shrink-0 align-[-0.125em] ${className}`}
       aria-hidden="true"
     >

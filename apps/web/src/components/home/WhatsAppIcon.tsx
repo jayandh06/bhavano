@@ -4,12 +4,12 @@
  * Used in place of the generic `Icon name="message"`/`"share"` glyphs wherever a button is
  * specifically a WhatsApp action, not a generic share/message affordance.
  */
-export function WhatsAppIcon({ className = "" }: { className?: string }) {
+export function WhatsAppIcon({ className = "", size = "1em" }: { className?: string; size?: string | number }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      width="1em"
-      height="1em"
+      width={size}
+      height={size}
       className={`inline-block shrink-0 align-[-0.125em] ${className}`}
       aria-hidden="true"
     >

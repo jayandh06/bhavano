@@ -87,7 +87,7 @@ export function OwnerWhatsAppShare({
           backgroundColor: colors.green,
         }}
       >
-        <WhatsAppIcon size={16} />
+        <WhatsAppIcon size={22} />
         <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Share on WhatsApp</Text>
       </Pressable>
       {code && (
