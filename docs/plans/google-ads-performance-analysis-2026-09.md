@@ -1,13 +1,16 @@
 # Google Ads performance analysis and conversion plan (2026-09-28)
 
-## Status: analysis done; recommendations 1, 3 and 4 applied to the ad account on 2026-09-28
+## Status: analysis done; recommendations 1, 3 and 4 applied to the ad account on 2026-09-28; the `AdLandingCard` bounce fix measured and confirmed working on 2026-10-08
 
 The analysis used read-only GAQL (customer 4214066478, INR) and read-only production database
 queries. On the owner's go-ahead, recommendations **1, 3 and 4** were then applied — see
 [Changes applied](#changes-applied-2026-09-28) for exactly what changed and how to roll it back.
 Recommendations 2, 5, 6 and 7 (product changes and experiments) are still proposals. Later the
 same day the Other-Metro campaigns were narrowed to 5 cities — see
-[Narrow to 11 cities?](#narrow-to-11-cities-question-asked-2026-09-28-evening).
+[Narrow to 11 cities?](#narrow-to-11-cities-question-asked-2026-09-28-evening). The bounce-page
+fix from the "Why ~60%..." section below (`AdLandingCard`) was re-measured ten days after
+shipping — see [Did the AdLandingCard fix work?](#did-the-adlandingcard-fix-work-measured-2026-10-08) —
+and confirmed working: paid sessions reaching a second page nearly doubled (38% → 67%).
 
 Related: [`capture-google-ads-click-attribution.md`](capture-google-ads-click-attribution.md),
 [`server-side-google-ads-conversion-upload.md`](server-side-google-ads-conversion-upload.md),
@@ -601,3 +604,36 @@ compared with home landings on this measure.
 4. **Measure engagement.** Add a one-shot beacon after ~10 s visible or 50% scroll, plus the
    wizard step events from recommendation 5. This lets the remaining 40% be split into
    "glanced" and "read and left".
+
+### Did the `AdLandingCard` fix work? (measured 2026-10-08)
+
+Yes, clearly. Same read-only methodology as above, re-run against 2026-09-29 → 10-08 (the ten
+days since the card shipped), compared to the 09-16 → 09-28 baseline above. The "signed in on
+home" bucket (4% in the baseline) is folded into "one page" here rather than broken out
+separately — a small, not-materially-distorting simplification, not a methodology change.
+
+| Bucket | Before (09-16→09-28) | After (09-29→10-08) |
+|---|---|---|
+| Never ran JavaScript | 11% | 2.6% |
+| One page ("did nothing" + the small "changed tab/search" and "signed in" slices) | ~52% | ~31% |
+| Went to a second page | 38% | **66.7%** |
+
+Mobile specifically (the segment the card's copy/placement most directly targeted):
+
+| Bucket | Mobile before | Mobile after |
+|---|---|---|
+| One page | **45%** | **34.2%** |
+| Went to a second page | — | 62.6% |
+
+Share of paid visitors reaching a second page nearly doubled (38% → 67%). Mobile's one-page share
+dropped too (45% → 34%) but by less than the overall population did, and mobile is still
+slightly worse than the blended number (34% vs 31%) — consistent with recommendation 5 below:
+the remaining mobile gap looks like it's in the sign-up/form step now, not the landing page
+itself. The no-JS/junk drop (11% → 2.6%) is a bonus but shouldn't be attributed to this fix
+specifically — nothing about `AdLandingCard` touches bot traffic; more likely a targeting/mix
+change since, or sample noise over a shorter window.
+
+**Conclusion: close out fix 1 above as validated, not just shipped.** Of proposals 2–4, the
+engagement beacon (4) is now the most useful next step — "one page" is still ~31% of sessions,
+and there's no way yet to tell "glanced and left" from "read it and wasn't ready" within that
+slice. 2 and 3 are smaller and safe to defer.
