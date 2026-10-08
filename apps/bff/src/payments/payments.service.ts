@@ -382,6 +382,17 @@ export class PaymentsService {
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
     if (listing.ownerId !== userId) throw new ForbiddenException("You don't own this listing");
 
+    // A retry (after cancelling/abandoning Razorpay's checkout) must not leave the previous
+    // attempt's order stuck at `created` forever — nothing else ever resolves it, since the
+    // webhook only ever matches a payment by its own razorpayOrderId (see handleWebhook below),
+    // so a never-settled prior order just sits there. Left unfailed, each retry piles up one more
+    // row on admin's Subscriptions page, all reading "Pending" indefinitely. Same idiom as
+    // `cancelListingPublishCheckout`'s cleanup for the listing_publish purpose.
+    await this.prisma.payment.updateMany({
+      where: { listingId, purpose: 'listing_boost', status: 'created' },
+      data: { status: 'failed' },
+    });
+
     // A referral boost credit (docs/plans/bhavano-referral-program-implementation.md, Phase 2) —
     // checked before the Agent Pro branch below since the two are independent ways to skip
     // payment and a visitor could in principle qualify for both; whichever the client asked for
