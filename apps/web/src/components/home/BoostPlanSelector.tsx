@@ -9,6 +9,22 @@ import { platformFeeFor } from "@bhavano/types/platformFeePricing";
 import { discountPercentFor } from "@bhavano/types/promoCode";
 import { Icon } from "./Icon";
 
+// Strikes out the original price rather than an arrow (₹149 → ₹99) — same convention as
+// BoostBundlePicker's PriceTag, so an offer being applied reads the same way everywhere a boost
+// price is shown, not just as a lower number that could be mistaken for the plain price. A
+// top-level function, not one declared inside BoostPlanSelector's body: a component recreated on
+// every render resets its own state each time (react-hooks/static-components) — it has none here,
+// but the lint rule doesn't know that, and the fix is the same either way.
+function PriceDisplay({ opt }: { opt: BoostPricingPreviewDto["boost7"] }) {
+  if (opt.free) return <>Free</>;
+  return (
+    <>
+      {opt.discountApplied && <span className="line-through mr-1.5 text-muted">₹{opt.originalAmount}</span>}
+      ₹{opt.amount}
+    </>
+  );
+}
+
 /**
  * Ad-preview-step counterpart to BoostBundlePicker — same duration-rows + Instant-Alerts-toggle
  * visual language and the same `optionKey` indexing into `BoostPricingPreviewDto`, but no Pay
@@ -65,11 +81,6 @@ export function BoostPlanSelector({
   }, [value, offered, onChange]);
 
   const option = boostOptionFor(pricing, effective.duration);
-
-  function priceText(opt: BoostPricingPreviewDto["boost7"]): string {
-    if (opt.free) return "Free";
-    return opt.discountApplied ? `₹${opt.originalAmount} → ₹${opt.amount}` : `₹${opt.amount}`;
-  }
 
   const dueToday =
     platformFeeRupees > 0 || value
@@ -134,14 +145,24 @@ export function BoostPlanSelector({
                   !opt.free && <span className="text-[12px] font-normal text-muted">₹{Math.round(opt.amount / days)}/day</span>
                 )}
               </span>
-              <span className="text-green">{priceText(opt)}</span>
+              <span className="text-green">
+                <PriceDisplay opt={opt} />
+              </span>
             </button>
           );
         })}
       </div>
       <p className="text-[12.5px] text-text-soft mt-2.5 mb-0">Instant Alerts is included: you are emailed and WhatsApp&apos;d the moment someone messages you.</p>
 
-      <p className="text-[13px] font-bold text-green mt-3 mb-0">{value ? `Feature add-on: ${priceText(option)}` : "Not featuring this ad"}</p>
+      <p className="text-[13px] font-bold text-green mt-3 mb-0">
+        {value ? (
+          <>
+            Feature add-on: <PriceDisplay opt={option} />
+          </>
+        ) : (
+          "Not featuring this ad"
+        )}
+      </p>
 
       {pricing.allowSkippingBoost !== false && (
         <button

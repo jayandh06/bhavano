@@ -38,11 +38,18 @@ export function BoostRecoveryDialog({
   const option = boostOptionFor(pricing, duration);
   const message = boostRecoveryMessage(effectiveness);
 
-  const priceText = option.free
-    ? "Free"
-    : option.discountApplied
-      ? `₹${option.originalAmount} → ₹${option.amount}`
-      : `₹${option.amount}`;
+  // Strikes out the original price — same convention as BoostBundlePicker's PriceTag and
+  // BoostPlanSelector's PriceDisplay, so an offer reads the same way everywhere on the preview
+  // flow. On the green "Add Feature" button here, so the muted variant uses on-green/70, not
+  // text-muted (which would be unreadable against this background).
+  const priceDisplay = option.free ? (
+    "Free"
+  ) : (
+    <>
+      {option.discountApplied && <span className="line-through mr-1.5 text-on-green/70">₹{option.originalAmount}</span>}
+      ₹{option.amount}
+    </>
+  );
 
   return (
     <div
@@ -77,7 +84,7 @@ export function BoostRecoveryDialog({
             className="flex items-center justify-between gap-3 border-0 rounded-lg px-4 py-3 text-sm font-bold cursor-pointer bg-green text-on-green"
           >
             <span>{addLabel ?? `Add ${duration}-day Feature`}</span>
-            {!addLabel && <span>{priceText}</span>}
+            {!addLabel && <span>{priceDisplay}</span>}
           </button>
           <button
             type="button"
