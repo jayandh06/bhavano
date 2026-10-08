@@ -11,6 +11,7 @@ import { BoostProvider } from "@/components/home/BoostProvider";
 import { ProfileCompletionBanner } from "@/components/home/ProfileCompletionBanner";
 import { ProfileCompletionDialog } from "@/components/home/ProfileCompletionDialog";
 import { JsConfirmation } from "@/components/home/JsConfirmation";
+import { SessionUserLink } from "@/components/home/SessionUserLink";
 import { SoftNavPageViews } from "@/components/home/SoftNavPageViews";
 import { SignupConversionTracker } from "@/components/home/SignupConversionTracker";
 import { OpenInAppStrip } from "@/components/home/OpenInAppStrip";
@@ -115,6 +116,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <BuyCreditsProvider>
               <BoostProvider>
                 <JsConfirmation />
+                <SessionUserLink />
                 <VisitEntryRecorder />
                 <SoftNavPageViews />
                 <SignupConversionTracker />

@@ -352,7 +352,17 @@ fires `post_ad_success`; this only fills the PageView trail.
   row exists and safe to repeat. Visits recorded before this shipped stay anonymous (their session
   ids were never stored anywhere that could be matched to a user). Web has the same shape: its
   `bhavano_sid` cookie dies with the browser while the NextAuth session lasts 30 days, so a
-  returning logged-in web visitor is likely anonymous too — not changed here.
+  returning logged-in web visitor was likely anonymous too.
+
+  **Fixed for web too (2026-10-08).** Raised from a real case — a user's second session that day
+  (a plain Google referral landing, not an ad click) stayed unattributed in Page visits despite
+  him having logged in an hour earlier in an unrelated session, even though he clearly posted a
+  listing while signed in. `SessionUserLink` (root layout, same "fire once per session via
+  `sessionStorage`" shape as `JsConfirmation`) calls a new `/api/analytics/link-session` Next.js
+  route once per session; that route reads `bhavano_sid` (httpOnly, so only the server can) and
+  the NextAuth session server-side and, when both are present, calls the same BFF
+  `POST /analytics/link-session` mobile already used. No client code ever sees the session cookie
+  or the access token — both stay server-side, same reasoning as the `confirm` route.
 - BFF analytics controller fills `ip` / `userAgent` from `req` when the body omits them (mobile
   has no middleware hop); `RecordPageViewDto.fromApp` feeds backfill deviceType.
 
