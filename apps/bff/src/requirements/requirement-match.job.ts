@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { formatInrWithWords } from '@bhavano/types/priceWords';
+import { isLeadReady } from '@bhavano/types/requirementQuestions';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -11,6 +12,10 @@ import { NotificationsService } from '../notifications/notifications.service';
  * Every rule here exists to stop this becoming a spam cannon, which is the failure mode that
  * would cost far more than the leads are worth:
  *
+ *  - **Lead-ready only** (`isLeadReady` — 2026-10-08, closing the gap this file's own comment
+ *    used to flag as "Phase C"). A row missing an area, a budget, or anything else that makes it
+ *    `missingForLead` is exactly the vague, unactionable lead this whole job exists to avoid —
+ *    left un-stamped, same as "no owners found" below, so completing it later still works.
  *  - **Matched on inventory, not geography.** An owner hears about a requirement only if they
  *    have a listing in the same city AND category, and — when the requirement names an area — in
  *    that area. Someone who lists PGs in Bengaluru never hears about a plot in Agra.
@@ -86,12 +91,31 @@ export class RequirementMatchJob {
       return;
     }
 
+    // Vague rows (missing an area, a budget, etc.) are exactly the spam-cannon failure mode this
+    // whole job exists to avoid — see isLeadReady's own doc comment. Left un-stamped, same as "no
+    // owners found" below: a seeker who completes it later is still eligible, and the age cutoff
+    // above is what stops this being retried forever.
+    const leadReady = pending.filter((r) =>
+      isLeadReady({
+        cityId: r.cityId ?? undefined,
+        areaIds: r.areaIds,
+        transactionType: r.transactionType ?? undefined,
+        category: r.category ?? undefined,
+        minPrice: r.minPrice ?? undefined,
+        maxPrice: r.maxPrice ?? undefined,
+      }),
+    );
+    if (leadReady.length === 0) {
+      this.logger.log(`${pending.length} requirement(s) pending but none are lead-ready yet`);
+      return;
+    }
+
     // Built up per owner first, so somebody matching five requirements gets one email listing
     // five things rather than five emails.
     const linesByOwner = new Map<string, string[]>();
     const notifiedRequirementIds: string[] = [];
 
-    for (const requirement of pending) {
+    for (const requirement of leadReady) {
       const owners = await this.ownersFor(requirement);
       if (owners.length === 0) {
         // Nobody to tell. Left un-stamped on purpose: an owner may list in that area next week,
@@ -111,7 +135,7 @@ export class RequirementMatchJob {
     }
 
     if (linesByOwner.size === 0) {
-      this.logger.log(`${pending.length} requirement(s) pending but no matching owners yet`);
+      this.logger.log(`${leadReady.length} requirement(s) lead-ready but no matching owners yet`);
       return;
     }
 

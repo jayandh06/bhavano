@@ -33,12 +33,17 @@ function make(options: { pending?: Record<string, unknown>[]; listings?: Record<
   };
 }
 
+// Lead-ready by default (isLeadReady needs cityId, >=1 areaId, transactionType, category and a
+// budget) — a row missing any of these is exactly what the lead-ready filter now exists to skip,
+// see "skips a requirement that isn't lead-ready yet" below for that case specifically.
 const requirement = (overrides: Record<string, unknown> = {}) => ({
   id: 'r1',
   seekerId: 'seeker1',
   searchLabel: '2 BHK apartment for rent in Koramangala, Bengaluru',
   cityId: 'c1',
   areaId: 'a1',
+  areaIds: ['a1'],
+  transactionType: 'rent',
   category: 'apartment',
   maxPrice: 40000,
   moveInBy: null,
@@ -65,14 +70,33 @@ describe('RequirementMatchJob', () => {
     expect(listingFindMany.mock.calls[0][0].take).toBe(20);
   });
 
-  it('drops the area constraint for a city-wide requirement but keeps the city', async () => {
-    const { job, listingFindMany } = make({ pending: [requirement({ areaId: null })] });
+  // A complete (lead-ready) requirement always has >=1 area — "Anywhere in {city}" has been
+  // disallowed since 2026-09-28 — so ownersFor's own defensive `areaId: null` -> city-wide
+  // fallback can no longer be reached through this job for a row that passes the lead-ready
+  // gate below. What's actually reachable, and worth pinning, is that an area-less row never
+  // gets this far at all.
+  it('skips a requirement that is not lead-ready yet — no area, here', async () => {
+    const { job, listingFindMany, notifyRequirementsToOwner } = make({
+      pending: [requirement({ areaId: null, areaIds: [] })],
+    });
 
     await job.runDaily();
 
-    const where = listingFindMany.mock.calls[0][0].where as Record<string, unknown>;
-    expect(where.cityId).toBe('c1');
-    expect(where).not.toHaveProperty('areaId');
+    expect(listingFindMany).not.toHaveBeenCalled();
+    expect(notifyRequirementsToOwner).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['no city', { cityId: null }],
+    ['no transaction type', { transactionType: null }],
+    ['no category', { category: null }],
+    ['no budget', { maxPrice: null }],
+  ])('skips a requirement that is not lead-ready yet — %s', async (_label, overrides) => {
+    const { job, notifyRequirementsToOwner } = make({ pending: [requirement(overrides)] });
+
+    await job.runDaily();
+
+    expect(notifyRequirementsToOwner).not.toHaveBeenCalled();
   });
 
   it('sends one digested message per owner, not one per requirement', async () => {
