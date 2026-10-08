@@ -358,6 +358,7 @@ export function homeCategoryForSegments(parsed: ParsedSegments): HomeTabValue {
   const { category } = parsed;
   if (category === "furniture") return "furniture";
   if (category === "pg") return "pg";
+  if (category === "coworking") return "coworking";
   if (category === "interiors") return "interiors";
   const transactionGroup = impliedTransactionGroup(parsed);
   // No group and nothing to imply one from is the city root (/bengaluru) or the national root
