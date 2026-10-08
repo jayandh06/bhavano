@@ -10,6 +10,7 @@ const INTENT_SLUGS = {
     buy: "buy",
     rentLease: "rent-lease",
     pg: "pg",
+    coworking: "coworking",
     furniture: "furniture",
     interiors: "interiors",
 };

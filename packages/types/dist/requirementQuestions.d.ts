@@ -42,7 +42,9 @@ export declare const REQUIREMENT_INTENTS: {
     value: RequirementIntent;
     label: string;
 }[];
-/** Which categories each intent offers — the same lists as the home tabs' property-type facet. */
+/** Which categories each intent offers — the same lists as the home tabs' property-type facet.
+ * Coworking is its own intent (not folded into rentLease) to mirror HOME_TABS, which promoted it
+ * to its own tab for the same "nothing narrower to offer, deserves its own entry point" reason. */
 export declare const INTENT_CATEGORIES: Record<RequirementIntent, ListingCategory[]>;
 export declare const REQUIREMENT_CATEGORY_LABELS: Record<ListingCategory, string>;
 /** The follow-up for the two intents that span two transaction types. Rent vs lease matters more

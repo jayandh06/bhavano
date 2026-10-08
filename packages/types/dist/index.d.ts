@@ -47,7 +47,7 @@ export type SellerType = "owner" | "agent";
 /** Homepage top-level browsing tab — organized around seeker intent, not a flat
  * (category x transactionType) grid. "buy"/"rentLease" filter by transactionType
  * (+ an optional propertyType sub-filter); "pg"/"furniture" filter by category alone. */
-export type HomeCategoryFilter = "buy" | "rentLease" | "pg" | "furniture" | "interiors";
+export type HomeCategoryFilter = "buy" | "rentLease" | "pg" | "coworking" | "furniture" | "interiors";
 /** Sub-filter shown under the Buy / Rent & Lease tabs only. */
 export type PropertyTypeFilter = "house" | "apartment" | "villa" | "storage" | "coworking" | "plot" | "commercial";
 export interface City {

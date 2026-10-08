@@ -54,15 +54,19 @@ export const REQUIREMENT_INTENTS: { value: RequirementIntent; label: string }[] 
   { value: "buy", label: "Buy" },
   { value: "rentLease", label: "Rent & Lease" },
   { value: "pg", label: "PG" },
+  { value: "coworking", label: "Coworking" },
   { value: "furniture", label: "Furniture" },
   { value: "interiors", label: "Interiors" },
 ];
 
-/** Which categories each intent offers — the same lists as the home tabs' property-type facet. */
+/** Which categories each intent offers — the same lists as the home tabs' property-type facet.
+ * Coworking is its own intent (not folded into rentLease) to mirror HOME_TABS, which promoted it
+ * to its own tab for the same "nothing narrower to offer, deserves its own entry point" reason. */
 export const INTENT_CATEGORIES: Record<RequirementIntent, ListingCategory[]> = {
   buy: ["house", "apartment", "villa", "plot", "commercial"],
-  rentLease: ["house", "apartment", "villa", "commercial", "storage", "coworking"],
+  rentLease: ["house", "apartment", "villa", "commercial", "storage"],
   pg: ["pg"],
+  coworking: ["coworking"],
   furniture: ["furniture"],
   interiors: ["interiors"],
 };
@@ -96,7 +100,7 @@ export const INTENT_TRANSACTION_CHOICES: Partial<Record<RequirementIntent, { val
 /** Reads the intent back out of stored criteria. `buy` and `sell` both mean the seeker is buying:
  * listings say `sell`, and some older captures said `buy`. */
 export function intentOf(category?: ListingCategory, transactionType?: TransactionType): RequirementIntent | undefined {
-  if (category === "pg" || category === "furniture" || category === "interiors") return category;
+  if (category === "pg" || category === "coworking" || category === "furniture" || category === "interiors") return category;
   if (transactionType === "buy" || transactionType === "sell") return "buy";
   if (transactionType === "rent" || transactionType === "lease") return "rentLease";
   return undefined;
@@ -116,6 +120,8 @@ export function applyIntent(
       return { category: keepCategory, transactionType: current.transactionType === "lease" ? "lease" : "rent" };
     case "pg":
       return { category: "pg", transactionType: "rent" };
+    case "coworking":
+      return { category: "coworking", transactionType: current.transactionType === "lease" ? "lease" : "rent" };
     case "furniture":
       return { category: "furniture", transactionType: current.transactionType === "rent" ? "rent" : "sell" };
     case "interiors":

@@ -37,13 +37,10 @@ exports.POST_CATEGORY_GROUPS = [
             { value: "storage", label: "Storage space", icon: "📦", iconName: "catStorage" },
         ],
     },
-    {
-        title: "Home & furniture",
-        options: [
-            { value: "furniture", label: "Furniture", icon: "🛋️", iconName: "catFurniture" },
-            { value: "interiors", label: "Interiors", icon: "🎨", iconName: "catInteriors" },
-        ],
-    },
+    // "Home & furniture" (Furniture, Interiors) deliberately hidden for now — low inventory, and
+    // the focus is on core real estate first. Not removed from ListingCategory/the Prisma enum, so
+    // existing listings and their browse pages keep working exactly as before; this only stops new
+    // ones from being posted via this picker. See docs/plans/furniture-interiors-paused.md.
 ];
 /** Flat list, for anywhere that needs to look a category up rather than offer a choice. */
 exports.POST_CATEGORIES = exports.POST_CATEGORY_GROUPS.flatMap((g) => g.options);

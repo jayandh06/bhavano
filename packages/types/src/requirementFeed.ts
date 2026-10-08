@@ -44,6 +44,7 @@ const INTENT_SLUGS: Record<RequirementIntent, string> = {
   buy: "buy",
   rentLease: "rent-lease",
   pg: "pg",
+  coworking: "coworking",
   furniture: "furniture",
   interiors: "interiors",
 };

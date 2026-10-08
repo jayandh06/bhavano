@@ -38,14 +38,18 @@ exports.REQUIREMENT_INTENTS = [
     { value: "buy", label: "Buy" },
     { value: "rentLease", label: "Rent & Lease" },
     { value: "pg", label: "PG" },
+    { value: "coworking", label: "Coworking" },
     { value: "furniture", label: "Furniture" },
     { value: "interiors", label: "Interiors" },
 ];
-/** Which categories each intent offers — the same lists as the home tabs' property-type facet. */
+/** Which categories each intent offers — the same lists as the home tabs' property-type facet.
+ * Coworking is its own intent (not folded into rentLease) to mirror HOME_TABS, which promoted it
+ * to its own tab for the same "nothing narrower to offer, deserves its own entry point" reason. */
 exports.INTENT_CATEGORIES = {
     buy: ["house", "apartment", "villa", "plot", "commercial"],
-    rentLease: ["house", "apartment", "villa", "commercial", "storage", "coworking"],
+    rentLease: ["house", "apartment", "villa", "commercial", "storage"],
     pg: ["pg"],
+    coworking: ["coworking"],
     furniture: ["furniture"],
     interiors: ["interiors"],
 };
@@ -76,7 +80,7 @@ exports.INTENT_TRANSACTION_CHOICES = {
 /** Reads the intent back out of stored criteria. `buy` and `sell` both mean the seeker is buying:
  * listings say `sell`, and some older captures said `buy`. */
 function intentOf(category, transactionType) {
-    if (category === "pg" || category === "furniture" || category === "interiors")
+    if (category === "pg" || category === "coworking" || category === "furniture" || category === "interiors")
         return category;
     if (transactionType === "buy" || transactionType === "sell")
         return "buy";
@@ -95,6 +99,8 @@ function applyIntent(intent, current) {
             return { category: keepCategory, transactionType: current.transactionType === "lease" ? "lease" : "rent" };
         case "pg":
             return { category: "pg", transactionType: "rent" };
+        case "coworking":
+            return { category: "coworking", transactionType: current.transactionType === "lease" ? "lease" : "rent" };
         case "furniture":
             return { category: "furniture", transactionType: current.transactionType === "rent" ? "rent" : "sell" };
         case "interiors":
