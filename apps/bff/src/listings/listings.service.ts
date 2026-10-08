@@ -160,6 +160,7 @@ function buildHomeCategoryWhere(
   // narrower grouping to fall back to.
   if (!tab) return {};
   if (tab === 'pg') return { category: 'pg' };
+  if (tab === 'coworking') return { category: 'coworking' };
   if (tab === 'furniture') return { category: 'furniture' };
   if (tab === 'interiors') return { category: 'interiors' };
 
