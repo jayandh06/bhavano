@@ -110,6 +110,7 @@ import {
   GoogleAdsConversionProvider,
   POST_AD_SUCCESS_CONVERSION_ACTION_ID,
 } from '../ads/google-ads-conversion.provider';
+import { postAdValueRupees } from '../ads/post-ad-value';
 import { ContactRevealService, type ContactRevealState } from '../contact-reveal/contact-reveal.service';
 import { PlatformFeeSettingsService } from '../plans/platform-fee-settings.service';
 import { platformFeeApplies } from '@bhavano/types/platformFeePricing';
@@ -1313,6 +1314,13 @@ export class ListingsService {
           eventTimestamp: listing.publishedAt ?? listing.createdAt,
           email: owner!.email,
           phone: owner!.phone,
+          // Phase 2 of the conversion-value model (docs/plans/server-side-google-ads-conversion-
+          // upload.md) — expected revenue per poster in this category/transactionType, not a ₹0
+          // placeholder. Target CPA bidding (what every poster campaign actually uses today)
+          // optimizes toward conversion count, not value, so this is purely observational for now
+          // — visible in the Ads UI, not yet driving bids. See post-ad-value.ts's own doc comment.
+          value: postAdValueRupees(listing.category, listing.transactionType),
+          currency: 'INR',
         })
         .catch(() => undefined);
     }

@@ -172,6 +172,49 @@ registration" (fixed in that script's docstring alongside this change). Final st
 purchase/lead actions with an offline successor now matches: plain name = live UPLOAD_CLICKS
 action, `<name>_removed` = REMOVED WEBPAGE action.
 
+## Phase 2 — "Post ad success" gets a value, not a ₹0 placeholder (2026-10-08)
+
+**Why.** Every poster campaign bids on count (Target CPA against "Post ad success"), which treats
+every post as equally valuable. It isn't — a posted plot-for-sale and a posted PG-for-rent have
+very different odds of ever turning into a paid Boost. The account already has the data to know
+this; it just wasn't being reported anywhere Google Ads could eventually use it.
+
+**The model.** `apps/bff/src/ads/post-ad-value.ts` exports `postAdValueRupees(category,
+transactionType)` — expected revenue per self-serve poster (payers *and* non-payers averaged
+together, which is what makes it an expected value rather than an average purchase size), with a
+three-level fallback: exact `category|transactionType` segment → `category` alone → the
+account-wide average. Live numbers behind it, computed 2026-10-08 from real `Listing`/`Payment`
+data (self-serve posts only — `source IN (direct, google_api)`, `createdByAdminId` null):
+
+- **City was tried and dropped as a dimension.** `city x category x transactionType` gave 150
+  possible segments; only 3 cleared a 10-poster minimum. `category x transactionType` is the
+  finest level this account's current volume (337 self-serve posters, 41 paid payments total)
+  actually supports — 8 of 15 real combinations clear the bar.
+- **Window: 7 days, not the 60 originally assumed.** Checked the real post-to-payment latency
+  first: median is 0 days, 98% of payments land within 7 days of the user's first post — boost
+  purchases happen in the same posting session (it's offered right on the review/success screen),
+  not weeks later.
+- **Two independent signals now agree Villa isn't working.** `villa|rent` has a real, confirmed
+  ₹0 value (10 posters, 0 payers) — not a thin-data artifact, an actual number — matching the
+  separate finding in `google-ads-keyword-audit-2026-10.md` that Villa ad groups get zero ad
+  impressions too. Neither keyword wording nor revenue model is the problem there; demand is.
+- Full current table and the fallback reasoning live in `post-ad-value.ts`'s own doc comment,
+  not duplicated here — that's the one place that should stay in sync with the live numbers.
+
+**Wired into the existing upload**, `ListingsService.runPostLiveSideEffects`'s call to
+`uploadClickConversion` — no new conversion action, no new event, just a `value`/`currency` on
+the one that already fires. "New registration" stays valueless; it has no revenue model behind
+it the way a post does.
+
+**Deliberately *not* driving bids yet.** Every poster campaign still runs Target CPA, which
+optimizes toward conversion count, not value — so this is purely observational in the Ads UI for
+now. Static table, not a live recompute, for the same reason `campaign-names.ts` is static: 41
+total paid payments is thin enough that an unattended weekly refresh would just chase noise.
+Regenerate by hand once there's meaningfully more volume behind the thin segments — the same
+~30/month trust threshold already used for this account's tROAS decision is the right bar before
+either refreshing automatically or switching any campaign to value-aware bidding (Maximize
+Conversion Value) to actually act on this.
+
 ## Verification
 
 1. ✅ Manual prerequisites done, confirmed via a real `events:ingest` smoke test (`200`,

@@ -56,10 +56,12 @@ interface UploadClickConversionInput {
   eventTimestamp: Date;
   email?: string | null;
   phone?: string | null;
-  /** The conversion's monetary value, for the purchase actions. Omitted for signup/post-ad,
-   * which are valueless by design — a ₹0 conversion would drag ROAS down rather than say
-   * nothing. Rupees, not paise: `Payment.amount / 100`, the figure actually charged after any
-   * discount, so bidding optimises against real revenue. */
+  /** The conversion's monetary value. For the purchase actions, rupees not paise —
+   * `Payment.amount / 100`, the figure actually charged after any discount — so bidding
+   * optimises against real revenue once a campaign is value-aware. For "Post ad success", an
+   * expected-value estimate by category/transactionType (see post-ad-value.ts) rather than the
+   * actual payment this one listing may or may not generate — still omitted for signup, which
+   * has no revenue model behind it at all. */
   value?: number;
   /** ISO 4217, alongside `value`. Google rejects a value with no currency. */
   currency?: string;
