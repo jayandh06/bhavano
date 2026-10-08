@@ -38,7 +38,7 @@ const SITE_NAME = "Bhavano";
 const ENTITY_ADDRESS_LINES = entityAddressLines();
 const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
 const SITE_DESCRIPTION =
-  "India's home for Buy, Rent, Villas, Plots, Commercial Spaces, Coworking, PG and Furniture listings — browse without login, verified listings across India.";
+  "India's home for Buy, Rent, Villas, Plots, Commercial Spaces, Coworking and PG listings — browse without login, verified listings across India.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

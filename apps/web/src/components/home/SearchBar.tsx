@@ -100,7 +100,7 @@ export function SearchBar({
 }: {
   initialQuery: string;
   /** The city currently being browsed — used as the search target when no other city is named
-   * in the query text (e.g. "furniture under 5000" while already on a Bengaluru page). Undefined
+   * in the query text (e.g. "villa for rent" while already on a Bengaluru page). Undefined
    * on national pages (the all-India homepage, /buy) — there is then no city to fall back to. */
   cityName?: string;
   /** A representative locality for `cityName`, used both for the placeholder and the example
@@ -171,13 +171,13 @@ export function SearchBar({
 
   const cityLabel = cityName ?? "India";
   const placeholder = areaName
-    ? `Search "2BHK in ${areaName}, ${cityLabel}", "furniture under 5000"…`
-    : `Search "2BHK in ${cityLabel}", "PG near IT park", "sofa set"…`;
+    ? `Search "2BHK in ${areaName}, ${cityLabel}", "villa for rent"…`
+    : `Search "2BHK in ${cityLabel}", "PG near IT park", "plot for sale"…`;
 
   const place = areaName ?? cityLabel;
   const exampleChips = [
     `2 BHK in ${place}`,
-    `Furniture under ₹5,000 in ${cityLabel}`,
+    `Villas for rent in ${cityLabel}`,
     `PG in ${cityLabel}`,
     `Coworking in ${cityLabel}`,
   ];

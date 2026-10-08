@@ -100,7 +100,7 @@ export function Header({
             * removed: `display:none` still leaves it in the HTML, so it remains the earliest
             * crawlable statement of what the site is, which is the only reason it exists. */}
           <span className="hidden sm:block opacity-[0.85] truncate max-w-full">
-            India&apos;s home for Buy · Rent · Villas · Plots · Coworking · PG · Commercial · Furniture
+            India&apos;s home for Buy · Rent · Villas · Plots · Coworking · PG · Commercial
           </span>
           {/* Pushed right on a phone. The tagline that used to sit to their left is hidden
             * there, so left-aligned links ended up alone against the edge with the whole bar

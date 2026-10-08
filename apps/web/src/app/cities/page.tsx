@@ -30,7 +30,7 @@ export default async function CitiesPage() {
     <StaticPageLayout title="Browse cities">
       <p className="m-0">
         {cities.length.toLocaleString()} cities across India — pick one to browse houses, apartments, villas, plots,
-        PG accommodation, coworking desks, commercial spaces and furniture listings there.
+        PG accommodation, coworking desks and commercial spaces there.
       </p>
       {topCities.length > 0 && (
         <div>

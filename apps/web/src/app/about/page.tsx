@@ -15,8 +15,8 @@ export default function AboutPage() {
       <PageSection heading="Who we are">
         <p className="m-0">
           {entityOperatorSentence()} Bhavano is a classifieds marketplace where people browse, post, buy, sell, rent
-          or lease houses, apartments, villas, plots, PG accommodation, storage space, coworking desks, commercial
-          spaces and furniture across India — with no login needed to browse.
+          or lease houses, apartments, villas, plots, PG accommodation, storage space, coworking desks and commercial
+          spaces across India — with no login needed to browse.
         </p>
       </PageSection>
 

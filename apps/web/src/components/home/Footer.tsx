@@ -151,7 +151,7 @@ export async function Footer({
           <p className="text-[12.5px] text-text-soft leading-[1.6] m-0 mb-1.5">{ENTITY_TAGLINE}</p>
           <p className="text-[13px] text-text-soft leading-[1.6] m-0">
             Verified listings to buy, rent or lease houses, apartments, villas, plots, coworking desks, commercial
-            spaces, PG accommodation and furniture across India — no login needed to browse.
+            spaces and PG accommodation across India — no login needed to browse.
           </p>
         </div>
         {currentCityName && <LocationBlock heading={`Areas in ${currentCityName}`} items={areaItems} />}
