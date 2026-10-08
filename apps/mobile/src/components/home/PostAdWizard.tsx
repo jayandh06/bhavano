@@ -60,6 +60,7 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
 import {
+  BffError,
   createListing,
   fetchAiGenerateUsage,
   fetchAreas,
@@ -398,6 +399,9 @@ export function PostAdWizard({
   // cleared it after the seller removed photos to get back under the limit. This one is shown only
   // beside the photo picker, and cleared by anything that changes the photos.
   const [photoNotice, setPhotoNotice] = useState<string | null>(null);
+  // 1-based photoNo values the server flagged as already in use elsewhere — see web's identical
+  // state for why this is cleared on any photo list mutation.
+  const [duplicatePhotoNos, setDuplicatePhotoNos] = useState<number[]>([]);
   const [createdListing, setCreatedListing] = useState<ListingDetailDto | null>(null);
   // Captured from onSubmit's own resolved token (accessToken prop, or the SecureStore fallback
   // right after a just-completed login) rather than reusing the prop directly — the two can be
@@ -813,6 +817,7 @@ export function PostAdWizard({
     if (result.canceled) return;
 
     setPhotoNotice(null);
+    setDuplicatePhotoNos([]);
     const accepted: string[] = [];
     for (const asset of result.assets) {
       if (asset.mimeType && !ALLOWED_PHOTO_MIME_TYPES.includes(asset.mimeType)) {
@@ -830,6 +835,7 @@ export function PostAdWizard({
 
   function removePhoto(uri: string) {
     setPhotoNotice(null);
+    setDuplicatePhotoNos([]);
     setPhotoUris((prev) => prev.filter((u) => u !== uri));
   }
 
@@ -1540,6 +1546,19 @@ export function PostAdWizard({
       void logPostAdSuccess({ category: listing.category, transactionType: listing.transactionType });
       setStep("success");
     } catch (e) {
+      // Same "bounce back to Details with something to actually do about it" reasoning as
+      // web's identical check — Review (if this app has one) has no photo-add/remove UI of its
+      // own, so leaving the error here would be a dead end that only fails the same way again.
+      if (e instanceof BffError && e.duplicatePhotoNos?.length) {
+        setDuplicatePhotoNos(e.duplicatePhotoNos);
+        setPhotoNotice(
+          `${e.duplicatePhotoNos.length === 1 ? "The photo outlined in red" : "The photos outlined in red"} ` +
+            `appear${e.duplicatePhotoNos.length === 1 ? "s" : ""} to already be in use on another listing — ` +
+            `remove ${e.duplicatePhotoNos.length === 1 ? "it" : "them"} or replace with a different photo.`,
+        );
+        setStep("details");
+        return;
+      }
       setError(friendlyErrorMessage(e, "Failed to create listing"));
     } finally {
       setPending(false);
@@ -1936,9 +1955,12 @@ export function PostAdWizard({
           )}
           {photoUris.length > 0 && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
-              {photoUris.map((uri) => (
+              {photoUris.map((uri, i) => (
                 <View key={uri}>
-                  <Image source={{ uri }} style={styles.photoThumb} />
+                  <Image
+                    source={{ uri }}
+                    style={[styles.photoThumb, duplicatePhotoNos.includes(i + 1) && { borderWidth: 2, borderColor: "#c0554b" }]}
+                  />
                   <Pressable
                     onPress={() => removePhoto(uri)}
                     style={[styles.removeBadge, { backgroundColor: colors.surface }]}

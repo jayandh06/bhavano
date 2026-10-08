@@ -81,6 +81,28 @@ export class BffError extends Error {
       ? "Something went wrong on our side — please try again."
       : "That didn't work — please try again.";
   }
+
+  /** Set only for the DUPLICATE_PHOTO case (see DuplicatePhotoErrorBody) — the 1-based photoNo
+   * values of the uploaded photos ModerationService flagged as already in use on another
+   * listing, so the caller can highlight/let the seller remove exactly those instead of
+   * guessing which of up to MAX_PHOTOS it was.
+   *
+   * Reads `code`/`duplicatePhotoNos` off the *top level* of the parsed body, not nested under
+   * `message` — passing a plain object (not a string) to BadRequestException makes Nest's
+   * BaseExceptionFilter send that object as the response body verbatim (confirmed from its
+   * source: `const message = isObject(res) ? res : {...}`), so `message` here is just this
+   * body's own string field, not a wrapper around it. */
+  get duplicatePhotoNos(): number[] | undefined {
+    try {
+      const parsed = JSON.parse(this.body) as { code?: string; duplicatePhotoNos?: number[] };
+      if (parsed.code === "DUPLICATE_PHOTO" && Array.isArray(parsed.duplicatePhotoNos)) {
+        return parsed.duplicatePhotoNos;
+      }
+    } catch {
+      // Not JSON — same fallback as userMessage above.
+    }
+    return undefined;
+  }
 }
 
 /** Text safe to show a user for any error thrown while calling the BFF. Never the raw
