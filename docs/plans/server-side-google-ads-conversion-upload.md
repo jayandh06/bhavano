@@ -215,6 +215,23 @@ Regenerate by hand once there's meaningfully more volume behind the thin segment
 either refreshing automatically or switching any campaign to value-aware bidding (Maximize
 Conversion Value) to actually act on this.
 
+**Regenerating the table**: `apps/bff/scripts/regenerate-post-ad-value.ts` re-runs the same
+analysis against live data (posters/payers/revenue per segment, plus the latency check that
+justified the 7-day window) and prints a reviewable table — never writes anything itself. Run it,
+read the output, then hand-edit `post-ad-value.ts`'s three tables if anything's actually changed.
+Confirmed working against production 2026-10-08: numbers were stable (337→338 posters, same
+ranking), so the current hardcoded table didn't need updating yet.
+
+**Test coverage**: `post-ad-value.spec.ts` covers the fallback chain in isolation (segment →
+category → account-wide, plus Villa's real zero not being confused with a fallback). A new
+`describe('ListingsService.runPostLiveSideEffects — Post ad success conversion value')` block in
+`listings.service.spec.ts` covers the actual wiring — calls the private method directly (`create()`
+itself needs mocking moderation/pricing/slots/locations just to reach it, which would make the
+test mostly about unrelated plumbing) and asserts `uploadClickConversion` receives the right
+`value`/`currency` for a plain segment, a thin one that falls back, and Villa's real zero — plus
+that nothing uploads at all when tracking wasn't authorized. Neither this call path nor `create()`
+itself had any test coverage before this.
+
 ## Verification
 
 1. ✅ Manual prerequisites done, confirmed via a real `events:ingest` smoke test (`200`,

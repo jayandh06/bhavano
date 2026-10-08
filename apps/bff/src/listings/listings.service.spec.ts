@@ -2398,3 +2398,102 @@ describe('ListingsService.linkListingViewsToUser', () => {
     expect(recordInterest).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('ListingsService.runPostLiveSideEffects — Post ad success conversion value', () => {
+  // runPostLiveSideEffects is private; create() itself touches moderation, pricing, slots,
+  // locations and three Prisma tables just to reach it, which would make a test of this one
+  // side effect mostly a test of unrelated plumbing. Calling it directly (TS's `private` is a
+  // compile-time check only) keeps this test scoped to what actually changed: does the right
+  // value reach uploadClickConversion for a given category/transactionType.
+  function makeSideEffectsService() {
+    const uploadClickConversion = jest.fn().mockResolvedValue(undefined);
+    const googleAdsConversionProvider = { uploadClickConversion } as unknown as GoogleAdsConversionProvider;
+    const notificationsService = {
+      notifyListingPosted: jest.fn().mockResolvedValue(null),
+      publishToFacebookPage: jest.fn().mockResolvedValue(null),
+    } as unknown as NotificationsService;
+    const savedSearchesService = { notifyMatchingBuyers: jest.fn().mockResolvedValue(undefined) } as unknown as SavedSearchesService;
+    const referralsService = { recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined) } as unknown as ReferralsService;
+    const prisma = { listingNotificationLog: { create: jest.fn() } } as unknown as PrismaService;
+
+    const service = new ListingsService(
+      prisma,
+      {} as ModerationService,
+      { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
+      notificationsService,
+      savedSearchesService,
+      {} as LocationsService,
+      {} as R2StorageService,
+      {} as CdnPurgeService,
+      {} as ListingSlotsService,
+      googleAdsConversionProvider,
+      {} as ContactRevealService,
+      {} as PlatformFeeSettingsService,
+      { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+      { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
+      referralsService,
+    );
+    return { service, uploadClickConversion };
+  }
+
+  function makeListing(category: string, transactionType: string) {
+    return {
+      id: 'listing1',
+      ownerId: 'owner1',
+      slug: 'a-nice-place',
+      title: 'A nice place',
+      price: 20000,
+      priceQualifier: '',
+      priceUnit: null,
+      attributes: {},
+      category,
+      transactionType,
+      publishedAt: new Date('2026-10-08T00:00:00Z'),
+      createdAt: new Date('2026-10-08T00:00:00Z'),
+      city: { name: 'Bengaluru' },
+      area: { name: 'Koramangala' },
+    };
+  }
+
+  const owner = { email: 'owner@example.com', phone: '9999999999', acquisitionGclid: 'gclid-abc' };
+
+  it('attaches the segment value for a category/transactionType with its own entry', async () => {
+    const { service, uploadClickConversion } = makeSideEffectsService();
+
+    await (service as any).runPostLiveSideEffects(makeListing('plot', 'sell'), owner, true, 'owner1');
+
+    expect(uploadClickConversion).toHaveBeenCalledWith(
+      expect.objectContaining({ value: 2339, currency: 'INR' }),
+    );
+  });
+
+  it('falls back through the chain for a thin category/transactionType combination', async () => {
+    const { service, uploadClickConversion } = makeSideEffectsService();
+
+    // "commercial|sell" has no segment entry (only 4 posters in the 2026-10-08 analysis) — falls
+    // back to the "commercial" category value.
+    await (service as any).runPostLiveSideEffects(makeListing('commercial', 'sell'), owner, true, 'owner1');
+
+    expect(uploadClickConversion).toHaveBeenCalledWith(
+      expect.objectContaining({ value: 2288, currency: 'INR' }),
+    );
+  });
+
+  it('sends a real zero for Villa, not a fallback value', async () => {
+    const { service, uploadClickConversion } = makeSideEffectsService();
+
+    await (service as any).runPostLiveSideEffects(makeListing('villa', 'rent'), owner, true, 'owner1');
+
+    expect(uploadClickConversion).toHaveBeenCalledWith(
+      expect.objectContaining({ value: 0, currency: 'INR' }),
+    );
+  });
+
+  it('does not upload anything when tracking was not authorized', async () => {
+    const { service, uploadClickConversion } = makeSideEffectsService();
+
+    await (service as any).runPostLiveSideEffects(makeListing('plot', 'sell'), owner, false, 'owner1');
+
+    expect(uploadClickConversion).not.toHaveBeenCalled();
+  });
+});
