@@ -167,6 +167,10 @@ function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loa
 
   return (
     <div style={{ padding: 16, background: "var(--bg)" }}>
+      {/* Capped the same as the standalone trail page, even though the table row around it now
+          spans the full page (14 columns genuinely needs that) — stretching this single column
+          of entries out to match would just spread it thin with no benefit. */}
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
         <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
           Page trail — {visit.pageViewCount} page{visit.pageViewCount === 1 ? "" : "s"}
@@ -219,6 +223,7 @@ function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loa
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }
