@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import type { ListingDetailDto, ListingStatus, MyReferralsDto } from "@bhavano/types";
-import { slugify } from "@bhavano/types/slugify";
 import { listingPriceText } from "@bhavano/types/priceWords";
+import { postHref } from "@/lib/postHref";
 import { auth } from "@/auth";
 import { BffAuthError, fetchMyListings, fetchMyReferrals, fetchProfile, previewBoostPricing } from "@/lib/bff";
 import { ACTIVE_PROMO_CODE } from "@bhavano/types/promoCode";
@@ -114,7 +114,7 @@ async function MyListingsGrid({
         <ListingSlotMeter profile={profile} />
         <p className="text-muted text-sm">
         You haven&apos;t posted anything yet —{" "}
-        <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} className="text-green font-bold">
+        <Link href={postHref(cityName, "my_listings_empty")} className="text-green font-bold">
           post your first ad
         </Link>
         .

@@ -13,6 +13,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/logins", label: "Recent logins" },
   { href: "/users", label: "Users" },
   { href: "/page-visits", label: "Page visits" },
+  { href: "/post-funnel", label: "Post funnel" },
   { href: "/requirements", label: "Requirements" },
   { href: "/referrals", label: "Referrals" },
   { href: "/search-demand", label: "Search demand" },

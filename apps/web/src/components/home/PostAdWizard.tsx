@@ -258,6 +258,20 @@ function reportBoostRecoveryEvent(
   });
 }
 
+/** Same synthetic-pageview trick again, for the login wall (`post_login_required`'s two call
+ * sites below) — until now only visible in GTM/GA4, invisible to the admin trail like
+ * category/transactionType/details were before this doc. */
+function reportLoginRequired(step: Step) {
+  void fetch("/api/analytics/pageview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: `/post/login-required?step=${encodeURIComponent(step)}` }),
+    keepalive: true,
+  }).catch(() => {
+    // Best-effort, same as reportPostError's own write.
+  });
+}
+
 /**
  * One `post_step_view` per step the user actually reaches, and resets scroll to the top of the
  * page on every step change.
@@ -273,30 +287,46 @@ function reportBoostRecoveryEvent(
  * arrival at a step rather than on the button that leaves the previous one, so a step reached by
  * the Back button counts the same as one reached going forward.
  *
- * Preview is an in-wizard step (URL stays `/post`), so SoftNavPageViews / middleware never see
- * it. When it opens, also write a synthetic PageView at `/post/preview` so admin Page visits
- * shows who reached card preview — same hop SoftNav uses, same 2s same-path dedupe.
+ * Every step is an in-wizard step (URL stays `/post`), so SoftNavPageViews / middleware never
+ * see any of them — a synthetic PageView is written for every one (not just Preview, as
+ * before), so admin Page visits shows the full five-step trail per session, not just the tail
+ * end of it. `entry` (which on-site link sent this visitor to `/post` — see
+ * docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md) rides along on every one of
+ * these, not just the first, so the funnel stays sliceable by entry point at any step, including
+ * one reached after a page reload where the original `?from=` is long gone from the URL.
  *
  * `/post/success` is NOT written from here — createListingAction passes this session's id to
  * the BFF, which records it itself once the listing actually goes live. A fire-and-forget client
  * request after the fact silently dropped on a network blip / blocker / backgrounding, which is
  * exactly what a "did the post actually finish" signal cannot afford to miss.
  */
-function StepTracker({ step }: { step: Step }) {
+const STEP_SYNTHETIC_PATH: Record<Step, string | null> = {
+  category: "/post/category",
+  transactionType: "/post/transaction-type",
+  details: "/post/details",
+  review: "/post/preview",
+  success: null,
+};
+
+function StepTracker({ step, entry, loggedIn }: { step: Step; entry: string; loggedIn: boolean }) {
   useEffect(() => {
     window.scrollTo(0, 0);
-    pushDataLayerEvent("post_step_view", { step });
+    pushDataLayerEvent("post_step_view", { step, entry, loggedIn });
 
-    if (step !== "review") return;
+    const path = STEP_SYNTHETIC_PATH[step];
+    if (!path) return;
+    // `loggedIn` rides along too — whether the login wall (post_login_required) correlates with
+    // entry point/platform is as much a funnel question as the step reached, and this is cheaper
+    // than a second join against LoginEvent timestamps to approximate the same thing.
     void fetch("/api/analytics/pageview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "/post/preview" }),
+      body: JSON.stringify({ path: `${path}?from=${encodeURIComponent(entry)}&loggedIn=${loggedIn ? 1 : 0}` }),
       keepalive: true,
     }).catch(() => {
       // Offline or navigated away mid-flight — same stance as SoftNavPageViews.
     });
-  }, [step]);
+  }, [step, entry]);
   return null;
 }
 
@@ -345,6 +375,7 @@ export function PostAdWizard({
   presetTransactionType,
   sellerType: profileSellerType,
   isAdmin = false,
+  entry = "direct",
 }: {
   cities: City[];
   defaultCityId?: string;
@@ -361,6 +392,12 @@ export function PostAdWizard({
   sellerType: SellerType | null;
   /** Offers "Posting for someone else" — see AssistedSellerPanel. */
   isAdmin?: boolean;
+  /** From `/post?from=<slug>` — which on-site link/button sent this visitor here (see
+   * docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md). Threaded into every
+   * step's synthetic PageView so the admin trail can answer "which entry point, which step" at
+   * once, not just one or the other. "direct" covers a typed URL, bookmark, or back/forward —
+   * anything with no `from` param. */
+  entry?: string;
 }) {
   const { requireLogin, requireVerifiedPhone } = useAuthGate();
   const [listingId] = useState(() => crypto.randomUUID());
@@ -1532,6 +1569,7 @@ export function PostAdWizard({
     setSellerTypeMissing(false);
     if (!activeToken) {
       pushDataLayerEvent("post_login_required", { step });
+      reportLoginRequired(step);
       requireLogin({ onSuccess: () => setStep("review") });
       return;
     }
@@ -1610,6 +1648,7 @@ export function PostAdWizard({
     if (!activeToken) {
       setPending(false);
       pushDataLayerEvent("post_login_required", { step });
+      reportLoginRequired(step);
       requireLogin({ onSuccess: () => void onSubmit() });
       return;
     }
@@ -1839,7 +1878,7 @@ export function PostAdWizard({
 
   return (
     <div>
-      <StepTracker step={step} />
+      <StepTracker step={step} entry={entry} loggedIn={loggedIn} />
       {draftRestored && step !== "success" && (
         // Deliberately loud: someone who tapped "Post ad" and landed mid-form, possibly in a
         // category they did not choose today, has to understand why before they publish into it.
@@ -2537,7 +2576,7 @@ export function PostAdWizard({
           {/* A full load, so the next ad starts from an empty wizard rather than this one's state. */}
           <button
             type="button"
-            onClick={() => window.location.assign("/post")}
+            onClick={() => window.location.assign("/post?from=post_another_ad")}
             className="text-[13px] font-bold text-muted hover:text-text transition-colors bg-transparent border-0 cursor-pointer"
           >
             Post another ad &rarr;

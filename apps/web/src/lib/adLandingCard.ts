@@ -141,9 +141,8 @@ export function resolveAdLandingIntent(
 
 export function adLandingPostHref(intent: AdLandingIntentKey): string {
   const card = AD_LANDING_INTENTS[intent];
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ from: "ad_landing_card" });
   if (card.category) params.set("category", card.category);
   if (card.transactionType) params.set("transactionType", card.transactionType);
-  const qs = params.toString();
-  return qs ? `/post?${qs}` : "/post";
+  return `/post?${params.toString()}`;
 }

@@ -175,7 +175,7 @@ export function HomeDrawer({
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <Pressable onPress={() => go("/post")} style={styles.navRow}>
+          <Pressable onPress={() => go("/post?from=drawer")} style={styles.navRow}>
             <Icon name="list" size={17} color={colors.text} />
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>For Owners</Text>
           </Pressable>

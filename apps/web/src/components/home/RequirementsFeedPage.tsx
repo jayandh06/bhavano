@@ -536,7 +536,11 @@ function FeedCard({ card }: { card: RequirementFeedCardDto }) {
     sizeText(card),
     moveInText(card.moveInBy),
   ].filter((fact): fact is string => Boolean(fact));
-  const postParams = new URLSearchParams({ category: card.category, transactionType: card.transactionType });
+  const postParams = new URLSearchParams({
+    category: card.category,
+    transactionType: card.transactionType,
+    from: "requirements_feed",
+  });
   if (card.cityName) postParams.set("city", slugify(card.cityName));
 
   return (

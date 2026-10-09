@@ -1,9 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { resolvePostEntry } from "@bhavano/types/postEntry";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useCitiesQuery } from "../../src/lib/queries";
+import { logPostPageView } from "../../src/lib/firebaseAnalytics";
 import { PostAdWizard } from "../../src/components/home/PostAdWizard";
 import { ScreenHeader } from "../../src/components/home/ScreenHeader";
 
@@ -13,6 +15,22 @@ export default function PostScreen() {
   // `all=true` — not just the popular subset — so the currently-selected city stays a real
   // option in the wizard's dropdown even if it's a tier-2 city.
   const { data: cities, isLoading } = useCitiesQuery(undefined, true);
+
+  // Which on-site control sent this visitor here — see
+  // docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md. Unlike web, there's no
+  // "typed URL"/bookmark case on mobile — tapping the bottom tab itself (the overwhelmingly
+  // common path) carries no `from` param at all, so that's the default rather than "direct".
+  const params = useLocalSearchParams<{ from?: string }>();
+  const entry = resolvePostEntry(params.from ?? "bottom_tab");
+  const pageViewSentRef = useRef(false);
+  useEffect(() => {
+    if (pageViewSentRef.current) return;
+    pageViewSentRef.current = true;
+    void logPostPageView({ loggedIn: !!accessToken, entry });
+    // Fire once per screen mount, same as web's PostPageTracker — not keyed on accessToken/entry
+    // changing later.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // The tab navigator keeps this screen mounted across tab switches. Without remounting, a
   // category (and the rest of the draft) picked on an earlier visit stays highlighted when the
@@ -54,6 +72,7 @@ export default function PostScreen() {
         cities={cities}
         defaultCityId={city?.id}
         accessToken={accessToken ?? undefined}
+        entry={entry}
       />
     </View>
   );

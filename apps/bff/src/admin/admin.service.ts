@@ -66,6 +66,8 @@ import type { CreateAssistedListingDto } from './dto/create-assisted-listing.dto
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
+import { PostFunnelQueryDto } from './dto/post-funnel-query.dto';
+import type { PostFunnelDto } from '@bhavano/types/postFunnel';
 import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
@@ -92,6 +94,26 @@ const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
 const ACTIVITY_LIMIT_PER_SOURCE = 50;
 const ACTIVITY_TIMELINE_CAP = 100;
 const SESSION_TRAIL_CAP = 1000;
+
+/** The `/post` wizard's funnel, in order — see AdminService.getPostFunnel. `exact: true` for the
+ * two real paths with no query string of their own (the bare arrival, and success, written
+ * server-side with nothing appended); every synthetic step path is a `startsWith`, since each
+ * one always carries `?from=&loggedIn=`. */
+const POST_FUNNEL_STEPS: { path: string; label: string; exact: boolean }[] = [
+  { path: '/post', label: 'Arrived at /post', exact: true },
+  { path: '/post/category', label: 'Category', exact: false },
+  { path: '/post/transaction-type', label: 'Transaction type', exact: false },
+  { path: '/post/details', label: 'Details', exact: false },
+  { path: '/post/preview', label: 'Preview', exact: false },
+  { path: '/post/success', label: 'Success', exact: true },
+];
+
+function postFunnelStepForPath(path: string): string | null {
+  for (const step of POST_FUNNEL_STEPS) {
+    if (step.exact ? path === step.path : path.startsWith(step.path)) return step.path;
+  }
+  return null;
+}
 
 /** listRecentLogins is one row per user, built from an in-memory aggregate (see its own doc
  * comment for why) — so sorting is a plain comparator over that set rather than a Prisma
@@ -877,6 +899,100 @@ export class AdminService {
       })),
       total,
       avgPageViewsPerSession: avgRow && avgRow.sessions > 0 ? avgRow.views / avgRow.sessions : null,
+    };
+  }
+
+  /** Ordered session counts through the `/post` wizard's five real steps (plus the bare `/post`
+   * arrival), sliceable by entry point/platform/logged-in state — see
+   * docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md. Every step but `/post`
+   * itself is a synthetic PageView PostAdWizard's StepTracker writes (category/transaction-type/
+   * details/preview carry `?from=&loggedIn=`; `/post/success` is written bare, server-side, by
+   * ListingsService once the listing actually goes live).
+   *
+   * Done in application code rather than SQL: `from`/`loggedIn` live inside PageView.path's own
+   * query string (PageView has no columns for either — see its schema comment), and unpacking a
+   * percent-encoded query string per row is a worse fit for SQL than a single pass over however
+   * many `/post*` rows exist in the requested range, which for an admin-only, occasionally-hit
+   * report is never going to be a lot. */
+  async getPostFunnel(query: PostFunnelQueryDto): Promise<PostFunnelDto> {
+    const { from, to, entry, platform, loggedIn } = query;
+
+    const pageViews = await this.prisma.pageView.findMany({
+      where: {
+        OR: POST_FUNNEL_STEPS.map(({ path, exact }) =>
+          exact ? { path } : { path: { startsWith: path } },
+        ),
+        ...(from || to
+          ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
+          : {}),
+      },
+      select: { sessionId: true, path: true },
+    });
+
+    const sessionIds = [...new Set(pageViews.map((pv) => pv.sessionId))];
+    // Only fetched when actually needed — every other filter is answerable from `pageViews`
+    // alone. "mobile_app" is Visit.deviceType's own value for the native app (see that column's
+    // doc comment) — there's no separate boolean for it.
+    const isAppBySessionId = platform
+      ? new Map(
+          (
+            await this.prisma.visit.findMany({
+              where: { sessionId: { in: sessionIds } },
+              select: { sessionId: true, deviceType: true },
+            })
+          ).map((v) => [v.sessionId, v.deviceType === 'mobile_app']),
+        )
+      : null;
+
+    interface SessionInfo {
+      steps: Set<string>;
+      entry?: string;
+      loggedIn?: boolean;
+    }
+    const bySessionId = new Map<string, SessionInfo>();
+    for (const pv of pageViews) {
+      const stepPath = postFunnelStepForPath(pv.path);
+      if (!stepPath) continue;
+      const info = bySessionId.get(pv.sessionId) ?? { steps: new Set<string>() };
+      info.steps.add(stepPath);
+      try {
+        const params = new URL(pv.path, 'https://x.invalid').searchParams;
+        const fromParam = params.get('from');
+        if (fromParam && info.entry === undefined) info.entry = fromParam;
+        const loggedInParam = params.get('loggedIn');
+        if (loggedInParam !== null && info.loggedIn === undefined) info.loggedIn = loggedInParam === '1';
+      } catch {
+        // Malformed path — the step itself is still counted, just without entry/loggedIn info.
+      }
+      bySessionId.set(pv.sessionId, info);
+    }
+
+    const matchesFilters = (sessionId: string, info: SessionInfo): boolean => {
+      if (entry && info.entry !== entry) return false;
+      if (loggedIn && info.loggedIn !== (loggedIn === 'yes')) return false;
+      if (platform) {
+        const isApp = isAppBySessionId?.get(sessionId) ?? false;
+        if ((platform === 'app') !== isApp) return false;
+      }
+      return true;
+    };
+
+    const counts = POST_FUNNEL_STEPS.map(({ path, label }) => {
+      let sessions = 0;
+      for (const [sessionId, info] of bySessionId) {
+        if (info.steps.has(path) && matchesFilters(sessionId, info)) sessions++;
+      }
+      return { path, label, sessions };
+    });
+
+    return {
+      steps: counts.map((c, i) => ({
+        ...c,
+        pctOfPrevious:
+          i === 0 || counts[i - 1].sessions === 0
+            ? null
+            : Math.round((c.sessions / counts[i - 1].sessions) * 1000) / 10,
+      })),
     };
   }
 

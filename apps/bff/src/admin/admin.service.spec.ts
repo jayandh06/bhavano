@@ -806,3 +806,85 @@ describe('AdminService.mergeUsers', () => {
     expect(accountMergeService.mergeAsAdmin).toHaveBeenCalledWith('admin1', 'u1', 'u2', undefined);
   });
 });
+
+describe('AdminService.getPostFunnel', () => {
+  function pageView(sessionId: string, path: string) {
+    return { sessionId, path };
+  }
+
+  it('counts each step as the distinct sessions that reached it, in order', async () => {
+    const { service, prisma } = makeService({
+      pageView: {
+        findMany: jest.fn().mockResolvedValue([
+          pageView('s1', '/post'),
+          pageView('s1', '/post/category?from=header_desktop&loggedIn=0'),
+          pageView('s1', '/post/transaction-type?from=header_desktop&loggedIn=0'),
+          pageView('s2', '/post'),
+          pageView('s2', '/post/category?from=footer&loggedIn=1'),
+        ]),
+      },
+    });
+    const result = await service.getPostFunnel({});
+    expect(result.steps).toEqual([
+      { path: '/post', label: 'Arrived at /post', sessions: 2, pctOfPrevious: null },
+      { path: '/post/category', label: 'Category', sessions: 2, pctOfPrevious: 100 },
+      { path: '/post/transaction-type', label: 'Transaction type', sessions: 1, pctOfPrevious: 50 },
+      { path: '/post/details', label: 'Details', sessions: 0, pctOfPrevious: 0 },
+      { path: '/post/preview', label: 'Preview', sessions: 0, pctOfPrevious: null },
+      { path: '/post/success', label: 'Success', sessions: 0, pctOfPrevious: null },
+    ]);
+    expect(prisma.visit.findMany).not.toHaveBeenCalled();
+  });
+
+  it('filters by entry, read from the first `from` query param seen for each session', async () => {
+    const { service } = makeService({
+      pageView: {
+        findMany: jest.fn().mockResolvedValue([
+          pageView('s1', '/post/category?from=header_desktop&loggedIn=0'),
+          pageView('s2', '/post/category?from=footer&loggedIn=0'),
+        ]),
+      },
+    });
+    const result = await service.getPostFunnel({ entry: 'footer' });
+    const category = result.steps.find((s) => s.path === '/post/category');
+    expect(category?.sessions).toBe(1);
+  });
+
+  it('filters by logged-in state at the step', async () => {
+    const { service } = makeService({
+      pageView: {
+        findMany: jest.fn().mockResolvedValue([
+          pageView('s1', '/post/category?from=header_desktop&loggedIn=1'),
+          pageView('s2', '/post/category?from=header_desktop&loggedIn=0'),
+        ]),
+      },
+    });
+    const result = await service.getPostFunnel({ loggedIn: 'yes' });
+    const category = result.steps.find((s) => s.path === '/post/category');
+    expect(category?.sessions).toBe(1);
+  });
+
+  it('filters by platform, joining Visit.deviceType only when a platform filter is given', async () => {
+    const { service, prisma } = makeService({
+      pageView: {
+        findMany: jest.fn().mockResolvedValue([
+          pageView('s1', '/post/category?from=header_desktop&loggedIn=0'),
+          pageView('s2', '/post/category?from=header_desktop&loggedIn=0'),
+        ]),
+      },
+      visit: {
+        findMany: jest.fn().mockResolvedValue([
+          { sessionId: 's1', deviceType: 'mobile_app' },
+          { sessionId: 's2', deviceType: 'desktop' },
+        ]),
+      },
+    });
+    const result = await service.getPostFunnel({ platform: 'app' });
+    const category = result.steps.find((s) => s.path === '/post/category');
+    expect(category?.sessions).toBe(1);
+    expect(prisma.visit.findMany).toHaveBeenCalledWith({
+      where: { sessionId: { in: ['s1', 's2'] } },
+      select: { sessionId: true, deviceType: true },
+    });
+  });
+});

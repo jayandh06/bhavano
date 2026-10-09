@@ -17,14 +17,16 @@ import { pushDataLayerEvent } from "@/lib/gtm";
  * The ref, not an empty dep array alone: React runs effects twice in development's strict mode,
  * and a doubled arrival would quietly halve every conversion rate computed from it.
  */
-export function PostPageTracker({ loggedIn }: { loggedIn: boolean }) {
+export function PostPageTracker({ loggedIn, entry }: { loggedIn: boolean; entry: string }) {
   const sentRef = useRef(false);
 
   useEffect(() => {
     if (sentRef.current) return;
     sentRef.current = true;
-    pushDataLayerEvent("post_page_view", { loggedIn });
-  }, [loggedIn]);
+    // `entry` — which on-site link sent this visitor here, or "direct" — see
+    // docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md.
+    pushDataLayerEvent("post_page_view", { loggedIn, entry });
+  }, [loggedIn, entry]);
 
   return null;
 }

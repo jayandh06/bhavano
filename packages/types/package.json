@@ -129,6 +129,14 @@
       "types": "./dist/duplicatePhoto.d.ts",
       "default": "./dist/duplicatePhoto.js"
     },
+    "./postEntry": {
+      "types": "./dist/postEntry.d.ts",
+      "default": "./dist/postEntry.js"
+    },
+    "./postFunnel": {
+      "types": "./dist/postFunnel.d.ts",
+      "default": "./dist/postFunnel.js"
+    },
     "./sellerType": {
       "types": "./dist/sellerType.d.ts",
       "default": "./dist/sellerType.js"

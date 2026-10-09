@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { Area, City } from "@bhavano/types";
 import { ENTITY_TAGLINE, entityCopyright } from "@bhavano/types/legalEntity";
-import { slugify } from "@bhavano/types/slugify";
 import { fetchCities } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
+import { postHref } from "@/lib/postHref";
 import { GooglePlayBadge } from "./GooglePlayBadge";
 
 // Today's largest seeded city has 20 curated areas — this is a defensive ceiling against a
@@ -164,7 +164,7 @@ export async function Footer({
             * it renders the city chip from a cookie at render time, so a copy prefetched from
             * another city's page bakes in the wrong city (see Header.tsx's note). */}
           <div className="flex flex-col gap-2 text-[13px]">
-            <Link href={currentCityName ? `/post?city=${slugify(currentCityName)}` : "/post"} prefetch={false}>
+            <Link href={postHref(currentCityName, "footer")} prefetch={false}>
               Post an ad
             </Link>
             <Link href="/tools" prefetch={false}>Tools</Link>

@@ -113,7 +113,7 @@ export function RequirementFeedCard({ card }: { card: RequirementFeedCardDto }) 
           <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Contact details aren&rsquo;t shared</Text>
         </View>
         <Pressable
-          onPress={() => router.push("/post")}
+          onPress={() => router.push("/post?from=requirements_feed")}
           style={[styles.postButton, { backgroundColor: colors.green }]}
         >
           <Icon name="postAd" size={14} color={colors.onGreen} />

@@ -4,6 +4,8 @@ import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
+import type { PostFunnelDto } from "@bhavano/types/postFunnel";
+import type { PostEntrySource } from "@bhavano/types/postEntry";
 import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
@@ -525,6 +527,24 @@ export function fetchPageVisits(accessToken: string, query: PageVisitsQuery = {}
 
 export function fetchSessionTrail(accessToken: string, sessionId: string): Promise<SessionTrailDto> {
   return authedBffFetch(accessToken, `/admin/page-visits/${encodeURIComponent(sessionId)}/trail`, { cache: "no-store" });
+}
+
+export interface PostFunnelQuery {
+  /** Full ISO instants — the page turns its IST date pickers into `+05:30` day bounds, same
+   * convention as PageVisitsQuery. */
+  from?: string;
+  to?: string;
+  entry?: PostEntrySource;
+  platform?: "web" | "app";
+  loggedIn?: "yes" | "no";
+}
+
+export function fetchPostFunnel(accessToken: string, query: PostFunnelQuery = {}): Promise<PostFunnelDto> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/post-funnel?${params.toString()}`, { cache: "no-store" });
 }
 
 export interface PaymentsQuery {

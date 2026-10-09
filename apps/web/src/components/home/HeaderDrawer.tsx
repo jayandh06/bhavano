@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { City } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
+import { postHref } from "@/lib/postHref";
 import type { ParsedSegments } from "@/lib/seoRoute";
 import { segmentsForHomeCategory } from "@/lib/seoRoute";
 import { buildBrowsePath } from "@/lib/listingPath";
@@ -84,7 +85,7 @@ export function HeaderDrawer({
 
       <div className="my-1.5 border-t border-border" />
 
-      <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} prefetch={false} className={rowClass}>
+      <Link href={postHref(cityName, "drawer")} prefetch={false} className={rowClass}>
         <Icon name="list" className="text-muted" /> For Owners
       </Link>
       <Link href="/help" prefetch={false} className={rowClass}>

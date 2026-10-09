@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { fetchAreas, fetchProfile } from "@/lib/bff";
 import { isListingCategory, isTransactionType } from "@/lib/browseRoute";
+import { resolvePostEntry } from "@bhavano/types/postEntry";
 import { resolveDefaultCity } from "@/lib/defaultCity";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
 import { isAccessTokenValid, isAdminAccessToken } from "@/lib/session";
@@ -23,6 +24,10 @@ export default async function PostAdPage({
   const presetCategory = typeof sp.category === "string" && isListingCategory(sp.category) ? sp.category : undefined;
   const presetTransactionType =
     typeof sp.transactionType === "string" && isTransactionType(sp.transactionType) ? sp.transactionType : undefined;
+  // Which on-site link sent this visitor here — see
+  // docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md. Falls back to "direct" for
+  // a typed URL, bookmark, back/forward, or an unrecognised value.
+  const entry = resolvePostEntry(sp.from);
   // `resolvePageCityContext`'s `allCities` is fetched with `all=true` — not just the popular
   // subset — so a previously-selected tier-2 city is still a real option in the wizard's
   // dropdown, not just a dangling id with no matching entry.
@@ -55,7 +60,7 @@ export default async function PostAdPage({
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text">
       <PageHeader cityName={city?.name} />
-      <PostPageTracker loggedIn={loggedIn} />
+      <PostPageTracker loggedIn={loggedIn} entry={entry} />
       {/* 1280px to match every other page, so the back link and heading start at the same left
         * edge as the logo above them instead of floating in a narrower centred column. The form
         * keeps its 780px measure for readability, left-aligned rather than centred under a
@@ -95,6 +100,7 @@ export default async function PostAdPage({
             presetTransactionType={presetTransactionType}
             sellerType={profile?.sellerType ?? null}
             isAdmin={isAdminAccessToken(accessToken)}
+            entry={entry}
           />
         </div>
       </div>

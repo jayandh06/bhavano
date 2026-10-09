@@ -3,8 +3,43 @@ import { trailEntry, trailEntryHref } from "./pageTrail";
 
 describe("trailEntry", () => {
   it("leaves ordinary paths untouched", () => {
-    expect(trailEntry("/post/preview")).toEqual({ text: "/post/preview", isError: false });
     expect(trailEntry("/")).toEqual({ text: "/", isError: false });
+  });
+
+  it("decodes every wizard step arrival, with no entry suffix when `from` is absent", () => {
+    expect(trailEntry("/post/category")).toEqual({ text: "Reached Category step", isError: false });
+    expect(trailEntry("/post/transaction-type")).toEqual({ text: "Reached Transaction type step", isError: false });
+    expect(trailEntry("/post/details")).toEqual({ text: "Reached Details step", isError: false });
+    expect(trailEntry("/post/preview")).toEqual({ text: "Reached Preview step", isError: false });
+  });
+
+  it("appends the decoded entry source when `from` is present", () => {
+    expect(trailEntry("/post/category?from=header_desktop")).toEqual({
+      text: "Reached Category step — from main header",
+      isError: false,
+    });
+    expect(trailEntry("/post/details?from=requirements_feed")).toEqual({
+      text: "Reached Details step — from requirements feed",
+      isError: false,
+    });
+  });
+
+  it("falls back to the raw slug for an unrecognised `from` value", () => {
+    expect(trailEntry("/post/preview?from=something_new")).toEqual({
+      text: "Reached Preview step — from something_new",
+      isError: false,
+    });
+  });
+
+  it("decodes the login wall shown at a given step", () => {
+    expect(trailEntry("/post/login-required?step=review")).toEqual({
+      text: "Login wall shown (at Preview)",
+      isError: false,
+    });
+    expect(trailEntry("/post/login-required?step=details")).toEqual({
+      text: "Login wall shown (at Details)",
+      isError: false,
+    });
   });
 
   it("decodes a wizard error into a readable, flagged entry", () => {

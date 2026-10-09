@@ -74,7 +74,7 @@ import {
 } from "../../lib/bffClient";
 import { INDIAN_LANGUAGE_LABELS, INDIAN_LANGUAGES, type AiGenerateUsageDto, type IndianLanguage } from "@bhavano/types/listingCopyAssist";
 import { getAnalyticsSessionId, recordAppPageView } from "../../lib/analyticsSession";
-import { logPostAdSuccess } from "../../lib/firebaseAnalytics";
+import { logPostAdSuccess, logPostError, logPostLoginRequired, logPostStepView } from "../../lib/firebaseAnalytics";
 import {
   clearPostAdDraft,
   loadPostAdDraft,
@@ -247,6 +247,16 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
 
 type Step = "category" | "transactionType" | "details" | "review" | "success";
 
+// Mirrors web PostAdWizard.tsx's own STEP_SYNTHETIC_PATH — kept in sync by hand, same as every
+// other web/mobile pair of these constants in this app.
+const STEP_SYNTHETIC_PATH: Record<Step, string | null> = {
+  category: "/post/category",
+  transactionType: "/post/transaction-type",
+  details: "/post/details",
+  review: "/post/preview",
+  success: null,
+};
+
 /** The Post ad button's status text while `pending` — see docs/plans/posting-speed-and-progress.md.
  * Falls back to the old plain "Posting…" before the first upload progress update lands (the brief
  * window spent validating the phone/session) and once everything's uploaded and the listing is
@@ -267,12 +277,17 @@ export function PostAdWizard({
   cities,
   defaultCityId,
   accessToken,
+  entry = "bottom_tab",
 }: {
   cities: City[];
   defaultCityId?: string;
   /** Undefined for a logged-out visitor, who now gets the whole form — see `onSubmit`, matching
    * the website's own PostAdWizard. */
   accessToken?: string;
+  /** Which on-site control sent this visitor here — see
+   * docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md. Threaded into every step's
+   * analytics event, same as web's own `entry` prop. */
+  entry?: string;
 }) {
   const { colors } = useAppTheme();
   const { requireLogin, ensureVerifiedPhone, profile } = useHomeSheets();
@@ -313,15 +328,22 @@ export function PostAdWizard({
     return () => cancelAnimationFrame(raf);
   }, [step]);
   const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
-  // Mirrors the web wizard's StepTracker — scroll reset + a PageView for the in-wizard preview
-  // step, which keeps the route at /post so SoftNavAppPageViews never sees it. `/post/success` is
-  // NOT written from here — createListing sends this session's id, and the BFF records it itself
-  // once the listing actually goes live, which survives a dropped request that a fire-and-forget
-  // call from here would not.
+  // Mirrors the web wizard's StepTracker — scroll reset, a `post_step_view` Firebase event, and a
+  // synthetic PageView for every step (not just Preview, as before this doc), which keeps the
+  // route at /post so SoftNavAppPageViews never sees any of it. `entry` rides along on every one,
+  // same reasoning as web's own StepTracker. `/post/success` is NOT written from here —
+  // createListing sends this session's id, and the BFF records it itself once the listing
+  // actually goes live, which survives a dropped request that a fire-and-forget call from here
+  // would not. See docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md.
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-    if (step === "review") void recordAppPageView("/post/preview");
-  }, [step]);
+    void logPostStepView({ step, entry });
+    const path = STEP_SYNTHETIC_PATH[step];
+    // `loggedIn` rides along too — mirrors web StepTracker's own addition. Approximated from the
+    // `accessToken` prop rather than re-reading SecureStore, same as every other `loggedIn` check
+    // in this component.
+    if (path) void recordAppPageView(`${path}?from=${encodeURIComponent(entry)}&loggedIn=${accessToken ? 1 : 0}`);
+  }, [step, entry, accessToken]);
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [transactionType, setTransactionType] = useState<TransactionType | null>(null);
 
@@ -1402,6 +1424,8 @@ export function PostAdWizard({
     setError(null);
     setSellerTypeMissing(false);
     if (!activeToken) {
+      void logPostLoginRequired({ step });
+      void recordAppPageView(`/post/login-required?step=${encodeURIComponent(step)}`);
       requireLogin({ onSuccess: () => setStep("review") });
       return;
     }
@@ -1432,6 +1456,8 @@ export function PostAdWizard({
       activeToken = (await SecureStore.getItemAsync(TOKEN_KEY)) ?? undefined;
     }
     if (!activeToken) {
+      void logPostLoginRequired({ step });
+      void recordAppPageView(`/post/login-required?step=${encodeURIComponent(step)}`);
       requireLogin({ onSuccess: () => void onSubmit() });
       return;
     }
@@ -1559,7 +1585,15 @@ export function PostAdWizard({
         setStep("details");
         return;
       }
-      setError(friendlyErrorMessage(e, "Failed to create listing"));
+      const message = friendlyErrorMessage(e, "Failed to create listing");
+      setError(message);
+      // Mirrors web PostAdWizard.tsx's reportPostError — until now mobile had no trace anywhere
+      // of a Publish failure, only success. See
+      // docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md.
+      void logPostError({ stage: step === "review" ? "publish" : step, message: message.slice(0, 140) });
+      void recordAppPageView(
+        `/post/error?stage=${encodeURIComponent(step === "review" ? "publish" : step)}&reason=${encodeURIComponent(message.slice(0, 140))}`,
+      );
     } finally {
       setPending(false);
     }

@@ -1,4 +1,53 @@
+/** Which on-site link sent a visitor to `/post` — decodes the `?from=` query param every
+ * `/post/*` synthetic path now carries (see
+ * docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md and
+ * packages/types/src/postEntry.ts, the shared slug list web/mobile both build these from). */
+export const POST_ENTRY_LABELS: Record<string, string> = {
+  header_desktop: "main header",
+  header_mobile: "mobile header",
+  utility_bar: "utility bar",
+  drawer: "drawer",
+  footer: "footer",
+  my_listings_empty: "My Listings empty state",
+  plans_table: "plans comparison table",
+  plans_page: "plans page",
+  requirements_feed: "requirements feed",
+  ad_landing_card: "ad landing card",
+  post_another_ad: "Post another ad button",
+  bottom_tab: "bottom tab",
+};
+
+function entrySuffix(params: URLSearchParams): string {
+  const from = params.get("from");
+  if (!from) return "";
+  return ` — from ${POST_ENTRY_LABELS[from] ?? from}`;
+}
+
+const POST_STEP_LABELS: Record<string, string> = {
+  category: "Category",
+  "transaction-type": "Transaction type",
+  details: "Details",
+  preview: "Preview",
+};
+
+/** `/post/login-required?step=...` carries the wizard's own internal `Step` value (web/mobile
+ * PostAdWizard.tsx's `type Step`), not the kebab-case path slug above — `"review"`/
+ * `"transactionType"`, not `"preview"`/`"transaction-type"`. Separate map, same labels. */
+const WIZARD_STEP_LABELS: Record<string, string> = {
+  category: "Category",
+  transactionType: "Transaction type",
+  details: "Details",
+  review: "Preview",
+};
+
 /** Display form of a Page-visits trail entry.
+ *
+ * `/post/category`, `/post/transaction-type`, `/post/details`, `/post/preview` (each
+ * `?from=<slug>`) are the wizard's own step arrivals — a client-state change, not a real
+ * navigation, so PostAdWizard's StepTracker writes one of these synthetically on every step
+ * instead of leaving category/transactionType/details invisible here (only preview and success
+ * used to be). `/post/login-required?step=...` is the same trick for the login wall. See
+ * docs/plans/post-ad-funnel-step-tracking-and-entry-attribution.md.
  *
  * The web wizard writes `/post/error?stage=publish&reason=...` when Publish or checkout fails
  * (see reportPostError in the web PostAdWizard) — PageView stores only a path, so the reason rides
@@ -22,6 +71,24 @@
 export function trailEntry(path: string): { text: string; isError: boolean } {
   if (path.startsWith("/get-app")) return { text: getAppLabel(path), isError: false };
   if (path.startsWith("/app-install")) return { text: appInstallLabel(path), isError: false };
+  for (const [slug, label] of Object.entries(POST_STEP_LABELS)) {
+    if (!path.startsWith(`/post/${slug}`)) continue;
+    try {
+      const params = new URL(path, "https://x.invalid").searchParams;
+      return { text: `Reached ${label} step${entrySuffix(params)}`, isError: false };
+    } catch {
+      return { text: path, isError: false };
+    }
+  }
+  if (path.startsWith("/post/login-required")) {
+    try {
+      const params = new URL(path, "https://x.invalid").searchParams;
+      const step = params.get("step") ?? "unknown";
+      return { text: `Login wall shown (at ${WIZARD_STEP_LABELS[step] ?? step})`, isError: false };
+    } catch {
+      return { text: path, isError: false };
+    }
+  }
   if (path.startsWith("/login-nudge")) {
     try {
       const params = new URL(path, "https://x.invalid").searchParams;
@@ -124,7 +191,14 @@ function appInstallLabel(path: string): string {
 
 const SITE_URL = "https://www.bhavano.com";
 
-const EVENT_MARKER_PREFIXES = ["/login-nudge", "/post/boost-recovery", "/post/error", "/get-app", "/app-install"];
+const EVENT_MARKER_PREFIXES = [
+  "/login-nudge",
+  "/post/boost-recovery",
+  "/post/error",
+  "/post/login-required",
+  "/get-app",
+  "/app-install",
+];
 
 /** The real page to open for a trail entry, or null for an event marker (see trailEntry above) —
  * those aren't pages anyone can visit, just an event encoded as a path, so there's nothing to

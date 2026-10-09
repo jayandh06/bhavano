@@ -27,7 +27,7 @@ export function UtilityBar() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.green }]}>
-      <Pressable onPress={() => router.push("/post")}>
+      <Pressable onPress={() => router.push("/post?from=utility_bar")}>
         <Text style={[styles.link, { color: colors.onGreen }]}>For Owners</Text>
       </Pressable>
       <Pressable onPress={() => openWebsite("/tools")}>

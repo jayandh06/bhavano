@@ -67,7 +67,7 @@ export function PremiumPlansView({
             {planPricing.freeListingSlots} active listings — included for every account.
           </p>
           <Link
-            href="/post"
+            href="/post?from=plans_page"
             className="inline-block text-[13px] font-bold text-green border-[1.5px] border-border rounded-[10px] px-4 py-2.5 bg-surface-alt"
           >
             Post an ad →

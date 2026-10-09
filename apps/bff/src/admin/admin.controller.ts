@@ -62,6 +62,8 @@ import { AdminUpdateListingDto } from '../listings/dto/update-listing.dto';
 import { ListLoginsDto } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto } from './dto/list-page-visits.dto';
+import { PostFunnelQueryDto } from './dto/post-funnel-query.dto';
+import type { PostFunnelDto } from '@bhavano/types/postFunnel';
 import { ListUsersDto } from './dto/list-users.dto';
 import { SendWelcomeDto } from './dto/send-welcome.dto';
 import { GrantAgentProDto } from './dto/grant-agent-pro.dto';
@@ -335,6 +337,11 @@ export class AdminController {
   @Get('page-visits/:sessionId/trail')
   getSessionTrail(@Param('sessionId') sessionId: string): Promise<SessionTrailDto> {
     return this.adminService.getSessionTrail(sessionId);
+  }
+
+  @Get('post-funnel')
+  getPostFunnel(@Query() query: PostFunnelQueryDto): Promise<PostFunnelDto> {
+    return this.adminService.getPostFunnel(query);
   }
 
   @Get('users')

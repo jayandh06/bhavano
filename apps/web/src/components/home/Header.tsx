@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { City, PopularSearchDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
+import { postHref } from "@/lib/postHref";
 import type { ParsedSegments } from "@/lib/seoRoute";
 import { LocationPicker } from "./LocationPicker";
 import { SearchBar } from "./SearchBar";
@@ -76,7 +77,7 @@ export function Header({
           </Link>
           <span className="flex-1" />
           <Link
-            href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
+            href={postHref(cityName, "header_mobile")}
             className="shrink-0 inline-flex items-center gap-1.5 bg-green text-on-green rounded-lg px-4 py-2 text-[13px] font-bold whitespace-nowrap shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
           >
             <Icon name="postAd" /> Post ad
@@ -113,7 +114,7 @@ export function Header({
               * into a payload that the router may then serve after you have moved to the
               * all-cities home — the chip showing a city you left behind. These are low-traffic
               * utility pages; a fresh fetch on click costs nothing worth this. */}
-            <Link href={cityName ? `/post?city=${slugify(cityName)}` : "/post"} prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
+            <Link href={postHref(cityName, "utility_bar")} prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
               For Owners
             </Link>
             <Link href="/tools" prefetch={false} className="text-inherit transition-colors hover:text-[color:var(--gold)]">
@@ -174,7 +175,7 @@ export function Header({
               * only thing on this row that is not navigation, so it should not look like the
               * city chip beside it. */}
             <Link
-              href={cityName ? `/post?city=${slugify(cityName)}` : "/post"}
+              href={postHref(cityName, "header_desktop")}
               className="ml-auto sm:ml-0 shrink-0 bg-green text-on-green border-0 rounded-lg px-4 sm:px-5 py-[10px] text-[13px] sm:text-sm font-bold whitespace-nowrap shadow-[0_1px_4px_rgba(0,0,0,0.18)]"
             >
               <span className="sm:hidden inline-flex items-center gap-1.5">
