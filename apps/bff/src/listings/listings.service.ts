@@ -1456,6 +1456,11 @@ export class ListingsService {
     ownerId: string,
     trackingAuthorized?: boolean,
     assisted?: AssistedCreateOptions,
+    // Only createListingFromContact sets this — a scraped Google Places business often has just
+    // one downloaded photo, not the normal MIN_PHOTOS a real seller's wizard enforces. The claiming
+    // owner can add more once it's theirs, same "fix it later" treatment as the attribute defaults
+    // in createListingFromContact itself.
+    skipMinPhotos?: boolean,
   ): Promise<ListingDetailDto> {
     // An assisted listing is hidden until claimed, so nothing that belongs to going live applies
     // yet: no checkout, no session trail. Videos are left for the seller to add once it's theirs,
@@ -1463,7 +1468,7 @@ export class ListingsService {
     const input: CreateListingInput = assisted
       ? { ...rawInput, checkoutIntent: undefined, videos: [], sessionId: undefined, claimContactId: undefined }
       : rawInput;
-    if (input.photos.length < MIN_PHOTOS)
+    if (!skipMinPhotos && input.photos.length < MIN_PHOTOS)
       throw new BadRequestException(`At least ${MIN_PHOTOS} photos are required`);
     if (input.photos.length > MAX_PHOTOS)
       throw new BadRequestException(`No more than ${MAX_PHOTOS} photos are allowed`);

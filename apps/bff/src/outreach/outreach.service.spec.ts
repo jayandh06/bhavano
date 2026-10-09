@@ -636,6 +636,9 @@ describe('OutreachService.createListingFromContact — the full success path', (
         priceQualifier: 'onwards',
       }),
       'owner1',
+      undefined,
+      undefined,
+      true,
     );
   });
 
@@ -673,6 +676,9 @@ describe('OutreachService.createListingFromContact — the full success path', (
         },
       }),
       'owner1',
+      undefined,
+      undefined,
+      true,
     );
   });
 });

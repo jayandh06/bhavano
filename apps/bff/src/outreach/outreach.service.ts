@@ -685,6 +685,9 @@ export class OutreachService {
         claimContactId: contact.id,
       },
       owner.id,
+      undefined,
+      undefined,
+      true,
     );
   }
 
