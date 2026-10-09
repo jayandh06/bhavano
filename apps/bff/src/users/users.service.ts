@@ -9,12 +9,14 @@ import type { User, City } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ListingSlotsService } from '../listing-slots/listing-slots.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly listingSlotsService: ListingSlotsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async getProfile(userId: string): Promise<UserProfileDto> {
@@ -87,11 +89,15 @@ export class UsersService {
     const clean = (v: string | undefined) => (v === undefined ? undefined : v.trim() || null);
     const agencyName = dto.sellerType === 'owner' ? null : clean(dto.agencyName);
     const reraNumber = dto.sellerType === 'owner' ? null : clean(dto.reraNumber);
+    // One read covers both the RERA-changed check below and the deferred-welcome check after the
+    // update — see this method's own doc comment on why AuthService.welcomeIfFirstLogin didn't
+    // already send a WhatsApp welcome for this user at login.
+    const before = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { reraNumber: true, name: true, phone: true, email: true, welcomedAt: true },
+    });
     // An admin verified one specific number — a different one (or none) needs checking again.
-    const reraChanged =
-      reraNumber !== undefined &&
-      reraNumber !==
-        (await this.prisma.user.findUnique({ where: { id: userId }, select: { reraNumber: true } }))?.reraNumber;
+    const reraChanged = reraNumber !== undefined && reraNumber !== before?.reraNumber;
 
     // No try/catch for P2002 any more: the only unique field this endpoint could collide on was
     // `email`, and an address now reaches the profile solely through the verified flow, which
@@ -108,6 +114,23 @@ export class UsersService {
       },
       include: { city: true },
     });
+
+    // The welcome WhatsApp for a phone-only (no email) signup was deliberately skipped at login,
+    // not just sent with a null name — AuthService.welcomeIfFirstLogin never marked `welcomedAt`
+    // for exactly this case, so this is that signup's actual first welcome, now that there's a
+    // real name for the template to use instead of "there". Fires at most once per user: gated on
+    // `before.welcomedAt` being null, same idempotency guard welcomeIfFirstLogin itself uses, and
+    // only when this call is the one that just supplied the previously-missing name — not on
+    // every later profile edit. See docs/plans/whatsapp-welcome-mobile-signups.md's 2026-10-09
+    // update.
+    if (before && !before.welcomedAt && !before.name?.trim() && dto.name?.trim() && before.phone && !before.email) {
+      await this.prisma.user.update({ where: { id: userId }, data: { welcomedAt: new Date() } });
+      void this.notificationsService.sendWelcomeWhatsapp({ name: dto.name, phone: before.phone }).then((channel) => {
+        if (!channel) return;
+        return this.prisma.userNotificationLog.create({ data: { userId, kind: 'welcome', channel } });
+      });
+    }
+
     const { activeCount, allowance } =
       await this.listingSlotsService.getSummary(userId);
     return toProfileDto(user, activeCount, allowance);

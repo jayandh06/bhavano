@@ -394,6 +394,14 @@ export class AuthService {
    * docs/plans/whatsapp-welcome-mobile-signups.md. */
   private async welcomeIfFirstLogin(user: User): Promise<void> {
     if (user.welcomedAt) return;
+    // A phone-only (no email) signup has no name yet either at this exact point — ProfileBasics
+    // collects it as a mandatory step moments after this login, not before. Sending now would be
+    // a WhatsApp "Hi there" nobody can get a real one to replace, since this template only ever
+    // goes out once. Left entirely unmarked/unsent here; UsersService.updateProfile fires it
+    // itself, with the real name, the moment that step actually supplies one. Every other signup
+    // (an email on file, or a name already known from Google/Apple) is unaffected. See
+    // docs/plans/whatsapp-welcome-mobile-signups.md's 2026-10-09 update.
+    if (user.phone && !user.email && !user.name?.trim()) return;
     await this.prisma.user.update({
       where: { id: user.id },
       data: { welcomedAt: new Date() },

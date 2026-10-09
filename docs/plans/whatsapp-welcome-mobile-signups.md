@@ -178,3 +178,37 @@ web-originated phone-only signup now also gets a real WhatsApp welcome instead o
 no-op it always had — and, unlike the `client` flag, is unaffected by which app build a request
 came from. The `client` field was removed entirely from `VerifyOtpDto`/`GoogleLoginDto` and the
 mobile app's request bodies, since nothing reads it anymore.
+
+## Update (2026-10-09): waits for the name, instead of greeting "Hi there"
+
+The phone/email routing above fixed *whether* a phone-only signup gets a WhatsApp welcome at all,
+but not *what it says*: `sendWelcomeWhatsapp` already passed `user.name ?? 'there'` to the
+template, and `user.name` is always null at the exact moment `welcomeIfFirstLogin` fires —
+`AuthService.verifyOtp` calls it immediately after OTP verification, before the visitor has ever
+had a chance to type their name. Name is collected by a separate, *mandatory* step
+(`ProfileBasicsStep.tsx` on mobile, enforced via `profileNeedsMandatoryBasics`; the equivalent
+dialog on web) that runs seconds *after* login — so every phone-only signup got "Hi there," never
+a real name, by construction.
+
+**The fix:** `welcomeIfFirstLogin` now skips entirely — no send, and `welcomedAt` stays
+unmarked — when `user.phone && !user.email && !user.name?.trim()`. `UsersService.updateProfile`
+fires the deferred send itself, with the real name, the moment that mandatory step actually
+supplies one: gated on `before.welcomedAt` being null (same idempotency guard
+`welcomeIfFirstLogin` itself uses — this is genuinely that signup's first welcome, not a second
+one) and on this call being the one that just supplied a previously-missing name, not any later
+profile edit. Every other signup path (an email on file, or a name already known up front from
+Google/Apple) is unaffected — this only ever changes behavior for the exact case that used to say
+"Hi there."
+
+**The tradeoff, accepted deliberately:** `ProfileBasicsStep` is enforced, so this fires for the
+overwhelming majority of real users within seconds of login — but a visitor who closes the app
+before completing it gets no welcome WhatsApp at all, rather than today's reliable-but-impersonal
+one. Not fixed by also sending an immediate nameless message and a second one later: a
+business-initiated WhatsApp template landing twice in a row for one new user reads as spam, and
+the template itself is a one-time "welcome" tier, not designed to repeat.
+
+See `apps/bff/src/users/users.service.spec.ts` for the new behavior's coverage —
+`AuthService.welcomeIfFirstLogin` has no existing spec file of its own (13 constructor
+dependencies, no prior test harness for this file) so the skip-at-login half of this change is
+unit-tested only indirectly, through `updateProfile`'s own idempotency assertions; verify the
+login-time skip manually if touching this area again.
