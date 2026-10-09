@@ -851,6 +851,58 @@ export interface AdminListingsPage {
   total: number;
 }
 
+/** Admin "Listing performance" screen (docs/plans/admin-listing-performance-screen.md) — one row
+ * per listing, filtered by city/area/date-range (the range is Listing.createdAt, i.e. "listings
+ * posted in this window", not "activity in this window" — every stat shown is that listing's
+ * lifetime total). `loggedInViews`/`anonymousViews` and the message-derived fields are computed
+ * in-memory per page (see ListingsService.listPerformanceForAdmin) rather than via a Prisma
+ * relation count, which is why they have no matching sort field — see
+ * ListingPerformanceSortField's own comment (apps/admin/src/lib/bff.ts) for the precedent. */
+export interface ListingPerformanceRowDto {
+  id: string;
+  title: string;
+  cityName: string;
+  area: string;
+  category: ListingCategory;
+  transactionType: TransactionType;
+  createdAt: string;
+  /** Every visit, not deduped — Listing.viewCount. */
+  viewCount: number;
+  /** Distinct-viewerKey count — Listing.uniqueViewerCount, the same "organic" number the main
+   * listings dashboard already exposes under this name. */
+  organicViewCount: number;
+  /** viewerKey prefixed "user:" — split from ListingView, scoped to this page's listing ids. */
+  loggedInViews: number;
+  /** viewerKey prefixed "anon:" — same source/scope as loggedInViews. Computed as its own
+   * independent count (not viewCount - loggedInViews), so a drift between the denormalized
+   * viewCount and real ListingView rows can never produce a negative number here. */
+  anonymousViews: number;
+  /** Inquiry-type Conversation count — same concept as AdminListingRowDto.messageCount on the
+   * main dashboard, relabeled for this screen. Also the "M" denominator for repliedThreads. */
+  enquiryCount: number;
+  /** Count of Message rows across every inquiry thread on this listing. */
+  totalMessages: number;
+  /** Distinct senderId across every message in every inquiry thread (buyer + owner combined) —
+   * "Messages from unique user". */
+  uniqueMessageSenders: number;
+  /** Threads where the owner (Conversation.posterId) sent at least one message — show as
+   * "repliedThreads of enquiryCount" in the UI. Render as "—" rather than "0 of 0" when
+   * enquiryCount is 0 — there was nothing to reply to, not evidence the owner never replies. */
+  repliedThreads: number;
+  likeCount: number;
+  /** Phone-reveal taps — a free relation count, same mechanism as enquiryCount. */
+  contactRevealCount: number;
+  /** boostedUntil in the future — context for reading the other numbers (a boosted listing's
+   * views aren't organic), not a new metric on its own. */
+  isBoosted: boolean;
+  boostedUntil: string | null;
+}
+
+export interface ListingPerformancePage {
+  items: ListingPerformanceRowDto[];
+  total: number;
+}
+
 /** One row of a listing's "Liked & Viewed" admin table — a `Favourite` or a logged-in-viewer
  * `ListingView` row, resolved to the real user. Anonymous views are never rows here (no
  * resolvable user) — see ListingsService.listEngagement for why. The same user can appear twice

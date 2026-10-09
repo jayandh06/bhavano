@@ -1949,6 +1949,130 @@ describe('ListingsService.listForAdmin — status filter and sort', () => {
   });
 });
 
+describe('ListingsService.listPerformanceForAdmin', () => {
+  // makeService's base prisma mock has no `listingView.groupBy` or `message` model (no other
+  // method under test needs them) — added here rather than in makeService itself.
+  function makePerfService() {
+    const base = makeService();
+    const prisma = base.prisma as unknown as {
+      listing: { findMany: jest.Mock; count: jest.Mock };
+      listingView: { groupBy: jest.Mock };
+      conversation: { findMany: jest.Mock };
+      message: { findMany: jest.Mock };
+    };
+    prisma.listingView.groupBy = jest.fn().mockResolvedValue([]);
+    prisma.message = { findMany: jest.fn().mockResolvedValue([]) };
+    return base;
+  }
+
+  function stubRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'listing1',
+      title: 'Nice flat',
+      city: { name: 'Bengaluru' },
+      area: { name: 'Koramangala' },
+      category: 'apartment',
+      transactionType: 'rent',
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      viewCount: 10,
+      uniqueViewerCount: 8,
+      likeCount: 2,
+      boostedUntil: null,
+      _count: { conversations: 0, contactReveals: 0 },
+      ...overrides,
+    };
+  }
+
+  it('splits views into logged-in and anonymous from two independent ListingView groupBys, never negative', async () => {
+    const { service, prisma } = makePerfService();
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([stubRow()]);
+    (prisma.listing.count as jest.Mock).mockResolvedValue(1);
+    (prisma.listingView.groupBy as jest.Mock)
+      .mockResolvedValueOnce([{ listingId: 'listing1', _count: { _all: 10 } }]) // total
+      .mockResolvedValueOnce([{ listingId: 'listing1', _count: { _all: 4 } }]); // logged-in
+    (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
+
+    const result = await service.listPerformanceForAdmin({ limit: 25 } as never);
+
+    expect(result.items[0].loggedInViews).toBe(4);
+    expect(result.items[0].anonymousViews).toBe(6);
+  });
+
+  it('aggregates total messages, unique senders, and owner-replied threads from a small conversation+message fixture', async () => {
+    const { service, prisma } = makePerfService();
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([stubRow({ _count: { conversations: 2, contactReveals: 0 } })]);
+    (prisma.listing.count as jest.Mock).mockResolvedValue(1);
+    // posterId is the listing owner (see Conversation.posterId's schema comment) — conv1's owner
+    // replies, conv2's doesn't, so only conv1 should count toward repliedThreads.
+    (prisma.conversation.findMany as jest.Mock).mockResolvedValue([
+      { id: 'conv1', listingId: 'listing1', posterId: 'owner1' },
+      { id: 'conv2', listingId: 'listing1', posterId: 'owner1' },
+    ]);
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { conversationId: 'conv1', senderId: 'inquirerA' },
+      { conversationId: 'conv1', senderId: 'owner1' },
+      { conversationId: 'conv2', senderId: 'inquirerB' },
+    ]);
+
+    const result = await service.listPerformanceForAdmin({ limit: 25 } as never);
+    const row = result.items[0];
+    expect(row.totalMessages).toBe(3);
+    expect(row.uniqueMessageSenders).toBe(3);
+    expect(row.repliedThreads).toBe(1);
+    expect(row.enquiryCount).toBe(2);
+  });
+
+  it('renders zero enquiries as an empty message/reply shape, not misleading zeros', async () => {
+    const { service, prisma } = makePerfService();
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([stubRow()]);
+    (prisma.listing.count as jest.Mock).mockResolvedValue(1);
+    (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
+
+    const result = await service.listPerformanceForAdmin({ limit: 25 } as never);
+    const row = result.items[0];
+    expect(row.enquiryCount).toBe(0);
+    expect(row.totalMessages).toBe(0);
+    expect(row.uniqueMessageSenders).toBe(0);
+    expect(row.repliedThreads).toBe(0);
+  });
+
+  it('applies cityId, areaId, and the createdFrom/createdTo range to the where clause', async () => {
+    const { service, prisma } = makePerfService();
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.listing.count as jest.Mock).mockResolvedValue(0);
+    (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
+
+    await service.listPerformanceForAdmin({
+      cityId: 'city1',
+      areaId: 'area1',
+      createdFrom: '2026-01-01',
+      createdTo: '2026-01-31',
+      limit: 25,
+    } as never);
+
+    const where = (prisma.listing.findMany as jest.Mock).mock.calls[0][0].where;
+    expect(where).toMatchObject({
+      cityId: 'city1',
+      areaId: 'area1',
+      createdAt: { gte: new Date('2026-01-01'), lte: new Date('2026-01-31') },
+    });
+  });
+
+  it('omits cityId/areaId/createdAt from the where clause when none are given', async () => {
+    const { service, prisma } = makePerfService();
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.listing.count as jest.Mock).mockResolvedValue(0);
+    (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
+
+    await service.listPerformanceForAdmin({ limit: 25 } as never);
+
+    const where = (prisma.listing.findMany as jest.Mock).mock.calls[0][0].where;
+    expect(where).not.toHaveProperty('cityId');
+    expect(where).not.toHaveProperty('areaId');
+    expect(where).not.toHaveProperty('createdAt');
+  });
+});
+
 describe('ListingsService.update — writes a ListingEditLog diff', () => {
   it('logs only the fields that actually changed, with their before/after values', async () => {
     const { service, prisma } = makeService();

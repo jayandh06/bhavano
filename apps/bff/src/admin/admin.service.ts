@@ -17,6 +17,7 @@ import type {
   ListingCategory,
   ListingEngagementPage,
   ListingOwnerDto,
+  ListingPerformancePage,
   ListingStatus,
   LoginMethod,
   MessageDto,
@@ -62,6 +63,7 @@ import { MergeUsersDto } from './dto/merge-users.dto';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { areaNamesFor, toRequirementDto } from '../requirements/requirements.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
+import { ListListingPerformanceDto } from './dto/list-listing-performance.dto';
 import type { CreateAssistedListingDto } from './dto/create-assisted-listing.dto';
 import { ListLoginsDto, LoginSort } from './dto/list-logins.dto';
 import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
@@ -311,6 +313,10 @@ export class AdminService {
 
   listListings(query: ListAdminListingsDto): Promise<AdminListingsPage> {
     return this.listingsService.listForAdmin(query);
+  }
+
+  listListingPerformance(query: ListListingPerformanceDto): Promise<ListingPerformancePage> {
+    return this.listingsService.listPerformanceForAdmin(query);
   }
 
   createAssistedListing(dto: CreateAssistedListingDto, adminId: string): Promise<ListingDetailDto> {

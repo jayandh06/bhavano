@@ -22,6 +22,7 @@ import type {
   ListingEditLogPage,
   ListingEngagementPage,
   ListingOwnerDto,
+  ListingPerformancePage,
   UserLoginHistoryPage,
   UserLoginSummariesPage,
   MessageDto,
@@ -50,6 +51,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { AdminService } from './admin.service';
 import { ListAdminListingsDto } from './dto/list-admin-listings.dto';
+import { ListListingPerformanceDto } from './dto/list-listing-performance.dto';
 import { CreateAssistedListingDto } from './dto/create-assisted-listing.dto';
 import { ListListingEngagementDto } from './dto/list-listing-engagement.dto';
 import { ListListingEditHistoryDto } from './dto/list-listing-edit-history.dto';
@@ -126,6 +128,14 @@ export class AdminController {
   @Get('listings')
   listListings(@Query() query: ListAdminListingsDto): Promise<AdminListingsPage> {
     return this.adminService.listListings(query);
+  }
+
+  /** docs/plans/admin-listing-performance-screen.md — a literal segment, not `listings/:id`, so
+   * no conflict with the `listings/:id/...` detail routes below (all of which need a third
+   * segment; this one has only two). */
+  @Get('listings/performance')
+  listListingPerformance(@Query() query: ListListingPerformanceDto): Promise<ListingPerformancePage> {
+    return this.adminService.listListingPerformance(query);
   }
 
   /** Posting on a seller's behalf: saved hidden under the Bulk Import account until the seller

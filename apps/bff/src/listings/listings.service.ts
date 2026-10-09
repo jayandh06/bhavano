@@ -28,6 +28,8 @@ import type {
   ListingInterestDto,
   ListingInterestPage,
   ListingMetaDto,
+  ListingPerformancePage,
+  ListingPerformanceRowDto,
   ListingSitemapEntry,
   ListingTotalPriceDto,
   ListingStatus,
@@ -103,6 +105,10 @@ import {
   AdminListingSort,
   ListAdminListingsDto,
 } from '../admin/dto/list-admin-listings.dto';
+import {
+  ListingPerformanceSort,
+  ListListingPerformanceDto,
+} from '../admin/dto/list-listing-performance.dto';
 import { SavedSearchesService } from '../saved-searches/saved-searches.service';
 import { LocationsService } from '../locations/locations.service';
 import { ListingSlotsService } from '../listing-slots/listing-slots.service';
@@ -253,6 +259,36 @@ const ADMIN_ORDER_BY: Record<
   organicViewCount_desc: adminOrderBy({ uniqueViewerCount: 'desc' }),
   owner_asc: adminOrderBy({ owner: { name: nullsLast('asc') } }),
   owner_desc: adminOrderBy({ owner: { name: nullsLast('desc') } }),
+  boosted_asc: adminOrderBy({ boostedUntil: nullsLast('asc') }),
+  boosted_desc: adminOrderBy({ boostedUntil: nullsLast('desc') }),
+};
+
+/** Sort options for the Listing performance screen (docs/plans/admin-listing-performance-screen.md)
+ * — see ListListingPerformanceDto's own comment for why the message-derived stats and the view
+ * split have no entry here. */
+const LISTING_PERFORMANCE_ORDER_BY: Record<
+  ListingPerformanceSort,
+  Prisma.ListingOrderByWithRelationInput[]
+> = {
+  createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
+  createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
+  title_asc: adminOrderBy({ title: 'asc' }),
+  title_desc: adminOrderBy({ title: 'desc' }),
+  category_asc: adminOrderBy({ category: 'asc' }),
+  category_desc: adminOrderBy({ category: 'desc' }),
+  transactionType_asc: adminOrderBy({ transactionType: 'asc' }),
+  transactionType_desc: adminOrderBy({ transactionType: 'desc' }),
+  viewCount_asc: adminOrderBy({ viewCount: 'asc' }),
+  viewCount_desc: adminOrderBy({ viewCount: 'desc' }),
+  organicViewCount_asc: adminOrderBy({ uniqueViewerCount: 'asc' }),
+  organicViewCount_desc: adminOrderBy({ uniqueViewerCount: 'desc' }),
+  likeCount_asc: adminOrderBy({ likeCount: 'asc' }),
+  likeCount_desc: adminOrderBy({ likeCount: 'desc' }),
+  // Relation counts, not columns — same mechanism as ADMIN_ORDER_BY's messageCount above.
+  enquiryCount_asc: adminOrderBy({ conversations: { _count: 'asc' } }),
+  enquiryCount_desc: adminOrderBy({ conversations: { _count: 'desc' } }),
+  contactRevealCount_asc: adminOrderBy({ contactReveals: { _count: 'asc' } }),
+  contactRevealCount_desc: adminOrderBy({ contactReveals: { _count: 'desc' } }),
   boosted_asc: adminOrderBy({ boostedUntil: nullsLast('asc') }),
   boosted_desc: adminOrderBy({ boostedUntil: nullsLast('desc') }),
 };
@@ -977,6 +1013,143 @@ export class ListingsService {
       }),
       total,
     };
+  }
+
+  /** Admin "Listing performance" screen (docs/plans/admin-listing-performance-screen.md) —
+   * City/Area/date-range filtered, one row per listing. The date range is `createdAt` ("listings
+   * posted in this window"), so every stat shown is that listing's lifetime total, not activity
+   * bounded to the window.
+   *
+   * Message, the backfilled view split and the main query, in that order:
+   *
+   * The main query gets `viewCount`/`uniqueViewerCount`/`likeCount`/`boostedUntil` for free
+   * (plain columns on `Listing`) and `enquiryCount`/`contactRevealCount` for free too (relation
+   * counts, same mechanism `listForAdmin`'s `messageCount` already uses). Everything else needs a
+   * second pass scoped to just this page's listing ids — never the whole table:
+   *
+   * - View split: two independent `ListingView` groupBys (total, and `viewerKey` prefixed
+   *   `user:`) rather than `viewCount - loggedIn`, so a drift between the denormalized
+   *   `viewCount` and real `ListingView` rows (e.g. a bulk-imported listing) can never produce a
+   *   negative `anonymousViews`.
+   * - Message stats: `Message` has no `listingId` (it's two hops away, via `Conversation`), so
+   *   there's no relation count or groupBy Prisma can do directly — fetch this page's inquiry
+   *   Conversations, then the Messages in those conversations, and aggregate in memory. Bounded
+   *   by this page's own enquiry-thread volume, not the whole table; the one accepted cost is a
+   *   listing with an unusually large number of threads making its own page proportionally
+   *   heavier, never unbounded. */
+  async listPerformanceForAdmin(query: ListListingPerformanceDto): Promise<ListingPerformancePage> {
+    const { cityId, areaId, createdFrom, createdTo, sort, offset, limit } = query;
+
+    const where: Prisma.ListingWhereInput = {
+      ...(cityId ? { cityId } : {}),
+      ...(areaId ? { areaId } : {}),
+      ...(createdFrom || createdTo
+        ? {
+            createdAt: {
+              ...(createdFrom ? { gte: new Date(createdFrom) } : {}),
+              ...(createdTo ? { lte: new Date(createdTo) } : {}),
+            },
+          }
+        : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.listing.findMany({
+        where,
+        include: {
+          city: true,
+          area: true,
+          _count: {
+            select: {
+              conversations: { where: { type: 'inquiry' } },
+              contactReveals: true,
+            },
+          },
+        },
+        orderBy: LISTING_PERFORMANCE_ORDER_BY[sort ?? 'createdAt_desc'],
+        skip: offset ?? 0,
+        take: limit,
+      }),
+      this.prisma.listing.count({ where }),
+    ]);
+
+    // Prisma handles an empty `in: []` fine on its own (returns no rows, never errors), so these
+    // run unconditionally even when `pageIds` is empty — no special-casing needed.
+    const pageIds = rows.map((r) => r.id);
+
+    const [totalViewsByListing, loggedInViewsByListing, conversations] = await Promise.all([
+      this.prisma.listingView.groupBy({
+        by: ['listingId'],
+        where: { listingId: { in: pageIds } },
+        _count: { _all: true },
+      }),
+      this.prisma.listingView.groupBy({
+        by: ['listingId'],
+        where: { listingId: { in: pageIds }, viewerKey: { startsWith: 'user:' } },
+        _count: { _all: true },
+      }),
+      this.prisma.conversation.findMany({
+        where: { listingId: { in: pageIds }, type: 'inquiry' },
+        select: { id: true, listingId: true, posterId: true },
+      }),
+    ]);
+    const totalViewsById = new Map(totalViewsByListing.map((g) => [g.listingId, g._count._all]));
+    const loggedInViewsById = new Map(loggedInViewsByListing.map((g) => [g.listingId, g._count._all]));
+
+    const conversationIds = conversations.map((c) => c.id);
+    const messages = await this.prisma.message.findMany({
+      where: { conversationId: { in: conversationIds } },
+      select: { conversationId: true, senderId: true },
+    });
+
+    const convById = new Map(conversations.map((c) => [c.id, c]));
+    interface MsgStats {
+      totalMessages: number;
+      senderIds: Set<string>;
+      repliedConvIds: Set<string>;
+    }
+    const statsByListing = new Map<string, MsgStats>();
+    for (const m of messages) {
+      const conv = convById.get(m.conversationId);
+      if (!conv) continue;
+      const s = statsByListing.get(conv.listingId) ?? {
+        totalMessages: 0,
+        senderIds: new Set<string>(),
+        repliedConvIds: new Set<string>(),
+      };
+      s.totalMessages += 1;
+      s.senderIds.add(m.senderId);
+      if (m.senderId === conv.posterId) s.repliedConvIds.add(conv.id);
+      statsByListing.set(conv.listingId, s);
+    }
+    const items: ListingPerformanceRowDto[] = rows.map((row) => {
+      const totalViews = totalViewsById.get(row.id) ?? 0;
+      const loggedInViews = loggedInViewsById.get(row.id) ?? 0;
+      const msgStats = statsByListing.get(row.id);
+      return {
+        id: row.id,
+        title: row.title,
+        cityName: row.city.name,
+        area: row.area.name,
+        category: row.category,
+        transactionType: row.transactionType,
+        createdAt: row.createdAt.toISOString(),
+        viewCount: row.viewCount,
+        organicViewCount: row.uniqueViewerCount,
+        loggedInViews,
+        anonymousViews: totalViews - loggedInViews,
+        enquiryCount: row._count.conversations,
+        totalMessages: msgStats?.totalMessages ?? 0,
+        uniqueMessageSenders: msgStats?.senderIds.size ?? 0,
+        repliedThreads: msgStats?.repliedConvIds.size ?? 0,
+        likeCount: row.likeCount,
+        contactRevealCount: row._count.contactReveals,
+        isBoosted: (row.boostedUntil?.getTime() ?? 0) > Date.now(),
+        boostedUntil: row.boostedUntil?.toISOString() ?? null,
+      };
+    });
+
+    return { items, total };
   }
 
   /** Thin row mapper for the admin moderation queue only — see AdminListingRowDto's own doc

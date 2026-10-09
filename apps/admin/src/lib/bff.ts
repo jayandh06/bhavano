@@ -33,6 +33,7 @@ import type {
   ListingEditLogPage,
   ListingEngagementPage,
   ListingOwnerDto,
+  ListingPerformancePage,
   ListingPublishState,
   ListingStatus,
   LoginMethod,
@@ -94,6 +95,25 @@ export type AdminListingSortField =
   | "boosted";
 
 export type AdminListingSort = `${AdminListingSortField}_asc` | `${AdminListingSortField}_desc`;
+
+/** Mirrors the BFF's LISTING_PERFORMANCE_SORT_VALUES
+ * (apps/bff/src/admin/dto/list-listing-performance.dto.ts). No pair for loggedInViews/
+ * anonymousViews/totalMessages/uniqueMessageSenders/repliedThreads — see that file's own comment
+ * for why (computed in-memory per page, same situation AdminPageVisitSortField's pageViewCount
+ * already documents). */
+export type ListingPerformanceSortField =
+  | "createdAt"
+  | "title"
+  | "category"
+  | "transactionType"
+  | "viewCount"
+  | "organicViewCount"
+  | "likeCount"
+  | "enquiryCount"
+  | "contactRevealCount"
+  | "boosted";
+
+export type ListingPerformanceSort = `${ListingPerformanceSortField}_asc` | `${ListingPerformanceSortField}_desc`;
 
 /** Mirrors the BFF's LOGIN_SORT_VALUES (apps/bff/src/admin/dto/list-logins.dto.ts) — one row per
  * user now, not per LoginEvent, so the sortable columns are the per-user summary fields. */
@@ -523,6 +543,30 @@ export function fetchPageVisits(accessToken: string, query: PageVisitsQuery = {}
     if (value !== undefined && value !== "") params.set(key, String(value));
   }
   return authedBffFetch(accessToken, `/admin/page-visits?${params.toString()}`, { cache: "no-store" });
+}
+
+/** docs/plans/admin-listing-performance-screen.md. `createdFrom`/`createdTo` are full ISO
+ * instants — the page turns its IST date pickers into `+05:30` day bounds, same as PageVisitsQuery
+ * does for `from`/`to`. */
+export interface ListingPerformanceQuery {
+  cityId?: string;
+  areaId?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  sort?: ListingPerformanceSort;
+  offset?: number;
+  limit?: number;
+}
+
+export function fetchListingPerformance(
+  accessToken: string,
+  query: ListingPerformanceQuery = {},
+): Promise<ListingPerformancePage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/listings/performance?${params.toString()}`, { cache: "no-store" });
 }
 
 export function fetchSessionTrail(accessToken: string, sessionId: string): Promise<SessionTrailDto> {
