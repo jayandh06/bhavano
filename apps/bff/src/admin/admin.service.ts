@@ -807,6 +807,17 @@ export class AdminService {
       if (clause) where[field] = clause;
     }
 
+    // Relation filters, not direct Visit columns — see ListPageVisitsDto's email/phone doc
+    // comments for the Visit.userId-only scope limitation this inherits.
+    const emailClause = parseTextFilter(query.email);
+    const phoneClause = parseTextFilter(query.phone);
+    if (emailClause || phoneClause) {
+      where.user = {
+        ...(emailClause ? { email: emailClause } : {}),
+        ...(phoneClause ? { phone: phoneClause } : {}),
+      };
+    }
+
     // The average below honours the date range and the crawler filter, and nothing else — see
     // `PageVisitsPage.avgPageViewsPerSession`'s doc comment. Joining Visit to PageView is what
     // makes the crawler part possible at all (PageView itself carries no isBot), and it has to:

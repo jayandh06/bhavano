@@ -73,6 +73,12 @@ export function PageVisitsTable({
                 <SessionUsers visit={v} />
               </td>
               <td style={tdStyle}>
+                <SessionContacts visit={v} field="email" />
+              </td>
+              <td style={tdStyle}>
+                <SessionContacts visit={v} field="phone" />
+              </td>
+              <td style={tdStyle}>
                 <button
                   type="button"
                   onClick={() => onToggle(v.sessionId)}
@@ -112,7 +118,7 @@ export function PageVisitsTable({
             </tr>
             {isOpen && (
               <tr>
-                <td colSpan={14} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
+                <td colSpan={16} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
                   <SessionTrailPanel state={trails[v.sessionId]} sessionId={v.sessionId} />
                 </td>
               </tr>
@@ -125,7 +131,7 @@ export function PageVisitsTable({
           widen the filter that just emptied the page. */}
       {items.length === 0 && (
         <tr style={{ borderTop: "1px solid var(--border)" }}>
-          <td colSpan={14} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
+          <td colSpan={16} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
             No visits match these filters.
             {/* Expected right after the crawler filter shipped, and confusing without saying
                 so: every session recorded before it has no stored User-Agent to judge, so none
@@ -277,6 +283,30 @@ function SessionUsers({ visit }: { visit: PageVisitDto }) {
           {logins.length} accounts — possible duplicate
         </span>
       )}
+    </div>
+  );
+}
+
+/**
+ * Email/Mobile columns — stacked one per `sessionLogins` entry, same shape as `SessionUsers`'s
+ * multi-account handling, but plain text rather than a link: these two columns exist purely to be
+ * filtered/scanned, not to navigate anywhere the User column doesn't already.
+ */
+function SessionContacts({ visit, field }: { visit: PageVisitDto; field: "email" | "phone" }) {
+  const logins = visit.sessionLogins;
+
+  if (logins.length === 0) {
+    const value = field === "email" ? visit.userEmail : visit.userPhone;
+    return value ? <span>{value}</span> : dash;
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {logins.map((l) => (
+        <span key={l.userId} style={{ whiteSpace: "nowrap" }}>
+          {(field === "email" ? l.email : l.phone) ?? dash}
+        </span>
+      ))}
     </div>
   );
 }

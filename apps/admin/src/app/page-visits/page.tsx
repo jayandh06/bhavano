@@ -98,6 +98,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
   const city = str(sp.city);
   const region = str(sp.region);
   const country = str(sp.country);
+  const email = str(sp.email);
+  const phone = str(sp.phone);
   const sort = str(sp.sort) as AdminPageVisitSort | undefined;
 
   const result = await fetchPageVisits(accessToken, {
@@ -117,6 +119,8 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
     city,
     region,
     country,
+    email,
+    phone,
     sort,
     limit,
   });
@@ -245,6 +249,11 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                   <th style={thStyle}>
                     <SortableHeader label="User" href={sortHref("user")} direction={sortDir("user")} />
                   </th>
+                  {/* Not a SortableHeader: these filter Visit.user (a relation), and "User" above
+                      already sorts by userId only — see ListPageVisitsDto's email/phone doc
+                      comments for the scope this inherits. */}
+                  <th style={thStyle}>Email</th>
+                  <th style={thStyle}>Mobile</th>
                   {/* Counted from PageView in a separate groupBy, not a column on Visit — see
                       PAGE_VISIT_SORT_VALUES' own comment for why it can't be ordered on. */}
                   <th style={thStyle}>Pages</th>
@@ -288,6 +297,12 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                 <tr style={{ background: "var(--surface-alt)" }}>
                   <th style={filterThStyle} />
                   <th style={filterThStyle} />
+                  <th style={filterThStyle}>
+                    <input name="email" defaultValue={email} placeholder="name@mail.com" style={headerInputStyle} />
+                  </th>
+                  <th style={filterThStyle}>
+                    <input name="phone" defaultValue={phone} placeholder="98765" style={headerInputStyle} />
+                  </th>
                   <th style={filterThStyle}>
                     <input name="pagePath" defaultValue={pagePath} placeholder="/get-app%" style={headerInputStyle} />
                   </th>

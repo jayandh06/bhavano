@@ -533,6 +533,11 @@ export interface PageVisitsQuery {
   city?: string;
   region?: string;
   country?: string;
+  /** Matches `Visit.user.email` — see ListPageVisitsDto's own doc comment for the
+   * Visit.userId-only scope limitation. */
+  email?: string;
+  /** Matches `Visit.user.phone`. Same scope limitation as `email` above. */
+  phone?: string;
   sort?: AdminPageVisitSort;
   limit?: number;
 }

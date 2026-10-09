@@ -62,8 +62,8 @@ const PAGE_VISIT_TRAFFIC_VALUES = ['any', 'humans', 'js_confirmed', 'bots', 'unc
 export type PageVisitTraffic = (typeof PAGE_VISIT_TRAFFIC_VALUES)[number];
 
 /**
- * Each text filter (`source`, `medium`, `ip`, `landingPath`, `city`, `region`, `country`) is a
- * tiny query DSL, parsed by `parseTextFilter` in admin.service.ts — plain text is a
+ * Each text filter (`source`, `medium`, `ip`, `landingPath`, `city`, `region`, `country`, `email`,
+ * `phone`) is a tiny query DSL, parsed by `parseTextFilter` in admin.service.ts — plain text is a
  * case-insensitive `contains`, and these prefixes/wrappers change the operator:
  *
  *   plain      →  contains        `koramangala`
@@ -161,6 +161,20 @@ export class ListPageVisitsDto {
   @IsString()
   @MaxLength(200)
   country?: string;
+
+  /** Matches `Visit.user.email` — only the account on `Visit.userId` (whoever logged in first in
+   * the session), same scope limitation `userId`/the User picker already have. A second account
+   * from `sessionLogins` isn't reachable from this filter. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  email?: string;
+
+  /** Matches `Visit.user.phone`. Same `Visit.userId`-only scope as `email` above. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  phone?: string;
 
   @IsOptional()
   @IsIn(PAGE_VISIT_SORT_VALUES)
