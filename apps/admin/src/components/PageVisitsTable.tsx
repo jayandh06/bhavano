@@ -167,7 +167,7 @@ function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loa
 
   return (
     <div style={{ padding: 16, background: "var(--bg)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
         <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>
           Page trail — {visit.pageViewCount} page{visit.pageViewCount === 1 ? "" : "s"}
         </h3>
