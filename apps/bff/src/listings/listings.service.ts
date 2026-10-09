@@ -1129,6 +1129,7 @@ export class ListingsService {
       return {
         id: row.id,
         title: row.title,
+        slug: row.slug,
         cityName: row.city.name,
         area: row.area.name,
         category: row.category,

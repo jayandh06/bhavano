@@ -1969,6 +1969,7 @@ describe('ListingsService.listPerformanceForAdmin', () => {
     return {
       id: 'listing1',
       title: 'Nice flat',
+      slug: 'nice-flat',
       city: { name: 'Bengaluru' },
       area: { name: 'Koramangala' },
       category: 'apartment',

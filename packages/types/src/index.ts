@@ -861,6 +861,10 @@ export interface AdminListingsPage {
 export interface ListingPerformanceRowDto {
   id: string;
   title: string;
+  /** Together with id/category/transactionType/cityName/area, lets the admin row link straight to
+   * the live listing via @bhavano/types/listingPath's buildListingPath — same fields
+   * ListingCardDto already carries for the same purpose on web. */
+  slug: string;
   cityName: string;
   area: string;
   category: ListingCategory;

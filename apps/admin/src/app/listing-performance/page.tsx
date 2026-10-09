@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { ListingCategory, TransactionType } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { ListingPerformanceSort, ListingPerformanceSortField, fetchAreas, fetchCities, fetchListingPerformance } from "@/lib/bff";
 import {
@@ -18,31 +17,11 @@ import { SortableHeader } from "@/components/SortableHeader";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { FullPageLink } from "@/components/FullPageLink";
-import { formatDate } from "@/lib/formatDateTime";
+import { ListingPerformanceTable } from "@/components/ListingPerformanceTable";
 
 /** Mirrors the BFF's default (see ListListingPerformanceDto) so the Created column still shows
  * its ▼ before anything has been clicked. */
 const DEFAULT_SORT: ListingPerformanceSort = "createdAt_desc";
-
-const CATEGORY_LABELS: Record<ListingCategory, string> = {
-  house: "House",
-  apartment: "Apartment",
-  villa: "Villa",
-  plot: "Plot",
-  pg: "PG / Hostel",
-  storage: "Storage",
-  coworking: "Coworking",
-  commercial: "Commercial",
-  furniture: "Furniture",
-  interiors: "Interiors",
-};
-
-const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
-  buy: "Buy",
-  sell: "Sell",
-  rent: "Rent",
-  lease: "Lease",
-};
 
 export default async function ListingPerformancePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accessToken } = await requireAdmin();
@@ -87,9 +66,9 @@ export default async function ListingPerformancePage({ searchParams }: { searchP
         </FullPageLink>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>Listing performance</h1>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 20px" }}>
-          One row per listing. {result.total.toLocaleString()} match the current filters. Date range filters by when
-          the listing was posted — every stat shown is that listing&apos;s lifetime total, not activity within the
-          window.
+          One row per listing — click a row to open it on the live site in a new tab.{" "}
+          {result.total.toLocaleString()} match the current filters. Date range filters by when the listing was
+          posted — every stat shown is that listing&apos;s lifetime total, not activity within the window.
         </p>
 
         <form method="get">
@@ -203,54 +182,7 @@ export default async function ListingPerformancePage({ searchParams }: { searchP
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                {result.items.length === 0 ? (
-                  <tr>
-                    <td colSpan={14} style={{ padding: "24px 12px", textAlign: "center", color: "var(--muted)" }}>
-                      No listings match the current filters.
-                    </td>
-                  </tr>
-                ) : (
-                  result.items.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={tdStyle}>{formatDate(item.createdAt)}</td>
-                      <td style={{ ...tdStyle, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis" }}>
-                        <div style={{ fontWeight: 600 }}>{item.title}</div>
-                        <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                          {item.cityName}
-                          {item.area ? ` · ${item.area}` : ""}
-                        </div>
-                      </td>
-                      <td style={tdStyle}>{CATEGORY_LABELS[item.category] ?? item.category}</td>
-                      <td style={tdStyle}>{TRANSACTION_TYPE_LABELS[item.transactionType] ?? item.transactionType}</td>
-                      <td style={tdStyle}>{item.viewCount.toLocaleString()}</td>
-                      <td style={tdStyle}>{item.organicViewCount.toLocaleString()}</td>
-                      <td style={tdStyle}>{item.loggedInViews.toLocaleString()}</td>
-                      <td style={tdStyle}>{item.anonymousViews.toLocaleString()}</td>
-                      <td style={tdStyle}>{item.enquiryCount.toLocaleString()}</td>
-                      {/* Zero-enquiry rendering per the plan's "Edge cases" section: "0 of 0" reads
-                          as "owner never replies," which is wrong when there was nothing to reply
-                          to — so a dash instead, for messages/senders/reply-rate alike. */}
-                      <td style={tdStyle}>{item.enquiryCount === 0 ? "—" : item.totalMessages.toLocaleString()}</td>
-                      <td style={tdStyle}>{item.enquiryCount === 0 ? "—" : item.uniqueMessageSenders.toLocaleString()}</td>
-                      <td style={tdStyle}>
-                        {item.enquiryCount === 0 ? "—" : `${item.repliedThreads} of ${item.enquiryCount}`}
-                      </td>
-                      <td style={tdStyle}>{item.likeCount.toLocaleString()}</td>
-                      <td style={tdStyle}>{item.contactRevealCount.toLocaleString()}</td>
-                      <td style={tdStyle}>
-                        {item.isBoosted ? (
-                          <span style={{ color: "var(--green)", fontWeight: 700 }}>
-                            Yes{item.boostedUntil ? ` (until ${formatDate(item.boostedUntil)})` : ""}
-                          </span>
-                        ) : (
-                          <span style={{ color: "var(--muted)" }}>No</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
+              <ListingPerformanceTable items={result.items} />
             </table>
           </div>
         </form>
@@ -303,5 +235,3 @@ const thStyle: React.CSSProperties = {
   color: "var(--muted)",
   whiteSpace: "nowrap",
 };
-
-const tdStyle: React.CSSProperties = { padding: "10px 12px", whiteSpace: "nowrap" };
