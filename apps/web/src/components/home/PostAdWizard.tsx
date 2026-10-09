@@ -183,6 +183,10 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   lease: "Lease out",
 };
 
+/** The step tracker's own display/jump order — "success" has no entry (the tracker is hidden by
+ * then) and isn't a place `jumpToStep` can send you back to anyway. */
+const STEP_TRACKER_ORDER: Step[] = ["category", "transactionType", "details", "review"];
+
 type Step = "category" | "transactionType" | "details" | "review" | "success";
 
 type SavedDraft = NonNullable<Awaited<ReturnType<typeof loadPostAdDraft>>>;
@@ -799,6 +803,23 @@ export function PostAdWizard({
     } else {
       setStep("details");
     }
+  }
+
+  /** The step tracker's own labels, reachable directly instead of one "← Back" click at a time —
+   * only ever backward, since a later step's label has nothing yet to validate against to allow
+   * skipping forward to it (the tracker itself only ever renders earlier-than-current labels as a
+   * link, see the render below). Reuses backToDetails for the one transition it already handles
+   * (leaving review, which has its own pushed history entry for the phone's hardware back button);
+   * every other jump is a plain setStep, same as every other "← Back" button in this component —
+   * none of those unwind history specially either, only review's own does. */
+  function jumpToStep(target: Step) {
+    if (step === "review" && target === "details") {
+      backToDetails();
+      return;
+    }
+    setError(null);
+    setSellerTypeMissing(false);
+    setStep(target);
   }
 
   useEffect(() => {
@@ -1876,6 +1897,8 @@ export function PostAdWizard({
     setStep("success");
   }
 
+  const currentStepIndex = STEP_TRACKER_ORDER.indexOf(step);
+
   return (
     <div>
       <StepTracker step={step} entry={entry} loggedIn={loggedIn} />
@@ -1907,24 +1930,38 @@ export function PostAdWizard({
       )}
       {step !== "success" && (
         <div className="flex gap-1.5 mb-6 text-xs font-bold text-muted">
-          {(["category", "transactionType", "details", "review"] as Step[]).map(
-            (s, i) => (
-              <span
-                key={s}
-                className={step === s ? "text-green" : "text-muted"}
-              >
+          {STEP_TRACKER_ORDER.map((s, i) => {
+            const label =
+              s === "category"
+                ? "Category"
+                : s === "transactionType"
+                  ? "Transaction"
+                  : s === "details"
+                    ? "Details"
+                    : "Preview Ad";
+            const isPast = i < currentStepIndex;
+            return (
+              <span key={s} className={step === s ? "text-green" : "text-muted"}>
                 {i > 0 && " → "}
                 {i + 1}.{" "}
-                {s === "category"
-                  ? "Category"
-                  : s === "transactionType"
-                    ? "Transaction"
-                    : s === "details"
-                      ? "Details"
-                      : "Preview Ad"}
+                {isPast ? (
+                  // Only a step strictly before the current one is ever a link — there's nothing
+                  // to validate against to allow skipping ahead to a later one. Underlined so it
+                  // reads as clickable at this font size, where the green/muted color contrast
+                  // alone (the only other signal this tracker gives) isn't enough on its own.
+                  <button
+                    type="button"
+                    onClick={() => jumpToStep(s)}
+                    className="font-bold underline bg-transparent border-0 p-0 cursor-pointer text-muted hover:text-green"
+                  >
+                    {label}
+                  </button>
+                ) : (
+                  label
+                )}
               </span>
-            ),
-          )}
+            );
+          })}
         </div>
       )}
 
