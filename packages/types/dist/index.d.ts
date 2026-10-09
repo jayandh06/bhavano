@@ -130,10 +130,16 @@ export interface ListingCardDto {
     /** The viewer's referral code (their user id), only on their own listings, so the card's share
      * link credits them. Never set for anyone else's listing — it would expose the owner's id. */
     viewerReferralCode?: string;
-    /** Still owned by the Bulk Import account (a scraped business that hasn't claimed it). There's
-     * nobody to reach, so clients show a "not verified yet" note instead of Message/View Contact,
-     * and the BFF refuses both. */
+    /** Still owned by the Bulk Import account (a scraped business that hasn't claimed it) — there's
+     * no real owner on Bhavano to message, so clients hide Message and show a "not verified yet"
+     * note instead. Doesn't by itself mean contact is unreachable — see `contactUnavailable`. */
     ownerUnverified: boolean;
+    /** True only when there is truly nothing to reveal: `ownerUnverified` and the linked scraped
+     * contact (if any) has neither phone nor email on file. Independent of the viewer's login
+     * state (unlike `revealMethod`, which is only ever computed for a logged-in viewer) — gates
+     * whether clients show "View Contact" at all, separately from `ownerUnverified` gating
+     * Message. Always false for a normal (non-bulk-import-owned) listing. */
+    contactUnavailable: boolean;
     /** Whether the requesting viewer has already unlocked this listing's owner contact — always
      * derived server-side from a real ContactReveal row (see docs/plans/contact-reveal-credits.md),
      * never a cached flag. `ownerPhone`/`ownerEmail` are only ever populated when this is true; the

@@ -128,10 +128,13 @@ leaves nothing behind for good.
 
 - **The gap:** unclaimed outreach listings were live, and a contact reveal returned the Bulk
   Import placeholder number `9000000002`. Messages went to the Bulk Import account too.
-- **The fix:** reveal and first message are now blocked on listings owned by Bulk Import, with a
-  "not verified yet" note and no credit spent (decided over revealing the scraped Google phone).
-  See pg-coworking-google-places-leadgen.md, "Unclaimed listings can't be contacted".
-- Assisted listings avoid this anyway by being hidden until claimed.
+- **The fix:** first message is blocked on listings owned by Bulk Import, with a "not verified
+  yet" note. Reveal now falls back to the linked scraped contact's own phone/email when present,
+  spending a credit same as a normal reveal — only a true dead end (no contact info at all) still
+  refuses with no credit spent. See pg-coworking-google-places-leadgen.md, "Unclaimed listings
+  can't be contacted" and its 2026-10-09 revision just below it.
+- Assisted listings avoid this anyway by being hidden until claimed (no `claimContact` to fall
+  back to regardless — see AssistedCreateOptions, which never sets one).
 
 ## Out of scope for v1
 

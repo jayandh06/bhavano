@@ -125,6 +125,26 @@ mirrors this same rule.
 - **On claim:** `claimListing` moves the listing's existing enquiry threads from the Bulk Import
   account to the new owner, so enquiries sent before the fix reach the business if it claims.
 
+**View Contact now reveals the scraped number, Message still doesn't (2026-10-09).** Revisits the
+"decided over revealing the scraped Google phone" call above, for View Contact only:
+- **Why:** admin's Outreach contacts and the public coworking listings disagreed — a contact
+  visibly had a phone/email on file, but the listing page said "not verified" with no way to reach
+  it. The placeholder-number problem was real, but the fix over-corrected: it blocked reach-out to
+  a real, publicly-listed Google Business number too, not just to the Bulk Import account itself.
+- **The fix:** `ContactRevealService.getRevealState`/`revealContact` fall back to the listing's
+  `claimContact` (the linked `OutreachContact`) when `owner.phone` is the Bulk Import placeholder —
+  spending a free reveal/credit exactly as a normal reveal would, just against the scraped
+  business's phone/email instead of the (nonexistent) owner's. Still refuses with 409
+  `OWNER_UNVERIFIED` when the contact has neither on file (the true dead-end case).
+- **Message is unchanged** — still blocked outright (`MessagingService`'s own `OWNER_UNVERIFIED`
+  check), since there's no Bhavano inbox for an unclaimed business to read a message in. WhatsApp-
+  ing the revealed number is the equivalent for an unclaimed listing.
+- **Client-side:** a new viewer-independent `ListingCardDto.contactUnavailable` (true only in the
+  true dead-end case) gates "View Contact" separately from `ownerUnverified` (which still gates
+  Message and the explanatory copy). Deliberately not reused `revealMethod` for this — that's
+  undefined for every anonymous viewer on every listing, not just unverified ones, so it can't
+  double as "is this reachable at all."
+
 ## Claiming a bulk-imported listing (WhatsApp verification)
 
 A scraped business owner has never logged in, so "send a WhatsApp asking them to verify/update

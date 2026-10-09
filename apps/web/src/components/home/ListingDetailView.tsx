@@ -288,6 +288,7 @@ export async function ListingDetailView({
                 initialLikeCount={listing.likeCount}
                 isOwner={listing.isOwner}
                 ownerUnverified={listing.ownerUnverified}
+                contactUnavailable={listing.contactUnavailable}
                 isLoggedIn={!!accessToken}
                 initialContactRevealed={listing.contactRevealed}
                 initialOwnerPhone={listing.ownerPhone}

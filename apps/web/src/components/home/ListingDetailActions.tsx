@@ -20,6 +20,7 @@ export function ListingDetailActions({
   initialLikeCount,
   isOwner,
   ownerUnverified,
+  contactUnavailable,
   isLoggedIn,
   initialContactRevealed,
   initialOwnerPhone,
@@ -41,6 +42,10 @@ export function ListingDetailActions({
   isOwner: boolean;
   /** Unclaimed scraped listing — see ListingCardDto.ownerUnverified. */
   ownerUnverified: boolean;
+  /** True only when there's truly nothing to reveal — see ListingCardDto.contactUnavailable.
+   * Independent of ownerUnverified: an unclaimed listing can still have a real scraped phone/
+   * email to show, in which case this stays false even though ownerUnverified is true. */
+  contactUnavailable: boolean;
   /** Logged-in non-owners get a short disclosure that viewing notifies the advertiser. */
   isLoggedIn: boolean;
   initialContactRevealed: boolean;
@@ -67,6 +72,7 @@ export function ListingDetailActions({
   const [revealError, setRevealError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
   const whatsAppHref = ownerPhone ? whatsAppChatUrl(ownerPhone, ownerEnquiryText(listingTitle)) : null;
+  const canViewContact = !contactUnavailable;
 
   // Logged out, saves on this device; see ListingCard's matching handler.
   async function onToggleFavourite() {
@@ -140,29 +146,27 @@ export function ListingDetailActions({
           <span className="text-[10px] font-bold text-muted">{likeCount}</span>
         </button>
         {!isOwner && !ownerUnverified && (
-          <>
-            <button
-              onClick={onMessage}
-              title="Message owner"
-              className="flex-1 bg-surface border-[1.5px] border-border rounded-lg py-2.5 text-green cursor-pointer flex flex-col items-center gap-0.5"
-            >
-              <Icon name="message" className="text-[19px]" />
-              <span className="text-[10px] font-bold">Message</span>
-            </button>
-            {!contactRevealed && (
-              <button
-                onClick={onViewContact}
-                disabled={revealPending || unlocking}
-                title={revealMethod === "credit" ? "Uses 1 credit" : revealMethod === "insufficient" ? "Buy credits to unlock" : "Free"}
-                className="flex-1 bg-surface border-[1.5px] border-green rounded-lg py-2.5 text-green cursor-pointer flex flex-col items-center gap-0.5 disabled:opacity-60"
-              >
-                <Icon name="phone" className="text-[19px]" />
-                <span className="text-[10px] font-bold">
-                  {revealPending || unlocking ? "Unlocking…" : "View Contact"}
-                </span>
-              </button>
-            )}
-          </>
+          <button
+            onClick={onMessage}
+            title="Message owner"
+            className="flex-1 bg-surface border-[1.5px] border-border rounded-lg py-2.5 text-green cursor-pointer flex flex-col items-center gap-0.5"
+          >
+            <Icon name="message" className="text-[19px]" />
+            <span className="text-[10px] font-bold">Message</span>
+          </button>
+        )}
+        {!isOwner && canViewContact && !contactRevealed && (
+          <button
+            onClick={onViewContact}
+            disabled={revealPending || unlocking}
+            title={revealMethod === "credit" ? "Uses 1 credit" : revealMethod === "insufficient" ? "Buy credits to unlock" : "Free"}
+            className="flex-1 bg-surface border-[1.5px] border-green rounded-lg py-2.5 text-green cursor-pointer flex flex-col items-center gap-0.5 disabled:opacity-60"
+          >
+            <Icon name="phone" className="text-[19px]" />
+            <span className="text-[10px] font-bold">
+              {revealPending || unlocking ? "Unlocking…" : "View Contact"}
+            </span>
+          </button>
         )}
       </div>
 
@@ -170,7 +174,9 @@ export function ListingDetailActions({
 
       {!isOwner && ownerUnverified && (
         <p className="m-0 mt-3 text-[13px] text-text-soft">
-          The owner hasn&apos;t verified this listing on Bhavano yet, so they can&apos;t be contacted here.
+          {canViewContact
+            ? "This business hasn't claimed its listing on Bhavano yet, so it can't be messaged here — but you can view its contact details below."
+            : "The owner hasn't verified this listing on Bhavano yet, so they can't be contacted here."}
         </p>
       )}
 

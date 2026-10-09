@@ -275,6 +275,10 @@ const LISTING_MEDIA_INCLUDE = {
     select: { agentProUntil: true, phone: true, email: true, sellerType: true, agencyName: true, reraVerifiedAt: true },
   },
   listingRenewals: { orderBy: { renewedAt: 'desc' as const } },
+  // The scraped business's own phone/email, for findOne's getRevealState call — an
+  // ownerUnverified listing's real owner is the Bulk Import account (nobody), but the business
+  // itself (if its OutreachContact row has a phone/email) can still be reached directly.
+  claimContact: { select: { phone: true, email: true } },
 };
 
 
@@ -1220,6 +1224,8 @@ export class ListingsService {
       id,
       listing.owner.phone,
       listing.owner.email,
+      listing.claimContact?.phone ?? null,
+      listing.claimContact?.email ?? null,
     );
     // Ownership is passed separately from isOwnerOrAdmin: an admin looking at someone else's
     // listing is not its owner and may well need the contact actions, so the two cannot share a
@@ -3541,6 +3547,7 @@ export class ListingsService {
         reraVerifiedAt?: Date | null;
       };
       listingRenewals: ListingRenewal[];
+      claimContact?: { phone: string | null; email: string | null } | null;
     },
     favouritedIds?: Set<string>,
     // Only true for the owner's own view or an admin's — gates both which video statuses are
@@ -3682,6 +3689,7 @@ export class ListingsService {
         agencyName?: string | null;
         reraVerifiedAt?: Date | null;
       };
+      claimContact?: { phone: string | null; email: string | null } | null;
     },
     favouritedIds?: Set<string>,
     /** Compared against the row's ownerId — see the DTO field. */
@@ -3737,6 +3745,8 @@ export class ListingsService {
       // since "does this listing have a playable video at all" is fine as public info once done.
       hasVideo: listing.listingVideos.some((v) => v.status === 'done'),
       ownerUnverified: isBulkImportOwner(listing.owner),
+      contactUnavailable:
+        isBulkImportOwner(listing.owner) && !listing.claimContact?.phone && !listing.claimContact?.email,
       ...this.postedBy(listing),
       ...(revealStates?.get(listing.id) ?? { contactRevealed: false, ownerPhone: null, ownerEmail: null }),
     };

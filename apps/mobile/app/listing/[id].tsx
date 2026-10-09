@@ -62,6 +62,10 @@ export default function ListingDetailScreen() {
   const [insufficientCredits, setInsufficientCredits] = useState(false);
   const whatsAppHref = ownerPhone && listing ? whatsAppChatUrl(ownerPhone, ownerEnquiryText(listing.title)) : null;
   const reportSheetRef = useRef<BottomSheetModal>(null);
+  // An unclaimed (ownerUnverified) listing can still be revealable — see
+  // ListingCardDto.contactUnavailable's own doc comment. Defaults to false (don't hide the
+  // button) while the listing is still loading.
+  const canViewContact = !listing?.contactUnavailable;
 
   useEffect(() => {
     if (listing) {
@@ -275,29 +279,29 @@ export default function ListingDetailScreen() {
               <Text style={{ fontSize: 10, fontWeight: "700", color: colors.muted }}>{likeCount}</Text>
             </Pressable>
             {!listing.isOwner && !listing.ownerUnverified && (
-              <>
-                <Pressable onPress={onMessage} style={[styles.actionButton, { borderColor: colors.border }]}>
-                  <Icon name="message" size={18} color={colors.green} />
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: colors.green }}>Message</Text>
-                </Pressable>
-                {!contactRevealed && (
-                  <Pressable
-                    onPress={onViewContact}
-                    disabled={revealPending}
-                    style={[styles.actionButton, { borderColor: colors.green, opacity: revealPending ? 0.6 : 1 }]}
-                  >
-                    <Icon name="phone" size={18} color={colors.green} />
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.green }}>
-                      {revealPending ? "Unlocking…" : "View Contact"}
-                    </Text>
-                  </Pressable>
-                )}
-              </>
+              <Pressable onPress={onMessage} style={[styles.actionButton, { borderColor: colors.border }]}>
+                <Icon name="message" size={18} color={colors.green} />
+                <Text style={{ fontSize: 10, fontWeight: "700", color: colors.green }}>Message</Text>
+              </Pressable>
+            )}
+            {!listing.isOwner && canViewContact && !contactRevealed && (
+              <Pressable
+                onPress={onViewContact}
+                disabled={revealPending}
+                style={[styles.actionButton, { borderColor: colors.green, opacity: revealPending ? 0.6 : 1 }]}
+              >
+                <Icon name="phone" size={18} color={colors.green} />
+                <Text style={{ fontSize: 10, fontWeight: "700", color: colors.green }}>
+                  {revealPending ? "Unlocking…" : "View Contact"}
+                </Text>
+              </Pressable>
             )}
           </View>
           {!listing.isOwner && listing.ownerUnverified && (
             <Text style={{ fontSize: 13, color: colors.muted, marginTop: 12 }}>
-              The owner hasn&rsquo;t verified this listing on Bhavano yet, so they can&rsquo;t be contacted here.
+              {canViewContact
+                ? "This business hasn’t claimed its listing on Bhavano yet, so it can’t be messaged here — but you can view its contact details below."
+                : "The owner hasn’t verified this listing on Bhavano yet, so they can’t be contacted here."}
             </Text>
           )}
           {!listing.isOwner && !listing.ownerUnverified && !!accessToken && (

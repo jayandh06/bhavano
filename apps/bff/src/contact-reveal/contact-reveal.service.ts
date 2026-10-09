@@ -58,19 +58,31 @@ export class ContactRevealService {
    * model's own doc comment). `ownerPhone`/`ownerEmail` are the values already fetched by the
    * caller (from Listing.owner) — passed in rather than re-queried here, and only echoed back
    * when `contactRevealed` is true, so the caller can build a response that never carries them
-   * otherwise. */
+   * otherwise.
+   *
+   * `fallbackPhone`/`fallbackEmail` (the linked OutreachContact's own, if any) stand in for
+   * `ownerPhone`/`ownerEmail` when the listing is still owned by the Bulk Import account: there's
+   * nobody real to reveal the *owner's* contact for, but the scraped business itself can still be
+   * reached until it's claimed — see bulk-import-owner.ts. Messaging stays blocked either way
+   * (MessagingService's own OWNER_UNVERIFIED check, unaffected by this), since there's no Bhavano
+   * inbox for an unclaimed business to read a message in. */
   async getRevealState(
     userId: string | null,
     listingId: string,
     ownerPhone: string | null,
     ownerEmail: string | null,
+    fallbackPhone: string | null = null,
+    fallbackEmail: string | null = null,
   ): Promise<ContactRevealState> {
-    if (!userId || ownerPhone === BULK_IMPORT_OWNER_PHONE) return UNREVEALABLE;
+    const isUnverified = ownerPhone === BULK_IMPORT_OWNER_PHONE;
+    const revealPhone = isUnverified ? fallbackPhone : ownerPhone;
+    const revealEmail = isUnverified ? fallbackEmail : ownerEmail;
+    if (!userId || (isUnverified && !revealPhone && !revealEmail)) return UNREVEALABLE;
 
     const existing = await this.prisma.contactReveal.findUnique({
       where: { listingId_userId: { listingId, userId } },
     });
-    if (existing) return { contactRevealed: true, ownerPhone, ownerEmail };
+    if (existing) return { contactRevealed: true, ownerPhone: revealPhone, ownerEmail: revealEmail };
 
     const settings = await this.getSettings();
     const freeUsed = await this.prisma.contactReveal.count({ where: { userId, source: 'free' } });
@@ -163,11 +175,18 @@ export class ContactRevealService {
   async revealContact(userId: string, listingId: string): Promise<RevealContactResponseDto> {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
-      select: { owner: { select: { phone: true, email: true } } },
+      select: {
+        owner: { select: { phone: true, email: true } },
+        claimContact: { select: { phone: true, email: true } },
+      },
     });
     if (!listing) throw new NotFoundException(`Listing ${listingId} not found`);
-    const { phone: ownerPhone, email: ownerEmail } = listing.owner;
-    if (ownerPhone === BULK_IMPORT_OWNER_PHONE) {
+    // Same fallback as getRevealState: an unclaimed listing's "owner" is the Bulk Import
+    // account, but the scraped business's own phone/email (if any) is still revealable.
+    const isUnverified = listing.owner.phone === BULK_IMPORT_OWNER_PHONE;
+    const ownerPhone = isUnverified ? listing.claimContact?.phone ?? null : listing.owner.phone;
+    const ownerEmail = isUnverified ? listing.claimContact?.email ?? null : listing.owner.email;
+    if (isUnverified && !ownerPhone && !ownerEmail) {
       throw new ConflictException({ message: OWNER_UNVERIFIED_MESSAGE, code: 'OWNER_UNVERIFIED' });
     }
 
