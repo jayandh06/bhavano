@@ -165,10 +165,14 @@ export function BoostPlanSelector({
       </p>
 
       {pricing.allowSkippingBoost !== false && (
+        // A real bordered button, not bare underlined text — this used to be sized no bigger
+        // than its own words, sitting right under several bold bordered buttons above it, and
+        // got missed. Deliberately neutral (no green, no fill) rather than styled like the
+        // Feature options above: still the de-emphasized choice, just no longer an invisible one.
         <button
           type="button"
           onClick={() => (value ? (onSkipAttempt ? onSkipAttempt() : onChange(null)) : onChange(effective))}
-          className="mt-2.5 bg-transparent border-0 p-0 text-[12.5px] font-bold text-muted underline cursor-pointer"
+          className="mt-2.5 w-full border-[1.5px] border-border rounded-[10px] px-4 py-2.5 text-[13px] font-bold text-muted bg-surface-alt cursor-pointer"
         >
           {value ? "Skip — post without featuring" : "Add it back"}
         </button>

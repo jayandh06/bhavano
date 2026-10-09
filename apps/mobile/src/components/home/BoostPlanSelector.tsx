@@ -188,11 +188,18 @@ export function BoostPlanSelector({
       </Text>
 
       {pricing.allowSkippingBoost !== false && (
+        // A real bordered button, not bare underlined text — this used to be a tap target no
+        // bigger than its own words, sitting right under several bold bordered buttons above it,
+        // and got missed. Deliberately neutral (no green, no fill) rather than styled like the
+        // Feature options: still the de-emphasized choice, just no longer an invisible one.
         <Pressable
           onPress={() => (value ? (onSkipAttempt ? onSkipAttempt() : onChange(null)) : onChange(effective))}
-          style={{ marginTop: 10 }}
+          style={[
+            styles.optionButton,
+            { borderColor: colors.border, backgroundColor: colors.surfaceAlt, justifyContent: "center", marginTop: 10 },
+          ]}
         >
-          <Text style={{ fontSize: 12.5, fontWeight: "700", color: colors.muted, textDecorationLine: "underline" }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>
             {value ? "Skip — post without featuring" : "Add it back"}
           </Text>
         </Pressable>
