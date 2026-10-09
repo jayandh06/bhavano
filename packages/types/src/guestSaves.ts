@@ -39,6 +39,7 @@ export function toGuestSave(listing: ListingCardDto): ListingCardDto {
     postedByReraVerified: listing.postedByReraVerified,
     isOwner: false,
     ownerUnverified: listing.ownerUnverified,
+    contactUnavailable: listing.contactUnavailable,
     contactRevealed: false,
     ownerPhone: null,
     ownerEmail: null,

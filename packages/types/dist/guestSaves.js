@@ -43,6 +43,7 @@ function toGuestSave(listing) {
         postedByReraVerified: listing.postedByReraVerified,
         isOwner: false,
         ownerUnverified: listing.ownerUnverified,
+        contactUnavailable: listing.contactUnavailable,
         contactRevealed: false,
         ownerPhone: null,
         ownerEmail: null,
