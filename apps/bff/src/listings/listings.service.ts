@@ -692,7 +692,13 @@ export class ListingsService {
       );
       const revealStates = await this.contactRevealService.getRevealStatesForListings(
         currentUserId,
-        allRows.map((r) => ({ id: r.id, ownerPhone: r.owner.phone, ownerEmail: r.owner.email })),
+        allRows.map((r) => ({
+          id: r.id,
+          ownerPhone: r.owner.phone,
+          ownerEmail: r.owner.email,
+          fallbackPhone: r.claimContact?.phone ?? null,
+          fallbackEmail: r.claimContact?.email ?? null,
+        })),
       );
       return {
         items: rows.map((row) => this.toCardDto(row, favouritedIds, currentUserId, revealStates)),
@@ -715,7 +721,13 @@ export class ListingsService {
     );
     const revealStates = await this.contactRevealService.getRevealStatesForListings(
       currentUserId,
-      page.map((r) => ({ id: r.id, ownerPhone: r.owner.phone, ownerEmail: r.owner.email })),
+      page.map((r) => ({
+        id: r.id,
+        ownerPhone: r.owner.phone,
+        ownerEmail: r.owner.email,
+        fallbackPhone: r.claimContact?.phone ?? null,
+        fallbackEmail: r.claimContact?.email ?? null,
+      })),
     );
 
     return {
@@ -3142,7 +3154,13 @@ export class ListingsService {
     const favouritedIds = new Set(favourites.map((f) => f.listingId));
     const revealStates = await this.contactRevealService.getRevealStatesForListings(
       userId,
-      favourites.map((f) => ({ id: f.listing.id, ownerPhone: f.listing.owner.phone, ownerEmail: f.listing.owner.email })),
+      favourites.map((f) => ({
+        id: f.listing.id,
+        ownerPhone: f.listing.owner.phone,
+        ownerEmail: f.listing.owner.email,
+        fallbackPhone: f.listing.claimContact?.phone ?? null,
+        fallbackEmail: f.listing.claimContact?.email ?? null,
+      })),
     );
     return favourites.map((f) => this.toCardDto(f.listing, favouritedIds, userId, revealStates));
   }

@@ -108,7 +108,16 @@ export class ContactRevealService {
    * individual listing has already been revealed differs per row. */
   async getRevealStatesForListings(
     userId: string | undefined,
-    listings: { id: string; ownerPhone: string | null; ownerEmail: string | null }[],
+    listings: {
+      id: string;
+      ownerPhone: string | null;
+      ownerEmail: string | null;
+      // See getRevealState's doc comment — the linked OutreachContact's own phone/email, used
+      // in place of ownerPhone/ownerEmail when this listing is still owned by the Bulk Import
+      // account. Optional/undefined for a caller that doesn't track claimContact at all.
+      fallbackPhone?: string | null;
+      fallbackEmail?: string | null;
+    }[],
   ): Promise<Map<string, ContactRevealState>> {
     const states = new Map<string, ContactRevealState>();
     if (!userId || listings.length === 0) return states;
@@ -125,12 +134,15 @@ export class ContactRevealService {
     const hasCredit = freeAvailable ? false : await this.hasCreditAvailable(userId);
 
     for (const listing of listings) {
-      if (listing.ownerPhone === BULK_IMPORT_OWNER_PHONE) {
+      const isUnverified = listing.ownerPhone === BULK_IMPORT_OWNER_PHONE;
+      const revealPhone = isUnverified ? listing.fallbackPhone ?? null : listing.ownerPhone;
+      const revealEmail = isUnverified ? listing.fallbackEmail ?? null : listing.ownerEmail;
+      if (isUnverified && !revealPhone && !revealEmail) {
         states.set(listing.id, UNREVEALABLE);
         continue;
       }
       if (revealedIds.has(listing.id)) {
-        states.set(listing.id, { contactRevealed: true, ownerPhone: listing.ownerPhone, ownerEmail: listing.ownerEmail });
+        states.set(listing.id, { contactRevealed: true, ownerPhone: revealPhone, ownerEmail: revealEmail });
         continue;
       }
       states.set(listing.id, {

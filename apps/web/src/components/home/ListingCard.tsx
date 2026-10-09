@@ -324,46 +324,51 @@ export function ListingCard({
           </div>
           {/* Hidden on your own listing — the same reason as on the detail page, and more
             * visible here since a seller scrolling their own city sees the card among everyone
-            * else's. */}
-          {!item.isOwner && item.ownerUnverified && (
+            * else's. Message and Contact are gated independently (ownerUnverified vs
+            * contactUnavailable) — an unclaimed listing with a scraped phone/email on file still
+            * offers Contact, just not Message. See ListingDetailActions' matching split. */}
+          {!item.isOwner && item.contactUnavailable && (
             <span className="text-[11.5px] text-muted whitespace-nowrap">Owner not verified yet</span>
           )}
-          {!item.isOwner && !item.ownerUnverified && (
+          {!item.isOwner && (!item.ownerUnverified || !item.contactUnavailable) && (
             <div className="flex gap-1.5">
-              <button
-                onClick={onMessage}
-                aria-label={fixedHeight ? "Message" : undefined}
-                className="flex items-center gap-1 bg-green/10 text-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold cursor-pointer whitespace-nowrap"
-              >
-                <Icon name="message" />
-                {/* The rail's cards are narrow enough (250px on a phone browser) that "Message" +
-                  * "Contact" (worse once revealed: an actual phone number) as text overflowed the
-                  * card width and got clipped by its own overflow-hidden — icon-only here, same
-                  * fix the grid's own wider cards never needed. */}
-                {!fixedHeight && "Message"}
-              </button>
-              {contactRevealed ? (
-                (ownerPhone || ownerEmail) && (
-                  <a
-                    href={`tel:${ownerPhone ?? ""}`}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={fixedHeight ? (ownerPhone ?? "Email") : undefined}
-                    className="flex items-center gap-1 bg-green text-on-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold whitespace-nowrap no-underline"
-                  >
-                    <Icon name="phone" /> {!fixedHeight && (ownerPhone ?? "Email")}
-                  </a>
-                )
-              ) : (
+              {!item.ownerUnverified && (
                 <button
-                  onClick={onViewContact}
-                  disabled={revealPending}
-                  aria-label={fixedHeight ? (revealPending ? "Unlocking…" : "Contact") : undefined}
-                  className="flex items-center gap-1 bg-green text-on-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold cursor-pointer whitespace-nowrap disabled:opacity-60"
+                  onClick={onMessage}
+                  aria-label={fixedHeight ? "Message" : undefined}
+                  className="flex items-center gap-1 bg-green/10 text-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold cursor-pointer whitespace-nowrap"
                 >
-                  <Icon name="phone" />
-                  {!fixedHeight && (revealPending ? "Unlocking…" : "Contact")}
+                  <Icon name="message" />
+                  {/* The rail's cards are narrow enough (250px on a phone browser) that "Message" +
+                    * "Contact" (worse once revealed: an actual phone number) as text overflowed the
+                    * card width and got clipped by its own overflow-hidden — icon-only here, same
+                    * fix the grid's own wider cards never needed. */}
+                  {!fixedHeight && "Message"}
                 </button>
               )}
+              {!item.contactUnavailable &&
+                (contactRevealed ? (
+                  (ownerPhone || ownerEmail) && (
+                    <a
+                      href={`tel:${ownerPhone ?? ""}`}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={fixedHeight ? (ownerPhone ?? "Email") : undefined}
+                      className="flex items-center gap-1 bg-green text-on-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold whitespace-nowrap no-underline"
+                    >
+                      <Icon name="phone" /> {!fixedHeight && (ownerPhone ?? "Email")}
+                    </a>
+                  )
+                ) : (
+                  <button
+                    onClick={onViewContact}
+                    disabled={revealPending}
+                    aria-label={fixedHeight ? (revealPending ? "Unlocking…" : "Contact") : undefined}
+                    className="flex items-center gap-1 bg-green text-on-green border-none rounded-lg px-2.5 py-1.5 text-[12px] font-bold cursor-pointer whitespace-nowrap disabled:opacity-60"
+                  >
+                    <Icon name="phone" />
+                    {!fixedHeight && (revealPending ? "Unlocking…" : "Contact")}
+                  </button>
+                ))}
             </div>
           )}
         </div>

@@ -144,6 +144,13 @@ mirrors this same rule.
   Message and the explanatory copy). Deliberately not reused `revealMethod` for this — that's
   undefined for every anonymous viewer on every listing, not just unverified ones, so it can't
   double as "is this reachable at all."
+- **Extended to the browse-grid cards too (same day):** `ListingCard.tsx` (web and mobile) had the
+  same `ownerUnverified`-gates-everything logic, batched via
+  `ContactRevealService.getRevealStatesForListings` rather than `getRevealState` — given the same
+  `fallbackPhone`/`fallbackEmail` per row (from each listing's own `claimContact`), with the same
+  `contactUnavailable`-gates-Contact / `ownerUnverified`-gates-Message split on the card's action
+  row. "Owner not verified yet" only shows in the true dead-end case now; a card with a scraped
+  contact on file shows the Contact button (no Message) instead.
 
 ## Claiming a bulk-imported listing (WhatsApp verification)
 

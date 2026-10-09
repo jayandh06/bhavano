@@ -126,4 +126,19 @@ describe('ContactRevealService — unclaimed listings with a scraped contact on 
     const state = await service.getRevealState('buyer1', 'l1', BULK, null, null, null);
     expect(state).toEqual({ contactRevealed: false, ownerPhone: null, ownerEmail: null });
   });
+
+  it('getRevealStatesForListings offers a reveal (not UNREVEALABLE) for a card with a fallback contact', async () => {
+    const { service } = makeService();
+    const states = await service.getRevealStatesForListings('buyer1', [
+      { id: 'l1', ownerPhone: BULK, ownerEmail: null, fallbackPhone: '9123456780', fallbackEmail: null },
+      { id: 'l2', ownerPhone: BULK, ownerEmail: null },
+    ]);
+    expect(states.get('l1')).toEqual({
+      contactRevealed: false,
+      ownerPhone: null,
+      ownerEmail: null,
+      revealMethod: 'free',
+    });
+    expect(states.get('l2')).toEqual({ contactRevealed: false, ownerPhone: null, ownerEmail: null });
+  });
 });

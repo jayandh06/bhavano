@@ -224,37 +224,43 @@ export function ListingCard({
               <Text style={{ fontSize: 11, color: colors.muted }}>{likeCount}</Text>
             </View>
           </View>
-          {!item.isOwner && item.ownerUnverified && (
+          {/* Message and Contact are gated independently (ownerUnverified vs
+            * contactUnavailable) — an unclaimed listing with a scraped phone/email on file still
+            * offers Contact, just not Message. Mirrors web ListingCard.tsx's matching split. */}
+          {!item.isOwner && item.contactUnavailable && (
             <Text style={{ fontSize: 11, color: colors.muted }}>Owner not verified yet</Text>
           )}
-          {!item.isOwner && !item.ownerUnverified && (
+          {!item.isOwner && (!item.ownerUnverified || !item.contactUnavailable) && (
             <View style={{ flexDirection: "row", gap: 6 }}>
               {/* Light green rather than filled: sharing a row with the counts, a solid button the
                   same weight as before would visually shout over them. */}
-              <Pressable onPress={onMessage} style={[styles.contactButton, { backgroundColor: `${colors.green}1a` }]}>
-                <Icon name="message" size={12} color={colors.green} />
-                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12 }}>Message</Text>
-              </Pressable>
-              {contactRevealed && ownerPhone ? (
-                <Pressable
-                  onPress={() => Linking.openURL(`tel:${ownerPhone}`)}
-                  style={[styles.contactButton, { backgroundColor: colors.green }]}
-                >
-                  <Icon name="phone" size={12} color={colors.onGreen} />
-                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12 }}>{ownerPhone}</Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  onPress={onViewContact}
-                  disabled={revealPending}
-                  style={[styles.contactButton, { backgroundColor: colors.green, opacity: revealPending ? 0.6 : 1 }]}
-                >
-                  <Icon name="phone" size={12} color={colors.onGreen} />
-                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12 }}>
-                    {revealPending ? "Unlocking…" : "Contact"}
-                  </Text>
+              {!item.ownerUnverified && (
+                <Pressable onPress={onMessage} style={[styles.contactButton, { backgroundColor: `${colors.green}1a` }]}>
+                  <Icon name="message" size={12} color={colors.green} />
+                  <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12 }}>Message</Text>
                 </Pressable>
               )}
+              {!item.contactUnavailable &&
+                (contactRevealed && ownerPhone ? (
+                  <Pressable
+                    onPress={() => Linking.openURL(`tel:${ownerPhone}`)}
+                    style={[styles.contactButton, { backgroundColor: colors.green }]}
+                  >
+                    <Icon name="phone" size={12} color={colors.onGreen} />
+                    <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12 }}>{ownerPhone}</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={onViewContact}
+                    disabled={revealPending}
+                    style={[styles.contactButton, { backgroundColor: colors.green, opacity: revealPending ? 0.6 : 1 }]}
+                  >
+                    <Icon name="phone" size={12} color={colors.onGreen} />
+                    <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12 }}>
+                      {revealPending ? "Unlocking…" : "Contact"}
+                    </Text>
+                  </Pressable>
+                ))}
             </View>
           )}
         </View>
