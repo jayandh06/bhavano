@@ -128,7 +128,6 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
                   key={`${pv.path}-${pv.createdAt}-${i}`}
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
                     alignItems: "flex-start",
                     gap: 12,
                     border: trailEntry(pv.path).isError ? "1px solid var(--danger)" : "1px solid var(--border)",
@@ -137,6 +136,16 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
                     background: "var(--surface)",
                   }}
                 >
+                  {/* Time first, left-aligned — with justify-content: space-between this used to
+                      sit pinned to the far right edge, which on a full-width page meant scrolling
+                      all the way across just to read it. A fixed width keeps every row's label
+                      starting in the same column regardless of how long that row's gap text is. */}
+                  <div style={{ flexShrink: 0, width: 150 }}>
+                    <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{formatDateTime(pv.createdAt)}</div>
+                    {gapMs !== null && (
+                      <div style={{ fontSize: 11, color: "var(--muted)" }}>{formatGap(gapMs)}</div>
+                    )}
+                  </div>
                   <div style={{ fontSize: 13.5, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
                     {i + 1}.{" "}
                     {href ? (
@@ -145,12 +154,6 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
                       </a>
                     ) : (
                       trailEntry(pv.path).text
-                    )}
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{formatDateTime(pv.createdAt)}</div>
-                    {gapMs !== null && (
-                      <div style={{ fontSize: 11, color: "var(--muted)" }}>{formatGap(gapMs)}</div>
                     )}
                   </div>
                 </div>

@@ -127,7 +127,11 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
+      {/* No maxWidth: 14 columns (Time/User/Pages/Device/Source/Medium/Campaign/Ad group/
+          Landing path/IP/City/Region/Country) genuinely needs the page's full width — the
+          1280px cap every other admin list page uses was just squeezing most of them into a
+          horizontal scroll instead. */}
+      <div style={{ margin: "0 auto", padding: "32px 24px" }}>
         <FullPageLink href="/" style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, display: "inline-block" }}>
           ← Back to dashboard
         </FullPageLink>

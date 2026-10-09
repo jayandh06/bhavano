@@ -188,7 +188,6 @@ function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loa
                 key={`${pv.path}-${pv.createdAt}-${i}`}
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
                   alignItems: "flex-start",
                   gap: 12,
                   border: trailEntry(pv.path).isError ? "1px solid var(--danger)" : "1px solid var(--border)",
@@ -198,6 +197,13 @@ function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loa
                   fontSize: 13,
                 }}
               >
+                {/* Time first, left-aligned — see the standalone session page's identical fix for
+                    why: space-between pinned this to the far right edge, which on a full-width
+                    page meant scrolling all the way across just to read it. */}
+                <div style={{ flexShrink: 0, width: 130 }}>
+                  <div style={{ fontSize: 11, color: "var(--muted)" }}>{formatDateTime(pv.createdAt)}</div>
+                  {gapMs !== null && <div style={{ fontSize: 10.5, color: "var(--muted)" }}>{formatGap(gapMs)}</div>}
+                </div>
                 <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
                   {i + 1}.{" "}
                   {href ? (
@@ -207,10 +213,6 @@ function SessionTrailPanel({ state, sessionId }: { state: SessionTrailDto | "loa
                   ) : (
                     trailEntry(pv.path).text
                   )}
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: 11, color: "var(--muted)" }}>{formatDateTime(pv.createdAt)}</div>
-                  {gapMs !== null && <div style={{ fontSize: 10.5, color: "var(--muted)" }}>{formatGap(gapMs)}</div>}
                 </div>
               </div>
             );
