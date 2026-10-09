@@ -2324,49 +2324,57 @@ export function PostAdWizard({
             )}
           </div>
 
-          {/* Governs the combined AI Generate button below — replaces English rather than adding
-            * to it (unlike the Featured-regenerate banner's own language picker on the success
-            * step, which is deliberately additive) — see generationLanguage's own comment above. */}
-          <div className="flex items-center gap-2 max-w-[720px] flex-wrap">
-            <label className="text-[13px] font-bold text-text-soft shrink-0">✨ AI-generate in:</label>
-            <SelectField
-              narrow
-              value={generationLanguage}
-              onChange={(e) => setGenerationLanguage(e.target.value as IndianLanguage | "")}
-            >
-              <option value="">English</option>
-              {INDIAN_LANGUAGES.map((lang) => (
-                <option key={lang} value={lang}>
-                  {INDIAN_LANGUAGE_LABELS[lang]}
-                </option>
-              ))}
-            </SelectField>
+          {/* Was a small gold pill above the fields it fills, easy to scan straight past (users
+            * kept missing it and writing the title/description by hand). Promoted to the same
+            * loud gold-callout treatment the "restored draft" banner above uses, with its own
+            * headline, so it reads as a real option instead of a stray button. Still one button
+            * for both fields (handleGenerateCopy always requests both for this no-listingId
+            * call) — "generate title, then separately remember to also generate description"
+            * is exactly the friction this whole control exists to remove. */}
+          <div className="max-w-[720px] rounded-xl border-2 border-[color:var(--gold)] bg-[color:var(--gold)]/10 p-3.5 flex flex-col gap-2.5">
+            <div>
+              <div className="font-lora font-bold text-[15px] text-text">✨ Let AI write your title and description</div>
+              <p className="m-0 mt-0.5 text-[13px] text-text-soft">
+                Fill in the details above, then generate a polished title and description from them — in English or
+                your own language.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="text-[13px] font-bold text-text-soft shrink-0">Language:</label>
+              <SelectField
+                narrow
+                value={generationLanguage}
+                onChange={(e) => setGenerationLanguage(e.target.value as IndianLanguage | "")}
+              >
+                <option value="">English</option>
+                {INDIAN_LANGUAGES.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {INDIAN_LANGUAGE_LABELS[lang]}
+                  </option>
+                ))}
+              </SelectField>
+              <button
+                type="button"
+                onClick={() => void handleGenerateCopy("title")}
+                disabled={!canGenerateCopy || generatingTitle || generatingDescription}
+                title={canGenerateCopy ? undefined : "Fill in the required details above first"}
+                className="inline-flex items-center gap-1.5 text-[14px] font-bold text-on-green bg-green border-0 rounded-lg px-4 py-2 cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                {generatingTitle || generatingDescription ? "Generating…" : "✨ AI Generate Title + Description"}
+              </button>
+            </div>
+            {aiUsage && (
+              <p
+                className={`text-xs m-0 ${
+                  aiUsage.remaining <= 0 ? "text-[#b3413a] font-bold" : aiUsage.remaining <= 2 ? "text-gold" : "text-muted"
+                }`}
+              >
+                {aiUsage.remaining <= 0
+                  ? "You've used today's AI-generate limit — try again tomorrow, or write it yourself."
+                  : `${aiUsage.remaining} of ${aiUsage.limit} AI generations left today.`}
+              </p>
+            )}
           </div>
-          {/* One button, not two — a single click fills both fields together (handleGenerateCopy
-            * always requests both for this no-listingId call), so there's one action instead of
-            * "generate title, then separately remember to also generate description." */}
-          <div className="flex items-center gap-2 max-w-[720px] flex-wrap">
-            <button
-              type="button"
-              onClick={() => void handleGenerateCopy("title")}
-              disabled={!canGenerateCopy || generatingTitle || generatingDescription}
-              title={canGenerateCopy ? undefined : "Fill in the required details above first"}
-              className={aiGenerateButtonClass}
-            >
-              {generatingTitle || generatingDescription ? "Generating…" : "✨ AI Generate Title + Description"}
-            </button>
-          </div>
-          {aiUsage && (
-            <p
-              className={`text-xs m-0 -mt-1 ${
-                aiUsage.remaining <= 0 ? "text-[#b3413a] font-bold" : aiUsage.remaining <= 2 ? "text-gold" : "text-muted"
-              }`}
-            >
-              {aiUsage.remaining <= 0
-                ? "You've used today's AI-generate limit — try again tomorrow, or write it yourself."
-                : `${aiUsage.remaining} of ${aiUsage.limit} AI generations left today.`}
-            </p>
-          )}
 
           <div>
             <label className={labelClass}>
