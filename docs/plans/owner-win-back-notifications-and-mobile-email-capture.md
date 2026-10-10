@@ -46,6 +46,13 @@ ones, plus Parts A and C's new ones), not just the new ones.
 
 ## Status
 
+**All four parts (A–D) are implemented**, each in its own commit. What's left is entirely outside
+what this session could run: the two Part A WhatsApp template submissions still need Meta's
+approval before their env vars are set, and Parts B/D's manual walkthroughs (a real device/
+simulator pass for B, a seeded-data browser pass for D) need an environment this session doesn't
+have. Every automated check that could run here — typecheck, lint, and the full test suite on
+each touched app — is clean.
+
 - **Part A: implemented** (this commit). `ListingPostedReminderJob`, the new
   `dispatchPushPreferEmailPreferWhatsapp` dispatcher, `notifyListingPostedReminder` +
   `notifyDailyActivityDigest` on `NotificationsService`, the matching `PushService` typed methods,
