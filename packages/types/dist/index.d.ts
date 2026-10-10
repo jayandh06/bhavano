@@ -919,6 +919,14 @@ export interface PageVisitDto {
     adGroupId?: string;
     campaignName?: string;
     adGroupName?: string;
+    /** Google's own per-click id (`?gclid=` on the landing URL, auto-tagging) — the one thing that
+     * actually tells two cpc sessions apart: Google bills per unique `gclid`, not per `Visit` row
+     * this app creates, so two sessions sharing one `gclid` mean one real ad click (and one bill),
+     * however many of our own sessions it produced (e.g. the visitor fully closing their mobile
+     * browser between opens re-mints `bhavano_sid`, which is a plain session cookie with no
+     * `maxAge`, even on a reopened tab carrying the same old `gclid` param). Undefined only for a
+     * row that predates this field or never had a gclid (no ad click, or UTM-tagged instead). */
+    gclid?: string;
     landingPath: string | null;
     ip: string | null;
     ipCity: string | null;

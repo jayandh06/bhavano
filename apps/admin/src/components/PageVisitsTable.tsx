@@ -106,6 +106,12 @@ export function PageVisitsTable({
               <td style={tdStyle}>{v.campaignName ?? v.campaignId ?? dash}</td>
               <td style={tdStyle}>{v.adGroupName ?? v.adGroupId ?? dash}</td>
               <td
+                style={{ ...tdStyle, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 11 }}
+                title={v.gclid ?? undefined}
+              >
+                {v.gclid ?? dash}
+              </td>
+              <td
                 style={{ ...tdStyle, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                 title={v.landingPath ?? undefined}
               >
@@ -118,7 +124,7 @@ export function PageVisitsTable({
             </tr>
             {isOpen && (
               <tr>
-                <td colSpan={16} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
+                <td colSpan={17} style={{ padding: 0, borderTop: "1px solid var(--border)" }}>
                   <SessionTrailPanel state={trails[v.sessionId]} sessionId={v.sessionId} />
                 </td>
               </tr>
@@ -131,7 +137,7 @@ export function PageVisitsTable({
           widen the filter that just emptied the page. */}
       {items.length === 0 && (
         <tr style={{ borderTop: "1px solid var(--border)" }}>
-          <td colSpan={16} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
+          <td colSpan={17} style={{ ...tdStyle, color: "var(--muted)", textAlign: "center", padding: "20px 12px" }}>
             No visits match these filters.
             {/* Expected right after the crawler filter shipped, and confusing without saying
                 so: every session recorded before it has no stored User-Agent to judge, so none

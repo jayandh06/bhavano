@@ -275,6 +275,11 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                   <th style={thStyle}>
                     <SortableHeader label="Ad group" href={sortHref("adGroupId")} direction={sortDir("adGroupId")} />
                   </th>
+                  {/* Not a SortableHeader: Google's own per-click id, not a Visit column worth
+                      ordering a table by — its only use is comparing two rows' values directly to
+                      tell apart "one ad click, several of our own sessions" from "several real
+                      clicks" (see PageVisitDto.gclid's own doc comment). */}
+                  <th style={thStyle}>gclid</th>
                   <th style={thStyle}>
                     <SortableHeader label="Landing path" href={sortHref("landingPath")} direction={sortDir("landingPath")} />
                   </th>

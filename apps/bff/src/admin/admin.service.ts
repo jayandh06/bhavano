@@ -914,6 +914,7 @@ export class AdminService {
         adGroupId: row.adGroupId ?? undefined,
         campaignName: row.campaignId ? CAMPAIGN_NAMES[row.campaignId] : undefined,
         adGroupName: row.adGroupId ? AD_GROUP_NAMES[row.adGroupId] : undefined,
+        gclid: row.gclid ?? undefined,
         landingPath: row.landingPath,
         ip: row.ip,
         ipCity: row.ipCity,
