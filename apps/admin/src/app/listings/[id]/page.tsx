@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/requireAdmin";
-import type { ListingEditLogEntryDto } from "@bhavano/types";
+import type { ListingEditLogEntryDto, ListingEngagementRowDto } from "@bhavano/types";
 import { formatInrWithWords, listingPriceText } from "@bhavano/types/priceWords";
 import {
   fetchListingById,
@@ -21,6 +21,15 @@ import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 
 import { FullPageLink } from "@/components/FullPageLink";
 import { CopyButton } from "@/components/CopyButton";
+/** Styling for each `ListingEngagementRowDto.action` value — gold for contact reveals since
+ * that's the paid-feature action (same color `boostPromo`/gold-tier UI elsewhere in admin uses
+ * for anything tied to a paid credit), green for a free like, muted for a plain view. */
+const ENGAGEMENT_ACTION_STYLES: Record<ListingEngagementRowDto["action"], { label: string; color: string }> = {
+  liked: { label: "Liked", color: "var(--green)" },
+  viewed: { label: "Viewed", color: "var(--text-soft)" },
+  contact_revealed: { label: "Contact revealed", color: "var(--gold, #b8860b)" },
+};
+
 const LIKED_PARAM_NAMES = { page: "likedPage", limit: "likedLimit" };
 const MSG_PARAM_NAMES = { page: "msgPage", limit: "msgLimit" };
 const HISTORY_PARAM_NAMES = { page: "historyPage", limit: "historyLimit" };
@@ -312,11 +321,11 @@ export default async function ListingModerationPage({
 
         <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginTop: 20, background: "var(--surface)" }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
-            Liked &amp; viewed ({engagement.total})
+            Liked, viewed &amp; contact revealed ({engagement.total})
           </div>
           {engagement.items.length === 0 ? (
             <p style={{ color: "var(--muted)", fontSize: 14 }}>
-              No liked or viewed activity from logged-in users yet.{listing.viewCount > 0 &&
+              No liked, viewed, or contact-reveal activity from logged-in users yet.{listing.viewCount > 0 &&
                 ` (${listing.viewCount} total views, including anonymous.)`}
             </p>
           ) : (
@@ -332,26 +341,29 @@ export default async function ListingModerationPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {engagement.items.map((row, i) => (
-                    <tr key={`${row.userId}-${row.action}-${i}`} style={{ borderTop: "1px solid var(--border)" }}>
-                      <td style={engagementTdStyle}>{row.userName ?? row.userPhone ?? row.userEmail ?? "Unknown"}</td>
-                      <td style={engagementTdStyle}>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: row.action === "liked" ? "var(--green)" : "var(--text-soft)",
-                            border: `1px solid ${row.action === "liked" ? "var(--green)" : "var(--border)"}`,
-                            borderRadius: 6,
-                            padding: "2px 8px",
-                          }}
-                        >
-                          {row.action === "liked" ? "Liked" : "Viewed"}
-                        </span>
-                      </td>
-                      <td style={{ ...engagementTdStyle, whiteSpace: "nowrap" }}>{formatDateTime(row.at)}</td>
-                    </tr>
-                  ))}
+                  {engagement.items.map((row, i) => {
+                    const style = ENGAGEMENT_ACTION_STYLES[row.action];
+                    return (
+                      <tr key={`${row.userId}-${row.action}-${i}`} style={{ borderTop: "1px solid var(--border)" }}>
+                        <td style={engagementTdStyle}>{row.userName ?? row.userPhone ?? row.userEmail ?? "Unknown"}</td>
+                        <td style={engagementTdStyle}>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: style.color,
+                              border: `1px solid ${style.color}`,
+                              borderRadius: 6,
+                              padding: "2px 8px",
+                            }}
+                          >
+                            {style.label}
+                          </span>
+                        </td>
+                        <td style={{ ...engagementTdStyle, whiteSpace: "nowrap" }}>{formatDateTime(row.at)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

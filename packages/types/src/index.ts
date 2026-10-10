@@ -907,16 +907,17 @@ export interface ListingPerformancePage {
   total: number;
 }
 
-/** One row of a listing's "Liked & Viewed" admin table — a `Favourite` or a logged-in-viewer
- * `ListingView` row, resolved to the real user. Anonymous views are never rows here (no
- * resolvable user) — see ListingsService.listEngagement for why. The same user can appear twice
- * (once per action) if they both liked and viewed. */
+/** One row of a listing's "Liked, viewed & contact revealed" admin table — a `Favourite`, a
+ * logged-in-viewer `ListingView` row, or a `ContactReveal` row, each resolved to the real user.
+ * Anonymous views are never rows here (no resolvable user) — see ListingsService.listEngagement
+ * for why. The same user can appear more than once (once per action) if they liked, viewed,
+ * and/or revealed the contact. */
 export interface ListingEngagementRowDto {
   userId: string;
   userName: string | null;
   userPhone: string | null;
   userEmail: string | null;
-  action: 'liked' | 'viewed';
+  action: 'liked' | 'viewed' | 'contact_revealed';
   at: string;
 }
 

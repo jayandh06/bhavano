@@ -1,7 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { ListingCategory, ListingPerformanceRowDto, TransactionType } from "@bhavano/types";
-import { buildListingPath } from "@bhavano/types/listingPath";
 import { formatDate } from "@/lib/formatDateTime";
 
 const CATEGORY_LABELS: Record<ListingCategory, string> = {
@@ -24,19 +24,20 @@ const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
   lease: "Lease",
 };
 
-const SITE_URL = "https://www.bhavano.com";
-
 /**
  * The listing-performance table body — a client component for one reason: clicking a row opens
- * the live listing in a new tab. A plain `onClick` on the `<tr>` (`window.open`, not a real
- * anchor), same choice AdminListingsTable's own doc comment settled on for whole-row navigation —
- * the `position: relative`-`<tr>` + `position: absolute; inset: 0` stretched-anchor trick that
- * would keep real anchor semantics (ctrl/cmd-click, middle-click, "copy link") doesn't reliably
- * establish a containing block on a table row across mobile browsers, so it was dropped there
- * after tapping a row on mobile didn't navigate at all. `.admin-table-row` (globals.css) adds the
- * hover highlight and pointer cursor that normally comes free with a real link.
+ * this listing's own admin detail page (moderation, engagement, messages, history — the same
+ * page `AdminListingsTable`'s rows open), not the public site. A plain `onClick` + `router.push`
+ * on the `<tr>`, same choice `AdminListingsTable`'s own doc comment settled on for whole-row
+ * navigation — the `position: relative`-`<tr>` + `position: absolute; inset: 0` stretched-anchor
+ * trick that would keep real anchor semantics (ctrl/cmd-click, middle-click, "copy link") doesn't
+ * reliably establish a containing block on a table row across mobile browsers, so it was dropped
+ * there after tapping a row on mobile didn't navigate at all. `.admin-table-row` (globals.css)
+ * adds the hover highlight and pointer cursor that normally comes free with a real link.
  */
 export function ListingPerformanceTable({ items }: { items: ListingPerformanceRowDto[] }) {
+  const router = useRouter();
+
   if (items.length === 0) {
     return (
       <tbody>
@@ -52,12 +53,11 @@ export function ListingPerformanceTable({ items }: { items: ListingPerformanceRo
   return (
     <tbody>
       {items.map((item) => {
-        const href = `${SITE_URL}${buildListingPath(item)}`;
         return (
           <tr
             key={item.id}
             className="admin-table-row"
-            onClick={() => window.open(href, "_blank", "noopener,noreferrer")}
+            onClick={() => router.push(`/listings/${item.id}`)}
             style={{ borderBottom: "1px solid var(--border)" }}
           >
             <td style={tdStyle}>{formatDate(item.createdAt)}</td>

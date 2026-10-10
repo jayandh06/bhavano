@@ -1233,25 +1233,39 @@ export class ListingsService {
     limit: number,
   ): Promise<ListingEngagementPage> {
     const take = offset + limit;
-    const [favourites, views, favouriteCount, viewCount] = await Promise.all([
-      this.prisma.favourite.findMany({
-        where: { listingId },
-        include: {
-          user: { select: { id: true, name: true, phone: true, email: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take,
-      }),
-      this.prisma.listingView.findMany({
-        where: { listingId, viewerKey: { startsWith: 'user:' } },
-        orderBy: { createdAt: 'desc' },
-        take,
-      }),
-      this.prisma.favourite.count({ where: { listingId } }),
-      this.prisma.listingView.count({
-        where: { listingId, viewerKey: { startsWith: 'user:' } },
-      }),
-    ]);
+    const [favourites, views, reveals, favouriteCount, viewCount, revealCount] =
+      await Promise.all([
+        this.prisma.favourite.findMany({
+          where: { listingId },
+          include: {
+            user: {
+              select: { id: true, name: true, phone: true, email: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take,
+        }),
+        this.prisma.listingView.findMany({
+          where: { listingId, viewerKey: { startsWith: 'user:' } },
+          orderBy: { createdAt: 'desc' },
+          take,
+        }),
+        this.prisma.contactReveal.findMany({
+          where: { listingId },
+          include: {
+            user: {
+              select: { id: true, name: true, phone: true, email: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take,
+        }),
+        this.prisma.favourite.count({ where: { listingId } }),
+        this.prisma.listingView.count({
+          where: { listingId, viewerKey: { startsWith: 'user:' } },
+        }),
+        this.prisma.contactReveal.count({ where: { listingId } }),
+      ]);
 
     const viewerUserIds = views.map((v) => v.viewerKey.slice('user:'.length));
     const users = await this.prisma.user.findMany({
@@ -1284,11 +1298,19 @@ export class ListingsService {
           },
         ];
       }),
+      ...reveals.map((r): ListingEngagementRowDto => ({
+        userId: r.user.id,
+        userName: r.user.name,
+        userPhone: r.user.phone,
+        userEmail: r.user.email,
+        action: 'contact_revealed',
+        at: r.createdAt.toISOString(),
+      })),
     ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 
     return {
       items: merged.slice(offset, offset + limit),
-      total: favouriteCount + viewCount,
+      total: favouriteCount + viewCount + revealCount,
     };
   }
 

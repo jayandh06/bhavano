@@ -728,9 +728,11 @@ describe('ListingsService.listEngagement', () => {
   function makeEngagementService(opts: {
     favourites?: { user: { id: string; name: string | null; phone: string | null; email: string | null }; createdAt: Date }[];
     views?: { viewerKey: string; createdAt: Date }[];
+    reveals?: { user: { id: string; name: string | null; phone: string | null; email: string | null }; createdAt: Date }[];
     users?: { id: string; name: string | null; phone: string | null; email: string | null }[];
     favouriteCount?: number;
     viewCount?: number;
+    revealCount?: number;
   }) {
     const prisma = {
       favourite: {
@@ -740,6 +742,10 @@ describe('ListingsService.listEngagement', () => {
       listingView: {
         findMany: jest.fn().mockResolvedValue(opts.views ?? []),
         count: jest.fn().mockResolvedValue(opts.viewCount ?? (opts.views ?? []).length),
+      },
+      contactReveal: {
+        findMany: jest.fn().mockResolvedValue(opts.reveals ?? []),
+        count: jest.fn().mockResolvedValue(opts.revealCount ?? (opts.reveals ?? []).length),
       },
       user: {
         findMany: jest.fn().mockResolvedValue(opts.users ?? []),
@@ -800,6 +806,20 @@ describe('ListingsService.listEngagement', () => {
     const result = await service.listEngagement('listing1', 0, 25);
     expect(result.items).toHaveLength(2);
     expect(result.items.map((r) => r.action).sort()).toEqual(['liked', 'viewed']);
+  });
+
+  it('merges contact-reveal rows alongside liked/viewed, sorted newest-first', async () => {
+    const { service } = makeEngagementService({
+      favourites: [{ user: user('u1'), createdAt: past(2) }],
+      reveals: [{ user: user('u3'), createdAt: past(0.2) }],
+    });
+
+    const result = await service.listEngagement('listing1', 0, 25);
+    expect(result.items.map((r) => [r.userId, r.action])).toEqual([
+      ['u3', 'contact_revealed'],
+      ['u1', 'liked'],
+    ]);
+    expect(result.total).toBe(2);
   });
 
   it('drops a view row whose viewerKey points at a deleted user', async () => {
