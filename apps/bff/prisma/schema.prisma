@@ -582,6 +582,15 @@ model Listing {
   claimSellerType      SellerType?
   createdByAdminId     String?
   relatedListingId     String?
+  /// The poster's analytics session (web bhavano_sid / mobile's own uuid) at the moment this row
+  /// was created — set unconditionally, including when publishState starts as pending_checkout,
+  /// so completePendingPublish can still record the /post/success page-view trail entry once a
+  /// Razorpay webhook (which has no browser session of its own) later flips this live. Before this
+  /// field existed, create()'s CreateListingInput.sessionId was only ever used immediately and
+  /// discarded for any listing that needed checkout first — see docs/plans/
+  /// post-ad-funnel-step-tracking-and-entry-attribution.md's note on this gap. Null for
+  /// outreach/admin-created listings, which have no browser/app session at all.
+  createSessionId      String?
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
   expiresAt            DateTime

@@ -136,3 +136,34 @@ sessions.
   mobile app.
 - Confirm the new admin funnel view's step counts against a manual count of raw `PageView` rows
   for a small local test session.
+
+## Update (2026-10-10): `/post/success` was never recorded for any checkout-gated listing
+
+A real user who added a Feature/Boost (or posted in a category with a nonzero platform fee) at
+publish time showed every earlier step in their Page Visits trail, but no "Success" — not a
+one-off, a structural gap affecting every listing that needed checkout before going live.
+
+**Root cause:** a listing can reach `live` through two different code paths in
+`ListingsService`, and `runPostLiveSideEffects`'s `/post/success` write (`listings.service.ts`
+`:1489-1493`) only ever received a `sessionId` on one of them:
+- **Direct publish** (`create()`, `!pendingCheckout`) — passes `input.sessionId` straight
+  through. Correct.
+- **Checkout-gated publish** — `create()` sets `publishState: 'pending_checkout'` and
+  `input.sessionId` is simply discarded at that point, never persisted anywhere. Once Razorpay's
+  webhook later calls `completePendingPublish(listingId, trackingAuthorized)` to flip the row to
+  `live`, that method has no `sessionId` parameter at all to pass down — a payment webhook has no
+  browser session of its own to supply one even if it tried. Same gap on the "no thanks, just
+  post it" checkout-cancel path (`PaymentsService.cancelListingPublishCheckout`), which also
+  routes through `completePendingPublish`.
+
+**The fix:** persist the session at the one point it's genuinely available — `create()` time —
+rather than threading it through a payment webhook that has no concept of one:
+- New nullable `Listing.createSessionId` column, set unconditionally in `create()` (not gated on
+  `pendingCheckout`) from `input.sessionId`.
+- `completePendingPublish` reads it straight off the already-loaded `listing` row and passes it
+  into `runPostLiveSideEffects` — no signature changes needed on the payments side at all, since
+  neither payments call site ever needs to know a session id exists.
+
+See `ListingsService.completePendingPublish`'s own test describe block for the regression
+coverage (records the write when a session was captured at creation; skips it for an
+admin/outreach-created listing with none).

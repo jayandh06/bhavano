@@ -1619,6 +1619,11 @@ export class ListingsService {
       trackingAuthorized,
       listing.ownerId,
       isBulkImportOwner,
+      // The Razorpay webhook (or the "post without a boost" checkout-cancel path) that reaches
+      // this method has no browser session of its own — this is create()'s own input.sessionId,
+      // preserved on the row since the listing first went to pending_checkout. Without it,
+      // /post/success was never recorded for any listing that needed checkout before going live.
+      listing.createSessionId ?? undefined,
     );
   }
 
@@ -1806,6 +1811,9 @@ export class ListingsService {
         lat: input.lat,
         lng: input.lng,
         claimContactId: input.claimContactId ?? null,
+        // Set unconditionally, not just for the publishes-immediately branch below — see this
+        // column's own schema comment for why a pending_checkout listing needs it preserved too.
+        createSessionId: input.sessionId ?? null,
         ...(assisted
           ? {
               publishState: 'awaiting_claim' as const,

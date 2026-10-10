@@ -2622,3 +2622,90 @@ describe('ListingsService.runPostLiveSideEffects — Post ad success conversion 
     expect(uploadClickConversion).not.toHaveBeenCalled();
   });
 });
+
+describe('ListingsService.completePendingPublish — recovering the posting session for /post/success', () => {
+  // Same reasoning as makeSideEffectsService above: this exercises completePendingPublish's own
+  // logic (does it forward the row's own createSessionId?), not create()'s unrelated plumbing to
+  // get a listing into pending_checkout in the first place.
+  function makeService(listingOverrides: Record<string, unknown> = {}) {
+    const recordPageView = jest.fn().mockResolvedValue(undefined);
+    const prisma = {
+      listing: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'listing1',
+          ownerId: 'owner1',
+          publishState: 'pending_checkout',
+          category: 'apartment',
+          transactionType: 'rent',
+          price: 20000,
+          priceQualifier: '',
+          priceUnit: null,
+          attributes: {},
+          slug: 'a-nice-place',
+          title: 'A nice place',
+          createdAt: new Date('2026-10-08T00:00:00Z'),
+          city: { name: 'Bengaluru' },
+          area: { name: 'Koramangala' },
+          createSessionId: 'session-abc',
+          ...listingOverrides,
+        }),
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          deletedAt: null,
+          name: 'Owner',
+          email: null,
+          phone: '9999999999',
+          acquisitionGclid: null,
+        }),
+      },
+      listingNotificationLog: { create: jest.fn() },
+    } as unknown as PrismaService;
+    const notificationsService = {
+      notifyListingPosted: jest.fn().mockResolvedValue(null),
+      publishToFacebookPage: jest.fn().mockResolvedValue(null),
+    } as unknown as NotificationsService;
+    const savedSearchesService = { notifyMatchingBuyers: jest.fn().mockResolvedValue(undefined) } as unknown as SavedSearchesService;
+    const referralsService = { recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined) } as unknown as ReferralsService;
+    const analyticsService = { recordPageView } as unknown as AnalyticsService;
+    const googleAdsConversionProvider = {
+      uploadClickConversion: jest.fn().mockResolvedValue(undefined),
+    } as unknown as GoogleAdsConversionProvider;
+
+    const service = new ListingsService(
+      prisma,
+      {} as ModerationService,
+      { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
+      notificationsService,
+      savedSearchesService,
+      {} as LocationsService,
+      {} as R2StorageService,
+      {} as CdnPurgeService,
+      {} as ListingSlotsService,
+      googleAdsConversionProvider,
+      {} as ContactRevealService,
+      {} as PlatformFeeSettingsService,
+      { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+      analyticsService,
+      referralsService,
+    );
+    return { service, recordPageView };
+  }
+
+  it('records /post/success against the session captured when the listing was first created', async () => {
+    const { service, recordPageView } = makeService({ createSessionId: 'session-abc' });
+
+    await service.completePendingPublish('listing1');
+
+    expect(recordPageView).toHaveBeenCalledWith({ sessionId: 'session-abc', path: '/post/success' });
+  });
+
+  it('skips the write when no session was ever captured (admin/outreach-created listing)', async () => {
+    const { service, recordPageView } = makeService({ createSessionId: null });
+
+    await service.completePendingPublish('listing1');
+
+    expect(recordPageView).not.toHaveBeenCalled();
+  });
+});
