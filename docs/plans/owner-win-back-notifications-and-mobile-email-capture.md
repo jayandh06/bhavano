@@ -69,7 +69,16 @@ each touched app — is clean.
   ad"), no benefit or tip language — in `apps/bff/notification-templates/whatsapp/
   listing-posted-reminder{,-featured}/` and bumped `TEMPLATE_NAME` in both `whatsapp_create_*.py`
   scripts to match. The Featured push for not-yet-boosted owners still lives in the email variant,
-  which isn't subject to Meta's classifier. Not yet resubmitted to Meta.
+  which isn't subject to Meta's classifier.
+  **Update (2026-10-10): all three templates approved as UTILITY** —
+  `listing_posted_reminder_v2`, `listing_posted_reminder_featured_v2`, and Part C's
+  `daily_activity_digest_v1`. The three env vars are set in `apps/bff/.env` locally, but that file
+  has no `WHATSAPP_ACCESS_TOKEN`/`WHATSAPP_PHONE_NUMBER_ID`/`WHATSAPP_BUSINESS_ACCOUNT_ID` — the
+  real Meta credentials live only on the production host, so WhatsApp sending for all three is
+  still effectively off until those three env vars (and the template names) are set there too.
+  Not boost-gated by design for Part C's digest (an explicit earlier decision, "all listings, not
+  boost-gated") — worth a second look now that a real WhatsApp send cost applies to it live, not
+  just a hypothetical one.
 - **Part C: implemented** (this commit). `DailyActivityDigestJob` runs daily at 8am IST, batch-
   aggregates views/favourites/received-messages per owner across all their live listings (same
   bounded-batch + in-memory-aggregation pattern `listPerformanceForAdmin` already uses, not a
