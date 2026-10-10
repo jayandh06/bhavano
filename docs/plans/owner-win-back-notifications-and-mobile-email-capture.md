@@ -54,7 +54,13 @@ ones, plus Parts A and C's new ones), not just the new ones.
   coverage (27 new tests) are all in. WhatsApp sending for both reminder variants is gated behind
   `WHATSAPP_LISTING_POSTED_REMINDER_TEMPLATE` / `WHATSAPP_LISTING_POSTED_REMINDER_FEATURED_TEMPLATE`
   — unset until the two Meta template submissions are actually approved; email and push work today.
-- **Part B, C, D: not yet implemented** — plan below stands as written for those.
+- **Part C: implemented** (this commit). `DailyActivityDigestJob` runs daily at 8am IST, batch-
+  aggregates views/favourites/received-messages per owner across all their live listings (same
+  bounded-batch + in-memory-aggregation pattern `listPerformanceForAdmin` already uses, not a
+  per-owner query loop), skips owners with nothing to report, and dedups same-day re-runs via a
+  `UserNotificationLog` check before dispatching. 8 new tests, all passing; full BFF suite clean
+  (939 passed, same 2 pre-existing unrelated failures).
+- **Part B, D: not yet implemented** — plan below stands as written for those.
 
 ## Part A — "You posted recently" reminder job
 
@@ -221,7 +227,7 @@ reachable from any screen, same as web's isn't scoped to the homepage. **Keep
 `ProfileCompletionBanner.tsx` as-is** — it's a separate, permanent-dismiss, no-nag channel; the
 dialog is the capped/snoozed one. No change needed there.
 
-## Part C — daily activity digest (views / favourites / new messages)
+## Part C — daily activity digest (views / favourites / new messages) — implemented
 
 **Open assumption, flagged for review rather than guessed past**: "viewing" is read here as raw
 `ListingView` rows — a signal that currently triggers **no notification of any kind**, real-time
@@ -245,14 +251,18 @@ A's (recurring per-user digest, not a once-ever per-listing reminder):
 - Dispatch via the same `dispatchPushPreferEmailPreferWhatsapp` helper from Part A. Log via
   `UserNotificationLog` (not `ListingNotificationLog` — this is user-scoped, aggregated across
   potentially several listings, not any one listing's own event), `kind: 'daily_activity_digest'`.
-- Needs a same-day dedup guard (e.g. a `UserNotificationLog`-based check) before this ships — the
-  trailing-24h window alone isn't sufficient protection against a manual re-run double-sending.
+- Same-day dedup: before aggregating, reads existing `UserNotificationLog` rows with
+  `kind: 'daily_activity_digest'` and `sentAt` on today's calendar day, and skips any owner already
+  in that set — protects a manual re-run on the same day from double-sending.
 
 **`NotificationsService.notifyDailyActivityDigest`, `PushService.notifyDailyActivityDigest`, and
 the `email/daily-activity-digest/` + `whatsapp/daily-activity-digest/` template folders and
-`whatsapp_create_daily_activity_digest_template.py` submission script are already implemented**
-(built alongside Part A, sharing the same dispatcher) — only the job itself (reading real
-view/favourite/message counts and calling this method on a schedule) remains.
+`whatsapp_create_daily_activity_digest_template.py` submission script** were built alongside Part
+A, sharing the same dispatcher. The job itself (`daily-activity-digest.job.ts`) reads real
+view/favourite/message counts via one `listing.findMany` plus two `groupBy`s and one
+`conversation`/`message` pair — the same bounded-batch + in-memory-aggregation shape
+`listPerformanceForAdmin` already uses, not a per-owner query loop — and calls this method on the
+8am IST schedule.
 
 ## Part D — admin notification log page
 
@@ -306,13 +316,11 @@ new page to `AdminNav.tsx`'s nav list.
      `show: false` thereafter (only the separate banner shows).
    - Confirm the dialog never blocks Post Ad / messaging / contact-reveal underneath it.
 
-**Part C**:
-1. Unit test for the job mirroring Part A's own (fixed `now`, trailing-24h window, zero-counts =
-   skip, non-zero = dispatch, same-day dedup).
-2. Manual: seed a test user with a few `ListingView`/`Favourite`/`Message` rows in the last 24h,
-   run the job with an explicit `now`, confirm exactly one `UserNotificationLog` row
-   (`kind: 'daily_activity_digest'`) and the right channel given that user's push-token/email/phone
-   state. Re-run same day → confirm it doesn't double-send.
+**Part C** — done. 8 tests in `daily-activity-digest.job.spec.ts`: no live listings → no-op; zero
+counts → skipped; views/favourites aggregated across all of an owner's listings; messages counted
+only when received (not the owner's own replies); no log row when the channel is null; same-day
+dedup skips an already-notified owner; a throw on one owner doesn't stop the rest; the view/
+favourite window is bounded to the trailing 24h ending at `now`.
 
 **Part D**:
 1. `pnpm --filter @bhavano/bff exec tsc --noEmit` / `pnpm --filter admin exec tsc --noEmit` — clean.
@@ -340,7 +348,7 @@ new page to `AdminNav.tsx`'s nav list.
 - `apps/mobile/src/context/HomeSheetsProvider.tsx` (`isNewUser` passthrough) — not started
 - `apps/mobile/src/components/home/ProfileCompletionDialog.tsx` (new) — not started
 - `apps/mobile/app/_layout.tsx` (mount point) — not started
-- `apps/bff/src/seller-jobs/daily-activity-digest.job.ts` (new, Part C) — not started
+- `apps/bff/src/seller-jobs/daily-activity-digest.job.ts` (new, Part C) — **done**
 - `apps/bff/src/admin/admin.service.ts` + `admin.controller.ts` (new
   `getNotificationDailySummary`/`getNotificationDayDetail` endpoints, Part D) — not started
 - `apps/admin/src/app/notification-log/page.tsx` (new, Part D) — not started
