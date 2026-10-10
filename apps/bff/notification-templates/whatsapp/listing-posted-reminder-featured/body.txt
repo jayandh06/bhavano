@@ -1,5 +1,5 @@
 Hi {{name}},
 
-Your ad "{{title}}" has been live for a few days. Since it's already Featured, it's already getting priority placement — if you haven't heard from buyers yet, a sharper photo set or a quick price check often helps.
+Your ad "{{title}}" has been live for a few days and is currently marked as Featured.
 
-Tap below to update it anytime.
+Tap below to view or update it anytime.

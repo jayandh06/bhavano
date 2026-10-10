@@ -1,5 +1,5 @@
 Hi {{name}},
 
-Your ad "{{title}}" has been live for a few days but isn't Featured yet, so it's competing with every other regular listing for attention.
+Your ad "{{title}}" has been live for a few days. It is not currently marked as Featured.
 
-A Featured ad ranks above regular listings and gets more views — usually more messages too. Tap below to feature it now.
+Tap below to view your ad's status.

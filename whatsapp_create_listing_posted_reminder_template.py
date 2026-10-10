@@ -1,10 +1,17 @@
 """Creates the "listing_posted_reminder" WhatsApp Business template via Meta's Graph API.
 
-A few-days-after-posting nudge that pushes the Featured upgrade — the not-boosted half of
-docs/plans/ (the owner win-back plan's Part A). See
-whatsapp_create_listing_posted_reminder_featured_template.py for the already-boosted sibling
-(plain check-in, no Featured push) — two separate templates because an approved template's text
-is fixed and can't branch on boost status at send time.
+v2: v1 was reviewed and classified MARKETING instead of the declared UTILITY — the body argued
+the benefit of Featured ("ranks above regular listings and gets more views") and the button was
+an explicit purchase CTA ("Feature my ad"), both of which read as promotional regardless of what
+category this script declares. v2 is a plain status statement (ad is live, not currently
+Featured) with a neutral button ("View my ad") and no benefit/comparison language — the Featured
+push for not-yet-boosted owners still lives in the email variant, which isn't subject to Meta's
+classifier. See apps/bff/notification-templates/whatsapp/listing-posted-reminder/ for the wording.
+
+A few-days-after-posting nudge for the not-boosted half of docs/plans/ (the owner win-back plan's
+Part A). See whatsapp_create_listing_posted_reminder_featured_template.py for the already-boosted
+sibling — two separate templates because an approved template's text is fixed and can't branch on
+boost status at send time.
 
 PREVIEWS BY DEFAULT. Run with no arguments and it prints the exact template Meta would receive —
 does not submit anything. Only --submit actually calls the API.
@@ -41,7 +48,7 @@ WABA_ID = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID")
 VERSION = os.getenv("WHATSAPP_API_VERSION") or "v23.0"
 LANGUAGE = os.getenv("WHATSAPP_TEMPLATE_LANGUAGE") or "en"
 
-TEMPLATE_NAME = "listing_posted_reminder_v1"
+TEMPLATE_NAME = "listing_posted_reminder_v2"
 
 TEMPLATE_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -151,9 +158,11 @@ def main():
     show_preview(category)
 
     print(
-        "\nNOTE: submitting as %s. This pushes a paid upgrade (Featured), which leans promotional "
-        "- Meta's review may reclassify it as MARKETING regardless of what's declared here, same "
-        "caveat listing_posted_v2's own script notes for its softer boost mention." % category
+        "\nNOTE: submitting as %s. v1 (listing_posted_reminder_v1) came back classified MARKETING "
+        "- this v2 copy dropped the benefit/comparison language and the purchase-style button text "
+        "that caused it, so it should read as a plain status update now. Meta's review can still "
+        "reclassify regardless of what's declared here; this is a better-odds rewrite, not a "
+        "guarantee." % category
     )
     print(
         "\nOnce Meta approves this, set WHATSAPP_LISTING_POSTED_REMINDER_TEMPLATE=%s in .env. "

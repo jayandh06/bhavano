@@ -61,6 +61,15 @@ each touched app — is clean.
   coverage (27 new tests) are all in. WhatsApp sending for both reminder variants is gated behind
   `WHATSAPP_LISTING_POSTED_REMINDER_TEMPLATE` / `WHATSAPP_LISTING_POSTED_REMINDER_FEATURED_TEMPLATE`
   — unset until the two Meta template submissions are actually approved; email and push work today.
+  **Update:** both `_v1` submissions came back classified MARKETING instead of the declared
+  UTILITY — the not-boosted one for its benefit/comparison language ("ranks above regular
+  listings... more views") and purchase-style button ("Feature my ad"); the featured one, despite
+  having no upsell, for a "priority placement" benefit line and an unsolicited photo/price tip.
+  Rewrote both as `_v2` — plain status statements, neutral buttons ("View my ad" / "Manage my
+  ad"), no benefit or tip language — in `apps/bff/notification-templates/whatsapp/
+  listing-posted-reminder{,-featured}/` and bumped `TEMPLATE_NAME` in both `whatsapp_create_*.py`
+  scripts to match. The Featured push for not-yet-boosted owners still lives in the email variant,
+  which isn't subject to Meta's classifier. Not yet resubmitted to Meta.
 - **Part C: implemented** (this commit). `DailyActivityDigestJob` runs daily at 8am IST, batch-
   aggregates views/favourites/received-messages per owner across all their live listings (same
   bounded-batch + in-memory-aggregation pattern `listPerformanceForAdmin` already uses, not a

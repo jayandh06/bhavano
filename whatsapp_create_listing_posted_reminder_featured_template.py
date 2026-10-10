@@ -1,9 +1,15 @@
 """Creates the "listing_posted_reminder_featured" WhatsApp Business template via Meta's Graph API.
 
-A few-days-after-posting nudge for a listing that's already Featured — a plain check-in with no
-Featured push (nothing to upsell). The already-boosted half of docs/plans/ (the owner win-back
-plan's Part A). See whatsapp_create_listing_posted_reminder_template.py for the not-yet-boosted
-sibling.
+v2: v1 was reviewed and classified MARKETING instead of the declared UTILITY despite already
+being a plain check-in with no upsell — the likely cause was "it's already getting priority
+placement" (a benefit statement about a paid feature) and the unsolicited tip ("a sharper photo
+set or a quick price check often helps"), both of which read as promotional even without a CTA.
+v2 states the ad's status (live, currently Featured) with no benefit language and no tips. See
+apps/bff/notification-templates/whatsapp/listing-posted-reminder-featured/ for the wording.
+
+A few-days-after-posting nudge for a listing that's already Featured — a plain check-in, nothing
+to upsell. The already-boosted half of docs/plans/ (the owner win-back plan's Part A). See
+whatsapp_create_listing_posted_reminder_template.py for the not-yet-boosted sibling.
 
 PREVIEWS BY DEFAULT. Run with no arguments and it prints the exact template Meta would receive —
 does not submit anything. Only --submit actually calls the API.
@@ -37,7 +43,7 @@ WABA_ID = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID")
 VERSION = os.getenv("WHATSAPP_API_VERSION") or "v23.0"
 LANGUAGE = os.getenv("WHATSAPP_TEMPLATE_LANGUAGE") or "en"
 
-TEMPLATE_NAME = "listing_posted_reminder_featured_v1"
+TEMPLATE_NAME = "listing_posted_reminder_featured_v2"
 
 TEMPLATE_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -145,8 +151,10 @@ def main():
     show_preview(category)
 
     print(
-        "\nNOTE: submitting as %s. Plain check-in copy, no upsell - should classify cleanly as "
-        "UTILITY unlike its not-boosted sibling." % category
+        "\nNOTE: submitting as %s. v1 (listing_posted_reminder_featured_v1) still came back "
+        "classified MARKETING despite having no upsell - this v2 copy drops the 'priority "
+        "placement' benefit line and the photo/price tip, leaving a plain status statement. "
+        "Meta's review can still reclassify regardless of what's declared here." % category
     )
     print(
         "\nOnce Meta approves this, set WHATSAPP_LISTING_POSTED_REMINDER_FEATURED_TEMPLATE=%s in "
