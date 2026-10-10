@@ -805,6 +805,64 @@ export class NotificationsService {
     );
   }
 
+  /** "Finish posting your ad" — a listing stuck in `pending_checkout` (fee/boost payment never
+   * completed) has no expiry and nobody tells the owner it's waiting unless they happen to come
+   * back on their own (see `ListingsService.getSellerAttention`). See docs/plans/
+   * pending-checkout-payment-reminder.md. Fired once, ~3-4h after the listing was created still
+   * pending — same one-shot dedup convention as `notifyListingPostedReminder`, just a different
+   * job's window.
+   *
+   * The link needs the specific listing, not a bare `/my-listings` — `?openPublishCheckout=
+   * <id>` is what `PublishCheckoutRecovery.tsx`'s `AutoOpenPublishCheckout` reads to reopen that
+   * listing's own checkout modal. That means the WhatsApp button is dynamic (`buttonUrlSuffix`),
+   * unlike `notifyListingPostedReminder`'s static one.
+   *
+   * No benefit/comparison language in the copy on purpose — this notification has nothing to
+   * sell, just a status and an action, so it should read as UTILITY cleanly (see this plan's own
+   * note on why `listing_posted_reminder_v1` didn't, at first). */
+  async notifyPendingCheckoutReminder(
+    userId: string,
+    user: NotifiableUser & { name?: string | null },
+    listingTitle: string,
+    listingId: string,
+  ): Promise<'push' | 'email' | 'whatsapp' | null> {
+    const site =
+      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const tpl = loadTemplate('email/pending-checkout-reminder');
+    const vars = { name: user.name ?? 'there', title: listingTitle };
+    const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel
+      ? renderTemplate(tpl.buttonLabel, vars)
+      : undefined;
+    const link = `${site}/my-listings?openPublishCheckout=${listingId}`;
+    const html = renderEmail({
+      heading: renderTemplate(tpl.heading, vars),
+      preheader: renderTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+    });
+    const text = `${paragraphs.join('\n\n')}\n\n${buttonLabel ? `${buttonLabel}: ${link}` : link}`;
+
+    const whatsappTemplate = this.config.get<string>(
+      'WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE',
+    );
+
+    return this.dispatchPushPreferEmailPreferWhatsapp(
+      userId,
+      user,
+      () =>
+        this.push.notifyPendingCheckoutReminder(userId, vars.title, listingId),
+      { subject: renderTemplate(tpl.subject, vars), text, html },
+      whatsappTemplate
+        ? {
+            template: whatsappTemplate,
+            params: { name: vars.name, title: vars.title },
+            buttonUrlSuffix: listingId,
+          }
+        : undefined,
+    );
+  }
+
   /** Daily "N views, N favourites, N new messages" recap — additive to, and independent of, the
    * existing real-time push/email/WhatsApp for those same three events (see docs/plans/, the
    * owner win-back plan's Part C). Not boost-gated, unlike the real-time favourite/interest

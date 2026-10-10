@@ -274,6 +274,32 @@ export class PushService {
     });
   }
 
+  /** "Finish posting your ad" — see `NotificationsService.notifyPendingCheckoutReminder` and
+   * docs/plans/pending-checkout-payment-reminder.md. `path` carries the listing id as
+   * `?openPublishCheckout=<id>` (not a bare `/my-listings`), which `AutoOpenPublishCheckout`
+   * reads to reopen that specific listing's checkout modal — `onNotificationTap`
+   * (apps/mobile/src/lib/push.ts) already forwards this `path` string as-is, so no mobile code
+   * change was needed to support it. */
+  async notifyPendingCheckoutReminder(
+    recipientId: string,
+    listingTitle: string,
+    listingId: string,
+  ): Promise<void> {
+    await this.sendToUser(recipientId, {
+      title: 'Complete payment to publish',
+      body: `"${listingTitle}" isn't live yet — finish posting it.`,
+      channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
+      priority: 'default',
+      interruptionLevel: 'active',
+      collapseId: `pending-checkout-reminder:${listingId}`,
+      tag: 'pending-checkout-reminder',
+      data: {
+        kind: 'pending_checkout_reminder',
+        path: `/my-listings?openPublishCheckout=${listingId}`,
+      },
+    });
+  }
+
   /** Daily "N views, N favourites, N new messages" recap — additive to the real-time pushes above,
    * not a replacement. See docs/plans/ — the owner win-back plan's Part C. */
   async notifyDailyActivityDigest(

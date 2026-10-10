@@ -24,6 +24,7 @@ function make() {
   const pushTokenFindFirst = jest.fn().mockResolvedValue(null);
   const notifyListingPostedReminderPush = jest.fn().mockResolvedValue(undefined);
   const notifyDailyActivityDigestPush = jest.fn().mockResolvedValue(undefined);
+  const notifyPendingCheckoutReminderPush = jest.fn().mockResolvedValue(undefined);
 
   const service = new NotificationsService(
     { send: emailSend } as unknown as EmailProvider,
@@ -35,6 +36,7 @@ function make() {
     {
       notifyListingPostedReminder: notifyListingPostedReminderPush,
       notifyDailyActivityDigest: notifyDailyActivityDigestPush,
+      notifyPendingCheckoutReminder: notifyPendingCheckoutReminderPush,
     } as unknown as PushService,
   );
   return {
@@ -47,6 +49,7 @@ function make() {
     pushTokenFindFirst,
     notifyListingPostedReminderPush,
     notifyDailyActivityDigestPush,
+    notifyPendingCheckoutReminderPush,
   };
 }
 
@@ -342,6 +345,88 @@ describe('NotificationsService.notifyListingPostedReminder', () => {
       'listing_posted_reminder_v1',
       { name: 'Priya', title: 'Nice flat' },
       undefined,
+    );
+  });
+});
+
+describe('NotificationsService.notifyPendingCheckoutReminder', () => {
+  it('sends push and skips email/WhatsApp entirely when the user has a push token', async () => {
+    const {
+      service,
+      pushTokenFindFirst,
+      notifyPendingCheckoutReminderPush,
+      emailSend,
+    } = make();
+    pushTokenFindFirst.mockResolvedValue({ id: 'token1' });
+
+    const channel = await service.notifyPendingCheckoutReminder(
+      'owner1',
+      OWNER,
+      'Nice flat',
+      'listing1',
+    );
+
+    expect(channel).toBe('push');
+    expect(notifyPendingCheckoutReminderPush).toHaveBeenCalledWith(
+      'owner1',
+      'Nice flat',
+      'listing1',
+    );
+    expect(emailSend).not.toHaveBeenCalled();
+  });
+
+  it('falls back to email when there is no push token and the user has an email, linking the specific listing', async () => {
+    const { service, pushTokenFindFirst, emailSend } = make();
+    pushTokenFindFirst.mockResolvedValue(null);
+
+    const channel = await service.notifyPendingCheckoutReminder(
+      'owner1',
+      OWNER,
+      'Nice flat',
+      'listing1',
+    );
+
+    expect(channel).toBe('email');
+    const [, , text] = emailSend.mock.calls[0];
+    expect(text).toContain('my-listings?openPublishCheckout=listing1');
+  });
+
+  it('skips WhatsApp cleanly (returns null) for a phone-only user when no template env var is set', async () => {
+    const { service, sendTemplate } = make();
+    (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn(
+      (key: string) =>
+        key === 'PUBLIC_SITE_URL' ? 'https://www.bhavano.com' : undefined,
+    );
+    const channel = await service.notifyPendingCheckoutReminder(
+      'owner2',
+      PHONE_OWNER,
+      'Nice flat',
+      'listing1',
+    );
+    expect(channel).toBeNull();
+    expect(sendTemplate).not.toHaveBeenCalled();
+  });
+
+  it('sends WhatsApp for a phone-only user once the template env var is set, with the listing id as the dynamic button suffix', async () => {
+    const { service, sendTemplate } = make();
+    (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn(
+      (key: string) =>
+        key === 'WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE'
+          ? 'pending_checkout_reminder_v1'
+          : 'https://www.bhavano.com',
+    );
+    const channel = await service.notifyPendingCheckoutReminder(
+      'owner2',
+      PHONE_OWNER,
+      'Nice flat',
+      'listing1',
+    );
+    expect(channel).toBe('whatsapp');
+    expect(sendTemplate).toHaveBeenCalledWith(
+      '+919876543210',
+      'pending_checkout_reminder_v1',
+      { name: 'Priya', title: 'Nice flat' },
+      'listing1',
     );
   });
 });

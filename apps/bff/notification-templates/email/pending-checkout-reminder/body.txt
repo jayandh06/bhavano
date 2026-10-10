@@ -1,0 +1,5 @@
+Hi {{name}},
+
+Your ad "{{title}}" is saved on Bhavano, but it isn't live yet — the payment step wasn't completed.
+
+Tap below to finish paying and publish it. Nothing else needs to be redone.
