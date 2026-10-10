@@ -1095,6 +1095,10 @@ export class AdminService {
               },
             },
           },
+          // Only ever set for `saved_search_match` — see ListingNotificationLog.userId's own doc
+          // comment. Every other kind's recipient is the listing's own owner, read from the
+          // `listing.owner` include above instead.
+          user: { select: { id: true, name: true, phone: true, email: true } },
         },
       }),
       this.prisma.userNotificationLog.findMany({
@@ -1105,17 +1109,26 @@ export class AdminService {
       }),
     ]);
 
-    const fromListings: NotificationLogEntryDto[] = listingLogs.map((row) => ({
-      kind: row.kind,
-      channel: row.channel,
-      sentAt: row.sentAt.toISOString(),
-      userId: row.listing.owner.id,
-      userName: row.listing.owner.name,
-      userPhone: row.listing.owner.phone,
-      userEmail: row.listing.owner.email,
-      listingId: row.listing.id,
-      listingTitle: row.listing.title,
-    }));
+    const fromListings: NotificationLogEntryDto[] = listingLogs.map((row) => {
+      // `saved_search_match` notifies the matching seeker, not the listing's owner — `row.user`
+      // is that seeker when this row was logged after the fix. An older `saved_search_match` row
+      // never recorded who it went to, so there's nothing honest to show but null, rather than
+      // falling back to the owner (who was never the actual recipient).
+      const recipient =
+        row.user ??
+        (row.kind === 'saved_search_match' ? null : row.listing.owner);
+      return {
+        kind: row.kind,
+        channel: row.channel,
+        sentAt: row.sentAt.toISOString(),
+        userId: recipient?.id ?? null,
+        userName: recipient?.name ?? null,
+        userPhone: recipient?.phone ?? null,
+        userEmail: recipient?.email ?? null,
+        listingId: row.listing.id,
+        listingTitle: row.listing.title,
+      };
+    });
     const fromUsers: NotificationLogEntryDto[] = userLogs.map((row) => ({
       kind: row.kind,
       channel: row.channel,

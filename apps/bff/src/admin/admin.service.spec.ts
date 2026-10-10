@@ -1009,6 +1009,95 @@ describe('AdminService.getNotificationDayDetail', () => {
     );
   });
 
+  it('resolves saved_search_match rows through the matched seeker, not the listing owner', async () => {
+    const { service } = makeService({
+      listingNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            kind: 'saved_search_match',
+            channel: 'email',
+            sentAt: new Date('2026-10-10T04:00:00Z'),
+            listing: {
+              id: 'listing1',
+              title: 'Nice flat',
+              owner: {
+                id: 'owner1',
+                name: 'Owner',
+                phone: null,
+                email: 'owner@example.com',
+              },
+            },
+            user: {
+              id: 'seeker1',
+              name: 'Seeker',
+              phone: null,
+              email: 'seeker@example.com',
+            },
+          },
+        ]),
+      },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    const result = await service.getNotificationDayDetail('2026-10-10');
+
+    expect(result).toEqual([
+      {
+        kind: 'saved_search_match',
+        channel: 'email',
+        sentAt: new Date('2026-10-10T04:00:00Z').toISOString(),
+        userId: 'seeker1',
+        userName: 'Seeker',
+        userPhone: null,
+        userEmail: 'seeker@example.com',
+        listingId: 'listing1',
+        listingTitle: 'Nice flat',
+      },
+    ]);
+  });
+
+  it('shows no recipient (not the listing owner) for a saved_search_match row logged before userId existed', async () => {
+    const { service } = makeService({
+      listingNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            kind: 'saved_search_match',
+            channel: 'email',
+            sentAt: new Date('2026-10-10T04:00:00Z'),
+            listing: {
+              id: 'listing1',
+              title: 'Nice flat',
+              owner: {
+                id: 'owner1',
+                name: 'Owner',
+                phone: null,
+                email: 'owner@example.com',
+              },
+            },
+            user: null,
+          },
+        ]),
+      },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    const result = await service.getNotificationDayDetail('2026-10-10');
+
+    expect(result).toEqual([
+      {
+        kind: 'saved_search_match',
+        channel: 'email',
+        sentAt: new Date('2026-10-10T04:00:00Z').toISOString(),
+        userId: null,
+        userName: null,
+        userPhone: null,
+        userEmail: null,
+        listingId: 'listing1',
+        listingTitle: 'Nice flat',
+      },
+    ]);
+  });
+
   it('carries no listingId/listingTitle for UserNotificationLog rows', async () => {
     const { service } = makeService({
       listingNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },

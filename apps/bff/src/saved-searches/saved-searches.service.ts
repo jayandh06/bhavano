@@ -212,7 +212,10 @@ export class SavedSearchesService {
         );
         if (channel) {
           await this.prisma.listingNotificationLog.create({
-            data: { listingId: listing.id, kind: 'saved_search_match', channel },
+            // userId: the actual recipient (the seeker whose alert matched), not the listing's
+            // own owner — see ListingNotificationLog.userId's own doc comment for why this is the
+            // one kind that sets it.
+            data: { listingId: listing.id, kind: 'saved_search_match', channel, userId: s.user.id },
           });
         }
         await this.prisma.savedSearch.update({ where: { id: s.id }, data: { lastNotifiedAt: new Date() } });

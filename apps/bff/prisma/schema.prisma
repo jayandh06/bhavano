@@ -359,6 +359,11 @@ model User {
    */
   notificationLogs            UserNotificationLog[]
   /**
+   * `saved_search_match` rows this user was the actual recipient of — see
+   * ListingNotificationLog.userId's own doc comment for why only that one kind sets it.
+   */
+  matchedListingNotifications ListingNotificationLog[]
+  /**
    * Registered Expo push tokens for this user's mobile devices — one row per device. Used only
    * to deliver a "new message" push; see PushService.
    */
@@ -1456,6 +1461,19 @@ model ListingNotificationLog {
   channel           String
   sentAt            DateTime  @default(now())
   /**
+   * Who was actually notified, for the one kind where that isn't the listing's own owner:
+   * `saved_search_match` notifies the *seeker* whose saved search matched, not the person who
+   * posted the listing. Null for every other kind here (`posted`, `boost_promo`,
+   * `listing_stale_reminder`, ...) — those are all about the listing's own owner, which the admin
+   * notification log reads straight off `listing.owner` instead, same as before this column
+   * existed. Also null for every `saved_search_match` row logged before this column existed —
+   * there's no way to recover who those went to after the fact, since the row never named them.
+   * `onDelete: SetNull`, not Cascade: a seeker deleting their account shouldn't delete the
+   * historical fact that a notification was sent about this listing.
+   */
+  userId            String?
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /**
    * MSG91's id for this specific WhatsApp send, when `channel` is "whatsapp" — the key a later
    * delivery/read status webhook event correlates back to this row by. Null for email sends and
    * for any WhatsApp send from before this field existed.
@@ -1472,6 +1490,7 @@ model ListingNotificationLog {
   @@index([listingId, kind])
   @@index([sentAt])
   @@index([providerMessageId])
+  @@index([userId])
 }
 
 /**

@@ -35,6 +35,7 @@ function makeService(
     // toDto resolves area *names* for whatever ids a row's areaIds carries — no rows here need a
     // real name, so an empty result (and "(deleted area)" for any id it can't find) is fine.
     area: { findMany: jest.fn().mockResolvedValue(options.areas ?? []) },
+    listingNotificationLog: { create: jest.fn() },
   } as unknown as PrismaService;
   const notificationsService = { notifySavedSearchMatch: jest.fn() } as unknown as NotificationsService;
   const locationsService = { ensureArea: options.ensureArea ?? jest.fn() } as unknown as LocationsService;
@@ -172,6 +173,31 @@ describe('SavedSearchesService', () => {
       );
       expect(notifiedUserIds.sort()).toEqual(['buyerA', 'buyerC']);
       expect(prisma.savedSearch.update).toHaveBeenCalledTimes(2);
+    });
+
+    it('logs the matched seeker as the recipient, not the listing owner', async () => {
+      const { service, prisma, notificationsService } = makeService();
+      (
+        notificationsService.notifySavedSearchMatch as jest.Mock
+      ).mockResolvedValue('email');
+      (prisma.savedSearch.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'sA',
+          bedroomOptions: [],
+          user: { id: 'buyerA', name: 'A', email: 'a@x.com', phone: null },
+        },
+      ]);
+      await service.notifyMatchingBuyers(listing);
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
+        data: {
+          listingId: 'l1',
+          kind: 'saved_search_match',
+          channel: 'email',
+          userId: 'buyerA',
+        },
+      });
     });
 
     it('does nothing when no saved search candidates match', async () => {

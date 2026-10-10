@@ -111,14 +111,22 @@ function DayDetailPanel({ state }: { state: NotificationLogEntryDto[] | "loading
         </thead>
         <tbody>
           {state.map((entry, i) => (
-            <tr key={`${entry.userId}-${entry.kind}-${entry.sentAt}-${i}`} style={{ borderTop: "1px solid var(--border)" }}>
+            <tr key={`${entry.userId ?? "unknown"}-${entry.kind}-${entry.sentAt}-${i}`} style={{ borderTop: "1px solid var(--border)" }}>
               <td style={innerTdStyle}>{formatDateTime(entry.sentAt)}</td>
               <td style={innerTdStyle}>{entry.kind}</td>
               <td style={innerTdStyle}>{CHANNEL_LABELS[entry.channel] ?? entry.channel}</td>
               <td style={innerTdStyle}>
-                <a href={`/users/${entry.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
-                  {entry.userName ?? entry.userPhone ?? entry.userEmail ?? entry.userId}
-                </a>
+                {entry.userId ? (
+                  <a href={`/users/${entry.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
+                    {entry.userName ?? entry.userPhone ?? entry.userEmail ?? entry.userId}
+                  </a>
+                ) : (
+                  // Only ever a pre-fix saved_search_match row — see NotificationLogEntryDto's
+                  // own doc comment for why there's genuinely no recipient to recover here.
+                  <span style={{ color: "var(--muted)" }} title="Logged before this could record who matched">
+                    Unknown recipient
+                  </span>
+                )}
               </td>
               <td style={innerTdStyle}>
                 {entry.listingId ? (
