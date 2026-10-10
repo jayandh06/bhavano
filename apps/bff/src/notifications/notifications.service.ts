@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ListingDetailDto } from '@bhavano/types';
 import { buildListingPath } from '@bhavano/types/listingPath';
+import { PrismaService } from '../prisma/prisma.service';
+import { PushService } from '../push/push.service';
 import { WhatsappProvider } from './providers/whatsapp.provider';
 import { EmailProvider } from './providers/email.provider';
 import { Msg91Provider } from './providers/msg91.provider';
@@ -29,6 +31,8 @@ export class NotificationsService {
     private readonly msg91: Msg91Provider,
     private readonly facebook: FacebookProvider,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
+    private readonly push: PushService,
   ) {}
 
   /** No WhatsApp template exists yet for a moderation notice — see `dispatchEmailPreferWhatsapp`'s
@@ -711,6 +715,141 @@ export class NotificationsService {
       return sent ? 'whatsapp' : null;
     }
     return null;
+  }
+
+  /**
+   * Push first, then the same email-else-WhatsApp rule as everywhere else in this file. Unlike
+   * `dispatchEmailPreferWhatsapp`, this is not yet the universal rule for every notification here
+   * — only the two new ones that call it (`notifyListingPostedReminder`,
+   * `notifyDailyActivityDigest` — see docs/plans/, the owner win-back plan). Every existing
+   * real-time notification (new message, favourite, listing interest) keeps its current shape —
+   * `PushService` always, `NotificationsService` separately and only while a paid feature
+   * (Instant Alerts/Boost) is active — deliberately untouched by this.
+   *
+   * Checked by push-token existence, not delivery success: `PushService` sends are fire-and-forget
+   * by design (its methods return `Promise<void>`, never report success/failure), so "the user has
+   * at least one registered device" is the only signal available to decide whether push already
+   * covered this notification before falling through to email/WhatsApp.
+   */
+  private async dispatchPushPreferEmailPreferWhatsapp(
+    userId: string,
+    user: NotifiableUser,
+    pushSend: () => Promise<void>,
+    email: { subject: string; text: string; html?: string; bcc?: string },
+    whatsapp?: {
+      template: string;
+      params: string[] | Record<string, string>;
+      buttonUrlSuffix?: string;
+    },
+  ): Promise<'push' | 'email' | 'whatsapp' | null> {
+    const hasPush = await this.prisma.pushToken.findFirst({
+      where: { userId },
+      select: { id: true },
+    });
+    if (hasPush) {
+      await pushSend();
+      return 'push';
+    }
+    return this.dispatchEmailPreferWhatsapp(user, email, whatsapp);
+  }
+
+  /** "You posted recently" — a return nudge a few days after posting (see
+   * `ListingPostedReminderJob`), distinct from `notifyListingPosted`'s same-day confirmation.
+   * Pushes the Featured upgrade when the listing isn't boosted yet; omits any Featured mention
+   * when it already is — two template variants per channel, selected by `isBoosted`, rather than
+   * one template with an optional line, since an approved WhatsApp template's text is fixed and
+   * can't branch at send time. */
+  async notifyListingPostedReminder(
+    userId: string,
+    user: NotifiableUser & { name?: string | null },
+    listingTitle: string,
+    isBoosted: boolean,
+  ): Promise<'push' | 'email' | 'whatsapp' | null> {
+    const site =
+      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const templateName = isBoosted
+      ? 'email/listing-posted-reminder-featured'
+      : 'email/listing-posted-reminder';
+    const tpl = loadTemplate(templateName);
+    const vars = { name: user.name ?? 'there', title: listingTitle };
+    const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel
+      ? renderTemplate(tpl.buttonLabel, vars)
+      : undefined;
+    const link = `${site}/my-listings`;
+    const html = renderEmail({
+      heading: renderTemplate(tpl.heading, vars),
+      preheader: renderTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+    });
+    const text = `${paragraphs.join('\n\n')}\n\n${buttonLabel ? `${buttonLabel}: ${link}` : link}`;
+
+    const whatsappTemplateKey = isBoosted
+      ? 'WHATSAPP_LISTING_POSTED_REMINDER_FEATURED_TEMPLATE'
+      : 'WHATSAPP_LISTING_POSTED_REMINDER_TEMPLATE';
+    const whatsappTemplate = this.config.get<string>(whatsappTemplateKey);
+
+    return this.dispatchPushPreferEmailPreferWhatsapp(
+      userId,
+      user,
+      () =>
+        this.push.notifyListingPostedReminder(userId, vars.title, isBoosted),
+      { subject: renderTemplate(tpl.subject, vars), text, html },
+      whatsappTemplate
+        ? {
+            template: whatsappTemplate,
+            params: { name: vars.name, title: vars.title },
+          }
+        : undefined,
+    );
+  }
+
+  /** Daily "N views, N favourites, N new messages" recap — additive to, and independent of, the
+   * existing real-time push/email/WhatsApp for those same three events (see docs/plans/, the
+   * owner win-back plan's Part C). Not boost-gated, unlike the real-time favourite/interest
+   * notifications: the spam concern behind that gate is about real-time per-event volume, which a
+   * once-daily aggregate doesn't have regardless of boost status. */
+  async notifyDailyActivityDigest(
+    userId: string,
+    user: NotifiableUser & { name?: string | null },
+    counts: { views: number; favourites: number; messages: number },
+  ): Promise<'push' | 'email' | 'whatsapp' | null> {
+    const site =
+      this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
+    const tpl = loadTemplate('email/daily-activity-digest');
+    const vars = {
+      name: user.name ?? 'there',
+      views: String(counts.views),
+      favourites: String(counts.favourites),
+      messages: String(counts.messages),
+    };
+    const paragraphs = tpl.paragraphs.map((p) => renderTemplate(p, vars));
+    const buttonLabel = tpl.buttonLabel
+      ? renderTemplate(tpl.buttonLabel, vars)
+      : undefined;
+    const link = `${site}/my-listings`;
+    const html = renderEmail({
+      heading: renderTemplate(tpl.heading, vars),
+      preheader: renderTemplate(tpl.preheader, vars),
+      paragraphs,
+      button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
+    });
+    const text = `${paragraphs.join('\n\n')}\n\n${buttonLabel ? `${buttonLabel}: ${link}` : link}`;
+
+    const whatsappTemplate = this.config.get<string>(
+      'WHATSAPP_DAILY_ACTIVITY_DIGEST_TEMPLATE',
+    );
+
+    return this.dispatchPushPreferEmailPreferWhatsapp(
+      userId,
+      user,
+      () => this.push.notifyDailyActivityDigest(userId, counts),
+      { subject: renderTemplate(tpl.subject, vars), text, html },
+      whatsappTemplate
+        ? { template: whatsappTemplate, params: vars }
+        : undefined,
+    );
   }
 
   /**

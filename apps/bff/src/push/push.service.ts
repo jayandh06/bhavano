@@ -251,6 +251,47 @@ export class PushService {
     });
   }
 
+  /** "You posted recently" return nudge (see `ListingPostedReminderJob`) — pushes the Featured
+   * upgrade when the listing isn't boosted yet, otherwise a plain check-in. Mirrors
+   * `notifyListingFavourite`'s "all ads, not only boosted" push reach — the boost gate on this
+   * notification is about *copy* (whether to pitch Featured), not about whether to send at all. */
+  async notifyListingPostedReminder(
+    recipientId: string,
+    listingTitle: string,
+    isBoosted: boolean,
+  ): Promise<void> {
+    await this.sendToUser(recipientId, {
+      title: listingTitle,
+      body: isBoosted
+        ? `How's "${listingTitle}" doing? Check your views and messages.`
+        : `🌟 Feature "${listingTitle}" to get seen first`,
+      channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
+      priority: 'default',
+      interruptionLevel: 'active',
+      collapseId: `posted-reminder:${listingTitle}`,
+      tag: 'posted-reminder',
+      data: { kind: 'listing_posted_reminder', path: '/my-listings' },
+    });
+  }
+
+  /** Daily "N views, N favourites, N new messages" recap — additive to the real-time pushes above,
+   * not a replacement. See docs/plans/ — the owner win-back plan's Part C. */
+  async notifyDailyActivityDigest(
+    recipientId: string,
+    counts: { views: number; favourites: number; messages: number },
+  ): Promise<void> {
+    await this.sendToUser(recipientId, {
+      title: 'Your listings today',
+      body: `👀 ${counts.views} views · ❤️ ${counts.favourites} favourites · 💬 ${counts.messages} new messages`,
+      channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
+      priority: 'default',
+      interruptionLevel: 'active',
+      collapseId: 'daily-activity-digest',
+      tag: 'daily-activity-digest',
+      data: { kind: 'daily_activity_digest', path: '/my-listings' },
+    });
+  }
+
   private async sendToUser(recipientId: string, content: PushContent): Promise<void> {
     if (!this.enabled) {
       if (!this.loggedDisabledSkip) {

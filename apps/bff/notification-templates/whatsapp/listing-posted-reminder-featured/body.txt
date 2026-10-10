@@ -1,0 +1,5 @@
+Hi {{name}},
+
+Your ad "{{title}}" has been live for a few days. Since it's already Featured, it's already getting priority placement — if you haven't heard from buyers yet, a sharper photo set or a quick price check often helps.
+
+Tap below to update it anytime.

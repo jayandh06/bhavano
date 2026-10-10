@@ -34,6 +34,8 @@ import type { WhatsappProvider } from '../src/notifications/providers/whatsapp.p
 import type { Msg91Provider } from '../src/notifications/providers/msg91.provider';
 import { FacebookProvider } from '../src/notifications/providers/facebook.provider';
 import { NotificationsService } from '../src/notifications/notifications.service';
+import type { PrismaService } from '../src/prisma/prisma.service';
+import type { PushService } from '../src/push/push.service';
 import {
   CATEGORY_FIELD_CONFIG,
   type FieldDef,
@@ -61,6 +63,8 @@ const notifications = new NotificationsService(
   {} as unknown as Msg91Provider, // unused by publishToFacebookPage
   new FacebookProvider(config, callLogger),
   config,
+  {} as unknown as PrismaService, // unused by publishToFacebookPage
+  {} as unknown as PushService, // unused by publishToFacebookPage
 );
 
 const priceFormatter = new Intl.NumberFormat('en-IN');

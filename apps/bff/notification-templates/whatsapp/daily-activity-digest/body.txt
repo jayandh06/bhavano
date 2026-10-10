@@ -1,0 +1,5 @@
+Hi {{name}},
+
+Here's what happened across your listings today: {{views}} views, {{favourites}} favourites, and {{messages}} new messages.
+
+Tap below to see the details and reply to anyone waiting to hear back from you.

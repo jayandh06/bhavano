@@ -1,0 +1,1 @@
+Your listings today: {{views}} views, {{messages}} new messages

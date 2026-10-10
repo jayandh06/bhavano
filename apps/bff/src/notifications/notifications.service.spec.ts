@@ -4,6 +4,8 @@ import type { EmailProvider } from './providers/email.provider';
 import type { WhatsappProvider } from './providers/whatsapp.provider';
 import type { Msg91Provider } from './providers/msg91.provider';
 import type { FacebookProvider } from './providers/facebook.provider';
+import type { PrismaService } from '../prisma/prisma.service';
+import type { PushService } from '../push/push.service';
 
 /**
  * Which channel the Boost promotion goes out on, and what the WhatsApp half is handed.
@@ -19,6 +21,9 @@ function make() {
   const sendAdPostedConfirmation = jest.fn().mockResolvedValue({ sent: true, messageId: 'req-2' });
   const sendTemplate = jest.fn().mockResolvedValue(true);
   const publishListing = jest.fn().mockResolvedValue('page123_post456');
+  const pushTokenFindFirst = jest.fn().mockResolvedValue(null);
+  const notifyListingPostedReminderPush = jest.fn().mockResolvedValue(undefined);
+  const notifyDailyActivityDigestPush = jest.fn().mockResolvedValue(undefined);
 
   const service = new NotificationsService(
     { send: emailSend } as unknown as EmailProvider,
@@ -26,8 +31,23 @@ function make() {
     { sendBoostPromotion, sendAdPostedConfirmation } as unknown as Msg91Provider,
     { configured: true, publishListing } as unknown as FacebookProvider,
     { get: jest.fn().mockReturnValue('https://www.bhavano.com') } as unknown as ConfigService,
+    { pushToken: { findFirst: pushTokenFindFirst } } as unknown as PrismaService,
+    {
+      notifyListingPostedReminder: notifyListingPostedReminderPush,
+      notifyDailyActivityDigest: notifyDailyActivityDigestPush,
+    } as unknown as PushService,
   );
-  return { service, emailSend, sendBoostPromotion, sendAdPostedConfirmation, sendTemplate, publishListing };
+  return {
+    service,
+    emailSend,
+    sendBoostPromotion,
+    sendAdPostedConfirmation,
+    sendTemplate,
+    publishListing,
+    pushTokenFindFirst,
+    notifyListingPostedReminderPush,
+    notifyDailyActivityDigestPush,
+  };
 }
 
 const LISTING = {
@@ -253,5 +273,100 @@ describe('NotificationsService.publishToFacebookPage', () => {
     const result = await service.publishToFacebookPage({ ...LISTING, priceText: '₹25,000' });
 
     expect(result).toBeNull();
+  });
+});
+
+const OWNER = { id: 'owner1', name: 'Ravi', email: 'ravi@example.com', phone: null };
+const PHONE_OWNER = { id: 'owner2', name: 'Priya', email: null, phone: '+919876543210' };
+
+describe('NotificationsService.notifyListingPostedReminder', () => {
+  it('sends push and skips email/WhatsApp entirely when the user has a push token', async () => {
+    const { service, pushTokenFindFirst, notifyListingPostedReminderPush, emailSend } = make();
+    pushTokenFindFirst.mockResolvedValue({ id: 'token1' });
+
+    const channel = await service.notifyListingPostedReminder('owner1', OWNER, 'Nice flat', false);
+
+    expect(channel).toBe('push');
+    expect(notifyListingPostedReminderPush).toHaveBeenCalledWith('owner1', 'Nice flat', false);
+    expect(emailSend).not.toHaveBeenCalled();
+  });
+
+  it('falls back to email when there is no push token and the user has an email', async () => {
+    const { service, pushTokenFindFirst, emailSend } = make();
+    pushTokenFindFirst.mockResolvedValue(null);
+
+    const channel = await service.notifyListingPostedReminder('owner1', OWNER, 'Nice flat', false);
+
+    expect(channel).toBe('email');
+    expect(emailSend).toHaveBeenCalledWith(
+      'ravi@example.com',
+      expect.stringContaining('Nice flat'),
+      expect.any(String),
+      expect.anything(),
+    );
+  });
+
+  it('loads the not-boosted (push-Featured) template when isBoosted is false', async () => {
+    const { service, emailSend } = make();
+    await service.notifyListingPostedReminder('owner1', OWNER, 'Nice flat', false);
+    const [, , text] = emailSend.mock.calls[0];
+    expect(text).toMatch(/feature/i);
+  });
+
+  it('loads the already-boosted (plain) template when isBoosted is true, with no Featured push', async () => {
+    const { service, emailSend } = make();
+    await service.notifyListingPostedReminder('owner1', OWNER, 'Nice flat', true);
+    const [, , text] = emailSend.mock.calls[0];
+    expect(text.toLowerCase()).not.toContain('feature your ad');
+  });
+
+  it('skips WhatsApp cleanly (returns null) for a phone-only user when no template env var is set', async () => {
+    const { service, sendTemplate } = make();
+    (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn((key: string) =>
+      key === 'PUBLIC_SITE_URL' ? 'https://www.bhavano.com' : undefined,
+    );
+    const channel = await service.notifyListingPostedReminder('owner2', PHONE_OWNER, 'Nice flat', false);
+    expect(channel).toBeNull();
+    expect(sendTemplate).not.toHaveBeenCalled();
+  });
+
+  it('sends WhatsApp for a phone-only user once the template env var is set', async () => {
+    const { service, sendTemplate } = make();
+    (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn((key: string) =>
+      key === 'WHATSAPP_LISTING_POSTED_REMINDER_TEMPLATE' ? 'listing_posted_reminder_v1' : 'https://www.bhavano.com',
+    );
+    const channel = await service.notifyListingPostedReminder('owner2', PHONE_OWNER, 'Nice flat', false);
+    expect(channel).toBe('whatsapp');
+    expect(sendTemplate).toHaveBeenCalledWith(
+      '+919876543210',
+      'listing_posted_reminder_v1',
+      { name: 'Priya', title: 'Nice flat' },
+      undefined,
+    );
+  });
+});
+
+describe('NotificationsService.notifyDailyActivityDigest', () => {
+  it('sends push when the user has a token', async () => {
+    const { service, pushTokenFindFirst, notifyDailyActivityDigestPush } = make();
+    pushTokenFindFirst.mockResolvedValue({ id: 'token1' });
+
+    const channel = await service.notifyDailyActivityDigest('owner1', OWNER, {
+      views: 12,
+      favourites: 3,
+      messages: 2,
+    });
+
+    expect(channel).toBe('push');
+    expect(notifyDailyActivityDigestPush).toHaveBeenCalledWith('owner1', { views: 12, favourites: 3, messages: 2 });
+  });
+
+  it('falls back to email with the counts rendered into the copy', async () => {
+    const { service, emailSend } = make();
+    await service.notifyDailyActivityDigest('owner1', OWNER, { views: 12, favourites: 3, messages: 2 });
+    const [, subject, text] = emailSend.mock.calls[0];
+    expect(subject).toContain('12');
+    expect(text).toContain('3');
+    expect(text).toContain('2 new messages');
   });
 });

@@ -1,0 +1,5 @@
+Hi {{name}},
+
+Your listing "{{title}}" has been live for a few days now — but it isn't Featured yet, so it's competing with every other regular listing for attention.
+
+A Featured ad ranks above regular listings and gets more views, which usually means more messages from genuine buyers or tenants. If you're not getting the response you expected, this is the fastest way to change that.
