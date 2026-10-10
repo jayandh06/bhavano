@@ -14,6 +14,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/users", label: "Users" },
   { href: "/page-visits", label: "Page visits" },
   { href: "/post-funnel", label: "Post funnel" },
+  { href: "/notification-log", label: "Notification log" },
   { href: "/listing-performance", label: "Listing performance" },
   { href: "/requirements", label: "Requirements" },
   { href: "/referrals", label: "Referrals" },

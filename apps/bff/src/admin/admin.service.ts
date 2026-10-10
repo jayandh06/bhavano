@@ -70,6 +70,8 @@ import { ListUserLoginHistoryDto } from './dto/list-user-login-history.dto';
 import { ListPageVisitsDto, PageVisitSort } from './dto/list-page-visits.dto';
 import { PostFunnelQueryDto } from './dto/post-funnel-query.dto';
 import type { PostFunnelDto } from '@bhavano/types/postFunnel';
+import { NotificationLogQueryDto } from './dto/notification-log-query.dto';
+import type { NotificationDaySummaryDto, NotificationLogEntryDto } from '@bhavano/types/notificationLog';
 import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
@@ -115,6 +117,15 @@ function postFunnelStepForPath(path: string): string | null {
     if (step.exact ? path === step.path : path.startsWith(step.path)) return step.path;
   }
   return null;
+}
+
+/** `YYYY-MM-DD` for the IST calendar day a UTC instant falls on — a fixed +05:30 shift rather
+ * than `Intl`/a timezone library, since IST has no DST to account for. Used by
+ * `getNotificationDailySummary` to bucket `ListingNotificationLog`/`UserNotificationLog` rows by
+ * day regardless of the server's own timezone. */
+function istDateKey(d: Date): string {
+  const shifted = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+  return shifted.toISOString().slice(0, 10);
 }
 
 /** listRecentLogins is one row per user, built from an in-memory aggregate (see its own doc
@@ -1011,6 +1022,113 @@ export class AdminService {
             : Math.round((c.sessions / counts[i - 1].sessions) * 1000) / 10,
       })),
     };
+  }
+
+  /** Per-IST-calendar-day count of notifications sent on each channel, across every kind in the
+   * system (`ListingNotificationLog` + `UserNotificationLog`) — see docs/plans/
+   * owner-win-back-notifications-and-mobile-email-capture.md's Part D. Fetch-then-bucket-in-JS,
+   * same style `getPostFunnel` already uses above — no day-truncation convention existed in this
+   * codebase before this, so this is the first rather than inventing raw SQL for it. */
+  async getNotificationDailySummary(
+    query: NotificationLogQueryDto,
+  ): Promise<NotificationDaySummaryDto[]> {
+    const { from, to } = query;
+    const sentAtFilter =
+      from || to
+        ? {
+            sentAt: {
+              ...(from ? { gte: new Date(from) } : {}),
+              ...(to ? { lte: new Date(to) } : {}),
+            },
+          }
+        : {};
+
+    const [listingLogs, userLogs] = await Promise.all([
+      this.prisma.listingNotificationLog.findMany({
+        where: sentAtFilter,
+        select: { sentAt: true, channel: true },
+      }),
+      this.prisma.userNotificationLog.findMany({
+        where: sentAtFilter,
+        select: { sentAt: true, channel: true },
+      }),
+    ]);
+
+    const byDate = new Map<
+      string,
+      { email: number; whatsapp: number; push: number }
+    >();
+    for (const row of [...listingLogs, ...userLogs]) {
+      const key = istDateKey(row.sentAt);
+      const entry = byDate.get(key) ?? { email: 0, whatsapp: 0, push: 0 };
+      if (row.channel === 'email') entry.email += 1;
+      else if (row.channel === 'whatsapp') entry.whatsapp += 1;
+      else if (row.channel === 'push') entry.push += 1;
+      byDate.set(key, entry);
+    }
+
+    return [...byDate.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, counts]) => ({ date, ...counts }));
+  }
+
+  /** The actual notification sends for one IST calendar day (`YYYY-MM-DD`) — the lazy drill-down
+   * behind `getNotificationDailySummary`'s per-day counts, fetched only when that day is clicked,
+   * mirroring `PageVisitsTable`'s own fetch-once-per-row cache on the admin UI side. */
+  async getNotificationDayDetail(
+    date: string,
+  ): Promise<NotificationLogEntryDto[]> {
+    const dayStart = new Date(`${date}T00:00:00+05:30`);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const sentAtFilter = { sentAt: { gte: dayStart, lt: dayEnd } };
+
+    const [listingLogs, userLogs] = await Promise.all([
+      this.prisma.listingNotificationLog.findMany({
+        where: sentAtFilter,
+        include: {
+          listing: {
+            select: {
+              id: true,
+              title: true,
+              owner: {
+                select: { id: true, name: true, phone: true, email: true },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.userNotificationLog.findMany({
+        where: sentAtFilter,
+        include: {
+          user: { select: { id: true, name: true, phone: true, email: true } },
+        },
+      }),
+    ]);
+
+    const fromListings: NotificationLogEntryDto[] = listingLogs.map((row) => ({
+      kind: row.kind,
+      channel: row.channel,
+      sentAt: row.sentAt.toISOString(),
+      userId: row.listing.owner.id,
+      userName: row.listing.owner.name,
+      userPhone: row.listing.owner.phone,
+      userEmail: row.listing.owner.email,
+      listingId: row.listing.id,
+      listingTitle: row.listing.title,
+    }));
+    const fromUsers: NotificationLogEntryDto[] = userLogs.map((row) => ({
+      kind: row.kind,
+      channel: row.channel,
+      sentAt: row.sentAt.toISOString(),
+      userId: row.user.id,
+      userName: row.user.name,
+      userPhone: row.user.phone,
+      userEmail: row.user.email,
+    }));
+
+    return [...fromListings, ...fromUsers].sort((a, b) =>
+      b.sentAt.localeCompare(a.sentAt),
+    );
   }
 
   /** A single session's full page-view trail plus its Visit summary, for the admin page-visits

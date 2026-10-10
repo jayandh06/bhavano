@@ -6,6 +6,7 @@ import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPri
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import type { PostFunnelDto } from "@bhavano/types/postFunnel";
 import type { PostEntrySource } from "@bhavano/types/postEntry";
+import type { NotificationDaySummaryDto, NotificationLogEntryDto } from "@bhavano/types/notificationLog";
 import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
@@ -1021,6 +1022,28 @@ export function fetchClaimVerificationSends(
   contactId: string,
 ): Promise<ClaimVerificationSendDto[]> {
   return authedBffFetch(accessToken, `/admin/outreach/contacts/${contactId}/notification-log`, {
+    cache: "no-store",
+  });
+}
+
+export interface NotificationLogQuery {
+  from?: string;
+  to?: string;
+}
+
+export function fetchNotificationDailySummary(
+  accessToken: string,
+  query: NotificationLogQuery = {},
+): Promise<NotificationDaySummaryDto[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return authedBffFetch(accessToken, `/admin/notifications/daily-summary?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchNotificationDayDetail(accessToken: string, date: string): Promise<NotificationLogEntryDto[]> {
+  return authedBffFetch(accessToken, `/admin/notifications/daily-summary/detail?date=${encodeURIComponent(date)}`, {
     cache: "no-store",
   });
 }

@@ -19,12 +19,14 @@ import type {
   SessionTrailDto,
   UserLoginHistoryPage,
 } from "@bhavano/types";
+import type { NotificationLogEntryDto } from "@bhavano/types/notificationLog";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
   approveListing,
   deleteListing,
   fetchListingById,
   fetchListingConversationMessages,
+  fetchNotificationDayDetail,
   fetchSessionTrail,
   fetchThread,
   fetchUserLoginHistory,
@@ -382,6 +384,20 @@ export async function fetchSessionTrailAction(
     return { success: true, trail };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load session trail" };
+  }
+}
+
+/** Same shape again — the notification-log page's row-expand fetches one day's actual sends only
+ * when that day is clicked, mirroring PageVisitsTable's fetch-once-per-row cache. */
+export async function fetchNotificationDayDetailAction(
+  date: string,
+): Promise<{ success: true; entries: NotificationLogEntryDto[] } | { success: false; error: string }> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const entries = await fetchNotificationDayDetail(accessToken, date);
+    return { success: true, entries };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to load that day's notifications" };
   }
 }
 

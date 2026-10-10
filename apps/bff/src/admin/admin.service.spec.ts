@@ -888,3 +888,191 @@ describe('AdminService.getPostFunnel', () => {
     });
   });
 });
+
+describe('AdminService.getNotificationDailySummary', () => {
+  it('buckets ListingNotificationLog and UserNotificationLog rows by IST calendar day and channel', async () => {
+    const { service } = makeService({
+      listingNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          // 2026-10-09T19:00Z + 5:30 = 2026-10-10 local -> buckets into 2026-10-10
+          { sentAt: new Date('2026-10-09T19:00:00Z'), channel: 'email' },
+          { sentAt: new Date('2026-10-09T20:00:00Z'), channel: 'whatsapp' },
+        ]),
+      },
+      userNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          { sentAt: new Date('2026-10-09T19:30:00Z'), channel: 'push' },
+          // 2026-10-08T10:00Z + 5:30 -> 2026-10-08
+          { sentAt: new Date('2026-10-08T10:00:00Z'), channel: 'email' },
+        ]),
+      },
+    });
+
+    const result = await service.getNotificationDailySummary({});
+
+    expect(result).toEqual([
+      { date: '2026-10-08', email: 1, whatsapp: 0, push: 0 },
+      { date: '2026-10-10', email: 1, whatsapp: 1, push: 1 },
+    ]);
+  });
+
+  it('passes from/to through as a sentAt range to both tables', async () => {
+    const { service, prisma } = makeService({
+      listingNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    await service.getNotificationDailySummary({
+      from: '2026-10-01T00:00:00+05:30',
+      to: '2026-10-02T00:00:00+05:30',
+    });
+
+    const expectedWhere = {
+      sentAt: {
+        gte: new Date('2026-10-01T00:00:00+05:30'),
+        lte: new Date('2026-10-02T00:00:00+05:30'),
+      },
+    };
+    // unbound-method is a false positive on these two models specifically (their generated
+    // Prisma delegate type overloads differently from the simpler ones elsewhere in this file) -
+    // a plain jest mock has no real `this` to lose.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.listingNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.userNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it('returns an empty array when nothing was sent in range', async () => {
+    const { service } = makeService({
+      listingNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+    expect(await service.getNotificationDailySummary({})).toEqual([]);
+  });
+});
+
+describe('AdminService.getNotificationDayDetail', () => {
+  it('resolves owner identity through Listing for ListingNotificationLog rows', async () => {
+    const { service, prisma } = makeService({
+      listingNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            kind: 'listing_posted_reminder',
+            channel: 'email',
+            sentAt: new Date('2026-10-10T04:00:00Z'),
+            listing: {
+              id: 'listing1',
+              title: 'Nice flat',
+              owner: {
+                id: 'owner1',
+                name: 'Ravi',
+                phone: null,
+                email: 'ravi@example.com',
+              },
+            },
+          },
+        ]),
+      },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    const result = await service.getNotificationDayDetail('2026-10-10');
+
+    expect(result).toEqual([
+      {
+        kind: 'listing_posted_reminder',
+        channel: 'email',
+        sentAt: new Date('2026-10-10T04:00:00Z').toISOString(),
+        userId: 'owner1',
+        userName: 'Ravi',
+        userPhone: null,
+        userEmail: 'ravi@example.com',
+        listingId: 'listing1',
+        listingTitle: 'Nice flat',
+      },
+    ]);
+    // See the disable-comment note above for why this is a false positive on this model.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.listingNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          sentAt: {
+            gte: new Date('2026-10-10T00:00:00+05:30'),
+            lt: new Date('2026-10-11T00:00:00+05:30'),
+          },
+        },
+      }),
+    );
+  });
+
+  it('carries no listingId/listingTitle for UserNotificationLog rows', async () => {
+    const { service } = makeService({
+      listingNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+      userNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            kind: 'daily_activity_digest',
+            channel: 'push',
+            sentAt: new Date('2026-10-10T03:00:00Z'),
+            user: {
+              id: 'owner2',
+              name: 'Priya',
+              phone: '+919876543210',
+              email: null,
+            },
+          },
+        ]),
+      },
+    });
+
+    const result = await service.getNotificationDayDetail('2026-10-10');
+
+    expect(result).toEqual([
+      {
+        kind: 'daily_activity_digest',
+        channel: 'push',
+        sentAt: new Date('2026-10-10T03:00:00Z').toISOString(),
+        userId: 'owner2',
+        userName: 'Priya',
+        userPhone: '+919876543210',
+        userEmail: null,
+      },
+    ]);
+  });
+
+  it('sorts combined results newest first', async () => {
+    const { service } = makeService({
+      listingNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            kind: 'listing_posted_reminder',
+            channel: 'email',
+            sentAt: new Date('2026-10-10T03:00:00Z'),
+            listing: {
+              id: 'l1',
+              title: 'A',
+              owner: { id: 'o1', name: null, phone: null, email: null },
+            },
+          },
+        ]),
+      },
+      userNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            kind: 'daily_activity_digest',
+            channel: 'push',
+            sentAt: new Date('2026-10-10T05:00:00Z'),
+            user: { id: 'o2', name: null, phone: null, email: null },
+          },
+        ]),
+      },
+    });
+
+    const result = await service.getNotificationDayDetail('2026-10-10');
+    expect(result.map((r) => r.userId)).toEqual(['o2', 'o1']);
+  });
+});

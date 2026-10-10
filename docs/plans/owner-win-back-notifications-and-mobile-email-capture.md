@@ -60,7 +60,18 @@ ones, plus Parts A and C's new ones), not just the new ones.
   per-owner query loop), skips owners with nothing to report, and dedups same-day re-runs via a
   `UserNotificationLog` check before dispatching. 8 new tests, all passing; full BFF suite clean
   (939 passed, same 2 pre-existing unrelated failures).
-- **Part B, D: not yet implemented** — plan below stands as written for those.
+- **Part D: implemented** (this commit). `AdminService.getNotificationDailySummary` /
+  `getNotificationDayDetail` bucket `ListingNotificationLog` + `UserNotificationLog` rows by IST
+  calendar day and channel (`istDateKey` helper — the first day-bucketing convention in this
+  codebase, following `getPostFunnel`'s fetch-then-bucket-in-JS style rather than raw-SQL date
+  truncation); two new `GET /admin/notifications/daily-summary` /
+  `.../daily-summary/detail?date=` routes. New admin page `/notification-log` — date-range filter
+  (`DateRangeFilter`, 7-day default like post-funnel), one row per day with Email/WhatsApp/Push/Total
+  columns; `NotificationLogTable` copies `PageVisitsTable`'s exact lazy-load-per-row pattern
+  (`expandedDays: Set<string>` + fetch-once `details` cache keyed by date) for the per-day
+  user/listing drilldown, via new server action `fetchNotificationDayDetailAction`. New nav entry
+  in `AdminNav.tsx`. 6 new BFF tests; `tsc --noEmit` and `next build` both clean on the admin side.
+- **Part B: not yet implemented** — plan below stands as written for it.
 
 ## Part A — "You posted recently" reminder job
 
@@ -322,12 +333,14 @@ only when received (not the owner's own replies); no log row when the channel is
 dedup skips an already-notified owner; a throw on one owner doesn't stop the rest; the view/
 favourite window is bounded to the trailing 24h ending at `now`.
 
-**Part D**:
-1. `pnpm --filter @bhavano/bff exec tsc --noEmit` / `pnpm --filter admin exec tsc --noEmit` — clean.
-2. Manual: load `/notification-log`, confirm the per-day counts match a manual
-   `SELECT count(*) FROM "ListingNotificationLog" WHERE ...` for a couple of spot-check days,
-   confirm clicking a day fetches exactly once (check Network tab — expand, collapse, expand again
-   should not re-fire the request), confirm a day with zero notifications renders without error.
+**Part D** — done. `tsc --noEmit` clean on both `@bhavano/bff` and `admin`; `pnpm --filter admin
+build` clean (Turbopack production build, `/notification-log` registered as a dynamic route). 6
+new BFF tests (`admin.service.spec.ts`) covering the IST-day bucketing and the per-day detail join
+through `Listing.owner`. The manual spot-check (counts against a direct
+`SELECT count(*) FROM "ListingNotificationLog" WHERE ...`, confirming a day's detail fetches
+exactly once across expand/collapse/expand) is still outside what this session can run — no
+running BFF/admin instance or seeded data to click through — so it remains an open manual
+follow-up, not blocking since both apps build and typecheck clean.
 
 ### Critical files
 - `apps/bff/src/seller-jobs/listing-posted-reminder.job.ts` — **done**
@@ -350,8 +363,8 @@ favourite window is bounded to the trailing 24h ending at `now`.
 - `apps/mobile/app/_layout.tsx` (mount point) — not started
 - `apps/bff/src/seller-jobs/daily-activity-digest.job.ts` (new, Part C) — **done**
 - `apps/bff/src/admin/admin.service.ts` + `admin.controller.ts` (new
-  `getNotificationDailySummary`/`getNotificationDayDetail` endpoints, Part D) — not started
-- `apps/admin/src/app/notification-log/page.tsx` (new, Part D) — not started
-- `apps/admin/src/app/actions/admin.ts` (new `fetchNotificationDayDetailAction`, Part D) — not
-  started
-- `apps/admin/src/components/AdminNav.tsx` (new nav entry, Part D) — not started
+  `getNotificationDailySummary`/`getNotificationDayDetail` endpoints, Part D) — **done**
+- `apps/admin/src/app/notification-log/page.tsx` (new, Part D) — **done**
+- `apps/admin/src/components/NotificationLogTable.tsx` (new, Part D) — **done**
+- `apps/admin/src/app/actions/admin.ts` (new `fetchNotificationDayDetailAction`, Part D) — **done**
+- `apps/admin/src/components/AdminNav.tsx` (new nav entry, Part D) — **done**

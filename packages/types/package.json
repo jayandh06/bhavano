@@ -137,6 +137,10 @@
       "types": "./dist/postFunnel.d.ts",
       "default": "./dist/postFunnel.js"
     },
+    "./notificationLog": {
+      "types": "./dist/notificationLog.d.ts",
+      "default": "./dist/notificationLog.js"
+    },
     "./sellerType": {
       "types": "./dist/sellerType.d.ts",
       "default": "./dist/sellerType.js"
