@@ -90,6 +90,12 @@ services:
       WHATSAPP_WELCOME_TEMPLATE: ${WHATSAPP_WELCOME_TEMPLATE}
       WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION}
       WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE}
+      # The owner win-back jobs' WhatsApp leg (ListingPostedReminderJob, DailyActivityDigestJob) —
+      # see docs/plans/owner-win-back-notifications-and-mobile-email-capture.md. Unset disables
+      # that one variant's WhatsApp send (falls through to no channel, same as the others above).
+      WHATSAPP_LISTING_POSTED_REMINDER_TEMPLATE: ${WHATSAPP_LISTING_POSTED_REMINDER_TEMPLATE}
+      WHATSAPP_LISTING_POSTED_REMINDER_FEATURED_TEMPLATE: ${WHATSAPP_LISTING_POSTED_REMINDER_FEATURED_TEMPLATE}
+      WHATSAPP_DAILY_ACTIVITY_DIGEST_TEMPLATE: ${WHATSAPP_DAILY_ACTIVITY_DIGEST_TEMPLATE}
       # Facebook Page cross-posting of every listing that goes live (see
       # docs/plans/facebook-page-publishing.md). Unset disables it (posts log and skip).
       FACEBOOK_PAGE_ID: ${FACEBOOK_PAGE_ID}
