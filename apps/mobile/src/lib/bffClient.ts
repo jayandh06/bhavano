@@ -41,6 +41,7 @@ import type {
   RevealContactResponseDto,
   ReverseGeocodeResultDto,
   LinkIdentifierResult,
+  ProfileNudgeDto,
   SendFirstMessageResponseDto,
   SellerAttentionDto,
   SubscriptionTier,
@@ -684,7 +685,7 @@ export async function verifyOtp(
   viewerKey?: string,
   sessionId?: string,
   referralCode?: string,
-): Promise<{ user: { id: string; phone?: string; name?: string }; accessToken: string }> {
+): Promise<{ user: { id: string; phone?: string; name?: string }; accessToken: string; isNewUser?: boolean }> {
   return bffFetch("/auth/otp/verify", {
     method: "POST",
     body: JSON.stringify({ phone, code, viewerKey, sessionId, referralCode, ...(await installAcquisitionFields()) }),
@@ -696,7 +697,7 @@ export async function loginWithGoogle(
   viewerKey?: string,
   sessionId?: string,
   referralCode?: string,
-): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
+): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string; isNewUser?: boolean }> {
   return bffFetch("/auth/google", {
     method: "POST",
     body: JSON.stringify({ idToken, viewerKey, sessionId, referralCode, ...(await installAcquisitionFields()) }),
@@ -712,7 +713,7 @@ export async function loginWithApple(
   viewerKey?: string,
   sessionId?: string,
   referralCode?: string,
-): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string }> {
+): Promise<{ user: { id: string; email?: string; name?: string }; accessToken: string; isNewUser?: boolean }> {
   return bffFetch("/auth/apple", {
     method: "POST",
     body: JSON.stringify({ identityToken, fullName, viewerKey, sessionId, referralCode, ...(await installAcquisitionFields()) }),
@@ -1035,6 +1036,14 @@ export function confirmAccountMerge(
     method: "POST",
     body: JSON.stringify(identifier),
   });
+}
+
+export function fetchProfileNudge(accessToken: string): Promise<ProfileNudgeDto> {
+  return authedBffFetch(accessToken, "/users/me/profile-nudge");
+}
+
+export function snoozeProfileNudge(accessToken: string): Promise<{ success: true }> {
+  return authedBffFetch(accessToken, "/users/me/profile-nudge/snooze", { method: "POST" });
 }
 
 /** Mirrors the website's identical call (bff.ts's deleteAccount) — gated behind a freshly-sent

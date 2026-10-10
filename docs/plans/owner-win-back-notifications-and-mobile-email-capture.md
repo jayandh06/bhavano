@@ -71,7 +71,25 @@ ones, plus Parts A and C's new ones), not just the new ones.
   (`expandedDays: Set<string>` + fetch-once `details` cache keyed by date) for the per-day
   user/listing drilldown, via new server action `fetchNotificationDayDetailAction`. New nav entry
   in `AdminNav.tsx`. 6 new BFF tests; `tsc --noEmit` and `next build` both clean on the admin side.
-- **Part B: not yet implemented** — plan below stands as written for it.
+- **Part B: implemented** (this commit). `bffClient.ts` gained `fetchProfileNudge`/
+  `snoozeProfileNudge` and `verifyOtp`/`loginWithGoogle`/`loginWithApple` now return
+  `isNewUser?: boolean` (the BFF already sent it; the client types just dropped it). New
+  `isNewUser` state on `HomeSheetsProvider`, set from each of those three `onLoginSuccess` call
+  sites and exposed on the context — defaults to `false` on every cold start (no persisted
+  equivalent of web's NextAuth session field), which the BFF's own nudge cap/snooze is the
+  accepted backstop against. New `ProfileCompletionDialog.tsx`, a close port of the web
+  component's state machine (phone/OTP, email/code, the three-way linked/merged/confirm branch,
+  the merge-confirm summary panel) onto a plain RN `Modal` + `useAppTheme()` colors, mounted at
+  the root in `app/_layout.tsx` beside `PushBridge`/`GuestSavesSync`. A module-level
+  `shownThisLaunch` flag replaces web's `sessionStorage` key for the one-per-launch gate.
+  `tsc --noEmit` clean (note: this app's `tsc` needs `node --stack-size=8000 .../tsc.js --noEmit`
+  to run at all on this machine — a pre-existing stack-overflow in plain `tsc --noEmit`, confirmed
+  unrelated to this change by reproducing it on master before any edits); mobile has no lint
+  script. Full Jest suite clean (67/67, unchanged by this commit — no existing test touches this
+  code path). Manual device pass (the fresh-signup/return-login/cold-start/merge-confirm/snooze-cap
+  walkthrough the plan's own Verification section lists) is still outside what this session can
+  run — no simulator or seeded test accounts available here — so it remains an open manual
+  follow-up, not blocking since both typecheck and the full test suite are clean.
 
 ## Part A — "You posted recently" reminder job
 
@@ -357,10 +375,10 @@ follow-up, not blocking since both apps build and typecheck clean.
   `whatsapp_create_listing_posted_reminder_featured_template.py` +
   `whatsapp_create_daily_activity_digest_template.py` — **done** (preview-only until submitted)
 - `apps/mobile/src/lib/bffClient.ts` (`fetchProfileNudge`/`snoozeProfileNudge`, widened login
-  return types) — not started
-- `apps/mobile/src/context/HomeSheetsProvider.tsx` (`isNewUser` passthrough) — not started
-- `apps/mobile/src/components/home/ProfileCompletionDialog.tsx` (new) — not started
-- `apps/mobile/app/_layout.tsx` (mount point) — not started
+  return types) — **done**
+- `apps/mobile/src/context/HomeSheetsProvider.tsx` (`isNewUser` passthrough) — **done**
+- `apps/mobile/src/components/home/ProfileCompletionDialog.tsx` (new) — **done**
+- `apps/mobile/app/_layout.tsx` (mount point) — **done**
 - `apps/bff/src/seller-jobs/daily-activity-digest.job.ts` (new, Part C) — **done**
 - `apps/bff/src/admin/admin.service.ts` + `admin.controller.ts` (new
   `getNotificationDailySummary`/`getNotificationDayDetail` endpoints, Part D) — **done**

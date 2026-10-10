@@ -125,6 +125,13 @@ interface HomeSheetsContextValue {
    * immediately without waiting for a remount. */
   profile: UserProfileDto | null;
   refreshProfile: () => Promise<void>;
+  /** True only for the rest of this app launch, right after a fresh signup login — see
+   * ProfileCompletionDialog.tsx's own gate for why it matters: the ask-for-email/phone nudge
+   * should never fire on the same login that just created the account. A session restored from
+   * SecureStore on relaunch never sets this (there's no persisted equivalent of web's NextAuth
+   * session field), so it defaults back to false on every cold start — accepted as-is, since
+   * getProfileNudge's own cap/snooze is the real backstop against over-showing either way. */
+  isNewUser: boolean;
 }
 
 const HomeSheetsContext = createContext<HomeSheetsContextValue | null>(null);
@@ -178,6 +185,7 @@ export function HomeSheetsProvider({
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfileDto | null>(null);
   const [showToast, setShowToast] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   const [locationQuery, setLocationQuery] = useState("");
   const latestLocationQuery = useRef("");
@@ -519,12 +527,13 @@ export function HomeSheetsProvider({
     }
   }
 
-  async function onLoginSuccess(accessToken: string) {
+  async function onLoginSuccess(accessToken: string, isNewUser = false) {
     onSkipRef.current = undefined;
     setSkipReason(null);
     if (Platform.OS !== "web") await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
     setIsLoggedIn(true);
     setAccessToken(accessToken);
+    setIsNewUser(isNewUser);
     // Register this device for "new message" pushes now that we have a user to attach it to.
     registerForPushAsync(accessToken).then((t) => {
       if (t) pushTokenRef.current = t;
@@ -642,7 +651,7 @@ export function HomeSheetsProvider({
         getAnalyticsSessionId(),
         await getReferralCodeIfFresh(),
       );
-      await onLoginSuccess(session.accessToken);
+      await onLoginSuccess(session.accessToken, session.isNewUser ?? false);
     } catch (e) {
       // The BFF says which it was — wrong code, expired, or too many attempts — and each needs
       // different next steps, so show its message rather than always "Incorrect OTP".
@@ -664,7 +673,7 @@ export function HomeSheetsProvider({
         getAnalyticsSessionId(),
         await getReferralCodeIfFresh(),
       );
-      await onLoginSuccess(session.accessToken);
+      await onLoginSuccess(session.accessToken, session.isNewUser ?? false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Google sign-in failed");
     } finally {
@@ -697,7 +706,7 @@ export function HomeSheetsProvider({
         getAnalyticsSessionId(),
         await getReferralCodeIfFresh(),
       );
-      await onLoginSuccess(session.accessToken);
+      await onLoginSuccess(session.accessToken, session.isNewUser ?? false);
     } catch (e) {
       // ERR_REQUEST_CANCELED — the user dismissed the Apple sheet, same as Google's own
       // no-idToken-returned case above: not an error worth surfacing. Expo's own docs check
@@ -712,8 +721,8 @@ export function HomeSheetsProvider({
   const userId = useMemo(() => (accessToken ? decodeUserId(accessToken) : null), [accessToken]);
 
   const value = useMemo(
-    () => ({ city, setCity, openLocationPicker, requireLogin, sessionReady, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile }),
-    [city, setCity, openLocationPicker, requireLogin, sessionReady, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile],
+    () => ({ city, setCity, openLocationPicker, requireLogin, sessionReady, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile, isNewUser }),
+    [city, setCity, openLocationPicker, requireLogin, sessionReady, ensureVerifiedPhone, logout, isLoggedIn, accessToken, userId, profile, refreshProfile, isNewUser],
   );
 
   return (

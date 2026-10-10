@@ -18,6 +18,7 @@ import { BottomTabBar } from "../src/components/home/BottomTabBar";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { SoftNavAppPageViews } from "../src/components/home/SoftNavAppPageViews";
 import { ReferralLinkBridge } from "../src/components/home/ReferralLinkBridge";
+import { ProfileCompletionDialog } from "../src/components/home/ProfileCompletionDialog";
 import { importFavourites, reportClientError } from "../src/lib/bffClient";
 import { clearGuestSaves, guestSaveIds, useGuestSaves } from "../src/lib/guestSaves";
 
@@ -138,6 +139,10 @@ function AppNavigation() {
         <GuestSavesSync />
         <SoftNavAppPageViews />
         <ReferralLinkBridge />
+        {/* Root-level, not tab-level: the nudge needs to be reachable from any screen, same as
+            web's isn't scoped to the homepage. Reads its own gate (isLoggedIn/isNewUser/the BFF's
+            cap+snooze) and renders nothing until that resolves true — see its own doc comment. */}
+        <ProfileCompletionDialog />
         {/* Every screen runs headerShown:false and draws its own header, so nothing was reserving
             the status-bar area — content rendered under the clock, Dynamic Island and Wi-Fi icons
             on notched devices. SafeAreaProvider alone doesn't fix this: it supplies inset values,
