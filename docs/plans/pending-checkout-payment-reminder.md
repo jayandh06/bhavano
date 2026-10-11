@@ -175,3 +175,15 @@ that exact footer (`listing_posted_v2`, `listing_posted_reminder_v2`,
 this specific template's combination of copy and/or submission order may also have mattered. Not
 investigated further since `_v3` is approved and working; flagging only in case a future template
 hits the same reclassification and this theory needs revisiting.
+
+**Update (2026-10-11): fixed a real "missed cycle" gap in the job's own window.** The original
+window (`createdAt` in `[now-4h, now-3h)`, a closed band) gave each listing exactly one eligible
+hourly run ever — miss that one run (container mid-deploy, a DB hiccup, anything) and every later
+run's window has already moved past it, so it silently never got reminded at all, forever. Changed
+to open-ended (`createdAt <= now - 3h`, no upper bound) — `WINDOW_START_HOURS`/`WINDOW_END_HOURS`
+replaced by a single `MIN_AGE_HOURS = 3`. The existing dedup check (`notificationLogs: { none: {
+kind: 'pending_checkout_reminder' } }`) is what actually prevents a double-send, so the window
+didn't need an upper bound to do that job too — this makes the job self-healing: any still-pending,
+never-notified listing is caught on the very next hourly run no matter how long it's been stuck,
+instead of only in its one original 1-hour window. Tests updated to assert the open-ended shape
+and that a listing well past the old 3-4h band (5h old) is still queried for.

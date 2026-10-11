@@ -5,14 +5,17 @@ import type { PrismaService } from '../prisma/prisma.service';
 describe('PendingCheckoutReminderJob', () => {
   const now = new Date('2026-10-10T03:30:00Z');
   const hour = 3_600_000;
-  const WINDOW_START_HOURS = 4;
-  const WINDOW_END_HOURS = 3;
+  const MIN_AGE_HOURS = 3;
 
+  // 5h old, not 3h — deliberately well past the old closed-band design's 3-4h window, to pin
+  // down that the open-ended query (see the job's own MIN_AGE_HOURS comment) really does catch a
+  // listing that's been stuck far longer than one hourly cycle, not just one freshly crossing
+  // the 3h mark.
   function stubListing(overrides: Record<string, unknown> = {}) {
     return {
       id: 'listing1',
       title: 'Nice flat',
-      createdAt: new Date(now.getTime() - WINDOW_START_HOURS * hour + 1000),
+      createdAt: new Date(now.getTime() - 5 * hour),
       owner: {
         id: 'owner1',
         email: 'owner@example.com',
@@ -38,23 +41,22 @@ describe('PendingCheckoutReminderJob', () => {
     return { job, prisma, notifications };
   }
 
-  it('looks only at currently-pending-checkout listings created 3-4h ago with no existing reminder log', async () => {
+  it('looks only at currently-pending-checkout listings at least 3h old with no existing reminder log — open-ended, no upper bound', async () => {
     const { job, prisma } = makeJob([]);
     await job.sendReminders(now);
-    const windowStart = new Date(now.getTime() - WINDOW_START_HOURS * hour);
-    const windowEnd = new Date(now.getTime() - WINDOW_END_HOURS * hour);
+    const cutoff = new Date(now.getTime() - MIN_AGE_HOURS * hour);
     expect(prisma.listing.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           publishState: 'pending_checkout',
-          createdAt: { gte: windowStart, lt: windowEnd },
+          createdAt: { lte: cutoff },
           notificationLogs: { none: { kind: 'pending_checkout_reminder' } },
         },
       }),
     );
   });
 
-  it('sends the reminder and logs the channel for a listing inside the window', async () => {
+  it('sends the reminder and logs the channel for a listing stuck well past the 3h mark', async () => {
     const { job, notifications, prisma } = makeJob([stubListing()]);
     await job.sendReminders(now);
     expect(notifications.notifyPendingCheckoutReminder).toHaveBeenCalledWith(
@@ -98,15 +100,16 @@ describe('PendingCheckoutReminderJob', () => {
     });
   });
 
-  it('window boundaries are exactly 3-4h: the query itself is what the DB uses to exclude listings outside that range', async () => {
-    // The job delegates the actual age filtering to the DB query (asserted above); this pins the
-    // two boundary timestamps explicitly so a future edit to WINDOW_START_HOURS/WINDOW_END_HOURS
-    // is caught by a changed assertion here, not just a passing mock.
+  it('the cutoff is exactly 3h with no upper bound: a missed hourly run is still caught on the next one', async () => {
+    // Pins the single boundary timestamp explicitly so a future edit to MIN_AGE_HOURS, or a
+    // regression back to a closed band, is caught by a changed assertion here rather than only a
+    // passing mock.
     const { job, prisma } = makeJob([]);
     await job.sendReminders(now);
     const [[call]] = (prisma.listing.findMany as jest.Mock).mock.calls.map((args: unknown[]) => args);
-    const where = (call as { where: { createdAt: { gte: Date; lt: Date } } }).where;
-    expect(where.createdAt.gte.toISOString()).toBe(new Date(now.getTime() - 4 * hour).toISOString());
-    expect(where.createdAt.lt.toISOString()).toBe(new Date(now.getTime() - 3 * hour).toISOString());
+    const where = (call as { where: { createdAt: { lte: Date; lt?: Date; gte?: Date } } }).where;
+    expect(where.createdAt.lte.toISOString()).toBe(new Date(now.getTime() - 3 * hour).toISOString());
+    expect(where.createdAt.lt).toBeUndefined();
+    expect(where.createdAt.gte).toBeUndefined();
   });
 });
