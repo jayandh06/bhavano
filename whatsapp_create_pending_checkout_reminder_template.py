@@ -1,5 +1,16 @@
 """Creates the "pending_checkout_reminder" WhatsApp Business template via Meta's Graph API.
 
+v2: v1 was reviewed and classified MARKETING instead of the declared UTILITY — despite having no
+benefit/comparison language, the body's call-to-action ("finish paying and publish it") and the
+button ("Complete payment") both explicitly framed the message around completing a payment, which
+reads as commercial intent to Meta's classifier regardless of the fact that it's reminding about a
+payment the owner themselves already started. Same lesson as listing_posted_reminder_v1's own
+reclassification (that one for benefit/comparison language instead). v2 is a plain status
+statement (ad is saved, not live) with a neutral button ("View my ad") and no payment-completion
+language in either — the email variant keeps the direct "Complete payment" wording, since email
+isn't subject to Meta's classifier. See apps/bff/notification-templates/whatsapp/
+pending-checkout-reminder/ for the wording.
+
 A same-day nudge for a listing stuck in `pending_checkout` — the owner picked a fee/boost option
 but never completed payment, and nothing else ever tells them it's waiting (no expiry, no other
 reminder). See docs/plans/pending-checkout-payment-reminder.md.
@@ -12,11 +23,6 @@ button is a DYNAMIC URL, unlike listing-posted-reminder's static one — it need
 specific listing's own checkout modal (`?openPublishCheckout=<id>`, read by
 PublishCheckoutRecovery.tsx's AutoOpenPublishCheckout), not a bare /my-listings. Same
 buttonUrlBase+buttonUrlExample convention as `whatsapp_create_listing_posted_template.py`.
-
-Deliberately plain, no benefit/comparison language, no boost/Featured pitch — this is a status +
-an action, nothing to sell, so it should classify cleanly as UTILITY (see
-listing_posted_reminder_v1's own MARKETING reclassification earlier the same day this was
-written, for what happens when a reminder's copy leans promotional instead).
 
 Reads apps/bff/.env or ./.env, same as the other whatsapp_*.py scripts. The template's actual
 wording is read from apps/bff/notification-templates/whatsapp/pending-checkout-reminder/ — edit
@@ -46,7 +52,7 @@ WABA_ID = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID")
 VERSION = os.getenv("WHATSAPP_API_VERSION") or "v23.0"
 LANGUAGE = os.getenv("WHATSAPP_TEMPLATE_LANGUAGE") or "en"
 
-TEMPLATE_NAME = "pending_checkout_reminder_v1"
+TEMPLATE_NAME = "pending_checkout_reminder_v2"
 
 TEMPLATE_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -167,9 +173,11 @@ def main():
     show_preview(category)
 
     print(
-        "\nNOTE: submitting as %s. Plain status + action, no benefit/comparison language and "
-        "nothing to sell - should classify cleanly as UTILITY. Meta's review can still "
-        "reclassify regardless of what's declared here." % category
+        "\nNOTE: submitting as %s. v1 (pending_checkout_reminder_v1) came back classified "
+        "MARKETING - this v2 copy dropped the payment-completion language in the body's CTA and "
+        "the button text that caused it, so it should read as a plain status update now. Meta's "
+        "review can still reclassify regardless of what's declared here; this is a better-odds "
+        "rewrite, not a guarantee." % category
     )
     print(
         "\nOnce Meta approves this, set WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE=%s in .env. "

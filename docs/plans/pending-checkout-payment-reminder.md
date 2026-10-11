@@ -138,4 +138,18 @@ mechanics on both platforms already handle this notification's target.
 
 ## Status
 
-Approved, not yet implemented.
+Implemented (job, services, templates, tests all in — see commits `9d0185f5`/`b3d6ca20`).
+
+**Update (2026-10-11):** the WhatsApp `_v1` submission came back classified MARKETING instead of
+the declared UTILITY — despite having no benefit/comparison language, the body's call-to-action
+("finish paying and publish it") and the button ("Complete payment") both explicitly framed the
+message around completing a payment, which reads as commercial intent to Meta's classifier
+regardless of it being a payment the owner themselves already started. Same lesson as
+`listing_posted_reminder_v1`'s own reclassification (see
+`owner-win-back-notifications-and-mobile-email-capture.md`'s matching update), just triggered by
+payment-completion language instead of benefit language. Rewrote as `_v2` — plain status
+statement ("ad is saved, not live"), neutral button ("View my ad"), no payment-completion
+language in either — in `apps/bff/notification-templates/whatsapp/pending-checkout-reminder/` and
+bumped `TEMPLATE_NAME` in `whatsapp_create_pending_checkout_reminder_template.py` to match. The
+email variant keeps its direct "Complete payment" wording, since email isn't subject to Meta's
+classifier. Not yet resubmitted to Meta.
