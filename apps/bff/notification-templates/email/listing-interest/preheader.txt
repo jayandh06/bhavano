@@ -1,0 +1,1 @@
+{{interestedName}} is interested in "{{title}}" — reply from My Listings.

@@ -1,0 +1,3 @@
+{{interestedName}} showed interest in your listing "{{title}}" on Bhavano.
+
+Open My listings to message them.

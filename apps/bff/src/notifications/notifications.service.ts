@@ -37,31 +37,28 @@ export class NotificationsService {
 
   /** No WhatsApp template exists yet for a moderation notice — see `dispatchEmailPreferWhatsapp`'s
    * own comment on what an absent `whatsapp` argument means. A phone-only owner gets nothing
-   * until one is built and approved. */
+   * until one is built and approved. Branded HTML (see emailLayout.ts), not a plain-text
+   * paragraph — see `notifyListingBoostActivated`'s comment on why that used to be the norm here. */
   async notifyListingFlagged(
     user: NotifiableUser,
     listing: ListingDetailDto,
     message: string,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `Action needed: your listing "${listing.title}" has been taken offline`;
-    const body =
-      `Hi, one of your listings ("${listing.title}") has been taken offline by a Bhavano moderator:\n\n` +
-      `"${message}"\n\n` +
-      `Please review and update your listing, then it will be reviewed again. ` +
-      `You can reply to the moderator directly from the Messages section of your account.`;
+    const vars = { title: listing.title, message };
+    const { subject, text, html } = this.renderPurchaseEmail('email/listing-flagged', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
-  /** See `notifyListingFlagged`'s comment on the missing WhatsApp template. */
+  /** See `notifyListingFlagged`'s comment on the missing WhatsApp template and the branded HTML. */
   async notifyListingApproved(
     user: NotifiableUser,
     listing: ListingDetailDto,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `Your listing "${listing.title}" is live again`;
-    const body = `Good news — your listing "${listing.title}" has been reviewed and is live again on Bhavano.`;
+    const vars = { title: listing.title };
+    const { subject, text, html } = this.renderPurchaseEmail('email/listing-approved', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** A boost perk, not a universal notification — see ListingsService.toggleFavourite, which
@@ -69,33 +66,30 @@ export class NotificationsService {
    * casual likes with no real intent behind most of them; boosted ads are a much smaller, more
    * engaged set where "someone just liked your ad" is a meaningful, non-spammy signal.
    *
-   * No WhatsApp template exists yet — see `notifyListingFlagged`'s comment. */
+   * No WhatsApp template exists yet — see `notifyListingFlagged`'s comment, likewise the branded HTML. */
   async notifyListingLiked(
     user: NotifiableUser,
     listingTitle: string,
     likerName: string,
   ): Promise<'email' | 'whatsapp' | null> {
-    const subject = `${likerName} liked your Featured ad`;
-    const body = `${likerName} just added your listing "${listingTitle}" to their favourites on Bhavano.`;
+    const vars = { title: listingTitle, likerName };
+    const { subject, text, html } = this.renderPurchaseEmail('email/listing-liked', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Instant Alerts (and only Instant Alerts) email/WhatsApp when a seeker taps "I'm interested".
    * Push is separate (PushService.notifyListingInterest). See
-   * docs/plans/login-gated-listing-interest-owner-notify.md. */
+   * docs/plans/login-gated-listing-interest-owner-notify.md. Branded HTML — see
+   * `notifyListingFlagged`'s comment. */
   async notifyListingInterest(
     user: NotifiableUser,
     params: { interestedName: string; listingTitle: string },
   ): Promise<'email' | 'whatsapp' | null> {
-    const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
-    const link = `${site}/my-listings`;
-    const subject = `${params.interestedName} is interested in "${params.listingTitle}"`;
-    const body =
-      `${params.interestedName} showed interest in your listing "${params.listingTitle}" on Bhavano.\n\n` +
-      `Open My listings to message them: ${link}`;
+    const vars = { title: params.listingTitle, interestedName: params.interestedName };
+    const { subject, text, html } = this.renderPurchaseEmail('email/listing-interest', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Boost purchase confirmation — see PaymentsService.handleWebhook's `listing_boost` branch.
@@ -232,19 +226,22 @@ export class NotificationsService {
    * alert per burst, not per message). `senderName` is already a role-label fallback
    * ("Buyer"/"Seller"/"Bhavano Admin") when the sender has no name set — never a raw phone/email,
    * matching the same leak-prevention rule already applied to push-notification titles. No
-   * WhatsApp template exists yet — see `notifyListingFlagged`'s comment. */
+   * WhatsApp template exists yet — see `notifyListingFlagged`'s comment, likewise the branded
+   * HTML. Links straight to the conversation (`linkPath` override), not the generic
+   * `/my-listings` `renderPurchaseEmail` defaults to — a reply is the one action this message is
+   * actually asking for. */
   async notifyNewMessage(
     user: NotifiableUser,
     params: { senderName: string; listingTitle: string; conversationId: string },
   ): Promise<'email' | 'whatsapp' | null> {
-    const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
-    const link = `${site}/messages/${params.conversationId}`;
-    const subject = `New message about "${params.listingTitle}"`;
-    const body =
-      `${params.senderName} sent you a message about "${params.listingTitle}" on Bhavano.\n\n` +
-      `Reply here: ${link}`;
+    const vars = { title: params.listingTitle, senderName: params.senderName };
+    const { subject, text, html } = this.renderPurchaseEmail(
+      'email/new-message',
+      vars,
+      `/messages/${params.conversationId}`,
+    );
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text: body });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
   }
 
   /** Bhavano Plus's early-access alerts — the proactive counterpart to a buyer having to keep
@@ -310,18 +307,41 @@ export class NotificationsService {
     owner: NotifiableUser,
     lines: string[],
   ): Promise<'email' | 'whatsapp' | null> {
+    const site = this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
     const count = lines.length;
+    const who = count === 1 ? 'Someone' : `${count} people`;
     const subject =
       count === 1 ? 'Someone is looking for a property like yours' : `${count} people are looking for properties like yours`;
-    const body =
-      `${count === 1 ? 'Someone' : `${count} people`} searched Bhavano for something matching what you've listed, ` +
-      `and didn't find it:\n\n${lines.map((line) => `• ${line}`).join('\n')}\n\n` +
-      `If you have something suitable, list it at https://www.bhavano.com/post — ` +
-      `or see the full details at https://www.bhavano.com/requirements?matches=1.\n\n` +
-      `You're getting this because you've listed in the same area and category. Nobody's contact ` +
-      `details are shared either way.`;
 
-    return this.dispatchEmailPreferWhatsapp(owner, { subject, text: body });
+    // Built directly (not via renderPurchaseEmail/loadTemplate): the count-driven singular/plural
+    // wording and the bullet list of search terms don't fit the simple {{var}} substitution the
+    // template-file system does — see pluralDays's own comment on pluralising in code, not in a
+    // template. Still branded via renderEmail directly, same as notifyBoostPromotion's two-button
+    // offer email.
+    const paragraphs = [
+      `${who} searched Bhavano for something matching what you've listed, and didn't find it:`,
+      ...lines.map((line) => `• ${line}`),
+      `You're getting this because you've listed in the same area and category. Nobody's contact details are shared either way.`,
+    ];
+    const buttons = [
+      { label: 'List it', url: `${site}/post` },
+      { label: 'See matches', url: `${site}/requirements?matches=1` },
+    ];
+    const html = renderEmail({
+      heading: subject,
+      preheader: `${who} searched for something matching what you've listed.`,
+      paragraphs,
+      button: buttons,
+    });
+    const text =
+      `${paragraphs.join('\n\n')}\n\n` + buttons.map((b) => `${b.label}: ${b.url}`).join('\n');
+
+    return this.dispatchEmailPreferWhatsapp(owner, {
+      subject,
+      text,
+      html,
+      bcc: 'support@bhavano.com',
+    });
   }
 
   /** The seeker-facing half of `SavedSearchesService.notifyMatchingBuyers` — "a listing now
@@ -798,7 +818,7 @@ export class NotificationsService {
       user,
       () =>
         this.push.notifyListingPostedReminder(userId, vars.title, isBoosted),
-      { subject: renderTemplate(tpl.subject, vars), text, html },
+      { subject: renderTemplate(tpl.subject, vars), text, html, bcc: 'support@bhavano.com' },
       whatsappTemplate
         ? {
             template: whatsappTemplate,
@@ -855,7 +875,7 @@ export class NotificationsService {
       user,
       () =>
         this.push.notifyPendingCheckoutReminder(userId, vars.title, listingId),
-      { subject: renderTemplate(tpl.subject, vars), text, html },
+      { subject: renderTemplate(tpl.subject, vars), text, html, bcc: 'support@bhavano.com' },
       whatsappTemplate
         ? {
             template: whatsappTemplate,
@@ -906,7 +926,7 @@ export class NotificationsService {
       userId,
       user,
       () => this.push.notifyDailyActivityDigest(userId, counts),
-      { subject: renderTemplate(tpl.subject, vars), text, html },
+      { subject: renderTemplate(tpl.subject, vars), text, html, bcc: 'support@bhavano.com' },
       whatsappTemplate
         ? { template: whatsappTemplate, params: vars }
         : undefined,

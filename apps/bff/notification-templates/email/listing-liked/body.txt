@@ -1,0 +1,1 @@
+{{likerName}} just added your listing "{{title}}" to their favourites on Bhavano.

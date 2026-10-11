@@ -1,0 +1,5 @@
+One of your listings, "{{title}}", has been taken offline by a Bhavano moderator:
+
+"{{message}}"
+
+Please review and update your listing, then it will be reviewed again. You can reply to the moderator directly from the Messages section of your account.

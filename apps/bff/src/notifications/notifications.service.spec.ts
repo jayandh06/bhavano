@@ -455,3 +455,94 @@ describe('NotificationsService.notifyDailyActivityDigest', () => {
     expect(text).toContain('2 new messages');
   });
 });
+
+/**
+ * These six used to send a plain-text paragraph instead of the branded `renderEmail` layout
+ * every purchase/signup/reminder email in this file uses — see each method's own comment. Each
+ * now goes through `renderPurchaseEmail` (or, for notifyRequirementsToOwner, `renderEmail`
+ * directly), so the fix worth pinning is: an `html` part is present, and support@ is BCC'd like
+ * every other notification here.
+ */
+describe('NotificationsService — branded HTML + support@ BCC for the former plain-text notices', () => {
+  it('notifyListingFlagged sends branded HTML with the moderator message and BCCs support@', async () => {
+    const { service, emailSend } = make();
+
+    await service.notifyListingFlagged(OWNER, LISTING, 'Photos do not match the description');
+
+    const [to, subject, , options] = emailSend.mock.calls[0];
+    expect(to).toBe('ravi@example.com');
+    expect(subject).toContain(LISTING.title);
+    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options.html).toContain('Photos do not match the description');
+  });
+
+  it('notifyListingApproved sends branded HTML and BCCs support@', async () => {
+    const { service, emailSend } = make();
+
+    await service.notifyListingApproved(OWNER, LISTING);
+
+    const [, subject, , options] = emailSend.mock.calls[0];
+    expect(subject).toContain(LISTING.title);
+    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options.html).toContain(LISTING.title);
+  });
+
+  it('notifyListingLiked sends branded HTML naming the liker and BCCs support@', async () => {
+    const { service, emailSend } = make();
+
+    await service.notifyListingLiked(OWNER, 'Nice flat', 'Priya');
+
+    const [, subject, , options] = emailSend.mock.calls[0];
+    expect(subject).toContain('Priya');
+    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options.html).toContain('Priya');
+  });
+
+  it('notifyListingInterest sends branded HTML naming the interested buyer and BCCs support@', async () => {
+    const { service, emailSend } = make();
+
+    await service.notifyListingInterest(OWNER, { interestedName: 'Priya', listingTitle: 'Nice flat' });
+
+    const [, subject, , options] = emailSend.mock.calls[0];
+    expect(subject).toContain('Priya');
+    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options.html).toContain('Priya');
+  });
+
+  it('notifyNewMessage links to the specific conversation and BCCs support@', async () => {
+    const { service, emailSend } = make();
+
+    await service.notifyNewMessage(OWNER, {
+      senderName: 'Priya',
+      listingTitle: 'Nice flat',
+      conversationId: 'conv1',
+    });
+
+    const [, , text, options] = emailSend.mock.calls[0];
+    expect(text).toContain('/messages/conv1');
+    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options.html).toContain('/messages/conv1');
+  });
+
+  it('notifyRequirementsToOwner pluralises for more than one match, lists each line, and BCCs support@', async () => {
+    const { service, emailSend } = make();
+
+    await service.notifyRequirementsToOwner(OWNER, ['3BHK in Koramangala', '2BHK in Indiranagar']);
+
+    const [, subject, text, options] = emailSend.mock.calls[0];
+    expect(subject).toContain('2 people');
+    expect(text).toContain('3BHK in Koramangala');
+    expect(text).toContain('2BHK in Indiranagar');
+    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options.html).toContain('3BHK in Koramangala');
+  });
+
+  it('notifyRequirementsToOwner uses singular wording for exactly one match', async () => {
+    const { service, emailSend } = make();
+
+    await service.notifyRequirementsToOwner(OWNER, ['3BHK in Koramangala']);
+
+    const [, subject] = emailSend.mock.calls[0];
+    expect(subject).toBe('Someone is looking for a property like yours');
+  });
+});
