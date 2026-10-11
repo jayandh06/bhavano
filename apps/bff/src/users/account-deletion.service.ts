@@ -26,12 +26,40 @@ export class AccountDeletionService {
     if (user.deletedAt) return; // already gone — deleting twice is not an error
 
     await this.prisma.$transaction(async (tx) => {
+      // Read each listing's own current status before the bulk update below overwrites it — a
+      // ListingEditLog row needs a real before/after per listing, which updateMany's result
+      // (just a count) can't supply. Excludes already-deactivated listings so closing one of
+      // those again doesn't log a no-op "status changed" from deactivated to deactivated, same
+      // guard ListingsService.setStatusAsAdmin applies.
+      const listingsToDeactivate = await tx.listing.findMany({
+        where: { ownerId: userId, status: { not: 'deactivated' } },
+        select: { id: true, status: true },
+      });
+
       // Listings come offline but the rows stay, so the payments that boosted them and the
       // conversations buyers had about them remain coherent.
       await tx.listing.updateMany({
         where: { ownerId: userId },
         data: { status: 'deactivated' },
       });
+
+      // The listing's own "History" tab otherwise shows nothing for this — same action string
+      // ListingsService.setStatusAsAdmin already uses for a status change, so it renders
+      // identically there. actorType 'system' (not 'owner'): the owner isn't editing the listing,
+      // this is a side effect of deleting their account, and actorId stays null to match this
+      // actorType's only other documented convention (see ListingsService.listEditHistory's own
+      // comment) — pointless to set it to an id this same transaction is about to anonymise.
+      if (listingsToDeactivate.length > 0) {
+        await tx.listingEditLog.createMany({
+          data: listingsToDeactivate.map((listing) => ({
+            listingId: listing.id,
+            actorType: 'system',
+            actorId: null,
+            action: 'status_changed',
+            changes: { status: { before: listing.status, after: 'deactivated' } },
+          })),
+        });
+      }
 
       // Saved searches are per-user preferences with no audit value, and leaving them would keep
       // emailing a deleted account.
