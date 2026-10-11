@@ -1002,6 +1002,12 @@ export interface PageVisitDto {
   userName: string | null;
   userPhone: string | null;
   userEmail: string | null;
+  /** Whether `userId`'s account has since been deleted — AccountDeletionService nulls out
+   * name/phone/email on deletion (anonymised, not dropped, since the row is the audit trail
+   * behind their Payment history), so without this a deleted account's session is
+   * indistinguishable from one that genuinely never had a name/phone/email on file. Only
+   * meaningful when `userId` is non-null. */
+  userDeleted: boolean;
   source: string | null;
   medium: string | null;
   campaign: string | null;
@@ -1053,6 +1059,8 @@ export interface PageVisitSessionLogin {
   name: string | null;
   phone: string | null;
   email: string | null;
+  /** Same meaning as PageVisitDto.userDeleted, for this specific logged-in account. */
+  deleted: boolean;
   method: LoginMethod;
   createdAt: string;
 }

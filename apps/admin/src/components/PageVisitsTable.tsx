@@ -271,7 +271,11 @@ function SessionUsers({ visit }: { visit: PageVisitDto }) {
     }
     return (
       <Link href={`/users/${visit.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
-        {visit.userName ?? visit.userPhone ?? visit.userEmail ?? visit.userId}
+        {/* A deleted account has name/phone/email nulled out by design (erasure, not a data
+            gap — see AccountDeletionService's own doc comment), so falling through to the raw
+            id read as a display bug. Still linked: the user row (and its payment/listing
+            history) still exists, just anonymised. */}
+        {visit.userDeleted ? "Deleted user" : visit.userName ?? visit.userPhone ?? visit.userEmail ?? visit.userId}
       </Link>
     );
   }
@@ -280,7 +284,7 @@ function SessionUsers({ visit }: { visit: PageVisitDto }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {logins.map((l) => (
         <Link key={l.userId} href={`/users/${l.userId}`} style={{ color: "var(--green)", fontWeight: 700, whiteSpace: "nowrap" }}>
-          {l.name ?? l.phone ?? l.email ?? l.userId}
+          {l.deleted ? "Deleted user" : l.name ?? l.phone ?? l.email ?? l.userId}
           <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 11 }}> · {l.method}</span>
         </Link>
       ))}

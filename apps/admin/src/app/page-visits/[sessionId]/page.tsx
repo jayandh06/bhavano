@@ -56,7 +56,9 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
           <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px" }}>
             {visit.userId ? (
               <Link href={`/users/${visit.userId}`} style={{ color: "var(--green)" }}>
-                {visit.userName ?? visit.userPhone ?? visit.userEmail ?? visit.userId}
+                {/* See PageVisitsTable.tsx's matching comment — a deleted account's name/
+                    phone/email are nulled out by design, not missing data. */}
+                {visit.userDeleted ? "Deleted user" : visit.userName ?? visit.userPhone ?? visit.userEmail ?? visit.userId}
               </Link>
             ) : (
               "Anonymous session"
@@ -85,7 +87,7 @@ export default async function SessionTrailPage({ params }: { params: Promise<{ s
               <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
                 {visit.sessionLogins.map((l) => (
                   <Link key={l.userId} href={`/users/${l.userId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
-                    {l.name ?? l.phone ?? l.email ?? l.userId}
+                    {l.deleted ? "Deleted user" : l.name ?? l.phone ?? l.email ?? l.userId}
                     <span style={{ color: "var(--muted)", fontWeight: 400 }}>
                       {" "}
                       · {l.method} · {formatDateTime(l.createdAt)}

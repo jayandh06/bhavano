@@ -850,7 +850,7 @@ export class AdminService {
     const [rows, total] = await Promise.all([
       this.prisma.visit.findMany({
         where,
-        include: { user: { select: { name: true, phone: true, email: true } } },
+        include: { user: { select: { name: true, phone: true, email: true, deletedAt: true } } },
         orderBy: PAGE_VISIT_ORDER_BY[sort ?? 'createdAt_desc'],
         skip: offset ?? 0,
         take: limit,
@@ -875,7 +875,7 @@ export class AdminService {
     const logins = rows.length
       ? await this.prisma.loginEvent.findMany({
           where: { sessionId: { in: sessionIds } },
-          include: { user: { select: { id: true, name: true, phone: true, email: true } } },
+          include: { user: { select: { id: true, name: true, phone: true, email: true, deletedAt: true } } },
           orderBy: { createdAt: 'asc' },
         })
       : [];
@@ -891,6 +891,7 @@ export class AdminService {
           name: login.user.name,
           phone: login.user.phone,
           email: login.user.email,
+          deleted: login.user.deletedAt != null,
           method: login.method as LoginMethod,
           createdAt: login.createdAt.toISOString(),
         });
@@ -907,6 +908,7 @@ export class AdminService {
         userName: row.user?.name ?? null,
         userPhone: row.user?.phone ?? null,
         userEmail: row.user?.email ?? null,
+        userDeleted: row.user?.deletedAt != null,
         source: row.source,
         medium: row.medium,
         campaign: row.campaign,
@@ -1151,7 +1153,7 @@ export class AdminService {
     const [visit, pageViews, pageViewCount, sessionLoginRows] = await Promise.all([
       this.prisma.visit.findUnique({
         where: { sessionId },
-        include: { user: { select: { name: true, phone: true, email: true } } },
+        include: { user: { select: { name: true, phone: true, email: true, deletedAt: true } } },
       }),
       // Capped rather than unbounded — a long-lived tab left open for days is the only realistic
       // way a single session racks up more than this many rows.
@@ -1159,7 +1161,7 @@ export class AdminService {
       this.prisma.pageView.count({ where: { sessionId } }),
       this.prisma.loginEvent.findMany({
         where: { sessionId },
-        include: { user: { select: { id: true, name: true, phone: true, email: true } } },
+        include: { user: { select: { id: true, name: true, phone: true, email: true, deletedAt: true } } },
         orderBy: { createdAt: 'asc' },
       }),
     ]);
@@ -1174,6 +1176,7 @@ export class AdminService {
         name: login.user.name,
         phone: login.user.phone,
         email: login.user.email,
+        deleted: login.user.deletedAt != null,
         method: login.method as LoginMethod,
         createdAt: login.createdAt.toISOString(),
       });
@@ -1188,6 +1191,7 @@ export class AdminService {
         userName: visit.user?.name ?? null,
         userPhone: visit.user?.phone ?? null,
         userEmail: visit.user?.email ?? null,
+        userDeleted: visit.user?.deletedAt != null,
         source: visit.source,
         medium: visit.medium,
         campaign: visit.campaign,
