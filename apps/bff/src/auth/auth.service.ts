@@ -8,6 +8,7 @@ import type {
   LinkIdentifierResult,
 } from '@bhavano/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { hashIdentifier } from '../common/identifier-hash';
 import type { User } from '@prisma/client';
 import { OtpService } from './otp.service';
 import { Msg91Provider } from '../notifications/providers/msg91.provider';
@@ -177,6 +178,7 @@ export class AuthService {
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
     this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, visit?.viewerKey, promoted.id);
+    this.flagIfMatchesDeletedAccount(isNewUser, promoted);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -288,6 +290,7 @@ export class AuthService {
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
     this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, visit?.viewerKey, promoted.id);
+    this.flagIfMatchesDeletedAccount(isNewUser, promoted);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -361,6 +364,7 @@ export class AuthService {
     this.linkVisitToUser(visit?.sessionId, promoted.id);
     this.linkListingViewsToUser(visit?.viewerKey, promoted.id);
     this.attributeReferralIfNew(isNewUser, visit?.referralCode, visit?.sessionId, visit?.viewerKey, promoted.id);
+    this.flagIfMatchesDeletedAccount(isNewUser, promoted);
     return this.issueSession(promoted, isNewUser);
   }
 
@@ -506,6 +510,42 @@ export class AuthService {
           { err, referralCode, userId },
           'Failed to attribute referral signup',
         ),
+      );
+  }
+
+  /** Best-effort, fire-and-forget: flags (never blocks) a brand-new signup whose phone/email
+   * matches User.deletedPhoneHash/deletedEmailHash on some other, already-deleted account — a
+   * free-listing-slot abuser deleting and re-registering looks identical to a real new user
+   * everywhere else, since AccountDeletionService erases the identifiers themselves. Only a log
+   * line today (shipped to Loki/Grafana like every other PinoLogger call here) — no admin UI or
+   * auto-block yet; a human still has to go look. Not awaited, same reasoning as
+   * linkVisitToUser/linkListingViewsToUser above. */
+  private flagIfMatchesDeletedAccount(isNewUser: boolean, user: User): void {
+    if (!isNewUser || (!user.phone && !user.email)) return;
+    const phoneHash = user.phone ? hashIdentifier(user.phone, this.config) : undefined;
+    const emailHash = user.email ? hashIdentifier(user.email, this.config) : undefined;
+    void this.prisma.user
+      .findFirst({
+        where: {
+          id: { not: user.id },
+          deletedAt: { not: null },
+          OR: [
+            ...(phoneHash ? [{ deletedPhoneHash: phoneHash }] : []),
+            ...(emailHash ? [{ deletedEmailHash: emailHash }] : []),
+          ],
+        },
+        select: { id: true },
+      })
+      .then((match) => {
+        if (match) {
+          this.logger.warn(
+            { userId: user.id, matchedDeletedUserId: match.id },
+            'New signup matches a phone/email that previously belonged to a deleted account',
+          );
+        }
+      })
+      .catch((err: unknown) =>
+        this.logger.warn({ err, userId: user.id }, 'Failed to check deleted-account fingerprint'),
       );
   }
 

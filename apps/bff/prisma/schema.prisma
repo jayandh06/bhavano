@@ -478,6 +478,17 @@ model User {
    */
   deletedAt                   DateTime?
   /**
+   * Keyed-hash (HMAC-SHA256, same construction as ReferralsService.hashPhone/hashIdentifier)
+   * fingerprint of the phone/email this account held right before deletion nulled them out —
+   * never the raw value. Lets signup check "has this phone/email ever belonged to a deleted
+   * account" without retaining it. Deliberately not @unique: a phone number can be recycled to a
+   * different real person later, who may also delete their account and produce the same hash —
+   * the lookup only needs existence, not identity. Null for every account that has never been
+   * deleted. See docs/plans/deleted-account-reregistration-fingerprint.md.
+   */
+  deletedPhoneHash             String?
+  deletedEmailHash             String?
+  /**
    * Referrals this user has made (they're the one who shared the link) — see
    * docs/plans/bhavano-referral-program-implementation.md.
    */
@@ -522,6 +533,8 @@ model User {
   @@index([cityId])
   @@index([mergedIntoUserId])
   @@index([deletedAt])
+  @@index([deletedPhoneHash])
+  @@index([deletedEmailHash])
 }
 
 model Listing {

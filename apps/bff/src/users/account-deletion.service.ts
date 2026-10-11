@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { hashIdentifier } from '../common/identifier-hash';
 
 /** Deletes a user's own account.
  *
@@ -18,7 +20,10 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AccountDeletionService {
   private readonly logger = new Logger(AccountDeletionService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
 
   async deleteOwnAccount(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -84,6 +89,16 @@ export class AccountDeletionService {
           acquisitionMedium: null,
           acquisitionCampaign: null,
           deletedAt: new Date(),
+          // Fingerprint of the identifiers just nulled above, not the identifiers themselves —
+          // lets a future signup be checked for "has this phone/email ever belonged to a deleted
+          // account" (repeat free-listing-slot abuse) without retaining anything AuthService
+          // could reverse. See AuthService's signup-time check.
+          deletedPhoneHash: user.phone
+            ? hashIdentifier(user.phone, this.config)
+            : null,
+          deletedEmailHash: user.email
+            ? hashIdentifier(user.email, this.config)
+            : null,
         },
       });
     });

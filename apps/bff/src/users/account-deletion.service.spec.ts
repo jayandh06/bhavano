@@ -1,5 +1,9 @@
+import { createHmac } from 'crypto';
+import { ConfigService } from '@nestjs/config';
 import { AccountDeletionService } from './account-deletion.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+const TEST_SECRET = 'test-secret';
 
 function makeService(user: Record<string, unknown> | null, listings: Record<string, unknown>[]) {
   const tx = {
@@ -15,7 +19,12 @@ function makeService(user: Record<string, unknown> | null, listings: Record<stri
     user: { findUnique: jest.fn().mockResolvedValue(user) },
     $transaction: (run: (t: typeof tx) => unknown) => run(tx),
   } as unknown as PrismaService;
-  return { service: new AccountDeletionService(prisma), tx };
+  const config = { get: jest.fn().mockReturnValue(TEST_SECRET) } as unknown as ConfigService;
+  return { service: new AccountDeletionService(prisma, config), tx };
+}
+
+function expectedHash(value: string): string {
+  return createHmac('sha256', TEST_SECRET).update(value).digest('hex');
 }
 
 describe('AccountDeletionService.deleteOwnAccount — ListingEditLog for the listings it deactivates', () => {
@@ -71,5 +80,37 @@ describe('AccountDeletionService.deleteOwnAccount — ListingEditLog for the lis
     await service.deleteOwnAccount('u1');
 
     expect(tx.listing.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('AccountDeletionService.deleteOwnAccount — deletion fingerprint', () => {
+  it('writes a keyed hash of the phone and email being released, not the raw values', async () => {
+    const { service, tx } = makeService(
+      { id: 'u1', deletedAt: null, phone: '+919999999999', email: 'a@example.com' },
+      [],
+    );
+
+    await service.deleteOwnAccount('u1');
+
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: expect.objectContaining({
+        phone: null,
+        email: null,
+        deletedPhoneHash: expectedHash('+919999999999'),
+        deletedEmailHash: expectedHash('a@example.com'),
+      }),
+    });
+  });
+
+  it('leaves the hash columns null when the account never had a phone/email', async () => {
+    const { service, tx } = makeService({ id: 'u1', deletedAt: null, phone: null, email: null }, []);
+
+    await service.deleteOwnAccount('u1');
+
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: expect.objectContaining({ deletedPhoneHash: null, deletedEmailHash: null }),
+    });
   });
 });
