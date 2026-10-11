@@ -116,8 +116,8 @@ mechanics on both platforms already handle this notification's target.
 - `apps/bff/src/notifications/notifications.service.ts` (new `notifyPendingCheckoutReminder`)
 - `apps/bff/src/push/push.service.ts` (new `notifyPendingCheckoutReminder`)
 - `apps/bff/notification-templates/email/pending-checkout-reminder/` (new, 5 files)
-- `apps/bff/notification-templates/whatsapp/pending-checkout-reminder/` (new, 6 files —
-  header/body/footer/buttonLabel/buttonUrlBase/buttonUrlExample)
+- `apps/bff/notification-templates/whatsapp/pending-checkout-reminder/` (5 files as of v3 —
+  header/body/buttonLabel/buttonUrlBase/buttonUrlExample; footer.txt removed, see v3 update below)
 - `whatsapp_create_pending_checkout_reminder_template.py` (new, repo root)
 
 ## Verification
@@ -152,4 +152,18 @@ statement ("ad is saved, not live"), neutral button ("View my ad"), no payment-c
 language in either — in `apps/bff/notification-templates/whatsapp/pending-checkout-reminder/` and
 bumped `TEMPLATE_NAME` in `whatsapp_create_pending_checkout_reminder_template.py` to match. The
 email variant keeps its direct "Complete payment" wording, since email isn't subject to Meta's
-classifier. Not yet resubmitted to Meta.
+classifier.
+
+**Update (2026-10-11, same day): `_v2` was *also* classified MARKETING.** Header/body/button were
+already a plain status statement with no payment-completion language, so the only copy left in
+common with every other template that's hit this reclassification — `listing_posted_reminder_v1`,
+and now this one twice — is the one piece v2 never touched: the shared footer, "Bhavano.com — Buy.
+Sell. Connect. Anywhere in India." Three imperative verbs in a row reads close to the shape of ad
+copy to Meta's classifier regardless of how neutral the rest of the message is, and every WhatsApp
+template in this app carries some variant of it. Rather than word a slogan-less substitute that
+might still read as promotional, `_v3` drops the FOOTER component entirely — a utility template
+has no obligation to carry a tagline. `footer.txt` removed from the template folder (no longer
+read by the script); `TEMPLATE_NAME` bumped to `pending_checkout_reminder_v3`. Not yet resubmitted
+to Meta. If `_v3` is also reclassified, the other templates sharing this exact footer
+(`listing-posted`, `listing-posted-reminder{,-featured}`, `welcome`, `daily-activity-digest`,
+`claim-listing`) are worth auditing too, not just this one in isolation.

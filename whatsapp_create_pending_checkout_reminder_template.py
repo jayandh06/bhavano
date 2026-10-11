@@ -5,11 +5,18 @@ benefit/comparison language, the body's call-to-action ("finish paying and publi
 button ("Complete payment") both explicitly framed the message around completing a payment, which
 reads as commercial intent to Meta's classifier regardless of the fact that it's reminding about a
 payment the owner themselves already started. Same lesson as listing_posted_reminder_v1's own
-reclassification (that one for benefit/comparison language instead). v2 is a plain status
-statement (ad is saved, not live) with a neutral button ("View my ad") and no payment-completion
-language in either — the email variant keeps the direct "Complete payment" wording, since email
-isn't subject to Meta's classifier. See apps/bff/notification-templates/whatsapp/
-pending-checkout-reminder/ for the wording.
+reclassification (that one for benefit/comparison language instead). v2 made the header/body/
+button plain status language, but kept the shared footer every template in this app uses.
+
+v3: v2 was *also* classified MARKETING. Header/body/button were already a plain status statement
+with no payment-completion language, so the only thing left in common with every other template
+that's hit this same reclassification (`listing_posted_reminder_v1`, and this one twice now) is the
+one piece of copy v2 never touched: the footer, "Bhavano.com — Buy. Sell. Connect. Anywhere in
+India." — a slogan built from three imperative verbs, which is close to the textbook shape of ad
+copy regardless of how neutral the rest of the message is. v3 drops the FOOTER component
+entirely rather than trying to word a slogan-less substitute that might still read as promotional
+— a utility template has no obligation to carry a tagline. See apps/bff/notification-templates/
+whatsapp/pending-checkout-reminder/ for the wording (footer.txt removed, no longer read).
 
 A same-day nudge for a listing stuck in `pending_checkout` — the owner picked a fee/boost option
 but never completed payment, and nothing else ever tells them it's waiting (no expiry, no other
@@ -52,7 +59,7 @@ WABA_ID = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID")
 VERSION = os.getenv("WHATSAPP_API_VERSION") or "v23.0"
 LANGUAGE = os.getenv("WHATSAPP_TEMPLATE_LANGUAGE") or "en"
 
-TEMPLATE_NAME = "pending_checkout_reminder_v2"
+TEMPLATE_NAME = "pending_checkout_reminder_v3"
 
 TEMPLATE_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -67,19 +74,18 @@ def read_field(filename):
 
 HEADER_TEXT = read_field("header.txt")
 BODY_TEXT = read_field("body.txt")
-FOOTER_TEXT = read_field("footer.txt")
+# No footer.txt — v3 drops the FOOTER component entirely, see this module's own docstring.
 BUTTON_TEXT = read_field("buttonLabel.txt")
 BUTTON_URL_BASE = read_field("buttonUrlBase.txt")
 BUTTON_URL_EXAMPLE = read_field("buttonUrlExample.txt")
 
-LIMITS = {"header": 60, "body": 1024, "footer": 60, "button_text": 25}
+LIMITS = {"header": 60, "body": 1024, "button_text": 25}
 
 
 def check_lengths():
     lengths = {
         "header": len(HEADER_TEXT),
         "body": len(BODY_TEXT),
-        "footer": len(FOOTER_TEXT),
         "button_text": len(BUTTON_TEXT),
     }
     print("--- Character counts ---")
@@ -109,7 +115,6 @@ def build_payload(category):
                     {"param_name": "title", "example": "2 BHK for rent in Koramangala"},
                 ]},
             },
-            {"type": "FOOTER", "text": FOOTER_TEXT},
             {
                 "type": "BUTTONS",
                 "buttons": [
@@ -139,8 +144,7 @@ def show_preview(category):
         "{{title}}", "2 BHK for rent in Koramangala"
     ).split("\n"):
         print("  " + line)
-    print("\nFOOTER  (static)")
-    print("  " + FOOTER_TEXT)
+    print("\nFOOTER: none (v3 drops it — see this module's own docstring)")
     print("\nBUTTON  (URL, dynamic — one variable appended to a fixed prefix)")
     print("  [%s]" % BUTTON_TEXT)
     print("  -> %s{{1}}" % BUTTON_URL_BASE)
@@ -173,9 +177,10 @@ def main():
     show_preview(category)
 
     print(
-        "\nNOTE: submitting as %s. v1 (pending_checkout_reminder_v1) came back classified "
-        "MARKETING - this v2 copy dropped the payment-completion language in the body's CTA and "
-        "the button text that caused it, so it should read as a plain status update now. Meta's "
+        "\nNOTE: submitting as %s. v1 AND v2 both came back classified MARKETING despite v2's "
+        "header/body/button already being a plain status update - the one thing in common with "
+        "every other template that's hit this is the shared slogan-style footer ('Buy. Sell. "
+        "Connect...'), which v2 never touched. v3 drops the FOOTER component entirely. Meta's "
         "review can still reclassify regardless of what's declared here; this is a better-odds "
         "rewrite, not a guarantee." % category
     )
