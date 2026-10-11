@@ -139,12 +139,16 @@ export class PushService {
     await this.prisma.pushToken.deleteMany({ where: { token } });
   }
 
+  /** Returns whether a send was attempted (see `sendToUser`'s own doc comment) — callers log a
+   * `new_message` row to `ListingNotificationLog` (`channel: 'push'`) when this is `true`, the
+   * same way the Instant-Alerts-gated email/WhatsApp leg already logs itself in
+   * `MessagingService.deliverInstantAlertMessageNotification`. */
   async notifyNewMessage(
     recipientId: string,
     message: MessageDto,
     senderName: string,
     opts: { unreadCount?: number; listingTitle?: string; imageUrl?: string } = {},
-  ): Promise<void> {
+  ): Promise<boolean> {
     // Always a freshly-sent message here (see sendMessage/sendFirstMessage), never a deleted
     // one, so body is never actually null despite MessageDto's general shape.
     const rawBody = message.body!;
@@ -152,7 +156,7 @@ export class PushService {
       rawBody.length > BODY_PREVIEW_CHARS ? `${rawBody.slice(0, BODY_PREVIEW_CHARS - 1)}…` : rawBody;
     const listingTitle = opts.listingTitle?.trim();
 
-    await this.sendToUser(recipientId, {
+    return this.sendToUser(recipientId, {
       // Listing title leads, sender is a prefix on the message — the group-chat convention. Not
       // Expo's `subtitle` for the sender: that field is iOS-only, so on Android the sender would
       // vanish entirely. Falls back to the sender as title when the ad's title is unknown.
@@ -176,7 +180,10 @@ export class PushService {
     });
   }
 
-  /** Owner push when a logged-in seeker opens their listing (interest / view). */
+  /** Owner push when a logged-in seeker opens their listing (interest / view). Returns whether a
+   * send was attempted — the caller (`ListingsService.notifyOwnerOfInterest`) logs a
+   * `listing_interest` row to `ListingNotificationLog` (`channel: 'push'`) when this is `true`,
+   * the same way its Instant-Alerts-gated email/WhatsApp leg already logs itself. */
   async notifyListingInterest(
     recipientId: string,
     params: {
@@ -185,8 +192,8 @@ export class PushService {
       interestedName: string;
       imageUrl?: string;
     },
-  ): Promise<void> {
-    await this.sendToUser(recipientId, {
+  ): Promise<boolean> {
+    return this.sendToUser(recipientId, {
       title: params.listingTitle,
       body: `👀 ${params.interestedName} viewed your ad`,
       channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
@@ -205,7 +212,10 @@ export class PushService {
   }
 
   /** Owner push when someone favourites their listing — all ads, not only boosted (email/WhatsApp
-   * for likes stays boost-gated). */
+   * for likes stays boost-gated). Returns whether a send was attempted — the caller
+   * (`ListingsService.notifyOwnerOfLike`) logs a `liked` row to `ListingNotificationLog`
+   * (`channel: 'push'`) when this is `true`, the same way its boost-gated email/WhatsApp leg
+   * already logs itself. */
   async notifyListingFavourite(
     recipientId: string,
     params: {
@@ -214,8 +224,8 @@ export class PushService {
       likerName: string;
       imageUrl?: string;
     },
-  ): Promise<void> {
-    await this.sendToUser(recipientId, {
+  ): Promise<boolean> {
+    return this.sendToUser(recipientId, {
       title: params.listingTitle,
       body: `❤️ ${params.likerName} favourited your ad`,
       channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
@@ -318,7 +328,13 @@ export class PushService {
     });
   }
 
-  private async sendToUser(recipientId: string, content: PushContent): Promise<void> {
+  /** Returns whether a send was actually attempted (at least one registered device existed) —
+   * not full delivery confirmation, which Expo's fire-and-forget ticket API can't give beyond
+   * "accepted for delivery" anyway. Callers that need to log a notification as sent (see
+   * `notifyNewMessage`/`notifyListingFavourite`/`notifyListingInterest`'s own doc comments) use
+   * this the same way `dispatchPushPreferEmailPreferWhatsapp` already uses `pushToken.findFirst`
+   * — token existence, not delivery success, is the only signal available. */
+  private async sendToUser(recipientId: string, content: PushContent): Promise<boolean> {
     if (!this.enabled) {
       if (!this.loggedDisabledSkip) {
         this.loggedDisabledSkip = true;
@@ -326,7 +342,7 @@ export class PushService {
           `Skipping push for user ${recipientId} (and further recipients) — EXPO_PUSH_ENABLED is not "true"`,
         );
       }
-      return;
+      return false;
     }
 
     try {
@@ -340,7 +356,7 @@ export class PushService {
         this.logger.log(
           `No PushToken rows for user ${recipientId}; nothing to send for "${content.title}"`,
         );
-        return;
+        return false;
       }
 
       const stale = new Set<string>();
@@ -418,10 +434,12 @@ export class PushService {
           where: { token: { in: [...stale] } },
         });
       }
+      return true;
     } catch (error) {
       this.logger.error(
         `Expo push threw for user ${recipientId}: ${error instanceof Error ? error.message : error}`,
       );
+      return false;
     }
   }
 }

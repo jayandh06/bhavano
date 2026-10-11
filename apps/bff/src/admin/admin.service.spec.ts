@@ -546,6 +546,42 @@ describe('AdminService — moderation messages reach the owner like chat message
     await expect(service.setListingStatus('listing1', 'sold', 'admin1')).resolves.toEqual({ id: 'listing1' });
     await new Promise((resolve) => setImmediate(resolve));
   });
+
+  it('logs the push as a new_message notification once a device actually received it', async () => {
+    const setStatusAsAdmin = jest.fn().mockResolvedValue({ id: 'listing1' });
+    const { service, prisma, pushService } = makeService(
+      {},
+      {},
+      { setStatusAsAdmin },
+    );
+    (pushService.notifyNewMessage as jest.Mock).mockResolvedValue(true);
+
+    await service.setListingStatus('listing1', 'sold', 'admin1');
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // See the disable-comment note elsewhere in this file for why this is a false positive on
+    // this model.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
+      data: { listingId: 'listing1', kind: 'new_message', channel: 'push' },
+    });
+  });
+
+  it('does not log a push notification when the recipient had no registered device', async () => {
+    const setStatusAsAdmin = jest.fn().mockResolvedValue({ id: 'listing1' });
+    const { service, prisma, pushService } = makeService(
+      {},
+      {},
+      { setStatusAsAdmin },
+    );
+    (pushService.notifyNewMessage as jest.Mock).mockResolvedValue(false);
+
+    await service.setListingStatus('listing1', 'sold', 'admin1');
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.listingNotificationLog.create).not.toHaveBeenCalled();
+  });
 });
 
 describe('AdminService.sendBoostPromotion — in-app channel', () => {

@@ -10,6 +10,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { PushService } from '../push/push.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { MessagingService } from './messaging.service';
 import { MessagingGateway } from './messaging.gateway';
 import { SendFirstMessageDto } from './dto/send-first-message.dto';
@@ -24,6 +25,7 @@ export class MessagingController {
     private readonly messagingService: MessagingService,
     private readonly gateway: MessagingGateway,
     private readonly push: PushService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /** The unread badge and push are best-effort side effects of a send that already succeeded, so
@@ -57,10 +59,19 @@ export class MessagingController {
         const imageUrl = await this.messagingService
           .getListingPushImageUrl(listingId)
           .catch(() => undefined);
-        return this.push.notifyNewMessage(recipientId, message, senderName, {
-          unreadCount,
-          listingTitle,
-          imageUrl,
+        const sent = await this.push.notifyNewMessage(
+          recipientId,
+          message,
+          senderName,
+          {
+            unreadCount,
+            listingTitle,
+            imageUrl,
+          },
+        );
+        if (!sent) return;
+        return this.prisma.listingNotificationLog.create({
+          data: { listingId, kind: 'new_message', channel: 'push' },
         });
       })
       .catch((error) => this.logPushSideEffectFailure(error));
@@ -118,10 +129,19 @@ export class MessagingController {
         const imageUrl = await this.messagingService
           .getListingPushImageUrl(listingId)
           .catch(() => undefined);
-        return this.push.notifyNewMessage(recipientId, message, senderName, {
-          unreadCount,
-          listingTitle,
-          imageUrl,
+        const sent = await this.push.notifyNewMessage(
+          recipientId,
+          message,
+          senderName,
+          {
+            unreadCount,
+            listingTitle,
+            imageUrl,
+          },
+        );
+        if (!sent) return;
+        return this.prisma.listingNotificationLog.create({
+          data: { listingId, kind: 'new_message', channel: 'push' },
         });
       })
       .catch((error) => this.logPushSideEffectFailure(error));

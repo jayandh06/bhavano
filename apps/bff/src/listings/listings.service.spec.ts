@@ -61,6 +61,12 @@ function makeService() {
     recordFirstApprovedAdIfReferred: jest.fn().mockResolvedValue(undefined),
     revokeIfTakenDown: jest.fn().mockResolvedValue(undefined),
   } as unknown as ReferralsService;
+  // Defaults to "no device" (undefined/falsy), matching every existing test's expectation that
+  // the real-time push leg never logs by default — override per-test to exercise the logging.
+  const pushService = {
+    notifyListingInterest: jest.fn().mockResolvedValue(undefined),
+    notifyListingFavourite: jest.fn().mockResolvedValue(undefined),
+  };
 
   const service = new ListingsService(
     prisma,
@@ -82,11 +88,11 @@ function makeService() {
         allowLivePublishWithPendingPayment: false,
       }),
     } as unknown as PlatformFeeSettingsService,
-    { notifyListingInterest: jest.fn().mockResolvedValue(undefined), notifyListingFavourite: jest.fn().mockResolvedValue(undefined) } as never,
+    pushService as never,
   { recordPageView: jest.fn().mockResolvedValue(undefined) } as unknown as AnalyticsService,
   referralsService,
   );
-  return { service, prisma, notificationsService, listingSlotsService, referralsService };
+  return { service, prisma, notificationsService, listingSlotsService, referralsService, pushService };
 }
 
 describe('ListingsService.list — word match + fuzzy title search', () => {
@@ -1731,6 +1737,56 @@ describe('ListingsService', () => {
 
       expect(notificationsService.notifyListingLiked).not.toHaveBeenCalled();
     });
+
+    it('logs the push as a liked notification once a device actually received it — regardless of boost', async () => {
+      const { service, prisma, pushService } = makeService();
+      pushService.notifyListingFavourite.mockResolvedValue(true);
+      (prisma.favourite.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.favourite.create as jest.Mock).mockResolvedValue({});
+      (prisma.listing.update as jest.Mock).mockResolvedValue({
+        likeCount: 2,
+        title: 'An unboosted listing',
+        ownerId: 'owner1',
+        boostedUntil: null,
+      });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: null,
+        phone: null,
+      });
+
+      await service.toggleFavourite('listing1', 'liker1');
+      await new Promise((r) => setImmediate(r));
+
+      // False positive on this model, same as elsewhere in this codebase's tests — plain jest
+      // mocks carry no real `this`-binding risk.
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
+        data: { listingId: 'listing1', kind: 'liked', channel: 'push' },
+      });
+    });
+
+    it('does not log a push notification when the recipient had no registered device', async () => {
+      const { service, prisma, pushService } = makeService();
+      pushService.notifyListingFavourite.mockResolvedValue(false);
+      (prisma.favourite.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.favourite.create as jest.Mock).mockResolvedValue({});
+      (prisma.listing.update as jest.Mock).mockResolvedValue({
+        likeCount: 2,
+        title: 'An unboosted listing',
+        ownerId: 'owner1',
+        boostedUntil: null,
+      });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: null,
+        phone: null,
+      });
+
+      await service.toggleFavourite('listing1', 'liker1');
+      await new Promise((r) => setImmediate(r));
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(prisma.listingNotificationLog.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('toggleFavourite with an explicit state, and importFavourites', () => {
@@ -1857,6 +1913,46 @@ describe('ListingsService', () => {
       await expect(service.recordInterest('listing1', 'owner1', 'view')).rejects.toBeInstanceOf(
         BadRequestException,
       );
+    });
+
+    it('logs the push as a listing_interest notification once a device actually received it', async () => {
+      const { service, prisma, pushService } = makeService();
+      pushService.notifyListingInterest.mockResolvedValue(true);
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
+      (prisma.listingInterest.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.listingInterest.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce({ email: null, phone: null })
+        .mockResolvedValueOnce({ name: 'Riya' });
+
+      await service.recordInterest('listing1', 'buyer1', 'view');
+      await new Promise((r) => setImmediate(r));
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
+        data: {
+          listingId: 'listing1',
+          kind: 'listing_interest',
+          channel: 'push',
+        },
+      });
+    });
+
+    it('does not log a push notification when the recipient had no registered device', async () => {
+      const { service, prisma, pushService } = makeService();
+      pushService.notifyListingInterest.mockResolvedValue(false);
+      (prisma.listing.findUnique as jest.Mock).mockResolvedValue(stubListing());
+      (prisma.listingInterest.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.listingInterest.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce({ email: null, phone: null })
+        .mockResolvedValueOnce({ name: 'Riya' });
+
+      await service.recordInterest('listing1', 'buyer1', 'view');
+      await new Promise((r) => setImmediate(r));
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(prisma.listingNotificationLog.create).not.toHaveBeenCalled();
     });
   });
 });

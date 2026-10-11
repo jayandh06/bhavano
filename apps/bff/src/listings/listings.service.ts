@@ -3118,6 +3118,12 @@ export class ListingsService {
         likerName,
         imageUrl,
       })
+      .then((sent) => {
+        if (!sent) return;
+        return this.prisma.listingNotificationLog.create({
+          data: { listingId, kind: 'liked', channel: 'push' },
+        });
+      })
       .catch(() => undefined);
 
     // Email/WhatsApp only while boosted — same gate as before.
@@ -3241,6 +3247,12 @@ export class ListingsService {
         listingTitle,
         interestedName,
         imageUrl,
+      })
+      .then((sent) => {
+        if (!sent) return;
+        return this.prisma.listingNotificationLog.create({
+          data: { listingId, kind: 'listing_interest', channel: 'push' },
+        });
       })
       .catch(() => undefined);
 

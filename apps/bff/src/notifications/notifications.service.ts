@@ -726,10 +726,13 @@ export class NotificationsService {
    * `PushService` always, `NotificationsService` separately and only while a paid feature
    * (Instant Alerts/Boost) is active — deliberately untouched by this.
    *
-   * Checked by push-token existence, not delivery success: `PushService` sends are fire-and-forget
-   * by design (its methods return `Promise<void>`, never report success/failure), so "the user has
-   * at least one registered device" is the only signal available to decide whether push already
-   * covered this notification before falling through to email/WhatsApp.
+   * Checked by push-token existence, not delivery success: the `pushSend` thunk below is
+   * `Promise<void>`, so "the user has at least one registered device" is the only signal
+   * available to decide whether push already covered this notification before falling through
+   * to email/WhatsApp. (`notifyNewMessage`/`notifyListingFavourite`/`notifyListingInterest` — the
+   * three real-time ones this dispatcher doesn't touch — now return that same signal themselves,
+   * `Promise<boolean>`, since their callers log a push send to `ListingNotificationLog` and had no
+   * other way to know whether one was actually attempted.)
    */
   private async dispatchPushPreferEmailPreferWhatsapp(
     userId: string,

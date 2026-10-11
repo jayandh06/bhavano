@@ -50,14 +50,16 @@ describe('PushService', () => {
       enabled: false,
       tokens: [{ token: 'ExpoTok[a]' }],
     });
-    await service.notifyNewMessage('u1', message, 'Asha');
+    const sent = await service.notifyNewMessage('u1', message, 'Asha');
+    expect(sent).toBe(false);
     expect(findMany).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('skips the network call when the recipient has no registered tokens', async () => {
     const { service, fetchMock } = makeService({ enabled: true, tokens: [] });
-    await service.notifyNewMessage('u1', message, 'Asha');
+    const sent = await service.notifyNewMessage('u1', message, 'Asha');
+    expect(sent).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -82,23 +84,24 @@ describe('PushService', () => {
       fetchImpl,
     });
 
-    await service.notifyNewMessage('u1', message, 'Asha');
+    const sent = await service.notifyNewMessage('u1', message, 'Asha');
 
+    expect(sent).toBe(true);
     expect(deleteMany).toHaveBeenCalledWith({
       where: { token: { in: ['ExpoTok[dead]'] } },
     });
   });
 
-  it('never throws when the Expo request itself fails', async () => {
+  it('never throws when the Expo request itself fails, and reports no send attempted', async () => {
     const fetchImpl = jest.fn().mockRejectedValue(new Error('network down'));
     const { service } = makeService({
       enabled: true,
       tokens: [{ token: 'ExpoTok[a]' }],
       fetchImpl,
     });
-    await expect(
-      service.notifyNewMessage('u1', message, 'Asha'),
-    ).resolves.toBeUndefined();
+    await expect(service.notifyNewMessage('u1', message, 'Asha')).resolves.toBe(
+      false,
+    );
   });
 
   it('registerToken upserts keyed on the token, re-pointing it to the current user', async () => {

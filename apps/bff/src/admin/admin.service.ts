@@ -531,7 +531,20 @@ export class AdminService {
         this.messagingGateway.notifyUnread(recipientId, { conversationId, unreadCount });
         const imageUrl =
           params.imageUrl ?? (await this.messagingService.getListingPushImageUrl(listingId).catch(() => undefined));
-        await this.pushService.notifyNewMessage(recipientId, message, STAFF_SENDER_LABEL, { unreadCount, listingTitle, imageUrl });
+        const sent = await this.pushService.notifyNewMessage(
+          recipientId,
+          message,
+          STAFF_SENDER_LABEL,
+          {
+            unreadCount,
+            listingTitle,
+            imageUrl,
+          },
+        );
+        if (!sent) return;
+        await this.prisma.listingNotificationLog.create({
+          data: { listingId, kind: 'new_message', channel: 'push' },
+        });
       })
       .catch((error) =>
         this.logger.warn(`Post-send unread/push step failed: ${error instanceof Error ? error.message : String(error)}`),
