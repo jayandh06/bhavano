@@ -391,10 +391,11 @@ export async function fetchSessionTrailAction(
  * when that day is clicked, mirroring PageVisitsTable's fetch-once-per-row cache. */
 export async function fetchNotificationDayDetailAction(
   date: string,
+  filters: { channel?: string; kind?: string; userId?: string } = {},
 ): Promise<{ success: true; entries: NotificationLogEntryDto[] } | { success: false; error: string }> {
   const { accessToken } = await requireAdmin();
   try {
-    const entries = await fetchNotificationDayDetail(accessToken, date);
+    const entries = await fetchNotificationDayDetail(accessToken, date, filters);
     return { success: true, entries };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load that day's notifications" };

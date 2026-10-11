@@ -989,6 +989,51 @@ describe('AdminService.getNotificationDailySummary', () => {
     });
     expect(await service.getNotificationDailySummary({})).toEqual([]);
   });
+
+  it("passes channel/kind straight through to both tables' where clause", async () => {
+    const { service, prisma } = makeService({
+      listingNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    await service.getNotificationDailySummary({
+      channel: 'whatsapp',
+      kind: 'pending_checkout_reminder',
+    });
+
+    const expectedWhere = {
+      channel: 'whatsapp',
+      kind: 'pending_checkout_reminder',
+    };
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.listingNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.userNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it("filters ListingNotificationLog rows to either a direct userId or the listing's owner, and UserNotificationLog rows by userId directly", async () => {
+    const { service, prisma } = makeService({
+      listingNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    await service.getNotificationDailySummary({ userId: 'user1' });
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.listingNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { OR: [{ userId: 'user1' }, { listing: { ownerId: 'user1' } }] },
+      }),
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.userNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user1' } }),
+    );
+  });
 });
 
 describe('AdminService.getNotificationDayDetail', () => {
@@ -1199,5 +1244,64 @@ describe('AdminService.getNotificationDayDetail', () => {
 
     const result = await service.getNotificationDayDetail('2026-10-10');
     expect(result.map((r) => r.userId)).toEqual(['o2', 'o1']);
+  });
+
+  it('adds channel/kind to the day window, and an OR of direct userId/listing owner for ListingNotificationLog', async () => {
+    const { service, prisma } = makeService({
+      listingNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+      userNotificationLog: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    await service.getNotificationDayDetail('2026-10-10', {
+      channel: 'email',
+      kind: 'listing_posted_reminder',
+      userId: 'user1',
+    });
+
+    const dayWindow = {
+      sentAt: {
+        gte: new Date('2026-10-10T00:00:00+05:30'),
+        lt: new Date('2026-10-11T00:00:00+05:30'),
+      },
+      channel: 'email',
+      kind: 'listing_posted_reminder',
+    };
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.listingNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          ...dayWindow,
+          OR: [{ userId: 'user1' }, { listing: { ownerId: 'user1' } }],
+        },
+      }),
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.userNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { ...dayWindow, userId: 'user1' } }),
+    );
+  });
+});
+
+describe('AdminService.getNotificationKinds', () => {
+  it('merges distinct kinds from both tables into one sorted, deduplicated list', async () => {
+    const { service } = makeService({
+      listingNotificationLog: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { kind: 'posted' },
+            { kind: 'listing_posted_reminder' },
+          ]),
+      },
+      userNotificationLog: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ kind: 'welcome' }, { kind: 'posted' }]),
+      },
+    });
+
+    const result = await service.getNotificationKinds();
+
+    expect(result).toEqual(['listing_posted_reminder', 'posted', 'welcome']);
   });
 });

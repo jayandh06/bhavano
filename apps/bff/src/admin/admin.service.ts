@@ -1048,7 +1048,7 @@ export class AdminService {
   async getNotificationDailySummary(
     query: NotificationLogQueryDto,
   ): Promise<NotificationDaySummaryDto[]> {
-    const { from, to } = query;
+    const { from, to, channel, kind, userId } = query;
     const sentAtFilter =
       from || to
         ? {
@@ -1058,14 +1058,27 @@ export class AdminService {
             },
           }
         : {};
+    const commonWhere = {
+      ...sentAtFilter,
+      ...(channel ? { channel } : {}),
+      ...(kind ? { kind } : {}),
+    };
 
     const [listingLogs, userLogs] = await Promise.all([
       this.prisma.listingNotificationLog.findMany({
-        where: sentAtFilter,
+        // `userId` on this table is only ever set for `saved_search_match`'s seeker — every
+        // other kind's recipient is the listing's own owner, so a recipient filter has to match
+        // either one (see getNotificationDayDetail's identical OR for the same reason).
+        where: {
+          ...commonWhere,
+          ...(userId
+            ? { OR: [{ userId }, { listing: { ownerId: userId } }] }
+            : {}),
+        },
         select: { sentAt: true, channel: true },
       }),
       this.prisma.userNotificationLog.findMany({
-        where: sentAtFilter,
+        where: { ...commonWhere, ...(userId ? { userId } : {}) },
         select: { sentAt: true, channel: true },
       }),
     ]);
@@ -1093,14 +1106,25 @@ export class AdminService {
    * mirroring `PageVisitsTable`'s own fetch-once-per-row cache on the admin UI side. */
   async getNotificationDayDetail(
     date: string,
+    filters: Pick<NotificationLogQueryDto, 'channel' | 'kind' | 'userId'> = {},
   ): Promise<NotificationLogEntryDto[]> {
     const dayStart = new Date(`${date}T00:00:00+05:30`);
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-    const sentAtFilter = { sentAt: { gte: dayStart, lt: dayEnd } };
+    const { channel, kind, userId } = filters;
+    const commonWhere = {
+      sentAt: { gte: dayStart, lt: dayEnd },
+      ...(channel ? { channel } : {}),
+      ...(kind ? { kind } : {}),
+    };
 
     const [listingLogs, userLogs] = await Promise.all([
       this.prisma.listingNotificationLog.findMany({
-        where: sentAtFilter,
+        where: {
+          ...commonWhere,
+          ...(userId
+            ? { OR: [{ userId }, { listing: { ownerId: userId } }] }
+            : {}),
+        },
         include: {
           listing: {
             select: {
@@ -1118,7 +1142,7 @@ export class AdminService {
         },
       }),
       this.prisma.userNotificationLog.findMany({
-        where: sentAtFilter,
+        where: { ...commonWhere, ...(userId ? { userId } : {}) },
         include: {
           user: { select: { id: true, name: true, phone: true, email: true } },
         },
@@ -1158,6 +1182,27 @@ export class AdminService {
     return [...fromListings, ...fromUsers].sort((a, b) =>
       b.sentAt.localeCompare(a.sentAt),
     );
+  }
+
+  /** Every distinct `kind` value ever logged across both notification tables, for the Kind filter
+   * dropdown on the notification-log page — there's no central enum of these (each call site logs
+   * its own literal), so the valid set has to come from the data itself rather than being
+   * hardcoded and risking drift as new kinds get added. */
+  async getNotificationKinds(): Promise<string[]> {
+    const [listingKinds, userKinds] = await Promise.all([
+      this.prisma.listingNotificationLog.findMany({
+        distinct: ['kind'],
+        select: { kind: true },
+      }),
+      this.prisma.userNotificationLog.findMany({
+        distinct: ['kind'],
+        select: { kind: true },
+      }),
+    ]);
+    const kinds = new Set(
+      [...listingKinds, ...userKinds].map((row) => row.kind),
+    );
+    return [...kinds].sort();
   }
 
   /** A single session's full page-view trail plus its Visit summary, for the admin page-visits

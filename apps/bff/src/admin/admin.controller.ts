@@ -369,8 +369,14 @@ export class AdminController {
   @Get('notifications/daily-summary/detail')
   getNotificationDayDetail(
     @Query('date') date: string,
+    @Query() query: NotificationLogQueryDto,
   ): Promise<NotificationLogEntryDto[]> {
-    return this.adminService.getNotificationDayDetail(date);
+    return this.adminService.getNotificationDayDetail(date, query);
+  }
+
+  @Get('notifications/kinds')
+  getNotificationKinds(): Promise<string[]> {
+    return this.adminService.getNotificationKinds();
   }
 
   @Get('users')

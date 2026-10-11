@@ -1029,6 +1029,9 @@ export function fetchClaimVerificationSends(
 export interface NotificationLogQuery {
   from?: string;
   to?: string;
+  channel?: string;
+  kind?: string;
+  userId?: string;
 }
 
 export function fetchNotificationDailySummary(
@@ -1042,8 +1045,26 @@ export function fetchNotificationDailySummary(
   return authedBffFetch(accessToken, `/admin/notifications/daily-summary?${params.toString()}`, { cache: "no-store" });
 }
 
-export function fetchNotificationDayDetail(accessToken: string, date: string): Promise<NotificationLogEntryDto[]> {
-  return authedBffFetch(accessToken, `/admin/notifications/daily-summary/detail?date=${encodeURIComponent(date)}`, {
+export interface NotificationLogDetailFilters {
+  channel?: string;
+  kind?: string;
+  userId?: string;
+}
+
+export function fetchNotificationDayDetail(
+  accessToken: string,
+  date: string,
+  filters: NotificationLogDetailFilters = {},
+): Promise<NotificationLogEntryDto[]> {
+  const params = new URLSearchParams({ date });
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  return authedBffFetch(accessToken, `/admin/notifications/daily-summary/detail?${params.toString()}`, {
     cache: "no-store",
   });
+}
+
+export function fetchNotificationKinds(accessToken: string): Promise<string[]> {
+  return authedBffFetch(accessToken, `/admin/notifications/kinds`, { cache: "no-store" });
 }

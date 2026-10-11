@@ -15,8 +15,16 @@ const CHANNEL_LABELS: Record<string, string> = {
 
 /** One row per IST calendar day, copying PageVisitsTable's exact lazy-load-per-row pattern:
  * `expandedDays: Set<string>` tracks which days are open, `details` is a fetch-once cache keyed
- * by date so toggling a day never re-fetches once it's been loaded. */
-export function NotificationLogTable({ items }: { items: NotificationDaySummaryDto[] }) {
+ * by date so toggling a day never re-fetches once it's been loaded. `filters` are whatever the
+ * page's own Channel/Kind/User fields currently say — changing them resubmits the filter form,
+ * which remounts this component fresh, so the per-date cache never goes stale against them. */
+export function NotificationLogTable({
+  items,
+  filters,
+}: {
+  items: NotificationDaySummaryDto[];
+  filters?: { channel?: string; kind?: string; userId?: string };
+}) {
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [details, setDetails] = useState<Record<string, NotificationLogEntryDto[] | "loading" | "error">>({});
 
@@ -30,7 +38,7 @@ export function NotificationLogTable({ items }: { items: NotificationDaySummaryD
     if (details[date] !== undefined) return;
 
     setDetails((prev) => ({ ...prev, [date]: "loading" }));
-    const result = await fetchNotificationDayDetailAction(date);
+    const result = await fetchNotificationDayDetailAction(date, filters);
     setDetails((prev) => ({ ...prev, [date]: result.success ? result.entries : "error" }));
   }
 

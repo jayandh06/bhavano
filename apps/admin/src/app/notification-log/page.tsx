@@ -1,10 +1,12 @@
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchNotificationDailySummary } from "@/lib/bff";
+import { fetchNotificationDailySummary, fetchNotificationKinds } from "@/lib/bff";
 import { str, type SearchParams } from "@/lib/searchParams";
 import { daysAgoIST, istDayEnd, istDayStart, todayIST } from "@/lib/dateRangeDefaults";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { NotificationLogTable } from "@/components/NotificationLogTable";
 import { FullPageLink } from "@/components/FullPageLink";
+import { SelectField } from "@/components/SelectField";
+import { UserPicker } from "@/components/UserPicker";
 
 /** Per-day counts of every email/WhatsApp/push notification sent (both `ListingNotificationLog`
  * and `UserNotificationLog` rows), across every notification kind in the system — the existing
@@ -18,11 +20,25 @@ export default async function NotificationLogPage({ searchParams }: { searchPara
 
   const from = str(sp.from) ?? daysAgoIST(7);
   const to = str(sp.to) ?? todayIST();
+  // "any" is this page's own sentinel for "no filter" (the <select>'s own default option) — see
+  // post-funnel/page.tsx's identical convention.
+  const rawChannel = str(sp.channel);
+  const channel = rawChannel && rawChannel !== "any" ? rawChannel : undefined;
+  const rawKind = str(sp.kind);
+  const kind = rawKind && rawKind !== "any" ? rawKind : undefined;
+  const userId = str(sp.userId);
+  const userLabel = str(sp.userLabel);
 
-  const items = await fetchNotificationDailySummary(accessToken, {
-    from: istDayStart(from),
-    to: istDayEnd(to),
-  });
+  const [items, kinds] = await Promise.all([
+    fetchNotificationDailySummary(accessToken, {
+      from: istDayStart(from),
+      to: istDayEnd(to),
+      channel,
+      kind,
+      userId,
+    }),
+    fetchNotificationKinds(accessToken),
+  ]);
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -61,6 +77,30 @@ export default async function NotificationLogPage({ searchParams }: { searchPara
               </DateRangeFilter>
             </Field>
 
+            <Field label="Channel">
+              <SelectField name="channel" defaultValue={channel ?? "any"} style={selectStyle}>
+                <option value="any">Every channel</option>
+                <option value="email">Email</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="push">Push</option>
+              </SelectField>
+            </Field>
+
+            <Field label="Kind">
+              <SelectField name="kind" defaultValue={kind ?? "any"} style={selectStyle}>
+                <option value="any">Every kind</option>
+                {kinds.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </SelectField>
+            </Field>
+
+            <Field label="User">
+              <UserPicker name="userId" labelName="userLabel" defaultUserId={userId} defaultLabel={userLabel} />
+            </Field>
+
             <button type="submit" style={applyButtonStyle}>
               Apply filters
             </button>
@@ -77,7 +117,7 @@ export default async function NotificationLogPage({ searchParams }: { searchPara
                   <th style={thStyle}>Total</th>
                 </tr>
               </thead>
-              <NotificationLogTable items={items} />
+              <NotificationLogTable items={items} filters={{ channel, kind, userId }} />
             </table>
           </div>
         </form>
@@ -103,6 +143,8 @@ const dateInputStyle: React.CSSProperties = {
   background: "var(--surface)",
   color: "var(--text)",
 };
+
+const selectStyle: React.CSSProperties = { ...dateInputStyle, minWidth: 150 };
 
 const applyButtonStyle: React.CSSProperties = {
   background: "var(--green)",
