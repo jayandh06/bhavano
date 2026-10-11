@@ -105,6 +105,9 @@ describe('RequirementFeedService.feed', () => {
     expect(result.items.map((item) => item.id)).toEqual(['r1']);
     const card = result.items[0];
     expect(card.label).toContain('HSR Layout');
+    // The fixture has a real maxPrice (30,000) — the label must not claim it's unset just
+    // because budget is shown as its own chip (card.minPrice/maxPrice) rather than inline.
+    expect(card.label).not.toContain('not specified');
     expect(JSON.stringify(card)).not.toMatch(/98xxxxxx|my own words|seeker/);
     expect(card).toMatchObject({
       openToCalls: true,

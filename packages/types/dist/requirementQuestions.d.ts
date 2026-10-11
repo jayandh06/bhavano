@@ -177,10 +177,21 @@ export declare function describeRequirementGaps(missing: RequirementGap[]): stri
  *
  * Honest about gaps: a requirement that is not complete says so ("— area and property type not
  * specified"), so nobody reading it in the queue mistakes it for a precise need.
+ *
+ * `omit` hides a phrase from the inline text without pretending the underlying value is
+ * missing — for `RequirementFeedService`'s card headline, which shows budget/size/amenities as
+ * their own chips next to the label rather than inline, but still needs the real `c.minPrice`
+ * etc. to decide whether "— budget not specified" belongs in the gap suffix. Passing a
+ * budget-stripped `c` instead (as this used to) made every card's budget look unspecified to
+ * `missingForLead`, regardless of whether one was actually set.
  */
 export declare function formatRequirementLabel(c: RequirementCriteria, names: {
     cityName?: string;
     areaNames?: string[];
+}, omit?: {
+    budget?: boolean;
+    size?: boolean;
+    amenities?: boolean;
 }): string;
 export interface BrowseFiltersForRequirement {
     homeCategory?: HomeCategoryFilter;

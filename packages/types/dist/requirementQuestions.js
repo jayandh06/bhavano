@@ -508,17 +508,24 @@ function subjectPhrase(c) {
  *
  * Honest about gaps: a requirement that is not complete says so ("— area and property type not
  * specified"), so nobody reading it in the queue mistakes it for a precise need.
+ *
+ * `omit` hides a phrase from the inline text without pretending the underlying value is
+ * missing — for `RequirementFeedService`'s card headline, which shows budget/size/amenities as
+ * their own chips next to the label rather than inline, but still needs the real `c.minPrice`
+ * etc. to decide whether "— budget not specified" belongs in the gap suffix. Passing a
+ * budget-stripped `c` instead (as this used to) made every card's budget look unspecified to
+ * `missingForLead`, regardless of whether one was actually set.
  */
-function formatRequirementLabel(c, names) {
+function formatRequirementLabel(c, names, omit) {
     const where = names.areaNames?.length
         ? ` in ${joinOr(names.areaNames)}${names.cityName ? `, ${names.cityName}` : ""}`
         : names.cityName
             ? ` in ${names.cityName}`
             : "";
     const extras = [
-        budgetPhrase(c),
-        sizePhrase(c),
-        c.category && c.attributes?.amenities?.length
+        omit?.budget ? undefined : budgetPhrase(c),
+        omit?.size ? undefined : sizePhrase(c),
+        !omit?.amenities && c.category && c.attributes?.amenities?.length
             ? c.attributes.amenities.map((a) => amenityOptionsFor(c.category).find((o) => o.value === a)?.label.toLowerCase() ?? a).join(", ")
             : undefined,
     ].filter(Boolean);

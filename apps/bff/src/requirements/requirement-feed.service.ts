@@ -12,7 +12,6 @@ import {
   formatRequirementLabel,
   intentOf,
   isLeadReady,
-  type RequirementCriteria,
   type RequirementIntent,
 } from '@bhavano/types/requirementQuestions';
 import type { AreaUnit } from '@bhavano/types/areaUnit';
@@ -38,22 +37,6 @@ const FEED_PAGE_LIMIT = 50;
 const UPDATED_AFTER_MS = 10 * 60 * 1000;
 
 type Row = Requirement & { city: City | null };
-
-function headlineCriteria(criteria: RequirementCriteria): RequirementCriteria {
-  const attributes = Object.fromEntries(
-    Object.entries(criteria.attributes ?? {}).filter(
-      ([key]) => key !== 'amenities',
-    ),
-  );
-  return {
-    ...criteria,
-    minPrice: undefined,
-    maxPrice: undefined,
-    minAreaSqft: undefined,
-    maxAreaSqft: undefined,
-    attributes,
-  };
-}
 
 /**
  * The owner/agent Requirements tab — docs/plans/requirements-feed-for-owners-agents.md.
@@ -256,11 +239,14 @@ export class RequirementFeedService {
       row.refinedAt.getTime() - row.createdAt.getTime() > UPDATED_AFTER_MS;
     return {
       id: row.id,
-      // What and where only: budget, size and must-haves are shown as their own chips.
-      label: formatRequirementLabel(headlineCriteria(criteria), {
-        cityName: row.city?.name,
-        areaNames,
-      }),
+      // What and where only: budget, size and must-haves are shown as their own chips, not
+      // inline — but still computed from the real criteria, not a stripped one, so a genuinely
+      // unset budget is the only thing that earns a "— budget not specified" suffix.
+      label: formatRequirementLabel(
+        criteria,
+        { cityName: row.city?.name, areaNames },
+        { budget: true, size: true, amenities: true },
+      ),
       intent: intentOf(category, transactionType),
       category,
       transactionType,
