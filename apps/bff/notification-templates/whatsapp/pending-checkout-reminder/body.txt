@@ -1,5 +1,6 @@
 Hi {{name}},
 
-Your ad "{{title}}" is saved on Bhavano. It is not live yet.
+We did not receive payment for your ad "{{title}}"
 
-Tap below to view its status.
+Payment status: Not completed
+Ad status: Saved, not published

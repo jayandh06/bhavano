@@ -163,7 +163,15 @@ copy to Meta's classifier regardless of how neutral the rest of the message is, 
 template in this app carries some variant of it. Rather than word a slogan-less substitute that
 might still read as promotional, `_v3` drops the FOOTER component entirely — a utility template
 has no obligation to carry a tagline. `footer.txt` removed from the template folder (no longer
-read by the script); `TEMPLATE_NAME` bumped to `pending_checkout_reminder_v3`. Not yet resubmitted
-to Meta. If `_v3` is also reclassified, the other templates sharing this exact footer
-(`listing-posted`, `listing-posted-reminder{,-featured}`, `welcome`, `daily-activity-digest`,
-`claim-listing`) are worth auditing too, not just this one in isolation.
+read by the script); `TEMPLATE_NAME` bumped to `pending_checkout_reminder_v3`.
+
+**Update (2026-10-11): `pending_checkout_reminder_v3` approved as UTILITY.** Set
+`WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE=pending_checkout_reminder_v3` in production's `.env`
+and recreated `bff` to pick it up — all three channels (push/email/WhatsApp) are now live for this
+reminder. Worth noting the footer theory above isn't fully confirmed: the other templates sharing
+that exact footer (`listing_posted_v2`, `listing_posted_reminder_v2`,
+`listing_posted_reminder_featured_v2`, `daily_activity_digest_v1`) were all approved as UTILITY
+*with* it still in place, so the footer alone isn't a sufficient explanation — something about
+this specific template's combination of copy and/or submission order may also have mattered. Not
+investigated further since `_v3` is approved and working; flagging only in case a future template
+hits the same reclassification and this theory needs revisiting.
