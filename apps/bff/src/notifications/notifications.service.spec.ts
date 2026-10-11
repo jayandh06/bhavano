@@ -349,85 +349,88 @@ describe('NotificationsService.notifyListingPostedReminder', () => {
   });
 });
 
+/**
+ * Unlike every other reminder in this file (push-else-email-else-whatsapp), a pending payment is
+ * money already left on the table — so this one fans out to every channel the owner has, the
+ * same "send on both, don't pick one" rule `notifyBoostPromotion` uses for its own offer.
+ */
 describe('NotificationsService.notifyPendingCheckoutReminder', () => {
-  it('sends push and skips email/WhatsApp entirely when the user has a push token', async () => {
-    const {
-      service,
-      pushTokenFindFirst,
-      notifyPendingCheckoutReminderPush,
-      emailSend,
-    } = make();
+  const BOTH_OWNER = { id: 'owner3', name: 'Priya', email: 'priya@example.com', phone: '+919876543210' };
+
+  it('sends push AND email together when the owner has a push token and an email', async () => {
+    const { service, pushTokenFindFirst, notifyPendingCheckoutReminderPush, emailSend } = make();
     pushTokenFindFirst.mockResolvedValue({ id: 'token1' });
 
-    const channel = await service.notifyPendingCheckoutReminder(
-      'owner1',
-      OWNER,
-      'Nice flat',
-      'listing1',
-    );
+    const channels = await service.notifyPendingCheckoutReminder('owner1', OWNER, 'Nice flat', 'listing1');
 
-    expect(channel).toBe('push');
-    expect(notifyPendingCheckoutReminderPush).toHaveBeenCalledWith(
-      'owner1',
-      'Nice flat',
-      'listing1',
-    );
-    expect(emailSend).not.toHaveBeenCalled();
+    expect(channels).toEqual([{ channel: 'push' }, { channel: 'email' }]);
+    expect(notifyPendingCheckoutReminderPush).toHaveBeenCalledWith('owner1', 'Nice flat', 'listing1');
+    expect(emailSend).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to email when there is no push token and the user has an email, linking the specific listing', async () => {
+  it('sends on email alone when there is no push token and no WhatsApp template, linking the specific listing', async () => {
     const { service, pushTokenFindFirst, emailSend } = make();
     pushTokenFindFirst.mockResolvedValue(null);
 
-    const channel = await service.notifyPendingCheckoutReminder(
-      'owner1',
-      OWNER,
-      'Nice flat',
-      'listing1',
-    );
+    const channels = await service.notifyPendingCheckoutReminder('owner1', OWNER, 'Nice flat', 'listing1');
 
-    expect(channel).toBe('email');
+    expect(channels).toEqual([{ channel: 'email' }]);
     const [, , text] = emailSend.mock.calls[0];
     expect(text).toContain('my-listings?openPublishCheckout=listing1');
   });
 
-  it('skips WhatsApp cleanly (returns null) for a phone-only user when no template env var is set', async () => {
+  it('sends nothing on WhatsApp for a phone-only user when no template env var is set', async () => {
     const { service, sendTemplate } = make();
     (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn(
       (key: string) =>
         key === 'PUBLIC_SITE_URL' ? 'https://www.bhavano.com' : undefined,
     );
-    const channel = await service.notifyPendingCheckoutReminder(
-      'owner2',
-      PHONE_OWNER,
-      'Nice flat',
-      'listing1',
-    );
-    expect(channel).toBeNull();
+    const channels = await service.notifyPendingCheckoutReminder('owner2', PHONE_OWNER, 'Nice flat', 'listing1');
+    expect(channels).toEqual([]);
     expect(sendTemplate).not.toHaveBeenCalled();
   });
 
-  it('sends WhatsApp for a phone-only user once the template env var is set, with the listing id as the dynamic button suffix', async () => {
-    const { service, sendTemplate } = make();
+  it('sends WhatsApp alone for a phone-only user once the template env var is set, and copies support@ directly since there is no BCC header to piggyback on', async () => {
+    const { service, sendTemplate, emailSend } = make();
     (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn(
       (key: string) =>
         key === 'WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE'
           ? 'pending_checkout_reminder_v1'
           : 'https://www.bhavano.com',
     );
-    const channel = await service.notifyPendingCheckoutReminder(
-      'owner2',
-      PHONE_OWNER,
-      'Nice flat',
-      'listing1',
-    );
-    expect(channel).toBe('whatsapp');
+    const channels = await service.notifyPendingCheckoutReminder('owner2', PHONE_OWNER, 'Nice flat', 'listing1');
+    expect(channels).toEqual([{ channel: 'whatsapp' }]);
     expect(sendTemplate).toHaveBeenCalledWith(
       '+919876543210',
       'pending_checkout_reminder_v1',
       { name: 'Priya', title: 'Nice flat' },
       'listing1',
     );
+    expect(emailSend).toHaveBeenCalledTimes(1);
+    const [supportTo] = emailSend.mock.calls[0];
+    expect(supportTo).toBe('support@bhavano.com');
+  });
+
+  it('sends on all three channels for an owner with a push token, email, and phone — one BCC email, no duplicate support@ copy', async () => {
+    const { service, pushTokenFindFirst, sendTemplate, emailSend } = make();
+    pushTokenFindFirst.mockResolvedValue({ id: 'token1' });
+    (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn(
+      (key: string) =>
+        key === 'WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE'
+          ? 'pending_checkout_reminder_v1'
+          : 'https://www.bhavano.com',
+    );
+
+    const channels = await service.notifyPendingCheckoutReminder('owner3', BOTH_OWNER, 'Nice flat', 'listing1');
+
+    expect(channels).toEqual([{ channel: 'push' }, { channel: 'email' }, { channel: 'whatsapp' }]);
+    expect(sendTemplate).toHaveBeenCalledTimes(1);
+    // Email already BCCs support@ — the direct-copy trick only fires when there's no email going
+    // out at all, so this must stay a single send, not two.
+    expect(emailSend).toHaveBeenCalledTimes(1);
+    const [to, , , options] = emailSend.mock.calls[0];
+    expect(to).toBe('priya@example.com');
+    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
   });
 });
 

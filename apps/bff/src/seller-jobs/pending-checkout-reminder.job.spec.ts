@@ -29,10 +29,10 @@ describe('PendingCheckoutReminderJob', () => {
   function makeJob(listings: ReturnType<typeof stubListing>[]) {
     const prisma = {
       listing: { findMany: jest.fn().mockResolvedValue(listings) },
-      listingNotificationLog: { create: jest.fn().mockResolvedValue({}) },
+      listingNotificationLog: { createMany: jest.fn().mockResolvedValue({}) },
     };
     const notifications = {
-      notifyPendingCheckoutReminder: jest.fn().mockResolvedValue('email'),
+      notifyPendingCheckoutReminder: jest.fn().mockResolvedValue([{ channel: 'email' }]),
     };
     const job = new PendingCheckoutReminderJob(
       prisma as unknown as PrismaService,
@@ -56,7 +56,7 @@ describe('PendingCheckoutReminderJob', () => {
     );
   });
 
-  it('sends the reminder and logs the channel for a listing stuck well past the 3h mark', async () => {
+  it('sends the reminder and logs one row per channel for a listing stuck well past the 3h mark', async () => {
     const { job, notifications, prisma } = makeJob([stubListing()]);
     await job.sendReminders(now);
     expect(notifications.notifyPendingCheckoutReminder).toHaveBeenCalledWith(
@@ -65,20 +65,40 @@ describe('PendingCheckoutReminderJob', () => {
       'Nice flat',
       'listing1',
     );
-    expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
-      data: {
-        listingId: 'listing1',
-        kind: 'pending_checkout_reminder',
-        channel: 'email',
-      },
+    expect(prisma.listingNotificationLog.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          listingId: 'listing1',
+          kind: 'pending_checkout_reminder',
+          channel: 'email',
+          providerMessageId: null,
+        },
+      ],
     });
   });
 
-  it('does not write a log row when the notification channel is null', async () => {
+  it('writes one row per channel when the owner was reached on more than one', async () => {
     const { job, prisma, notifications } = makeJob([stubListing()]);
-    notifications.notifyPendingCheckoutReminder.mockResolvedValue(null);
+    notifications.notifyPendingCheckoutReminder.mockResolvedValue([
+      { channel: 'push' },
+      { channel: 'email' },
+      { channel: 'whatsapp' },
+    ]);
     await job.sendReminders(now);
-    expect(prisma.listingNotificationLog.create).not.toHaveBeenCalled();
+    expect(prisma.listingNotificationLog.createMany).toHaveBeenCalledWith({
+      data: [
+        { listingId: 'listing1', kind: 'pending_checkout_reminder', channel: 'push', providerMessageId: null },
+        { listingId: 'listing1', kind: 'pending_checkout_reminder', channel: 'email', providerMessageId: null },
+        { listingId: 'listing1', kind: 'pending_checkout_reminder', channel: 'whatsapp', providerMessageId: null },
+      ],
+    });
+  });
+
+  it('does not write any log row when no channel reached the owner', async () => {
+    const { job, prisma, notifications } = makeJob([stubListing()]);
+    notifications.notifyPendingCheckoutReminder.mockResolvedValue([]);
+    await job.sendReminders(now);
+    expect(prisma.listingNotificationLog.createMany).not.toHaveBeenCalled();
   });
 
   it('continues to the next listing if one throws', async () => {
@@ -88,15 +108,18 @@ describe('PendingCheckoutReminderJob', () => {
     ]);
     notifications.notifyPendingCheckoutReminder
       .mockRejectedValueOnce(new Error('boom'))
-      .mockResolvedValueOnce('whatsapp');
+      .mockResolvedValueOnce([{ channel: 'whatsapp' }]);
     await job.sendReminders(now);
-    expect(prisma.listingNotificationLog.create).toHaveBeenCalledTimes(1);
-    expect(prisma.listingNotificationLog.create).toHaveBeenCalledWith({
-      data: {
-        listingId: 'good',
-        kind: 'pending_checkout_reminder',
-        channel: 'whatsapp',
-      },
+    expect(prisma.listingNotificationLog.createMany).toHaveBeenCalledTimes(1);
+    expect(prisma.listingNotificationLog.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          listingId: 'good',
+          kind: 'pending_checkout_reminder',
+          channel: 'whatsapp',
+          providerMessageId: null,
+        },
+      ],
     });
   });
 

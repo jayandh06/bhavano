@@ -70,15 +70,23 @@ export class PendingCheckoutReminderJob {
 
     for (const listing of listings) {
       try {
-        const channel = await this.notifications.notifyPendingCheckoutReminder(
+        const channels = await this.notifications.notifyPendingCheckoutReminder(
           listing.owner.id,
           listing.owner,
           listing.title,
           listing.id,
         );
-        if (!channel) continue;
-        await this.prisma.listingNotificationLog.create({
-          data: { listingId: listing.id, kind: REMINDER_KIND, channel },
+        if (channels.length === 0) continue;
+        // One row per channel — an owner reached on push, email, AND WhatsApp gets three, same
+        // convention AdminService.sendBoostPromotion already established for its own
+        // every-channel-the-owner-has send.
+        await this.prisma.listingNotificationLog.createMany({
+          data: channels.map(({ channel, messageId }) => ({
+            listingId: listing.id,
+            kind: REMINDER_KIND,
+            channel,
+            providerMessageId: messageId ?? null,
+          })),
         });
       } catch (error) {
         this.logger.warn(

@@ -41,7 +41,7 @@ export class NotificationsService {
    * paragraph — see `notifyListingBoostActivated`'s comment on why that used to be the norm here. */
   async notifyListingFlagged(
     user: NotifiableUser,
-    listing: ListingDetailDto,
+    listing: Pick<ListingDetailDto, 'title'>,
     message: string,
   ): Promise<'email' | 'whatsapp' | null> {
     const vars = { title: listing.title, message };
@@ -53,7 +53,7 @@ export class NotificationsService {
   /** See `notifyListingFlagged`'s comment on the missing WhatsApp template and the branded HTML. */
   async notifyListingApproved(
     user: NotifiableUser,
-    listing: ListingDetailDto,
+    listing: Pick<ListingDetailDto, 'title'>,
   ): Promise<'email' | 'whatsapp' | null> {
     const vars = { title: listing.title };
     const { subject, text, html } = this.renderPurchaseEmail('email/listing-approved', vars);
@@ -842,13 +842,21 @@ export class NotificationsService {
    *
    * No benefit/comparison language in the copy on purpose — this notification has nothing to
    * sell, just a status and an action, so it should read as UTILITY cleanly (see this plan's own
-   * note on why `listing_posted_reminder_v1` didn't, at first). */
+   * note on why `listing_posted_reminder_v1` didn't, at first).
+   *
+   * **Every channel the owner has, not the usual push-else-email-else-whatsapp fallback** — a
+   * pending payment is money already left on the table, so this is the one notification worth
+   * treating like `notifyBoostPromotion`'s "send on both, don't pick one" rule rather than the
+   * push-preferring dispatcher every other reminder in this file shares. Each channel is sent
+   * independently and reported in `channels`; the caller (`PendingCheckoutReminderJob`) logs one
+   * `ListingNotificationLog` row per channel, same convention `AdminService.sendBoostPromotion`
+   * already established for its own multi-channel send. */
   async notifyPendingCheckoutReminder(
     userId: string,
     user: NotifiableUser & { name?: string | null },
     listingTitle: string,
     listingId: string,
-  ): Promise<'push' | 'email' | 'whatsapp' | null> {
+  ): Promise<Array<{ channel: 'push' | 'email' | 'whatsapp'; messageId?: string | null }>> {
     const site =
       this.config.get<string>('PUBLIC_SITE_URL') ?? 'https://www.bhavano.com';
     const tpl = loadTemplate('email/pending-checkout-reminder');
@@ -865,25 +873,53 @@ export class NotificationsService {
       button: buttonLabel ? { label: buttonLabel, url: link } : undefined,
     });
     const text = `${paragraphs.join('\n\n')}\n\n${buttonLabel ? `${buttonLabel}: ${link}` : link}`;
+    const subject = renderTemplate(tpl.subject, vars);
 
     const whatsappTemplate = this.config.get<string>(
       'WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE',
     );
 
-    return this.dispatchPushPreferEmailPreferWhatsapp(
-      userId,
-      user,
-      () =>
-        this.push.notifyPendingCheckoutReminder(userId, vars.title, listingId),
-      { subject: renderTemplate(tpl.subject, vars), text, html, bcc: 'support@bhavano.com' },
-      whatsappTemplate
-        ? {
-            template: whatsappTemplate,
-            params: { name: vars.name, title: vars.title },
-            buttonUrlSuffix: listingId,
-          }
-        : undefined,
-    );
+    const channels: Array<{ channel: 'push' | 'email' | 'whatsapp'; messageId?: string | null }> = [];
+
+    // Checked by push-token existence, not delivery success — same signal
+    // `dispatchPushPreferEmailPreferWhatsapp` uses, for the same reason (the send itself is
+    // `Promise<void>`).
+    const hasPush = await this.prisma.pushToken.findFirst({
+      where: { userId },
+      select: { id: true },
+    });
+    if (hasPush) {
+      await this.push.notifyPendingCheckoutReminder(userId, vars.title, listingId);
+      channels.push({ channel: 'push' });
+    }
+
+    if (user.email) {
+      const sent = await this.emailProvider.send(user.email, subject, text, {
+        html,
+        bcc: 'support@bhavano.com',
+      });
+      if (sent) channels.push({ channel: 'email' });
+    }
+
+    if (user.phone && whatsappTemplate) {
+      const sent = await this.whatsapp.sendTemplate(
+        user.phone,
+        whatsappTemplate,
+        { name: vars.name, title: vars.title },
+        listingId,
+      );
+      if (sent) {
+        channels.push({ channel: 'whatsapp' });
+        // Support gets the same email support@ would have been BCC'd on above — only fired when
+        // there's no email going out on this send (no BCC header to piggyback on), same rule
+        // `dispatchEmailPreferWhatsapp`'s WhatsApp branch uses. Best-effort.
+        if (!user.email) {
+          this.emailProvider.send('support@bhavano.com', subject, text, { html }).catch(() => undefined);
+        }
+      }
+    }
+
+    return channels;
   }
 
   /** Daily "N views, N favourites, N new messages" recap — additive to, and independent of, the
