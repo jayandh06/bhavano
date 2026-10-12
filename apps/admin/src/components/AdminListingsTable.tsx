@@ -164,6 +164,25 @@ export function AdminListingsTable({
       nowrap: true,
     },
     {
+      key: "owner",
+      label: "Owner",
+      sortField: "owner",
+      // Filtering by owner already exists above the table (the UserPicker "Posted by" filter in
+      // page.tsx) — a second filter here on the same field would just fight it. SKIP_REMEMBER_PARAM
+      // so clicking through from a listing to "everything this owner posted" is a one-off jump, not
+      // something that silently becomes the remembered Posted-by filter for every later bare visit
+      // to this screen — only actually typing/picking a name in the UserPicker should persist.
+      render: (item) => (
+        <Link
+          href={`/?userId=${item.owner.id}&userLabel=${encodeURIComponent(item.owner.name ?? item.owner.phone ?? item.owner.id)}&${SKIP_REMEMBER_PARAM}=1`}
+        >
+          {item.owner.name ?? item.owner.phone ?? item.owner.id}
+        </Link>
+      ),
+      defaultVisible: true,
+      nowrap: true,
+    },
+    {
       key: "title",
       label: "Title",
       sortField: "title",
@@ -327,25 +346,6 @@ export function AdminListingsTable({
       label: "Featured",
       sortField: "boosted",
       render: (item) => <BoostedBadge boostedUntil={item.boostedUntil} isBoosted={item.isBoosted} />,
-      defaultVisible: true,
-      nowrap: true,
-    },
-    {
-      key: "owner",
-      label: "Owner",
-      sortField: "owner",
-      // Filtering by owner already exists above the table (the UserPicker "Posted by" filter in
-      // page.tsx) — a second filter here on the same field would just fight it. SKIP_REMEMBER_PARAM
-      // so clicking through from a listing to "everything this owner posted" is a one-off jump, not
-      // something that silently becomes the remembered Posted-by filter for every later bare visit
-      // to this screen — only actually typing/picking a name in the UserPicker should persist.
-      render: (item) => (
-        <Link
-          href={`/?userId=${item.owner.id}&userLabel=${encodeURIComponent(item.owner.name ?? item.owner.phone ?? item.owner.id)}&${SKIP_REMEMBER_PARAM}=1`}
-        >
-          {item.owner.name ?? item.owner.phone ?? item.owner.id}
-        </Link>
-      ),
       defaultVisible: true,
       nowrap: true,
     },
