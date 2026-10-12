@@ -83,8 +83,10 @@ export class WhatsappProvider {
       return false;
     }
 
+    // docker-compose passes an unset variable through as "", not undefined.
     const version =
-      this.config.get<string>('WHATSAPP_API_VERSION') ?? DEFAULT_API_VERSION;
+      this.config.get<string>('WHATSAPP_API_VERSION')?.trim() ||
+      DEFAULT_API_VERSION;
     const language =
       this.config.get<string>('WHATSAPP_TEMPLATE_LANGUAGE') ??
       DEFAULT_TEMPLATE_LANGUAGE;

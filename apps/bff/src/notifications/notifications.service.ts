@@ -832,13 +832,12 @@ export class NotificationsService {
    * completed) has no expiry and nobody tells the owner it's waiting unless they happen to come
    * back on their own (see `ListingsService.getSellerAttention`). See docs/plans/
    * pending-checkout-payment-reminder.md. Fired once, ~3-4h after the listing was created still
-   * pending — same one-shot dedup convention as `notifyListingPostedReminder`, just a different
-   * job's window.
+   * pending. The job retries hourly until at least one channel is recorded; that first recorded
+   * channel then deduplicates future attempts for the listing.
    *
    * The link needs the specific listing, not a bare `/my-listings` — `?openPublishCheckout=
    * <id>` is what `PublishCheckoutRecovery.tsx`'s `AutoOpenPublishCheckout` reads to reopen that
-   * listing's own checkout modal. That means the WhatsApp button is dynamic (`buttonUrlSuffix`),
-   * unlike `notifyListingPostedReminder`'s static one.
+   * listing's own checkout modal. The MSG91 template's dynamic URL button carries that listing id.
    *
    * No benefit/comparison language in the copy on purpose — this notification has nothing to
    * sell, just a status and an action, so it should read as UTILITY cleanly (see this plan's own
@@ -847,7 +846,7 @@ export class NotificationsService {
    * **Every channel the owner has, not the usual push-else-email-else-whatsapp fallback** — a
    * pending payment is money already left on the table, so this is the one notification worth
    * treating like `notifyBoostPromotion`'s "send on both, don't pick one" rule rather than the
-   * push-preferring dispatcher every other reminder in this file shares. Each channel is sent
+   * push-preferring dispatcher most other reminders in this file share. Each channel is sent
    * independently and reported in `channels`; the caller (`PendingCheckoutReminderJob`) logs one
    * `ListingNotificationLog` row per channel, same convention `AdminService.sendBoostPromotion`
    * already established for its own multi-channel send. */
@@ -875,10 +874,6 @@ export class NotificationsService {
     const text = `${paragraphs.join('\n\n')}\n\n${buttonLabel ? `${buttonLabel}: ${link}` : link}`;
     const subject = renderTemplate(tpl.subject, vars);
 
-    const whatsappTemplate = this.config.get<string>(
-      'WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE',
-    );
-
     const channels: Array<{ channel: 'push' | 'email' | 'whatsapp'; messageId?: string | null }> = [];
 
     // Checked by push-token existence, not delivery success — same signal
@@ -901,20 +896,21 @@ export class NotificationsService {
       if (sent) channels.push({ channel: 'email' });
     }
 
-    if (user.phone && whatsappTemplate) {
-      const sent = await this.whatsapp.sendTemplate(
+    if (user.phone) {
+      const result = await this.msg91.sendPendingCheckoutReminder(
         user.phone,
-        whatsappTemplate,
         { name: vars.name, title: vars.title },
         listingId,
       );
-      if (sent) {
-        channels.push({ channel: 'whatsapp' });
+      if (result.sent) {
+        channels.push({ channel: 'whatsapp', messageId: result.messageId });
         // Support gets the same email support@ would have been BCC'd on above — only fired when
         // there's no email going out on this send (no BCC header to piggyback on), same rule
         // `dispatchEmailPreferWhatsapp`'s WhatsApp branch uses. Best-effort.
         if (!user.email) {
-          this.emailProvider.send('support@bhavano.com', subject, text, { html }).catch(() => undefined);
+          this.emailProvider
+            .send('support@bhavano.com', subject, text, { html })
+            .catch(() => undefined);
         }
       }
     }

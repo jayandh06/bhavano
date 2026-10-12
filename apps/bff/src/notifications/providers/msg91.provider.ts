@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { logThirdPartyCall, maskPhone } from '../../logging/thirdPartyCallLogger';
+import { whatsAppNumber } from '@bhavano/types/whatsapp';
 
 /**
  * MSG91 SMS delivery. Requires MSG91_AUTH_KEY (plus MSG91_SENDER_ID / MSG91_DLT_TEMPLATE_ID)
@@ -133,9 +134,9 @@ export class Msg91Provider {
     }
   }
 
-  /** WhatsApp via MSG91 — a distinct product/endpoint from the SMS APIs above, currently used
-   * only for the first-time mobile-app-signup welcome message (see AuthService.welcomeIfFirstLogin
-   * and docs/plans/whatsapp-welcome-mobile-signups.md). Requires a WhatsApp Business template
+  /** WhatsApp via MSG91 — a distinct product/endpoint from the SMS APIs above, used for the
+   * first-time signup welcome message (see AuthService.welcomeIfFirstLogin and
+   * docs/plans/whatsapp-welcome-mobile-signups.md). Requires a WhatsApp Business template
    * created and approved in the MSG91 dashboard first — that's a manual, human-only step, not
    * something this code can satisfy, so this degrades to a logged no-op (like
    * sendTransactionalSms above) rather than throwing, until MSG91_WHATSAPP_INTEGRATED_NUMBER /
@@ -352,6 +353,107 @@ export class Msg91Provider {
     } catch (error) {
       this.logger.error(
         `Failed to send ad-posted WhatsApp to ${phone}: ${error instanceof Error ? error.message : error}`,
+      );
+      return { sent: false, messageId: null };
+    }
+  }
+
+  /** MSG91 WhatsApp pending-checkout reminder. The template has named body parameters and a
+   * dynamic URL button, so its exact component keys must match the MSG91 dashboard's Code snippet.
+   * The sender number is shared with the other MSG91 WhatsApp templates; this template has its
+   * own name and namespace. */
+  async sendPendingCheckoutReminder(
+    phone: string,
+    vars: { name: string; title: string },
+    listingId: string,
+  ): Promise<{ sent: boolean; messageId: string | null }> {
+    const authKey = this.config.get<string>('MSG91_AUTH_KEY');
+    const integratedNumber = this.config.get<string>(
+      'MSG91_WHATSAPP_INTEGRATED_NUMBER',
+    );
+    const template = this.config.get<string>(
+      'MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE_NAME',
+    );
+    const namespace = this.config.get<string>(
+      'MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_NAMESPACE',
+    );
+    const to = whatsAppNumber(phone);
+    if (!authKey || !integratedNumber || !template || !namespace || !to) {
+      this.logger.warn(
+        'MSG91 pending-checkout WhatsApp not configured or phone invalid — skipping reminder',
+      );
+      return { sent: false, messageId: null };
+    }
+
+    const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { authkey: authKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          integrated_number: integratedNumber,
+          content_type: 'template',
+          payload: {
+            messaging_product: 'whatsapp',
+            type: 'template',
+            template: {
+              name: template,
+              language: { code: 'en', policy: 'deterministic' },
+              namespace,
+              to_and_components: [
+                {
+                  to: [to],
+                  components: {
+                    body_name: {
+                      type: 'text',
+                      value: vars.name,
+                      parameter_name: 'name',
+                    },
+                    body_title: {
+                      type: 'text',
+                      value: vars.title,
+                      parameter_name: 'title',
+                    },
+                    button_1: {
+                      subtype: 'url',
+                      type: 'text',
+                      value: `my-listings?openPublishCheckout=${listingId}`,
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      });
+      const responseBody = await res.text();
+      const ok = res.ok && !responseBody.includes('"error"');
+      logThirdPartyCall({
+        logger: this.callLogger,
+        provider: 'msg91',
+        method: 'sendPendingCheckoutReminder',
+        url,
+        request: {
+          template,
+          namespace,
+          phone: maskPhone(to),
+          varNames: Object.keys(vars),
+          hasCheckoutButton: true,
+        },
+        status: res.status,
+        responseText: responseBody,
+        ok,
+      });
+      if (!ok) {
+        this.logger.error(
+          `MSG91 pending-checkout WhatsApp send failed (${res.status})`,
+        );
+        return { sent: false, messageId: null };
+      }
+      return { sent: true, messageId: this.extractMessageId(responseBody) };
+    } catch (error) {
+      this.logger.error(
+        `Failed to send pending-checkout WhatsApp: ${error instanceof Error ? error.message : error}`,
       );
       return { sent: false, messageId: null };
     }

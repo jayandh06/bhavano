@@ -37,10 +37,9 @@ services:
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
       MSG91_TRANSACTIONAL_TEMPLATE_ID: ${MSG91_TRANSACTIONAL_TEMPLATE_ID}
-      # WhatsApp via MSG91 — used only for the first-time-mobile-signup welcome (see
-      # docs/plans/whatsapp-welcome-mobile-signups.md); every other WhatsApp send in this app
-      # still goes through Meta's Cloud API directly, below. Unset disables just this one welcome
-      # path (sends log and skip, falling back to the default email/Meta-WhatsApp welcome).
+      # WhatsApp via MSG91 — used for welcome, ad-posted, and pending-checkout messages (see
+      # docs/plans/whatsapp-welcome-mobile-signups.md and pending-checkout-payment-reminder.md).
+      # Other WhatsApp sends still use Meta's Cloud API directly, below.
       MSG91_WHATSAPP_INTEGRATED_NUMBER: ${MSG91_WHATSAPP_INTEGRATED_NUMBER}
       MSG91_WHATSAPP_TEMPLATE_NAME: ${MSG91_WHATSAPP_TEMPLATE_NAME}
       MSG91_WHATSAPP_NAMESPACE: ${MSG91_WHATSAPP_NAMESPACE}
@@ -50,6 +49,9 @@ services:
       # cannot reuse MSG91_WHATSAPP_NAMESPACE (see Msg91Provider.sendAdPostedConfirmation).
       MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME: ${MSG91_WHATSAPP_AD_POSTED_TEMPLATE_NAME}
       MSG91_WHATSAPP_AD_POSTED_NAMESPACE: ${MSG91_WHATSAPP_AD_POSTED_NAMESPACE}
+      # Pending-checkout payment reminder — MSG91 WhatsApp; its own template name and namespace.
+      MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE_NAME: ${MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE_NAME}
+      MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_NAMESPACE: ${MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_NAMESPACE}
       # Promotional, not transactional — a different DLT template category and different consent
       # rules in India, which is exactly why this is a separate, explicit opt-in from every
       # MSG91_WHATSAPP_* var above (see OutreachSenderService's own doc comment). Nothing outreach
@@ -81,8 +83,8 @@ services:
       # Expo personal access token — required when the EAS project has push security enabled
       # (anonymous POST → 403 UNAUTHORIZED). Create at expo.dev → Account → Access tokens.
       EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN}
-      # WhatsApp Business via Meta's Cloud API, direct rather than through MSG91 — the default
-      # path for every WhatsApp send except the mobile welcome above. Unset disables WhatsApp
+      # WhatsApp Business via Meta's Cloud API, direct rather than through MSG91 — used by the
+      # remaining WhatsApp sends. Unset disables this channel
       # entirely (sends log and skip) — see .env.production.example for which id goes in
       # WHATSAPP_PHONE_NUMBER_ID, which is the easiest thing to get wrong here.
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
@@ -96,9 +98,6 @@ services:
       WHATSAPP_LISTING_POSTED_REMINDER_TEMPLATE: ${WHATSAPP_LISTING_POSTED_REMINDER_TEMPLATE}
       WHATSAPP_LISTING_POSTED_REMINDER_FEATURED_TEMPLATE: ${WHATSAPP_LISTING_POSTED_REMINDER_FEATURED_TEMPLATE}
       WHATSAPP_DAILY_ACTIVITY_DIGEST_TEMPLATE: ${WHATSAPP_DAILY_ACTIVITY_DIGEST_TEMPLATE}
-      # The pending-checkout payment reminder's WhatsApp leg — see docs/plans/
-      # pending-checkout-payment-reminder.md. Unset disables it the same way as the others above.
-      WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE: ${WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE}
       # Facebook Page cross-posting of every listing that goes live (see
       # docs/plans/facebook-page-publishing.md). Unset disables it (posts log and skip).
       FACEBOOK_PAGE_ID: ${FACEBOOK_PAGE_ID}

@@ -19,6 +19,7 @@ function make() {
   const emailSend = jest.fn().mockResolvedValue(true);
   const sendBoostPromotion = jest.fn().mockResolvedValue({ sent: true, messageId: 'req-1' });
   const sendAdPostedConfirmation = jest.fn().mockResolvedValue({ sent: true, messageId: 'req-2' });
+  const sendPendingCheckoutReminder = jest.fn().mockResolvedValue({ sent: true, messageId: 'req-3' });
   const sendTemplate = jest.fn().mockResolvedValue(true);
   const publishListing = jest.fn().mockResolvedValue('page123_post456');
   const pushTokenFindFirst = jest.fn().mockResolvedValue(null);
@@ -29,7 +30,7 @@ function make() {
   const service = new NotificationsService(
     { send: emailSend } as unknown as EmailProvider,
     { sendTemplate } as unknown as WhatsappProvider,
-    { sendBoostPromotion, sendAdPostedConfirmation } as unknown as Msg91Provider,
+    { sendBoostPromotion, sendAdPostedConfirmation, sendPendingCheckoutReminder } as unknown as Msg91Provider,
     { configured: true, publishListing } as unknown as FacebookProvider,
     { get: jest.fn().mockReturnValue('https://www.bhavano.com') } as unknown as ConfigService,
     { pushToken: { findFirst: pushTokenFindFirst } } as unknown as PrismaService,
@@ -44,6 +45,7 @@ function make() {
     emailSend,
     sendBoostPromotion,
     sendAdPostedConfirmation,
+    sendPendingCheckoutReminder,
     sendTemplate,
     publishListing,
     pushTokenFindFirst,
@@ -379,30 +381,26 @@ describe('NotificationsService.notifyPendingCheckoutReminder', () => {
     expect(text).toContain('my-listings?openPublishCheckout=listing1');
   });
 
-  it('sends nothing on WhatsApp for a phone-only user when no template env var is set', async () => {
-    const { service, sendTemplate } = make();
-    (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn(
-      (key: string) =>
-        key === 'PUBLIC_SITE_URL' ? 'https://www.bhavano.com' : undefined,
-    );
+  it('does not report WhatsApp when MSG91 has no configured template', async () => {
+    const { service, sendPendingCheckoutReminder } = make();
+    sendPendingCheckoutReminder.mockResolvedValue({ sent: false, messageId: null });
+
     const channels = await service.notifyPendingCheckoutReminder('owner2', PHONE_OWNER, 'Nice flat', 'listing1');
     expect(channels).toEqual([]);
-    expect(sendTemplate).not.toHaveBeenCalled();
+    expect(sendPendingCheckoutReminder).toHaveBeenCalledWith(
+      '+919876543210',
+      { name: 'Priya', title: 'Nice flat' },
+      'listing1',
+    );
   });
 
-  it('sends WhatsApp alone for a phone-only user once the template env var is set, and copies support@ directly since there is no BCC header to piggyback on', async () => {
-    const { service, sendTemplate, emailSend } = make();
-    (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn(
-      (key: string) =>
-        key === 'WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE'
-          ? 'pending_checkout_reminder_v1'
-          : 'https://www.bhavano.com',
-    );
+  it('sends WhatsApp alone for a phone-only user through MSG91 and copies support@', async () => {
+    const { service, sendPendingCheckoutReminder, emailSend } = make();
+
     const channels = await service.notifyPendingCheckoutReminder('owner2', PHONE_OWNER, 'Nice flat', 'listing1');
-    expect(channels).toEqual([{ channel: 'whatsapp' }]);
-    expect(sendTemplate).toHaveBeenCalledWith(
+    expect(channels).toEqual([{ channel: 'whatsapp', messageId: 'req-3' }]);
+    expect(sendPendingCheckoutReminder).toHaveBeenCalledWith(
       '+919876543210',
-      'pending_checkout_reminder_v1',
       { name: 'Priya', title: 'Nice flat' },
       'listing1',
     );
@@ -412,19 +410,16 @@ describe('NotificationsService.notifyPendingCheckoutReminder', () => {
   });
 
   it('sends on all three channels for an owner with a push token, email, and phone — one BCC email, no duplicate support@ copy', async () => {
-    const { service, pushTokenFindFirst, sendTemplate, emailSend } = make();
+    const { service, pushTokenFindFirst, sendPendingCheckoutReminder, emailSend } = make();
     pushTokenFindFirst.mockResolvedValue({ id: 'token1' });
-    (service as unknown as { config: { get: jest.Mock } }).config.get = jest.fn(
-      (key: string) =>
-        key === 'WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE'
-          ? 'pending_checkout_reminder_v1'
-          : 'https://www.bhavano.com',
-    );
 
     const channels = await service.notifyPendingCheckoutReminder('owner3', BOTH_OWNER, 'Nice flat', 'listing1');
-
-    expect(channels).toEqual([{ channel: 'push' }, { channel: 'email' }, { channel: 'whatsapp' }]);
-    expect(sendTemplate).toHaveBeenCalledTimes(1);
+    expect(channels).toEqual([
+      { channel: 'push' },
+      { channel: 'email' },
+      { channel: 'whatsapp', messageId: 'req-3' },
+    ]);
+    expect(sendPendingCheckoutReminder).toHaveBeenCalledTimes(1);
     // Email already BCCs support@ — the direct-copy trick only fires when there's no email going
     // out at all, so this must stay a single send, not two.
     expect(emailSend).toHaveBeenCalledTimes(1);

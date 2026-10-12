@@ -185,9 +185,10 @@ def main():
         "rewrite, not a guarantee." % category
     )
     print(
-        "\nOnce Meta approves this, set WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE=%s in .env. "
-        "NotificationsService.notifyPendingCheckoutReminder is already built and waiting on that "
-        "env var and Meta's approval - nothing else to change in code." % TEMPLATE_NAME
+        "\nThis script creates the template through Meta's Cloud API. The app's pending-checkout "
+        "reminder now sends through MSG91; after approval, make the template available in MSG91 "
+        "and configure MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE_NAME plus its namespace "
+        "from MSG91's dashboard Code snippet."
     )
 
     if not submitting:
@@ -213,8 +214,8 @@ def main():
 
     print("Submitted: %s" % json.dumps(data))
     print(
-        "\nStatus will show PENDING until Meta reviews it. Once APPROVED, set in .env:\n"
-        "  WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE=%s" % TEMPLATE_NAME
+        "\nStatus will show PENDING until Meta reviews it. The app uses MSG91 for this reminder; "
+        "after approval, configure the template name and namespace from MSG91's dashboard."
     )
 
 

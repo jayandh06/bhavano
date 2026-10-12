@@ -20,6 +20,8 @@ function makeProvider(env: Record<string, string | undefined> = {}) {
         MSG91_WHATSAPP_BOOST_PROMO_TEMPLATE_NAME: 'ad_boost_instant_alert_1',
         // This template carries no namespace — null is its correct value, not a missing setting.
         MSG91_WHATSAPP_BOOST_PROMO_NAMESPACE: undefined,
+        MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE_NAME: 'pending_checkout_reminder_v3',
+        MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_NAMESPACE: 'pending-namespace',
         ...env,
       })[key],
   } as unknown as ConfigService;
@@ -46,6 +48,79 @@ const BUTTONS = {
   boostSuffix: 'my-listings?openBoost=abc123',
   bundleSuffix: 'my-listings?openBoost=abc123&withAlerts=1',
 };
+
+describe('Msg91Provider.sendPendingCheckoutReminder', () => {
+  it('sends the named variables and dynamic checkout URL button through MSG91', async () => {
+    const fetchMock = mockFetch();
+
+    const result = await makeProvider().sendPendingCheckoutReminder(
+      '+91 98765 43210',
+      { name: 'Ravi', title: '2 BHK for rent in Koramangala' },
+      'listing-123',
+    );
+
+    expect(result).toEqual({ sent: true, messageId: 'req-1' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
+      expect.objectContaining({
+        headers: { authkey: 'key', 'Content-Type': 'application/json' },
+      }),
+    );
+    const payload = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+    expect(payload.integrated_number).toBe('918667496339');
+    expect(payload.payload.template).toMatchObject({
+      name: 'pending_checkout_reminder_v3',
+      namespace: 'pending-namespace',
+      to_and_components: [
+        {
+          to: ['919876543210'],
+          components: {
+            body_name: { type: 'text', value: 'Ravi', parameter_name: 'name' },
+            body_title: {
+              type: 'text',
+              value: '2 BHK for rent in Koramangala',
+              parameter_name: 'title',
+            },
+            button_1: {
+              subtype: 'url',
+              type: 'text',
+              value: 'my-listings?openPublishCheckout=listing-123',
+            },
+          },
+        },
+      ],
+    });
+  });
+
+  it.each([
+    ['template name', { MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE_NAME: undefined }],
+    ['namespace', { MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_NAMESPACE: undefined }],
+    ['auth key', { MSG91_AUTH_KEY: undefined }],
+  ])('skips when the %s is missing', async (_label, env) => {
+    const fetchMock = mockFetch();
+
+    const result = await makeProvider(env).sendPendingCheckoutReminder(
+      '9876543210',
+      { name: 'Ravi', title: 'A listing' },
+      'listing-123',
+    );
+
+    expect(result).toEqual({ sent: false, messageId: null });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('returns failure when MSG91 reports a template error', async () => {
+    mockFetch('{"error":"template not found"}');
+
+    const result = await makeProvider().sendPendingCheckoutReminder(
+      '9876543210',
+      { name: 'Ravi', title: 'A listing' },
+      'listing-123',
+    );
+
+    expect(result).toEqual({ sent: false, messageId: null });
+  });
+});
 
 describe('Msg91Provider.sendBoostPromotion', () => {
   it('sends the four body values in the order the approved copy reads, and two button suffixes', async () => {

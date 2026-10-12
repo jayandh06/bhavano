@@ -26,9 +26,8 @@ highest) and the same one-shot dedup convention `ListingPostedReminderJob` alrea
   `onNotificationTap` (`apps/mobile/src/lib/push.ts:152-182`) already forwards a push's bare
   `data.path` string straight into `router.push`, so a push with `path: '/my-listings?
   openPublishCheckout=<id>'` opens the exact same recovery modal with zero new mobile code.
-- `NotificationsService.dispatchPushPreferEmailPreferWhatsapp` (`notifications.service.ts:734-760`,
-  used by `notifyListingPostedReminder`/`notifyDailyActivityDigest`) is reused as-is for the
-  push→email→WhatsApp preference order.
+- Push and email continue to be attempted along with WhatsApp for this reminder. The WhatsApp leg
+  uses MSG91, matching the proven welcome and ad-posted confirmation paths.
 - `AdminService.getNotificationDayDetail` already resolves any `ListingNotificationLog` row's
   recipient from `listing.owner` for every kind except `saved_search_match` — this new kind needs
   **no admin-side code change** to show up correctly in the notification log.
@@ -69,10 +68,9 @@ the other three.
 listingId)`, modeled directly on `notifyListingPostedReminder` (`notifications.service.ts:762-806`):
 loads `email/pending-checkout-reminder` via `loadTemplate`, renders through `renderEmail`, button
 links to `${site}/my-listings?openPublishCheckout=${listingId}` (not the bare `/my-listings` the
-posted-reminder uses — this one needs the specific listing's modal to auto-open), calls
-`dispatchPushPreferEmailPreferWhatsapp` with the push thunk below and the WhatsApp args (named
-params `{name, title}`, `buttonUrlSuffix: listingId` — this template needs a **dynamic** URL button,
-unlike `listing-posted-reminder`'s static one, since it must land on the right listing).
+posted-reminder uses — this one needs the specific listing's modal to auto-open), and attempts
+push, email, and MSG91 WhatsApp independently. The WhatsApp template uses named params `{name,
+title}` and a dynamic URL button containing the listing id.
 
 **New `PushService` method** — `notifyPendingCheckoutReminder(recipientId, listingTitle, listingId)`,
 modeled on `notifyListingPostedReminder` (`push.service.ts:258-275`): `data: { kind:
@@ -93,18 +91,20 @@ listing id), not the static-button shape `listing-posted-reminder/` used. New su
 `whatsapp_create_pending_checkout_reminder_template.py`, copying `whatsapp_create_listing_posted_
 template.py`'s dynamic-button payload shape (`BUTTONS` component with `"url":
 BUTTON_URL_BASE + "{{1}}"` and `"example": [BUTTON_URL_BASE + BUTTON_URL_EXAMPLE]`) — preview-only
-by default, `--submit` to actually submit. New env var
-`WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE`, read the same gated way the other two already are
-(unset = WhatsApp leg skipped, no error; email/push work from day one).
+by default, `--submit` to submit it to Meta. The app sends through MSG91, not the Meta-direct
+provider: register/sync the approved template in MSG91 and configure
+`MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE_NAME` and its own
+`MSG91_WHATSAPP_PENDING_CHECKOUT_REMINDER_NAMESPACE` from the MSG91 dashboard's "Code" snippet.
+The integrated sender number is shared with the welcome/ad-posted templates. Missing MSG91
+template configuration skips only WhatsApp; push/email remain available.
 
 **Tests**:
 - `pending-checkout-reminder.job.spec.ts`, mirroring `listing-posted-reminder.job.spec.ts` — fixed
   `now`, assert the 3-4h window and the `publishState`/dedup query, assert a listing paid in the
   interim (now `live`) is excluded, assert a listing created 2h or 5h ago is excluded (window
   boundaries).
-- A block in `notifications.service.spec.ts` near the existing `notifyListingPostedReminder` tests:
-  email-sent case, WhatsApp-sent case (template env var set), WhatsApp-skipped case (unset), push-
-  present case (no email/WhatsApp attempted).
+- Provider and service tests cover the MSG91 payload shape, dynamic checkout URL, skipped/missing
+  template behavior, delivery failure handling, and multi-channel sends.
 
 No DB migration, no admin-side change, no web/mobile frontend change — the existing deep-link
 mechanics on both platforms already handle this notification's target.
@@ -165,10 +165,10 @@ might still read as promotional, `_v3` drops the FOOTER component entirely — a
 has no obligation to carry a tagline. `footer.txt` removed from the template folder (no longer
 read by the script); `TEMPLATE_NAME` bumped to `pending_checkout_reminder_v3`.
 
-**Update (2026-10-11): `pending_checkout_reminder_v3` approved as UTILITY.** Set
-`WHATSAPP_PENDING_CHECKOUT_REMINDER_TEMPLATE=pending_checkout_reminder_v3` in production's `.env`
-and recreated `bff` to pick it up — all three channels (push/email/WhatsApp) are now live for this
-reminder. Worth noting the footer theory above isn't fully confirmed: the other templates sharing
+**Update (2026-10-11): `pending_checkout_reminder_v3` approved as UTILITY by Meta.** This
+approval alone does not configure the MSG91 delivery path; the template must also be available
+through the MSG91 account and its own name/namespace must be set in production. Worth noting the
+footer theory above isn't fully confirmed: the other templates sharing
 that exact footer (`listing_posted_v2`, `listing_posted_reminder_v2`,
 `listing_posted_reminder_featured_v2`, `daily_activity_digest_v1`) were all approved as UTILITY
 *with* it still in place, so the footer alone isn't a sufficient explanation — something about
@@ -187,3 +187,13 @@ didn't need an upper bound to do that job too — this makes the job self-healin
 never-notified listing is caught on the very next hourly run no matter how long it's been stuck,
 instead of only in its one original 1-hour window. Tests updated to assert the open-ended shape
 and that a listing well past the old 3-4h band (5h old) is still queried for.
+
+**Production follow-up (2026-10-12):** the original direct-Meta reminder path was reaching Meta with
+`https://graph.facebook.com//<phone-number-id>/messages` because Docker Compose supplies an
+unset `WHATSAPP_API_VERSION` as an empty string, while the provider only defaulted when it was
+`undefined`. The provider now treats blank/whitespace values as unset and uses `v23.0`. A
+read-only check against Meta using the production token and configured sender ID still returned
+OAuth error 200 (`API access blocked`) for both the sender lookup and token-permissions endpoint.
+The app now routes this reminder through MSG91 like welcome and ad-posted notifications. Meta
+template approval does not automatically provide an MSG91 template namespace; the MSG91 dashboard
+template configuration is still required before this route can send.
