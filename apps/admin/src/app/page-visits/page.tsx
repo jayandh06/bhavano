@@ -341,6 +341,7 @@ export default async function PageVisitsPage({ searchParams }: { searchParams: P
                   <th style={filterThStyle} />
                   <th style={filterThStyle} />
                   <th style={filterThStyle} />
+                  <th style={filterThStyle} />
                   <th style={filterThStyle}>
                     <input name="landingPath" defaultValue={landingPath} placeholder="/bengaluru/…" style={headerInputStyle} />
                   </th>
