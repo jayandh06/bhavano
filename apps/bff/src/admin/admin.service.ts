@@ -1184,6 +1184,47 @@ export class AdminService {
     );
   }
 
+  /** Listing-scoped notification history for the moderation detail page. */
+  async getListingNotificationHistory(
+    listingId: string,
+  ): Promise<NotificationLogEntryDto[]> {
+    const rows = await this.prisma.listingNotificationLog.findMany({
+      where: { listingId },
+      orderBy: { sentAt: 'desc' },
+      include: {
+        listing: {
+          select: {
+            id: true,
+            title: true,
+            owner: {
+              select: { id: true, name: true, phone: true, email: true },
+            },
+          },
+        },
+        user: { select: { id: true, name: true, phone: true, email: true } },
+      },
+    });
+
+    return rows.map((row) => {
+      const recipient =
+        row.user ??
+        (row.kind === 'saved_search_match' ? null : row.listing.owner);
+      return {
+        kind: row.kind,
+        channel: row.channel,
+        sentAt: row.sentAt.toISOString(),
+        userId: recipient?.id ?? null,
+        userName: recipient?.name ?? null,
+        userPhone: recipient?.phone ?? null,
+        userEmail: recipient?.email ?? null,
+        listingId: row.listing.id,
+        listingTitle: row.listing.title,
+        deliveryStatus: row.deliveryStatus,
+        deliveryStatusAt: row.deliveryStatusAt?.toISOString() ?? null,
+      };
+    });
+  }
+
   /** Every distinct `kind` value ever logged across both notification tables, for the Kind filter
    * dropdown on the notification-log page — there's no central enum of these (each call site logs
    * its own literal), so the valid set has to come from the data itself rather than being

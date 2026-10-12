@@ -925,6 +925,97 @@ describe('AdminService.getPostFunnel', () => {
   });
 });
 
+describe('AdminService.getListingNotificationHistory', () => {
+  it('returns the listing notification rows with their actual recipient and delivery status', async () => {
+    const deliveryStatusAt = new Date('2026-10-11T06:30:00Z');
+    const { service, prisma } = makeService({
+      listingNotificationLog: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            kind: 'pending_checkout_reminder',
+            channel: 'whatsapp',
+            sentAt: new Date('2026-10-11T06:00:00Z'),
+            deliveryStatus: 'delivered',
+            deliveryStatusAt,
+            listing: {
+              id: 'listing1',
+              title: 'Nice flat',
+              owner: {
+                id: 'owner1',
+                name: 'Ravi',
+                phone: '+919876543210',
+                email: 'ravi@example.com',
+              },
+            },
+            user: null,
+          },
+          {
+            kind: 'saved_search_match',
+            channel: 'email',
+            sentAt: new Date('2026-10-11T05:00:00Z'),
+            deliveryStatus: null,
+            deliveryStatusAt: null,
+            listing: {
+              id: 'listing1',
+              title: 'Nice flat',
+              owner: {
+                id: 'owner1',
+                name: 'Ravi',
+                phone: '+919876543210',
+                email: 'ravi@example.com',
+              },
+            },
+            user: {
+              id: 'seeker1',
+              name: 'Seeker',
+              phone: null,
+              email: 'seeker@example.com',
+            },
+          },
+        ]),
+      },
+    });
+
+    const result = await service.getListingNotificationHistory('listing1');
+
+    expect(result).toEqual([
+      {
+        kind: 'pending_checkout_reminder',
+        channel: 'whatsapp',
+        sentAt: new Date('2026-10-11T06:00:00Z').toISOString(),
+        userId: 'owner1',
+        userName: 'Ravi',
+        userPhone: '+919876543210',
+        userEmail: 'ravi@example.com',
+        listingId: 'listing1',
+        listingTitle: 'Nice flat',
+        deliveryStatus: 'delivered',
+        deliveryStatusAt: deliveryStatusAt.toISOString(),
+      },
+      {
+        kind: 'saved_search_match',
+        channel: 'email',
+        sentAt: new Date('2026-10-11T05:00:00Z').toISOString(),
+        userId: 'seeker1',
+        userName: 'Seeker',
+        userPhone: null,
+        userEmail: 'seeker@example.com',
+        listingId: 'listing1',
+        listingTitle: 'Nice flat',
+        deliveryStatus: null,
+        deliveryStatusAt: null,
+      },
+    ]);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(prisma.listingNotificationLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { listingId: 'listing1' },
+        orderBy: { sentAt: 'desc' },
+      }),
+    );
+  });
+});
+
 describe('AdminService.getNotificationDailySummary', () => {
   it('buckets ListingNotificationLog and UserNotificationLog rows by IST calendar day and channel', async () => {
     const { service } = makeService({

@@ -4,7 +4,9 @@
 > email-else-WhatsApp (never both, no SMS) and returns which channel actually delivered; every
 > call site logs that result to `ListingNotificationLog` or `UserNotificationLog`. See commits
 > `f381826`, `3b35806`, `60e83da`. The correction below (originally about `ListingNotificationLog`
-> being unused) is left in place as a record of the mistake, not as still-open work.
+> being unused) is left in place as a record of the mistake, not as still-open work. The admin
+> listing detail page also exposes the listing's notification history, including pending-checkout
+> reminders and provider delivery status where available.
 
 ## Direct answer to "do we track this today"
 

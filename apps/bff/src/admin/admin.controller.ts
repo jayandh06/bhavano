@@ -287,6 +287,13 @@ export class AdminController {
     return this.adminService.getListingOwner(id);
   }
 
+  @Get('listings/:id/notifications')
+  getListingNotificationHistory(
+    @Param('id') id: string,
+  ): Promise<NotificationLogEntryDto[]> {
+    return this.adminService.getListingNotificationHistory(id);
+  }
+
   @Get('listings/:id/engagement')
   getListingEngagement(
     @Param('id') id: string,

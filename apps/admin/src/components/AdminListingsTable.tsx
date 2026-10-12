@@ -156,6 +156,14 @@ export function AdminListingsTable({
 
   const columns: ListingColumn[] = [
     {
+      key: "created",
+      label: "Created",
+      sortField: "createdAt",
+      render: (item) => formatDateTime(item.createdAt),
+      defaultVisible: true,
+      nowrap: true,
+    },
+    {
       key: "title",
       label: "Title",
       sortField: "title",
@@ -362,14 +370,6 @@ export function AdminListingsTable({
       label: "Price",
       sortField: "price",
       render: (item) => `${listingPriceText(item, "full")}${item.priceQualifier ? ` ${item.priceQualifier}` : ""}`,
-      defaultVisible: true,
-      nowrap: true,
-    },
-    {
-      key: "created",
-      label: "Created",
-      sortField: "createdAt",
-      render: (item) => formatDateTime(item.createdAt),
       defaultVisible: true,
       nowrap: true,
     },

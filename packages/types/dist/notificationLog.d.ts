@@ -10,10 +10,10 @@ export interface NotificationDaySummaryDto {
     whatsapp: number;
     push: number;
 }
-/** One actual notification send, for a specific day's lazy-loaded drill-down — see
- * AdminService.getNotificationDayDetail. `listingId`/`listingTitle` are present only for
- * `ListingNotificationLog`-backed kinds (most of them); `UserNotificationLog`-backed kinds
- * (welcome, the daily activity digest) have neither.
+/** One recorded notification send, for the notification-log drill-down or a listing's history —
+ * see AdminService.getNotificationDayDetail and getListingNotificationHistory.
+ * `listingId`/`listingTitle` are present only for `ListingNotificationLog`-backed kinds (most of
+ * them); `UserNotificationLog`-backed kinds (welcome, the daily activity digest) have neither.
  *
  * `userId`/`userName`/`userPhone`/`userEmail` are all null only for a `saved_search_match` row
  * logged before `ListingNotificationLog.userId` existed — that kind notifies the seeker whose
@@ -30,4 +30,7 @@ export interface NotificationLogEntryDto {
     userEmail: string | null;
     listingId?: string;
     listingTitle?: string;
+    /** Provider callback status when available (currently WhatsApp); not all channels report it. */
+    deliveryStatus?: string | null;
+    deliveryStatusAt?: string | null;
 }

@@ -8,6 +8,7 @@ import {
   fetchListingConversations,
   fetchListingEditHistory,
   fetchListingEngagement,
+  fetchListingNotificationHistory,
   fetchListingOwner,
   fetchMessages,
   fetchThread,
@@ -147,7 +148,7 @@ export default async function ListingModerationPage({
   const historyPage = parsePage(str(sp.historyPage));
   const historyLimit = parsePageSize(str(sp.historyLimit));
 
-  const [thread, owner, engagement, conversations, history] = await Promise.all([
+  const [thread, owner, engagement, conversations, history, notificationHistory] = await Promise.all([
     fetchThread(accessToken, id),
     fetchListingOwner(accessToken, id),
     fetchListingEngagement(accessToken, id, {
@@ -162,6 +163,7 @@ export default async function ListingModerationPage({
       offset: (historyPage - 1) * historyLimit,
       limit: historyLimit,
     }),
+    fetchListingNotificationHistory(accessToken, id),
   ]);
   const messages = await fetchMessages(accessToken, thread.id);
   const likedTotalPages = Math.max(1, Math.ceil(engagement.total / likedLimit));
@@ -312,6 +314,69 @@ export default async function ListingModerationPage({
           currentUserId={userId}
           ownerId={owner?.id}
         />
+
+        <section style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 16, marginTop: 20, background: "var(--surface)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
+            Notification history ({notificationHistory.length})
+          </div>
+          {listing.publishState === "pending_checkout" && (
+            <div
+              style={{
+                padding: "10px 12px",
+                marginBottom: 12,
+                borderRadius: 8,
+                background: "var(--surface-alt)",
+                fontSize: 12.5,
+              }}
+            >
+              <strong>Pending-checkout reminder: </strong>
+              {notificationHistory.some((entry) => entry.kind === "pending_checkout_reminder")
+                ? `recorded on ${[
+                    ...new Set(
+                      notificationHistory
+                        .filter((entry) => entry.kind === "pending_checkout_reminder")
+                        .map((entry) => entry.channel),
+                    ),
+                  ].join(", ")}.`
+                : "no send recorded yet. Reminders become eligible after 3 hours pending and are checked hourly."}
+            </div>
+          )}
+          {notificationHistory.length === 0 ? (
+            <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>No listing notifications are recorded.</p>
+          ) : (
+            <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 8 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+                <thead>
+                  <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
+                    {["When", "Notification", "Channel", "Recipient", "Delivery status"].map((heading) => (
+                      <th key={heading} style={engagementThStyle}>{heading}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {notificationHistory.map((entry, index) => (
+                    <tr key={`${entry.kind}-${entry.channel}-${entry.sentAt}-${index}`} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ ...engagementTdStyle, whiteSpace: "nowrap" }}>{formatDateTime(entry.sentAt)}</td>
+                      <td style={engagementTdStyle}>{entry.kind.replace(/_/g, " ")}</td>
+                      <td style={engagementTdStyle}>{entry.channel}</td>
+                      <td style={engagementTdStyle}>
+                        {entry.userName ?? entry.userPhone ?? entry.userEmail ?? (entry.userId ? "User" : "Unknown")}
+                      </td>
+                      <td style={engagementTdStyle}>
+                        {entry.deliveryStatus
+                          ? `${entry.deliveryStatus}${entry.deliveryStatusAt ? ` · ${formatDateTime(entry.deliveryStatusAt)}` : ""}`
+                          : "No delivery receipt"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p style={{ color: "var(--muted)", fontSize: 11.5, margin: "10px 0 0" }}>
+            Entries show notifications recorded by the system; delivery/read receipts are shown only when the provider reports them.
+          </p>
+        </section>
 
         <div style={{ marginTop: 16 }}>
           <Link href={`/listings/${listing.id}/edit`} style={outlineButtonStyle}>

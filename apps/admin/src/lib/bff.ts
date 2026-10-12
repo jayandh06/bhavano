@@ -448,6 +448,15 @@ export function fetchListingEditHistory(
   });
 }
 
+export function fetchListingNotificationHistory(
+  accessToken: string,
+  listingId: string,
+): Promise<NotificationLogEntryDto[]> {
+  return authedBffFetch(accessToken, `/admin/listings/${listingId}/notifications`, {
+    cache: "no-store",
+  });
+}
+
 export function fetchListingConversations(
   accessToken: string,
   listingId: string,
