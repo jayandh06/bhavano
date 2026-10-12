@@ -1790,7 +1790,7 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { city: true } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-    const [logins, listings, listingEdits, messages, favourites, views, visits] =
+    const [logins, listings, ownedListings, listingEdits, messages, favourites, views, visits] =
       await Promise.all([
         this.prisma.loginEvent.findMany({
           where: { userId },
@@ -1802,6 +1802,26 @@ export class AdminService {
           orderBy: { createdAt: 'desc' },
           take: ACTIVITY_LIMIT_PER_SOURCE,
           select: { id: true, title: true, createdAt: true },
+        }),
+        // This is a full inventory for the admin table, separate from the capped activity timeline.
+        this.prisma.listing.findMany({
+          where: { ownerId: userId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            transactionType: true,
+            status: true,
+            publishState: true,
+            moderationState: true,
+            city: { select: { name: true } },
+            area: { select: { name: true } },
+            price: true,
+            createdAt: true,
+            expiresAt: true,
+            viewCount: true,
+          },
         }),
         // A real content edit, not "the row got touched" — view/like counters and boost
         // rotation all call prisma.listing.update() too, which bumps updatedAt via Prisma's own
@@ -1908,6 +1928,21 @@ export class AdminService {
         acquisitionMedium: user.acquisitionMedium,
         acquisitionCampaign: user.acquisitionCampaign,
       },
+      ownedListings: ownedListings.map((listing) => ({
+        id: listing.id,
+        title: listing.title,
+        category: listing.category,
+        transactionType: listing.transactionType,
+        status: listing.status,
+        publishState: listing.publishState,
+        moderationState: listing.moderationState,
+        cityName: listing.city.name,
+        area: listing.area.name,
+        price: listing.price,
+        createdAt: listing.createdAt.toISOString(),
+        expiresAt: listing.expiresAt.toISOString(),
+        viewCount: listing.viewCount,
+      })),
       events,
       visits: visits.map((v) => ({
         id: v.id,

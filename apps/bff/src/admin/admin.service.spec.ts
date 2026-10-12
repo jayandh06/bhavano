@@ -128,7 +128,51 @@ function listingRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("AdminService.getUserActivity — 'Updated listing' reflects a real edit", () => {
+describe('AdminService.getUserActivity', () => {
+  it('returns every owned listing with moderation details for the admin user page', async () => {
+    const createdAt = new Date('2026-09-12T12:02:00Z');
+    const expiresAt = new Date('2026-10-12T12:02:00Z');
+    const ownedListing = {
+      id: 'listing1',
+      title: 'A listing',
+      category: 'apartment',
+      transactionType: 'rent',
+      status: 'active',
+      publishState: 'pending_checkout',
+      moderationState: 'approved',
+      city: { name: 'Bengaluru' },
+      area: { name: 'Koramangala' },
+      price: 25000,
+      createdAt,
+      expiresAt,
+      viewCount: 15,
+    };
+    const listingFindMany = jest.fn().mockResolvedValue([ownedListing]);
+    const { service } = makeService({ listing: { findMany: listingFindMany } });
+
+    const result = await service.getUserActivity('u1');
+
+    expect(result.ownedListings).toEqual([
+      {
+        id: 'listing1',
+        title: 'A listing',
+        category: 'apartment',
+        transactionType: 'rent',
+        status: 'active',
+        publishState: 'pending_checkout',
+        moderationState: 'approved',
+        cityName: 'Bengaluru',
+        area: 'Koramangala',
+        price: 25000,
+        createdAt: createdAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        viewCount: 15,
+      },
+    ]);
+    expect(listingFindMany).toHaveBeenCalledTimes(2);
+    expect(listingFindMany.mock.calls[1][0]).not.toHaveProperty('take');
+  });
+
   it('shows an Updated listing event only for a real ListingEditLog "updated" row', async () => {
     const { service, prisma } = makeService({
       listingEditLog: {
@@ -165,7 +209,21 @@ describe("AdminService.getUserActivity — 'Updated listing' reflects a real edi
     const { service } = makeService({
       listing: {
         findMany: jest.fn().mockResolvedValue([
-          { id: 'listing1', title: 'Never edited', createdAt: new Date('2026-09-12T06:26:18Z') },
+          {
+            id: 'listing1',
+            title: 'Never edited',
+            category: 'apartment',
+            transactionType: 'rent',
+            status: 'active',
+            publishState: 'live',
+            moderationState: 'approved',
+            city: { name: 'Bengaluru' },
+            area: { name: 'Koramangala' },
+            price: 25000,
+            createdAt: new Date('2026-09-12T06:26:18Z'),
+            expiresAt: new Date('2026-10-12T06:26:18Z'),
+            viewCount: 0,
+          },
         ]),
       },
       listingEditLog: { findMany: jest.fn().mockResolvedValue([]) },

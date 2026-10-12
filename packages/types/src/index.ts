@@ -1139,6 +1139,23 @@ export interface VisitDto {
   pageViewCount: number;
 }
 
+/** A listing owned by a user, shown on the admin user-activity page. */
+export interface AdminUserListingDto {
+  id: string;
+  title: string;
+  category: ListingCategory;
+  transactionType: TransactionType;
+  status: ListingStatus;
+  publishState: ListingPublishState;
+  moderationState: ModerationState;
+  cityName: string;
+  area: string;
+  price: number;
+  createdAt: string;
+  expiresAt: string;
+  viewCount: number;
+}
+
 export interface UserActivityDto {
   user: {
     id: string;
@@ -1159,6 +1176,8 @@ export interface UserActivityDto {
     acquisitionMedium: string | null;
     acquisitionCampaign: string | null;
   };
+  /** All listings currently associated with this owner, newest first. */
+  ownedListings: AdminUserListingDto[];
   events: ActivityEventDto[];
   /** Recent browsing sessions (not page loads) for this user, newest first — includes sessions
    * from before they ever signed up/logged in, once linked. */

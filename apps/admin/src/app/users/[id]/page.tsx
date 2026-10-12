@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ActivityEventDto, DeviceType, VisitDto } from "@bhavano/types";
+import type { ActivityEventDto, AdminUserListingDto, DeviceType, VisitDto } from "@bhavano/types";
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchUserActivity } from "@/lib/bff";
@@ -44,7 +44,7 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
   const activity = await fetchUserActivity(accessToken, id).catch(() => null);
   if (!activity) notFound();
 
-  const { user, events, visits } = activity;
+  const { user, ownedListings, events, visits } = activity;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
@@ -84,6 +84,53 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
         />
 
         <DeleteUserPanel userId={id} canDelete={user.role !== "admin"} />
+
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: "24px 0 12px" }}>
+          Listings ({ownedListings.length})
+        </h2>
+        {ownedListings.length === 0 ? (
+          <p style={{ color: "var(--muted)", fontSize: 14 }}>This user has not added any listings.</p>
+        ) : (
+          <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10, marginBottom: 24 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ background: "var(--surface-alt)", textAlign: "left" }}>
+                  {["Listing", "Category", "Type", "Location", "Price", "Listing status", "Publish state", "Moderation", "Views", "Created", "Expires"].map((label) => (
+                    <th key={label} style={thStyle}>{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ownedListings.map((listing: AdminUserListingDto) => (
+                  <tr key={listing.id} style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
+                    <td style={{ ...tdStyle, minWidth: 220 }}>
+                      <a
+                        href={`/listings/${encodeURIComponent(listing.id)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "var(--green)", fontWeight: 700 }}
+                      >
+                        {listing.title}
+                      </a>
+                    </td>
+                    <td style={tdStyle}>{listing.category}</td>
+                    <td style={tdStyle}>{listing.transactionType}</td>
+                    <td style={tdStyle}>{listing.area}, {listing.cityName}</td>
+                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>
+                      {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(listing.price)}
+                    </td>
+                    <td style={tdStyle}>{listing.status}</td>
+                    <td style={tdStyle}>{listing.publishState}</td>
+                    <td style={tdStyle}>{listing.moderationState}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>{listing.viewCount.toLocaleString()}</td>
+                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDateTime(listing.createdAt)}</td>
+                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatDate(listing.expiresAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 12px" }}>Recent activity</h2>
         {events.length === 0 ? (
@@ -170,3 +217,16 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
     </div>
   );
 }
+
+const thStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  fontSize: 11.5,
+  fontWeight: 700,
+  color: "var(--muted)",
+  whiteSpace: "nowrap",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "9px 12px",
+  verticalAlign: "top",
+};
