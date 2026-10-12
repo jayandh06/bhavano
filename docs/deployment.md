@@ -286,9 +286,13 @@ $env:BHAVANO_EC2_SSH_KEY = "$env:USERPROFILE\.ssh\bhavano-app.pem"
 .\scripts\deploy-local-to-ec2.ps1                  # web + bff + admin
 .\scripts\deploy-local-to-ec2.ps1 -Services bff    # one service
 .\scripts\deploy-local-to-ec2.ps1 -BuildOnly       # build/verify arch only
+.\scripts\deploy-local-to-ec2.ps1 -ReuseImages     # skip build/pull; package existing :latest images
 .\scripts\deploy-local-to-ec2.ps1 -SkipPull        # use current checkout
 .\scripts\deploy-local-to-ec2.ps1 -SkipMigrate
 ```
+
+If a build succeeded but packaging or transfer failed, use `-ReuseImages` to continue without
+rebuilding. It packages the existing local `:latest` images and still verifies their architecture.
 
 **macOS / Linux / WSL:**
 
@@ -302,9 +306,9 @@ export BHAVANO_EC2_SSH_KEY=~/.ssh/bhavano-app.pem
 ./scripts/deploy-local-to-ec2.sh --build-only
 ```
 
-The script: `git pull` → Buildx `linux/arm64` compose build → verify architecture →
-`docker save` → `scp` → on EC2 `git pull` + `docker load` + `compose up -d --no-build` →
-`prisma migrate deploy` (when `bff` is included).
+The script: `git pull` → Buildx `linux/arm64` Compose builds one service at a time → verify
+architecture → `docker save` → `scp` → on EC2 `git pull` + `docker load` +
+`compose up -d --no-build` → `prisma migrate deploy` (when `bff` is included).
 
 Manual steps below remain if you prefer to run each command yourself.
 
@@ -354,7 +358,7 @@ $TAG = Get-Date -Format "yyyyMMddHHmmss"
 $env:DOCKER_DEFAULT_PLATFORM = "linux/arm64"
 docker buildx use armbuilder
 
-docker compose -f docker-compose.prod.yml --env-file .env.prod.build build web bff admin
+docker compose -f docker-compose.prod.yml --env-file .env.prod.build --parallel 1 build web bff admin
 
 Remove-Item Env:DOCKER_DEFAULT_PLATFORM
 ```
@@ -424,13 +428,16 @@ Then continue from **§3 On the app EC2: load before cutting over** below (same 
 
 #### Windows gotchas
 
-- **Emulation is slow** — first full `web`+`admin` arm64 build can take a long time. Prefer
-  building on the app EC2 or an arm64 machine if this becomes painful.
+- **Emulation is slow** — first full `web`+`admin` arm64 build can take a long time. The deploy
+  scripts build one service at a time to limit Docker Desktop memory pressure. Prefer building on
+  the app EC2 or an arm64 machine if this becomes painful.
 - **`--load` only supports one platform** — never omit `--platform linux/arm64` when using
   `buildx build --load`.
 - **WSL path vs `D:\Repo`** — if builds fail oddly under Desktop, run the same commands inside
   **WSL2 Ubuntu** from `/mnt/d/Repo/bhavano` (often more reliable for Buildx).
 - **Do not use Hyper-V-only / old Desktop without WSL2** for this — stick to WSL2 backend.
+- The PowerShell deploy script compresses the saved image archive with .NET using Windows paths;
+  it does not depend on WSL's `gzip` or path translation.
 - **`exec /bin/sh: exec format error`** in the first `RUN` step means arm64 emulation isn't
   registered (e.g. right after Docker Desktop starts). Fix with the *amd64* installer image — if
   `DOCKER_DEFAULT_PLATFORM=linux/arm64` is still set in your shell, clear it first or the installer
@@ -472,11 +479,11 @@ TAG=$(date -u +%Y%m%d%H%M%S)   # or: TAG=$(git rev-parse --short HEAD)
 export COMPOSE_DOCKER_CLI_BUILD=1
 
 # Apple Silicon Mac (native arm64) — matches t4g:
-docker compose -f docker-compose.prod.yml --env-file .env.prod.build build web bff admin
+docker compose -f docker-compose.prod.yml --env-file .env.prod.build --parallel 1 build web bff admin
 
 # Windows / Intel Mac — force arm64 so the image runs on t4g (see Windows section above for PowerShell):
 export DOCKER_DEFAULT_PLATFORM=linux/arm64
-docker compose -f docker-compose.prod.yml --env-file .env.prod.build build web bff admin
+docker compose -f docker-compose.prod.yml --env-file .env.prod.build --parallel 1 build web bff admin
 unset DOCKER_DEFAULT_PLATFORM
 ```
 

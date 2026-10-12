@@ -38,6 +38,8 @@ param(
   [switch] $SkipPull,
   [switch] $SkipMigrate,
   [switch] $BuildOnly,
+  # Skip buildx/Compose and package the already-built :latest images instead.
+  [switch] $ReuseImages,
   [string] $Platform = "linux/arm64",
   [string] $ProjectName = "bhavano",
   # Releases of each image left on the server after a deploy: the live one plus a rollback.
@@ -83,7 +85,7 @@ Require-Command ssh
 if (-not $BuildOnly -and [string]::IsNullOrWhiteSpace($Ec2Host)) {
   throw "Set BHAVANO_EC2_HOST or pass -Ec2Host"
 }
-if (-not (Test-Path $EnvFile)) {
+if (-not $ReuseImages -and -not (Test-Path $EnvFile)) {
   throw "Env file '$EnvFile' not found. Copy .env.production.example -> .env.prod.build and fill NEXT_PUBLIC_* (and other build args)."
 }
 
@@ -102,38 +104,45 @@ Write-Host "==> Services: $($Services -join ', ')"
 Write-Host "==> Tag: $TAG"
 Write-Host "==> Platform: $Platform"
 
-if (-not $SkipPull) {
+if (-not $SkipPull -and -not $ReuseImages) {
   Write-Host "==> git pull --ff-only"
   git pull --ff-only
   if ($LASTEXITCODE -ne 0) { throw "git pull failed" }
   $shortSha = (git rev-parse --short HEAD).Trim()
   $TAG = "{0}_{1}" -f (Get-Date).ToUniversalTime().ToString("yyyyMMddHHmmss"), $shortSha
   Write-Host "==> Tag after pull: $TAG"
+} elseif ($ReuseImages) {
+  Write-Host "==> Reusing images from the current checkout; skipping git pull"
 }
 
 # Stable compose project name so local image names match what the EC2 checkout expects.
 $env:COMPOSE_PROJECT_NAME = $ProjectName
-$env:DOCKER_DEFAULT_PLATFORM = $Platform
+if (-not $ReuseImages) {
+  $env:DOCKER_DEFAULT_PLATFORM = $Platform
 
-Write-Host "==> Ensuring buildx builder (armbuilder)"
-# `buildx use` against the name directly, not a `buildx ls` text match: `ls`'s text output was
-# observed flaky under load on the .sh sibling script (2026-10-06 — the identical check against
-# identical builder state alternated found/not-found across back-to-back runs), which
-# intermittently tried to re-create a builder that already existed and aborted on Docker's own
-# "existing instance" error. No `2>&1` on this call either, same reason as before: under
-# $ErrorActionPreference = "Stop", redirecting a native command's stderr into the success stream
-# wraps each stderr line in a NativeCommandError and throws — checking $LASTEXITCODE instead
-# avoids that regardless of which branch runs. See docs/deployment.md's own Windows gotchas for
-# the same issue at the outer invocation.
-docker buildx use armbuilder | Out-Null
-if ($LASTEXITCODE -ne 0) {
-  docker buildx create --name armbuilder --driver docker-container --use | Out-Null
-  docker buildx inspect --bootstrap | Out-Null
+  Write-Host "==> Ensuring buildx builder (armbuilder)"
+  # `buildx use` against the name directly, not a `buildx ls` text match: `ls`'s text output was
+  # observed flaky under load on the .sh sibling script (2026-10-06 — the identical check against
+  # identical builder state alternated found/not-found across back-to-back runs), which
+  # intermittently tried to re-create a builder that already existed and aborted on Docker's own
+  # "existing instance" error. No `2>&1` on this call either, same reason as before: under
+  # $ErrorActionPreference = "Stop", redirecting native command's stderr into the success stream
+  # wraps each stderr line in a NativeCommandError and throws — checking $LASTEXITCODE instead
+  # avoids that regardless of which branch runs. See docs/deployment.md's own Windows gotchas for
+  # the same issue at the outer invocation.
+  docker buildx use armbuilder | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    docker buildx create --name armbuilder --driver docker-container --use | Out-Null
+    docker buildx inspect --bootstrap | Out-Null
+  }
+
+  Write-Host "==> Building: $($Services -join ' ')"
+  # Serial builds keep concurrent BuildKit/QEMU workers from exhausting Docker Desktop resources.
+  docker compose -f docker-compose.prod.yml --env-file $EnvFile --parallel 1 build @Services
+  if ($LASTEXITCODE -ne 0) { throw "docker compose build failed" }
+} else {
+  Write-Host "==> Reusing existing local images; skipping build"
 }
-
-Write-Host "==> Building: $($Services -join ' ')"
-docker compose -f docker-compose.prod.yml --env-file $EnvFile build @Services
-if ($LASTEXITCODE -ne 0) { throw "docker compose build failed" }
 
 $imageRefs = @()
 foreach ($svc in $Services) {
@@ -170,28 +179,36 @@ if ($BuildOnly) {
 $tarName = "bhavano-images-$TAG.tar.gz"
 $tarPath = Join-Path $RepoRoot $tarName
 Write-Host "==> docker save -> $tarName"
-# docker save to stdout + gzip via .NET / tar if gzip missing: write .tar then compress if possible
 $tarPlain = Join-Path $RepoRoot "bhavano-images-$TAG.tar"
 docker save -o $tarPlain @imageRefs
 if ($LASTEXITCODE -ne 0) { throw "docker save failed" }
-
-if (Get-Command gzip -ErrorAction SilentlyContinue) {
-  gzip -f $tarPlain
-  # gzip renames to .tar.gz
-} elseif (Get-Command wsl -ErrorAction SilentlyContinue) {
-  # wslpath gets its argument through a shell, which strips backslashes - pass D:/... instead.
-  wsl gzip -f (wsl wslpath -a ($tarPlain -replace '\\', '/'))
-} else {
-  # Fallback: scp uncompressed .tar
-  $tarName = "bhavano-images-$TAG.tar"
-  $tarPath = $tarPlain
-  Write-Host "    (gzip not found - uploading uncompressed .tar)"
+if (-not (Test-Path -LiteralPath $tarPlain -PathType Leaf)) {
+  throw "docker save reported success but did not create the archive: $tarPlain"
 }
 
-if (-not (Test-Path $tarPath) -and (Test-Path "$tarPlain.gz")) {
-  $tarPath = "$tarPlain.gz"
-  $tarName = Split-Path $tarPath -Leaf
+$inputStream = [System.IO.File]::OpenRead($tarPlain)
+try {
+  $outputStream = [System.IO.File]::Create($tarPath)
+  try {
+    $gzipStream = New-Object System.IO.Compression.GZipStream(
+      $outputStream,
+      [System.IO.Compression.CompressionMode]::Compress
+    )
+    try {
+      $inputStream.CopyTo($gzipStream)
+    } finally {
+      $gzipStream.Dispose()
+    }
+  } finally {
+    $outputStream.Dispose()
+  }
+} finally {
+  $inputStream.Dispose()
 }
+if (-not (Test-Path -LiteralPath $tarPath -PathType Leaf)) {
+  throw "Failed to create compressed archive: $tarPath"
+}
+Remove-Item -LiteralPath $tarPlain
 
 $remote = "${Ec2User}@${Ec2Host}"
 Write-Host "==> scp $tarName -> ${remote}:~/"

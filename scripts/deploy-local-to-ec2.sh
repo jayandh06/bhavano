@@ -103,7 +103,8 @@ if ! docker buildx use armbuilder 2>/dev/null; then
 fi
 
 echo "==> Building"
-docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" build "${SERVICES[@]}"
+# Serial builds keep concurrent BuildKit/QEMU workers from exhausting Docker Desktop resources.
+docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" --parallel 1 build "${SERVICES[@]}"
 
 IMAGE_REFS=()
 for svc in "${SERVICES[@]}"; do
