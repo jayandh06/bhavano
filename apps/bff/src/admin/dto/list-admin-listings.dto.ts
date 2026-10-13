@@ -59,6 +59,8 @@ const ADMIN_LISTING_SORT_VALUES = [
   'expiresAt_desc',
   'organicViewCount_asc',
   'organicViewCount_desc',
+  'anonymousViewCount_asc',
+  'anonymousViewCount_desc',
   'owner_asc',
   'owner_desc',
   'boosted_asc',

@@ -613,15 +613,12 @@ model Listing {
   updatedAt            DateTime                 @updatedAt
   expiresAt            DateTime
   viewCount            Int                      @default(0)
-  /// Denormalized distinct-viewerKey count — "organic" in the admin sense, since recordView is
-  /// never called for an admin viewer (see ListingsController.recordView), so no ListingView row
-  /// for this listing was ever written by staff browsing it. Incremented in recordView only the
-  /// first time a given viewerKey is seen for this listing, same denormalize-for-the-hot-path
-  /// reasoning as boostedUntil below. Re-keying an anonymous viewer onto their account at signup
-  /// (linkListingViewsToUser) does not recount: a person who browsed anonymously under two
-  /// different anon keys before ever logging in is still counted twice, the same known tradeoff
-  /// viewCount itself already accepts by not deduping at write time.
-  uniqueViewerCount    Int                      @default(0)
+  /// Denormalized count of distinct authenticated non-owner viewers. Admin and owner views do not
+  /// count. Re-keying anonymous views onto an account moves the key between unique-view counters.
+  organicViewCount     Int                      @default(0)
+  /// Denormalized count of distinct anonymous viewer keys, excluding anonymous views later linked
+  /// to the listing owner or an admin.
+  anonymousViewCount   Int                      @default(0)
   likeCount            Int                      @default(0)
   // Denormalized from ListingBoost (the audit trail) so the hot-path browse query never needs
   // a join just to check boost status — null means not currently boosted. boostRank is bumped
@@ -668,10 +665,11 @@ model Listing {
 /**
  * One row per view — logged-in user id or anonymous device key, plus when. No longer deduped
  * per (listingId, viewerKey): Listing.viewCount now counts every visit, not unique viewers, so
- * every recordView call writes a new row here rather than being a no-op on a repeat visit. This
- * is deliberately the more information-preserving shape — a future move back to a unique-viewer
- * count is just `count(distinct viewerKey)` over these same rows; deduping at write time (the old
- * shape) can never be undone to recover raw visit counts later.
+ * every eligible recordView call writes a new row here rather than being a no-op on a repeat visit.
+ * Admin and authenticated listing-owner views are excluded. This is deliberately the more
+ * information-preserving shape — a future move back to a unique-viewer count is just
+ * `count(distinct viewerKey)` over these same rows; deduping at write time (the old shape) can never
+ * be undone to recover raw visit counts later.
  */
 model ListingView {
   id        String   @id @default(cuid())

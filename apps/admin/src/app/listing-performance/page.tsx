@@ -155,16 +155,14 @@ export default async function ListingPerformancePage({ searchParams }: { searchP
                     <SortableHeader label="Type" href={sortHref("transactionType")} direction={sortDir("transactionType")} />
                   </th>
                   <th style={thStyle}>
-                    <SortableHeader label="Views" href={sortHref("viewCount")} direction={sortDir("viewCount")} />
+                    <SortableHeader label="Total views" href={sortHref("viewCount")} direction={sortDir("viewCount")} />
                   </th>
                   <th style={thStyle}>
                     <SortableHeader label="Organic views" href={sortHref("organicViewCount")} direction={sortDir("organicViewCount")} />
                   </th>
-                  {/* Split from a groupBy over ListingView, not a column on Listing — can't be
-                      ordered on, same accepted limitation AdminPageVisitSortField documents for
-                      pageViewCount. */}
-                  <th style={thStyle}>Logged-in views</th>
-                  <th style={thStyle}>Anonymous views</th>
+                  <th style={thStyle}>
+                    <SortableHeader label="Anonymous views" href={sortHref("anonymousViewCount")} direction={sortDir("anonymousViewCount")} />
+                  </th>
                   <th style={thStyle}>
                     <SortableHeader label="Enquiries" href={sortHref("enquiryCount")} direction={sortDir("enquiryCount")} />
                   </th>

@@ -72,8 +72,7 @@ export function ListingPerformanceTable({ items }: { items: ListingPerformanceRo
             <td style={tdStyle}>{TRANSACTION_TYPE_LABELS[item.transactionType] ?? item.transactionType}</td>
             <td style={tdStyle}>{item.viewCount.toLocaleString()}</td>
             <td style={tdStyle}>{item.organicViewCount.toLocaleString()}</td>
-            <td style={tdStyle}>{item.loggedInViews.toLocaleString()}</td>
-            <td style={tdStyle}>{item.anonymousViews.toLocaleString()}</td>
+            <td style={tdStyle}>{item.anonymousViewCount.toLocaleString()}</td>
             <td style={tdStyle}>{item.enquiryCount.toLocaleString()}</td>
             {/* Zero-enquiry rendering per the plan's "Edge cases" section: "0 of 0" reads as
                 "owner never replies," which is wrong when there was nothing to reply to — so a

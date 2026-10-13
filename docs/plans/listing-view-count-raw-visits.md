@@ -32,10 +32,10 @@ the choice stays reversible.
   `updateMany` rename, now that a rename can't collide with an existing row (see
   `docs/plans/link-anonymous-views-to-account-on-signup.md`, updated to match).
 
-## Admin visits are not counted (2026-09-30)
+## Admin and owner visits are not counted
 
 `POST /listings/:id/view` records nothing for a logged-in `role: 'admin'` viewer: no
-`ListingView` row and no `viewCount` increment. It answers with the current count via
+`ListingView` row and no view-count increment. It answers with the current total via
 `ListingsService.getViewCount`. Staff open listings to moderate, fix and message owners, and in
 production that was 348 of 2,540 recorded visits (about 14%, across 189 listings), inflating the
 number owners and buyers see. The role comes from the JWT, the same trust `AdminGuard` uses. An
@@ -45,6 +45,25 @@ Admin visits recorded before this change were removed by migration
 `20260930120000_remove_admin_listing_views`. It subtracts each listing's admin-visit rows from its
 `viewCount`, floored at 0, then deletes those rows. A dry run against production just before the
 deploy touched 189 listings and 348 rows.
+
+A logged-in listing owner opening their own listing is also not counted: the endpoint returns the
+current total without writing a `ListingView` row or incrementing any count. Ownership is
+checked against the listing in `ListingsService.recordView`; the request's user ID comes from the
+validated JWT. An owner browsing logged out is indistinguishable from an anonymous visitor and
+still counts.
+
+Owner visits already recorded are removed by migration
+`20261013120000_exclude_listing_owner_views`: their visit counts are subtracted from `viewCount`,
+then `organicViewCount` and `anonymousViewCount` are backfilled from distinct eligible viewer keys.
+Owner/admin rows are deleted from engagement history. If an owner's or admin's anonymous views are
+linked to their account at signup, those rows are deleted and removed from all applicable counters
+instead of being reclassified as organic. Admin anonymous history is never sent as a retroactive
+listing-interest notification.
+
+The admin surfaces show exactly three view metrics: **Total views** (all eligible visit events),
+**Organic views** (distinct authenticated non-owner users), and **Anonymous views** (distinct
+anonymous viewer keys). A logged-out owner/admin cannot be recognized at request time. Anonymous views on the same device
+are cleaned up if that device's history is later linked to an owner or admin account.
 
 ## Known consequence, not yet addressed
 

@@ -739,10 +739,10 @@ export interface AdminListingRowDto {
         lastSentAt: string | null;
     };
     viewCount: number;
-    /** Distinct-viewerKey count for this listing — see Listing.uniqueViewerCount's own doc comment.
-     * No admin rows ever reach it (admin visits never call recordView), so this is already the
-     * "organic, unique" count the admin queue wants without a separate admin-exclusion filter. */
+    /** Distinct authenticated non-owner viewers. Admin and owner visits are excluded. */
     organicViewCount: number;
+    /** Distinct anonymous viewer keys. Views later linked to an owner or admin are removed. */
+    anonymousViewCount: number;
     likeCount: number;
     messageCount?: number;
     owner: {
@@ -771,9 +771,9 @@ export interface AdminListingsPage {
 /** Admin "Listing performance" screen (docs/plans/admin-listing-performance-screen.md) — one row
  * per listing, filtered by city/area/date-range (the range is Listing.createdAt, i.e. "listings
  * posted in this window", not "activity in this window" — every stat shown is that listing's
- * lifetime total). `loggedInViews`/`anonymousViews` and the message-derived fields are computed
- * in-memory per page (see ListingsService.listPerformanceForAdmin) rather than via a Prisma
- * relation count, which is why they have no matching sort field — see
+ * lifetime total). The three view counters are maintained on Listing, and the message-derived
+ * fields are computed in-memory per page (see ListingsService.listPerformanceForAdmin), which is
+ * why they have no matching sort field — see
  * ListingPerformanceSortField's own comment (apps/admin/src/lib/bff.ts) for the precedent. */
 export interface ListingPerformanceRowDto {
     id: string;
@@ -789,15 +789,10 @@ export interface ListingPerformanceRowDto {
     createdAt: string;
     /** Every visit, not deduped — Listing.viewCount. */
     viewCount: number;
-    /** Distinct-viewerKey count — Listing.uniqueViewerCount, the same "organic" number the main
-     * listings dashboard already exposes under this name. */
+    /** Distinct authenticated non-owner viewers; admin and owner views are excluded. */
     organicViewCount: number;
-    /** viewerKey prefixed "user:" — split from ListingView, scoped to this page's listing ids. */
-    loggedInViews: number;
-    /** viewerKey prefixed "anon:" — same source/scope as loggedInViews. Computed as its own
-     * independent count (not viewCount - loggedInViews), so a drift between the denormalized
-     * viewCount and real ListingView rows can never produce a negative number here. */
-    anonymousViews: number;
+    /** Distinct anonymous viewer keys, not raw events; owner/admin linked history is excluded. */
+    anonymousViewCount: number;
     /** Inquiry-type Conversation count — same concept as AdminListingRowDto.messageCount on the
      * main dashboard, relabeled for this screen. Also the "M" denominator for repliedThreads. */
     enquiryCount: number;

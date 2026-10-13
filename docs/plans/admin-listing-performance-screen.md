@@ -23,9 +23,9 @@ cascading filter, `DateRangeFilter`, sortable columns, pagination) rather than i
 
 | Column | Source | Sortable? |
 |---|---|---|
-| Views (total) | `Listing.viewCount` | Yes |
-| Views — organic/unique | `Listing.uniqueViewerCount` (already called `organicViewCount` elsewhere in admin — same number, same name) | Yes |
-| Views — logged-in / anonymous | `ListingView` split by `viewerKey` prefix (`user:`/`anon:`), per-page `groupBy` | **No** |
+| Total views | `Listing.viewCount` — every details-page visit, excluding authenticated owner/admin visits | Yes |
+| Organic views | `Listing.organicViewCount` — unique authenticated non-owner users | Yes |
+| Anonymous views | `Listing.anonymousViewCount` — unique anonymous viewer keys | Yes |
 | Enquiries | Count of `type:'inquiry'` `Conversation` rows (same concept as the main dashboard's `messageCount`, relabeled) | Yes (relation count) |
 | Total messages | `Message` count across those enquiry threads | **No** |
 | Messages from unique users | Distinct `Message.senderId` across those threads | **No** |
@@ -54,8 +54,7 @@ header, no `SortableHeader`.
    export interface ListingPerformanceRowDto {
      id: string; title: string; cityName: string; area: string;
      category: ListingCategory; transactionType: TransactionType; createdAt: string;
-     viewCount: number; organicViewCount: number;
-     loggedInViews: number; anonymousViews: number;
+     viewCount: number; organicViewCount: number; anonymousViewCount: number;
      enquiryCount: number; totalMessages: number; uniqueMessageSenders: number; repliedThreads: number;
      likeCount: number; contactRevealCount: number;
      isBoosted: boolean; boostedUntil: string | null;
@@ -81,15 +80,11 @@ header, no `SortableHeader`.
      `include: { city: true, area: true, _count: { select: { conversations: { where: { type: 'inquiry' } }, contactReveals: true } } }`,
      `orderBy: LISTING_PERFORMANCE_ORDER_BY[sort ?? 'createdAt_desc']`, `skip`/`take`; paired with
      `listing.count({ where })` in the same `Promise.all`.
-   - Batch 1 (view split, bounded to this page's listing ids — `pageIds = rows.map(r => r.id)`):
-     two `listingView.groupBy({ by: ['listingId'], where: { listingId: { in: pageIds }, ... } })`
-     calls — one unfiltered (total), one `viewerKey: { startsWith: 'user:' }` (logged-in).
-     `anonymousViews = total - loggedIn` per listing. Both index-assisted via
-     `@@index([listingId, viewerKey])`. Deliberately two independent counts from `ListingView`
-     rather than `viewCount - loggedInViews`, so a drift between the denormalized `viewCount` and
-     real `ListingView` rows (e.g. a bulk-imported listing) can never produce a negative
-     `anonymousViews`.
-   - Batch 2 (message stats, bounded to `pageIds`): `conversation.findMany({ where: { listingId: { in: pageIds }, type: 'inquiry' }, select: { id, listingId, posterId } })`, then
+   - Return the three maintained Listing counters directly. `viewCount` increments for every
+     eligible visit; the other counters increment once per distinct viewer key, split by
+     authenticated/anonymous. Authenticated owner/admin views are excluded at recording; anonymous
+     views linked later to an owner or admin are removed from the counters and visit history.
+   - Message stats (bounded to this page's listing ids): `conversation.findMany({ where: { listingId: { in: pageIds }, type: 'inquiry' }, select: { id, listingId, posterId } })`, then
      `message.findMany({ where: { conversationId: { in: conversationIds } }, select: { conversationId, senderId } })`. In-memory aggregate per listing (via a `conversationId -> conversation` map): `totalMessages` (count), `uniqueMessageSenders` (distinct `senderId` set size), `repliedThreads` (count of conversations where any message's `senderId === conversation.posterId` — same check `MessagingService`'s `unreadByOwner` already uses). Bounded by this page's enquiry-thread volume, never a full-table scan — the one accepted cost is a listing with an unusually large number of threads making its own page proportionally heavier, not unbounded.
 
 4. **`apps/bff/src/admin/admin.service.ts`** — thin delegate:
@@ -142,8 +137,9 @@ matching the existing silent-default convention.
 ## Verification
 
 - `pnpm --filter bff exec tsc --noEmit`, `pnpm --filter admin exec tsc --noEmit` — clean.
-- `pnpm --filter bff test` — add a unit test for `listPerformanceForAdmin` covering: the view-split
-  math (logged-in + anonymous from independent `ListingView` groupBys, never negative), the
+- `pnpm --filter bff test` — add a unit test for `listPerformanceForAdmin` covering: the view
+  counters (total visits plus organic and anonymous unique viewers, excluding authenticated
+  owners/admins), the
   message-aggregation (totalMessages/uniqueMessageSenders/repliedThreads from a small fixture of
   conversations+messages), and that `cityId`/`areaId`/date-range filters land in the `where` clause
   correctly (same assertion style as the existing `listForAdmin` spec block).

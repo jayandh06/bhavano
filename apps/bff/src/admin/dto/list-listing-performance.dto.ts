@@ -5,10 +5,9 @@ import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class
  * (docs/plans/admin-listing-performance-screen.md). `enquiryCount`/`contactRevealCount` are
  * included even though they aren't columns on Listing — both are relation counts, which Prisma
  * can order by directly (same precedent as the main listings table's `messageCount`). The
- * message-derived stats (totalMessages/uniqueMessageSenders/repliedThreads) and the view split
- * (loggedInViews/anonymousViews) have NO pair here — they're computed in-memory per page (see
- * ListingsService.listPerformanceForAdmin), the same "can't be ordered on" situation the admin
- * page-visits screen's pageViewCount already documents. */
+ * message-derived stats (totalMessages/uniqueMessageSenders/repliedThreads) have NO pair here —
+ * they're computed in-memory per page (see ListingsService.listPerformanceForAdmin), the same
+ * "can't be ordered on" situation the admin page-visits screen's pageViewCount already documents. */
 const LISTING_PERFORMANCE_SORT_VALUES = [
   'createdAt_desc',
   'createdAt_asc',
@@ -22,6 +21,8 @@ const LISTING_PERFORMANCE_SORT_VALUES = [
   'viewCount_desc',
   'organicViewCount_asc',
   'organicViewCount_desc',
+  'anonymousViewCount_asc',
+  'anonymousViewCount_desc',
   'likeCount_asc',
   'likeCount_desc',
   'enquiryCount_asc',

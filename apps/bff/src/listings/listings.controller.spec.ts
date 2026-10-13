@@ -19,18 +19,22 @@ describe('ListingsController.recordView', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('does not count a visit by an admin', async () => {
-    await expect(controller.recordView('l1', { viewerKey: 'k' }, { id: 'a1', role: 'admin' })).resolves.toEqual({
-      viewCount: 7,
-    });
+    await expect(
+      controller.recordView('l1', { viewerKey: 'k' }, { id: 'a1', role: 'admin' }),
+    ).resolves.toEqual({ viewCount: 7 });
     expect(recordView).not.toHaveBeenCalled();
     expect(getViewCount).toHaveBeenCalledWith('l1');
   });
 
   it('counts a logged-in user by account and an anonymous visitor by device key', async () => {
-    await controller.recordView('l1', { viewerKey: 'k' }, { id: 'u1', role: 'user' });
+    await controller.recordView(
+      'l1',
+      { viewerKey: 'k' },
+      { id: 'u1', role: 'user' },
+    );
     await controller.recordView('l1', { viewerKey: 'k' }, undefined);
-    expect(recordView).toHaveBeenNthCalledWith(1, 'l1', 'user:u1');
-    expect(recordView).toHaveBeenNthCalledWith(2, 'l1', 'anon:k');
+    expect(recordView).toHaveBeenNthCalledWith(1, 'l1', 'user:u1', 'u1');
+    expect(recordView).toHaveBeenNthCalledWith(2, 'l1', 'anon:k', undefined);
     expect(getViewCount).not.toHaveBeenCalled();
   });
 });

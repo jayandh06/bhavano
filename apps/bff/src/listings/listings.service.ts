@@ -255,8 +255,10 @@ const ADMIN_ORDER_BY: Record<
   messageCount_desc: adminOrderBy({ conversations: { _count: 'desc' } }),
   expiresAt_asc: adminOrderBy({ expiresAt: 'asc' }),
   expiresAt_desc: adminOrderBy({ expiresAt: 'desc' }),
-  organicViewCount_asc: adminOrderBy({ uniqueViewerCount: 'asc' }),
-  organicViewCount_desc: adminOrderBy({ uniqueViewerCount: 'desc' }),
+  organicViewCount_asc: adminOrderBy({ organicViewCount: 'asc' }),
+  organicViewCount_desc: adminOrderBy({ organicViewCount: 'desc' }),
+  anonymousViewCount_asc: adminOrderBy({ anonymousViewCount: 'asc' }),
+  anonymousViewCount_desc: adminOrderBy({ anonymousViewCount: 'desc' }),
   owner_asc: adminOrderBy({ owner: { name: nullsLast('asc') } }),
   owner_desc: adminOrderBy({ owner: { name: nullsLast('desc') } }),
   boosted_asc: adminOrderBy({ boostedUntil: nullsLast('asc') }),
@@ -280,8 +282,10 @@ const LISTING_PERFORMANCE_ORDER_BY: Record<
   transactionType_desc: adminOrderBy({ transactionType: 'desc' }),
   viewCount_asc: adminOrderBy({ viewCount: 'asc' }),
   viewCount_desc: adminOrderBy({ viewCount: 'desc' }),
-  organicViewCount_asc: adminOrderBy({ uniqueViewerCount: 'asc' }),
-  organicViewCount_desc: adminOrderBy({ uniqueViewerCount: 'desc' }),
+  organicViewCount_asc: adminOrderBy({ organicViewCount: 'asc' }),
+  organicViewCount_desc: adminOrderBy({ organicViewCount: 'desc' }),
+  anonymousViewCount_asc: adminOrderBy({ anonymousViewCount: 'asc' }),
+  anonymousViewCount_desc: adminOrderBy({ anonymousViewCount: 'desc' }),
   likeCount_asc: adminOrderBy({ likeCount: 'asc' }),
   likeCount_desc: adminOrderBy({ likeCount: 'desc' }),
   // Relation counts, not columns — same mechanism as ADMIN_ORDER_BY's messageCount above.
@@ -1022,15 +1026,12 @@ export class ListingsService {
    *
    * Message, the backfilled view split and the main query, in that order:
    *
-   * The main query gets `viewCount`/`uniqueViewerCount`/`likeCount`/`boostedUntil` for free
+   * The main query gets the three view counters/`likeCount`/`boostedUntil` for free
    * (plain columns on `Listing`) and `enquiryCount`/`contactRevealCount` for free too (relation
    * counts, same mechanism `listForAdmin`'s `messageCount` already uses). Everything else needs a
    * second pass scoped to just this page's listing ids — never the whole table:
    *
-   * - View split: two independent `ListingView` groupBys (total, and `viewerKey` prefixed
-   *   `user:`) rather than `viewCount - loggedIn`, so a drift between the denormalized
-   *   `viewCount` and real `ListingView` rows (e.g. a bulk-imported listing) can never produce a
-   *   negative `anonymousViews`.
+   * - View counts: total visits and unique organic/anonymous viewers are denormalized on Listing.
    * - Message stats: `Message` has no `listingId` (it's two hops away, via `Conversation`), so
    *   there's no relation count or groupBy Prisma can do directly — fetch this page's inquiry
    *   Conversations, then the Messages in those conversations, and aggregate in memory. Bounded
@@ -1073,28 +1074,10 @@ export class ListingsService {
       this.prisma.listing.count({ where }),
     ]);
 
-    // Prisma handles an empty `in: []` fine on its own (returns no rows, never errors), so these
-    // run unconditionally even when `pageIds` is empty — no special-casing needed.
-    const pageIds = rows.map((r) => r.id);
-
-    const [totalViewsByListing, loggedInViewsByListing, conversations] = await Promise.all([
-      this.prisma.listingView.groupBy({
-        by: ['listingId'],
-        where: { listingId: { in: pageIds } },
-        _count: { _all: true },
-      }),
-      this.prisma.listingView.groupBy({
-        by: ['listingId'],
-        where: { listingId: { in: pageIds }, viewerKey: { startsWith: 'user:' } },
-        _count: { _all: true },
-      }),
-      this.prisma.conversation.findMany({
-        where: { listingId: { in: pageIds }, type: 'inquiry' },
-        select: { id: true, listingId: true, posterId: true },
-      }),
-    ]);
-    const totalViewsById = new Map(totalViewsByListing.map((g) => [g.listingId, g._count._all]));
-    const loggedInViewsById = new Map(loggedInViewsByListing.map((g) => [g.listingId, g._count._all]));
+    const conversations = await this.prisma.conversation.findMany({
+      where: { listingId: { in: rows.map((r) => r.id) }, type: 'inquiry' },
+      select: { id: true, listingId: true, posterId: true },
+    });
 
     const conversationIds = conversations.map((c) => c.id);
     const messages = await this.prisma.message.findMany({
@@ -1123,8 +1106,6 @@ export class ListingsService {
       statsByListing.set(conv.listingId, s);
     }
     const items: ListingPerformanceRowDto[] = rows.map((row) => {
-      const totalViews = totalViewsById.get(row.id) ?? 0;
-      const loggedInViews = loggedInViewsById.get(row.id) ?? 0;
       const msgStats = statsByListing.get(row.id);
       return {
         id: row.id,
@@ -1136,9 +1117,8 @@ export class ListingsService {
         transactionType: row.transactionType,
         createdAt: row.createdAt.toISOString(),
         viewCount: row.viewCount,
-        organicViewCount: row.uniqueViewerCount,
-        loggedInViews,
-        anonymousViews: totalViews - loggedInViews,
+        organicViewCount: row.organicViewCount,
+        anonymousViewCount: row.anonymousViewCount,
         enquiryCount: row._count.conversations,
         totalMessages: msgStats?.totalMessages ?? 0,
         uniqueMessageSenders: msgStats?.senderIds.size ?? 0,
@@ -1181,7 +1161,8 @@ export class ListingsService {
       totalPrice: this.listingTotalPrice(listing),
       priceQualifier: listing.price === 0 ? '' : listing.priceQualifier,
       viewCount: listing.viewCount,
-      organicViewCount: listing.uniqueViewerCount,
+      organicViewCount: listing.organicViewCount ?? 0,
+      anonymousViewCount: listing.anonymousViewCount ?? 0,
       likeCount: listing.likeCount,
       createdAt: listing.createdAt.toISOString(),
       updatedAt: listing.updatedAt.toISOString(),
@@ -2927,30 +2908,41 @@ export class ListingsService {
     }));
   }
 
-  /** Records every visit — who (logged-in user id or anonymous device key) and when. No dedup on
-   * viewCount: it counts total visits, not unique viewers (see ListingView's own doc comment for
-   * why this shape was chosen over deduping at write time). uniqueViewerCount is the one dedup
-   * that does happen — incremented only the first time this exact viewerKey is seen for this
-   * listing — see that field's own doc comment on Listing for the admin "organic views" use and
-   * its known cross-device-before-login tradeoff. */
+  /** Records every eligible visit. Total views count every visit; organic and anonymous counts
+   * count distinct viewers by their respective key prefix. Authenticated owners get the current
+   * total without a write. */
   async recordView(
     listingId: string,
     viewerKey: string,
+    viewerId?: string,
   ): Promise<{ viewCount: number }> {
+    if (viewerId) {
+      const listing = await this.prisma.listing.findUnique({
+        where: { id: listingId },
+        select: { ownerId: true, viewCount: true },
+      });
+      if (!listing) throw new NotFoundException('Listing not found');
+      if (listing.ownerId === viewerId) return { viewCount: listing.viewCount };
+    }
+
     const seenBefore = (await this.prisma.listingView.count({ where: { listingId, viewerKey } })) > 0;
+    const organic = viewerKey.startsWith('user:');
     await this.prisma.listingView.create({ data: { listingId, viewerKey } });
     const listing = await this.prisma.listing.update({
       where: { id: listingId },
       data: {
         viewCount: { increment: 1 },
-        ...(seenBefore ? {} : { uniqueViewerCount: { increment: 1 } }),
+        ...(!seenBefore &&
+          (organic
+            ? { organicViewCount: { increment: 1 } }
+            : { anonymousViewCount: { increment: 1 } })),
       },
       select: { viewCount: true },
     });
     return { viewCount: listing.viewCount };
   }
 
-  /** The current count, without recording a visit — what the view endpoint answers for an admin. */
+  /** The current count, without recording a visit — what the view endpoint answers for staff. */
   async getViewCount(listingId: string): Promise<{ viewCount: number }> {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
@@ -2981,6 +2973,13 @@ export class ListingsService {
    * skipped rather than failing the batch, since this is fire-and-forget from AuthService and must
    * never block login. */
   async linkListingViewsToUser(viewerKey: string, userId: string): Promise<void> {
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!viewer) throw new NotFoundException('User not found');
+    const isAdmin = viewer.role === 'admin';
+
     const since = new Date(Date.now() - ListingsService.ANONYMOUS_INTEREST_WINDOW_MS);
     const recentViews = await this.prisma.listingView.findMany({
       where: { viewerKey: `anon:${viewerKey}`, createdAt: { gte: since } },
@@ -2988,12 +2987,61 @@ export class ListingsService {
       distinct: ['listingId'],
     });
 
-    await this.prisma.listingView.updateMany({
+    const anonymousCounts = await this.prisma.listingView.groupBy({
+      by: ['listingId'],
       where: { viewerKey: `anon:${viewerKey}` },
-      data: { viewerKey: `user:${userId}` },
+      _count: { _all: true },
     });
+    const listings = anonymousCounts.length
+      ? await this.prisma.listing.findMany({
+          where: { id: { in: anonymousCounts.map(({ listingId }) => listingId) } },
+          select: { id: true, ownerId: true },
+        })
+      : [];
+    const listingById = new Map(listings.map((listing) => [listing.id, listing]));
+    const eligibleListingIds = listings
+      .filter((listing) => !isAdmin && listing.ownerId !== userId)
+      .map((listing) => listing.id);
+    const existingOrganicViews = eligibleListingIds.length
+      ? await this.prisma.listingView.groupBy({
+          by: ['listingId'],
+          where: {
+            listingId: { in: eligibleListingIds },
+            viewerKey: `user:${userId}`,
+          },
+          _count: { _all: true },
+        })
+      : [];
+    const alreadyOrganic = new Set(existingOrganicViews.map(({ listingId }) => listingId));
 
-    for (const { listingId } of recentViews) {
+    for (const { listingId, _count } of anonymousCounts) {
+      const listing = listingById.get(listingId);
+      if (!listing) continue;
+      const shouldExclude = isAdmin || listing.ownerId === userId;
+      if (shouldExclude) {
+        await this.prisma.listingView.deleteMany({
+          where: { listingId, viewerKey: `anon:${viewerKey}` },
+        });
+      } else {
+        await this.prisma.listingView.updateMany({
+          where: { listingId, viewerKey: `anon:${viewerKey}` },
+          data: { viewerKey: `user:${userId}` },
+        });
+      }
+      await this.prisma.listing.update({
+        where: { id: listingId },
+        data: {
+          ...(shouldExclude ? { viewCount: { decrement: _count._all } } : {}),
+          anonymousViewCount: { decrement: 1 },
+          ...(!shouldExclude && !alreadyOrganic.has(listingId)
+            ? { organicViewCount: { increment: 1 } }
+            : {}),
+        },
+      });
+    }
+
+    const viewsToNotify = isAdmin ? [] : recentViews;
+    for (const { listingId } of viewsToNotify) {
       try {
         await this.recordInterest(listingId, userId, 'view');
       } catch (err) {

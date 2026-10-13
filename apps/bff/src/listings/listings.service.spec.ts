@@ -42,7 +42,9 @@ function makeService() {
       findMany: jest.fn().mockResolvedValue([]),
       updateMany: jest.fn(),
       count: jest.fn().mockResolvedValue(0),
+      groupBy: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockResolvedValue({}),
+      deleteMany: jest.fn(),
     },
     // First-photo lookup for the like/view push's preview image — null = no image.
     listingPhoto: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -1958,7 +1960,23 @@ describe('ListingsService', () => {
 });
 
 describe('ListingsService.recordView', () => {
-  it('increments both viewCount and uniqueViewerCount for a never-seen-before viewerKey', async () => {
+  it('returns the current count without recording an owner view', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listing.findUnique as jest.Mock).mockResolvedValue({
+      ownerId: 'owner1',
+      viewCount: 12,
+    });
+
+    await expect(
+      service.recordView('listing1', 'user:owner1', 'owner1'),
+    ).resolves.toEqual({ viewCount: 12 });
+
+    expect((prisma.listingView.count as jest.Mock).mock.calls).toHaveLength(0);
+    expect((prisma.listingView.create as jest.Mock).mock.calls).toHaveLength(0);
+    expect((prisma.listing.update as jest.Mock).mock.calls).toHaveLength(0);
+  });
+
+  it('increments total and organic counts for a new authenticated viewer', async () => {
     const { service, prisma } = makeService();
     (prisma.listingView.count as jest.Mock).mockResolvedValue(0);
     (prisma.listing.update as jest.Mock).mockResolvedValue({ viewCount: 1 });
@@ -1970,12 +1988,12 @@ describe('ListingsService.recordView', () => {
     });
     expect(prisma.listing.update).toHaveBeenCalledWith({
       where: { id: 'listing1' },
-      data: { viewCount: { increment: 1 }, uniqueViewerCount: { increment: 1 } },
+      data: { viewCount: { increment: 1 }, organicViewCount: { increment: 1 } },
       select: { viewCount: true },
     });
   });
 
-  it('increments only viewCount, not uniqueViewerCount, on a repeat view from the same viewerKey', async () => {
+  it('increments only total views on a repeat authenticated view', async () => {
     const { service, prisma } = makeService();
     (prisma.listingView.count as jest.Mock).mockResolvedValue(2);
     (prisma.listing.update as jest.Mock).mockResolvedValue({ viewCount: 3 });
@@ -1985,6 +2003,20 @@ describe('ListingsService.recordView', () => {
     expect(prisma.listing.update).toHaveBeenCalledWith({
       where: { id: 'listing1' },
       data: { viewCount: { increment: 1 } },
+      select: { viewCount: true },
+    });
+  });
+
+  it('increments total and anonymous counts for a new anonymous viewer', async () => {
+    const { service, prisma } = makeService();
+    (prisma.listingView.count as jest.Mock).mockResolvedValue(0);
+    (prisma.listing.update as jest.Mock).mockResolvedValue({ viewCount: 1 });
+
+    await service.recordView('listing1', 'anon:device1');
+
+    expect(prisma.listing.update).toHaveBeenCalledWith({
+      where: { id: 'listing1' },
+      data: { viewCount: { increment: 1 }, anonymousViewCount: { increment: 1 } },
       select: { viewCount: true },
     });
   });
@@ -2039,17 +2071,23 @@ describe('ListingsService.listForAdmin — status filter and sort', () => {
     expect(where).toMatchObject({ ownerId: 'user1' });
   });
 
-  it('sorts by organic view count (the denormalized uniqueViewerCount column)', async () => {
+  it('sorts by organic view count', async () => {
     expect((await callWith({ sort: 'organicViewCount_asc' })).orderBy).toEqual([
-      { uniqueViewerCount: 'asc' },
+      { organicViewCount: 'asc' },
       { id: 'asc' },
     ]);
     expect((await callWith({ sort: 'organicViewCount_desc' })).orderBy).toEqual([
-      { uniqueViewerCount: 'desc' },
+      { organicViewCount: 'desc' },
       { id: 'asc' },
     ]);
   });
 
+  it('sorts by anonymous view count', async () => {
+    expect((await callWith({ sort: 'anonymousViewCount_desc' })).orderBy).toEqual([
+      { anonymousViewCount: 'desc' },
+      { id: 'asc' },
+    ]);
+  });
   it('sorts by owner name, nulls last', async () => {
     expect((await callWith({ sort: 'owner_asc' })).orderBy).toEqual([
       { owner: { name: { sort: 'asc', nulls: 'last' } } },
@@ -2092,7 +2130,8 @@ describe('ListingsService.listPerformanceForAdmin', () => {
       transactionType: 'rent',
       createdAt: new Date('2026-01-01T00:00:00Z'),
       viewCount: 10,
-      uniqueViewerCount: 8,
+      organicViewCount: 4,
+      anonymousViewCount: 3,
       likeCount: 2,
       boostedUntil: null,
       _count: { conversations: 0, contactReveals: 0 },
@@ -2100,19 +2139,19 @@ describe('ListingsService.listPerformanceForAdmin', () => {
     };
   }
 
-  it('splits views into logged-in and anonymous from two independent ListingView groupBys, never negative', async () => {
+  it('returns total, organic unique, and anonymous unique view counts', async () => {
     const { service, prisma } = makePerfService();
     (prisma.listing.findMany as jest.Mock).mockResolvedValue([stubRow()]);
     (prisma.listing.count as jest.Mock).mockResolvedValue(1);
-    (prisma.listingView.groupBy as jest.Mock)
-      .mockResolvedValueOnce([{ listingId: 'listing1', _count: { _all: 10 } }]) // total
-      .mockResolvedValueOnce([{ listingId: 'listing1', _count: { _all: 4 } }]); // logged-in
     (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
 
     const result = await service.listPerformanceForAdmin({ limit: 25 } as never);
 
-    expect(result.items[0].loggedInViews).toBe(4);
-    expect(result.items[0].anonymousViews).toBe(6);
+    expect(result.items[0].viewCount).toBe(10);
+    expect(result.items[0].organicViewCount).toBe(4);
+    expect(result.items[0].anonymousViewCount).toBe(3);
+    expect(result.items[0]).not.toHaveProperty('loggedInViews');
+    expect(result.items[0]).not.toHaveProperty('anonymousViews');
   });
 
   it('aggregates total messages, unique senders, and owner-replied threads from a small conversation+message fixture', async () => {
@@ -2576,9 +2615,20 @@ describe('resolveDeclaredSellerType', () => {
 describe('ListingsService.linkListingViewsToUser', () => {
   it('retroactively notifies owners for distinct listings viewed anonymously within the window', async () => {
     const { service, prisma } = makeService();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ role: 'user' });
     (prisma.listingView.findMany as jest.Mock).mockResolvedValue([
       { listingId: 'listing1' },
       { listingId: 'listing2' },
+    ]);
+    (prisma.listingView.groupBy as jest.Mock)
+      .mockResolvedValueOnce([
+        { listingId: 'listing1', _count: { _all: 2 } },
+        { listingId: 'listing2', _count: { _all: 1 } },
+      ])
+      .mockResolvedValueOnce([]);
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([
+      { id: 'listing1', ownerId: 'seller1' },
+      { id: 'listing2', ownerId: 'seller2' },
     ]);
     const recordInterest = jest.spyOn(service, 'recordInterest').mockResolvedValue({ interested: true, notified: true });
 
@@ -2593,26 +2643,53 @@ describe('ListingsService.linkListingViewsToUser', () => {
     expect(recordInterest).toHaveBeenCalledTimes(2);
     expect(recordInterest).toHaveBeenCalledWith('listing1', 'user1', 'view');
     expect(recordInterest).toHaveBeenCalledWith('listing2', 'user1', 'view');
+    expect(prisma.listingView.updateMany).toHaveBeenCalledTimes(2);
+    expect(prisma.listing.update).toHaveBeenCalledWith({
+      where: { id: 'listing1' },
+      data: { anonymousViewCount: { decrement: 1 }, organicViewCount: { increment: 1 } },
+    });
   });
 
-  it('always renames every anonymous view regardless of age, independent of the notify window', async () => {
+  it('reclassifies anonymous views as organic when linked to an account', async () => {
     const { service, prisma } = makeService();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ role: 'user' });
     (prisma.listingView.findMany as jest.Mock).mockResolvedValue([]); // nothing recent enough to notify about
+    (prisma.listingView.groupBy as jest.Mock)
+      .mockResolvedValueOnce([{ listingId: 'listing1', _count: { _all: 3 } }])
+      .mockResolvedValueOnce([]);
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([
+      { id: 'listing1', ownerId: 'seller1' },
+    ]);
     jest.spyOn(service, 'recordInterest').mockResolvedValue({ interested: true, notified: true });
 
     await service.linkListingViewsToUser('device-key', 'user1');
 
     expect(prisma.listingView.updateMany).toHaveBeenCalledWith({
-      where: { viewerKey: 'anon:device-key' },
+      where: { listingId: 'listing1', viewerKey: 'anon:device-key' },
       data: { viewerKey: 'user:user1' },
+    });
+    expect(prisma.listing.update).toHaveBeenCalledWith({
+      where: { id: 'listing1' },
+      data: { anonymousViewCount: { decrement: 1 }, organicViewCount: { increment: 1 } },
     });
   });
 
   it("skips a listing recordInterest rejects (viewer's own, delisted, deleted) without failing the rest", async () => {
     const { service, prisma } = makeService();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ role: 'user' });
     (prisma.listingView.findMany as jest.Mock).mockResolvedValue([
       { listingId: 'own-listing' },
       { listingId: 'listing2' },
+    ]);
+    (prisma.listingView.groupBy as jest.Mock)
+      .mockResolvedValueOnce([
+        { listingId: 'own-listing', _count: { _all: 2 } },
+        { listingId: 'listing2', _count: { _all: 1 } },
+      ])
+      .mockResolvedValueOnce([]);
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([
+      { id: 'own-listing', ownerId: 'user1' },
+      { id: 'listing2', ownerId: 'seller2' },
     ]);
     const recordInterest = jest
       .spyOn(service, 'recordInterest')
@@ -2622,12 +2699,52 @@ describe('ListingsService.linkListingViewsToUser', () => {
     await expect(service.linkListingViewsToUser('device-key', 'user1')).resolves.toBeUndefined();
 
     expect(recordInterest).toHaveBeenCalledTimes(2);
-    // The rename still runs even though one listing's retroactive notify failed.
-    expect(prisma.listingView.updateMany).toHaveBeenCalled();
+    expect(prisma.listingView.deleteMany).toHaveBeenCalledWith({
+      where: { listingId: 'own-listing', viewerKey: 'anon:device-key' },
+    });
+    expect(prisma.listing.update).toHaveBeenCalledWith({
+      where: { id: 'own-listing' },
+      data: {
+        viewCount: { decrement: 2 },
+        anonymousViewCount: { decrement: 1 },
+      },
+    });
+    expect(prisma.listingView.updateMany).toHaveBeenCalledWith({
+      where: { listingId: 'listing2', viewerKey: 'anon:device-key' },
+      data: { viewerKey: 'user:user1' },
+    });
+  });
+
+  it('removes anonymous views later linked to an admin without reclassifying them', async () => {
+    const { service, prisma } = makeService();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ role: 'admin' });
+    (prisma.listingView.findMany as jest.Mock).mockResolvedValue([{ listingId: 'listing1' }]);
+    (prisma.listingView.groupBy as jest.Mock).mockResolvedValueOnce([
+      { listingId: 'listing1', _count: { _all: 2 } },
+    ]);
+    (prisma.listing.findMany as jest.Mock).mockResolvedValue([
+      { id: 'listing1', ownerId: 'seller1' },
+    ]);
+    const recordInterest = jest.spyOn(service, 'recordInterest');
+
+    await service.linkListingViewsToUser('admin-device', 'admin1');
+
+    expect(prisma.listingView.deleteMany).toHaveBeenCalledWith({
+      where: { listingId: 'listing1', viewerKey: 'anon:admin-device' },
+    });
+    expect(prisma.listing.update).toHaveBeenCalledWith({
+      where: { id: 'listing1' },
+      data: {
+        viewCount: { decrement: 2 },
+        anonymousViewCount: { decrement: 1 },
+      },
+    });
+    expect(recordInterest).not.toHaveBeenCalled();
   });
 
   it('only calls recordInterest once for a listing viewed anonymously multiple times', async () => {
     const { service, prisma } = makeService();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ role: 'user' });
     // distinct: ['listingId'] on the query means Prisma itself would collapse these — asserting
     // the query shape, not re-implementing Prisma's dedup, so this covers the call having the
     // right distinct clause rather than two rows ever actually reaching recordInterest.

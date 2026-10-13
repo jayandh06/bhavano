@@ -157,9 +157,14 @@ export class ListingsController {
     // number owners and buyers see. Only recognisable while logged in — an admin browsing logged
     // out is an anonymous visitor like anyone else.
     if (user?.role === 'admin') return this.listingsService.getViewCount(id);
+    // An owner checking their own listing is not an organic view either.
     // Logged-in viewers dedupe by their real user id (consistent across devices);
     // anonymous viewers dedupe by the client-persisted key they send.
-    return this.listingsService.recordView(id, user ? `user:${user.id}` : `anon:${dto.viewerKey}`);
+    return this.listingsService.recordView(
+      id,
+      user ? `user:${user.id}` : `anon:${dto.viewerKey}`,
+      user?.id,
+    );
   }
 
   /** Identified interest — Option B soft gate. See docs/plans/login-gated-listing-interest-owner-notify.md. */

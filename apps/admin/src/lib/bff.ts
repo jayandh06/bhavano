@@ -89,6 +89,7 @@ export type AdminListingSortField =
   | "price"
   | "viewCount"
   | "organicViewCount"
+  | "anonymousViewCount"
   | "likeCount"
   | "messageCount"
   | "expiresAt"
@@ -98,10 +99,10 @@ export type AdminListingSortField =
 export type AdminListingSort = `${AdminListingSortField}_asc` | `${AdminListingSortField}_desc`;
 
 /** Mirrors the BFF's LISTING_PERFORMANCE_SORT_VALUES
- * (apps/bff/src/admin/dto/list-listing-performance.dto.ts). No pair for loggedInViews/
- * anonymousViews/totalMessages/uniqueMessageSenders/repliedThreads — see that file's own comment
- * for why (computed in-memory per page, same situation AdminPageVisitSortField's pageViewCount
- * already documents). */
+ * (apps/bff/src/admin/dto/list-listing-performance.dto.ts). No pair for
+ * totalMessages/uniqueMessageSenders/repliedThreads — see that file's own comment for why
+ * (computed in-memory per page, same situation AdminPageVisitSortField's pageViewCount already
+ * documents). */
 export type ListingPerformanceSortField =
   | "createdAt"
   | "title"
@@ -109,6 +110,7 @@ export type ListingPerformanceSortField =
   | "transactionType"
   | "viewCount"
   | "organicViewCount"
+  | "anonymousViewCount"
   | "likeCount"
   | "enquiryCount"
   | "contactRevealCount"
