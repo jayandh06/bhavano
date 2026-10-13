@@ -918,11 +918,9 @@ export class NotificationsService {
     return channels;
   }
 
-  /** Daily "N views, N favourites, N new messages" recap — additive to, and independent of, the
-   * existing real-time push/email/WhatsApp for those same three events (see docs/plans/, the
-   * owner win-back plan's Part C). Not boost-gated, unlike the real-time favourite/interest
-   * notifications: the spam concern behind that gate is about real-time per-event volume, which a
-   * once-daily aggregate doesn't have regardless of boost status. */
+  /** Daily recap of activity on currently Featured listings — an explicit boost benefit. It is
+   * additive to, and independent of, the existing real-time push/email/WhatsApp for those same
+   * events. See docs/plans/owner-win-back-notifications-and-mobile-email-capture.md. */
   async notifyDailyActivityDigest(
     userId: string,
     user: NotifiableUser & { name?: string | null },

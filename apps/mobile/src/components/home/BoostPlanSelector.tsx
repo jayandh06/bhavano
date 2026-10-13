@@ -173,9 +173,14 @@ export function BoostPlanSelector({
           );
         })}
       </View>
-      <Text style={{ fontSize: 12.5, color: colors.textSoft, marginTop: 10 }}>
-        Instant Alerts is included: you are emailed and WhatsApp'd the moment someone messages you.
-      </Text>
+      <View style={{ marginTop: 10, gap: 6 }}>
+        <Text style={{ fontSize: 12.5, color: colors.textSoft }}>
+          • Instant Alerts included while Featured: get an email and WhatsApp when someone messages or shows interest in your ad.
+        </Text>
+        <Text style={{ fontSize: 12.5, color: colors.textSoft }}>
+          • Daily activity digest: when there&apos;s activity, get a daily recap of views, favourites, and new messages across your ads still Featured when the digest is sent.
+        </Text>
+      </View>
 
       <Text style={{ fontWeight: "700", fontSize: 13, color: colors.green, marginTop: 12 }}>
         {value ? (

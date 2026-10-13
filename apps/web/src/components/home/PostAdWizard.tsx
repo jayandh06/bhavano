@@ -15,7 +15,6 @@ import type {
 } from "@bhavano/types";
 import { buildDisplayBoostPricing, defaultBoostDuration, offeredBoostDurations } from "@bhavano/types/boostPricing";
 import type { BoostPriceSettings } from "@bhavano/types/boostPricing";
-import { boostRecoveryMessage } from "@bhavano/types/boostEffectiveness";
 import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import {
@@ -875,6 +874,7 @@ export function PostAdWizard({
   const showBoostOnReview =
     !!previewBoostDisplay?.showSelectorOnPreview ||
     !!(category && planPricingSettings && platformFeeApplies(category, planPricingSettings.platformFee));
+  const showFeaturedComparison = !!previewBoostDisplay?.showSelectorOnPreview;
 
   // selectedBoostPlan carries its 15-day default (set in selectCategory) even while the preview
   // selector itself is hidden (admin's showSelectorOnPreview off) — purely so the selector shows
@@ -2489,44 +2489,68 @@ export function PostAdWizard({
       )}
 
       {step === "review" && category && transactionType && (
-        // max-w matches ListingPreviewCard's own cap when there's nothing beside it: the wizard's
-        // other steps fill this container's full ~1200px desktop width, but the card below is
-        // only ever 340px wide — without this, the Back/Post ad row (and the text between them)
-        // stretched to that full width too, leaving "Post ad" floating in empty space far to the
-        // right of the card instead of sitting at its right edge. Widened, and laid out as a row,
-        // only once there's a second thing (the boost selector) to sit beside the card — see
-        // docs/plans/boost-instant-alerts-preview-selector.md.
-        <div className={`mx-auto ${showPublishPanelOnReview ? "max-w-[680px]" : "max-w-[340px]"}`}>
+        <div className={`w-full ${showPublishPanelOnReview ? "max-w-6xl" : "max-w-[340px]"}`}>
           <div
-            className={
-              showPublishPanelOnReview
-                ? "flex flex-col sm:flex-row gap-5 sm:items-start"
-                : "flex flex-col gap-3"
-            }
+            className={showPublishPanelOnReview ? "flex flex-col xl:flex-row gap-6 xl:items-start" : "flex flex-col gap-3"}
           >
-            {/* What the actual browse-grid card will look like once this is posted — same
-              * photo/badge/price/title/location/specs a buyer sees, not a plain text summary, so a
-              * mistake (wrong photo order, a price that reads oddly, a spec that didn't come
-              * through) is obvious here rather than after the ad is already live. */}
-            <div className="w-full sm:max-w-[340px] sm:shrink-0">
-              <ListingPreviewCard
-                photoUrls={photos.map((p) => p.previewUrl)}
-                category={category}
-                transactionType={transactionType}
-                title={title}
-                price={price}
-                priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
-                priceArea={priceArea}
-                priceQualifier={priceQualifier}
-                areaName={areaQuery}
-                cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
-                attributes={attributes}
-                featured={!!boostIntent}
-              />
+            <div className={`w-full min-w-0 ${showFeaturedComparison ? "xl:flex-1" : "xl:max-w-[340px] xl:shrink-0"}`}>
+              {showFeaturedComparison ? (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                  <div className="min-w-0">
+                    <ListingPreviewCard
+                      photoUrls={photos.map((p) => p.previewUrl)}
+                      category={category}
+                      transactionType={transactionType}
+                      title={title}
+                      price={price}
+                      priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                      priceArea={priceArea}
+                      priceQualifier={priceQualifier}
+                      areaName={areaQuery}
+                      cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
+                      attributes={attributes}
+                      selectedForPublish={!boostIntent}
+                    />
+                    <p className="max-w-[340px] mx-auto mt-2 mb-0 text-center text-[12px] text-muted">
+                      Standard placement and styling, without the Featured badge or boost-only benefits.
+                    </p>
+                  </div>
+                  <ListingPreviewCard
+                    photoUrls={photos.map((p) => p.previewUrl)}
+                    category={category}
+                    transactionType={transactionType}
+                    title={title}
+                    price={price}
+                    priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                    priceArea={priceArea}
+                    priceQualifier={priceQualifier}
+                    areaName={areaQuery}
+                    cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
+                    attributes={attributes}
+                    featured
+                    selectedForPublish={!!boostIntent}
+                  />
+                </div>
+              ) : (
+                <ListingPreviewCard
+                  photoUrls={photos.map((p) => p.previewUrl)}
+                  category={category}
+                  transactionType={transactionType}
+                  title={title}
+                  price={price}
+                  priceUnit={priceMode === "perUnit" && priceUnitAreaField ? currentAreaUnit : undefined}
+                  priceArea={priceArea}
+                  priceQualifier={priceQualifier}
+                  areaName={areaQuery}
+                  cityName={cities.find((c) => c.id === cityId)?.name ?? ""}
+                  attributes={attributes}
+                  featured={!!boostIntent}
+                />
+              )}
             </div>
 
             {showPublishPanelOnReview && previewBoostDisplay && category && planPricingSettings && (
-              <div className="w-full sm:flex-1">
+              <div className={`w-full ${showFeaturedComparison ? "xl:w-[380px] xl:shrink-0" : "xl:flex-1"}`}>
                 <BoostPlanSelector
                   pricing={previewBoostDisplay}
                   value={selectedBoostPlan}
@@ -2534,6 +2558,8 @@ export function PostAdWizard({
                   category={category}
                   platformFeeSettings={planPricingSettings.platformFee}
                   showBoostOptions={showBoostOnReview}
+                  showPriceSummary={false}
+                  effectiveness={planPricingSettings.boostEffectiveness}
                   onSkipAttempt={handleBoostSkipAttempt}
                 />
               </div>

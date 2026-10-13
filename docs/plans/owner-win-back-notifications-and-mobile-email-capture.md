@@ -76,9 +76,11 @@ each touched app — is clean.
   has no `WHATSAPP_ACCESS_TOKEN`/`WHATSAPP_PHONE_NUMBER_ID`/`WHATSAPP_BUSINESS_ACCOUNT_ID` — the
   real Meta credentials live only on the production host, so WhatsApp sending for all three is
   still effectively off until those three env vars (and the template names) are set there too.
-  Not boost-gated by design for Part C's digest (an explicit earlier decision, "all listings, not
-  boost-gated") — worth a second look now that a real WhatsApp send cost applies to it live, not
-  just a hypothetical one.
+  **Update (2026-10-13):** Part C's digest is now a Featured-only benefit. Email and push copy
+  identify it as Featured activity. The updated WhatsApp template is `daily_activity_digest_v2`;
+  it must be submitted/approved and configured in `WHATSAPP_DAILY_ACTIVITY_DIGEST_TEMPLATE`
+  before WhatsApp messages use the new wording. The previous `daily_activity_digest_v1` approval
+  does not approve the changed copy.
 - **Part C: implemented** (this commit). `DailyActivityDigestJob` runs daily at 8am IST, batch-
   aggregates views/favourites/received-messages per owner across all their live listings (same
   bounded-batch + in-memory-aggregation pattern `listPerformanceForAdmin` already uses, not a
@@ -283,6 +285,14 @@ dialog is the capped/snoozed one. No change needed there.
 
 ## Part C — daily activity digest (views / favourites / new messages) — implemented
 
+**Featured-only benefit (2026-10-13):** only live listings whose `boostedUntil` is in the future
+when the digest runs contribute activity. A boost that expired before the 8am IST send is excluded,
+even if some of the activity happened while it was boosted. Owners are sent no digest if they have
+no currently Featured listing with activity in the trailing 24 hours. Email and push identify this
+as Featured activity; the WhatsApp template was revised as `daily_activity_digest_v2` and must be
+approved in Meta and selected in `WHATSAPP_DAILY_ACTIVITY_DIGEST_TEMPLATE` before WhatsApp delivery
+uses the updated copy.
+
 **Open assumption, flagged for review rather than guessed past**: "viewing" is read here as raw
 `ListingView` rows — a signal that currently triggers **no notification of any kind**, real-time
 or otherwise (confirmed: only the explicit "interested" tap and favourites have existing
@@ -294,8 +304,10 @@ if the assumption is wrong.
 A's (recurring per-user digest, not a once-ever per-listing reminder):
 - `@Cron('0 8 * * *', { timeZone: 'Asia/Kolkata' })` — a different hour from the existing 9am jobs,
   spreading cron load rather than batching everything at once.
-- For each user who owns at least one live listing: count `ListingView` rows, `Favourite` rows, and
-  received `Message` rows **in the trailing 24h**, across all of that user's listings. No new
+- For each user who owns at least one live, currently Featured listing: count `ListingView` rows,
+  `Favourite` rows, and received `Message` rows **in the trailing 24h**, across that user's
+  currently Featured listings only. This is a boost benefit; listings whose boost has expired by
+  send time are excluded. No new
   "last digest sent at" field needed — a fixed trailing-24h window, run once daily, is simpler than
   tracking per-user digest state and self-corrects if a run is ever missed (next day's window just
   starts from "yesterday" again, not from whenever the last successful run was).
@@ -370,11 +382,12 @@ new page to `AdminNav.tsx`'s nav list.
      `show: false` thereafter (only the separate banner shows).
    - Confirm the dialog never blocks Post Ad / messaging / contact-reveal underneath it.
 
-**Part C** — done. 8 tests in `daily-activity-digest.job.spec.ts`: no live listings → no-op; zero
-counts → skipped; views/favourites aggregated across all of an owner's listings; messages counted
-only when received (not the owner's own replies); no log row when the channel is null; same-day
-dedup skips an already-notified owner; a throw on one owner doesn't stop the rest; the view/
-favourite window is bounded to the trailing 24h ending at `now`.
+**Part C** — done. 9 tests in `daily-activity-digest.job.spec.ts`: no currently Featured listings →
+no-op; zero counts → skipped; activity is queried only for active boosts and aggregated across an
+owner's currently Featured listings; messages counted only when received (not the owner's own
+replies); no log row when the channel is null; same-day dedup skips an already-notified owner; a
+throw on one owner doesn't stop the rest; the view/favourite window is bounded to the trailing 24h
+ending at `now`.
 
 **Part D** — done. `tsc --noEmit` clean on both `@bhavano/bff` and `admin`; `pnpm --filter admin
 build` clean (Turbopack production build, `/notification-log` registered as a dynamic route). 6

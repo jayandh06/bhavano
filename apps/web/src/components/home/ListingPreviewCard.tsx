@@ -35,6 +35,7 @@ export function ListingPreviewCard({
   cityName,
   attributes,
   featured = false,
+  selectedForPublish = false,
 }: {
   photoUrls: string[];
   category: ListingCategory;
@@ -51,6 +52,9 @@ export function ListingPreviewCard({
   areaName: string;
   cityName: string;
   attributes: Record<string, unknown>;
+  /** Highlights the comparison state currently selected for publishing without changing its
+   * real card treatment. */
+  selectedForPublish?: boolean;
   /** Mirrors `ListingCardDto.isBoosted` — whatever the wizard's Feature selection currently is
    * (`!!boostIntent` in PostAdWizard), not a persisted field, since this listing doesn't exist
    * yet. Drives the exact same border/badge treatment as the real `ListingCard` (see its own
@@ -103,7 +107,8 @@ export function ListingPreviewCard({
         key={featured ? "featured-caption" : "unfeatured-caption"}
         className={`text-center text-[12.5px] font-bold mb-2 animate-[fadein_0.4s_ease_both] ${featured ? "text-gold" : "text-muted"}`}
       >
-        {featured ? "✨ Preview — Featured" : "Preview — standard listing"}
+        {featured ? "✨ Preview — Featured" : "Preview — Normal ad"}
+        {selectedForPublish && <span className="text-green"> · selected</span>}
       </div>
       {/* max-w matches ListingGrid's own column floor (minmax(min(340px,100%),1fr)) — without a
         * cap this stretched to the full width of whatever wide container the wizard's other
@@ -116,7 +121,7 @@ export function ListingPreviewCard({
           featured
             ? "border-[1.5px] border-gold/70 shadow-[0_2px_10px_rgba(201,161,90,0.22)]"
             : "border border-border/70"
-        }`}
+        } ${selectedForPublish ? "ring-2 ring-green ring-offset-2 ring-offset-surface" : ""}`}
       >
         <div className="relative h-[200px]">
           {/* eslint-disable-next-line @next/next/no-img-element -- local blob: preview, not a next/image-eligible remote URL */}

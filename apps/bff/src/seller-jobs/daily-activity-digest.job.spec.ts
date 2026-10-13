@@ -64,7 +64,7 @@ describe('DailyActivityDigestJob', () => {
     expect(notifications.notifyDailyActivityDigest).not.toHaveBeenCalled();
   });
 
-  it('aggregates views and favourites across all of one owner listing, and dispatches', async () => {
+  it('aggregates activity for currently Featured listings and dispatches', async () => {
     const prisma = makePrisma({
       listingView: {
         groupBy: jest
@@ -80,6 +80,15 @@ describe('DailyActivityDigestJob', () => {
     const { job, notifications } = makeJob(prisma);
     const sent = await job.sendDigests(now);
     expect(sent).toBe(1);
+    expect(prisma.listing.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: 'active',
+          publishState: 'live',
+          boostedUntil: { gt: now },
+        },
+      }),
+    );
     expect(notifications.notifyDailyActivityDigest).toHaveBeenCalledWith(
       'owner1',
       OWNER,
@@ -192,5 +201,17 @@ describe('DailyActivityDigestJob', () => {
         },
       }),
     );
+  });
+
+  it('does not send when there is no currently Featured listing', async () => {
+    const prisma = makePrisma({
+      listing: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+    const { job, notifications } = makeJob(prisma);
+
+    const sent = await job.sendDigests(now);
+
+    expect(sent).toBe(0);
+    expect(notifications.notifyDailyActivityDigest).not.toHaveBeenCalled();
   });
 });

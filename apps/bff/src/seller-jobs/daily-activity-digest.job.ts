@@ -50,7 +50,11 @@ export class DailyActivityDigestJob {
     const alreadySentIds = new Set(alreadySent.map((r) => r.userId));
 
     const listings = await this.prisma.listing.findMany({
-      where: { status: 'active', publishState: 'live' },
+      where: {
+        status: 'active',
+        publishState: 'live',
+        boostedUntil: { gt: now },
+      },
       select: {
         id: true,
         ownerId: true,
@@ -68,6 +72,8 @@ export class DailyActivityDigestJob {
       listingIdsByOwner.set(l.ownerId, ids);
     }
 
+    // Aggregate only currently Featured listings: the digest is a boost benefit, so a listing
+    // whose boost expired before this run must not contribute its trailing-24h activity.
     // Bounded batch + in-memory aggregation, same pattern listPerformanceForAdmin already uses
     // for the same "Message has no listingId, Conversation/ListingView don't roll up to owner
     // directly" shape - never a per-owner query in a loop.

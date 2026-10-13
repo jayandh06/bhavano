@@ -1,9 +1,8 @@
 """Creates the "daily_activity_digest" WhatsApp Business template via Meta's Graph API.
 
-A once-daily "N views, N favourites, N new messages" recap — docs/plans/ (the owner win-back
-plan's Part C). Additive to, and independent of, the existing real-time push/email/WhatsApp for
-those same three events; this is a pure activity recap, no Featured push, so (unlike Part A's
-pair) only one template variant is needed, not two.
+A once-daily "N views, N favourites, N new messages" recap for currently Featured ads —
+docs/plans/ (the owner win-back plan's Part C). Additive to, and independent of, the existing
+real-time push/email/WhatsApp for those same three events.
 
 PREVIEWS BY DEFAULT. Run with no arguments and it prints the exact template Meta would receive —
 does not submit anything. Only --submit actually calls the API.
@@ -38,7 +37,7 @@ WABA_ID = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID")
 VERSION = os.getenv("WHATSAPP_API_VERSION") or "v23.0"
 LANGUAGE = os.getenv("WHATSAPP_TEMPLATE_LANGUAGE") or "en"
 
-TEMPLATE_NAME = "daily_activity_digest_v1"
+TEMPLATE_NAME = "daily_activity_digest_v2"
 
 TEMPLATE_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),

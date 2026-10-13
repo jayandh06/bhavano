@@ -7,6 +7,8 @@ import { listingPublishCheckoutTotalRupees } from "@bhavano/types/listingPublish
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import { platformFeeFor } from "@bhavano/types/platformFeePricing";
 import { discountPercentFor } from "@bhavano/types/promoCode";
+import { boostRecoveryMessage } from "@bhavano/types/boostEffectiveness";
+import type { BoostEffectivenessDto } from "@bhavano/types/boostEffectiveness";
 import { Icon } from "./Icon";
 
 // Strikes out the original price rather than an arrow (₹149 → ₹99) — same convention as
@@ -47,6 +49,8 @@ export function BoostPlanSelector({
   category,
   platformFeeSettings,
   showBoostOptions = true,
+  showPriceSummary = true,
+  effectiveness = null,
   onSkipAttempt,
 }: {
   pricing: BoostPricingPreviewDto;
@@ -56,6 +60,9 @@ export function BoostPlanSelector({
   platformFeeSettings?: PlatformFeeSettings;
   /** When false, only the mandatory platform fee row is shown (fee-only publish). */
   showBoostOptions?: boolean;
+  /** Hide repeated add-on/checkout totals on the ad Preview step; keep them in recovery checkout. */
+  showPriceSummary?: boolean;
+  effectiveness?: BoostEffectivenessDto | null;
   /** Called instead of `onChange(null)` when Skip is clicked from a selected state, so the parent
    * can interpose a dialog before actually committing to skipping — see PostAdWizard.tsx's
    * handleBoostSkipAttempt. Omit to skip immediately (the old, direct behavior); "Add it back"
@@ -81,6 +88,7 @@ export function BoostPlanSelector({
   }, [value, offered, onChange]);
 
   const option = boostOptionFor(pricing, effective.duration);
+  const effectivenessMessage = boostRecoveryMessage(effectiveness);
 
   const dueToday =
     platformFeeRupees > 0 || value
@@ -142,7 +150,11 @@ export function BoostPlanSelector({
                     ₹{saving.perDay}/day · save ₹{saving.rupees} ({saving.percent}%) vs the 7-day price
                   </span>
                 ) : (
-                  !opt.free && <span className="text-[12px] font-normal text-muted">₹{Math.round(opt.amount / days)}/day</span>
+                  !opt.free && (
+                    <span className="text-[12px] font-normal text-muted">
+                      ₹{Math.round(opt.amount / days)}/day
+                    </span>
+                  )
                 )}
               </span>
               <span className="text-green">
@@ -152,17 +164,33 @@ export function BoostPlanSelector({
           );
         })}
       </div>
-      <p className="text-[12.5px] text-text-soft mt-2.5 mb-0">Instant Alerts is included: you are emailed and WhatsApp&apos;d the moment someone messages you.</p>
-
-      <p className="text-[13px] font-bold text-green mt-3 mb-0">
-        {value ? (
-          <>
-            Feature add-on: <PriceDisplay opt={option} />
-          </>
-        ) : (
-          "Not featuring this ad"
+      <div className="mt-3 rounded-xl border border-[color:var(--gold)]/30 bg-surface px-3.5 py-3">
+        <p className="m-0 mb-2 font-bold text-[13px] text-text">Featured gets you:</p>
+        <ul className="flex flex-col gap-1.5 text-[12.5px] text-text-soft m-0 pl-5">
+          <li>A gold Featured badge and highlighted card that stand out from standard listings.</li>
+          <li>Priority placement above regular listings in relevant browsing results; exact position can vary.</li>
+          <li>Eligibility for the Featured listings rail when matching inventory is available for a visitor&apos;s category and city.</li>
+          <li>Instant Alerts by email and WhatsApp when someone messages or shows interest while your boost is active.</li>
+          <li>A daily recap of views, favourites, and new messages on ads still Featured when the digest is sent.</li>
+        </ul>
+        {effectivenessMessage.hasEnoughData && (
+          <p className="m-0 mt-2 text-[12px] font-bold text-[color:var(--gold)]">
+            {effectivenessMessage.headline}
+          </p>
         )}
-      </p>
+      </div>
+
+      {showPriceSummary && (
+        <p className="text-[13px] font-bold text-green mt-3 mb-0">
+          {value ? (
+            <>
+              Feature add-on: <PriceDisplay opt={option} />
+            </>
+          ) : (
+            "Not featuring this ad"
+          )}
+        </p>
+      )}
 
       {pricing.allowSkippingBoost !== false && (
         // A real bordered button, not bare underlined text — this used to be sized no bigger
@@ -180,7 +208,7 @@ export function BoostPlanSelector({
         </>
       )}
 
-      {(platformFeeRupees > 0 || value) && (
+      {showPriceSummary && (platformFeeRupees > 0 || value) && (
         <p className="text-[13px] font-bold text-green mt-3 mb-0">Due today: ₹{dueToday}</p>
       )}
     </div>

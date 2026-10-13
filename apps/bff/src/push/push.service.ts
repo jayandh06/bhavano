@@ -310,14 +310,14 @@ export class PushService {
     });
   }
 
-  /** Daily "N views, N favourites, N new messages" recap — additive to the real-time pushes above,
-   * not a replacement. See docs/plans/ — the owner win-back plan's Part C. */
+  /** Daily recap of activity on currently Featured listings — a boost benefit and additive to
+   * the real-time pushes above. See docs/plans/owner-win-back-notifications-and-mobile-email-capture.md. */
   async notifyDailyActivityDigest(
     recipientId: string,
     counts: { views: number; favourites: number; messages: number },
   ): Promise<void> {
     await this.sendToUser(recipientId, {
-      title: 'Your listings today',
+      title: 'Your Featured ad activity',
       body: `👀 ${counts.views} views · ❤️ ${counts.favourites} favourites · 💬 ${counts.messages} new messages`,
       channelId: PUSH_CHANNEL_LISTING_ACTIVITY,
       priority: 'default',
