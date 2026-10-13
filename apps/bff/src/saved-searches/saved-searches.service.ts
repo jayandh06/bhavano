@@ -1,12 +1,13 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Area, City, Listing, SavedSearch } from '@prisma/client';
-import type { SavedSearchDto } from '@bhavano/types';
+import type { AdminSavedSearchDto, SavedSearchDto } from '@bhavano/types';
 import { MAX_REQUIREMENT_AREAS } from '@bhavano/types/requirementQuestions';
 import { MAX_BEDROOMS } from '@bhavano/types/bedrooms';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { LocationsService } from '../locations/locations.service';
 import { CreateSavedSearchDto } from './dto/create-saved-search.dto';
+import { UpdateSavedSearchDto } from '../admin/dto/update-saved-search.dto';
 
 /** Same single-row convention as CONTACT_REVEAL_SETTINGS_ID. */
 export const SAVED_SEARCH_SETTINGS_ID = 'saved-search-settings';
@@ -73,7 +74,7 @@ export class SavedSearchesService {
       this.prisma.user.findUnique({ where: { id: userId }, select: { premiumUntil: true } }),
       this.getSettings(),
     ]);
-    const freeUsed = await this.prisma.savedSearch.count({ where: { userId, source: 'free' } });
+    const freeUsed = await this.prisma.savedSearch.count({ where: { userId, source: 'free', deletedAt: null } });
     const freeRemaining = Math.max(0, settings.freeAlertsPerUser - freeUsed);
 
     if (user?.premiumUntil && user.premiumUntil.getTime() > Date.now()) return { source: 'plus', freeRemaining };
@@ -85,7 +86,8 @@ export class SavedSearchesService {
    * This used to be Plus-only, which made the whole feature unusable: there have never been any
    * Plus subscribers, so a built alert system had zero rows and the empty-result prompt could not
    * honestly promise anything. The quota is counted from rows already marked "free", exactly as
-   * ContactRevealService counts free reveals. */
+   * ContactRevealService counts free reveals. Only active rows consume quota; soft-deleted alerts
+   * remain available to admins but no longer occupy a user's active slot. */
   async create(userId: string, dto: CreateSavedSearchDto): Promise<SavedSearchDto> {
     const allowance = await this.alertAllowance(userId);
     if (!allowance) {
@@ -131,7 +133,7 @@ export class SavedSearchesService {
 
   async list(userId: string): Promise<SavedSearchDto[]> {
     const rows = await this.prisma.savedSearch.findMany({
-      where: { userId },
+      where: { userId, deletedAt: null },
       include: { city: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -140,9 +142,87 @@ export class SavedSearchesService {
   }
 
   async remove(id: string, userId: string): Promise<void> {
-    const existing = await this.prisma.savedSearch.findUnique({ where: { id } });
-    if (!existing || existing.userId !== userId) throw new NotFoundException('Saved search not found');
-    await this.prisma.savedSearch.delete({ where: { id } });
+    const existing = await this.prisma.savedSearch.findFirst({ where: { id, userId, deletedAt: null } });
+    if (!existing) throw new NotFoundException('Saved search not found');
+    await this.prisma.savedSearch.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
+  async listForAdmin(userId: string): Promise<AdminSavedSearchDto[]> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!user) throw new NotFoundException(`User ${userId} not found`);
+    const rows = await this.prisma.savedSearch.findMany({
+      where: { userId },
+      include: { city: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    const areaNames = await this.areaNamesFor(rows.flatMap((row) => row.areaIds));
+    return rows.map((row) => ({
+      ...toDto(row, areaNames),
+      userId: row.userId,
+      source: row.source,
+      deletedAt: row.deletedAt?.toISOString() ?? null,
+      lastNotifiedAt: row.lastNotifiedAt?.toISOString() ?? null,
+    }));
+  }
+
+  async updateForAdmin(
+    userId: string,
+    id: string,
+    dto: UpdateSavedSearchDto,
+  ): Promise<AdminSavedSearchDto> {
+    const existing = await this.prisma.savedSearch.findFirst({
+      where: { id, userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Active saved search not found for this user');
+    if (dto.minPrice !== undefined && dto.maxPrice !== undefined && dto.minPrice > dto.maxPrice) {
+      throw new BadRequestException('minPrice cannot be greater than maxPrice');
+    }
+    if (!dto.name.trim()) throw new BadRequestException('name cannot be empty');
+    if (dto.areaIds.length > MAX_REQUIREMENT_AREAS) {
+      throw new BadRequestException(`At most ${MAX_REQUIREMENT_AREAS} areas can be selected`);
+    }
+
+    const areaIds = [...new Set(dto.areaIds)];
+    if (dto.cityId && !(await this.prisma.city.findUnique({ where: { id: dto.cityId }, select: { id: true } }))) {
+      throw new BadRequestException('Selected city does not exist');
+    }
+    if (areaIds.length > 0) {
+      if (!dto.cityId) throw new BadRequestException('cityId is required when areas are selected');
+      const matchingAreas = await this.prisma.area.findMany({
+        where: { id: { in: areaIds }, cityId: dto.cityId },
+        select: { id: true },
+      });
+      if (matchingAreas.length !== areaIds.length) {
+        throw new BadRequestException('Every selected area must belong to the selected city');
+      }
+    }
+
+    await this.prisma.savedSearch.update({
+      where: { id },
+      data: {
+        name: dto.name.trim(),
+        category: dto.category ?? null,
+        transactionType: dto.transactionType ?? null,
+        cityId: dto.cityId ?? null,
+        areaIds,
+        minPrice: dto.minPrice ?? null,
+        maxPrice: dto.maxPrice ?? null,
+        bedroomOptions: [...new Set(dto.bedroomOptions)],
+      },
+    });
+    const updated = (await this.listForAdmin(userId)).find((row) => row.id === id);
+    if (!updated) throw new NotFoundException('Saved search not found');
+    return updated;
+  }
+
+  async removeForAdmin(userId: string, id: string): Promise<void> {
+    const existing = await this.prisma.savedSearch.findFirst({
+      where: { id, userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Active saved search not found for this user');
+    await this.prisma.savedSearch.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 
   /** Names for every area id any of these rows names, in one query — `areaIds` has no relation.
@@ -167,6 +247,7 @@ export class SavedSearchesService {
   async notifyMatchingBuyers(listing: Listing & { city: City; area: Area }): Promise<void> {
     const candidates = await this.prisma.savedSearch.findMany({
       where: {
+        deletedAt: null,
         // A "free" alert is honoured regardless of subscription state — it was promised to
         // someone who had not paid, and silently never firing would be worse than not offering
         // it. A "plus" alert only fires while that subscription is live, so someone who lapses

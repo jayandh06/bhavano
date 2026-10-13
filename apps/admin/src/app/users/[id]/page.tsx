@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import type { ActivityEventDto, AdminUserListingDto, DeviceType, VisitDto } from "@bhavano/types";
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchUserActivity } from "@/lib/bff";
+import { fetchCities, fetchUserActivity, fetchUserSavedSearches } from "@/lib/bff";
 import { formatDate, formatDateTime } from "@/lib/formatDateTime";
 import { DeleteUserPanel } from "@/components/DeleteUserPanel";
 import { AgentStatusPanel } from "@/components/AgentStatusPanel";
+import { UserSavedSearchesPanel } from "@/components/UserSavedSearchesPanel";
 
 const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   desktop: "Desktop",
@@ -41,7 +42,11 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
   const { accessToken } = await requireAdmin();
   const { id } = await params;
 
-  const activity = await fetchUserActivity(accessToken, id).catch(() => null);
+  const [activity, savedSearches, cities] = await Promise.all([
+    fetchUserActivity(accessToken, id).catch(() => null),
+    fetchUserSavedSearches(accessToken, id),
+    fetchCities(undefined, true),
+  ]);
   if (!activity) notFound();
 
   const { user, ownedListings, events, visits } = activity;
@@ -84,6 +89,8 @@ export default async function UserActivityPage({ params }: { params: Promise<{ i
         />
 
         <DeleteUserPanel userId={id} canDelete={user.role !== "admin"} />
+
+        <UserSavedSearchesPanel userId={id} initialSearches={savedSearches} cities={cities} />
 
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: "24px 0 12px" }}>
           Listings ({ownedListings.length})

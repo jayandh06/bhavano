@@ -358,7 +358,7 @@ export function AdminListingsTable({
     },
     {
       key: "organicViews",
-      label: "Organic views",
+      label: "Unique signed-in views",
       sortField: "organicViewCount",
       render: (item) => item.organicViewCount,
       defaultVisible: true,

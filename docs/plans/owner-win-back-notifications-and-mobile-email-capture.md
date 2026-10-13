@@ -144,7 +144,7 @@ private async dispatchPushPreferEmailPreferWhatsapp(
   userId: string,
   user: NotifiableUser,
   pushSend: () => Promise<void>,
-  email: { subject: string; text: string; html?: string; bcc?: string },
+  email: { subject: string; text: string; html?: string },
   whatsapp?: { template: string; params: string[] | Record<string, string>; buttonUrlSuffix?: string },
 ): Promise<'push' | 'email' | 'whatsapp' | null> {
   const hasPush = await this.prisma.pushToken.findFirst({ where: { userId }, select: { id: true } });

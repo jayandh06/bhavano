@@ -61,7 +61,7 @@ instead of being reclassified as organic. Admin anonymous history is never sent 
 listing-interest notification.
 
 The admin surfaces show exactly three view metrics: **Total views** (all eligible visit events),
-**Organic views** (distinct authenticated non-owner users), and **Anonymous views** (distinct
+**Unique signed-in views** (distinct authenticated non-owner users), and **Anonymous views** (distinct
 anonymous viewer keys). A logged-out owner/admin cannot be recognized at request time. Anonymous views on the same device
 are cleaned up if that device's history is later linked to an owner or admin account.
 

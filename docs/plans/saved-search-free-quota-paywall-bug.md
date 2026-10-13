@@ -42,3 +42,9 @@ upgrade prompt; everyone else now reaches the working "+ New saved search" butto
 `Metro-Seeker Intent` (paused, built 2026-09-30) is aimed at exactly this action. Before this fix, a
 seeker who clicked the ad, searched, and tried to save it would have hit a paywall on their very
 first try — not the free action the product was designed to offer.
+
+## Soft-deleted alerts
+
+Saved-search removal sets `deletedAt`, retaining the row for admin inspection while removing it
+from the user's active list and future listing matches. Only active free alerts count against the
+free quota, so soft-deleting one releases that active slot.

@@ -47,7 +47,7 @@ export class NotificationsService {
     const vars = { title: listing.title, message };
     const { subject, text, html } = this.renderPurchaseEmail('email/listing-flagged', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** See `notifyListingFlagged`'s comment on the missing WhatsApp template and the branded HTML. */
@@ -58,7 +58,7 @@ export class NotificationsService {
     const vars = { title: listing.title };
     const { subject, text, html } = this.renderPurchaseEmail('email/listing-approved', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** A boost perk, not a universal notification — see ListingsService.toggleFavourite, which
@@ -75,7 +75,7 @@ export class NotificationsService {
     const vars = { title: listingTitle, likerName };
     const { subject, text, html } = this.renderPurchaseEmail('email/listing-liked', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Instant Alerts (and only Instant Alerts) email/WhatsApp when a seeker taps "I'm interested".
@@ -89,7 +89,7 @@ export class NotificationsService {
     const vars = { title: params.listingTitle, interestedName: params.interestedName };
     const { subject, text, html } = this.renderPurchaseEmail('email/listing-interest', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Boost purchase confirmation — see PaymentsService.handleWebhook's `listing_boost` branch.
@@ -105,7 +105,7 @@ export class NotificationsService {
     const vars = { title: listingTitle, days: pluralDays(boostDays) };
     const { subject, text, html } = this.renderPurchaseEmail('email/boost-activated', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Boost + Instant Alerts bundle confirmation — see PaymentsService.handleWebhook's
@@ -121,7 +121,7 @@ export class NotificationsService {
     const vars = { title: listingTitle, days: pluralDays(boostDays) };
     const { subject, text, html } = this.renderPurchaseEmail('email/boost-instant-alerts-activated', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Confirms an Instant Alerts purchase actually went through — see
@@ -134,10 +134,7 @@ export class NotificationsService {
     const vars = { title: listingTitle };
     const { subject, text, html } = this.renderPurchaseEmail('email/instant-alerts-activated', vars);
 
-    // BCC support so someone at support@ has visibility into every paid activation going out —
-    // same reasoning as notifyWelcome's bcc, now extended to every purchase confirmation in this
-    // file rather than just the welcome email.
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Bhavano Plus (buyer_premium) purchase confirmation — see PaymentsService.handleWebhook's
@@ -147,7 +144,7 @@ export class NotificationsService {
     const vars = { endsAt: endsAt.toLocaleDateString('en-IN') };
     const { subject, text, html } = this.renderPurchaseEmail('email/buyer-premium-activated', vars, '/premium');
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Seller slot pack purchase confirmation — see PaymentsService.handleWebhook's
@@ -160,7 +157,7 @@ export class NotificationsService {
     const vars = { endsAt: endsAt.toLocaleDateString('en-IN'), slots: String(totalSlots) };
     const { subject, text, html } = this.renderPurchaseEmail('email/seller-slot-pack-activated', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Agent/Broker Pro purchase confirmation — see PaymentsService.handleWebhook's `agent_pro`
@@ -170,7 +167,7 @@ export class NotificationsService {
     const vars = { endsAt: endsAt.toLocaleDateString('en-IN'), slots: String(slots) };
     const { subject, text, html } = this.renderPurchaseEmail('email/agent-pro-activated', vars);
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Contact-reveal credit pack purchase confirmation — see PaymentsService.handleWebhook's
@@ -183,7 +180,7 @@ export class NotificationsService {
     const vars = { credits: String(creditsGranted), expiresAt: expiresAt.toLocaleDateString('en-IN') };
     const { subject, text, html } = this.renderPurchaseEmail('email/contact-reveal-credits-activated', vars, '/');
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Referral programme emails (docs/plans/bhavano-referral-program-implementation.md, Phase 6).
@@ -241,7 +238,7 @@ export class NotificationsService {
       `/messages/${params.conversationId}`,
     );
 
-    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html, bcc: 'support@bhavano.com' });
+    return this.dispatchEmailPreferWhatsapp(user, { subject, text, html });
   }
 
   /** Bhavano Plus's early-access alerts — the proactive counterpart to a buyer having to keep
@@ -266,13 +263,10 @@ export class NotificationsService {
     const linkPath = hasAlert ? '/my-requirements' : '/premium';
     const { subject, text, html } = this.renderPurchaseEmail(template, vars, linkPath);
 
-    // BCC support@ so the ops queue sees every captured ask (same pattern as purchase confirmations),
-    // including when the seeker only has a phone and we fall through to WhatsApp + support copy.
     return this.dispatchEmailPreferWhatsapp(user, {
       subject,
       text,
       html,
-      bcc: 'support@bhavano.com',
     });
   }
 
@@ -340,7 +334,6 @@ export class NotificationsService {
       subject,
       text,
       html,
-      bcc: 'support@bhavano.com',
     });
   }
 
@@ -391,9 +384,7 @@ export class NotificationsService {
 
     return this.dispatchEmailPreferWhatsapp(
       user,
-      // BCC support so someone at support@ can see every welcome email actually going out —
-      // requested for visibility into delivery, not because support needs to act on each one.
-      { subject, text, html, bcc: 'support@bhavano.com' },
+      { subject, text, html },
       // welcome_signup was submitted with positional {{1}}, not named — an array, not the
       // {name: ...} object listing_posted_v2 takes. The variable is the name alone, not a
       // "Hi <name>" greeting, since the approved template supplies its own wording around it.
@@ -502,7 +493,7 @@ export class NotificationsService {
         user.email,
         renderTemplate(tpl.subject, vars),
         text,
-        { html, bcc: 'support@bhavano.com' },
+        { html },
       );
       if (sent) channels.push({ channel: 'email' });
     }
@@ -618,7 +609,6 @@ export class NotificationsService {
     const { subject, text, html } = this.buildWelcomeEmailContent(user.name);
     const sent = await this.emailProvider.send(user.email, subject, text, {
       html,
-      bcc: 'support@bhavano.com',
     });
     return sent ? 'email' : null;
   }
@@ -699,7 +689,7 @@ export class NotificationsService {
    */
   private async dispatchEmailPreferWhatsapp(
     user: NotifiableUser,
-    email: { subject: string; text: string; html?: string; bcc?: string },
+    email: { subject: string; text: string; html?: string },
     whatsapp?: {
       template: string;
       params: string[] | Record<string, string>;
@@ -711,7 +701,7 @@ export class NotificationsService {
         user.email,
         email.subject,
         email.text,
-        email.html || email.bcc ? { html: email.html, bcc: email.bcc } : undefined,
+        email.html ? { html: email.html } : undefined,
       );
       return sent ? 'email' : null;
     }
@@ -722,16 +712,6 @@ export class NotificationsService {
         whatsapp.params,
         whatsapp.buttonUrlSuffix,
       );
-      // `email.bcc` doubles as "give support@ visibility into this send" even on this branch —
-      // a WhatsApp send has no user-facing email to attach a BCC header to, so this fires the
-      // same content straight to support@ instead. Only runs for calls that already opted into
-      // support visibility (bcc set) on the email branch above; best-effort, since a failed
-      // internal visibility copy shouldn't affect what the caller sees for the real send.
-      if (sent && email.bcc) {
-        this.emailProvider
-          .send(email.bcc, email.subject, email.text, { html: email.html })
-          .catch(() => undefined);
-      }
       return sent ? 'whatsapp' : null;
     }
     return null;
@@ -758,7 +738,7 @@ export class NotificationsService {
     userId: string,
     user: NotifiableUser,
     pushSend: () => Promise<void>,
-    email: { subject: string; text: string; html?: string; bcc?: string },
+    email: { subject: string; text: string; html?: string },
     whatsapp?: {
       template: string;
       params: string[] | Record<string, string>;
@@ -818,7 +798,7 @@ export class NotificationsService {
       user,
       () =>
         this.push.notifyListingPostedReminder(userId, vars.title, isBoosted),
-      { subject: renderTemplate(tpl.subject, vars), text, html, bcc: 'support@bhavano.com' },
+      { subject: renderTemplate(tpl.subject, vars), text, html },
       whatsappTemplate
         ? {
             template: whatsappTemplate,
@@ -891,8 +871,7 @@ export class NotificationsService {
     if (user.email) {
       const sent = await this.emailProvider.send(user.email, subject, text, {
         html,
-        bcc: 'support@bhavano.com',
-      });
+        });
       if (sent) channels.push({ channel: 'email' });
     }
 
@@ -904,14 +883,6 @@ export class NotificationsService {
       );
       if (result.sent) {
         channels.push({ channel: 'whatsapp', messageId: result.messageId });
-        // Support gets the same email support@ would have been BCC'd on above — only fired when
-        // there's no email going out on this send (no BCC header to piggyback on), same rule
-        // `dispatchEmailPreferWhatsapp`'s WhatsApp branch uses. Best-effort.
-        if (!user.email) {
-          this.emailProvider
-            .send('support@bhavano.com', subject, text, { html })
-            .catch(() => undefined);
-        }
       }
     }
 
@@ -956,7 +927,7 @@ export class NotificationsService {
       userId,
       user,
       () => this.push.notifyDailyActivityDigest(userId, counts),
-      { subject: renderTemplate(tpl.subject, vars), text, html, bcc: 'support@bhavano.com' },
+      { subject: renderTemplate(tpl.subject, vars), text, html },
       whatsappTemplate
         ? { template: whatsappTemplate, params: vars }
         : undefined,
@@ -1041,8 +1012,7 @@ export class NotificationsService {
     if (user.email) {
       await this.emailProvider.send(user.email, subject, text, {
         html,
-        bcc: 'support@bhavano.com',
-      });
+        });
       return { channel: 'email' };
     }
 
@@ -1064,15 +1034,6 @@ export class NotificationsService {
         },
         path.replace(/^\//, ''),
       );
-      // Support gets the same email support@ would have been BCC'd on above — the owner never
-      // gets an email themselves here (WhatsApp-only), so there's no BCC header to piggyback on;
-      // fired directly instead. Best-effort: a failed internal visibility copy shouldn't affect
-      // what the caller sees for the real send.
-      if (result.sent) {
-        this.emailProvider
-          .send('support@bhavano.com', subject, text, { html })
-          .catch(() => undefined);
-      }
       return result.sent ? { channel: 'whatsapp', messageId: result.messageId } : null;
     }
 

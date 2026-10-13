@@ -158,7 +158,7 @@ export default async function ListingPerformancePage({ searchParams }: { searchP
                     <SortableHeader label="Total views" href={sortHref("viewCount")} direction={sortDir("viewCount")} />
                   </th>
                   <th style={thStyle}>
-                    <SortableHeader label="Organic views" href={sortHref("organicViewCount")} direction={sortDir("organicViewCount")} />
+                    <SortableHeader label="Unique signed-in views" href={sortHref("organicViewCount")} direction={sortDir("organicViewCount")} />
                   </th>
                   <th style={thStyle}>
                     <SortableHeader label="Anonymous views" href={sortHref("anonymousViewCount")} direction={sortDir("anonymousViewCount")} />

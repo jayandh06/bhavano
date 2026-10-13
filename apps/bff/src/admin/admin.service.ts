@@ -8,6 +8,7 @@ import type {
   AdminPaymentsPage,
   AdminUpdateListingInput,
   AdminRequirementsPage,
+  AdminSavedSearchDto,
   AdminUsersPage,
   ContactRevealSettingsDto,
   DeviceType,
@@ -75,6 +76,7 @@ import type { NotificationDaySummaryDto, NotificationLogEntryDto } from '@bhavan
 import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
+import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { ListUsersDto, UserSort } from './dto/list-users.dto';
 import { AdminPaymentSort, ListPaymentsDto } from './dto/list-payments.dto';
 import { ListDiscountCodesDto } from './dto/list-discount-codes.dto';
@@ -2223,6 +2225,22 @@ export class AdminService {
 
   updateSavedSearchSettings(dto: UpdateSavedSearchSettingsDto): Promise<SavedSearchSettingsDto> {
     return this.savedSearchesService.updateSettings(dto.freeAlertsPerUser);
+  }
+
+  getUserSavedSearches(userId: string): Promise<AdminSavedSearchDto[]> {
+    return this.savedSearchesService.listForAdmin(userId);
+  }
+
+  updateUserSavedSearch(
+    userId: string,
+    searchId: string,
+    dto: UpdateSavedSearchDto,
+  ): Promise<AdminSavedSearchDto> {
+    return this.savedSearchesService.updateForAdmin(userId, searchId, dto);
+  }
+
+  deleteUserSavedSearch(userId: string, searchId: string): Promise<void> {
+    return this.savedSearchesService.removeForAdmin(userId, searchId);
   }
 
   /**

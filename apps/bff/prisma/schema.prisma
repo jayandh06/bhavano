@@ -486,8 +486,8 @@ model User {
    * the lookup only needs existence, not identity. Null for every account that has never been
    * deleted. See docs/plans/deleted-account-reregistration-fingerprint.md.
    */
-  deletedPhoneHash             String?
-  deletedEmailHash             String?
+  deletedPhoneHash            String?
+  deletedEmailHash            String?
   /**
    * Referrals this user has made (they're the one who shared the link) — see
    * docs/plans/bhavano-referral-program-implementation.md.
@@ -730,8 +730,8 @@ model SavedSearch {
    * How this alert was allowed: "plus" = an active Bhavano Plus subscription paid for it;
    * "free" = it came out of the per-user free quota (SavedSearchSetting.freeAlertsPerUser),
    * which is what lets the empty-result prompt promise a real alert to someone who has never
-   * paid. Mirrors ContactReveal.source, and for the same reason: the quota is counted by
-   * counting rows, so the row has to remember which bucket it came from.
+   * paid. Mirrors ContactReveal.source, and for the same reason: the active free quota is counted
+   * by counting rows, so the row has to remember which bucket it came from.
    * The matcher notifies a "free" row regardless of subscription state, and a "plus" row only
    * while that subscription is live — so someone who lapses keeps the free allowance working and
    * loses the rest, rather than silently keeping everything or losing everything.
@@ -763,10 +763,12 @@ model SavedSearch {
   bedroomOptions  Int[]            @default([])
   createdAt       DateTime         @default(now())
   lastNotifiedAt  DateTime?
+  deletedAt       DateTime?
   requirements    Requirement[]
 
   @@index([userId])
   @@index([userId, source])
+  @@index([userId, deletedAt])
 }
 
 model Conversation {
@@ -2309,6 +2311,7 @@ model Requirement {
   // `bedrooms` above stay populated (first area, smallest BHK) for readers that only understand
   // one of each.
   /**
+   * /**
    * /** Every area named, in the order chosen, at most MAX_REQUIREMENT_AREAS. Empty = the whole city.
    */
   areaIds             String[]  @default([])

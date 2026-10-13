@@ -6,7 +6,9 @@ import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricin
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PlatformFeeSettings } from "@bhavano/types/platformFeePricing";
 import type {
+  Area,
   AdminUpdateListingInput,
+  AdminUpdateSavedSearchInput,
   ContactRevealSettingsDto,
   LoginNudgeSettingsDto,
   RequirementStatus,
@@ -30,6 +32,7 @@ import {
   fetchSessionTrail,
   fetchThread,
   fetchUserLoginHistory,
+  fetchAreas,
   flagListing,
   forcePublishListing,
   revokeBoost,
@@ -42,6 +45,8 @@ import {
   setListingStatus,
   setReviewed,
   updateBoostPricingSettings,
+  updateUserSavedSearch,
+  deleteUserSavedSearch,
   updateContactRevealSettings,
   updateLoginNudgeSettings,
   updateRequirement,
@@ -430,5 +435,42 @@ export async function fetchUserLoginHistoryAction(
     return { success: true, history };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to load login history" };
+  }
+}
+
+export async function fetchSavedSearchAreasAction(
+  cityId: string,
+): Promise<{ success: true; areas: Area[] } | { success: false; error: string }> {
+  await requireAdmin();
+  try {
+    return { success: true, areas: await fetchAreas(cityId, undefined, true) };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to load areas" };
+  }
+}
+
+export async function updateUserSavedSearchAction(
+  userId: string,
+  searchId: string,
+  input: AdminUpdateSavedSearchInput,
+): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await updateUserSavedSearch(accessToken, userId, searchId, input);
+    revalidatePath(`/users/${userId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update saved search" };
+  }
+}
+
+export async function deleteUserSavedSearchAction(userId: string, searchId: string): Promise<ActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    await deleteUserSavedSearch(accessToken, userId, searchId);
+    revalidatePath(`/users/${userId}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete saved search" };
   }
 }

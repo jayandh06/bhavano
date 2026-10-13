@@ -1758,6 +1758,25 @@ export interface SavedSearchDto {
   createdAt: string;
 }
 
+/** Admin view of a saved search, including its lifecycle and delivery metadata. */
+export interface AdminSavedSearchDto extends SavedSearchDto {
+  userId: string;
+  source: string;
+  deletedAt: string | null;
+  lastNotifiedAt: string | null;
+}
+
+export interface AdminUpdateSavedSearchInput {
+  name: string;
+  category?: ListingCategory;
+  transactionType?: TransactionType;
+  cityId?: string;
+  areaIds: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  bedroomOptions: number[];
+}
+
 /** Whether this user can create another saved-search alert right now, and which bucket it would
  * come from — see SavedSearchesService.alertAllowance. `canCreate: false` means neither a free
  * slot nor an active Bhavano Plus subscription is available; the caller shows the upgrade prompt

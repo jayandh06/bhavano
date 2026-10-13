@@ -24,7 +24,7 @@ cascading filter, `DateRangeFilter`, sortable columns, pagination) rather than i
 | Column | Source | Sortable? |
 |---|---|---|
 | Total views | `Listing.viewCount` — every details-page visit, excluding authenticated owner/admin visits | Yes |
-| Organic views | `Listing.organicViewCount` — unique authenticated non-owner users | Yes |
+| Unique signed-in views | `Listing.organicViewCount` — distinct authenticated non-owner users | Yes |
 | Anonymous views | `Listing.anonymousViewCount` — unique anonymous viewer keys | Yes |
 | Enquiries | Count of `type:'inquiry'` `Conversation` rows (same concept as the main dashboard's `messageCount`, relabeled) | Yes (relation count) |
 | Total messages | `Message` count across those enquiry threads | **No** |

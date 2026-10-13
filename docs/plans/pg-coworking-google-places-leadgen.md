@@ -252,7 +252,7 @@ their listing" needs a way to hand over a specific listing without a pre-existin
   rule (chosen because "claim your free business listing" is worth the redundancy):
   - `notification-templates/email/claim-listing/` — the email copy (bulleted benefits, matching
     the approved WhatsApp template's structure), rendered via the existing `renderEmail`/
-    `loadTemplate` machinery, BCC'd to support@bhavano.com same as the welcome email.
+    `loadTemplate` machinery.
   - `Listing.claimSource` (`email`/`whatsapp`, nullable) — which channel's link was actually
     clicked to complete the claim, driven by a `?via=` param unique to each channel's link
     (`OutreachService.sendClaimVerification` tags each one), read by `POST /listings/:id/claim`

@@ -15,6 +15,8 @@ import type {
   AdminReferralDetailDto,
   AdminReferralsPage,
   AdminRequirementsPage,
+  AdminSavedSearchDto,
+  AdminUpdateSavedSearchInput,
   AdminUpdateListingInput,
   AdminUsersPage,
   Area,
@@ -632,6 +634,26 @@ export function fetchPayments(accessToken: string, query: PaymentsQuery = {}): P
 
 export function fetchUserActivity(accessToken: string, userId: string): Promise<UserActivityDto> {
   return authedBffFetch(accessToken, `/admin/users/${userId}/activity`, { cache: "no-store" });
+}
+
+export function fetchUserSavedSearches(accessToken: string, userId: string): Promise<AdminSavedSearchDto[]> {
+  return authedBffFetch(accessToken, `/admin/users/${userId}/saved-searches`, { cache: "no-store" });
+}
+
+export function updateUserSavedSearch(
+  accessToken: string,
+  userId: string,
+  searchId: string,
+  input: AdminUpdateSavedSearchInput,
+): Promise<AdminSavedSearchDto> {
+  return authedBffFetch(accessToken, `/admin/users/${userId}/saved-searches/${searchId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteUserSavedSearch(accessToken: string, userId: string, searchId: string): Promise<void> {
+  return authedBffFetch(accessToken, `/admin/users/${userId}/saved-searches/${searchId}`, { method: "DELETE" });
 }
 
 export interface AdminUsersQuery {

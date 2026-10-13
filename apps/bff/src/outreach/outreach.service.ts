@@ -714,8 +714,7 @@ export class OutreachService {
   }
 
   /** The claim-verification email's content — see notification-templates/email/claim-listing/
-   * for the copy itself. BCC to support@ mirrors buildWelcomeEmailContent's own convention, so
-   * someone at support@ can see every one of these actually going out. */
+   * for the copy itself. */
   /** kind: 'claim_verification' — a plain string field, same table `notifyListingPosted` already
    * writes to with kind: 'posted' (see listings.service.ts). No new table, no schema change: this
    * reuses ListingNotificationLog exactly as designed, which is also why
@@ -758,7 +757,6 @@ export class OutreachService {
 
     return this.emailProvider.send(contact.email, renderEmailTemplate(tpl.subject, vars), text, {
       html,
-      bcc: 'support@bhavano.com',
     });
   }
 

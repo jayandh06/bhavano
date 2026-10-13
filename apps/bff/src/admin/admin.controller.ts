@@ -7,6 +7,7 @@ import type {
   AdminReferralDetailDto,
   AdminReferralsPage,
   AdminRequirementsPage,
+  AdminSavedSearchDto,
   AdminUsersPage,
   CampaignPreviewDto,
   ClaimSource,
@@ -81,6 +82,7 @@ import { UpdateRateLimitsDto } from './dto/update-rate-limits.dto';
 import { UpdateContactRevealSettingsDto } from './dto/update-contact-reveal-settings.dto';
 import { ListRequirementsDto } from './dto/list-requirements.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
+import { UpdateSavedSearchDto } from './dto/update-saved-search.dto';
 import { UpdateSavedSearchSettingsDto } from './dto/update-saved-search-settings.dto';
 import { UpdateBoostPricingDto } from './dto/update-boost-pricing.dto';
 import { UpdateInstantAlertsPricingDto } from './dto/update-instant-alerts-pricing.dto';
@@ -404,6 +406,26 @@ export class AdminController {
   @Get('users/:id/activity')
   getUserActivity(@Param('id') id: string): Promise<UserActivityDto> {
     return this.adminService.getUserActivity(id);
+  }
+
+  @Get('users/:id/saved-searches')
+  getUserSavedSearches(@Param('id') id: string): Promise<AdminSavedSearchDto[]> {
+    return this.adminService.getUserSavedSearches(id);
+  }
+
+  @Patch('users/:id/saved-searches/:searchId')
+  updateUserSavedSearch(
+    @Param('id') id: string,
+    @Param('searchId') searchId: string,
+    @Body() dto: UpdateSavedSearchDto,
+  ): Promise<AdminSavedSearchDto> {
+    return this.adminService.updateUserSavedSearch(id, searchId, dto);
+  }
+
+  @Delete('users/:id/saved-searches/:searchId')
+  @HttpCode(204)
+  async deleteUserSavedSearch(@Param('id') id: string, @Param('searchId') searchId: string): Promise<void> {
+    await this.adminService.deleteUserSavedSearch(id, searchId);
   }
 
   @Post('users/:id/agent-pro-grant')

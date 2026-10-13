@@ -22,6 +22,7 @@ function makeService(
     savedSearch: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn(),
       // How many of this user's alerts already came out of the free quota — the same
       // count-the-rows approach ContactRevealService uses for free reveals.
@@ -35,6 +36,7 @@ function makeService(
     // toDto resolves area *names* for whatever ids a row's areaIds carries — no rows here need a
     // real name, so an empty result (and "(deleted area)" for any id it can't find) is fine.
     area: { findMany: jest.fn().mockResolvedValue(options.areas ?? []) },
+    city: { findUnique: jest.fn() },
     listingNotificationLog: { create: jest.fn() },
   } as unknown as PrismaService;
   const notificationsService = { notifySavedSearchMatch: jest.fn() } as unknown as NotificationsService;
@@ -102,6 +104,95 @@ describe('SavedSearchesService', () => {
 
       expect(await service.alertAllowance('u1')).toEqual({ source: 'free', freeRemaining: 1 });
       expect(prisma.savedSearch.create).not.toHaveBeenCalled();
+      expect(prisma.savedSearch.count).toHaveBeenCalledWith({
+        where: { userId: 'u1', source: 'free', deletedAt: null },
+      });
+    });
+  });
+
+  describe('soft deletion', () => {
+    it('hides deleted searches from the user list', async () => {
+      const { service, prisma } = makeService();
+      (prisma.savedSearch.findMany as jest.Mock).mockResolvedValue([]);
+
+      expect(await service.list('u1')).toEqual([]);
+      expect(prisma.savedSearch.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'u1', deletedAt: null } }),
+      );
+    });
+
+    it('soft-deletes an owned active search rather than removing its row', async () => {
+      const { service, prisma } = makeService();
+      (prisma.savedSearch.findFirst as jest.Mock).mockResolvedValue({ id: 's1' });
+      (prisma.savedSearch.update as jest.Mock).mockResolvedValue({});
+
+      await service.remove('s1', 'u1');
+
+      expect(prisma.savedSearch.update).toHaveBeenCalledWith({
+        where: { id: 's1' },
+        data: { deletedAt: expect.any(Date) },
+      });
+    });
+
+    it('soft-deleted free alerts no longer consume the active free quota', async () => {
+      const { service, prisma } = makeService({ freeUsed: 1 });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ premiumUntil: null });
+
+      await service.alertAllowance('u1');
+
+      expect(prisma.savedSearch.count).toHaveBeenCalledWith({
+        where: { userId: 'u1', source: 'free', deletedAt: null },
+      });
+    });
+
+    it('allows an admin to update active criteria and returns lifecycle metadata', async () => {
+      const { service, prisma } = makeService();
+      (prisma.savedSearch.findFirst as jest.Mock).mockResolvedValue({ id: 's1' });
+      (prisma.savedSearch.update as jest.Mock).mockResolvedValue({});
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ id: 'u1' });
+      (prisma.savedSearch.findMany as jest.Mock).mockResolvedValue([{
+        id: 's1',
+        userId: 'u1',
+        source: 'free',
+        name: 'Updated search',
+        category: 'apartment',
+        transactionType: 'rent',
+        cityId: null,
+        city: null,
+        areaIds: [],
+        minPrice: 10000,
+        maxPrice: 30000,
+        bedroomOptions: [2],
+        createdAt: new Date('2026-10-01T00:00:00Z'),
+        deletedAt: null,
+        lastNotifiedAt: null,
+      }]);
+
+      const result = await service.updateForAdmin('u1', 's1', {
+        name: 'Updated search',
+        category: 'apartment',
+        transactionType: 'rent',
+        areaIds: [],
+        minPrice: 10000,
+        maxPrice: 30000,
+        bedroomOptions: [2],
+      });
+
+      expect(prisma.savedSearch.update).toHaveBeenCalledWith({
+        where: { id: 's1' },
+        data: {
+          name: 'Updated search',
+          category: 'apartment',
+          transactionType: 'rent',
+          cityId: null,
+          areaIds: [],
+          minPrice: 10000,
+          maxPrice: 30000,
+          bedroomOptions: [2],
+        },
+      });
+      expect(result.deletedAt).toBeNull();
+      expect(result.source).toBe('free');
     });
   });
 
@@ -156,6 +247,7 @@ describe('SavedSearchesService', () => {
         { source: 'free' },
         { user: { premiumUntil: { gt: expect.any(Date) } } },
       ]);
+      expect(args.where.deletedAt).toBeNull();
     });
 
     it('notifies only the candidates whose saved bedrooms filter matches the listing', async () => {

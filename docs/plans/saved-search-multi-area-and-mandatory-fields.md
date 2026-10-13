@@ -78,6 +78,14 @@ still where someone with no browse-page context builds an alert from scratch, or
 existing ones — but its create form now has the same multi-area checkbox list (capped at 5, plus a
 free-text "add an area not listed here"), mandatory city/price fields, and bedroom-chip row.
 
+## Admin saved-search management
+
+The admin user-detail page lists both active and soft-deleted alerts with their criteria, source,
+creation time, and last match-processing time. Admins can edit the name and matching criteria
+for an active alert, or soft-delete it. The authenticated user's remove endpoint also sets
+`deletedAt`; deleted alerts are omitted from user lists, release their active free-quota slot, and
+are excluded from future listing matches. Their rows remain visible to admins for audit/history.
+
 ## Not doing
 
 - No change to the free-quota/Plus gate itself (`docs/plans/saved-search-free-quota-paywall-bug.md`)

@@ -170,28 +170,18 @@ describe('NotificationsService.notifyBoostPromotion', () => {
   });
 });
 
-/**
- * support@bhavano.com is meant to see a copy of every welcome/listing-posted send regardless of
- * which channel the owner actually got it on — previously the BCC only ever attached to the
- * email branch, so a phone-only owner (WhatsApp instead) meant support saw nothing at all.
- */
-describe('NotificationsService — support@ visibility on the WhatsApp branch', () => {
-  it('notifyWelcome emails support@ directly when the owner is WhatsApp-only', async () => {
+describe('NotificationsService — no support copies of notifications', () => {
+  it('notifyWelcome sends WhatsApp without emailing a support copy', async () => {
     const { service, emailSend, sendTemplate } = make();
 
     const channel = await service.notifyWelcome({ name: 'Ravi', email: null, phone: '9876543210' });
 
     expect(channel).toBe('whatsapp');
     expect(sendTemplate).toHaveBeenCalledTimes(1);
-    // The owner never gets an email here (no address on file) — this call is entirely the
-    // internal visibility copy, sent straight to support@ since there's no BCC header to
-    // piggyback on.
-    expect(emailSend).toHaveBeenCalledTimes(1);
-    const [supportTo] = emailSend.mock.calls[0];
-    expect(supportTo).toBe('support@bhavano.com');
+    expect(emailSend).not.toHaveBeenCalled();
   });
 
-  it('notifyWelcome does not email support@ twice when the owner has an email (BCC covers it)', async () => {
+  it('notifyWelcome sends to the owner without BCCing support', async () => {
     const { service, emailSend, sendTemplate } = make();
 
     const channel = await service.notifyWelcome({ name: 'Ravi', email: 'ravi@example.com', phone: '9876543210' });
@@ -201,10 +191,10 @@ describe('NotificationsService — support@ visibility on the WhatsApp branch', 
     expect(emailSend).toHaveBeenCalledTimes(1);
     const [ownerTo, , , ownerOptions] = emailSend.mock.calls[0];
     expect(ownerTo).toBe('ravi@example.com');
-    expect(ownerOptions).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(ownerOptions).not.toHaveProperty('bcc');
   });
 
-  it('notifyListingPosted emails support@ directly when the owner is WhatsApp-only', async () => {
+  it('notifyListingPosted sends WhatsApp without emailing a support copy', async () => {
     const { service, emailSend, sendAdPostedConfirmation } = make();
 
     const result = await service.notifyListingPosted(
@@ -214,10 +204,7 @@ describe('NotificationsService — support@ visibility on the WhatsApp branch', 
 
     expect(result).toEqual({ channel: 'whatsapp', messageId: 'req-2' });
     expect(sendAdPostedConfirmation).toHaveBeenCalledTimes(1);
-    expect(emailSend).toHaveBeenCalledTimes(1);
-    const [to, , , options] = emailSend.mock.calls[0];
-    expect(to).toBe('support@bhavano.com');
-    expect(options).not.toHaveProperty('bcc');
+    expect(emailSend).not.toHaveBeenCalled();
   });
 
   it('notifyListingPosted email carries a pre-written, owner_share-tagged WhatsApp share link', async () => {
@@ -234,7 +221,7 @@ describe('NotificationsService — support@ visibility on the WhatsApp branch', 
     expect((options as { html: string }).html).toContain('https://wa.me/?text=');
   });
 
-  it('notifyListingPosted skips the support@ copy when the WhatsApp send itself fails', async () => {
+  it('does not send a support email when the WhatsApp send fails', async () => {
     const { service, emailSend, sendAdPostedConfirmation } = make();
     (sendAdPostedConfirmation as jest.Mock).mockResolvedValueOnce({ sent: false, messageId: null });
 
@@ -394,7 +381,7 @@ describe('NotificationsService.notifyPendingCheckoutReminder', () => {
     );
   });
 
-  it('sends WhatsApp alone for a phone-only user through MSG91 and copies support@', async () => {
+  it('sends WhatsApp alone for a phone-only user through MSG91 without emailing support', async () => {
     const { service, sendPendingCheckoutReminder, emailSend } = make();
 
     const channels = await service.notifyPendingCheckoutReminder('owner2', PHONE_OWNER, 'Nice flat', 'listing1');
@@ -404,12 +391,10 @@ describe('NotificationsService.notifyPendingCheckoutReminder', () => {
       { name: 'Priya', title: 'Nice flat' },
       'listing1',
     );
-    expect(emailSend).toHaveBeenCalledTimes(1);
-    const [supportTo] = emailSend.mock.calls[0];
-    expect(supportTo).toBe('support@bhavano.com');
+    expect(emailSend).not.toHaveBeenCalled();
   });
 
-  it('sends on all three channels for an owner with a push token, email, and phone — one BCC email, no duplicate support@ copy', async () => {
+  it('sends on all three channels without BCCing support', async () => {
     const { service, pushTokenFindFirst, sendPendingCheckoutReminder, emailSend } = make();
     pushTokenFindFirst.mockResolvedValue({ id: 'token1' });
 
@@ -420,12 +405,10 @@ describe('NotificationsService.notifyPendingCheckoutReminder', () => {
       { channel: 'whatsapp', messageId: 'req-3' },
     ]);
     expect(sendPendingCheckoutReminder).toHaveBeenCalledTimes(1);
-    // Email already BCCs support@ — the direct-copy trick only fires when there's no email going
-    // out at all, so this must stay a single send, not two.
     expect(emailSend).toHaveBeenCalledTimes(1);
     const [to, , , options] = emailSend.mock.calls[0];
     expect(to).toBe('priya@example.com');
-    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options).not.toHaveProperty('bcc');
   });
 });
 
@@ -455,14 +438,14 @@ describe('NotificationsService.notifyDailyActivityDigest', () => {
 });
 
 /**
- * These six used to send a plain-text paragraph instead of the branded `renderEmail` layout
+ * These notices used to send a plain-text paragraph instead of the branded `renderEmail` layout
  * every purchase/signup/reminder email in this file uses — see each method's own comment. Each
  * now goes through `renderPurchaseEmail` (or, for notifyRequirementsToOwner, `renderEmail`
- * directly), so the fix worth pinning is: an `html` part is present, and support@ is BCC'd like
- * every other notification here.
+ * directly), so the fix worth pinning is: an `html` part is present, and no internal support
+ * copy is attached to owner-facing email.
  */
-describe('NotificationsService — branded HTML + support@ BCC for the former plain-text notices', () => {
-  it('notifyListingFlagged sends branded HTML with the moderator message and BCCs support@', async () => {
+describe('NotificationsService — branded HTML + no support BCC for the former plain-text notices', () => {
+  it('notifyListingFlagged sends branded HTML with the moderator message without BCCing support@', async () => {
     const { service, emailSend } = make();
 
     await service.notifyListingFlagged(OWNER, LISTING, 'Photos do not match the description');
@@ -470,44 +453,44 @@ describe('NotificationsService — branded HTML + support@ BCC for the former pl
     const [to, subject, , options] = emailSend.mock.calls[0];
     expect(to).toBe('ravi@example.com');
     expect(subject).toContain(LISTING.title);
-    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options).not.toHaveProperty('bcc');
     expect(options.html).toContain('Photos do not match the description');
   });
 
-  it('notifyListingApproved sends branded HTML and BCCs support@', async () => {
+  it('notifyListingApproved sends branded HTML without BCCing support@', async () => {
     const { service, emailSend } = make();
 
     await service.notifyListingApproved(OWNER, LISTING);
 
     const [, subject, , options] = emailSend.mock.calls[0];
     expect(subject).toContain(LISTING.title);
-    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options).not.toHaveProperty('bcc');
     expect(options.html).toContain(LISTING.title);
   });
 
-  it('notifyListingLiked sends branded HTML naming the liker and BCCs support@', async () => {
+  it('notifyListingLiked sends branded HTML naming the liker without BCCing support@', async () => {
     const { service, emailSend } = make();
 
     await service.notifyListingLiked(OWNER, 'Nice flat', 'Priya');
 
     const [, subject, , options] = emailSend.mock.calls[0];
     expect(subject).toContain('Priya');
-    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options).not.toHaveProperty('bcc');
     expect(options.html).toContain('Priya');
   });
 
-  it('notifyListingInterest sends branded HTML naming the interested buyer and BCCs support@', async () => {
+  it('notifyListingInterest sends branded HTML naming the interested buyer without BCCing support@', async () => {
     const { service, emailSend } = make();
 
     await service.notifyListingInterest(OWNER, { interestedName: 'Priya', listingTitle: 'Nice flat' });
 
     const [, subject, , options] = emailSend.mock.calls[0];
     expect(subject).toContain('Priya');
-    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options).not.toHaveProperty('bcc');
     expect(options.html).toContain('Priya');
   });
 
-  it('notifyNewMessage links to the specific conversation and BCCs support@', async () => {
+  it('notifyNewMessage links to the specific conversation without BCCing support@', async () => {
     const { service, emailSend } = make();
 
     await service.notifyNewMessage(OWNER, {
@@ -518,11 +501,11 @@ describe('NotificationsService — branded HTML + support@ BCC for the former pl
 
     const [, , text, options] = emailSend.mock.calls[0];
     expect(text).toContain('/messages/conv1');
-    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options).not.toHaveProperty('bcc');
     expect(options.html).toContain('/messages/conv1');
   });
 
-  it('notifyRequirementsToOwner pluralises for more than one match, lists each line, and BCCs support@', async () => {
+  it('notifyRequirementsToOwner pluralises for more than one match, lists each line, without BCCing support@', async () => {
     const { service, emailSend } = make();
 
     await service.notifyRequirementsToOwner(OWNER, ['3BHK in Koramangala', '2BHK in Indiranagar']);
@@ -531,7 +514,7 @@ describe('NotificationsService — branded HTML + support@ BCC for the former pl
     expect(subject).toContain('2 people');
     expect(text).toContain('3BHK in Koramangala');
     expect(text).toContain('2BHK in Indiranagar');
-    expect(options).toMatchObject({ bcc: 'support@bhavano.com' });
+    expect(options).not.toHaveProperty('bcc');
     expect(options.html).toContain('3BHK in Koramangala');
   });
 
