@@ -166,12 +166,27 @@ export function BoostPlanSelector({
       </div>
       <div className="mt-3 rounded-xl border border-[color:var(--gold)]/30 bg-surface px-3.5 py-3">
         <p className="m-0 mb-2 font-bold text-[13px] text-text">Featured gets you:</p>
-        <ul className="flex flex-col gap-1.5 text-[12.5px] text-text-soft m-0 pl-5">
-          <li>Gold Featured badge and standout card.</li>
-          <li>Higher placement in relevant results; position varies.</li>
-          <li>Featured rail eligibility when matching listings are available.</li>
-          <li>Email and WhatsApp alerts for new interest or messages.</li>
-          <li>Daily recap of views, favourites, and messages while Featured.</li>
+        <ul className="flex flex-col gap-1.5 text-[12.5px] text-text-soft m-0 p-0 list-none">
+          <li className="flex items-start gap-2">
+            <Icon name="featured" className="mt-[2px] text-[color:var(--gold)]" />
+            <span>Gold Featured badge and standout card.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Icon name="boost" className="mt-[2px] text-[color:var(--gold)]" />
+            <span>Higher placement in relevant results; position varies.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Icon name="allCities" className="mt-[2px] text-[color:var(--gold)]" />
+            <span>Featured rail eligibility when matching listings are available.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Icon name="bell" className="mt-[2px] text-[color:var(--gold)]" />
+            <span>Email and WhatsApp alerts for new interest or messages.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Icon name="chart" className="mt-[2px] text-[color:var(--gold)]" />
+            <span>Daily recap of views, favourites, and messages while Featured.</span>
+          </li>
         </ul>
         {effectivenessMessage.hasEnoughData && (
           <p className="m-0 mt-2 text-[12px] font-bold text-[color:var(--gold)]">
