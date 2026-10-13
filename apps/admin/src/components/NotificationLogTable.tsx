@@ -106,7 +106,7 @@ function DayDetailPanel({ state }: { state: NotificationLogEntryDto[] | "loading
   }
 
   return (
-    <div style={{ padding: 16, background: "var(--bg)" }}>
+    <div style={{ padding: 16, background: "var(--bg)", overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
         <thead>
           <tr style={{ textAlign: "left" }}>

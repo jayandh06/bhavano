@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AdminNav />
-        {children}
+        <main className="admin-page-content">{children}</main>
       </body>
     </html>
   );
