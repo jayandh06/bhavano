@@ -39,9 +39,9 @@ layout applies to the web Preview step.
      badge, border, and other card treatment.
    - Stack at narrower breakpoints and use a side-by-side comparison on wide screens.
 4. **Explain benefits with a fuller Featured bullet list.**
-   - Show a clearly labeled **Featured gets you:** bullet list for the gold badge/card treatment,
-     variable priority placement, possible Featured-rail exposure, Instant Alerts, and the daily
-     activity digest on listings still Featured when the digest is sent.
+   - Show a clearly labeled **Featured gets you:** bullet list with concise copy for the gold
+     badge/card treatment, variable priority placement, possible Featured-rail exposure, Instant
+     Alerts, and the daily activity digest on listings still Featured when the digest is sent.
    - Show an empirical effectiveness claim only when the existing sample-size gate supports it.
      Qualitative benefits otherwise; no guaranteed position or fixed uplift.
    - The duration options already show the total and daily equivalent, so don't repeat a price
@@ -76,7 +76,7 @@ layout applies to the web Preview step.
 - Normal and Featured versions of the same listing are visibly comparable; selecting a boost
   clearly emphasizes the matching Featured treatment.
 - Featured benefits appear as multiple readable bullet points, distinguishable from the Normal
-  ad's standard treatment, and never make a guaranteed-placement claim.
+  ad's standard treatment, use concise copy, and never make a guaranteed-placement claim.
 - Each duration option displays its total price and daily equivalent once; any performance claim
   remains behind the existing sample-size gate.
 - Desktop content is left-aligned and uses more of the available width; mobile remains readable

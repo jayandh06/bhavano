@@ -167,11 +167,11 @@ export function BoostPlanSelector({
       <div className="mt-3 rounded-xl border border-[color:var(--gold)]/30 bg-surface px-3.5 py-3">
         <p className="m-0 mb-2 font-bold text-[13px] text-text">Featured gets you:</p>
         <ul className="flex flex-col gap-1.5 text-[12.5px] text-text-soft m-0 pl-5">
-          <li>A gold Featured badge and highlighted card that stand out from standard listings.</li>
-          <li>Priority placement above regular listings in relevant browsing results; exact position can vary.</li>
-          <li>Eligibility for the Featured listings rail when matching inventory is available for a visitor&apos;s category and city.</li>
-          <li>Instant Alerts by email and WhatsApp when someone messages or shows interest while your boost is active.</li>
-          <li>A daily recap of views, favourites, and new messages on ads still Featured when the digest is sent.</li>
+          <li>Gold Featured badge and standout card.</li>
+          <li>Higher placement in relevant results; position varies.</li>
+          <li>Featured rail eligibility when matching listings are available.</li>
+          <li>Email and WhatsApp alerts for new interest or messages.</li>
+          <li>Daily recap of views, favourites, and messages while Featured.</li>
         </ul>
         {effectivenessMessage.hasEnoughData && (
           <p className="m-0 mt-2 text-[12px] font-bold text-[color:var(--gold)]">
