@@ -456,8 +456,7 @@ def main():
         print(format_city_counts(rows, firms), file=sys.stderr)
         firms_path = os.path.join(args.out_dir, f"portal_firms_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
         write_firms_csv(firms_path, firms)
-        print(f"
-Wrote {firms_path}", file=sys.stderr)
+        print(f"\nWrote {firms_path}", file=sys.stderr)
         return
     firms = firms[: args.max_firms]
 
