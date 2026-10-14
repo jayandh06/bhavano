@@ -51,6 +51,32 @@ Actors can give is the poster's firm name and city. Options, each needing your d
 
 The sender fix in Phase 3 is independent of this and is done.
 
+## Built (2026-10-14): portal firms matched to Google Maps
+
+The user chose option 1, using both 99acres and Housing.com, and accepted the terms-of-use risk.
+[`get_agent_leads_from_portals_apify.py`](../../get_agent_leads_from_portals_apify.py) (tests in
+`test_get_agent_leads_from_portals_apify.py`, 22 passing):
+
+1. **Portals.** `fatihtahta~99acres-scraper-ppe` (dealer and featured-dealer listings, sale and
+   rent) and `sian.agency~housing-com-property-scraper` (buy and rent), per city. Owners and
+   builders are dropped. 99acres rows older than `--max-age-days` (default 30) are dropped;
+   Housing.com rows carry no posting date, so that filter cannot apply to them.
+2. **Merge** to one firm per (city, normalised name), across both portals.
+3. **Match** each firm on Google Maps (`compass~crawler-google-places`, 3 candidates). Score = name
+   similarity (+0.10 if a portal locality is in the address, +0.15 if the Maps number starts with
+   the portal's masked prefix such as `98200`, -0.05 if it doesn't, -0.5 if permanently closed).
+   `>= 0.85` confident, `>= 0.60` review, otherwise unmatched.
+4. **Output** a CSV per run. `sms_capable` is `yes` only for a confident match with a mobile.
+   Landlines (STD-coded, and numbers starting 80 unless written 5+5) are kept for reference but are
+   never SMS-capable.
+5. **Import** only with `--import` (confident + mobile, deduped by phone) as `source: scrape`,
+   `consentState: none`. Nothing is written to Bhavano by default.
+
+Run the pilot where the Apify token lives (the app instance), CSV only:
+`python get_agent_leads_from_portals_apify.py --cities Bengaluru --max-firms 50`.
+Not yet run: there is no Apify token in the local checkout. Review the CSV by hand before any
+`--import`.
+
 ## Decisions needed before extraction (these can stop the plan)
 
 1. **99acres terms of use.** Scraping 99acres breaches its terms and Info Edge actively blocks
