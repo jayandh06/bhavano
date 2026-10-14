@@ -6,11 +6,14 @@ over *returning* and *high-intent* users to the app, never to block the web.
 
 ## Current state
 
-- **App Links are half done.** `apps/mobile/app.config.js` has the `autoVerify` intent filter for
-  `https://www.bhavano.com`, and `assetlinks.json` is live and verified by Google's Digital Asset
-  Links API (package `com.finfolia.bhavano`, SHA-256 `83:E7:…:58:50`). Missing: a **native build**
-  carrying the intent filter (OTA can't add it), and confirmation that the fingerprint is the
-  **Play App Signing** key (Play Console → Test and release → App integrity), not the upload key.
+- **App Links (2026-10-14):** native 1.0.1 with the `autoVerify` intent filter is live on Play.
+  `assetlinks.json` originally listed only the **upload** key (`83:E7:…:58:50`), but Play-installed
+  apps are signed with the **Play App Signing** key (`7F:32:…:7E:99`, Play Console → Test and
+  release → Setup → App signing), so verification would have failed. Both are now listed. Verify
+  on a Play-installed device: `adb shell pm get-app-links com.finfolia.bhavano` → `verified`.
+  **Caveat for Ads:** once verified, clicks on Ads URLs open the app for installed users, and Ads
+  conversions are only tracked on web — import the Firebase `post_ad_success` conversion first
+  (see `firebase-analytics-and-app-campaign.md` Phase 3).
 - **Built 2026-10-05: steps 2, 3 and 4 below** (open-in-app strip, high-intent moments, desktop QR)
   — see "As built".
 
