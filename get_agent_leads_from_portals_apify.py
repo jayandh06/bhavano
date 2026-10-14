@@ -297,6 +297,19 @@ def collect_portal_rows(token, cities, portals, limit, max_age_days, timeout_sec
     return rows
 
 
+def format_city_counts(rows, firms):
+    """Per city: agent listings kept, distinct firms, and how many of those firms are on both
+    portals (the overlap is why firms are far fewer than listings)."""
+    listings = Counter(r["city"] for r in rows if r)
+    distinct = Counter(f["city"] for f in firms)
+    both = Counter(f["city"] for f in firms if len(f["portals"]) > 1)
+    lines = [f"{'city':<14}{'listings':>10}{'firms':>8}{'on both':>9}"]
+    for city in sorted(listings):
+        lines.append(f"{city:<14}{listings[city]:>10}{distinct[city]:>8}{both[city]:>9}")
+    lines.append(f"{'total':<14}{sum(listings.values()):>10}{sum(distinct.values()):>8}{sum(both.values()):>9}")
+    return "\n".join(lines)
+
+
 CSV_FIELDS = [
     "city", "firm", "status", "score", "sms_capable", "phone", "mobile", "prefix_matched", "portals",
     "listings", "localities", "gmaps_name", "gmaps_address", "website", "gmaps_place_id", "portal_urls",
@@ -382,6 +395,9 @@ def main():
     parser.add_argument("--apify-token", default=os.environ.get("APIFY_API_TOKEN"))
     parser.add_argument("--actor-timeout", type=int, default=DEFAULT_ACTOR_TIMEOUT_SECONDS)
     parser.add_argument("--bff-url", default="http://localhost:4000")
+    parser.add_argument("--count-only", action="store_true",
+                        help="Stop after the portal step and print agent listings and distinct firms per city. "
+                        "No Google Maps lookups, so it costs only the two portal Actors.")
     parser.add_argument("--import", dest="do_import", action="store_true",
                         help="Import confident, SMS-capable firms into OutreachContact. Off by default.")
     args = parser.parse_args()
@@ -395,6 +411,9 @@ def main():
     rows = collect_portal_rows(args.apify_token, cities, portals, args.limit, args.max_age_days, args.actor_timeout)
     firms = merge_firms(rows)
     print(f"{len([r for r in rows if r])} agent listings -> {len(firms)} distinct firms", file=sys.stderr)
+    if args.count_only:
+        print(format_city_counts(rows, firms), file=sys.stderr)
+        return
     firms = firms[: args.max_firms]
 
     counter = RequestCounter()

@@ -143,5 +143,19 @@ class MergeAndMatchTests(unittest.TestCase):
         self.assertEqual(row["sms_capable"], "yes")
 
 
+class CityCountTests(unittest.TestCase):
+    def test_counts_listings_firms_and_overlap_per_city(self):
+        def row(firm, city, portal):
+            return {"firm": firm, "contact": "", "city": city, "locality": "", "prefix": None, "url": None, "portal": portal}
+        rows = [row("Olive Homes", "Bengaluru", "99acres"), row("Olive Homes", "Bengaluru", "housing"),
+                row("Zeta Realty", "Bengaluru", "99acres"), row("Alpha Homes", "Chennai", "housing"), None]
+        out = m.format_city_counts(rows, m.merge_firms(rows))
+        self.assertIn("Bengaluru", out)
+        bengaluru = next(l for l in out.splitlines() if l.startswith("Bengaluru")).split()
+        self.assertEqual(bengaluru[1:], ["3", "2", "1"])  # 3 listings, 2 firms, 1 on both portals
+        total = next(l for l in out.splitlines() if l.startswith("total")).split()
+        self.assertEqual(total[1:], ["4", "3", "1"])
+
+
 if __name__ == "__main__":
     unittest.main()
