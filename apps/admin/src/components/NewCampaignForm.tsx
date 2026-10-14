@@ -27,11 +27,15 @@ export function NewCampaignForm() {
   );
   const [dltTemplateId, setDltTemplateId] = useState("");
   const [cadenceCron, setCadenceCron] = useState("");
+  // Comma-separated contact tags (e.g. "portal-agent"). Without any audience the campaign would
+  // target every contact, so activation is refused until one is set.
+  const [tags, setTags] = useState("");
   const [minDaysBetweenSends, setMinDays] = useState(14);
   const [maxSendsPerRun, setMaxSends] = useState(200);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
     setPending(true);
     setError(null);
     const result = await createCampaignAction({
@@ -40,6 +44,7 @@ export function NewCampaignForm() {
       bodyTemplate,
       dltTemplateId: dltTemplateId || undefined,
       cadenceCron: cadenceCron || undefined,
+      audienceFilter: tagList.length > 0 ? { tags: tagList } : undefined,
       minDaysBetweenSends,
       maxSendsPerRun,
     });
@@ -113,6 +118,15 @@ export function NewCampaignForm() {
         value={dltTemplateId}
         onChange={(e) => setDltTemplateId(e.target.value)}
       />
+      <input
+        style={input}
+        placeholder="Audience: contact tags, comma-separated (e.g. portal-agent)"
+        value={tags}
+        onChange={(e) => setTags(e.target.value)}
+      />
+      <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
+        Required before activation: an empty audience means every contact. Campaigns start in dry-run.
+      </span>
       <input
         style={input}
         placeholder="Cadence cron — leave blank for a one-shot campaign"
