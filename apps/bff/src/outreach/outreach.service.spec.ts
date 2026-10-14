@@ -163,6 +163,7 @@ describe('OutreachService.updateCampaign — activation guards', () => {
     channel: 'sms',
     bodyTemplate: 'Hi {{name}}, list with Bhavano. Reply STOP to opt out.',
     dltTemplateId: 'DLT123',
+    audienceFilter: { tags: ['portal-agent'] },
   };
 
   function setup(overrides: Record<string, unknown> = {}) {
@@ -195,6 +196,18 @@ describe('OutreachService.updateCampaign — activation guards', () => {
   it('refuses to activate a body with no opt-out instruction', async () => {
     const { service } = setup({ bodyTemplate: 'Hi {{name}}, list with Bhavano today!' });
     await expect(service.updateCampaign('k1', { status: 'scheduled' })).rejects.toThrow(/opt out/i);
+  });
+
+  it('refuses to activate a campaign whose audience is empty (every contact)', async () => {
+    const { service } = setup({ audienceFilter: {} });
+    await expect(service.updateCampaign('k1', { status: 'scheduled' })).rejects.toThrow(/audience/i);
+  });
+
+  it('accepts an audience supplied in the same update', async () => {
+    const { service } = setup({ audienceFilter: {} });
+    await expect(
+      service.updateCampaign('k1', { status: 'scheduled', audienceFilter: { cityIds: ['c1'] } }),
+    ).resolves.toBeDefined();
   });
 
   it('allows a compliant campaign to activate', async () => {

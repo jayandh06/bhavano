@@ -46,6 +46,20 @@ const SEND_STATUSES: SendStatus[] = ['queued', 'sent', 'delivered', 'failed', 's
  * before it reaches an audience. */
 const OPT_OUT_HINT = /\b(stop|unsubscribe|opt.?out)\b/i;
 
+/** Whether an audience filter narrows anything at all. An empty filter selects EVERY contact (PG
+ * owners, coworking operators, scraped agents alike), and the admin "New campaign" form has no
+ * audience field, so a campaign made there starts out empty. A real send must name its audience. */
+export function hasAudienceScope(filter: CampaignAudienceFilter | null | undefined): boolean {
+  if (!filter) return false;
+  return (
+    (filter.cityIds?.length ?? 0) > 0 ||
+    (filter.businessCategories?.length ?? 0) > 0 ||
+    (filter.tags?.length ?? 0) > 0 ||
+    (filter.statuses?.length ?? 0) > 0 ||
+    filter.minRating != null
+  );
+}
+
 /** Same phone/seed as apps/bff/prisma/seedBulkImportOwner.ts — every listing created this way
  * (or via bulk_upload_listings.py) is posted under this dedicated system account, never the
  * scraped business's own, until they actually claim it. Not imported as a shared constant since
@@ -838,6 +852,12 @@ export class OutreachService {
       if (!OPT_OUT_HINT.test(bodyTemplate)) {
         throw new BadRequestException(
           'Marketing messages must tell recipients how to opt out — include "STOP" or "unsubscribe" in the body',
+        );
+      }
+      const audienceFilter = (input.audienceFilter ?? existing.audienceFilter) as CampaignAudienceFilter | null;
+      if (!hasAudienceScope(audienceFilter)) {
+        throw new BadRequestException(
+          'Choose an audience (city, category, tag, status or rating) before activating — an empty audience is every contact',
         );
       }
     }

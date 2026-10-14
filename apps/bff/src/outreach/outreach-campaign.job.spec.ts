@@ -30,6 +30,7 @@ function makeJob(eligible: Record<string, unknown>[], campaignOverrides: Record<
     bodyTemplate: 'Hi {{name}}. Reply STOP to opt out.',
     dltTemplateId: 'DLT1',
     dryRun: false,
+    audienceFilter: { tags: ['portal-agent'] },
     cadenceCron: null,
     lastRunAt: null,
     ...campaignOverrides,
@@ -41,6 +42,15 @@ function makeJob(eligible: Record<string, unknown>[], campaignOverrides: Record<
 const contact = { id: 'c1', name: 'Acme', phoneE164: '+919876543210', email: null, status: 'new' };
 
 describe('OutreachCampaignJob.runCampaign', () => {
+  it('refuses a real send when the campaign has no audience filter', async () => {
+    const { job, sender, campaign } = makeJob([contact], { audienceFilter: {} });
+
+    const result = await job.runCampaign(campaign);
+
+    expect(result).toEqual({ sent: 0, failed: 0, skipped: 0 });
+    expect(sender.send).not.toHaveBeenCalled();
+  });
+
   it('sends to an eligible contact and records the send', async () => {
     const { job, prisma, sender, campaign } = makeJob([contact]);
 

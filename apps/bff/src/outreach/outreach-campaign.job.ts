@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import type { OutreachCampaign, OutreachContact } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { OutreachService, renderTemplate } from './outreach.service';
+import { OutreachService, hasAudienceScope, renderTemplate } from './outreach.service';
 import { OutreachSenderService } from './outreach-sender.service';
 
 /**
@@ -58,6 +58,12 @@ export class OutreachCampaignJob {
   }
 
   async runCampaign(campaign: OutreachCampaign): Promise<{ sent: number; failed: number; skipped: number }> {
+    // Backstop for the activation check (the manual "run now" endpoint and rows created before it
+    // existed skip that path): a real send with no audience scope would go to every contact.
+    if (!campaign.dryRun && !hasAudienceScope(campaign.audienceFilter as never)) {
+      this.logger.error(`Campaign "${campaign.name}" has no audience filter — refusing to send to every contact`);
+      return { sent: 0, failed: 0, skipped: 0 };
+    }
     const runKey = this.runKey(campaign);
     const { contacts } = await this.outreach.resolveEligible(campaign);
     const needsPhone = campaign.channel !== 'email';
