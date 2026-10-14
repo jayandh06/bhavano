@@ -61,12 +61,17 @@ export class OutreachSenderService {
   ): Promise<SendOutcome> {
     if (!dltTemplateId) return { ok: false, error: 'Missing DLT template id' };
 
+    // The registered DLT/MSG91 template is fixed text with no ##variables##, so the request carries
+    // only the recipient and `body` (the rendered text) is not sent: the operator delivers the
+    // approved template text itself. It used to be passed whole as VAR1, which only works for an
+    // all-variable template, and DLT rejects those. `body` is still what we store as `renderedBody`
+    // for audit, so it must stay identical to the registered template text.
     const res = await fetch('https://control.msg91.com/api/v5/flow/', {
       method: 'POST',
       headers: { authkey: authKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         template_id: dltTemplateId,
-        recipients: [{ mobiles: to.replace('+', ''), VAR1: body }],
+        recipients: [{ mobiles: to.replace('+', '') }],
       }),
     });
 
