@@ -69,6 +69,17 @@ export class OutreachCampaignJob {
     // contact when it was run for real ("Unique constraint failed" on all of them) and had
     // already been marked completed. Each dry run gets its own key and leaves the status alone.
     const runKey = campaign.dryRun ? `dry-${new Date().toISOString()}` : this.runKey(campaign);
+    if (!campaign.dryRun) {
+      // Dry runs made before dry runs got their own key hold the real run's idempotency slot
+      // (unique on campaign + contact + runKey), so every contact would be skipped. A "dry run"
+      // record is by definition a message that was never delivered, so clearing it loses nothing.
+      const cleared = await this.prisma.campaignSend.deleteMany({
+        where: { campaignId: campaign.id, runKey, status: 'suppressed', failureReason: 'dry run' },
+      });
+      if (cleared.count > 0) {
+        this.logger.log(`Campaign "${campaign.name}": cleared ${cleared.count} stale dry-run records before the real run`);
+      }
+    }
     const { contacts } = await this.outreach.resolveEligible(campaign);
     const needsPhone = campaign.channel !== 'email';
 

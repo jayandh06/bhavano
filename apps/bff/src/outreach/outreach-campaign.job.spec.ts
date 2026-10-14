@@ -13,6 +13,7 @@ function makeJob(eligible: Record<string, unknown>[], campaignOverrides: Record<
     campaignSend: {
       create: jest.fn().mockResolvedValue({ id: 's1' }),
       update: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
@@ -83,6 +84,26 @@ describe('OutreachCampaignJob.runCampaign', () => {
     const update = (prisma.outreachCampaign.update as jest.Mock).mock.calls[0][0].data;
     expect(update.status).toBeUndefined();
     expect(update.lastRunAt).toBeInstanceOf(Date);
+  });
+
+  it('a real run first clears stale dry-run records that hold its send slot', async () => {
+    const { job, prisma, campaign } = makeJob([contact]);
+    (prisma.campaignSend.deleteMany as jest.Mock).mockResolvedValue({ count: 80 });
+
+    await job.runCampaign(campaign);
+
+    expect(prisma.campaignSend.deleteMany).toHaveBeenCalledWith({
+      where: { campaignId: 'k1', runKey: 'once', status: 'suppressed', failureReason: 'dry run' },
+    });
+    const clearOrder = (prisma.campaignSend.deleteMany as jest.Mock).mock.invocationCallOrder[0];
+    const createOrder = (prisma.campaignSend.create as jest.Mock).mock.invocationCallOrder[0];
+    expect(clearOrder).toBeLessThan(createOrder);
+  });
+
+  it('a dry run clears nothing', async () => {
+    const { job, prisma, campaign } = makeJob([contact], { dryRun: true });
+    await job.runCampaign(campaign);
+    expect(prisma.campaignSend.deleteMany).not.toHaveBeenCalled();
   });
 
   it('claims the send row before dispatching, so a retry cannot double-send', async () => {
