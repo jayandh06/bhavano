@@ -5,6 +5,7 @@ import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from 
 import { Pagination } from "@/components/Pagination";
 import { CampaignControls } from "@/components/CampaignControls";
 import { NewCampaignForm } from "@/components/NewCampaignForm";
+import { EditCampaignForm } from "@/components/EditCampaignForm";
 import { formatDateTime } from "@/lib/formatDateTime";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -131,6 +132,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                   </div>
                   <CampaignControls campaign={campaign} />
                 </div>
+                <EditCampaignForm campaign={campaign} />
               </div>
             ))}
           </div>

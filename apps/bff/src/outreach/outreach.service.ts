@@ -870,11 +870,11 @@ export class OutreachService {
         ...(input.status != null ? { status: input.status } : {}),
         ...(input.bodyTemplate != null ? { bodyTemplate: input.bodyTemplate } : {}),
         ...(input.subject !== undefined ? { subject: input.subject ?? null } : {}),
-        ...(input.dltTemplateId !== undefined ? { dltTemplateId: input.dltTemplateId ?? null } : {}),
+        ...(input.dltTemplateId !== undefined ? { dltTemplateId: input.dltTemplateId || null } : {}),
         ...(input.audienceFilter != null
           ? { audienceFilter: input.audienceFilter as Prisma.InputJsonValue }
           : {}),
-        ...(input.cadenceCron !== undefined ? { cadenceCron: input.cadenceCron ?? null } : {}),
+        ...(input.cadenceCron !== undefined ? { cadenceCron: input.cadenceCron || null } : {}),
         ...(input.scheduledAt !== undefined
           ? { scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null }
           : {}),
