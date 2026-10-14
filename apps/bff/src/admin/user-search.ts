@@ -14,7 +14,7 @@ const PHONE_LIKE = /^[+()\-.\s\d]+$/;
  * all still find the bare 10-digit row. Returns `undefined` for anything that isn't phone-shaped,
  * or that reduces to fewer than 3 digits — too short to be a phone fragment and long enough that
  * every row would match, which is a scan, not a search. */
-function digitsForPhoneMatch(query: string): string | undefined {
+export function normalizedPhoneDigitsForSearch(query: string): string | undefined {
   if (!PHONE_LIKE.test(query)) return undefined;
   let digits = query.replace(/\D/g, '');
   if (digits.length > 10 && digits.startsWith('91')) digits = digits.slice(2);
@@ -42,7 +42,7 @@ export function buildUserSearchOr(q: string | undefined): Prisma.UserWhereInput[
   const query = q?.trim();
   if (!query) return undefined;
 
-  const phoneDigits = digitsForPhoneMatch(query);
+  const phoneDigits = normalizedPhoneDigitsForSearch(query);
   return [
     { name: { contains: query, mode: 'insensitive' } },
     { phone: { contains: query } },

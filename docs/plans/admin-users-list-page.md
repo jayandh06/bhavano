@@ -138,10 +138,15 @@ Server component using a real `<table>` (per `page-visits/page.tsx`'s convention
 was "filters and sorts on table" rather than the card-list style `logins/page.tsx` uses):
 
 - `requireAdmin()` guard.
-- Filter `<form method="get">`: free-text `q`, `role` select, `welcomed` select (Any/Welcomed/Not
-  welcomed), `from`/`to` date inputs, `sort` select.
-- Table columns: Created, Name, Phone, Email, Role, City, Notification status — "✓ whatsapp — Sep
-  3" style when welcomed, `var(--danger)`-colored "Not welcomed" otherwise.
+- Filter `<form method="get">`: free-text `q`, per-field Name/Phone/Email/City substring filters,
+  minimum/maximum Live ads and Contact reveals left, `role` select, `welcomed` select
+  (Any/Welcomed/Not welcomed), and `from`/`to` date inputs. Applying filters resets pagination.
+- Table columns: Created, Name, Phone, Email, Role, Posts as, Live ads, Contact reveals left,
+  Enquiries, City, Notification status. Name, Phone, Email, City, Live ads, and Contact reveals
+  left are sortable by clicking their headers; sorting preserves active filters and resets the
+  page. Contact reveals left is free reveals remaining plus unexpired purchased credits.
+  Notification status shows "✓ whatsapp — Sep 3" style when welcomed, `var(--danger)`-colored
+  "Not welcomed" otherwise.
 - Each row's name links to `/users/[id]`.
 - Each non-admin row has a **Delete** link to `/users/[id]#delete`, which opens the confirm panel
   on the detail page (`DeleteUserPanel` — type `DELETE` to confirm). BFF

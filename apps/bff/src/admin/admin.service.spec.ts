@@ -16,6 +16,7 @@ import type { SavedSearchesService } from '../saved-searches/saved-searches.serv
 import { DEFAULT_BOOST_PRICE_SETTINGS } from '@bhavano/types/boostPricing';
 import { DEFAULT_INSTANT_ALERTS_PRICE_SETTINGS } from '@bhavano/types/instantAlertsPricing';
 import { ACTIVE_PROMO_CODE } from '@bhavano/types/promoCode';
+import { Prisma } from '@prisma/client';
 
 function makeService(
   overrides: Record<string, unknown> = {},
@@ -127,6 +128,92 @@ function listingRow(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe('AdminService.listUsers', () => {
+  it('filters, sorts, and returns live listing and contact reveal balances', async () => {
+    const stats = {
+      id: 'u1',
+      liveListings: 4,
+      contactRevealsLeft: 5,
+      freeRevealsRemaining: 1,
+      revealCreditsRemaining: 4,
+    };
+    const queries: Prisma.Sql[] = [];
+    const rawQuery = jest.fn((query: Prisma.Sql) => {
+      queries.push(query);
+      return Promise.resolve(queries.length === 1 ? [{ total: 1 }] : [stats]);
+    });
+    const userFindMany = jest.fn().mockResolvedValue([
+      {
+        id: 'u1',
+        name: 'Test User',
+        phone: '+919876543210',
+        email: 'test@example.com',
+        role: 'user',
+        sellerType: 'owner',
+        agencyName: null,
+        city: { name: 'Bengaluru' },
+        _count: { conversationsAsPoster: 2 },
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        notificationLogs: [],
+      },
+    ]);
+    const { service } = makeService({
+      $queryRaw: rawQuery,
+      user: { findMany: userFindMany },
+    });
+
+    const result = await service.listUsers({
+      name: 'Test',
+      phone: '9876',
+      email: 'example.com',
+      city: 'Bengaluru',
+      minLiveListings: 2,
+      maxLiveListings: 8,
+      minContactRevealsLeft: 1,
+      maxContactRevealsLeft: 6,
+      sort: 'contactRevealsLeft_desc',
+      limit: 25,
+    });
+
+    const pageQuery = queries[1];
+    expect(pageQuery.sql).toContain(
+      'POSITION(LOWER(?) IN LOWER(COALESCE(u."name", \'\'))) > 0',
+    );
+    expect(pageQuery.sql).toContain('"liveListings" >= ?');
+    expect(pageQuery.sql).toContain('"liveListings" <= ?');
+    expect(pageQuery.sql).toContain('"contactRevealsLeft" >= ?');
+    expect(pageQuery.sql).toContain('"contactRevealsLeft" <= ?');
+    expect(pageQuery.sql).toContain(
+      'ORDER BY "contactRevealsLeft" DESC NULLS LAST',
+    );
+    expect(pageQuery.values).toEqual(
+      expect.arrayContaining([
+        'Test',
+        '9876',
+        'example.com',
+        'Bengaluru',
+        2,
+        8,
+        1,
+        6,
+      ]),
+    );
+    expect(result).toEqual({
+      items: [
+        expect.objectContaining({
+          id: 'u1',
+          liveListings: 4,
+          contactRevealsLeft: 5,
+          freeRevealsRemaining: 1,
+          revealCreditsRemaining: 4,
+          enquiries: 2,
+        }),
+      ],
+      total: 1,
+    });
+  });
+});
 
 describe('AdminService.getUserActivity', () => {
   it('returns every owned listing with moderation details for the admin user page', async () => {

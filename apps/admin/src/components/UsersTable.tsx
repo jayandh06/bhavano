@@ -7,13 +7,15 @@ import type { SendWelcomeResponseDto, UserSummaryDto, WelcomeChannel } from "@bh
 import { postedByLabel } from "@bhavano/types/sellerType";
 import { mergeUsersAction, sendWelcomeAction } from "@/app/actions/users";
 import { formatDateTime } from "@/lib/formatDateTime";
+import { buildSuffixSortHref, suffixSortDirectionFor, type SearchParams } from "@/lib/searchParams";
+import { SortableHeader } from "./SortableHeader";
 
 const dash = <span style={{ color: "var(--muted)" }}>—</span>;
 
 /** Table + row-selection + the bulk "Send welcome email"/"Send welcome WhatsApp" action for the
  * admin Users page. One mechanism covers both "single" and "multiple" users at once — selecting
  * exactly one row and clicking a button is the single-user case, no separate per-row buttons. */
-export function UsersTable({ users }: { users: UserSummaryDto[] }) {
+export function UsersTable({ users, searchParams }: { users: UserSummaryDto[]; searchParams: SearchParams }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<WelcomeChannel | null>(null);
@@ -21,6 +23,16 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
 
   const allSelected = users.length > 0 && users.every((u) => selected.has(u.id));
+
+  function sortable(label: string, field: string) {
+    return (
+      <SortableHeader
+        label={label}
+        href={buildSuffixSortHref("/users", searchParams, field, "createdAt_desc")}
+        direction={suffixSortDirectionFor(searchParams, field, "createdAt_desc")}
+      />
+    );
+  }
 
   function toggleAll() {
     setSelected(allSelected ? new Set() : new Set(users.map((u) => u.id)));
@@ -128,11 +140,18 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
               <th style={thStyle}>
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} />
               </th>
-              {["Created", "Name", "Phone", "Email", "Role", "Posts as", "Live ads", "Enquiries", "City", "Notification status", ""].map((h) => (
-                <th key={h || "actions"} style={thStyle}>
-                  {h}
-                </th>
-              ))}
+              <th style={thStyle}>Created</th>
+              <th style={thStyle}>{sortable("Name", "name")}</th>
+              <th style={thStyle}>{sortable("Phone", "phone")}</th>
+              <th style={thStyle}>{sortable("Email", "email")}</th>
+              <th style={thStyle}>Role</th>
+              <th style={thStyle}>Posts as</th>
+              <th style={thStyle}>{sortable("Live ads", "liveListings")}</th>
+              <th style={thStyle}>{sortable("Contact reveals left", "contactRevealsLeft")}</th>
+              <th style={thStyle}>Enquiries</th>
+              <th style={thStyle}>{sortable("City", "city")}</th>
+              <th style={thStyle}>Notification status</th>
+              <th style={thStyle}></th>
             </tr>
           </thead>
           <tbody>
@@ -168,6 +187,12 @@ export function UsersTable({ users }: { users: UserSummaryDto[] }) {
                 <td style={tdStyle}>{u.role}</td>
                 <td style={tdStyle}>{postedByLabel(u.sellerType, u.agencyName) ?? dash}</td>
                 <td style={{ ...tdStyle, textAlign: "right" }}>{u.liveListings || dash}</td>
+                <td
+                  style={{ ...tdStyle, textAlign: "right" }}
+                  title={`${u.freeRevealsRemaining} free reveals + ${u.revealCreditsRemaining} purchased credits`}
+                >
+                  {u.contactRevealsLeft}
+                </td>
                 <td style={{ ...tdStyle, textAlign: "right" }}>{u.enquiries || dash}</td>
                 <td style={tdStyle}>{u.cityName ?? dash}</td>
                 <td style={tdStyle}>

@@ -1099,6 +1099,10 @@ export interface UserSummaryDto {
     cityName: string | null;
     /** Active and published listings right now. */
     liveListings: number;
+    /** Free reveals remaining plus unexpired purchased credits. */
+    contactRevealsLeft: number;
+    freeRevealsRemaining: number;
+    revealCreditsRemaining: number;
     /** Enquiry conversations started on any of their listings, all time. */
     enquiries: number;
     createdAt: string;

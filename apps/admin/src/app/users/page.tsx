@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { UserRole } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { AdminUserSort, fetchUsers } from "@/lib/bff";
+import { fetchUsers, type AdminUserSort } from "@/lib/bff";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { UsersTable } from "@/components/UsersTable";
@@ -25,12 +25,11 @@ const SELLER_TYPE_OPTIONS: { value: "owner" | "agent" | "unset"; label: string }
   { value: "unset", label: "Not answered" },
 ];
 
-const SORT_OPTIONS: { value: AdminUserSort; label: string }[] = [
-  { value: "createdAt_desc", label: "Newest first" },
-  { value: "createdAt_asc", label: "Oldest first" },
-  { value: "name_asc", label: "Name — A→Z" },
-  { value: "listings_desc", label: "Most listings (all time)" },
-];
+function nonNegativeInteger(value: string | undefined): number | undefined {
+  if (value === undefined || value.trim() === "") return undefined;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
+}
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { accessToken } = await requireAdmin();
@@ -39,22 +38,36 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const currentPage = parsePage(str(sp.page));
   const limit = parsePageSize(str(sp.limit));
   const q = str(sp.q);
+  const name = str(sp.name);
+  const phone = str(sp.phone);
+  const email = str(sp.email);
+  const city = str(sp.city);
+  const minLiveListings = nonNegativeInteger(str(sp.minLiveListings));
+  const maxLiveListings = nonNegativeInteger(str(sp.maxLiveListings));
+  const minContactRevealsLeft = nonNegativeInteger(str(sp.minContactRevealsLeft));
+  const maxContactRevealsLeft = nonNegativeInteger(str(sp.maxContactRevealsLeft));
   const role = str(sp.role) as UserRole | undefined;
   const welcomed = str(sp.welcomed) as "yes" | "no" | undefined;
   const sellerType = str(sp.sellerType) as "owner" | "agent" | "unset" | undefined;
   const from = str(sp.from);
   const to = str(sp.to);
-  const sort = str(sp.sort) as AdminUserSort | undefined;
-
   const result = await fetchUsers(accessToken, {
     offset: (currentPage - 1) * limit,
     q,
+    name,
+    phone,
+    email,
+    city,
+    minLiveListings,
+    maxLiveListings,
+    minContactRevealsLeft,
+    maxContactRevealsLeft,
     role,
     welcomed,
     sellerType,
     from,
     to,
-    sort,
+    sort: str(sp.sort) as AdminUserSort | undefined,
     limit,
   });
   const totalPages = Math.max(1, Math.ceil(result.total / limit));
@@ -67,7 +80,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         </FullPageLink>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 6px" }}>Users</h1>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 20px" }}>
-          {result.total.toLocaleString()} match the current filters. "Welcomed" reflects an actual
+          {result.total.toLocaleString()} match the current filters. &quot;Welcomed&quot; reflects an actual
           delivered welcome notification, not just an attempted one.
         </p>
 
@@ -87,6 +100,38 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         >
           <Field label="Search">
             <input name="q" defaultValue={q} placeholder="Name, phone or email" style={textInputStyle} />
+          </Field>
+
+          <Field label="Name">
+            <input name="name" defaultValue={name} placeholder="Contains…" style={textInputStyle} />
+          </Field>
+
+          <Field label="Phone">
+            <input name="phone" defaultValue={phone} placeholder="Contains…" style={textInputStyle} />
+          </Field>
+
+          <Field label="Email">
+            <input name="email" defaultValue={email} placeholder="Contains…" style={textInputStyle} />
+          </Field>
+
+          <Field label="City">
+            <input name="city" defaultValue={city} placeholder="Contains…" style={textInputStyle} />
+          </Field>
+
+          <Field label="Live ads min">
+            <input type="number" name="minLiveListings" min="0" step="1" defaultValue={str(sp.minLiveListings) ?? ""} style={numberInputStyle} />
+          </Field>
+
+          <Field label="Live ads max">
+            <input type="number" name="maxLiveListings" min="0" step="1" defaultValue={str(sp.maxLiveListings) ?? ""} style={numberInputStyle} />
+          </Field>
+
+          <Field label="Contact reveals left min">
+            <input type="number" name="minContactRevealsLeft" min="0" step="1" defaultValue={str(sp.minContactRevealsLeft) ?? ""} style={numberInputStyle} />
+          </Field>
+
+          <Field label="Contact reveals left max">
+            <input type="number" name="maxContactRevealsLeft" min="0" step="1" defaultValue={str(sp.maxContactRevealsLeft) ?? ""} style={numberInputStyle} />
           </Field>
 
           <Field label="Role">
@@ -129,16 +174,6 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
             <input type="date" name="to" defaultValue={to} style={dateInputStyle} />
           </Field>
 
-          <Field label="Sort by">
-            <SelectField name="sort" defaultValue={sort ?? "createdAt_desc"} style={selectStyle}>
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </SelectField>
-          </Field>
-
           <button type="submit" style={applyButtonStyle}>
             Apply filters
           </button>
@@ -156,7 +191,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         {result.items.length === 0 ? (
           <p style={{ color: "var(--muted)", fontSize: 14 }}>No users match these filters.</p>
         ) : (
-          <UsersTable users={result.items} />
+          <UsersTable users={result.items} searchParams={sp} />
         )}
 
         <Pagination
@@ -200,6 +235,8 @@ const dateInputStyle: React.CSSProperties = {
   background: "var(--surface)",
   color: "var(--text)",
 };
+
+const numberInputStyle: React.CSSProperties = { ...textInputStyle, width: 130, minWidth: 110 };
 
 const applyButtonStyle: React.CSSProperties = {
   background: "var(--green)",

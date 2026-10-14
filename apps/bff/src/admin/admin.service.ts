@@ -93,7 +93,7 @@ import { PushService } from '../push/push.service';
 import { MessagingGateway } from '../messaging/messaging.gateway';
 import { STAFF_SENDER_LABEL } from '../messaging/messaging.service';
 import { boostMessagePath, buildBoostMessageBody, buildBoostMessageCard, type BoostMessageInput } from './boost-message';
-import { buildUserSearchOr } from './user-search';
+import { normalizedPhoneDigitsForSearch, buildUserSearchOr } from './user-search';
 import { isListingBoosted } from '../listings/listing-boost.util';
 
 const APPROVED_MESSAGE = 'Your listing has been reviewed and is live again.';
@@ -184,12 +184,22 @@ const PAGE_VISIT_ORDER_BY: Record<PageVisitSort, Prisma.VisitOrderByWithRelation
   country_desc: visitOrderBy({ ipCountry: nullsLast('desc') }),
 };
 
-const USER_ORDER_BY: Record<UserSort, Prisma.UserOrderByWithRelationInput[]> = {
-  createdAt_desc: [{ createdAt: 'desc' }, { id: 'asc' }],
-  createdAt_asc: [{ createdAt: 'asc' }, { id: 'asc' }],
-  name_asc: [{ name: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
-  // Every listing ever posted, not just live ones — Prisma can't order by a filtered relation count.
-  listings_desc: [{ listings: { _count: 'desc' } }, { createdAt: 'desc' }, { id: 'asc' }],
+const USER_SORT_SQL: Record<UserSort, { column: Prisma.Sql; direction: 'ASC' | 'DESC' }> = {
+  createdAt_desc: { column: Prisma.sql`"createdAt"`, direction: 'DESC' },
+  createdAt_asc: { column: Prisma.sql`"createdAt"`, direction: 'ASC' },
+  name_asc: { column: Prisma.sql`"name"`, direction: 'ASC' },
+  name_desc: { column: Prisma.sql`"name"`, direction: 'DESC' },
+  phone_asc: { column: Prisma.sql`"phone"`, direction: 'ASC' },
+  phone_desc: { column: Prisma.sql`"phone"`, direction: 'DESC' },
+  email_asc: { column: Prisma.sql`"email"`, direction: 'ASC' },
+  email_desc: { column: Prisma.sql`"email"`, direction: 'DESC' },
+  city_asc: { column: Prisma.sql`"cityName"`, direction: 'ASC' },
+  city_desc: { column: Prisma.sql`"cityName"`, direction: 'DESC' },
+  liveListings_asc: { column: Prisma.sql`"liveListings"`, direction: 'ASC' },
+  liveListings_desc: { column: Prisma.sql`"liveListings"`, direction: 'DESC' },
+  contactRevealsLeft_asc: { column: Prisma.sql`"contactRevealsLeft"`, direction: 'ASC' },
+  contactRevealsLeft_desc: { column: Prisma.sql`"contactRevealsLeft"`, direction: 'DESC' },
+  listings_desc: { column: Prisma.sql`"allListings"`, direction: 'DESC' },
 };
 
 function paymentOrderBy(
@@ -1322,58 +1332,197 @@ export class AdminService {
    * docs/plans/whatsapp-welcome-mobile-signups.md's backfill, which found 34 users with the flag
    * set and zero real log rows). */
   async listUsers(query: ListUsersDto): Promise<AdminUsersPage> {
-    const { offset, from, to, q, role, welcomed, sellerType, sort, limit } = query;
-    const searchOr = buildUserSearchOr(q);
+    const {
+      offset = 0,
+      from,
+      to,
+      q,
+      name,
+      phone,
+      email,
+      city,
+      minLiveListings,
+      maxLiveListings,
+      minContactRevealsLeft,
+      maxContactRevealsLeft,
+      role,
+      welcomed,
+      sellerType,
+      sort = 'createdAt_desc',
+      limit,
+    } = query;
+    const userConditions: Prisma.Sql[] = [Prisma.sql`u."deletedAt" IS NULL`];
+    const filteredConditions: Prisma.Sql[] = [];
 
-    const where: Prisma.UserWhereInput = {
-      deletedAt: null,
-      ...(from || to
-        ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
-        : {}),
-      ...(role ? { role } : {}),
-      ...(searchOr ? { OR: searchOr } : {}),
-      ...(welcomed === 'yes' ? { notificationLogs: { some: { kind: 'welcome' } } } : {}),
-      ...(welcomed === 'no' ? { notificationLogs: { none: { kind: 'welcome' } } } : {}),
-      ...(sellerType ? { sellerType: sellerType === 'unset' ? null : sellerType } : {}),
+    const addTextMatch = (value: string | undefined, expression: Prisma.Sql) => {
+      const normalized = value?.trim();
+      if (normalized) {
+        userConditions.push(Prisma.sql`POSITION(LOWER(${normalized}) IN LOWER(${expression})) > 0`);
+      }
     };
 
-    const [rows, total] = await Promise.all([
-      this.prisma.user.findMany({
-        where,
-        include: {
-          city: true,
-          notificationLogs: { where: { kind: 'welcome' }, orderBy: { sentAt: 'desc' }, take: 1 },
-          _count: {
-            select: {
-              listings: { where: { status: 'active', publishState: 'live' } },
-              conversationsAsPoster: { where: { type: 'inquiry' } },
-            },
-          },
-        },
-        orderBy: USER_ORDER_BY[sort ?? 'createdAt_desc'],
-        skip: offset ?? 0,
-        take: limit,
-      }),
-      this.prisma.user.count({ where }),
+    if (from) userConditions.push(Prisma.sql`u."createdAt" >= ${new Date(from)}`);
+    if (to) userConditions.push(Prisma.sql`u."createdAt" <= ${new Date(to)}`);
+    if (role) userConditions.push(Prisma.sql`u."role" = ${role}`);
+    if (sellerType) {
+      userConditions.push(sellerType === 'unset' ? Prisma.sql`u."sellerType" IS NULL` : Prisma.sql`u."sellerType" = ${sellerType}`);
+    }
+    if (welcomed === 'yes') {
+      userConditions.push(
+        Prisma.sql`EXISTS (SELECT 1 FROM "UserNotificationLog" welcome WHERE welcome."userId" = u."id" AND welcome."kind" = 'welcome')`,
+      );
+    } else if (welcomed === 'no') {
+      userConditions.push(
+        Prisma.sql`NOT EXISTS (SELECT 1 FROM "UserNotificationLog" welcome WHERE welcome."userId" = u."id" AND welcome."kind" = 'welcome')`,
+      );
+    }
+
+    const normalizedQuery = q?.trim();
+    if (normalizedQuery) {
+      const phoneDigits = normalizedPhoneDigitsForSearch(normalizedQuery);
+      const queryMatches = [
+        Prisma.sql`POSITION(LOWER(${normalizedQuery}) IN LOWER(COALESCE(u."name", ''))) > 0`,
+        Prisma.sql`POSITION(${normalizedQuery} IN COALESCE(u."phone", '')) > 0`,
+        ...(phoneDigits && phoneDigits !== normalizedQuery
+          ? [
+              Prisma.sql`POSITION(${phoneDigits} IN COALESCE(u."phone", '')) > 0`,
+            ]
+          : []),
+        Prisma.sql`POSITION(LOWER(${normalizedQuery}) IN LOWER(COALESCE(u."email", ''))) > 0`,
+      ];
+      userConditions.push(Prisma.sql`(${Prisma.join(queryMatches, ' OR ')})`);
+    }
+    addTextMatch(name, Prisma.sql`COALESCE(u."name", '')`);
+    addTextMatch(phone, Prisma.sql`COALESCE(u."phone", '')`);
+    addTextMatch(email, Prisma.sql`COALESCE(u."email", '')`);
+    addTextMatch(city, Prisma.sql`COALESCE(c."name", '')`);
+
+    if (minLiveListings !== undefined) {
+      filteredConditions.push(Prisma.sql`"liveListings" >= ${minLiveListings}`);
+    }
+    if (maxLiveListings !== undefined) {
+      filteredConditions.push(Prisma.sql`"liveListings" <= ${maxLiveListings}`);
+    }
+    if (minContactRevealsLeft !== undefined) {
+      filteredConditions.push(Prisma.sql`"contactRevealsLeft" >= ${minContactRevealsLeft}`);
+    }
+    if (maxContactRevealsLeft !== undefined) {
+      filteredConditions.push(Prisma.sql`"contactRevealsLeft" <= ${maxContactRevealsLeft}`);
+    }
+
+    const ctes = Prisma.sql`
+      WITH user_base AS (
+        SELECT
+          u."id",
+          u."createdAt",
+          u."name",
+          u."phone",
+          u."email",
+          c."name" AS "cityName",
+          COALESCE((
+            SELECT COUNT(*)::int FROM "Listing" l
+            WHERE l."ownerId" = u."id" AND l."status" = 'active' AND l."publishState" = 'live'
+          ), 0) AS "liveListings",
+          ${
+            sort === 'listings_desc'
+              ? Prisma.sql`(SELECT COUNT(*)::int FROM "Listing" all_listings WHERE all_listings."ownerId" = u."id")`
+            : Prisma.sql`0`} AS "allListings",
+          GREATEST(0, COALESCE((
+            SELECT setting."freeRevealsPerUser" FROM "ContactRevealSetting" setting
+            WHERE setting."id" = 'singleton'
+          ), 2) - COALESCE((
+            SELECT COUNT(*)::int FROM "ContactReveal" reveal
+            WHERE reveal."userId" = u."id" AND reveal."source" = 'free'
+          ), 0)) AS "freeRevealsRemaining",
+          COALESCE((
+            SELECT SUM(batch."creditsRemaining")::int FROM "ContactRevealCreditBatch" batch
+            WHERE batch."userId" = u."id" AND batch."expiresAt" > NOW() AND batch."creditsRemaining" > 0
+          ), 0) AS "revealCreditsRemaining"
+        FROM "User" u
+        LEFT JOIN "City" c ON c."id" = u."cityId"
+        WHERE ${Prisma.join(userConditions, ' AND ')}
+      ),
+      user_balances AS (
+        SELECT
+          user_base.*,
+          "freeRevealsRemaining" + "revealCreditsRemaining" AS "contactRevealsLeft"
+        FROM user_base
+      ),
+      filtered_users AS (
+        SELECT * FROM user_balances
+        ${
+          filteredConditions.length > 0
+            ? Prisma.sql`WHERE ${Prisma.join(filteredConditions, ' AND ')}`
+            : Prisma.empty
+        }
+      )
+    `;
+    const order = USER_SORT_SQL[sort];
+    const [totals, pageStats] = await Promise.all([
+      this.prisma.$queryRaw<{ total: number }[]>(
+        Prisma.sql`${ctes} SELECT COUNT(*)::int AS "total" FROM filtered_users`,
+      ),
+      this.prisma.$queryRaw<
+        {
+          id: string;
+          liveListings: number;
+          contactRevealsLeft: number;
+          freeRevealsRemaining: number;
+          revealCreditsRemaining: number;
+        }[]
+      >(
+        Prisma.sql`${ctes}
+          SELECT "id", "liveListings", "contactRevealsLeft", "freeRevealsRemaining", "revealCreditsRemaining"
+          FROM filtered_users
+          ORDER BY ${order.column} ${Prisma.raw(order.direction)} NULLS LAST, "id" ASC
+          LIMIT ${limit} OFFSET ${offset}`,
+      ),
     ]);
+    const total = totals[0]?.total ?? 0;
+    if (pageStats.length === 0) return { items: [], total };
+
+    const userRows = await this.prisma.user.findMany({
+      where: { id: { in: pageStats.map((user) => user.id) } },
+      include: {
+        city: true,
+        notificationLogs: {
+          where: { kind: 'welcome' },
+          orderBy: { sentAt: 'desc' },
+          take: 1,
+        },
+        _count: {
+          select: { conversationsAsPoster: { where: { type: 'inquiry' } } },
+        },
+      },
+    });
+    const userById = new Map(userRows.map((user) => [user.id, user]));
 
     return {
-      items: rows.map((u) => ({
-        id: u.id,
-        name: u.name,
-        phone: u.phone,
-        email: u.email,
-        role: u.role,
-        sellerType: u.sellerType,
-        agencyName: u.agencyName,
-        cityName: u.city?.name ?? null,
-        liveListings: u._count.listings,
-        enquiries: u._count.conversationsAsPoster,
-        createdAt: u.createdAt.toISOString(),
-        welcomed: u.notificationLogs.length > 0,
-        welcomedChannel: u.notificationLogs[0]?.channel ?? null,
-        welcomedAt: u.notificationLogs[0]?.sentAt.toISOString() ?? null,
-      })),
+      items: pageStats.flatMap((stats) => {
+        const u = userById.get(stats.id);
+        if (!u) return [];
+        return [
+          {
+            id: u.id,
+            name: u.name,
+            phone: u.phone,
+            email: u.email,
+            role: u.role,
+            sellerType: u.sellerType,
+            agencyName: u.agencyName,
+            cityName: u.city?.name ?? null,
+            liveListings: stats.liveListings,
+            contactRevealsLeft: stats.contactRevealsLeft,
+            freeRevealsRemaining: stats.freeRevealsRemaining,
+            revealCreditsRemaining: stats.revealCreditsRemaining,
+            enquiries: u._count.conversationsAsPoster,
+            createdAt: u.createdAt.toISOString(),
+            welcomed: u.notificationLogs.length > 0,
+            welcomedChannel: u.notificationLogs[0]?.channel ?? null,
+            welcomedAt: u.notificationLogs[0]?.sentAt.toISOString() ?? null,
+          },
+        ];
+      }),
       total,
     };
   }
