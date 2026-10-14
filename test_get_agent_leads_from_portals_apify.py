@@ -192,5 +192,19 @@ class FirmsCsvTests(unittest.TestCase):
         self.assertEqual(out[0]["portals"], "housing")
 
 
+class ExcludeTests(unittest.TestCase):
+    def test_default_list_drops_developer_arms_and_placeholders(self):
+        for name in ("Casagrand Sellassure", "CG sellassure", "Azuro Hyd Resale", "Azuro.in", "Ivy homes", "Individual Agent"):
+            self.assertTrue(m.is_excluded(name, m.DEFAULT_EXCLUDE), name)
+
+    def test_independent_agents_are_kept(self):
+        for name in ("Helium Homes", "KGN Realtors", "Propcenter", "Real Value Land Promoters"):
+            self.assertFalse(m.is_excluded(name, m.DEFAULT_EXCLUDE), name)
+
+    def test_empty_list_excludes_nothing(self):
+        self.assertFalse(m.is_excluded("Casagrand Sellassure", []))
+        self.assertFalse(m.is_excluded("Casagrand Sellassure", [" "]))
+
+
 if __name__ == "__main__":
     unittest.main()

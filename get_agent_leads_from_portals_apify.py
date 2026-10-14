@@ -60,6 +60,11 @@ NAME_STOPWORDS = {
     "enterprises", "co", "company", "brokers", "broker", "pvt.", "ltd.",
 }
 
+# Developer-affiliated resale/rental arms and placeholder names that top the portals' listing
+# counts but are not independent agents. Substring match on the lowercased firm name. Found by
+# reading the 2026-10-14 Bengaluru/Chennai/Hyderabad/Coimbatore list; extend with --exclude.
+DEFAULT_EXCLUDE = ("casagrand", "sellassure", "azuro", "ivy homes", "individual agent")
+
 CONFIDENT_SCORE = 0.85
 REVIEW_SCORE = 0.60
 
@@ -204,6 +209,11 @@ def firm_from_housing(row, cutoff=None):
         "url": row.get("propertyUrl"),
         "portal": "housing",
     }
+
+
+def is_excluded(firm_name, keywords):
+    name = (firm_name or "").lower()
+    return any(k.strip().lower() in name for k in keywords if k.strip())
 
 
 def merge_firms(rows):
@@ -436,6 +446,9 @@ def main():
     parser.add_argument("--apify-token", default=os.environ.get("APIFY_API_TOKEN"))
     parser.add_argument("--actor-timeout", type=int, default=DEFAULT_ACTOR_TIMEOUT_SECONDS)
     parser.add_argument("--bff-url", default="http://localhost:4000")
+    parser.add_argument("--exclude", default=",".join(DEFAULT_EXCLUDE),
+                        help="Comma-separated, case-insensitive name fragments to drop (developer-affiliated "
+                        "arms, placeholder names). Default: " + ", ".join(DEFAULT_EXCLUDE) + ". Pass '' for none.")
     parser.add_argument("--count-only", action="store_true",
                         help="Stop after the portal step and print agent listings and distinct firms per city. "
                         "No Google Maps lookups, so it costs only the two portal Actors.")
@@ -450,7 +463,8 @@ def main():
 
     print("Collecting portal listings...", file=sys.stderr)
     rows = collect_portal_rows(args.apify_token, cities, portals, args.limit, args.max_age_days, args.actor_timeout)
-    firms = merge_firms(rows)
+    exclude = [k for k in args.exclude.split(",") if k.strip()]
+    firms = [f for f in merge_firms(rows) if not is_excluded(f["firm"], exclude)]
     print(f"{len([r for r in rows if r])} agent listings -> {len(firms)} distinct firms", file=sys.stderr)
     if args.count_only:
         print(format_city_counts(rows, firms), file=sys.stderr)
