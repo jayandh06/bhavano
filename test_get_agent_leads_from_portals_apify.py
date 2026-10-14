@@ -177,5 +177,20 @@ class CityCountTests(unittest.TestCase):
         self.assertEqual(total[1:], ["4", "3", "1"])
 
 
+class FirmsCsvTests(unittest.TestCase):
+    def test_writes_one_row_per_firm_with_review_columns(self):
+        import csv, tempfile
+        rows = [{"firm": "Olive Homes", "contact": "Mir", "city": "Bengaluru", "locality": "Whitefield",
+                 "prefix": "98200", "url": "https://x/1", "portal": "housing"}]
+        path = os.path.join(tempfile.mkdtemp(), "sub", "firms.csv")
+        m.write_firms_csv(path, m.merge_firms(rows))
+        with open(path, newline="", encoding="utf-8") as f:
+            out = list(csv.DictReader(f))
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["firm"], "Olive Homes")
+        self.assertEqual(out[0]["phone_prefixes"], "98200")
+        self.assertEqual(out[0]["portals"], "housing")
+
+
 if __name__ == "__main__":
     unittest.main()

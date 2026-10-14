@@ -330,6 +330,27 @@ def format_city_counts(rows, firms):
     return "\n".join(lines)
 
 
+FIRM_FIELDS = ["city", "firm", "portals", "listings", "localities", "phone_prefixes", "contact_names", "portal_urls"]
+
+
+def write_firms_csv(path, firms):
+    """The merged portal firms, before any Google Maps lookup — what --count-only saves so the
+    list can be reviewed in a spreadsheet without paying for the matching step."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=FIRM_FIELDS)
+        writer.writeheader()
+        for firm in firms:
+            writer.writerow({
+                "city": firm["city"], "firm": firm["firm"], "portals": "+".join(sorted(firm["portals"])),
+                "listings": firm["listings"],
+                "localities": "; ".join(l for l, _ in firm["localities"].most_common(5)),
+                "phone_prefixes": " ".join(sorted(firm["prefixes"])),
+                "contact_names": "; ".join(sorted(firm["contacts"])),
+                "portal_urls": " ".join(firm["urls"]),
+            })
+
+
 CSV_FIELDS = [
     "city", "firm", "status", "score", "sms_capable", "phone", "mobile", "prefix_matched", "portals",
     "listings", "localities", "gmaps_name", "gmaps_address", "website", "gmaps_place_id", "portal_urls",
@@ -433,6 +454,10 @@ def main():
     print(f"{len([r for r in rows if r])} agent listings -> {len(firms)} distinct firms", file=sys.stderr)
     if args.count_only:
         print(format_city_counts(rows, firms), file=sys.stderr)
+        firms_path = os.path.join(args.out_dir, f"portal_firms_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+        write_firms_csv(firms_path, firms)
+        print(f"
+Wrote {firms_path}", file=sys.stderr)
         return
     firms = firms[: args.max_firms]
 
