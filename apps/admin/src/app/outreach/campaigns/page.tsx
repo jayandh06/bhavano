@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { fetchCampaigns } from "@/lib/bff";
+import { fetchCampaigns, fetchCities, fetchOutreachContactCategories } from "@/lib/bff";
+import { describeAudience } from "@/lib/campaignAudience";
 import { buildPageHref, parsePage, parsePageSize, str, type SearchParams } from "@/lib/searchParams";
 import { Pagination } from "@/components/Pagination";
 import { CampaignControls } from "@/components/CampaignControls";
@@ -22,7 +23,11 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const currentPage = parsePage(str(sp.page));
   const limit = parsePageSize(str(sp.limit));
 
-  const result = await fetchCampaigns(accessToken, { offset: (currentPage - 1) * limit, limit });
+  const [result, categories, cities] = await Promise.all([
+    fetchCampaigns(accessToken, { offset: (currentPage - 1) * limit, limit }),
+    fetchOutreachContactCategories(accessToken),
+    fetchCities(undefined, true),
+  ]);
   const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
   return (
@@ -55,7 +60,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           a DLT template id and an opt-out instruction in the body.
         </p>
 
-        <NewCampaignForm />
+        <NewCampaignForm categories={categories} cities={cities} />
 
         <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 20 }}>
           {result.total.toLocaleString()} campaign{result.total === 1 ? "" : "s"}
@@ -119,6 +124,9 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                       {campaign.bodyTemplate}
                     </div>
                     <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>
+                      Audience: {describeAudience(campaign.audienceFilter, cities)}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>
                       {`sent ${campaign.stats.sent} · failed ${campaign.stats.failed} · suppressed ${campaign.stats.suppressed}`}
                       {campaign.lastRunAt && ` · last run ${formatDateTime(campaign.lastRunAt)}`}
                       {campaign.cadenceCron ? ` · repeats (${campaign.cadenceCron})` : " · one-shot"}
@@ -132,7 +140,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                   </div>
                   <CampaignControls campaign={campaign} />
                 </div>
-                <EditCampaignForm campaign={campaign} />
+                <EditCampaignForm campaign={campaign} categories={categories} cities={cities} />
               </div>
             ))}
           </div>

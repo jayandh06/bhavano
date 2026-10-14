@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { OutreachChannel } from "@bhavano/types";
+import type { City, OutreachChannel } from "@bhavano/types";
 import { createCampaignAction } from "@/app/actions/outreach";
 import { SelectField } from "./SelectField";
+import { MultiPick } from "./MultiPick";
+import { buildAudienceFilter, parseTags } from "@/lib/campaignAudience";
 
 const input: React.CSSProperties = {
   padding: "8px 12px",
@@ -15,7 +17,7 @@ const input: React.CSSProperties = {
   width: "100%",
 };
 
-export function NewCampaignForm() {
+export function NewCampaignForm({ categories, cities }: { categories: string[]; cities: City[] }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,12 +32,18 @@ export function NewCampaignForm() {
   // Comma-separated contact tags (e.g. "portal-agent"). Without any audience the campaign would
   // target every contact, so activation is refused until one is set.
   const [tags, setTags] = useState("");
+  const [pickedCategories, setPickedCategories] = useState<string[]>([]);
+  const [pickedCityIds, setPickedCityIds] = useState<string[]>([]);
   const [minDaysBetweenSends, setMinDays] = useState(14);
   const [maxSendsPerRun, setMaxSends] = useState(200);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const audienceFilter = buildAudienceFilter(undefined, {
+      tags: parseTags(tags),
+      categories: pickedCategories,
+      cityIds: pickedCityIds,
+    });
     setPending(true);
     setError(null);
     const result = await createCampaignAction({
@@ -44,7 +52,7 @@ export function NewCampaignForm() {
       bodyTemplate,
       dltTemplateId: dltTemplateId || undefined,
       cadenceCron: cadenceCron || undefined,
-      audienceFilter: tagList.length > 0 ? { tags: tagList } : undefined,
+      audienceFilter: Object.keys(audienceFilter).length > 0 ? audienceFilter : undefined,
       minDaysBetweenSends,
       maxSendsPerRun,
     });
@@ -118,14 +126,19 @@ export function NewCampaignForm() {
         value={dltTemplateId}
         onChange={(e) => setDltTemplateId(e.target.value)}
       />
+      <div style={{ fontWeight: 700, fontSize: 13, marginTop: 4 }}>Audience</div>
+      <MultiPick label="Categories" options={categories.map((c) => ({ value: c, label: c }))} selected={pickedCategories} onChange={setPickedCategories} emptyHint="No contacts imported yet." />
+      <MultiPick label="Cities" options={cities.map((c) => ({ value: c.id, label: c.name }))} selected={pickedCityIds} onChange={setPickedCityIds} />
       <input
         style={input}
-        placeholder="Audience: contact tags, comma-separated (e.g. portal-agent)"
+        placeholder="Tags, comma-separated (e.g. portal-agent) - contact has any of them"
         value={tags}
         onChange={(e) => setTags(e.target.value)}
       />
       <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
-        Required before activation: an empty audience means every contact. Campaigns start in dry-run.
+        Categories, cities and tags are combined: a contact must match each one you set (within one, any value
+        matches). Set at least one - an empty audience means every contact and can&apos;t be activated.
+        Campaigns start in dry-run.
       </span>
       <input
         style={input}

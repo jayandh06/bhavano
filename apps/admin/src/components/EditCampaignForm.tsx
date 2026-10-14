@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { OutreachCampaignDto } from "@bhavano/types";
+import type { City, OutreachCampaignDto } from "@bhavano/types";
 import { updateCampaignAction } from "@/app/actions/outreach";
+import { MultiPick } from "./MultiPick";
+import { buildAudienceFilter, parseTags } from "@/lib/campaignAudience";
 
 const input: React.CSSProperties = {
   padding: "8px 12px",
@@ -32,7 +34,15 @@ const linkButton: React.CSSProperties = {
  *
  * The audience here is the contact tags only; any other filter fields already on the campaign
  * (cities, categories, rating, statuses) are kept as they are. */
-export function EditCampaignForm({ campaign }: { campaign: OutreachCampaignDto }) {
+export function EditCampaignForm({
+  campaign,
+  categories,
+  cities,
+}: {
+  campaign: OutreachCampaignDto;
+  categories: string[];
+  cities: City[];
+}) {
   const editable = campaign.status === "draft" || campaign.status === "paused";
 
   const [open, setOpen] = useState(false);
@@ -44,6 +54,8 @@ export function EditCampaignForm({ campaign }: { campaign: OutreachCampaignDto }
   const [bodyTemplate, setBodyTemplate] = useState(campaign.bodyTemplate);
   const [dltTemplateId, setDltTemplateId] = useState(campaign.dltTemplateId ?? "");
   const [tags, setTags] = useState((campaign.audienceFilter.tags ?? []).join(", "));
+  const [pickedCategories, setPickedCategories] = useState<string[]>(campaign.audienceFilter.businessCategories ?? []);
+  const [pickedCityIds, setPickedCityIds] = useState<string[]>(campaign.audienceFilter.cityIds ?? []);
   const [cadenceCron, setCadenceCron] = useState(campaign.cadenceCron ?? "");
   const [minDaysBetweenSends, setMinDays] = useState(campaign.minDaysBetweenSends);
   const [maxSendsPerRun, setMaxSends] = useState(campaign.maxSendsPerRun);
@@ -56,13 +68,15 @@ export function EditCampaignForm({ campaign }: { campaign: OutreachCampaignDto }
     setError(null);
     setSaved(false);
 
-    const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
-    const { tags: _previousTags, ...otherFilters } = campaign.audienceFilter;
     const result = await updateCampaignAction(campaign.id, {
       name,
       bodyTemplate,
       dltTemplateId,
-      audienceFilter: tagList.length > 0 ? { ...otherFilters, tags: tagList } : otherFilters,
+      audienceFilter: buildAudienceFilter(campaign.audienceFilter, {
+        tags: parseTags(tags),
+        categories: pickedCategories,
+        cityIds: pickedCityIds,
+      }),
       cadenceCron,
       minDaysBetweenSends,
       maxSendsPerRun,
@@ -123,12 +137,18 @@ export function EditCampaignForm({ campaign }: { campaign: OutreachCampaignDto }
         value={dltTemplateId}
         onChange={(e) => setDltTemplateId(e.target.value)}
       />
+      <div style={{ fontWeight: 700, fontSize: 13, marginTop: 4 }}>Audience</div>
+      <MultiPick label="Categories" options={categories.map((c) => ({ value: c, label: c }))} selected={pickedCategories} onChange={setPickedCategories} emptyHint="No contacts imported yet." />
+      <MultiPick label="Cities" options={cities.map((c) => ({ value: c.id, label: c.name }))} selected={pickedCityIds} onChange={setPickedCityIds} />
       <input
         style={input}
-        placeholder="Audience: contact tags, comma-separated (e.g. portal-agent)"
+        placeholder="Tags, comma-separated (e.g. portal-agent) - contact has any of them"
         value={tags}
         onChange={(e) => setTags(e.target.value)}
       />
+      <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
+        Categories, cities and tags are combined: a contact must match each one you set.
+      </span>
       <input
         style={input}
         placeholder="Cadence cron — leave blank for a one-shot campaign"
