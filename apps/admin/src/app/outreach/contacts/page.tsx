@@ -4,6 +4,7 @@ import { fetchOutreachContacts, fetchOutreachContactCategories, fetchCities, fet
 import { buildPageHref, parsePage, parsePageSize, str } from "@/lib/searchParams";
 import { CLEAR_FILTERS_PARAM } from "@/lib/rememberedFilters";
 import { OutreachContactsList } from "@/components/OutreachContactsList";
+import { ImportContactsPanel } from "@/components/ImportContactsPanel";
 import { Pagination } from "@/components/Pagination";
 import { SelectField } from "@/components/SelectField";
 
@@ -97,6 +98,8 @@ export default async function OutreachContactsPage({
             Scrape history →
           </Link>
         </p>
+
+        <ImportContactsPanel cities={cities} />
 
         {placesFetchLogId && (
           <div
