@@ -59,8 +59,11 @@ The user chose option 1, using both 99acres and Housing.com, and accepted the te
 
 1. **Portals.** `fatihtahta~99acres-scraper-ppe` (dealer and featured-dealer listings, sale and
    rent) and `sian.agency~housing-com-property-scraper` (buy and rent), per city. Owners and
-   builders are dropped. 99acres rows older than `--max-age-days` (default 30) are dropped;
-   Housing.com rows carry no posting date, so that filter cannot apply to them.
+   builders are dropped. Rows older than `--max-age-days` (default 30) are dropped on both portals
+   (`posted_at` on 99acres, `postedDate` on Housing.com). Verified on live data: Housing.com types
+   agents as `Seller` (owners are `Owner`, builders `Developer`), and its unfiltered "buy" pages
+   are mostly new-launch builder rows, so buy is searched as `resale`. 99acres reports regions
+   ("Bangalore East"), which are folded into the city.
 2. **Merge** to one firm per (city, normalised name), across both portals.
 3. **Match** each firm on Google Maps (`compass~crawler-google-places`, 3 candidates). Score = name
    similarity (+0.10 if a portal locality is in the address, +0.15 if the Maps number starts with

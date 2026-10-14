@@ -95,8 +95,28 @@ class ExtractionTests(unittest.TestCase):
         firm = m.firm_from_housing(row)
         self.assertEqual(firm["prefix"], "98200")
 
-    def test_housing_builder_dropped(self):
-        self.assertIsNone(m.firm_from_housing({"listerFirm": "ABC", "listerType": "Builder"}))
+    def test_housing_builder_and_owner_dropped(self):
+        for label in ("Developer", "Builder", "Owner"):
+            self.assertIsNone(m.firm_from_housing({"listerFirm": "ABC", "listerType": label}), label)
+
+    def test_housing_seller_is_an_agent(self):
+        # Verified on live data: Housing.com types agents as "Seller".
+        firm = m.firm_from_housing({"listerFirm": "Propcenter", "listerName": "Amit Kumar",
+                                    "listerType": "Seller", "city": "Bengaluru",
+                                    "listerPhonePartial": "81976.....", "postedDate": datetime.now(timezone.utc).isoformat()}, self.CUTOFF)
+        self.assertEqual(firm["firm"], "Propcenter")
+        self.assertEqual(firm["prefix"], "81976")
+
+    def test_housing_old_listing_dropped(self):
+        old = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
+        self.assertIsNone(m.firm_from_housing({"listerFirm": "X", "listerType": "Seller", "postedDate": old}, self.CUTOFF))
+
+    def test_region_names_fold_into_the_city(self):
+        for raw in ("Bangalore East", "Bangalore", "Bengaluru", "bangalore north"):
+            self.assertEqual(m.canonical_city(raw), "Bengaluru", raw)
+        self.assertEqual(m.canonical_city("Chennai South"), "Chennai")
+        self.assertEqual(m.canonical_city("Hyderabad"), "Hyderabad")
+        self.assertEqual(m.canonical_city("Coimbatore"), "Coimbatore")
 
 
 class MergeAndMatchTests(unittest.TestCase):

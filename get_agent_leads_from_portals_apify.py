@@ -65,8 +65,15 @@ REVIEW_SCORE = 0.60
 
 
 def canonical_city(name):
-    key = (name or "").strip().lower()
-    return CANONICAL_CITY.get(key, (name or "").strip().title())
+    """99acres reports regions ("Bangalore East", "Chennai South"), Housing.com the city itself.
+    Without folding them in, one city splits into several and the same firm never merges across
+    portals. Matched on the leading word, so only the four target cities are folded."""
+    text = (name or "").strip()
+    first = text.lower().split(" ")[0] if text else ""
+    for known in ("bengaluru", "bangalore", "chennai", "hyderabad", "coimbatore"):
+        if first == known:
+            return CANONICAL_CITY.get(known, known.title())
+    return CANONICAL_CITY.get(text.lower(), text.title())
 
 
 def firm_tokens(name):
@@ -174,9 +181,19 @@ def firm_from_acres(row, cutoff):
     }
 
 
-def firm_from_housing(row):
+def is_housing_agent(label):
+    """On Housing.com an agent is typed "Seller" (verified on live Bengaluru rent and resale rows:
+    Seller / Owner / Developer). "Owner" and "Developer" are the private and builder rows."""
+    text = (label or "").strip().lower()
+    return text in ("seller", "agent", "broker", "dealer")
+
+
+def firm_from_housing(row, cutoff=None):
     firm = (row.get("listerFirm") or row.get("listerName") or "").strip()
-    if not firm or not is_agent_label(row.get("listerType")):
+    if not firm or not is_housing_agent(row.get("listerType")):
+        return None
+    posted = parse_iso(row.get("postedDate"))
+    if cutoff and posted and posted.tzinfo and posted < cutoff:
         return None
     return {
         "firm": firm,
@@ -288,12 +305,15 @@ def collect_portal_rows(token, cities, portals, limit, max_age_days, timeout_sec
                 }, timeout_sec)
                 rows.extend(firm_from_acres(i, cutoff) for i in items)
         if "housing" in portals:
-            for market in ("buy", "rent"):
+            # "buy" is searched as resale: its unfiltered first pages are almost all new-launch
+            # builder listings (live Bengaluru sample: 25 of 30 were Developers), not agents.
+            for market, refine in (("buy", "resale"), ("rent", "any")):
                 print(f"  housing.com: {portal_city} / {market}", file=sys.stderr)
                 items = run_actor(token, HOUSING_ACTOR, {
-                    "operation": "search", "cities": [portal_city], "market": market, "maxResults": limit,
+                    "operation": "search", "cities": [portal_city], "market": market,
+                    "refine": refine, "maxResults": limit,
                 }, timeout_sec)
-                rows.extend(firm_from_housing(i) for i in items)
+                rows.extend(firm_from_housing(i, cutoff) for i in items)
     return rows
 
 
@@ -389,7 +409,7 @@ def main():
     parser.add_argument("--cities", default="Bengaluru", help="Comma-separated, e.g. 'Bengaluru,Chennai,Hyderabad,Coimbatore'")
     parser.add_argument("--portals", default="99acres,housing", help="99acres, housing, or both")
     parser.add_argument("--limit", type=int, default=100, help="Listings per portal query (default 100)")
-    parser.add_argument("--max-age-days", type=int, default=30, help="99acres only: ignore listings older than this (0 = no limit). Housing.com rows carry no date.")
+    parser.add_argument("--max-age-days", type=int, default=30, help="99acres only: ignore listings older than this (0 = no limit). Applies to Housing.com's postedDate as well.")
     parser.add_argument("--max-firms", type=int, default=50, help="Cap Google Maps lookups (one paid Actor run each). Default 50, for a pilot.")
     parser.add_argument("--out-dir", default="./leads_output/portal_agents")
     parser.add_argument("--apify-token", default=os.environ.get("APIFY_API_TOKEN"))
