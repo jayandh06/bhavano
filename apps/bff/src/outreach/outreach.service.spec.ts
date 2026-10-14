@@ -215,6 +215,18 @@ describe('OutreachService.updateCampaign — activation guards', () => {
     await expect(service.updateCampaign('k1', { status: 'scheduled' })).resolves.toBeDefined();
   });
 
+  it('clears lastRunAt when a dry-run campaign is switched to live', async () => {
+    const { service, prisma } = setup({ dryRun: true });
+    await service.updateCampaign('k1', { dryRun: false });
+    expect((prisma.outreachCampaign.update as jest.Mock).mock.calls[0][0].data.lastRunAt).toBeNull();
+  });
+
+  it('leaves lastRunAt alone for any other edit', async () => {
+    const { service, prisma } = setup({ dryRun: true });
+    await service.updateCampaign('k1', { name: 'renamed' });
+    expect((prisma.outreachCampaign.update as jest.Mock).mock.calls[0][0].data).not.toHaveProperty('lastRunAt');
+  });
+
   it('does not apply the guards to an ordinary draft edit', async () => {
     const { service } = setup({ dltTemplateId: null, bodyTemplate: 'no opt out here' });
     await expect(service.updateCampaign('k1', { name: 'renamed' })).resolves.toBeDefined();

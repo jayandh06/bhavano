@@ -72,6 +72,19 @@ describe('OutreachCampaignJob.runCampaign', () => {
     expect(result.skipped).toBe(1);
   });
 
+  it('a dry run uses its own run key and does not complete the campaign', async () => {
+    const { job, prisma, campaign } = makeJob([contact], { dryRun: true });
+
+    await job.runCampaign(campaign);
+
+    const sendArgs = (prisma.campaignSend.create as jest.Mock).mock.calls[0][0];
+    expect(sendArgs.data.runKey).toMatch(/^dry-/);
+    expect(sendArgs.data.runKey).not.toBe('once');
+    const update = (prisma.outreachCampaign.update as jest.Mock).mock.calls[0][0].data;
+    expect(update.status).toBeUndefined();
+    expect(update.lastRunAt).toBeInstanceOf(Date);
+  });
+
   it('claims the send row before dispatching, so a retry cannot double-send', async () => {
     const { job, prisma, campaign } = makeJob([contact]);
 

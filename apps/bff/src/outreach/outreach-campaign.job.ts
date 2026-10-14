@@ -64,7 +64,11 @@ export class OutreachCampaignJob {
       this.logger.error(`Campaign "${campaign.name}" has no audience filter — refusing to send to every contact`);
       return { sent: 0, failed: 0, skipped: 0 };
     }
-    const runKey = this.runKey(campaign);
+    // A dry run must not use up the real run's idempotency slot. Its records used to be written
+    // under the same key (`once`), so a one-shot campaign that was dry-run first then skipped every
+    // contact when it was run for real ("Unique constraint failed" on all of them) and had
+    // already been marked completed. Each dry run gets its own key and leaves the status alone.
+    const runKey = campaign.dryRun ? `dry-${new Date().toISOString()}` : this.runKey(campaign);
     const { contacts } = await this.outreach.resolveEligible(campaign);
     const needsPhone = campaign.channel !== 'email';
 
@@ -94,7 +98,8 @@ export class OutreachCampaignJob {
       where: { id: campaign.id },
       data: {
         lastRunAt: new Date(),
-        ...(campaign.cadenceCron ? { status: 'running' } : { status: 'completed' }),
+        // A dry run changes nothing about where the campaign is in its life.
+        ...(campaign.dryRun ? {} : campaign.cadenceCron ? { status: 'running' } : { status: 'completed' }),
       },
     });
 

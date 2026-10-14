@@ -881,6 +881,9 @@ export class OutreachService {
         ...(input.maxSendsPerRun != null ? { maxSendsPerRun: input.maxSendsPerRun } : {}),
         ...(input.minDaysBetweenSends != null ? { minDaysBetweenSends: input.minDaysBetweenSends } : {}),
         ...(input.dryRun != null ? { dryRun: input.dryRun } : {}),
+        // Going live after a dry run: clear the dry run's lastRunAt, or a one-shot campaign looks
+        // "already run" and the hourly job would never pick it up.
+        ...(input.dryRun === false && existing.dryRun ? { lastRunAt: null } : {}),
       },
     });
 
