@@ -217,7 +217,10 @@ module.exports = {
       // exists for a Google Ads App campaign to optimize toward, instead of raw install count —
       // see docs/plans/firebase-analytics-and-app-campaign.md. No options needed here: the
       // google-services.json/GoogleService-Info.plist below are what the native module reads.
-      "@react-native-firebase/app",
+      // `disableSPM`: resolve Firebase through CocoaPods rather than Swift Package Manager. The iOS
+      // build links pods statically, and RNFirebase's SPM mode needs dynamic linkage — with static
+      // it aborts `pod install` ("SPM + static linkage is not supported"), failing every iOS build.
+      ["@react-native-firebase/app", { ios: { disableSPM: true } }],
       withGradleJvmArgs,
     ],
     extra: {
