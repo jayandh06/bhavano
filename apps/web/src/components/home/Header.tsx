@@ -56,9 +56,11 @@ export function Header({
   // collapsed bar's "extended header" panel) — the same element mounts as an independent instance
   // wherever it actually renders, so search behaves identically everywhere without three copies
   // of this prop list.
+  // Names only — see SearchBar's `cityNames`.
+  const cityNames = allCities.map((c) => c.name);
   const searchBarElement = (
     <Suspense>
-      <SearchBar initialQuery={searchQuery} cityName={cityName} areaName={areaName} allCities={allCities} popularSearches={popularSearches} />
+      <SearchBar initialQuery={searchQuery} cityName={cityName} areaName={areaName} cityNames={cityNames} popularSearches={popularSearches} />
     </Suspense>
   );
 

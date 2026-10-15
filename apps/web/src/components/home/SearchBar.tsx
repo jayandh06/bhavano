@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { City, ListingCategory, PopularSearchDto } from "@bhavano/types";
+import type { ListingCategory, PopularSearchDto } from "@bhavano/types";
 import { buildHomeUrl } from "@/lib/homeUrl";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { parseSearchQuery } from "@/lib/parseSearchQuery";
@@ -42,15 +42,15 @@ interface Interpretation {
 
 /** Shared by both `submit()` (build the destination URL) and the live "interpreted as…" preview
  * — both need the exact same reading of the query text, just rendered two different ways.
- * `allCities` must be the *complete* city list, not just the curated "popular" subset shown
- * elsewhere (e.g. the city switcher) — a real city that just isn't flagged popular (like most of
- * India's smaller towns) would otherwise never be recognized as a city at all, and would instead
+ * `cityNames` must be the names of the *complete* city list, not just the curated "popular" subset
+ * shown elsewhere (e.g. the city switcher) — a real city that just isn't flagged popular (like most
+ * of India's smaller towns) would otherwise never be recognized as a city at all, and would instead
  * get misrouted as a locality guess scoped to whatever city happens to be currently browsed. */
-function interpret(text: string, cityName: string | undefined, allCities: City[]): Interpretation {
+function interpret(text: string, cityName: string | undefined, cityNames: string[]): Interpretation {
   const intent = parseSearchQuery(text);
-  const matchedCity = allCities.find((c) => intent.residual.toLowerCase().includes(c.name.toLowerCase()));
-  const targetCityName = matchedCity?.name ?? cityName;
-  const areaCandidate = matchedCity ? removeCaseInsensitive(intent.residual, matchedCity.name) : intent.residual;
+  const matchedCity = cityNames.find((name) => intent.residual.toLowerCase().includes(name.toLowerCase()));
+  const targetCityName = matchedCity ?? cityName;
+  const areaCandidate = matchedCity ? removeCaseInsensitive(intent.residual, matchedCity) : intent.residual;
 
   const category = intent.category ?? (intent.bedrooms !== undefined ? "apartment" : undefined);
   const transactionGroup = intent.transactionGroup ?? (category ? categoryGroupsFor(category)[0] : undefined);
@@ -95,7 +95,7 @@ export function SearchBar({
   initialQuery,
   cityName,
   areaName,
-  allCities,
+  cityNames,
   popularSearches,
 }: {
   initialQuery: string;
@@ -106,9 +106,11 @@ export function SearchBar({
   /** A representative locality for `cityName`, used both for the placeholder and the example
    * chips in the search help dialog. */
   areaName?: string;
-  /** The complete city list — used to recognize a city named in the query text. Must not be
-   * pre-filtered to "popular" cities only (see `interpret()`). */
-  allCities: City[];
+  /** Names of the complete city list — used to recognize a city named in the query text. Must not
+   * be pre-filtered to "popular" cities only (see `interpret()`). Names only, not `City` rows:
+   * this prop is serialized into the page for every mounted copy of the search bar, and the full
+   * rows (id, state, lat/lng, flags for ~750 cities) made the HTML over 200 KB heavier. */
+  cityNames: string[];
   /** This city's top (category, transactionType) combinations by view count — shown as a real,
    * directly-navigable "Popular searches" section in the same help dialog, above the free-text
    * "Try searching" examples. Omitted (e.g. the listing-detail page) means that section just
@@ -123,7 +125,7 @@ export function SearchBar({
   useClickOutside(containerRef, () => setOpen(false));
 
   function go(text: string) {
-    const result = interpret(text, cityName, allCities);
+    const result = interpret(text, cityName, cityNames);
 
     if (!result.somethingRecognized || !result.targetCityName) {
       // Either rule-based parsing found nothing at all (no city/category/price/area), or it
@@ -183,7 +185,7 @@ export function SearchBar({
   ];
 
   const trimmedValue = value.trim();
-  const preview = open && trimmedValue ? describe(interpret(trimmedValue, cityName, allCities)) : null;
+  const preview = open && trimmedValue ? describe(interpret(trimmedValue, cityName, cityNames)) : null;
 
   return (
     <div ref={containerRef} className="flex-1 relative min-w-0">
