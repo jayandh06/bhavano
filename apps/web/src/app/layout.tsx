@@ -39,6 +39,7 @@ const ENTITY_ADDRESS_LINES = entityAddressLines();
 const SAME_AS = [
   "https://www.facebook.com/bhavano.facebook",
   "https://www.instagram.com/bhavano.app/",
+  "https://www.linkedin.com/company/bhavano",
   "https://play.google.com/store/apps/details?id=com.finfolia.bhavano",
 ];
 const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
