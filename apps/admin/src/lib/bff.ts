@@ -1062,6 +1062,10 @@ export function runCampaign(
   return authedBffFetch(accessToken, `/admin/outreach/campaigns/${id}/run`, { method: "POST" });
 }
 
+export function resetCampaignRun(accessToken: string, id: string): Promise<{ reset: number }> {
+  return authedBffFetch(accessToken, `/admin/outreach/campaigns/${id}/reset-run`, { method: "POST" });
+}
+
 export function fetchCampaignSends(
   accessToken: string,
   query: { offset?: number; limit?: number; campaignId?: string; contactId?: string } = {},

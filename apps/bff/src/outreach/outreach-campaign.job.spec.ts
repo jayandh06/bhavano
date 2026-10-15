@@ -43,6 +43,36 @@ function makeJob(eligible: Record<string, unknown>[], campaignOverrides: Record<
 const contact = { id: 'c1', name: 'Acme', phoneE164: '+919876543210', email: null, status: 'new' };
 
 describe('OutreachCampaignJob.runCampaign', () => {
+  // The send-window guard depends on the clock: pin it to 12:00 IST (06:30 UTC), inside 09:00-21:00.
+  beforeEach(() => {
+    jest.useFakeTimers({ now: new Date('2026-10-15T06:30:00Z') });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('does not send a promotional SMS outside 09:00-21:00 IST', async () => {
+    jest.setSystemTime(new Date('2026-10-15T01:39:00Z')); // 07:09 IST, the run that failed in production
+    const { job, prisma, sender, campaign } = makeJob([contact]);
+
+    const result = await job.runCampaign(campaign);
+
+    expect(result).toEqual({ sent: 0, failed: 0, skipped: 0 });
+    expect(sender.send).not.toHaveBeenCalled();
+    expect(prisma.campaignSend.create).not.toHaveBeenCalled();
+    // The campaign is left as it was, so the next in-window tick still picks it up.
+    expect(prisma.outreachCampaign.update).not.toHaveBeenCalled();
+  });
+
+  it('still allows a dry run outside the window', async () => {
+    jest.setSystemTime(new Date('2026-10-15T01:39:00Z'));
+    const { job, prisma, campaign } = makeJob([contact], { dryRun: true });
+
+    await job.runCampaign(campaign);
+
+    expect(prisma.campaignSend.create).toHaveBeenCalled();
+  });
+
   it('refuses a real send when the campaign has no audience filter', async () => {
     const { job, sender, campaign } = makeJob([contact], { audienceFilter: {} });
 

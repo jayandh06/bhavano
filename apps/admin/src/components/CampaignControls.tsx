@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { CampaignPreviewDto, OutreachCampaignDto } from "@bhavano/types";
-import { runCampaignAction, updateCampaignAction } from "@/app/actions/outreach";
+import { resetCampaignRunAction, runCampaignAction, updateCampaignAction } from "@/app/actions/outreach";
 import { previewCampaignAction } from "@/app/actions/outreachPreview";
 
 const btn = (color: string): React.CSSProperties => ({
@@ -62,6 +62,23 @@ export function CampaignControls({ campaign }: { campaign: OutreachCampaignDto }
     }
   }
 
+  async function onReset() {
+    const ok = window.confirm(
+      `Reset the last run of "${campaign.name}"?
+
+Only do this if the messages were NOT delivered (check the MSG91 delivery report). ` +
+        "The contacts will be put back to not-contacted and the campaign will be paused, so it can be run again. " +
+        "If any of them were actually delivered, they would be messaged a second time.",
+    );
+    if (!ok) return;
+    setPending("reset");
+    setError(null);
+    const result = await resetCampaignRunAction(campaign.id);
+    setPending(null);
+    if (result.success) setRunSummary(`Reset ${result.reset} contacts. The campaign is paused — Activate or Run now when ready.`);
+    else setError(result.error);
+  }
+
   const canActivate = campaign.status === "draft" || campaign.status === "paused";
 
   return (
@@ -85,6 +102,11 @@ export function CampaignControls({ campaign }: { campaign: OutreachCampaignDto }
         <button onClick={onRun} disabled={pending !== null} style={btn("var(--green)")}>
           {pending === "run" ? "Running…" : "Run now"}
         </button>
+        {campaign.stats.sent > 0 && (
+          <button onClick={onReset} disabled={pending !== null} style={btn("#b3413a")} title="Use only if the messages were not delivered">
+            {pending === "reset" ? "Resetting…" : "Reset last run"}
+          </button>
+        )}
       </div>
 
       {preview && (

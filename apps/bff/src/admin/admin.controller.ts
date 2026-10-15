@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { SEND_WINDOW_MESSAGE, isWithinPromotionalSendWindow } from '../outreach/send-window';
 import type {
   AdminConversationsPage,
   AdminDiscountCodesPage,
@@ -752,7 +753,18 @@ export class AdminController {
   @Post('outreach/campaigns/:id/run')
   async runCampaign(@Param('id') id: string): Promise<{ sent: number; failed: number; skipped: number }> {
     const campaign = await this.outreachService.requireCampaignRow(id);
+    if (!campaign.dryRun && campaign.channel === 'sms' && !isWithinPromotionalSendWindow()) {
+      throw new BadRequestException(SEND_WINDOW_MESSAGE);
+    }
     return this.outreachCampaignJob.runCampaign(campaign);
+  }
+
+  /** For a run whose messages were accepted by the provider but never delivered (e.g. rejected for
+   * sending outside the allowed hours): frees the contacts' send slots so the campaign can be run
+   * again. See OutreachService.resetCampaignRun. */
+  @Post('outreach/campaigns/:id/reset-run')
+  resetCampaignRun(@Param('id') id: string): Promise<{ reset: number }> {
+    return this.outreachService.resetCampaignRun(id);
   }
 
   @Get('outreach/sends')

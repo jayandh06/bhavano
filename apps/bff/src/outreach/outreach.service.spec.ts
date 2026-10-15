@@ -17,10 +17,10 @@ const daysAgo = (n: number) => new Date(Date.now() - n * DAY_MS);
 
 function makeService() {
   const prisma = {
-    outreachContact: { findMany: jest.fn(), count: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    outreachContact: { findMany: jest.fn(), count: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
     user: { findUniqueOrThrow: jest.fn() },
     outreachCampaign: { findUnique: jest.fn(), update: jest.fn() },
-    campaignSend: { groupBy: jest.fn().mockResolvedValue([]) },
+    campaignSend: { groupBy: jest.fn().mockResolvedValue([]), findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn() },
     suppressionEntry: { findMany: jest.fn().mockResolvedValue([]) },
     listingNotificationLog: { create: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
     placesFetchLog: {
@@ -230,6 +230,65 @@ describe('OutreachService.updateCampaign — activation guards', () => {
   it('does not apply the guards to an ordinary draft edit', async () => {
     const { service } = setup({ dltTemplateId: null, bodyTemplate: 'no opt out here' });
     await expect(service.updateCampaign('k1', { name: 'renamed' })).resolves.toBeDefined();
+  });
+});
+
+describe('OutreachService.resetCampaignRun', () => {
+  function setup(campaign: Record<string, unknown> = {}) {
+    const ctx = makeService();
+    (ctx.prisma.outreachCampaign.findUnique as jest.Mock).mockResolvedValue({ id: 'k1', cadenceCron: null, ...campaign });
+    (ctx.prisma.campaignSend.findMany as jest.Mock).mockResolvedValue([
+      { contactId: 'c1' },
+      { contactId: 'c2' },
+      { contactId: 'c1' },
+    ]);
+    return ctx;
+  }
+
+  it('frees the slots of a one-shot run without deleting any send record', async () => {
+    const { service, prisma } = setup();
+
+    const result = await service.resetCampaignRun('k1');
+
+    expect(result).toEqual({ reset: 2 }); // distinct contacts
+    const calls = (prisma.campaignSend.updateMany as jest.Mock).mock.calls.map((c) => c[0]);
+    expect(calls[0]).toMatchObject({
+      where: { campaignId: 'k1', runKey: 'once', status: 'sent' },
+      data: { status: 'failed', failureReason: expect.stringMatching(/undelivered/) },
+    });
+    expect(calls[0].data.runKey).toMatch(/^reset-/);
+    expect((prisma.campaignSend as unknown as Record<string, unknown>).deleteMany).toBeUndefined();
+  });
+
+  it('puts contacts back to not-contacted and pauses the campaign (never schedules it)', async () => {
+    const { service, prisma } = setup();
+
+    await service.resetCampaignRun('k1');
+
+    const contactCalls = (prisma.outreachContact.updateMany as jest.Mock).mock.calls.map((c) => c[0]);
+    expect(contactCalls[0]).toMatchObject({
+      where: { id: { in: ['c1', 'c2'] }, contactedCount: { lte: 1 } },
+      data: { lastContactedAt: null, contactedCount: 0 },
+    });
+    expect(contactCalls[1]).toMatchObject({ data: { contactedCount: { decrement: 1 } } });
+    expect((prisma.outreachCampaign.update as jest.Mock).mock.calls[0][0]).toMatchObject({
+      data: { status: 'paused', lastRunAt: null },
+    });
+  });
+
+  it('uses today as the run key for a recurring campaign', async () => {
+    const { service, prisma } = setup({ cadenceCron: '0 10 * * *' });
+
+    await service.resetCampaignRun('k1');
+
+    const today = new Date().toISOString().slice(0, 10);
+    expect((prisma.campaignSend.updateMany as jest.Mock).mock.calls[0][0].where.runKey).toBe(today);
+  });
+
+  it('rejects an unknown campaign', async () => {
+    const { service, prisma } = setup();
+    (prisma.outreachCampaign.findUnique as jest.Mock).mockResolvedValue(null);
+    await expect(service.resetCampaignRun('nope')).rejects.toThrow(/not found/i);
   });
 });
 

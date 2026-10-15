@@ -4,6 +4,7 @@ import type { OutreachCampaign, OutreachContact } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutreachService, hasAudienceScope, renderTemplate } from './outreach.service';
 import { OutreachSenderService } from './outreach-sender.service';
+import { SEND_WINDOW_MESSAGE, isWithinPromotionalSendWindow } from './send-window';
 
 /**
  * Drives due campaigns. Same shape as ListingExpiryReminderJob — hourly @Cron in IST, a
@@ -68,6 +69,13 @@ export class OutreachCampaignJob {
     // under the same key (`once`), so a one-shot campaign that was dry-run first then skipped every
     // contact when it was run for real ("Unique constraint failed" on all of them) and had
     // already been marked completed. Each dry run gets its own key and leaves the status alone.
+    // Outside 09:00-21:00 IST the operator fails every promotional SMS ("Invalid SMS Timing on
+    // DLT") after we have already recorded it as sent and used up the contact's slot. The hourly
+    // job simply tries again at the next in-window tick; the manual endpoint reports it.
+    if (!campaign.dryRun && campaign.channel === 'sms' && !isWithinPromotionalSendWindow()) {
+      this.logger.warn(`Campaign "${campaign.name}" not run: ${SEND_WINDOW_MESSAGE}`);
+      return { sent: 0, failed: 0, skipped: 0 };
+    }
     const runKey = campaign.dryRun ? `dry-${new Date().toISOString()}` : this.runKey(campaign);
     if (!campaign.dryRun) {
       // Dry runs made before dry runs got their own key hold the real run's idempotency slot

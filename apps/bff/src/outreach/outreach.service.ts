@@ -831,6 +831,57 @@ export class OutreachService {
     return this.toCampaignDto(campaign, emptyStats());
   }
 
+  /** Undoes a run whose messages were handed to the provider but never delivered. Delivery
+   * reports are not wired back yet, so a message the operator rejected after accepting it (the
+   * 07:09 IST run: "Invalid SMS Timing on DLT") stays recorded as `sent`, the contact looks
+   * contacted for `minDaysBetweenSends`, and its one send slot is taken — a retry would skip it.
+   *
+   * Nothing is deleted. The run's rows are marked failed with a reason and moved to a `reset-...`
+   * run key (which frees the unique slot but keeps the rendered text for audit). Contacts that
+   * were counted as contacted by this run are put back, and the campaign is PAUSED, not
+   * scheduled: with dry run off, a scheduled campaign would send at the next in-window hourly
+   * tick without anyone pressing a button. Only use this when the messages were not delivered. */
+  async resetCampaignRun(id: string): Promise<{ reset: number }> {
+    const campaign = await this.prisma.outreachCampaign.findUnique({ where: { id } });
+    if (!campaign) throw new NotFoundException(`Campaign ${id} not found`);
+
+    const runKey = campaign.cadenceCron ? new Date().toISOString().slice(0, 10) : 'once';
+    const sent = await this.prisma.campaignSend.findMany({
+      where: { campaignId: id, runKey, status: 'sent' },
+      select: { contactId: true },
+    });
+    const contactIds = [...new Set(sent.map((s) => s.contactId))];
+
+    await this.prisma.$transaction([
+      this.prisma.campaignSend.updateMany({
+        where: { campaignId: id, runKey, status: 'sent' },
+        data: { status: 'failed', failureReason: 'Reset by admin: reported undelivered', runKey: `reset-${new Date().toISOString()}` },
+      }),
+      // Rows that never went out (provider error, queued, dry run) also hold the slot.
+      this.prisma.campaignSend.updateMany({
+        where: { campaignId: id, runKey },
+        data: { runKey: `reset-${new Date().toISOString()}` },
+      }),
+      this.prisma.outreachContact.updateMany({
+        where: { id: { in: contactIds }, contactedCount: { lte: 1 } },
+        data: { lastContactedAt: null, contactedCount: 0 },
+      }),
+      this.prisma.outreachContact.updateMany({
+        where: { id: { in: contactIds }, contactedCount: { gt: 1 } },
+        data: { contactedCount: { decrement: 1 } },
+      }),
+      this.prisma.outreachContact.updateMany({
+        where: { id: { in: contactIds }, status: 'contacted', contactedCount: 0 },
+        data: { status: 'new' },
+      }),
+      this.prisma.outreachCampaign.update({
+        where: { id },
+        data: { status: 'paused', lastRunAt: null },
+      }),
+    ]);
+    return { reset: contactIds.length };
+  }
+
   /** Activation (status → scheduled/running) is where compliance is enforced: an SMS/WhatsApp
    * campaign without a DLT template will be rejected by MSG91 anyway, and a marketing body with
    * no opt-out instruction is non-compliant — both are far cheaper to catch here than mid-run. */

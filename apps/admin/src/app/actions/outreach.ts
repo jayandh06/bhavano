@@ -13,6 +13,7 @@ import {
   createListingFromContact,
   importOutreachContacts,
   optOutContact,
+  resetCampaignRun,
   runCampaign,
   sendClaimVerification,
   updateCampaign,
@@ -140,6 +141,23 @@ export async function updateCampaignAction(
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update campaign" };
+  }
+}
+
+export type ResetRunResult = { success: true; reset: number } | { success: false; error: string };
+
+/** For a run whose messages the provider accepted but never delivered (e.g. "Invalid SMS Timing on
+ * DLT"): frees those contacts' send slots so the campaign can be run again. The campaign comes
+ * back PAUSED, never scheduled. See OutreachService.resetCampaignRun. */
+export async function resetCampaignRunAction(id: string): Promise<ResetRunResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const result = await resetCampaignRun(accessToken, id);
+    revalidatePath("/outreach/campaigns");
+    revalidatePath("/outreach/contacts");
+    return { success: true, reset: result.reset };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to reset the run" };
   }
 }
 
