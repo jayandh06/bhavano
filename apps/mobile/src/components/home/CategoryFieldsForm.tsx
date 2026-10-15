@@ -5,6 +5,7 @@ import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
   groupFieldsBySection,
+  listingCompleteness,
   SECTION_LABELS,
   SECTION_ORDER,
   type FieldSection,
@@ -14,6 +15,7 @@ import { POSTED_BY_FORM_LABEL, POSTED_BY_FORM_OPTIONS } from "@bhavano/types/sel
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon } from "../Icon";
+import { CompletenessMeter } from "./CompletenessMeter";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 type Attributes = Record<string, string | string[]>;
@@ -277,8 +279,11 @@ export function CategoryFieldsForm({
     return cells;
   }
 
+  const completeness = listingCompleteness(category, transactionType, attributes);
+
   return (
     <>
+      <CompletenessMeter completeness={completeness} />
       {sections.map(({ section, label, fields }) => (
         <View key={section}>
           <Text

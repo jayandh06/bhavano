@@ -36,6 +36,7 @@ import {
   fieldIsVisible,
   groupFieldsBySection,
   listingAttributesIssue,
+  listingCompleteness,
   pruneHiddenAttributes,
   SECTION_LABELS,
   SECTION_ORDER,
@@ -59,6 +60,7 @@ import { runWithConcurrency } from "@bhavano/types/concurrencyPool";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { TOKEN_KEY, useHomeSheets } from "../../context/HomeSheetsProvider";
 import { Icon, isIconName, type IconName } from "../Icon";
+import { CompletenessMeter } from "./CompletenessMeter";
 import {
   BffError,
   createListing,
@@ -1892,6 +1894,9 @@ export function PostAdWizard({
             <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
               {POST_CATEGORIES.find((c) => c.value === category)?.label} details
             </Text>
+            {category && transactionType && (
+              <CompletenessMeter completeness={listingCompleteness(category, transactionType, attributes)} />
+            )}
             {/* Grouped into the config's own sections (pricing, basics, preferences, …) in
                 SECTION_ORDER, the same helper the desktop wizard uses and the same order it now
                 renders in — Plot's "plotDetails" section comes before "pricing" there since the

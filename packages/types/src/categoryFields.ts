@@ -118,6 +118,19 @@ export interface FieldDef {
   /** Must be filled in before the listing can be posted/saved — enforced in both the
    * posting wizard/edit form (disables submit) and the BFF (`ListingsService`). */
   required?: boolean;
+  /** `number` only: an amount in rupees, shown on the listing page as "₹50,000" (grouped the
+   * Indian way) instead of the bare digits. A trailing "(₹)" in the label is dropped there, since
+   * the value already carries the symbol. */
+  rupees?: boolean;
+  /** `number` only: a suffix for the value on the listing page ("ft", "kW", "%"). */
+  unit?: string;
+}
+
+/** `dependsOn` against a stored value: a single-select compares for equality, a multi-select
+ * (stored as an array) matches when it contains the value — a PG's "Single room rent" shows once
+ * "Single" is among the sharing types ticked. */
+function gateMatches(stored: unknown, expected: string): boolean {
+  return Array.isArray(stored) ? stored.includes(expected) : stored === expected;
 }
 
 /** Single source of truth for whether a field should be shown, given the current transaction
@@ -132,11 +145,32 @@ export function fieldIsVisible(
     (!field.transactionTypes ||
       field.transactionTypes.includes(transactionType)) &&
     (!field.dependsOn ||
-      attributes[field.dependsOn.key] === field.dependsOn.value) &&
+      gateMatches(attributes[field.dependsOn.key], field.dependsOn.value)) &&
     (!field.alsoDependsOn ||
       !field.alsoDependsOn.transactionTypes.includes(transactionType) ||
-      attributes[field.alsoDependsOn.key] === field.alsoDependsOn.value)
+      gateMatches(attributes[field.alsoDependsOn.key], field.alsoDependsOn.value))
   );
+}
+
+/** A stored attribute as the listing page prints it: the option's label for a select ("North-East"
+ * rather than "north-east"), "Yes"/"No", rupees grouped the Indian way, a unit suffix. Shared by
+ * the web and mobile detail pages so they cannot word the same value differently. */
+export function formatFieldValue(field: FieldDef, value: unknown): string {
+  const labelOf = (item: unknown) => field.options?.find((option) => option.value === item)?.label ?? String(item);
+  if (Array.isArray(value)) return value.map(labelOf).join(", ");
+  if (value === "yes") return "Yes";
+  if (value === "no") return "No";
+  if (field.type === "select") return labelOf(value);
+  if (field.type === "number" && field.rupees && Number.isFinite(Number(value))) {
+    return `₹${groupInr(Number(value))}`;
+  }
+  if (field.type === "number" && field.unit && value !== "" && value !== undefined) return `${value} ${field.unit}`;
+  return String(value);
+}
+
+/** The label to show beside `formatFieldValue`'s output — a rupee field drops its "(₹)". */
+export function formatFieldLabel(field: FieldDef): string {
+  return field.rupees ? field.label.replace(/\s*\(₹\)/, "") : field.label;
 }
 
 /** Groups an already-visibility-filtered field list into sections, ordered per
@@ -274,6 +308,45 @@ export function listingAttributesIssue(
   return brokerageFeeIssue(transactionType, price, attributes);
 }
 
+export interface ListingCompleteness {
+  filled: number;
+  total: number;
+  /** Whole percent, 100 when there is nothing optional to add. */
+  percent: number;
+  /** Labels of the optional details still blank, in form order. */
+  missing: string[];
+}
+
+/**
+ * How many of the optional details a listing has filled in — what the posting forms show as "Add 3
+ * more details". Required fields are not counted (the form already blocks on them), and neither
+ * are the ones whose blank is not "unanswered": Yes/No switches (they read "No" until touched),
+ * pre-filled counts, brokerage terms, the website and amenities/furnishing inventories. What is
+ * left is the specifics a buyer actually filters and decides on.
+ */
+export function listingCompleteness(
+  category: ListingCategory,
+  transactionType: TransactionType,
+  attributes: Record<string, string | string[]>,
+): ListingCompleteness {
+  const counted = CATEGORY_FIELD_CONFIG[category].filter((field) => {
+    if (field.required || field.defaultValue !== undefined) return false;
+    if (!fieldIsVisible(field, transactionType, attributes)) return false;
+    if (field.section === "amenities" || field.section === "furnishing") return false;
+    if (field.key === "website" || field.key === "fromBroker" || field.key.startsWith("brokerage")) return false;
+    const yesNo = field.type === "select" && field.options?.length === 2 && field.options.every((o) => o.value === "yes" || o.value === "no");
+    return !yesNo;
+  });
+  const missing = counted.filter((field) => !isFilled(attributes[field.key])).map((field) => field.label.replace(/\s*\(optional\)/i, ""));
+  const filled = counted.length - missing.length;
+  return {
+    filled,
+    total: counted.length,
+    percent: counted.length === 0 ? 100 : Math.round((filled / counted.length) * 100),
+    missing,
+  };
+}
+
 /** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
  * of resetting to an empty object so a stepper has a number to increment from and the form opens
  * with honest answers rather than blanks the poster has to fill in to say "none". */
@@ -353,6 +426,7 @@ const BROKERAGE_FIELDS: FieldDef[] = [
     type: "number",
     min: BROKERAGE_RENT_MIN_RUPEES,
     maxDigits: 9,
+    rupees: true,
     section: "pricing",
     dependsOn: { key: "brokerageFeeApplicable", value: "yes" },
     alsoDependsOn: { key: "brokerageFeeType", value: BROKERAGE_FEE_FIXED, transactionTypes: ["sell"] },
@@ -470,6 +544,146 @@ function isFilled(value: unknown): boolean {
   if (value === undefined || value === null) return false;
   if (Array.isArray(value)) return value.length > 0;
   return String(value).trim() !== "";
+}
+
+const YES_NO_OPTIONS: FieldOption[] = [
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No" },
+];
+
+const yesNoField = (key: string, label: string, section: FieldSection, extra: Partial<FieldDef> = {}): FieldDef => ({
+  key,
+  label,
+  type: "select",
+  section,
+  options: YES_NO_OPTIONS,
+  ...extra,
+});
+
+/**
+ * What a tenant asks first, shared by every rent/lease-capable category. All optional: listings
+ * posted before these existed carry none, and a seller who doesn't know a lock-in shouldn't be
+ * stopped from posting. `availableFrom` is bucketed rather than a date so the answer doesn't go
+ * stale on a listing that stays up for weeks. See docs/plans/category-attributes-by-transaction-type.md.
+ */
+const AVAILABLE_FROM_OPTIONS: FieldOption[] = [
+  { value: "immediately", label: "Immediately" },
+  { value: "within-15-days", label: "Within 15 days" },
+  { value: "within-30-days", label: "Within 30 days" },
+  { value: "after-30-days", label: "After 30 days" },
+];
+
+const LOCK_IN_OPTIONS: FieldOption[] = [
+  { value: "none", label: "No lock-in" },
+  { value: "3", label: "3 months" },
+  { value: "6", label: "6 months" },
+  { value: "11", label: "11 months" },
+  { value: "12", label: "12 months" },
+  { value: "24", label: "24+ months" },
+];
+
+function rentalTermsFields(
+  section: FieldSection,
+  options: { lockIn?: boolean; transactionTypes?: TransactionType[] } = {},
+): FieldDef[] {
+  const transactionTypes = options.transactionTypes ?? ["rent", "lease"];
+  return [
+    {
+      key: "securityDeposit",
+      label: "Security deposit (₹)",
+      type: "number",
+      min: 0,
+      maxDigits: 9,
+      rupees: true,
+      section: "pricing",
+      transactionTypes,
+    },
+    {
+      key: "availableFrom",
+      label: "Available from",
+      type: "select",
+      section,
+      transactionTypes,
+      options: AVAILABLE_FROM_OPTIONS,
+    },
+    ...(options.lockIn
+      ? [
+          {
+            key: "lockInPeriod",
+            label: "Lock-in period",
+            type: "select" as const,
+            section,
+            transactionTypes,
+            options: LOCK_IN_OPTIONS,
+          },
+        ]
+      : []),
+  ];
+}
+
+/** What a buyer asks first on a sale of built property (residential and commercial). */
+function saleTermsFields(section: FieldSection): FieldDef[] {
+  return [
+    {
+      key: "possessionStatus",
+      label: "Possession status",
+      type: "select",
+      section,
+      transactionTypes: ["sell"],
+      options: [
+        { value: "ready", label: "Ready to move" },
+        { value: "under-construction", label: "Under construction" },
+      ],
+    },
+    {
+      key: "propertyAge",
+      label: "Property age",
+      type: "select",
+      section,
+      transactionTypes: ["sell"],
+      options: [
+        { value: "new", label: "New / under 1 year" },
+        { value: "1-5", label: "1–5 years" },
+        { value: "5-10", label: "5–10 years" },
+        { value: "10+", label: "Over 10 years" },
+      ],
+    },
+    ownershipField(section),
+  ];
+}
+
+function ownershipField(section: FieldSection): FieldDef {
+  return {
+    key: "ownership",
+    label: "Ownership",
+    type: "select",
+    section,
+    transactionTypes: ["sell"],
+    options: [
+      { value: "freehold", label: "Freehold" },
+      { value: "leasehold", label: "Leasehold" },
+      { value: "co-operative-society", label: "Co-operative society" },
+      { value: "power-of-attorney", label: "Power of attorney" },
+    ],
+  };
+}
+
+/** RERA on the listing itself — the poster's profile already carries a verified number, but a
+ * buyer looking at one sale ad needs to see whether *this* project is registered. */
+function reraFields(section: FieldSection): FieldDef[] {
+  return [
+    yesNoField("reraRegistered", "RERA registered", section, { transactionTypes: ["sell"] }),
+    {
+      key: "reraNumber",
+      label: "RERA number",
+      type: "text",
+      compact: true,
+      section,
+      transactionTypes: ["sell"],
+      dependsOn: { key: "reraRegistered", value: "yes" },
+      placeholder: "e.g. PRM/KA/RERA/1251/…",
+    },
+  ];
 }
 
 const RESIDENTIAL_FIELDS: FieldDef[] = [
@@ -646,6 +860,7 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     type: "number",
     maxDigits: 5,
     min: 0,
+    rupees: true,
     section: "pricing",
     dependsOn: { key: "maintenanceFeeApplicable", value: "yes" },
   },
@@ -819,6 +1034,29 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
     section: "furnishing",
     dependsOn: { key: "furnished", value: "furnished" },
   },
+  {
+    key: "societyName",
+    label: "Society / project name",
+    type: "text",
+    compact: true,
+    section: "basics",
+    placeholder: "e.g. Prestige Lakeside",
+  },
+  {
+    key: "waterSource",
+    label: "Water source",
+    type: "select",
+    section: "basics",
+    options: [
+      { value: "corporation", label: "Corporation" },
+      { value: "borewell", label: "Borewell" },
+      { value: "both", label: "Corporation + borewell" },
+    ],
+  },
+  ...rentalTermsFields("basics", { lockIn: true }),
+  ...saleTermsFields("basics"),
+  yesNoField("loanAvailable", "Home loan available", "basics", { transactionTypes: ["sell"] }),
+  ...reraFields("basics"),
   ...[
     ["cctv", "CCTV", "📹", "cctv"],
     ["lift", "Lift", "🛗", "lift"],
@@ -842,13 +1080,28 @@ const RESIDENTIAL_FIELDS: FieldDef[] = [
   })),
 ];
 
+/** A villa is a residence that also stands on its own land. */
+const VILLA_FIELDS: FieldDef[] = [
+  ...RESIDENTIAL_FIELDS,
+  {
+    key: "plotAreaSqft",
+    label: "Plot area (sqft)",
+    type: "number",
+    min: 1,
+    maxDigits: 6,
+    section: "basics",
+  },
+  yesNoField("privateGarden", "Private garden", "basics"),
+  yesNoField("privateTerrace", "Private terrace", "basics"),
+];
+
 /** One field-def list per category — the single source of truth for both the posting
  * wizard's dynamic step-3 form and the `attributes` JSONB column it maps onto. Adding a
  * future category means adding an entry here, not a new form/code path. */
 export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
   house: RESIDENTIAL_FIELDS,
   apartment: RESIDENTIAL_FIELDS,
-  villa: RESIDENTIAL_FIELDS,
+  villa: VILLA_FIELDS,
   pg: [
     {
       // Multi-select, not select — a PG can genuinely offer more than one sharing type at once
@@ -898,6 +1151,78 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       section: "roomDetails",
       placeholder: "https://yourpg.com",
     },
+    // Rent per sharing type: the listing's own price is the starting ("from") rent, and these say
+    // what each room type actually costs. Each shows once its sharing type is ticked above.
+    ...(
+      [
+        ["single", "Single room"],
+        ["double", "Double sharing"],
+        ["triple", "Triple sharing"],
+        ["dormitory", "Dormitory bed"],
+      ] as const
+    ).map(
+      ([type, label]): FieldDef => ({
+        key: `${type}SharingRent`,
+        label: `${label} rent (₹/month)`,
+        type: "number",
+        min: 1,
+        maxDigits: 6,
+        rupees: true,
+        section: "pricing",
+        dependsOn: { key: "sharingType", value: type },
+      }),
+    ),
+    ...rentalTermsFields("roomDetails"),
+    {
+      key: "noticePeriod",
+      label: "Notice period",
+      type: "select",
+      section: "roomDetails",
+      options: [
+        { value: "none", label: "None" },
+        { value: "15", label: "15 days" },
+        { value: "30", label: "30 days" },
+        { value: "60", label: "60 days" },
+      ],
+    },
+    {
+      key: "roomsAvailable",
+      label: "Rooms / beds available",
+      type: "number",
+      min: 1,
+      maxDigits: 3,
+      stepper: true,
+      section: "roomDetails",
+    },
+    {
+      key: "foodType",
+      label: "Food type",
+      type: "select",
+      section: "roomDetails",
+      dependsOn: { key: "meals", value: "yes" },
+      options: [
+        { value: "veg", label: "Veg only" },
+        { value: "non-veg", label: "Veg + non-veg" },
+      ],
+    },
+    {
+      key: "mealTimings",
+      label: "Meal timings",
+      type: "text",
+      compact: true,
+      section: "roomDetails",
+      dependsOn: { key: "meals", value: "yes" },
+      placeholder: "e.g. 8 AM, 1 PM, 8 PM",
+    },
+    {
+      key: "gateTimings",
+      label: "Gate closing time",
+      type: "text",
+      compact: true,
+      section: "roomDetails",
+      placeholder: "e.g. 10:30 PM, or 24x7",
+    },
+    yesNoField("visitorsAllowed", "Visitors allowed", "roomDetails"),
     {
       key: "twoWheelerParking",
       label: "Two-wheeler parking",
@@ -1028,6 +1353,42 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       ],
     },
     {
+      key: "storageType",
+      label: "Storage type",
+      type: "select",
+      section: "spaceDetails",
+      options: [
+        { value: "warehouse", label: "Warehouse" },
+        { value: "godown", label: "Godown" },
+        { value: "self-storage", label: "Self-storage unit" },
+        { value: "cold-storage", label: "Cold storage" },
+      ],
+    },
+    {
+      key: "ceilingHeightFt",
+      label: "Ceiling height (ft)",
+      type: "number",
+      min: 1,
+      maxDigits: 3,
+      unit: "ft",
+      section: "spaceDetails",
+    },
+    {
+      key: "vehicleAccess",
+      label: "Vehicle access",
+      type: "multi-select",
+      section: "spaceDetails",
+      options: [
+        { value: "two-wheeler", label: "Two-wheeler" },
+        { value: "car-tempo", label: "Car / tempo" },
+        { value: "truck", label: "Truck / container" },
+      ],
+    },
+    yesNoField("loadingDock", "Loading dock", "spaceDetails"),
+    yesNoField("securityGuard", "Security / guard", "spaceDetails"),
+    yesNoField("climateControlled", "Climate controlled", "spaceDetails"),
+    ...rentalTermsFields("spaceDetails", { lockIn: true }),
+    {
       key: "website",
       label: "Website (optional)",
       type: "text",
@@ -1078,6 +1439,53 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "business", label: "Business hours only" },
       ],
     },
+    {
+      key: "operatingDays",
+      label: "Open days",
+      type: "select",
+      section: "workspaceDetails",
+      options: [
+        { value: "mon-fri", label: "Mon – Fri" },
+        { value: "mon-sat", label: "Mon – Sat" },
+        { value: "all-days", label: "All 7 days" },
+      ],
+    },
+    {
+      key: "totalSeats",
+      label: "Total seats",
+      type: "number",
+      min: 1,
+      maxDigits: 4,
+      section: "workspaceDetails",
+    },
+    ...(
+      [
+        ["hotDesk", "hot-desk", "Hot desks"],
+        ["dedicatedDesk", "dedicated-desk", "Dedicated desks"],
+        ["privateCabin", "private-cabin", "Private cabins"],
+      ] as const
+    ).map(
+      ([key, seatType, label]): FieldDef => ({
+        key: `${key}Count`,
+        label,
+        type: "number",
+        min: 0,
+        maxDigits: 3,
+        stepper: true,
+        section: "workspaceDetails",
+        dependsOn: { key: "seatType", value: seatType },
+      }),
+    ),
+    {
+      key: "dayPassPrice",
+      label: "Day pass price (₹)",
+      type: "number",
+      min: 1,
+      maxDigits: 5,
+      rupees: true,
+      section: "pricing",
+    },
+    ...rentalTermsFields("workspaceDetails"),
     {
       key: "twoWheelerParking",
       label: "Two-wheeler parking",
@@ -1289,6 +1697,45 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
       placeholder: "e.g. BDA, Panchayat, DTCP",
     },
     {
+      key: "plotType",
+      label: "Plot type",
+      type: "select",
+      section: "plotDetails",
+      options: [
+        { value: "residential", label: "Residential" },
+        { value: "commercial", label: "Commercial" },
+        { value: "agricultural", label: "Agricultural" },
+        { value: "industrial", label: "Industrial" },
+      ],
+    },
+    {
+      key: "roadWidthFt",
+      label: "Road width (ft)",
+      type: "number",
+      min: 1,
+      maxDigits: 3,
+      unit: "ft",
+      compact: true,
+      section: "plotDetails",
+    },
+    yesNoField("cornerPlot", "Corner plot", "plotDetails"),
+    yesNoField("gatedLayout", "Gated layout", "plotDetails"),
+    {
+      key: "titleDocuments",
+      label: "Documents available",
+      type: "multi-select",
+      section: "plotDetails",
+      options: [
+        { value: "sale-deed", label: "Sale deed" },
+        { value: "khata-patta", label: "Khata / patta" },
+        { value: "encumbrance-certificate", label: "Encumbrance certificate" },
+        { value: "approved-layout", label: "Approved layout plan" },
+        { value: "tax-receipts", label: "Property tax receipts" },
+      ],
+    },
+    ownershipField("plotDetails"),
+    ...reraFields("plotDetails"),
+    {
       key: "fromBroker",
       label: "Posted by Broker / Agent",
       type: "select",
@@ -1344,6 +1791,60 @@ export const CATEGORY_FIELD_CONFIG: Record<ListingCategory, FieldDef[]> = {
         { value: "furnished", label: "Furnished" },
       ],
     },
+    {
+      key: "washroomCount",
+      label: "Washrooms",
+      type: "number",
+      min: 0,
+      maxDigits: 2,
+      stepper: true,
+      defaultValue: "0",
+      section: "spaceDetails",
+    },
+    {
+      key: "carParkingCount",
+      label: "Car parking",
+      type: "number",
+      min: 0,
+      maxDigits: 3,
+      stepper: true,
+      defaultValue: "0",
+      section: "spaceDetails",
+    },
+    {
+      key: "workstationCapacity",
+      label: "Workstation capacity",
+      type: "number",
+      min: 1,
+      maxDigits: 4,
+      section: "spaceDetails",
+    },
+    {
+      key: "powerLoadKw",
+      label: "Power load (kW)",
+      type: "number",
+      min: 1,
+      maxDigits: 4,
+      unit: "kW",
+      section: "spaceDetails",
+    },
+    yesNoField("lift", "Lift", "spaceDetails"),
+    yesNoField("pantry", "Pantry", "spaceDetails"),
+    yesNoField("fireNoc", "Fire NOC", "spaceDetails"),
+    ...rentalTermsFields("spaceDetails", { lockIn: true }),
+    {
+      key: "rentEscalationPercent",
+      label: "Yearly rent increase (%)",
+      type: "number",
+      decimal: true,
+      min: 0,
+      max: 25,
+      unit: "%",
+      section: "pricing",
+      transactionTypes: ["rent", "lease"],
+    },
+    ...saleTermsFields("spaceDetails"),
+    ...reraFields("spaceDetails"),
     {
       key: "website",
       label: "Website (optional)",

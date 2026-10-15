@@ -1,18 +1,17 @@
 import { Linking, StyleSheet, Text, View } from "react-native";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
-import { CATEGORY_FIELD_CONFIG, fieldIsVisible, groupFieldsBySection } from "@bhavano/types/categoryFields";
+import {
+  CATEGORY_FIELD_CONFIG,
+  fieldIsVisible,
+  formatFieldLabel,
+  formatFieldValue,
+  groupFieldsBySection,
+} from "@bhavano/types/categoryFields";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { Icon, isIconName } from "../Icon";
 
 function websiteHref(value: string): string {
   return /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
-}
-
-function formatAttributeValue(value: unknown): string {
-  if (Array.isArray(value)) return value.join(", ");
-  if (value === "yes") return "Yes";
-  if (value === "no") return "No";
-  return String(value);
 }
 
 /**
@@ -76,9 +75,9 @@ export function ListingAttributeSections({
                     </Text>
                   ) : (
                     <Text style={{ fontSize: 13, color: colors.textSoft, flexShrink: 1 }}>
-                      <Text style={{ fontWeight: "700", color: colors.text }}>{field.label}</Text>
+                      <Text style={{ fontWeight: "700", color: colors.text }}>{formatFieldLabel(field)}</Text>
                       {": "}
-                      {formatAttributeValue(attrs[field.key])}
+                      {formatFieldValue(field, attrs[field.key])}
                     </Text>
                   )}
                 </View>

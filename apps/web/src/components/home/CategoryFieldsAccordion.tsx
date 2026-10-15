@@ -1,10 +1,11 @@
 import { Fragment, useRef, useState, type ReactNode } from "react";
 import type { ListingCategory, TransactionType } from "@bhavano/types";
-import type { FieldDef, FieldOption, FieldSection } from "@bhavano/types/categoryFields";
+import type { FieldDef, FieldOption, FieldSection, ListingCompleteness } from "@bhavano/types/categoryFields";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
   groupFieldsBySection,
+  listingCompleteness,
   pruneHiddenAttributes,
   SECTION_LABELS,
   SECTION_ORDER,
@@ -544,6 +545,43 @@ function AreaUnitField({
   );
 }
 
+/** "Add 3 more details" — a bar over the optional specifics a buyer filters on. Purely a nudge: it
+ * never blocks posting, and the required fields are not part of it. */
+function CompletenessMeter({ completeness }: { completeness: ListingCompleteness }) {
+  const { percent, missing } = completeness;
+  const done = missing.length === 0;
+  return (
+    <div className="border border-border rounded-[10px] bg-surface px-4 py-3">
+      <div className="flex items-center justify-between gap-3 text-[13px]">
+        <span className="font-bold text-text">
+          {done ? "Complete listing — nothing left to add" : `Listing ${percent}% complete`}
+        </span>
+        {!done && (
+          <span className="text-muted">
+            {missing.length} more {missing.length === 1 ? "detail" : "details"} helps buyers find it
+          </span>
+        )}
+      </div>
+      <div
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Listing completeness"
+        className="mt-2 h-1.5 rounded-full bg-border overflow-hidden"
+      >
+        <div className="h-full bg-green transition-[width]" style={{ width: `${percent}%` }} />
+      </div>
+      {!done && (
+        <p className="text-xs text-muted mt-2 mb-0">
+          Still blank: {missing.slice(0, 4).join(", ")}
+          {missing.length > 4 ? ` and ${missing.length - 4} more` : ""}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Groups a category's fields into accordion sections (expanded by default) and hides any
  * field whose Y/N (or other) `dependsOn` condition isn't currently met — e.g. "Brokerage fee"
  * only appears once "Posted by Broker / Agent" is answered "Yes". Single source of truth for this is
@@ -575,6 +613,7 @@ export function CategoryFieldsAccordion({
   const visibleFields = CATEGORY_FIELD_CONFIG[category].filter((field) =>
     fieldIsVisible(field, transactionType, attributes),
   );
+  const completeness = listingCompleteness(category, transactionType, attributes);
   const fieldSections = groupFieldsBySection(visibleFields);
   // A category can have no field of its own in a given section (e.g. pg/coworking have no
   // category-specific "pricing" field — no maintenance fee, no brokerage) while a caller still
@@ -617,6 +656,7 @@ export function CategoryFieldsAccordion({
     // col-span-full one (multi-select/text — see FieldRunBlock below), which then filled the
     // entire page width for something like "Preferred tenant type"'s checkbox dropdown.
     <div className="flex flex-col gap-3 max-w-[820px]">
+      {completeness.total > 0 && <CompletenessMeter completeness={completeness} />}
       {sections.map(({ section, label, fields }) => (
         <details
           key={section}

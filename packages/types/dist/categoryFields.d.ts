@@ -81,11 +81,23 @@ export interface FieldDef {
     /** Must be filled in before the listing can be posted/saved — enforced in both the
      * posting wizard/edit form (disables submit) and the BFF (`ListingsService`). */
     required?: boolean;
+    /** `number` only: an amount in rupees, shown on the listing page as "₹50,000" (grouped the
+     * Indian way) instead of the bare digits. A trailing "(₹)" in the label is dropped there, since
+     * the value already carries the symbol. */
+    rupees?: boolean;
+    /** `number` only: a suffix for the value on the listing page ("ft", "kW", "%"). */
+    unit?: string;
 }
 /** Single source of truth for whether a field should be shown, given the current transaction
  * type and in-progress attribute values — used by the posting wizard, the edit form, and the
  * listing detail page so all three agree on what's visible. */
 export declare function fieldIsVisible(field: FieldDef, transactionType: TransactionType, attributes: Record<string, unknown>): boolean;
+/** A stored attribute as the listing page prints it: the option's label for a select ("North-East"
+ * rather than "north-east"), "Yes"/"No", rupees grouped the Indian way, a unit suffix. Shared by
+ * the web and mobile detail pages so they cannot word the same value differently. */
+export declare function formatFieldValue(field: FieldDef, value: unknown): string;
+/** The label to show beside `formatFieldValue`'s output — a rupee field drops its "(₹)". */
+export declare function formatFieldLabel(field: FieldDef): string;
 /** Groups an already-visibility-filtered field list into sections, ordered per
  * `SECTION_ORDER` (fields without a `section` land in a trailing "other" bucket). Generic so
  * it works over plain `FieldDef`s (the forms) or `{ section, ... }` display tuples (the
@@ -117,6 +129,22 @@ export declare function numberFieldIssue(field: FieldDef, value: unknown): strin
  * ListingsService.assertValidAttributes / assertConditionalFee / assertBrokerageFitsPrice.
  */
 export declare function listingAttributesIssue(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>, price?: number | null): string | null;
+export interface ListingCompleteness {
+    filled: number;
+    total: number;
+    /** Whole percent, 100 when there is nothing optional to add. */
+    percent: number;
+    /** Labels of the optional details still blank, in form order. */
+    missing: string[];
+}
+/**
+ * How many of the optional details a listing has filled in — what the posting forms show as "Add 3
+ * more details". Required fields are not counted (the form already blocks on them), and neither
+ * are the ones whose blank is not "unanswered": Yes/No switches (they read "No" until touched),
+ * pre-filled counts, brokerage terms, the website and amenities/furnishing inventories. What is
+ * left is the specifics a buyer actually filters and decides on.
+ */
+export declare function listingCompleteness(category: ListingCategory, transactionType: TransactionType, attributes: Record<string, string | string[]>): ListingCompleteness;
 /** The attributes a freshly-chosen category starts with — the counts, at zero. Called instead
  * of resetting to an empty object so a stepper has a number to increment from and the form opens
  * with honest answers rather than blanks the poster has to fill in to say "none". */

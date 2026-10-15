@@ -5,6 +5,8 @@ import { toGuestSave } from "@bhavano/types/guestSaves";
 import {
   CATEGORY_FIELD_CONFIG,
   fieldIsVisible,
+  formatFieldLabel,
+  formatFieldValue,
   groupFieldsBySection,
 } from "@bhavano/types/categoryFields";
 import { resolveDefaultCity } from "@/lib/defaultCity";
@@ -246,7 +248,7 @@ export async function ListingDetailView({
                         <div key={field.key} className="text-[13px] text-text-soft">
                           <span className="font-semibold">
                             {isIconName(field.iconName) && <Icon name={field.iconName} className="mr-1.5 text-muted" />}
-                            {field.label}
+                            {formatFieldLabel(field)}
                           </span>
                           :{" "}
                           {field.key === "website" && attributes[field.key] ? (
@@ -259,7 +261,7 @@ export async function ListingDetailView({
                               {String(attributes[field.key])}
                             </a>
                           ) : (
-                            formatAttributeValue(attributes[field.key])
+                            formatFieldValue(field, attributes[field.key])
                           )}
                         </div>
                       ))}
@@ -318,9 +320,3 @@ function websiteHref(value: string): string {
   return /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
 }
 
-function formatAttributeValue(value: unknown): string {
-  if (Array.isArray(value)) return value.join(", ");
-  if (value === "yes") return "Yes";
-  if (value === "no") return "No";
-  return String(value);
-}
