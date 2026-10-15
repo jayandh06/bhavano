@@ -20,6 +20,22 @@ export default function AboutPage() {
         </p>
       </PageSection>
 
+      <PageSection heading="One place for a move or a small-business setup">
+        <p className="m-0">
+          People rarely need just one thing when they move: somewhere to live, somewhere to work, and
+          somewhere to keep their belongings in between. Bhavano puts homes, PG accommodation, coworking
+          desks, commercial space and storage in the same marketplace, so you can handle them together. Our{" "}
+          <Link href="/moving-to-a-new-city" className="text-green font-bold">
+            moving checklist
+          </Link>{" "}
+          walks through it, and{" "}
+          <Link href="/trust" className="text-green font-bold">
+            Trust &amp; Safety
+          </Link>{" "}
+          explains how we check listings and what we don&apos;t verify yet.
+        </p>
+      </PageSection>
+
       <PageSection heading="Legal entity">
         <ul className="list-none m-0 p-0 flex flex-col gap-1">
           <li>
