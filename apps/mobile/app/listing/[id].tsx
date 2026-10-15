@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, Platform } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { postedByLabel } from "@bhavano/types/sellerType";
@@ -7,6 +7,7 @@ import { ownerEnquiryText, whatsAppChatUrl } from "@bhavano/types/whatsapp";
 import { useAppTheme } from "../../src/theme/ThemeContext";
 import { useHomeSheets } from "../../src/context/HomeSheetsProvider";
 import { useListingQuery } from "../../src/lib/queries";
+import { IosCreditsSheet } from "../../src/components/home/IosPurchaseSheets";
 import { BffError, recordListingInterest, recordView, revealContact, staticMapUrl, toggleFavourite } from "../../src/lib/bffClient";
 import { getOrCreateViewerKey } from "../../src/lib/viewerKey";
 import { publicWebUrl } from "../../src/lib/appWebUrl";
@@ -60,6 +61,7 @@ export default function ListingDetailScreen() {
   const [revealPending, setRevealPending] = useState(false);
   const [revealError, setRevealError] = useState<string | null>(null);
   const [insufficientCredits, setInsufficientCredits] = useState(false);
+  const [creditsSheetOpen, setCreditsSheetOpen] = useState(false);
   const whatsAppHref = ownerPhone && listing ? whatsAppChatUrl(ownerPhone, ownerEnquiryText(listing.title)) : null;
   const reportSheetRef = useRef<BottomSheetModal>(null);
   // An unclaimed (ownerUnverified) listing can still be revealable — see
@@ -310,10 +312,30 @@ export default function ListingDetailScreen() {
             </Text>
           )}
           {revealError && <Text style={{ color: "#c0554b", fontSize: 13, marginTop: 8 }}>{revealError}</Text>}
-          {insufficientCredits && (
+          {insufficientCredits && Platform.OS === "ios" && (
+            // iOS sells credits through the App Store, and never points to the website to buy
+            // them (App Review Guideline 3.1.1).
+            <View style={{ marginTop: 8, gap: 8 }}>
+              <Text style={{ color: colors.muted, fontSize: 13 }}>You&rsquo;ve used your free reveals.</Text>
+              <Pressable
+                onPress={() => setCreditsSheetOpen(true)}
+                style={{ alignSelf: "flex-start", borderWidth: 1.5, borderColor: colors.green, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 }}
+              >
+                <Text style={{ color: colors.green, fontWeight: "700", fontSize: 13 }}>Buy contact credits</Text>
+              </Pressable>
+            </View>
+          )}
+          {insufficientCredits && Platform.OS !== "ios" && (
             <Text style={{ color: colors.muted, fontSize: 13, marginTop: 8 }}>
               You&rsquo;ve used your free reveals. Buy contact-reveal credits at bhavano.com to unlock more.
             </Text>
+          )}
+          {Platform.OS === "ios" && (
+            <IosCreditsSheet
+              visible={creditsSheetOpen}
+              onClose={() => setCreditsSheetOpen(false)}
+              onPurchased={() => void onViewContact()}
+            />
           )}
 
           {!listing.isOwner && contactRevealed && (ownerPhone || ownerEmail) && (

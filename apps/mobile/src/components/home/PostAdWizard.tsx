@@ -5,11 +5,9 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
-import * as WebBrowser from "expo-web-browser";
 import type {
   Area,
   BoostPlanSelection,
-  BoostPricingPreviewDto,
   City,
   CreatedVideoInput,
   ListingCategory,
@@ -69,7 +67,6 @@ import {
   fetchPlanPricing,
   friendlyErrorMessage,
   generateListingCopy,
-  previewBoostPricing,
   updateListing,
   uploadPhoto,
   uploadVideo,
@@ -101,8 +98,8 @@ import { BoostRecoveryDialog } from "./BoostRecoveryDialog";
 import { ListingPreviewCard } from "./ListingPreviewCard";
 import { OwnerWhatsAppShare } from "./OwnerWhatsAppShare";
 import { PerUnitTotalHint, PriceWordsHint } from "./PriceWithWords";
-import { appWebUrl } from "../../lib/appWebUrl";
-import { priceSuffix } from "../../lib/boostPriceDisplay";
+import { iosPurchases } from "../../lib/iosPurchasesClient";
+import { IosBoostSheet } from "./IosPurchaseSheets";
 
 type FieldConfig = (typeof CATEGORY_FIELD_CONFIG)[ListingCategory][number];
 
@@ -440,7 +437,8 @@ export function PostAdWizard({
   // Read-only preview call, no checkout: Apple's Guideline 3.1.1 (see the buttons' own comment)
   // is about processing a paid transaction in-app, not about showing what something costs before
   // sending the buyer to the website to actually pay.
-  const [iosPricing, setIosPricing] = useState<BoostPricingPreviewDto | null>(null);
+  const [iosBoostOpen, setIosBoostOpen] = useState(false);
+  const [iosBoostDone, setIosBoostDone] = useState(false);
   // Public, no-login-required settings (GET /plans/pricing) — read as soon as the wizard mounts,
   // not gated on being logged in, since the Preview-step selector below has to work before the
   // "Post ad" tap that's this wizard's usual, deliberate point of first asking for an account
@@ -700,8 +698,10 @@ export function PostAdWizard({
   async function finishPublishCheckout(listing: ListingDetailDto, token: string): Promise<boolean> {
     setPublishCheckoutError(null);
     if (Platform.OS === "ios") {
-      await WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openBoost=${listing.id}`));
-      setPublishCheckoutError("Complete payment on the website to publish your ad.");
+      // iOS has no product for a listing fee, and pointing at the website to pay is not allowed
+      // either (App Review Guideline 3.1.1). The fee defaults to 0 in every category, so this is
+      // only reached if an admin turns one on. See docs/plans/ios-in-app-purchase.md.
+      setPublishCheckoutError("This ad needs a payment that can't be made in the iPhone app yet, so it can't be published here.");
       return false;
     }
     const checkout = await startListingPublishCheckout({
@@ -739,9 +739,18 @@ export function PostAdWizard({
     boostAutoFiredRef.current = true;
 
     if (Platform.OS === "ios") {
-      WebBrowser.openBrowserAsync(
-        appWebUrl(`/my-listings?openBoost=${createdListing.id}`),
-      );
+      setBoostCheckoutPending(true);
+      void iosPurchases
+        .purchase({ type: "boost", listingId: createdListing.id, boostDays: selectedBoostPlan.duration })
+        .then((result) => {
+          setBoostCheckoutPending(false);
+          const succeeded = result.outcome === "purchased";
+          setBoostCheckoutOutcome(succeeded ? "succeeded" : "failed");
+          if (succeeded) {
+            setIosBoostDone(true);
+            setShowRegenerateBanner(true);
+          }
+        });
       return;
     }
 
@@ -780,19 +789,6 @@ export function PostAdWizard({
       if (succeeded) setShowRegenerateBanner(true);
     });
   }
-
-  useEffect(() => {
-    if (Platform.OS !== "ios" || !createdListing || !postAccessToken) return;
-    let cancelled = false;
-    previewBoostPricing(postAccessToken, createdListing.category, ACTIVE_PROMO_CODE)
-      .then((result) => {
-        if (!cancelled) setIosPricing(result);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [createdListing, postAccessToken]);
 
   function selectCategory(next: ListingCategory) {
     userStartedRef.current = true;
@@ -2327,11 +2323,9 @@ export function PostAdWizard({
           </View>
 
           {Platform.OS === "ios" ? (
-            // iOS keeps the redirect-to-website button — a native Razorpay checkout for a paid
-            // feature is exactly what Apple's Guideline 3.1.1 forbids here. `?openBoost=` deep-links
-            // straight into the website's Boost dialog (see AutoOpenPurchaseModal.tsx on web), which
-            // shows all three durations. Instant Alerts is part of every boost, so there is no
-            // second button for it any more.
+            // iOS sells the boost through the App Store (IosBoostSheet, three durations at the
+            // App Store's own prices): a Razorpay checkout, or a button to the website to pay, is
+            // exactly what Apple's Guideline 3.1.1 forbids. Instant Alerts is part of every boost.
             <>
               <View style={[styles.boostCard, { borderColor: colors.gold, backgroundColor: colors.surfaceAlt }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -2348,15 +2342,29 @@ export function PostAdWizard({
                     </View>
                   ))}
                 </View>
-                <Pressable
-                  onPress={() => WebBrowser.openBrowserAsync(appWebUrl(`/my-listings?openBoost=${createdListing.id}`))}
-                  style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
-                >
-                  <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>
-                    Feature this listing{priceSuffix(iosPricing?.boost7)}
+                {iosBoostDone ? (
+                  <Text style={{ marginTop: 16, textAlign: "center", color: colors.green, fontWeight: "700", fontSize: 14 }}>
+                    Your ad is featured
                   </Text>
-                </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={() => setIosBoostOpen(true)}
+                    style={[styles.submitButton, { backgroundColor: colors.green, marginTop: 16 }]}
+                  >
+                    <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 14 }}>Feature this listing</Text>
+                  </Pressable>
+                )}
               </View>
+              <IosBoostSheet
+                visible={iosBoostOpen}
+                listingId={createdListing.id}
+                category={createdListing.category}
+                onClose={() => setIosBoostOpen(false)}
+                onPurchased={() => {
+                  setIosBoostDone(true);
+                  setShowRegenerateBanner(true);
+                }}
+              />
 
             </>
           ) : previewBoostDisplay?.showSelectorOnPreview ? (

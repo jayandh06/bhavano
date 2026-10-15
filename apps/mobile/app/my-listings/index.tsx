@@ -42,6 +42,8 @@ export default function MyListingsScreen() {
   const autoOpenPublishRef = useRef(false);
 
   useEffect(() => {
+    // iOS never sends people to the website to pay (App Review Guideline 3.1.1).
+    if (Platform.OS === "ios") return;
     if (autoOpenPublishRef.current || !openPublishCheckout || !accessToken || !listings?.length) return;
     const pending = listings.find((l) => l.id === openPublishCheckout && l.publishState === "pending_checkout");
     if (!pending) return;
@@ -172,14 +174,18 @@ export default function MyListingsScreen() {
                       Boost, Instant Alerts, and whatever's added later), they wrap on their own
                       line and never push the two core nav icons below out of bounds. */}
                   <View style={styles.actionsRow}>
-                    {isPendingPublish && (
+                    {isPendingPublish && Platform.OS === "ios" && (
+                      // No payment button and no link to pay elsewhere: App Review Guideline 3.1.1.
+                      <Text style={{ color: colors.muted, fontSize: 12.5, flexShrink: 1 }}>
+                        This ad is waiting for a payment that can&rsquo;t be made in the iPhone app.
+                      </Text>
+                    )}
+                    {isPendingPublish && Platform.OS !== "ios" && (
                       <Pressable
                         onPress={() => openPublishCheckoutOnWeb(item.id)}
                         style={[styles.outlineButton, { borderColor: colors.green, backgroundColor: colors.green }]}
                       >
-                        <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12.5 }}>
-                          {Platform.OS === "ios" ? "Complete payment on website" : "Complete payment to publish"}
-                        </Text>
+                        <Text style={{ color: colors.onGreen, fontWeight: "700", fontSize: 12.5 }}>Complete payment to publish</Text>
                       </Pressable>
                     )}
                     {!isPendingPublish && canRenew && (

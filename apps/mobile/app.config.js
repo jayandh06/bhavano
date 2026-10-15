@@ -19,6 +19,17 @@ function withGradleJvmArgs(config) {
   });
 }
 
+// In-App Purchase (expo-iap) is for the iOS app only; Android and the website keep Razorpay. The
+// library is excluded from Android autolinking in package.json, and here its config plugin is left
+// out of Android-only builds so it adds nothing (billing permission, Kotlin pin) to that app. EAS
+// sets EAS_BUILD_PLATFORM; for a direct `expo prebuild -p android` the flag is read from argv. A
+// build for both platforms, or none, includes it. See docs/plans/ios-in-app-purchase.md.
+function buildingAndroidOnly() {
+  if (process.env.EAS_BUILD_PLATFORM) return process.env.EAS_BUILD_PLATFORM === "android";
+  const args = process.argv.join(" ");
+  return /(--platform|-p)[ =]android\b/.test(args) && !/\bios\b/.test(args);
+}
+
 module.exports = {
   expo: {
     // Display name under the app icon and in the store listing. The publisher/developer name in
@@ -157,6 +168,14 @@ module.exports = {
       favicon: "./assets/favicon.png",
     },
     plugins: [
+      ...(buildingAndroidOnly()
+        ? []
+        : [
+            "expo-iap",
+            // expo-iap needs iOS 16.4+ on Expo SDK 57. Only the iOS option is set, so the Android
+            // build is untouched by this plugin.
+            ["expo-build-properties", { ios: { deploymentTarget: "16.4" } }],
+          ]),
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",

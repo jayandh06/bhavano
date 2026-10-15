@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import type { SubscriptionTier } from "@bhavano/types";
 import {
   DEFAULT_SUBSCRIPTION_PLAN_SETTINGS,
@@ -14,23 +13,17 @@ import { fetchPlanPricing } from "../src/lib/bffClient";
 import { Icon, type IconName } from "../src/components/Icon";
 import { ScreenHeader } from "../src/components/home/ScreenHeader";
 import { SubscribeModal } from "../src/components/home/SubscribeModal";
-
-const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? "https://bhavano.com";
-
-/** Which website anchor each tier's card maps to, for the iOS hand-off — the ids on the
- * website's own plan cards (see apps/web PremiumPlansView). */
-const WEB_ANCHOR: Record<SubscriptionTier, string> = {
-  buyerPremium: "#bhavano-plus",
-  sellerSlotPack: "#seller-slots",
-  agentPro: "#agent-pro",
-};
+import { IosSubscribeSheet } from "../src/components/home/IosPurchaseSheets";
+import { appleSubscriptionsFor } from "@bhavano/types/appleProducts";
+import { iosPurchases } from "../src/lib/iosPurchasesClient";
 
 interface PlanCard {
   tier: SubscriptionTier;
   icon: IconName;
   title: string;
   audience: string;
-  features: (settings: SubscriptionPlanSettings) => string[];
+  /** `ios` hides web prices: an iOS card shows the App Store's price, never the web one. */
+  features: (settings: SubscriptionPlanSettings, ios: boolean) => string[];
 }
 
 const PLAN_CARDS: PlanCard[] = [
@@ -60,8 +53,8 @@ const PLAN_CARDS: PlanCard[] = [
     icon: "building",
     title: "Agent/Broker Pro",
     audience: "For agents & brokers",
-    features: (s) => [
-      `${s.proListingSlotsPerUnit} active listings per ₹${s.agentProMonthlyPricePerUnit}/month`,
+    features: (s, ios) => [
+      ios ? `${s.proListingSlotsPerUnit} active listings` : `${s.proListingSlotsPerUnit} active listings per ₹${s.agentProMonthlyPricePerUnit}/month`,
       "Public storefront with a Bhavano Pro badge",
       "Elevated video limits when posting",
       "One 7-day boost credit every month",
@@ -79,19 +72,24 @@ const PLAN_CARDS: PlanCard[] = [
  * website's own comparison CTAs jump down to anyway.
  *
  * The CTA is platform-split, exactly like the listing-boost flow: Android opens the native
- * Razorpay checkout (`SubscribeModal`), iOS opens the website, because selling a subscription
- * in-app through a third-party processor is what App Store Guideline 3.1.1 forbids. iOS never
- * mounts the modal at all — see docs/plans/ios-app-store-release.md.
+ * Razorpay checkout (`SubscribeModal`); iOS sells the same plans through the App Store
+ * (`IosSubscribeSheet`), because selling a subscription through a third-party processor, or
+ * pointing at the website to buy one, is what App Store Guideline 3.1.1 forbids. iOS shows the
+ * App Store's own price for each plan (never the web price) and never mounts the Razorpay modal.
+ * See docs/plans/ios-in-app-purchase.md.
  */
 export default function PlansScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
-  const { accessToken, profile, requireLogin } = useHomeSheets();
+  const { accessToken, profile, requireLogin, refreshProfile } = useHomeSheets();
   // Bundled defaults first so prices render immediately, swapped for the admin-configured row
   // once it lands — same pattern as BoostModal (see docs/plans/admin-manage-plans-pricing.md).
   const [planPricing, setPlanPricing] = useState<SubscriptionPlanSettings>(DEFAULT_SUBSCRIPTION_PLAN_SETTINGS);
   const [subscribeTier, setSubscribeTier] = useState<SubscriptionTier | null>(null);
   const [activating, setActivating] = useState<SubscriptionTier | null>(null);
+  const [iosTier, setIosTier] = useState<SubscriptionTier | null>(null);
+  const [iosPrices, setIosPrices] = useState<Record<string, string>>({});
+  const ios = Platform.OS === "ios";
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +102,22 @@ export default function PlansScreen() {
       cancelled = true;
     };
   }, []);
+
+  // The App Store's own localised price for each plan's shortest term, shown on the cards.
+  useEffect(() => {
+    if (!ios) return;
+    let cancelled = false;
+    const productIds = PLAN_CARDS.map((plan) => appleSubscriptionsFor(plan.tier)[0].productId);
+    iosPurchases
+      .prices(productIds)
+      .then((prices) => {
+        if (!cancelled) setIosPrices(prices);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [ios]);
 
   const now = Date.now();
   function activeUntil(tier: SubscriptionTier): Date | null {
@@ -119,9 +133,10 @@ export default function PlansScreen() {
   }
 
   function onSubscribe(tier: SubscriptionTier) {
-    if (Platform.OS === "ios") {
+    if (ios) {
       // See this screen's own doc comment — Guideline 3.1.1.
-      WebBrowser.openBrowserAsync(`${SITE_URL}/premium${WEB_ANCHOR[tier]}`);
+      if (!accessToken) requireLogin({ onSuccess: () => setIosTier(tier) });
+      else setIosTier(tier);
       return;
     }
     if (!accessToken) {
@@ -183,12 +198,14 @@ export default function PlansScreen() {
                     {plan.title}
                   </Text>
                 </View>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}>₹{fromPrice}/mo</Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.green }}>
+                  {ios ? (iosPrices[appleSubscriptionsFor(plan.tier)[0].productId] ?? "") : `₹${fromPrice}/mo`}
+                </Text>
               </View>
               <Text style={{ fontSize: 12.5, color: colors.muted, marginTop: 2 }}>{plan.audience}</Text>
 
               <View style={{ gap: 7, marginTop: 12 }}>
-                {plan.features(planPricing).map((feature) => (
+                {plan.features(planPricing, ios).map((feature) => (
                   <View key={feature} style={{ flexDirection: "row", gap: 7 }}>
                     <Icon name="check" size={13} color={colors.green} />
                     <Text style={{ flex: 1, fontSize: 13, color: colors.textSoft, lineHeight: 18 }}>{feature}</Text>
@@ -241,6 +258,15 @@ export default function PlansScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {ios && iosTier && (
+        <IosSubscribeSheet
+          visible
+          tier={iosTier}
+          onClose={() => setIosTier(null)}
+          onPurchased={() => void refreshProfile()}
+        />
+      )}
 
       {/* Android-only, and not merely unreachable on iOS: onSubscribe short-circuits to the
           website there, and this never mounts — same belt-and-braces shape as PostAdWizard's

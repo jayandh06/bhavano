@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { iosPurchases } from "../src/lib/iosPurchasesClient";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -76,6 +77,18 @@ function PushBridge() {
   return null;
 }
 
+/** Tells the iOS purchase manager who is signed in, and starts it at launch. Starting it early is
+ * what lets StoreKit replay a purchase that was paid for but never confirmed (the app was closed,
+ * the connection dropped) and have it verified without anyone opening a purchase sheet. A no-op
+ * off iOS. See docs/plans/ios-in-app-purchase.md. */
+function IosPurchaseBridge() {
+  const { accessToken } = useHomeSheets();
+  useEffect(() => {
+    iosPurchases.setAccessToken(accessToken ?? null);
+  }, [accessToken]);
+  return null;
+}
+
 /** Moves listings saved on this phone while logged out onto the account once logged in, then
  * refreshes the Saved list. */
 function GuestSavesSync() {
@@ -137,6 +150,7 @@ function AppNavigation() {
       <AppCrashBoundary>
         <PushBridge />
         <GuestSavesSync />
+        <IosPurchaseBridge />
         <SoftNavAppPageViews />
         <ReferralLinkBridge />
         {/* Root-level, not tab-level: the nudge needs to be reachable from any screen, same as

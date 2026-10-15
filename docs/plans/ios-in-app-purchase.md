@@ -1,6 +1,34 @@
 # In-App Purchase for the iOS app only
 
-## Status: plan; nothing built yet
+## Status: server and app built (2026-10-16); not yet testable against Apple
+
+Built and unit-tested, but **never exercised against the real App Store**: that needs the App
+Store Connect setup below, a development build on a physical device, and a sandbox tester.
+
+| Piece | Where |
+|---|---|
+| Shared product ids (the contract with App Store Connect) | `packages/types/src/appleProducts.ts` |
+| Server: intent, verify, notifications | `apps/bff/src/payments/apple/` (+ migration `20261015120000_apple_in_app_purchase`) |
+| Shared fulfilment (Razorpay webhook and Apple both call it) | `PaymentsService.fulfilPaidPayment` |
+| App: purchase manager | `apps/mobile/src/lib/iosPurchases.ts` (+ `iosPurchasesClient.ts`) |
+| App: purchase sheets | `apps/mobile/src/components/home/IosPurchaseSheets.tsx` |
+| iOS branches | plans, boost button, boost offer card, posting wizard, account credits, listing "View contact", my listings |
+| Build config | `expo-iap` plugin and iOS 16.4 target for iOS builds only; excluded from Android autolinking |
+
+Server verification needs **no secret**: it checks Apple's signature against Apple's public root
+certificates (bundled). The App Store Connect API/In-App Purchase `.p8` key is only for calling
+Apple's server API (not used yet), so step 3 under "What only you can do" is not needed for v1.
+
+What the app does NOT sell on iOS in v1, and what happens instead: the listing publish fee and
+Instant Alerts on their own (the fee defaults to 0, so no iOS user is blocked today; if an admin
+turns one on, iOS shows "needs a payment that can't be made in the iPhone app" and never links to
+the website).
+
+Known gaps: refunded consumables are recorded but their benefit is not reversed (logged for a human
+to review); there is no `GET` for Apple purchase history beyond the existing `/purchases` list;
+boosts ignore the web's per-listing-value price bands (flat tiers only).
+
+## Original plan
 
 **Trigger.** 2026-10-15, App Review rejected build 1.0.1 (21) under **Guideline 3.1.1**: "the
 subscription plans can be purchased in the app using payment mechanisms other than In-App

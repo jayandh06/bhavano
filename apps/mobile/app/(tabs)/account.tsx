@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -20,6 +20,7 @@ import {
 } from "../../src/lib/bffClient";
 import { useContactRevealBalanceQuery } from "../../src/lib/queries";
 import { Icon } from "../../src/components/Icon";
+import { IosCreditsSheet } from "../../src/components/home/IosPurchaseSheets";
 
 type PhoneStep = "idle" | "otpSent";
 
@@ -112,7 +113,8 @@ function ProfileFields({
   const { colors } = useAppTheme();
   const { logout } = useHomeSheets();
   const router = useRouter();
-  const { data: balance } = useContactRevealBalanceQuery(accessToken);
+  const { data: balance, refetch: refetchBalance } = useContactRevealBalanceQuery(accessToken);
+  const [creditsSheetOpen, setCreditsSheetOpen] = useState(false);
 
   const [name, setName] = useState(profile.name ?? "");
   // City — the profile's own "home city" (used e.g. for early-access alerts), distinct from
@@ -715,16 +717,29 @@ function ProfileFields({
           </Text>
         )}
         <Pressable
-          onPress={() => WebBrowser.openBrowserAsync(`${SITE_URL}/premium#contact-reveal-credits`)}
+          onPress={() =>
+            Platform.OS === "ios"
+              ? setCreditsSheetOpen(true)
+              : WebBrowser.openBrowserAsync(`${SITE_URL}/premium#contact-reveal-credits`)
+          }
           style={{ marginTop: 8, flexDirection: "row", alignItems: "center", gap: 3 }}
         >
           {/* A vector icon, not a "→" text glyph — the glyph's rendering depends on the device's
               own font having it, which isn't guaranteed on every Android font/OS version (it
               showed up as a stray "'n" on real devices). Same fix as BoostPlanSelector/
               BoostBundleCard's price arrows and PostAdWizard's step arrows. */}
-          <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>See pricing</Text>
+          <Text style={{ color: colors.green, fontWeight: "700", fontSize: 12.5 }}>
+            {Platform.OS === "ios" ? "Buy credits" : "See pricing"}
+          </Text>
           <Icon name="chevronRight" size={11} color={colors.green} />
         </Pressable>
+        {Platform.OS === "ios" && (
+          <IosCreditsSheet
+            visible={creditsSheetOpen}
+            onClose={() => setCreditsSheetOpen(false)}
+            onPurchased={() => void refetchBalance()}
+          />
+        )}
       </View>
 
       {/* Native /my-listings is read-only (view only) — editing still needs the website until

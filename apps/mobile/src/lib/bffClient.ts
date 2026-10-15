@@ -995,6 +995,31 @@ export function createSubscriptionOrder(
   });
 }
 
+/** iOS In-App Purchase, step 1: tell the server what is about to be bought. It records the order and
+ * returns the id that goes to StoreKit as the `appAccountToken`, plus the product to buy (the server
+ * picks it; the app never names a boost product). See docs/plans/ios-in-app-purchase.md. */
+export function createAppleIntent(
+  accessToken: string,
+  request:
+    | { type: "subscription"; productId: string }
+    | { type: "boost"; listingId: string; boostDays: number }
+    | { type: "credits" },
+): Promise<{ intentId: string; productId: string }> {
+  return authedBffFetch(accessToken, "/payments/apple/intent", { method: "POST", body: JSON.stringify(request) });
+}
+
+/** iOS In-App Purchase, step 2: hand the server Apple's signed transaction to verify and fulfil.
+ * Safe to repeat — also what Restore Purchases calls. */
+export function verifyAppleTransaction(
+  accessToken: string,
+  signedTransaction: string,
+): Promise<{ productId: string; alreadyFulfilled: boolean }> {
+  return authedBffFetch(accessToken, "/payments/apple/verify", {
+    method: "POST",
+    body: JSON.stringify({ signedTransaction }),
+  });
+}
+
 /** Sends a 6-digit code to `email`. An address only enters the profile verified — updateProfile
  * no longer accepts one — because an unverified address is not evidence of identity, and Google
  * sign-in adopts an account based on it. See docs/plans/account-linking-phone-and-email.md. */
