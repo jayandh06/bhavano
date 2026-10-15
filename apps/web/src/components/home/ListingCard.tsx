@@ -247,6 +247,11 @@ export function ListingCard({
               {item.imgLabel}
             </span>
           )}
+          {/* This link is an empty overlay on top of the photo, so with a photo it had no text at
+            * all — a crawler (and a screen reader) saw a link to a listing with nothing to say what
+            * it was. The title, hidden visually, is its anchor text; the photo's own alt text sits
+            * beside it, not inside it. */}
+          <span className="sr-only">{item.title}</span>
         </Link>
         <div className="absolute top-3 left-3 flex gap-1.5 pointer-events-none">
           <span className="bg-green text-on-green text-[11px] font-bold px-2.5 py-1 rounded-md">{item.tag}</span>
