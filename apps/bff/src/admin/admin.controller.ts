@@ -97,6 +97,7 @@ import { ListingPhotosService } from '../listings/listing-photos.service';
 import { LoginNudgeService } from '../listings/login-nudge.service';
 import { UpdateLoginNudgeSettingsDto } from './dto/update-login-nudge-settings.dto';
 import {
+  ApplyDeliveryReportDto,
   CreateOutreachCampaignDto,
   CreateOutreachContactDto,
   FetchedPairsQueryDto,
@@ -762,6 +763,14 @@ export class AdminController {
   /** For a run whose messages were accepted by the provider but never delivered (e.g. rejected for
    * sending outside the allowed hours): frees the contacts' send slots so the campaign can be run
    * again. See OutreachService.resetCampaignRun. */
+  /** Syncs an MSG91 delivery report (delivered / failed per request id) into the send history. */
+  @Post('outreach/delivery-report')
+  applyDeliveryReport(
+    @Body() dto: ApplyDeliveryReportDto,
+  ): ReturnType<OutreachService['applyDeliveryReport']> {
+    return this.outreachService.applyDeliveryReport(dto.rows, dto.blockUnexplainedFailures);
+  }
+
   @Post('outreach/campaigns/:id/reset-run')
   resetCampaignRun(@Param('id') id: string): Promise<{ reset: number }> {
     return this.outreachService.resetCampaignRun(id);

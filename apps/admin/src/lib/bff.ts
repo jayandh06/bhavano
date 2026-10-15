@@ -1062,6 +1062,26 @@ export function runCampaign(
   return authedBffFetch(accessToken, `/admin/outreach/campaigns/${id}/run`, { method: "POST" });
 }
 
+export interface DeliveryReportResult {
+  matched: number;
+  unmatched: number;
+  delivered: number;
+  failed: number;
+  pending: number;
+  blocked: number;
+}
+
+export function applyDeliveryReport(
+  accessToken: string,
+  input: { rows: { requestId: string; status: string; failureReason?: string; deliveredAt?: string }[]; blockUnexplainedFailures: boolean },
+): Promise<DeliveryReportResult> {
+  return authedBffFetch(accessToken, "/admin/outreach/delivery-report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
 export function resetCampaignRun(accessToken: string, id: string): Promise<{ reset: number }> {
   return authedBffFetch(accessToken, `/admin/outreach/campaigns/${id}/reset-run`, { method: "POST" });
 }

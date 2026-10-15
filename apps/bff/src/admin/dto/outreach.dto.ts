@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -90,6 +91,25 @@ export class AudienceFilterDto implements CampaignAudienceFilter {
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[];
   @IsOptional() @IsNumber() @Min(0) @Max(5) minRating?: number;
   @IsOptional() @IsArray() @IsString({ each: true }) statuses?: never;
+}
+
+export class DeliveryReportRowDto {
+  @IsString() requestId!: string;
+  @IsString() status!: string;
+  @IsOptional() @IsString() failureReason?: string;
+  /** ISO timestamp of the operator's delivery. */
+  @IsOptional() @IsString() deliveredAt?: string;
+}
+
+export class ApplyDeliveryReportDto {
+  @IsArray()
+  @ArrayMaxSize(2000)
+  @ValidateNested({ each: true })
+  @Type(() => DeliveryReportRowDto)
+  rows!: DeliveryReportRowDto[];
+
+  /** Also block (suppression list) every number whose message failed with no reason given. */
+  @IsOptional() @IsBoolean() blockUnexplainedFailures?: boolean;
 }
 
 export class CreateOutreachCampaignDto {

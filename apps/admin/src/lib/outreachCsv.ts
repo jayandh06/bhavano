@@ -2,7 +2,7 @@ import type { City, CreateOutreachContactInput } from "@bhavano/types";
 
 /** Parses CSV text into rows of cells. Handles quoted cells, "" escapes, commas and line breaks
  * inside quotes, CRLF, and a leading BOM (Excel's "CSV UTF-8" adds one). Blank lines are skipped. */
-export function parseCsv(text: string): string[][] {
+export function parseCsv(text: string, delimiter = ","): string[][] {
   const src = text.replace(/^﻿/, "");
   const rows: string[][] = [];
   let row: string[] = [];
@@ -23,7 +23,7 @@ export function parseCsv(text: string): string[][] {
       continue;
     }
     if (ch === '"') quoted = true;
-    else if (ch === ",") {
+    else if (ch === delimiter) {
       row.push(cell);
       cell = "";
     } else if (ch === "\n" || ch === "\r") {

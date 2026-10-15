@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CampaignPreviewDto, OutreachCampaignDto } from "@bhavano/types";
 import { resetCampaignRunAction, runCampaignAction, updateCampaignAction } from "@/app/actions/outreach";
 import { previewCampaignAction } from "@/app/actions/outreachPreview";
+import { ImportDeliveryReport } from "./ImportDeliveryReport";
 
 const btn = (color: string): React.CSSProperties => ({
   fontSize: 12,
@@ -108,6 +109,8 @@ Only do this if the messages were NOT delivered (check the MSG91 delivery report
           </button>
         )}
       </div>
+
+      {campaign.stats.sent + campaign.stats.delivered + campaign.stats.failed > 0 && <ImportDeliveryReport />}
 
       {preview && (
         <div

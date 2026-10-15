@@ -9,6 +9,7 @@ import type {
 } from "@bhavano/types";
 import { requireAdmin } from "@/lib/requireAdmin";
 import {
+  applyDeliveryReport,
   createCampaign,
   createListingFromContact,
   importOutreachContacts,
@@ -18,6 +19,7 @@ import {
   sendClaimVerification,
   updateCampaign,
 } from "@/lib/bff";
+import type { DeliveryReportResult } from "@/lib/bff";
 import type { ActionResult } from "./admin";
 
 export async function optOutContactAction(contactId: string): Promise<ActionResult> {
@@ -141,6 +143,26 @@ export async function updateCampaignAction(
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to update campaign" };
+  }
+}
+
+export type DeliveryReportActionResult =
+  | { success: true; result: DeliveryReportResult }
+  | { success: false; error: string };
+
+/** Syncs an MSG91 delivery report into the send history — see OutreachService.applyDeliveryReport. */
+export async function applyDeliveryReportAction(
+  rows: { requestId: string; status: string; failureReason?: string; deliveredAt?: string }[],
+  blockUnexplainedFailures: boolean,
+): Promise<DeliveryReportActionResult> {
+  const { accessToken } = await requireAdmin();
+  try {
+    const result = await applyDeliveryReport(accessToken, { rows, blockUnexplainedFailures });
+    revalidatePath("/outreach/campaigns");
+    revalidatePath("/outreach/sends");
+    return { success: true, result };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to import the report" };
   }
 }
 

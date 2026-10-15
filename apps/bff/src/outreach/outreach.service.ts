@@ -831,6 +831,76 @@ export class OutreachService {
     return this.toCampaignDto(campaign, emptyStats());
   }
 
+  /** Applies an MSG91 delivery report to our send records. Delivery reports are not wired back
+   * automatically, so `sent` only ever meant "accepted by the provider": a first real run showed 16
+   * delivered and 15 failed (11 of them rejected within a second with no reason, which is what a
+   * DND number looks like) while every row still read `sent`. Rows are matched on the provider's
+   * request id; ones that don't match are counted, not guessed at.
+   *
+   * With `blockUnexplainedFailures`, numbers whose message failed with NO reason are added to the
+   * suppression list, so they are not paid for again. That is an inference (instant, blank
+   * rejection ~ DND), so it is opt-in and the entry says so. Failures that name a reason
+   * (absent subscriber, network issue) are temporary and are never blocked. */
+  async applyDeliveryReport(
+    rows: { requestId: string; status: string; failureReason?: string; deliveredAt?: string }[],
+    blockUnexplainedFailures = false,
+  ): Promise<{ matched: number; unmatched: number; delivered: number; failed: number; pending: number; blocked: number }> {
+    const sends = await this.prisma.campaignSend.findMany({
+      where: { providerRef: { in: rows.map((r) => r.requestId) } },
+      select: { id: true, providerRef: true, contact: { select: { phoneE164: true } } },
+    });
+    const byRef = new Map(sends.map((s) => [s.providerRef as string, s]));
+
+    const result = { matched: 0, unmatched: 0, delivered: 0, failed: 0, pending: 0, blocked: 0 };
+    const updates: ReturnType<typeof this.prisma.campaignSend.update>[] = [];
+    const block: { value: string; channel: 'sms'; reason: string }[] = [];
+
+    for (const row of rows) {
+      const send = byRef.get(row.requestId);
+      if (!send) {
+        result.unmatched++;
+        continue;
+      }
+      result.matched++;
+      const status = row.status.trim().toLowerCase();
+      if (status === 'delivered') {
+        result.delivered++;
+        const when = row.deliveredAt ? new Date(row.deliveredAt) : new Date();
+        updates.push(
+          this.prisma.campaignSend.update({
+            where: { id: send.id },
+            data: { status: 'delivered', deliveredAt: Number.isNaN(when.getTime()) ? new Date() : when, failureReason: null },
+          }),
+        );
+      } else if (status === 'failed') {
+        result.failed++;
+        const reason = (row.failureReason ?? '').trim();
+        updates.push(
+          this.prisma.campaignSend.update({
+            where: { id: send.id },
+            data: { status: 'failed', failureReason: reason || 'Failed with no reason given (MSG91 report)' },
+          }),
+        );
+        if (blockUnexplainedFailures && !reason && send.contact.phoneE164) {
+          block.push({
+            value: send.contact.phoneE164,
+            channel: 'sms',
+            reason: 'Rejected instantly with no reason in an MSG91 delivery report (likely DND)',
+          });
+        }
+      } else {
+        result.pending++;
+      }
+    }
+
+    if (updates.length > 0) await this.prisma.$transaction(updates);
+    if (block.length > 0) {
+      const created = await this.prisma.suppressionEntry.createMany({ data: block, skipDuplicates: true });
+      result.blocked = created.count;
+    }
+    return result;
+  }
+
   /** Undoes a run whose messages were handed to the provider but never delivered. Delivery
    * reports are not wired back yet, so a message the operator rejected after accepting it (the
    * 07:09 IST run: "Invalid SMS Timing on DLT") stays recorded as `sent`, the contact looks

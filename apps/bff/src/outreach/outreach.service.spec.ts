@@ -21,7 +21,7 @@ function makeService() {
     user: { findUniqueOrThrow: jest.fn() },
     outreachCampaign: { findUnique: jest.fn(), update: jest.fn() },
     campaignSend: { groupBy: jest.fn().mockResolvedValue([]), findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn() },
-    suppressionEntry: { findMany: jest.fn().mockResolvedValue([]) },
+    suppressionEntry: { findMany: jest.fn().mockResolvedValue([]), createMany: jest.fn().mockResolvedValue({ count: 0 }) },
     listingNotificationLog: { create: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
     placesFetchLog: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -230,6 +230,63 @@ describe('OutreachService.updateCampaign — activation guards', () => {
   it('does not apply the guards to an ordinary draft edit', async () => {
     const { service } = setup({ dltTemplateId: null, bodyTemplate: 'no opt out here' });
     await expect(service.updateCampaign('k1', { name: 'renamed' })).resolves.toBeDefined();
+  });
+});
+
+describe('OutreachService.applyDeliveryReport', () => {
+  const sends = [
+    { id: 's1', providerRef: 'r1', contact: { phoneE164: '+919000000001' } },
+    { id: 's2', providerRef: 'r2', contact: { phoneE164: '+919000000002' } },
+    { id: 's3', providerRef: 'r3', contact: { phoneE164: '+919000000003' } },
+    { id: 's4', providerRef: 'r4', contact: { phoneE164: '+919000000004' } },
+  ];
+  const rows = [
+    { requestId: 'r1', status: 'Delivered', deliveredAt: '2026-10-15T10:54:04+05:30' },
+    { requestId: 'r2', status: 'Failed', failureReason: '' }, // instant, no reason: DND-like
+    { requestId: 'r3', status: 'Failed', failureReason: 'Absent Subscriber' }, // temporary
+    { requestId: 'nope', status: 'Delivered' },
+    { requestId: 'r4', status: 'Submitted' },
+  ];
+
+  function setup() {
+    const ctx = makeService();
+    (ctx.prisma.campaignSend.findMany as jest.Mock).mockResolvedValue(sends);
+    (ctx.prisma.campaignSend as unknown as Record<string, jest.Mock>).update = jest.fn((args) => args);
+    (ctx.prisma.suppressionEntry.createMany as jest.Mock).mockResolvedValue({ count: 1 });
+    return ctx;
+  }
+
+  it('marks delivered and failed sends and counts unmatched and still-pending rows', async () => {
+    const { service, prisma } = setup();
+
+    const result = await service.applyDeliveryReport(rows);
+
+    expect(result).toEqual({ matched: 4, unmatched: 1, delivered: 1, failed: 2, pending: 1, blocked: 0 });
+    const updates = (prisma.campaignSend.update as unknown as jest.Mock).mock.calls.map((c) => c[0]);
+    expect(updates).toHaveLength(3);
+    expect(updates[0]).toMatchObject({ where: { id: 's1' }, data: { status: 'delivered' } });
+    expect(updates[0].data.deliveredAt.toISOString()).toBe('2026-10-15T05:24:04.000Z');
+    expect(updates[1]).toMatchObject({ where: { id: 's2' }, data: { status: 'failed' } });
+    expect(updates[2]).toMatchObject({ where: { id: 's3' }, data: { status: 'failed', failureReason: 'Absent Subscriber' } });
+  });
+
+  it('never blocks anyone unless asked to', async () => {
+    const { service, prisma } = setup();
+    await service.applyDeliveryReport(rows);
+    expect(prisma.suppressionEntry.createMany).not.toHaveBeenCalled();
+  });
+
+  it('when asked, blocks only the numbers that failed with no reason, never temporary failures', async () => {
+    const { service, prisma } = setup();
+
+    const result = await service.applyDeliveryReport(rows, true);
+
+    expect(result.blocked).toBe(1);
+    const data = (prisma.suppressionEntry.createMany as jest.Mock).mock.calls[0][0].data;
+    expect(data).toHaveLength(1);
+    expect(data[0]).toMatchObject({ value: '+919000000002', channel: 'sms' });
+    expect(data[0].reason).toMatch(/likely DND/);
+    expect((prisma.suppressionEntry.createMany as jest.Mock).mock.calls[0][0].skipDuplicates).toBe(true);
   });
 });
 
