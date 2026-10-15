@@ -1,9 +1,18 @@
+# HSTS: tell browsers to use HTTPS only for a year. No includeSubDomains/preload on purpose — those
+# are close to irreversible, and api/admin/logs are separate hosts that can opt in on their own once
+# this has run cleanly. Set on the apex redirect too, so a first visit to bhavano.com is covered.
+(hsts) {
+	header Strict-Transport-Security "max-age=31536000"
+}
+
 {$SITE_DOMAIN} {
+	import hsts
 	reverse_proxy web:3000
 }
 
 # Bare apex domain redirects to the canonical www host rather than serving its own copy.
 {$APEX_DOMAIN} {
+	import hsts
 	redir https://{$SITE_DOMAIN}{uri} permanent
 }
 
