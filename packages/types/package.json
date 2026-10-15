@@ -65,6 +65,10 @@
       "types": "./dist/boostPricing.d.ts",
       "default": "./dist/boostPricing.js"
     },
+    "./appleProducts": {
+      "types": "./dist/appleProducts.d.ts",
+      "default": "./dist/appleProducts.js"
+    },
     "./platformFeePricing": {
       "types": "./dist/platformFeePricing.d.ts",
       "default": "./dist/platformFeePricing.js"
