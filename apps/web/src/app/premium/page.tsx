@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { BffAuthError, fetchContactRevealSettings, fetchPlanPricing, fetchProfile } from "@/lib/bff";
 import { resolvePageCityContext } from "@/lib/pageCityContext";
@@ -8,6 +9,16 @@ import { PageHeader } from "@/components/home/PageHeader";
 import { PremiumPlansView } from "@/components/home/PremiumPlansView";
 import type { ContactRevealSettingsDto } from "@bhavano/types";
 import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricing";
+
+// Without its own metadata this page inherited the site-wide title and description, so crawlers saw
+// it (and its `?city=` variant) as a duplicate of the homepage. The canonical points the city
+// variant back at the plain route — the city only changes the header and footer links, not the plans.
+export const metadata: Metadata = {
+  title: "Plans & upgrades",
+  description:
+    "Compare Bhavano's free, seller and buyer plans side by side — more listing slots, contact reveals and boosts for owners, brokers and tenants.",
+  alternates: { canonical: "/premium" },
+};
 
 export default async function PremiumPage({
   searchParams,
