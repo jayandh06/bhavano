@@ -456,8 +456,13 @@ export async function generateMetadata({
     const description = truncateForMeta(
       `${priceText} — ${listingSummary(listing)} in ${listing.area}, ${listing.cityName}.`,
     );
+    // Sellers write titles of any length — up to a whole sentence — and the layout appends
+    // " — Bhavano" to the <title>, which pushed many past what a results page shows (about 60
+    // characters) and was flagged by the SEO audit. The shortened form is only for <title>; the
+    // page's heading, the share cards and the structured data keep the seller's full text.
+    const metaTitle = truncateForMeta(listing.title, 50);
     return {
-      title: listing.title,
+      title: metaTitle,
       description,
       alternates: { canonical: canonicalPath },
       // No `images` key at all (rather than an explicit `[]`) when the listing has no photo —
