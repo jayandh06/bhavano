@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
+import type { Payment } from '@prisma/client';
 import type {
   BoostPricingOptionDto,
   BoostPricingPreviewDto,
@@ -983,6 +984,17 @@ export class PaymentsService {
     // already marked paid — a reporting call must never delay or fail an activation.
     void this.reportPurchaseConversion({ ...payment, paidAt });
 
+    await this.fulfilPaidPayment(payment);
+  }
+
+  /** Grants whatever a paid payment bought. Shared by the Razorpay webhook and the Apple
+   * In-App Purchase path, so a boost, a subscription or a credit pack is activated by exactly the
+   * same code whichever checkout took the money. The caller has already marked the payment
+   * paid.
+   *
+   * `subscriptionEndsAt` is for Apple subscriptions, whose end date is whatever Apple says it is
+   * (and moves with each renewal), rather than "now + N months" as for a one-off Razorpay purchase. */
+  async fulfilPaidPayment(payment: Payment, subscriptionEndsAt?: Date): Promise<void> {
     if (payment.purpose === 'listing_publish' && payment.listingId) {
       await this.fulfillListingPublishPayment(payment);
       this.logger.log(`Listing publish fulfilled for ${payment.listingId}`);
@@ -1007,7 +1019,7 @@ export class PaymentsService {
     }
 
     if (payment.purpose === 'buyer_premium' && payment.subscriptionMonths) {
-      const endsAt = new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
+      const endsAt = subscriptionEndsAt ?? new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
       await this.prisma.userSubscription.create({
         data: { userId: payment.userId, tier: 'buyerPremium', endsAt, paymentId: payment.id },
       });
@@ -1022,7 +1034,7 @@ export class PaymentsService {
     }
 
     if (payment.purpose === 'seller_slot_pack' && payment.subscriptionMonths) {
-      const endsAt = new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
+      const endsAt = subscriptionEndsAt ?? new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
       await this.prisma.userSubscription.create({
         data: { userId: payment.userId, tier: 'sellerSlotPack', endsAt, paymentId: payment.id },
       });
@@ -1040,7 +1052,7 @@ export class PaymentsService {
     }
 
     if (payment.purpose === 'agent_pro' && payment.subscriptionMonths) {
-      const endsAt = new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
+      const endsAt = subscriptionEndsAt ?? new Date(Date.now() + payment.subscriptionMonths * 30 * 24 * 60 * 60 * 1000);
       const units = Math.max(1, payment.agentProUnits ?? 1);
       await this.prisma.userSubscription.create({
         data: { userId: payment.userId, tier: 'agentPro', endsAt, paymentId: payment.id },

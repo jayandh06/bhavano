@@ -151,6 +151,13 @@ enum PaymentStatus {
   refunded
 }
 
+/// Who took the money. `razorpay` is the web and Android checkout; `apple` is In-App Purchase on
+/// the iOS app, where Apple requires its own mechanism (App Review Guideline 3.1.1).
+enum PaymentProvider {
+  razorpay
+  apple
+}
+
 enum PaymentPurpose {
   listing_boost
   listing_publish
@@ -369,6 +376,7 @@ model User {
    */
   pushTokens                  PushToken[]
   payments                    Payment[]
+  applePurchaseIntents        ApplePurchaseIntent[]
   subscriptions               UserSubscription[]
   savedSearches               SavedSearch[]
   requirements                Requirement[]
@@ -1338,6 +1346,54 @@ model Payment {
   contactRevealCreditBatch   ContactRevealCreditBatch?
   discountCodeRedemption     DiscountCodeRedemption?
   referralCreditRedemption   ReferralCreditBatch?
+  /**
+   * `apple` rows have no Razorpay order: `razorpayOrderId` holds a placeholder (`apple_<transactionId>`),
+   * the same convention the free referral/Pro-credit payments already use, which keeps that column
+   * required and unique for every existing code path.
+   */
+  provider                   PaymentProvider           @default(razorpay)
+  /**
+   * Apple's `transactionId` for this exact charge (every subscription renewal has its own). Unique:
+   * this is what makes a retried verify call or a replayed server notification a no-op.
+   */
+  appleTransactionId         String?                   @unique
+  /**
+   * Stays the same across a subscription's renewals — the key for finding the subscription again
+   * when Apple later sends a renewal, expiry or refund notification.
+   */
+  appleOriginalTransactionId String?
+  appleProductId             String?
+
+  @@index([userId, createdAt])
+  @@index([appleOriginalTransactionId])
+}
+
+/**
+ * What the iOS app is about to buy, recorded BEFORE the StoreKit sheet opens. Its id is handed to
+ * StoreKit as the `appAccountToken`, so the signed transaction Apple later returns carries it
+ * back, and the server learns which user, listing and product it was for from its own record
+ * rather than from anything the client claims. Mirrors the Razorpay order that precedes a web
+ * checkout. See docs/plans/ios-in-app-purchase.md.
+ */
+model ApplePurchaseIntent {
+  /**
+   * A UUID: StoreKit's appAccountToken must be one.
+   */
+  id                 String         @id @default(uuid())
+  userId             String
+  user               User           @relation(fields: [userId], references: [id])
+  productId          String
+  purpose            PaymentPurpose
+  listingId          String?
+  boostDays          Int?
+  subscriptionMonths Int?
+  creditPackSize     Int?
+  /**
+   * Set once the purchase has been verified and fulfilled.
+   */
+  paymentId          String?        @unique
+  createdAt          DateTime       @default(now())
+  fulfilledAt        DateTime?
 
   @@index([userId, createdAt])
 }
@@ -2311,6 +2367,7 @@ model Requirement {
   // `bedrooms` above stay populated (first area, smallest BHK) for readers that only understand
   // one of each.
   /**
+   * /**
    * /**
    * /** Every area named, in the order chosen, at most MAX_REQUIREMENT_AREAS. Empty = the whole city.
    */

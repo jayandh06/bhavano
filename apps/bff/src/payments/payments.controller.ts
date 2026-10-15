@@ -15,6 +15,8 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { RequestUser } from '../auth/guards/auth.guard';
 import { PaymentsService } from './payments.service';
+import { AppleIapService } from './apple/apple-iap.service';
+import { AppleNotificationDto, CreateAppleIntentDto, VerifyAppleTransactionDto } from './dto/apple-iap.dto';
 import { parseTrackingAuthorized } from '../ads/tracking-authorized';
 import { CreateBoostOrderDto } from './dto/create-boost-order.dto';
 import { CreateSubscriptionOrderDto } from './dto/create-subscription-order.dto';
@@ -40,7 +42,10 @@ function purchaseContext(trackingHeader?: string, clientHeader?: string): {
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly appleIap: AppleIapService,
+  ) {}
 
   @Post('orders')
   @UseGuards(AuthGuard)
@@ -145,6 +150,36 @@ export class PaymentsController {
       dto.discountCode,
       purchaseContext(tracking, client),
     );
+  }
+
+  // ---- iOS In-App Purchase (docs/plans/ios-in-app-purchase.md) --------------------------------
+
+  /** Step 1: the app says what it wants to buy; the server records it and returns the id that goes
+   * to StoreKit as the `appAccountToken`. */
+  @Post('apple/intent')
+  @UseGuards(AuthGuard)
+  createAppleIntent(@Body() dto: CreateAppleIntentDto, @CurrentUser() user: RequestUser) {
+    if (dto.type === 'subscription') return this.appleIap.createIntent(user.id, { type: 'subscription', productId: dto.productId ?? '' });
+    if (dto.type === 'credits') return this.appleIap.createIntent(user.id, { type: 'credits' });
+    return this.appleIap.createIntent(user.id, { type: 'boost', listingId: dto.listingId ?? '', boostDays: dto.boostDays ?? 0 });
+  }
+
+  /** Step 2: after StoreKit completes, the app sends Apple's signed transaction. Also what
+   * Restore Purchases calls. Safe to repeat. */
+  @Post('apple/verify')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  verifyAppleTransaction(@Body() dto: VerifyAppleTransactionDto, @CurrentUser() user: RequestUser) {
+    return this.appleIap.verifyPurchase(user.id, dto.signedTransaction);
+  }
+
+  /** App Store Server Notifications V2 — Apple calls this server-to-server (renewals, expiry,
+   * refunds). Public: authenticated by the signature on the payload, not by a session. */
+  @Post('apple/notifications')
+  @HttpCode(200)
+  async appleNotifications(@Body() dto: AppleNotificationDto): Promise<{ success: true }> {
+    await this.appleIap.handleNotification(dto.signedPayload);
+    return { success: true };
   }
 
   /** Public (no AuthGuard) — Razorpay calls this server-to-server, authenticated by HMAC
