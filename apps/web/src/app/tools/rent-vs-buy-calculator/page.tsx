@@ -5,7 +5,7 @@ import { faqPageJsonLd } from "@/lib/faqJsonLd";
 import { RentVsBuyForm } from "@/components/tools/RentVsBuyForm";
 
 export const metadata = {
-  title: "Rent vs. Buy Calculator — Bhavano",
+  title: "Rent vs. Buy Calculator",
   description: "Compare the total cost of renting against buying a home over a time horizon you choose.",
 };
 

@@ -5,7 +5,7 @@ import { faqPageJsonLd } from "@/lib/faqJsonLd";
 import { RentAffordabilityForm } from "@/components/tools/RentAffordabilityForm";
 
 export const metadata = {
-  title: "Rent Affordability Calculator — Bhavano",
+  title: "Rent Affordability Calculator",
   description: "Get a suggested maximum monthly rent based on your income, using the common 30-40% rule of thumb.",
 };
 

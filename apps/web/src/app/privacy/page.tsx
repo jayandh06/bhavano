@@ -3,7 +3,7 @@ import { LEGAL_ENTITY, entityAddressLines, entityOperatorSentence } from "@bhava
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
 export const metadata = {
-  title: "Privacy Policy — Bhavano",
+  title: "Privacy Policy",
   description: `How ${LEGAL_ENTITY.legalName}, the operator of Bhavano, collects, uses, shares, and protects your personal information on the Bhavano website and mobile apps.`,
 };
 

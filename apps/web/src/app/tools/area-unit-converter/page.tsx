@@ -5,7 +5,7 @@ import { faqPageJsonLd } from "@/lib/faqJsonLd";
 import { AreaUnitConverterForm } from "@/components/tools/AreaUnitConverterForm";
 
 export const metadata = {
-  title: "Area Unit Converter — Bhavano",
+  title: "Area Unit Converter",
   description: "Convert property area between square feet, square metres, acres, hectares, and cents.",
 };
 

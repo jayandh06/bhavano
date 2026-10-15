@@ -5,7 +5,7 @@ import { AuthPopupComplete } from "@/components/home/AuthPopupComplete";
 
 /** Nothing here is for a reader, and the page exists for a few hundred milliseconds. */
 export const metadata: Metadata = {
-  title: "Signing in — Bhavano",
+  title: "Signing in",
   robots: { index: false, follow: false },
 };
 

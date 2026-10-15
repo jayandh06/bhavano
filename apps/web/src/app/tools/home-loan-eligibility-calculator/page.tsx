@@ -5,7 +5,7 @@ import { faqPageJsonLd } from "@/lib/faqJsonLd";
 import { HomeLoanEligibilityForm } from "@/components/tools/HomeLoanEligibilityForm";
 
 export const metadata = {
-  title: "Home Loan Eligibility Calculator — Bhavano",
+  title: "Home Loan Eligibility Calculator",
   description: "Estimate how large a home loan you could qualify for, based on your monthly income and existing EMIs.",
 };
 

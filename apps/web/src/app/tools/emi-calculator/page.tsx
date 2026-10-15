@@ -5,7 +5,7 @@ import { faqPageJsonLd } from "@/lib/faqJsonLd";
 import { EmiCalculatorForm } from "@/components/tools/EmiCalculatorForm";
 
 export const metadata = {
-  title: "EMI Calculator — Bhavano",
+  title: "EMI Calculator",
   description: "Free EMI calculator to estimate your monthly home loan installment from loan amount, interest rate, and tenure.",
 };
 

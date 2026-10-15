@@ -3,7 +3,7 @@ import { LEGAL_ENTITY, entityAddressLines, entityOperatorSentence } from "@bhava
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
 export const metadata = {
-  title: "About Us — Bhavano",
+  title: "About Us",
   description: `Bhavano is a real estate classifieds marketplace owned and operated by ${LEGAL_ENTITY.legalName}.`,
 };
 

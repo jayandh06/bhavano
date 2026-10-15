@@ -5,7 +5,7 @@ import { faqPageJsonLd } from "@/lib/faqJsonLd";
 import { DownPaymentForm } from "@/components/tools/DownPaymentForm";
 
 export const metadata = {
-  title: "Down Payment Calculator — Bhavano",
+  title: "Down Payment Calculator",
   description: "Work out the down payment you'll need on a property, from either a target loan-to-value % or a desired loan amount.",
 };
 

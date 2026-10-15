@@ -8,7 +8,7 @@ import { ContactForm } from "@/components/home/ContactForm";
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
 export const metadata = {
-  title: "Contact Us — Bhavano",
+  title: "Contact Us",
   description: `Get in touch with ${LEGAL_ENTITY.legalName}, the operator of Bhavano, for support, feedback, or partnership queries.`,
 };
 

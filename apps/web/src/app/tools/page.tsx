@@ -3,7 +3,7 @@ import { ToolCard } from "@/components/tools/ToolCard";
 import type { IconName } from "@/components/home/Icon";
 
 export const metadata = {
-  title: "Free Property Calculators — Bhavano",
+  title: "Free Property Calculators",
   description:
     "Free calculators for home buyers and renters: EMI, home loan eligibility, area unit conversion, rent affordability, rent vs. buy, and down payment.",
 };

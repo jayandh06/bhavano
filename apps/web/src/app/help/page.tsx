@@ -3,7 +3,7 @@ import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayou
 import { FaqGroup, type Faq } from "@/components/home/FaqGroup";
 
 export const metadata = {
-  title: "Help Centre — Bhavano",
+  title: "Help Centre",
   description: "Answers to common questions about posting, browsing, and managing listings on Bhavano.",
 };
 

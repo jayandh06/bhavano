@@ -4,7 +4,7 @@ import { fetchCities } from "@/lib/bff";
 import { buildBrowsePath } from "@/lib/listingPath";
 
 export const metadata = {
-  title: "Browse Cities — Bhavano",
+  title: "Browse Cities",
   description: "Every city Bhavano covers for buying, renting, and leasing property across India.",
 };
 

@@ -7,7 +7,7 @@ import { fetchListingClaimPreview } from "@/lib/bff";
  * never linked from anywhere crawlable, and there's nothing here for a reader anyway. noindex so
  * it never competes with the real listing page for that same URL's worth of ranking. */
 export const metadata: Metadata = {
-  title: "Verify your listing — Bhavano",
+  title: "Verify your listing",
   robots: { index: false, follow: false },
 };
 

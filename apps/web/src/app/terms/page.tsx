@@ -3,7 +3,7 @@ import { LEGAL_ENTITY, entityOperatorSentence } from "@bhavano/types/legalEntity
 import { StaticPageLayout, PageSection } from "@/components/home/StaticPageLayout";
 
 export const metadata = {
-  title: "Terms of Service — Bhavano",
+  title: "Terms of Service",
   description: "The terms and conditions for buying, renting, and posting listings on Bhavano.",
 };
 
