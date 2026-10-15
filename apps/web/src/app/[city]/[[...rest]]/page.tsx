@@ -31,7 +31,7 @@ import {
   type ParsedSegments,
 } from "@/lib/seoRoute";
 import { parseAreaSelection } from "@/lib/areaSelection";
-import { BrowseListingsView } from "@/components/home/BrowseListingsView";
+import { BrowseListingsView, PAGE_SIZE } from "@/components/home/BrowseListingsView";
 import { ListingDetailView } from "@/components/home/ListingDetailView";
 import { JsonLd } from "@/components/JsonLd";
 
@@ -480,7 +480,8 @@ export async function generateMetadata({
   const { total } = await fetchListings({ ...baseQuery, cityId: cityRow.id, areaId: areaRow?.id, limit: 1 }).catch(
     () => ({ total: 0, items: [], nextCursor: null }),
   );
-  const description = total > 0 ? `${total} ${heading.toLowerCase()} on Bhavano.` : `Browse ${heading.toLowerCase()} on Bhavano.`;
+  const baseDescription =
+    total > 0 ? `${total} ${heading.toLowerCase()} on Bhavano.` : `Browse ${heading.toLowerCase()} on Bhavano.`;
 
   // Distinct-window pagination (docs/plans/seo-distinct-window-pagination.md): page 1 is the
   // clean canonical as before, but page N>1 is genuinely different content — self-canonical with
@@ -491,6 +492,15 @@ export async function generateMetadata({
   const canonicalBase = resolvedCanonicalPath(cityRow.name, parsed, areaRow?.name);
   const canonicalPath = page > 1 ? `${canonicalBase}?page=${page}` : canonicalBase;
   const title = page > 1 ? `${heading} — Page ${page}` : heading;
+  // Each page is its own indexable URL, so each needs its own description — every page past the
+  // first used to repeat page 1's word for word, which Search Console flags as duplicates. The
+  // window of results it holds makes it distinct without inventing copy.
+  const firstShown = (page - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(page * PAGE_SIZE, total);
+  const description =
+    page > 1 && total > 0
+      ? `${baseDescription} Page ${page}: showing listings ${firstShown}–${Math.max(lastShown, firstShown)}.`
+      : baseDescription;
 
   return {
     title,

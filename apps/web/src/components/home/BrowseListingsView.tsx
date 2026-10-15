@@ -26,7 +26,7 @@ import { BrowseSeoIntro } from "./BrowseSeoIntro";
 import { JsonLd } from "@/components/JsonLd";
 import { resolvePopularSearches } from "@/lib/popularSearches";
 
-const PAGE_SIZE = 12;
+export const PAGE_SIZE = 12;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
 /** ItemList schema for the current page's result grid — `position` is the listing's rank across
