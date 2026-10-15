@@ -80,6 +80,32 @@ Run the pilot where the Apify token lives (the app instance), CSV only:
 Not yet run: there is no Apify token in the local checkout. Review the CSV by hand before any
 `--import`.
 
+## What happened on the first real send (2026-10-15) and what changed
+
+The Bengaluru campaign was run for real at 07:09 IST. MSG91 accepted all 32 messages and every one
+then failed at delivery ("Invalid SMS Timing on DLT" on the visible rows). Bhavano had recorded them
+as `sent`, because delivery reports are not wired back. Findings and fixes (commits `4484beb1`,
+`39720572`, `8ac1c675`):
+
+- **Send window.** Promotional SMS may only be delivered 09:00-21:00 IST. `send-window.ts` now
+  refuses a real SMS run outside it: Run now returns the reason, the hourly job waits for the next
+  in-window tick. Dry runs are not limited.
+- **Dry runs used up the real run's send slot.** Dry-run records were written under the run key
+  `once` and a one-shot campaign was marked completed, so a real run after a dry run skipped every
+  contact ("0 sent, 32 skipped"). Dry runs now use their own key and leave the status alone,
+  switching a campaign live clears `lastRunAt`, and a real run clears stale `suppressed / dry run`
+  records first (they are, by definition, undelivered).
+- **Reset last run** (campaign card, admin): for a run the provider accepted but never delivered.
+  Marks the run's rows failed ("reset by admin"), moves them to a `reset-...` run key (nothing is
+  deleted), restores the contacts' `contactedCount`/`lastContactedAt`, and leaves the campaign
+  PAUSED so it cannot send by itself at the next tick.
+- **An empty audience means every contact**, and the New campaign form had no audience field.
+  Activation and real sends now require an audience, and the forms pick categories, cities and tags.
+- **Open: the route.** The MSG91 report labels these messages "Transactional". The text is
+  promotional; the template category in MSG91 and in DLT needs checking.
+- **Open: delivery reports.** Until MSG91 delivery webhooks are wired in, `sent` means "accepted by
+  the provider", not "delivered". Read the MSG91 report after every send.
+
 ## Decisions needed before extraction (these can stop the plan)
 
 1. **99acres terms of use.** Scraping 99acres breaches its terms and Info Edge actively blocks
