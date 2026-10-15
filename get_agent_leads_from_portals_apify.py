@@ -63,9 +63,11 @@ NAME_STOPWORDS = {
 # Developer-affiliated resale/rental arms and placeholder names that top the portals' listing
 # counts but are not independent agents. Substring match on the lowercased firm name. Found by
 # reading the 2026-10-14 Bengaluru/Chennai/Hyderabad/Coimbatore list; extend with --exclude.
-DEFAULT_EXCLUDE = ("casagrand", "sellassure", "azuro", "ivy homes", "individual agent")
+DEFAULT_EXCLUDE = ("casagrand", "sellassure", "azuro", "ivy homes", "individual agent", "prestige estates")
 
 CONFIDENT_SCORE = 0.85
+# The most a name-only match on a single distinctive word can score: just under "confident".
+WEAK_NAME_CAP = CONFIDENT_SCORE - 0.01
 REVIEW_SCORE = 0.60
 
 
@@ -92,6 +94,12 @@ def firm_tokens(name):
 
 def firm_key(name):
     return " ".join(firm_tokens(name))
+
+
+def plain_name(name):
+    """Lowercased alphanumeric words with NOTHING removed — for asking whether two names are the
+    same name, as opposed to firm_key(), which drops generic words to compare what is distinctive."""
+    return " ".join(re.findall(r"[a-z0-9]+", (name or "").lower()))
 
 
 def name_similarity(a, b):
@@ -265,7 +273,17 @@ def score_candidate(firm, place):
         score -= 0.05
     if place.get("permanentlyClosed"):
         score -= 0.5
-    return min(score, 1.0), prefix_hit, ("locality match" if locality_hit else "")
+    note = "locality match" if locality_hit else ""
+    # A name that is one distinctive word once the generic agency words are removed ("Vishal",
+    # "Sai Properties", "SMS Properties") matches almost any firm that shares the word: in the
+    # first pilot "Vishal" scored a perfect 1.0 against "Vishal Realty". Without the portal's phone
+    # prefix agreeing, or the full names being identical, that is not evidence of the same firm, so
+    # it can be at most a "review" match. (An exact name like "Helium Homes" stays eligible.)
+    full_name_equal = plain_name(firm["firm"]) == plain_name(place.get("title") or "")
+    if len(firm_tokens(firm["firm"])) <= 1 and not prefix_hit and not full_name_equal:
+        score = min(score, WEAK_NAME_CAP)
+        note = (note + "; " if note else "") + "single-word name, needs review"
+    return min(score, 1.0), prefix_hit, note
 
 
 def classify(score):

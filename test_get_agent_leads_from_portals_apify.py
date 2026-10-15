@@ -192,9 +192,48 @@ class FirmsCsvTests(unittest.TestCase):
         self.assertEqual(out[0]["portals"], "housing")
 
 
+class SingleWordNameTests(unittest.TestCase):
+    """The first Bengaluru pilot put "Vishal" -> "Vishal Realty" and "SMS Properties" -> "SMS Real
+    Estate" at a perfect 1.0. Those must not be confident on the name alone."""
+
+    def firm(self, name, prefix=None):
+        return m.merge_firms([{"firm": name, "contact": "", "city": "Bengaluru", "locality": "HSR",
+                               "prefix": prefix, "url": None, "portal": "housing"}])[0]
+
+    def status(self, firm, place):
+        return m.classify(m.best_match(firm, [place])["score"])
+
+    def test_single_word_name_is_not_confident_without_corroboration(self):
+        place = {"title": "Vishal Realty", "address": "HSR Layout, Bengaluru", "phone": "+91 98200 12345"}
+        self.assertEqual(self.status(self.firm("Vishal"), place), "review")
+        place = {"title": "SMS Real Estate", "address": "HSR Layout, Bengaluru", "phone": "+91 98200 12345"}
+        self.assertEqual(self.status(self.firm("SMS Properties"), place), "review")
+
+    def test_a_matching_phone_prefix_makes_it_confident_again(self):
+        place = {"title": "Vishal Realty", "address": "HSR Layout, Bengaluru", "phone": "+91 98200 12345"}
+        self.assertEqual(self.status(self.firm("Vishal", prefix="98200"), place), "confident")
+
+    def test_identical_full_names_stay_eligible(self):
+        place = {"title": "Helium Homes", "address": "HSR Layout, Bengaluru", "phone": "+91 98200 12345"}
+        self.assertEqual(self.status(self.firm("Helium Homes"), place), "confident")
+
+    def test_multi_word_names_are_unaffected(self):
+        # Two distinctive words ("olive", "green") are real evidence, so a name match can be confident.
+        place = {"title": "Olive Green Homes Realty", "address": "HSR Layout, Bengaluru", "phone": "+91 98200 12345"}
+        self.assertEqual(self.status(self.firm("Olive Green Homes"), place), "confident")
+
+    def test_the_cap_sits_just_below_confident(self):
+        self.assertLess(m.WEAK_NAME_CAP, m.CONFIDENT_SCORE)
+        self.assertGreaterEqual(m.WEAK_NAME_CAP, m.REVIEW_SCORE)
+
+    def test_the_note_says_why(self):
+        place = {"title": "Vishal Realty", "address": "HSR Layout, Bengaluru", "phone": "+91 98200 12345"}
+        self.assertIn("single-word", m.best_match(self.firm("Vishal"), [place])["note"])
+
+
 class ExcludeTests(unittest.TestCase):
     def test_default_list_drops_developer_arms_and_placeholders(self):
-        for name in ("Casagrand Sellassure", "CG sellassure", "Azuro Hyd Resale", "Azuro.in", "Ivy homes", "Individual Agent"):
+        for name in ("Casagrand Sellassure", "CG sellassure", "Azuro Hyd Resale", "Azuro.in", "Ivy homes", "Individual Agent", "Prestige Estates Projects"):
             self.assertTrue(m.is_excluded(name, m.DEFAULT_EXCLUDE), name)
 
     def test_independent_agents_are_kept(self):

@@ -106,6 +106,17 @@ as `sent`, because delivery reports are not wired back. Findings and fixes (comm
 - **Open: delivery reports.** Until MSG91 delivery webhooks are wired in, `sent` means "accepted by
   the provider", not "delivered". Read the MSG91 report after every send.
 
+## Matching fix after the Bengaluru pilot (2026-10-15)
+
+A name that is one distinctive word once generic agency words are removed ("Vishal", "Sai
+Properties", "SMS Properties") scored a perfect 1.0 against any firm sharing the word. Such a match
+is now capped just below "confident" (`WEAK_NAME_CAP`) unless the portal's masked phone prefix
+agrees or the two full names are identical, so it lands in "review". Re-scoring the saved pilot: of
+the 15 SMS-capable rows, 3 drop to review (Chandra Enterprises, Infant Realty, Sevenhills Homes,
+all probably the same firm: the rule is deliberately cautious), and the clear false matches
+(Vishal, SMS Properties, Sai Properties, Treksbe) had no phone on Google Maps, so none could have
+been texted. "Prestige Estates" was added to the default exclusions (a large developer).
+
 ## Decisions needed before extraction (these can stop the plan)
 
 1. **99acres terms of use.** Scraping 99acres breaches its terms and Info Edge actively blocks
