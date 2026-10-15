@@ -9,6 +9,20 @@ export const metadata = {
 
 const GETTING_STARTED: Faq[] = [
   {
+    q: "What is Bhavano, and how is it different from other classifieds sites?",
+    a: (
+      <>
+        Bhavano is a property marketplace for homes, plots, PG accommodation, coworking desks, storage space and
+        commercial space across India, so a move or a small-business setup can be handled in one place. Listings are
+        checked before they go live and our team can take down ones that break the rules. See{" "}
+        <Link href="/trust" className="text-green font-bold">
+          how we keep listings clean
+        </Link>
+        , including what we don&apos;t verify yet.
+      </>
+    ),
+  },
+  {
     q: "Do I need an account to browse listings?",
     a: "No — browsing and searching listings is open to everyone. You only need to log in to post an ad, favourite a listing, or message a seller.",
   },
@@ -136,6 +150,20 @@ const ACCOUNT: Faq[] = [
 ];
 
 const SAFETY: Faq[] = [
+  {
+    q: "Are the listings verified?",
+    a: (
+      <>
+        Every listing goes through automated checks before it goes live (banned content, price sense-check and a
+        duplicate-photo check), and our team reviews and can take down listings that break the standards. We
+        don&apos;t inspect properties or verify every owner&apos;s documents. Details on our{" "}
+        <Link href="/trust" className="text-green font-bold">
+          Trust &amp; Safety page
+        </Link>
+        .
+      </>
+    ),
+  },
   {
     q: "How do I report a listing or a user?",
     a: (
