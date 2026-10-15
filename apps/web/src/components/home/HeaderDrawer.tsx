@@ -76,6 +76,9 @@ export function HeaderDrawer({
       <Link href="/tools" prefetch={false} className={rowClass}>
         <Icon name="calculator" className="text-muted" /> Tools
       </Link>
+      <Link href="/blog" prefetch={false} className={rowClass}>
+        <Icon name="blog" className="text-muted" /> Blog
+      </Link>
       <Link href={cityName ? `/premium?city=${slugify(cityName)}` : "/premium"} prefetch={false} className={rowClass}>
         <Icon name="sparkles" className="text-gold" /> Plans
       </Link>

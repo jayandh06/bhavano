@@ -28,6 +28,7 @@ export function CategoryTabs({
   const router = useRouter();
   const pathname = usePathname();
   const toolsActive = pathname.startsWith("/tools");
+  const blogActive = pathname.startsWith("/blog");
   const plansActive = pathname.startsWith("/premium");
   const requirementsActive = pathname.startsWith("/requirements");
   const requirementsHref = cityName ? `/requirements/${slugify(cityName)}` : "/requirements";
@@ -142,6 +143,16 @@ export function CategoryTabs({
         >
           <Icon name="calculator" />
           Tools
+        </Link>
+        <Link
+          href="/blog"
+          prefetch={false}
+          className={`flex items-center gap-2 border-0 border-b-[3px] pt-3 px-[18px] pb-2.5 text-sm font-bold whitespace-nowrap ${
+            blogActive ? "bg-green text-on-green border-b-gold" : "bg-transparent text-text-soft border-b-transparent"
+          }`}
+        >
+          <Icon name="blog" />
+          Blog
         </Link>
         <Link
           href={plansHref}

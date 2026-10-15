@@ -194,6 +194,7 @@ export async function Footer({
         <div className="flex gap-5 text-xs">
           <Link href="/about" prefetch={false}>About Us</Link>
           <Link href="/trust" prefetch={false}>Trust &amp; Safety</Link>
+          <Link href="/blog" prefetch={false}>Blog</Link>
           <Link href="/terms" prefetch={false}>Terms of Service</Link>
           <Link href="/privacy" prefetch={false}>Privacy Policy</Link>
           <Link href="/contact" prefetch={false}>Contact Us</Link>

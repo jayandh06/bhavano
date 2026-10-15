@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { fetchCities, fetchListingsSitemap } from "@/lib/bff";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import { transactionGroupFor } from "@/lib/seoRoute";
+import { POSTS } from "@/lib/blog/posts";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
@@ -78,6 +79,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/help",
     "/trust",
     "/moving-to-a-new-city",
+    "/blog",
     "/terms",
     "/privacy",
     "/premium",
@@ -91,9 +93,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/cities",
   ].map((path) => ({ url: `${SITE_URL}${path}`, lastModified: new Date() }));
 
+  const blogEntries: MetadataRoute.Sitemap = POSTS.map((post) => ({
+    url: `${SITE_URL}/blog/${post.slug}`,
+    lastModified: new Date(post.updated ?? post.published),
+  }));
+
   return [
     { url: SITE_URL, lastModified: new Date(), priority: 1 },
     ...staticEntries,
+    ...blogEntries,
     ...browseEntries,
     ...listingEntries,
   ];
