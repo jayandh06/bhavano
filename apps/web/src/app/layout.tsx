@@ -36,6 +36,11 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 const GOOGLE_MAPS_JS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_JS_KEY;
 const SITE_NAME = "Bhavano";
 const ENTITY_ADDRESS_LINES = entityAddressLines();
+const SAME_AS = [
+  "https://www.facebook.com/bhavano.facebook",
+  "https://www.instagram.com/bhavano.app/",
+  "https://play.google.com/store/apps/details?id=com.finfolia.bhavano",
+];
 const SITE_TITLE = "Bhavano — Buy, Rent, Plots, Coworking, PG & More";
 const SITE_DESCRIPTION =
   "India's home for Buy, Rent, Villas, Plots, Commercial Spaces, Coworking and PG listings — browse without login. Every listing is checked before it goes live.";
@@ -78,6 +83,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             legalName: LEGAL_ENTITY.legalName,
             url: SITE_URL,
             description: SITE_DESCRIPTION,
+            // The brand's own profiles elsewhere, so search and AI tools can tie them to this site.
+            // Only profiles that are live and ours belong here.
+            sameAs: SAME_AS,
             ...(ENTITY_ADDRESS_LINES.length > 0 && {
               address: { "@type": "PostalAddress", streetAddress: ENTITY_ADDRESS_LINES.join(", ") },
             }),
