@@ -3,6 +3,7 @@ import { fetchCities, fetchListingsSitemap } from "@/lib/bff";
 import { buildBrowsePath, buildListingPath } from "@/lib/listingPath";
 import { transactionGroupFor } from "@/lib/seoRoute";
 import { POSTS } from "@/lib/blog/posts";
+import { isThinAreaPage } from "@/lib/seoIndexing";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://local.bhavano.com";
 
@@ -24,6 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   type BrowsePath = { path: string; cityName: string };
   const cityPaths = new Map<string, BrowsePath>();
   const areaPaths = new Map<string, BrowsePath>();
+  const areaListingCounts = new Map<string, number>();
   const groupPaths = new Map<string, BrowsePath>();
   const categoryPaths = new Map<string, BrowsePath>();
 
@@ -36,6 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     const areaKey = `${cityName}|${listing.area}`;
+    areaListingCounts.set(areaKey, (areaListingCounts.get(areaKey) ?? 0) + 1);
     if (!areaPaths.has(areaKey)) {
       areaPaths.set(areaKey, { cityName, path: buildBrowsePath({ cityName, areaName: listing.area }) });
     }
@@ -55,7 +58,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const cityHubs = [...cityPaths.values()];
-  const drillDowns = [...areaPaths.values(), ...groupPaths.values(), ...categoryPaths.values()];
+  // Thin area pages are noindex (see seoIndexing.ts), so they stay out of the sitemap too.
+  const indexableAreas = [...areaPaths.entries()]
+    .filter(([key]) => !isThinAreaPage(areaListingCounts.get(key) ?? 0))
+    .map(([, entry]) => entry);
+  const drillDowns = [...indexableAreas, ...groupPaths.values(), ...categoryPaths.values()];
   const isTop = (entry: BrowsePath) => topCityNames.has(entry.cityName);
   const toEntry = (entry: BrowsePath, priority: number): MetadataRoute.Sitemap[number] => ({
     url: `${SITE_URL}${entry.path}`,

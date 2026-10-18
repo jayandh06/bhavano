@@ -1,4 +1,5 @@
 import { notFound, permanentRedirect } from "next/navigation";
+import { isThinAreaPage } from "@/lib/seoIndexing";
 import type { Metadata } from "next";
 import type { ListingCategory, ListingDetailDto } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
@@ -477,6 +478,8 @@ export async function generateMetadata({
   if (parsed.areaSlug && !areaRow) return {};
 
   const heading = headingFor(parsed, cityRow.name, areaRow?.name);
+  // The plain `/{city}/{area}` page, as opposed to an area + category or facet page.
+  const isPlainAreaPage = !!parsed.areaSlug && !parsed.transactionGroup && !parsed.category && !parsed.facetValue;
 
   // Count-driven description — matches the canonical (filter-stripped) page's actual result count,
   // since query-string filters (?minPrice=, ?furnished=, …) always collapse to this same canonical
@@ -523,7 +526,7 @@ export async function generateMetadata({
     // only combinations with real inventory), judges the thin boilerplate a soft 404, and flags
     // it in Search Console. `follow: true` keeps link equity moving through those nearby links to
     // the real, indexable pages instead of dead-ending it here.
-    ...(total === 0 ? { robots: { index: false, follow: true } } : {}),
+    ...(total === 0 || (isPlainAreaPage && isThinAreaPage(total)) ? { robots: { index: false, follow: true } } : {}),
   };
 }
 

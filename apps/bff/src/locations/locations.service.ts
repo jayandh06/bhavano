@@ -11,6 +11,7 @@ import { slugify } from '@bhavano/types/slugify';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../prisma/prisma.service';
 import { logThirdPartyCall, maskUrlParam } from '../logging/thirdPartyCallLogger';
+import { cleanAreaName } from './area-name';
 import type { Area, City } from '@prisma/client';
 
 interface GoogleGeocodeAddressComponent {
@@ -198,7 +199,7 @@ export class LocationsService {
    * an area not yet in the curated list). */
   async ensureArea(cityId: string, name?: string): Promise<Area> {
     if (!name?.trim()) throw new BadRequestException('Either areaId or areaName is required');
-    const trimmed = name.trim();
+    const trimmed = cleanAreaName(name);
     // slugify() strips anything outside [a-z0-9] — a name entirely in a non-Latin script (or
     // entirely punctuation/emoji) collapses to "", which can never be resolved back from a URL
     // (see resolveArea in apps/web/src/lib/browseRoute.ts, an exact slugify(name) match). Refuse
