@@ -7,7 +7,7 @@
  *
  * Needs the AreaOverview migration applied first. See docs/plans/area-overview-pages.md.
  */
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { validateAreaOverviewContent } from '@bhavano/types/areaOverview';
 import { slugify } from '@bhavano/types/slugify';
@@ -36,7 +36,7 @@ async function main() {
     }
     if (!dryRun) {
       await prisma.areaOverview.create({
-        data: { areaId: area.id, about: content.about, gettingAround: content.gettingAround, faqs: content.faqs },
+        data: { areaId: area.id, about: content.about, gettingAround: content.gettingAround, faqs: content.faqs as unknown as Prisma.InputJsonValue },
       });
     }
     console.log(`${dryRun ? 'would add' : 'added   '} ${key} as draft`);
