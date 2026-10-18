@@ -179,6 +179,10 @@ export function HomeDrawer({
             <Icon name="list" size={17} color={colors.text} />
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>For Owners</Text>
           </Pressable>
+          <Pressable onPress={() => go("/blog")} style={styles.navRow}>
+            <Icon name="blog" size={17} color={colors.text} />
+            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Blog</Text>
+          </Pressable>
           <Pressable onPress={() => go("/help")} style={styles.navRow}>
             <Icon name="help" size={17} color={colors.text} />
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Help</Text>

@@ -8,6 +8,7 @@ import {
   BedDouble,
   Bell,
   Bike,
+  BookOpen,
   Briefcase,
   Building2,
   Calculator,
@@ -130,6 +131,7 @@ export const ICONS = {
   logout: LogOut,
   list: List,
   help: HelpCircle,
+  blog: BookOpen,
   edit: SquarePen,
 
   // Home-tab and tools vocabulary.

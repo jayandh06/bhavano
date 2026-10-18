@@ -15,6 +15,7 @@ const APP_SCREEN_FOR_SITE_PATH: Record<string, Href> = {
   "/help": "/help",
   "/contact": "/contact",
   "/about": "/about",
+  "/blog": "/blog",
   "/privacy": "/privacy",
   "/terms": "/terms",
 };

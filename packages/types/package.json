@@ -189,6 +189,10 @@
       "types": "./dist/loginNudge.d.ts",
       "default": "./dist/loginNudge.js"
     },
+    "./blogPosts": {
+      "types": "./dist/blogPosts.d.ts",
+      "default": "./dist/blogPosts.js"
+    },
     "./whatsapp": {
       "types": "./dist/whatsapp.d.ts",
       "default": "./dist/whatsapp.js"

@@ -15,6 +15,14 @@ const KNOWN_ROUTES = new Set([
   "/rent-lease/apartment",
   "/rent-lease/commercial",
   "/tools/rent-affordability-calculator",
+  "/tools/rent-vs-buy-calculator",
+  "/tools/emi-calculator",
+  "/tools/down-payment-calculator",
+  "/tools/home-loan-eligibility-calculator",
+  "/tools/area-unit-converter",
+  "/post",
+  "/blog/rental-agreement-questions",
+  "/blog/spotting-a-bad-property-ad",
 ]);
 
 function textsOf(block: BlogBlock): string[] {
