@@ -11,6 +11,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string }[] }[] 
       { href: "/", label: "Listings" },
       { href: "/requirements", label: "Requirements" },
       { href: "/notification-log", label: "Notification log" },
+      { href: "/area-overviews", label: "Area overviews" },
     ],
   },
   {

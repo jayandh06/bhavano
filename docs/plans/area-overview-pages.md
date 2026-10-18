@@ -7,7 +7,31 @@ Overview content lives **on the existing area URL** (`/{city}/{area}`, e.g. `/be
 below the listing grid. No new URL: a separate guide page would compete with the area page for the
 same searches. Category and facet pages are unchanged.
 
-## Pilot (built)
+## Update (2026-10-18): moved to the database, with an admin review page
+
+The text no longer lives in `apps/web/src/lib/areaOverviews.ts` (deleted). It is in the
+`AreaOverview` table (one row per area, `status` = draft / in_review / published) and is written,
+reviewed and published in the admin app under **Area overviews** (`/area-overviews`).
+
+- **Public read:** `GET /area-overviews/:areaId` returns only a *published* row. The web page
+  (`AreaOverview.tsx`, server-rendered) fetches it with `revalidate: 3600`, null results included,
+  so an area without one costs no BFF call per view. Publishing reaches the site within about an
+  hour.
+- **Admin:** `GET/PUT /admin/area-overviews`, `PATCH /admin/area-overviews/:areaId/status`
+  (all behind `AdminGuard`). The list shows every area with listings, busiest first, with status
+  and reviewer. The editor has live automatic checks, a five-item review checklist (all must be
+  ticked to publish), a preview, and Save draft / Send for review / Approve and publish / Unpublish.
+- **Rules enforced in code** (`@bhavano/types/areaOverview`, run in the editor and again in the
+  BFF): no prices, rents or percentages, no links or emails, length limits, at least one About
+  paragraph and one FAQ. Editing in-review or published text sends it back to draft and clears the
+  approval. Approval records who and when (the name is copied at approval time).
+- **First content:** the eight Bengaluru drafts live in `apps/bff/scripts/area-overview-drafts.ts`
+  and are loaded as drafts by `scripts/seed-area-overview-drafts.ts` (re-runnable, never overwrites
+  an existing row).
+- **Rollout order:** deploy with `prisma migrate deploy` (new table only), run the seed script,
+  then review and publish from the admin page.
+
+## Pilot (built, now superseded by the above)
 - `apps/web/src/lib/areaOverviews.ts`: hand-written content per `city/area` (about, getting around,
   FAQs). Stored in code, server-rendered, versioned in git.
 - `apps/web/src/components/home/AreaOverview.tsx`: renders it on the plain area page only, page 1,

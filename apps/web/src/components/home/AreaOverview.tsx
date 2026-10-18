@@ -1,22 +1,25 @@
 import { JsonLd } from "@/components/JsonLd";
-import { getAreaOverview } from "@/lib/areaOverviews";
+import { fetchPublishedAreaOverview } from "@/lib/bff";
 import type { ParsedSegments } from "@/lib/seoRoute";
 
 /** Server-rendered area overview, shown on the plain area page only (`/{city}/{area}`), below the
  * listings. Category and facet pages keep their own short intro and are not given this block, so
- * the overview does not compete with them. Renders nothing unless a reviewed overview exists. */
-export function AreaOverview({
+ * the overview does not compete with them. Renders nothing unless the area has a published
+ * (reviewed) overview, which is edited and approved in the admin app. */
+export async function AreaOverview({
   cityName,
+  areaId,
   areaName,
   segments,
 }: {
   cityName: string;
+  areaId?: string;
   areaName?: string;
   segments: ParsedSegments;
 }) {
-  if (!areaName) return null;
+  if (!areaId || !areaName) return null;
   if (segments.transactionGroup || segments.category || segments.facetValue || segments.listingSlugId) return null;
-  const overview = getAreaOverview(cityName, areaName);
+  const overview = await fetchPublishedAreaOverview(areaId);
   if (!overview) return null;
 
   return (
@@ -39,12 +42,16 @@ export function AreaOverview({
           {text}
         </p>
       ))}
-      <h3 className="text-[15px] font-bold m-0 mt-5 mb-2 text-text">Getting around</h3>
-      {overview.gettingAround.map((text, i) => (
-        <p key={i} className="text-sm text-text-soft leading-relaxed m-0 mb-2.5">
-          {text}
-        </p>
-      ))}
+      {overview.gettingAround.length > 0 && (
+        <>
+          <h3 className="text-[15px] font-bold m-0 mt-5 mb-2 text-text">Getting around</h3>
+          {overview.gettingAround.map((text, i) => (
+            <p key={i} className="text-sm text-text-soft leading-relaxed m-0 mb-2.5">
+              {text}
+            </p>
+          ))}
+        </>
+      )}
       <h3 className="text-[15px] font-bold m-0 mt-5 mb-2 text-text">Frequently asked questions</h3>
       <dl className="m-0 flex flex-col gap-3">
         {overview.faqs.map((f) => (

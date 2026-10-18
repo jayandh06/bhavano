@@ -5,6 +5,13 @@ import type { SubscriptionPlanSettings } from "@bhavano/types/subscriptionPricin
 import type { InstantAlertsPriceSettings } from "@bhavano/types/instantAlertsPricing";
 import type { PurchaseSource } from "@bhavano/types/purchaseSource";
 import type { PostFunnelDto } from "@bhavano/types/postFunnel";
+import type {
+  AdminAreaOverviewDetail,
+  AdminAreaOverviewsPage,
+  AreaOverviewContent,
+  AreaOverviewDto,
+  AreaOverviewStatus,
+} from "@bhavano/types/areaOverview";
 import type { PostEntrySource } from "@bhavano/types/postEntry";
 import type { NotificationDaySummaryDto, NotificationLogEntryDto } from "@bhavano/types/notificationLog";
 import type {
@@ -1147,4 +1154,39 @@ export function fetchNotificationDayDetail(
 
 export function fetchNotificationKinds(accessToken: string): Promise<string[]> {
   return authedBffFetch(accessToken, `/admin/notifications/kinds`, { cache: "no-store" });
+}
+
+export function fetchAreaOverviews(
+  accessToken: string,
+  query: { status?: string; q?: string; offset?: number; limit?: number } = {},
+): Promise<AdminAreaOverviewsPage> {
+  const params = new URLSearchParams();
+  if (query.status) params.set("status", query.status);
+  if (query.q) params.set("q", query.q);
+  if (query.offset !== undefined) params.set("offset", String(query.offset));
+  if (query.limit) params.set("limit", String(query.limit));
+  return authedBffFetch(accessToken, `/admin/area-overviews?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchAreaOverview(accessToken: string, areaId: string): Promise<AdminAreaOverviewDetail> {
+  return authedBffFetch(accessToken, `/admin/area-overviews/${encodeURIComponent(areaId)}`, { cache: "no-store" });
+}
+
+export function saveAreaOverview(accessToken: string, areaId: string, content: AreaOverviewContent): Promise<AreaOverviewDto> {
+  return authedBffFetch(accessToken, `/admin/area-overviews/${encodeURIComponent(areaId)}`, {
+    method: "PUT",
+    body: JSON.stringify(content),
+  });
+}
+
+export function setAreaOverviewStatus(
+  accessToken: string,
+  areaId: string,
+  status: AreaOverviewStatus,
+  checklistConfirmed: boolean,
+): Promise<AreaOverviewDto> {
+  return authedBffFetch(accessToken, `/admin/area-overviews/${encodeURIComponent(areaId)}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, checklistConfirmed }),
+  });
 }

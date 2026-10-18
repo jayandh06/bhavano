@@ -1,3 +1,4 @@
+import type { AreaOverviewDto } from "@bhavano/types/areaOverview";
 import "server-only";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
@@ -253,6 +254,20 @@ export function fetchCities(q?: string, all?: boolean): Promise<City[]> {
   if (q) params.set("q", q);
   if (all) params.set("all", "true");
   return bffFetch<City[]>(`/locations/cities?${params.toString()}`, { cache: "no-store" });
+}
+
+/** The published overview for an area, or null. Cached for an hour: the text changes only when an
+ * admin publishes, and a null (most areas have none) is cached too, so an area without one does
+ * not call the BFF on every page view. A BFF failure is treated as "none" rather than breaking the
+ * listings page. */
+export async function fetchPublishedAreaOverview(areaId: string): Promise<AreaOverviewDto | null> {
+  try {
+    return await bffFetch<AreaOverviewDto | null>(`/area-overviews/${encodeURIComponent(areaId)}`, {
+      next: { revalidate: 3600 },
+    });
+  } catch {
+    return null;
+  }
 }
 
 /** City a deleted auto-created city slug now points at. Null when the slug is a live city or unknown. */

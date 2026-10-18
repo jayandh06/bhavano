@@ -329,7 +329,12 @@ export async function BrowseListingsView({
           </div>
         )}
         {page === 1 && cityName && (
-          <AreaOverview cityName={cityName} areaName={pathAreaName} segments={currentSegments} />
+          <AreaOverview
+            cityName={cityName}
+            areaId={cityAreas.find((a) => a.name === pathAreaName)?.id}
+            areaName={pathAreaName}
+            segments={currentSegments}
+          />
         )}
         {/* "Explore nearby" lives here, at the bottom, rather than above the results: a dozen
           * links that send people away had been sitting between the heading and the listings

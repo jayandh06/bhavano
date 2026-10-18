@@ -304,9 +304,44 @@ model Area {
   requirements     Requirement[]
   outreachContacts OutreachContact[]
   placesFetchLogs  PlacesFetchLog[]
+  overview         AreaOverview?
 
   @@unique([name, cityId])
   @@index([cityId])
+}
+
+enum AreaOverviewStatus {
+  draft
+  in_review
+  published
+}
+
+/**
+ * Reviewed text shown below the listings on an area's landing page (`/{city}/{area}`): about,
+ * getting around and FAQs. Only `published` rows reach the public site. Editing the text of an
+ * in-review or published row sends it back to `draft`, so approved wording can never change
+ * without another review. `reviewedById`/`reviewedByName` record who approved it (the name is
+ * copied at approval time so the record survives a later rename). See
+ * docs/plans/area-overview-pages.md.
+ */
+model AreaOverview {
+  id             String                 @id @default(cuid())
+  areaId         String                 @unique
+  area           Area                   @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  about          String[]
+  gettingAround  String[]
+  /// Array of `{ question, answer }`.
+  faqs           Json
+  status         AreaOverviewStatus     @default(draft)
+  updatedById    String?
+  reviewedById   String?
+  reviewedByName String?
+  reviewedAt     DateTime?
+  publishedAt    DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([status])
 }
 
 model User {

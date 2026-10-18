@@ -1,34 +1,11 @@
-import { slugify } from "@bhavano/types/slugify";
+/** The first area overview drafts (Bengaluru), written from general knowledge and NOT yet
+ * reviewed. Loaded into the database as drafts by seed-area-overview-drafts.ts; from there they
+ * are edited, reviewed and published in the admin app (Area overviews). Keyed by `city/area`
+ * slug. Do not treat anything in here as verified. */
+import type { AreaOverviewContent } from '@bhavano/types/areaOverview';
 
-/** Hand-written overview content for an area's landing page (`/{city}/{area}`), shown below the
- * listings. See docs/plans/area-overview-pages.md.
- *
- * Rules, same spirit as the blog (lib/blog/posts.ts):
- *  - Facts a person can verify (where the area is, what it borders, how it is laid out). No prices,
- *    rents or statistics: any number on the page must come from our own listings, computed live,
- *    never typed in here.
- *  - No legal or financial advice, no claims about specific shops, schools or projects that can
- *    change without notice.
- *  - `reviewed` stays false until someone who knows the area has checked the text. Nothing renders
- *    until it is true, so a draft can sit in the repo without reaching the page. */
-export interface AreaFaq {
-  question: string;
-  answer: string;
-}
-
-export interface AreaOverview {
-  /** Why this text may (or may not) be shown. Set true only after a local review. */
-  reviewed: boolean;
-  /** Paragraphs under "About {area}". */
-  about: string[];
-  /** Paragraphs under "Getting around". */
-  gettingAround: string[];
-  faqs: AreaFaq[];
-}
-
-const OVERVIEWS: Record<string, AreaOverview> = {
+export const AREA_OVERVIEW_DRAFTS: Record<string, AreaOverviewContent> = {
   "bengaluru/koramangala": {
-    reviewed: false,
     about: [
       "Koramangala is a large residential and commercial neighbourhood in south-east Bengaluru. It is laid out in numbered blocks, from the 1st Block to the 8th Block, and sits between HSR Layout, BTM Layout and Indiranagar.",
       "The area has long been a base for start-ups, offices, cafés and restaurants, so it draws working professionals as well as families. Homes here include independent houses, low-rise apartments and newer apartment buildings.",
@@ -55,7 +32,6 @@ const OVERVIEWS: Record<string, AreaOverview> = {
     ],
   },
   "bengaluru/hsr-layout": {
-    reviewed: false,
     about: [
       "HSR Layout, named for the Hosur-Sarjapur Road it grew along, is a planned residential neighbourhood in south-east Bengaluru. It is divided into numbered sectors, from Sector 1 to Sector 7, and borders Koramangala, BTM Layout and Bellandur.",
       "It is a popular base for people who work in start-ups and in the office parks along the Outer Ring Road, and it has a wide range of cafés, restaurants and everyday shops. Homes are mostly apartments and independent houses.",
@@ -82,7 +58,6 @@ const OVERVIEWS: Record<string, AreaOverview> = {
     ],
   },
   "bengaluru/mg-road": {
-    reviewed: false,
     about: [
       "MG Road, short for Mahatma Gandhi Road, is part of central Bengaluru's business district. It sits close to Brigade Road, Trinity Circle and Cubbon Park, and it is one of the city's best-known commercial and shopping streets.",
       "The stretch is mostly offices, hotels, shops and restaurants, with residential apartments in and around it. People who look here often want a short walk to work or easy access to the rest of the city.",
@@ -109,7 +84,6 @@ const OVERVIEWS: Record<string, AreaOverview> = {
     ],
   },
   "bengaluru/jayanagar": {
-    reviewed: false,
     about: [
       "Jayanagar is an established residential neighbourhood in south Bengaluru, laid out in numbered blocks from the 1st Block to the 9th Block. It is known for its tree-lined streets, long-standing homes and busy local markets.",
       "Many families live here, and the area has schools, hospitals, parks and shopping close to the residential streets. Homes include independent houses, older apartment buildings and newer low-rise apartments.",
@@ -136,7 +110,6 @@ const OVERVIEWS: Record<string, AreaOverview> = {
     ],
   },
   "bengaluru/whitefield": {
-    reviewed: false,
     about: [
       "Whitefield is a large neighbourhood in east Bengaluru, known for its IT parks and technology offices. It has grown from an older settlement into a mix of gated communities, apartment complexes, independent houses and shopping areas.",
       "People who work in the IT parks often look here to live close to work. The area is spread out, so how far a listing is from the main road and the offices makes a real difference to daily life.",
@@ -163,7 +136,6 @@ const OVERVIEWS: Record<string, AreaOverview> = {
     ],
   },
   "bengaluru/sarjapura": {
-    reviewed: false,
     about: [
       "Sarjapura is a growing area on the south-eastern edge of Bengaluru, along Sarjapur Road. It has newer apartment communities, villa projects and plots, and it is further out than Bellandur and HSR Layout.",
       "Because it is farther from the city centre, it appeals to people looking for newer homes and more space, and who are comfortable with a longer commute.",
@@ -190,7 +162,6 @@ const OVERVIEWS: Record<string, AreaOverview> = {
     ],
   },
   "bengaluru/indiranagar": {
-    reviewed: false,
     about: [
       "Indiranagar is a well-known neighbourhood in east-central Bengaluru, divided into the 1st Stage and the 2nd Stage. It is known for its cafés, restaurants and shops along 100 Feet Road and CMH Road.",
       "It is a mix of older independent houses, low-rise apartments and newer buildings, and it attracts working professionals who want a lively area close to the city centre.",
@@ -217,7 +188,6 @@ const OVERVIEWS: Record<string, AreaOverview> = {
     ],
   },
   "bengaluru/bellandur": {
-    reviewed: false,
     about: [
       "Bellandur is a neighbourhood in south-east Bengaluru, close to the Outer Ring Road and Sarjapur Road. It is known for its large apartment communities and for the lake that shares its name.",
       "Many residents work in the offices along the Outer Ring Road, so the area is popular with working professionals and families who want to live near their workplace.",
@@ -244,13 +214,3 @@ const OVERVIEWS: Record<string, AreaOverview> = {
     ],
   },
 };
-
-/** The reviewed overview for a city and area, or undefined when there is none or it has not been
- * reviewed yet. */
-export function getAreaOverview(cityName: string, areaName: string): AreaOverview | undefined {
-  const overview = OVERVIEWS[`${slugify(cityName)}/${slugify(areaName)}`];
-  return overview?.reviewed ? overview : undefined;
-}
-
-/** Test hook: every stored overview, reviewed or not. */
-export const ALL_AREA_OVERVIEWS = OVERVIEWS;
