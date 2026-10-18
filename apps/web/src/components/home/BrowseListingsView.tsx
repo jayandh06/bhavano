@@ -22,6 +22,7 @@ import { SaveSearchButton } from "./SaveSearchButton";
 import { SortDropdown } from "./SortDropdown";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
+import { AreaOverview } from "./AreaOverview";
 import { BrowseSeoIntro } from "./BrowseSeoIntro";
 import { JsonLd } from "@/components/JsonLd";
 import { resolvePopularSearches } from "@/lib/popularSearches";
@@ -326,6 +327,9 @@ export async function BrowseListingsView({
           <div className="mt-6 text-center">
             <RequirementPrompt variant="inline" label={requirementLabel} criteria={requirementCriteria} cityName={cityName} />
           </div>
+        )}
+        {page === 1 && cityName && (
+          <AreaOverview cityName={cityName} areaName={pathAreaName} segments={currentSegments} />
         )}
         {/* "Explore nearby" lives here, at the bottom, rather than above the results: a dozen
           * links that send people away had been sitting between the heading and the listings
