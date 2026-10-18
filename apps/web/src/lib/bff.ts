@@ -557,6 +557,17 @@ export async function uploadPhoto(formData: FormData, accessToken: string): Prom
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    // A 4xx carries a message written for the person (e.g. a damaged photo), so show that rather
+    // than the raw status line; a 5xx keeps the detail for the error report.
+    if (res.status >= 400 && res.status < 500) {
+      try {
+        const parsed = JSON.parse(body) as { message?: string | string[] };
+        const message = Array.isArray(parsed.message) ? parsed.message.join(", ") : parsed.message;
+        if (message) throw new Error(message);
+      } catch (e) {
+        if (e instanceof Error && !(e instanceof SyntaxError)) throw e;
+      }
+    }
     throw new Error(`BFF upload failed (${res.status}): ${body}`);
   }
   return res.json() as Promise<{ hash: string; ext: string }>;
