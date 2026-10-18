@@ -242,6 +242,245 @@ export const POSTS: BlogPost[] = [
       },
     ],
   },
+  {
+    slug: "carpet-built-up-super-built-up-area",
+    title: "Carpet area, built-up area and super built-up area explained",
+    description:
+      "What carpet, built-up and super built-up area mean in a flat listing, why the same flat can show three sizes, and how to compare listings fairly.",
+    published: "2026-10-18",
+    format: "Explainer",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "p",
+        text: "Two flats can both be called \"1,000 sq ft\" and feel very different once you walk in. The reason is that listings use three different ways of measuring area, and they are not interchangeable.",
+      },
+      { type: "h2", text: "The three measurements" },
+      {
+        type: "ul",
+        items: [
+          "Carpet area: the floor you can actually lay a carpet on, inside the walls of the flat. It leaves out the thickness of the walls.",
+          "Built-up area: the carpet area plus the walls and usually balconies and similar attached spaces.",
+          "Super built-up area: the built-up area plus a share of the shared spaces in the building, such as the lobby, staircases, lifts and clubhouse.",
+        ],
+      },
+      { type: "h2", text: "Why this matters when you compare" },
+      {
+        type: "p",
+        text: "A larger number is not a larger home. A flat quoted on super built-up area will always show a bigger figure than the same flat quoted on carpet area. When you compare two listings, make sure both numbers are the same kind, or you are comparing different things.",
+      },
+      { type: "h2", text: "What to ask" },
+      {
+        type: "ol",
+        items: [
+          "Ask which of the three areas the listing uses, and ask for the carpet area as well.",
+          "For a purchase, check which area the price is quoted on and which one the agreement states.",
+          "Measure the rooms yourself on the visit. Walls and fittings tell you more than a brochure figure.",
+        ],
+      },
+      {
+        type: "note",
+        text: "Rules on how area must be stated differ by state and by project. This is general information, not legal advice. Ask the seller or a lawyer how the area is defined in your agreement.",
+      },
+      {
+        type: "p",
+        text: "Need to switch between square feet, square metres and other local units? Use our [area unit converter](/tools/area-unit-converter), then browse [apartments to rent](/rent-lease/apartment) with the same measure in mind.",
+      },
+    ],
+  },
+  {
+    slug: "rent-or-buy-questions",
+    title: "Rent or buy a home? Questions to ask before you decide",
+    description:
+      "A calm way to think through renting versus buying: your timeline, savings, flexibility and the costs people forget, with no one-size-fits-all answer.",
+    published: "2026-10-18",
+    format: "Guide",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "This is general information to help you think, not financial advice. For a big decision, talk to a qualified adviser.",
+      },
+      {
+        type: "p",
+        text: "Renting and buying are both reasonable. Which one is better depends on your situation, and it can change over time. These questions help you see your own situation more clearly.",
+      },
+      { type: "h2", text: "How long will you stay?" },
+      {
+        type: "p",
+        text: "Buying usually makes more sense when you expect to stay put for a long time, because the costs of buying and selling are large. If your job or city might change soon, renting keeps you flexible.",
+      },
+      { type: "h2", text: "What can you comfortably afford?" },
+      {
+        type: "ul",
+        items: [
+          "How much you can pay upfront without draining your emergency savings.",
+          "Whether a monthly loan payment would still feel comfortable if your income dipped for a while.",
+          "Costs beyond the price: registration, brokerage, furnishing, maintenance and society charges.",
+        ],
+      },
+      { type: "h2", text: "What does flexibility mean to you?" },
+      {
+        type: "p",
+        text: "A rented home lets you move for a better job, a better school or a shorter commute. An owned home gives you stability and control over the space. Neither is free of trade-offs.",
+      },
+      { type: "h2", text: "Try the numbers side by side" },
+      {
+        type: "p",
+        text: "Put your own figures into our [rent vs buy calculator](/tools/rent-vs-buy-calculator) and the [rent affordability calculator](/tools/rent-affordability-calculator). They will not decide for you, but they show how the choices compare for your numbers.",
+      },
+      {
+        type: "p",
+        text: "If you decide to rent for now, start with [apartments to rent](/rent-lease/apartment).",
+      },
+    ],
+  },
+  {
+    slug: "home-loan-emi-explained",
+    title: "How a home loan EMI works: tenure, interest and down payment",
+    description:
+      "A plain explanation of what makes up a home loan EMI and how tenure, interest rate and down payment change it, with links to free calculators.",
+    published: "2026-10-18",
+    format: "Explainer",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not financial advice. Loan terms differ by lender. Read your own loan documents and ask the lender to explain anything unclear.",
+      },
+      {
+        type: "p",
+        text: "An EMI, or equated monthly instalment, is the fixed amount you pay your lender each month until the loan is cleared. Every EMI is part interest and part repayment of the amount you borrowed.",
+      },
+      { type: "h2", text: "What decides the EMI" },
+      {
+        type: "ul",
+        items: [
+          "The loan amount: the price of the home minus your down payment.",
+          "The interest rate: the lender's charge for lending you the money.",
+          "The tenure: how many months or years you take to repay.",
+        ],
+      },
+      { type: "h2", text: "How the three interact" },
+      {
+        type: "ul",
+        items: [
+          "A larger down payment means a smaller loan, so a smaller EMI and less interest paid overall.",
+          "A longer tenure lowers each EMI but usually means you pay more interest in total.",
+          "A shorter tenure raises each EMI but clears the loan sooner and costs less interest in total.",
+        ],
+      },
+      { type: "h2", text: "Early in the loan, most of the EMI is interest" },
+      {
+        type: "p",
+        text: "In the first years, a larger share of each EMI goes to interest, and the share going to repayment grows later. This is why paying a little extra early can shorten the loan, if your lender allows part-payments. Ask about any charges for doing so.",
+      },
+      { type: "h2", text: "Work out your own numbers" },
+      {
+        type: "p",
+        text: "Try the [EMI calculator](/tools/emi-calculator) to see how tenure and rate change your payment, the [down payment calculator](/tools/down-payment-calculator) to plan your upfront cost, and the [home loan eligibility calculator](/tools/home-loan-eligibility-calculator) for a rough idea of what a lender may offer.",
+      },
+    ],
+  },
+  {
+    slug: "flat-viewing-checklist",
+    title: "Flat viewing checklist: what to inspect before you rent or buy",
+    description:
+      "A room-by-room checklist for visiting a flat: water, light, damp, locks, noise and the neighbourhood, so you notice problems before you commit.",
+    published: "2026-10-18",
+    format: "Checklist",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "p",
+        text: "Photos show a flat at its best. A visit shows how it really is. Use this list, and take your time. A good owner will not rush you.",
+      },
+      { type: "h2", text: "Inside the flat" },
+      {
+        type: "ul",
+        items: [
+          "Turn on every tap and the shower. Check pressure and how quickly the water drains.",
+          "Look at ceilings and corners for damp patches, peeling paint or fresh paint covering something.",
+          "Open and close every window, door and cupboard. Check the locks.",
+          "Switch every light, fan and socket on. Ask where the main switch board is.",
+          "Check mobile signal in each room, and ask about the internet providers that serve the building.",
+        ],
+      },
+      { type: "h2", text: "The building and the street" },
+      {
+        type: "ul",
+        items: [
+          "See the lift, staircase, parking and common areas. Are they kept clean and lit?",
+          "Ask about water supply timings and power backup.",
+          "Stand in the flat at a busy time of day and listen for road, construction or neighbour noise.",
+          "Walk to the nearest shop, bus stop or station, the way you would on a normal day.",
+        ],
+      },
+      { type: "h2", text: "Questions for the owner or agent" },
+      {
+        type: "ol",
+        items: [
+          "Why is the flat available now, and how long has it been vacant?",
+          "What is included: appliances, furniture, parking?",
+          "What are the monthly charges apart from rent, such as maintenance?",
+          "What does the paperwork look like, and who signs it?",
+        ],
+      },
+      {
+        type: "p",
+        text: "Take photos of any existing damage with the date, so there is no dispute later. Before you sign, read [our questions to ask about a rental agreement](/blog/rental-agreement-questions). To start looking, browse [apartments to rent](/rent-lease/apartment).",
+      },
+    ],
+  },
+  {
+    slug: "write-a-property-listing-that-gets-enquiries",
+    title: "How to write a property listing that gets real enquiries",
+    description:
+      "For owners and agents: the photos, details and honest description that make a rental or sale listing easier to trust, so you get fewer time-wasting calls.",
+    published: "2026-10-18",
+    format: "Guide",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "p",
+        text: "A good listing answers a buyer or tenant's questions before they ask. That means more serious enquiries and fewer calls that go nowhere. Here is what to include.",
+      },
+      { type: "h2", text: "Photos first" },
+      {
+        type: "ul",
+        items: [
+          "Use daylight. Open the curtains and switch on the lights.",
+          "Show every room, the kitchen, the bathrooms and the view or balcony.",
+          "Tidy up first. Take photos only of the property itself, not of someone else's listing.",
+          "Pick the clearest photo of the living area as the cover.",
+        ],
+      },
+      { type: "h2", text: "A title and description that are specific" },
+      {
+        type: "p",
+        text: "Say what the property is, where it is and what makes it useful: the number of bedrooms, the floor, the furnishing, the nearest landmark. Plain facts work better than capital letters and exclamation marks.",
+      },
+      { type: "h2", text: "Be honest about the details" },
+      {
+        type: "ul",
+        items: [
+          "State the area clearly, and say which kind of area it is.",
+          "Mention what is included and what is not: furniture, parking, maintenance.",
+          "Say who you are looking for, such as a family, working professionals or students, if it matters.",
+          "Keep the price and the property details up to date, and mark the listing closed once it is taken.",
+        ],
+      },
+      { type: "h2", text: "Reply quickly and meet safely" },
+      {
+        type: "p",
+        text: "Reply to messages promptly, share the exact location only when you are ready, and never ask a stranger for a deposit before they have seen the place. Our guide on [spotting a bad property ad](/blog/spotting-a-bad-property-ad) shows what careful tenants and buyers look for, so your listing should pass that test.",
+      },
+      {
+        type: "p",
+        text: "When you are ready, you can [post your property on Bhavano](/post).",
+      },
+    ],
+  },
 ];
 
 export function getPost(slug: string): BlogPost | undefined {
