@@ -486,7 +486,9 @@ export async function generateMetadata({
     () => ({ total: 0, items: [], nextCursor: null }),
   );
   const baseDescription =
-    total > 0 ? `${total} ${heading.toLowerCase()} on Bhavano.` : `Browse ${heading.toLowerCase()} on Bhavano.`;
+    total > 0
+      ? `${heading} on Bhavano: ${total} ${total === 1 ? "listing" : "listings"} posted by owners and agents.`
+      : `Browse ${heading} on Bhavano.`;
 
   // Distinct-window pagination (docs/plans/seo-distinct-window-pagination.md): page 1 is the
   // clean canonical as before, but page N>1 is genuinely different content — self-canonical with
