@@ -20,6 +20,7 @@ import { ListingGrid } from "@/components/home/ListingGrid";
 import { FeaturedRail } from "@/components/home/FeaturedRail";
 import { Pagination } from "@/components/home/Pagination";
 import { Footer } from "@/components/home/Footer";
+import { HomeSeoSections } from "@/components/home/HomeSeoSections";
 import { resolvePopularSearches } from "@/lib/popularSearches";
 import { parseAreaSelection } from "@/lib/areaSelection";
 import { PickAnAreaNotice } from "@/components/home/PickAnAreaNotice";
@@ -227,6 +228,27 @@ export default async function HomePage({
     areaCount: areaIds && areaIds.length > 1 ? areaIds.length : undefined,
   });
 
+  // The unfiltered homepage: every city, every category, first page, nothing searched or narrowed.
+  // Only this view gets the descriptive H1 and the explanatory sections below the grid; a filtered
+  // view keeps its own heading, which describes exactly what it shows.
+  const isPlainRoot =
+    page === 1 &&
+    category === "all" &&
+    !q &&
+    !resolvedCity &&
+    !propertyType &&
+    !listingCategory &&
+    !transactionType &&
+    !furnished &&
+    !postedBy &&
+    !sharingType &&
+    !condition &&
+    !serviceType &&
+    !(bedrooms && bedrooms.length > 0) &&
+    !(areaIds && areaIds.length > 0) &&
+    !noAreaSelected;
+  const displayHeading = isPlainRoot ? "Buy, rent and list property across India" : heading;
+
   function buildPageHref(nextPage: number): string {
     const params = new URLSearchParams();
     params.set("category", category);
@@ -261,7 +283,7 @@ export default async function HomePage({
         popularSearches={popularSearches}
       />
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-20">
-        <h1 className="font-lora text-[26px] font-semibold m-0 mb-1.5 text-text">{heading}</h1>
+        <h1 className="font-lora text-[26px] font-semibold m-0 mb-1.5 text-text">{displayHeading}</h1>
         {/* Two versions, not one shrunk down. The full paragraph does two jobs — says what
           * Bhavano is, and explains the login model — and neither survives being forced onto one
           * line on a phone: category breadth is already visible in the tabs right below, so
@@ -360,6 +382,7 @@ export default async function HomePage({
         {!noAreaSelected && (
           <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
         )}
+        {isPlainRoot && <HomeSeoSections popularCities={popularCities} />}
       </main>
       <Footer currentCityName={resolvedCity?.name} cityAreas={cityAreas} allCities={allCities} />
     </div>

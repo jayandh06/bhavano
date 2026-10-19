@@ -21,6 +21,7 @@ import { useAreasQuery, useInfiniteListingsQuery } from "../../src/lib/queries";
 import { CategoryChips } from "../../src/components/home/CategoryChips";
 import { CollapsedHeaderBar } from "../../src/components/home/CollapsedHeaderBar";
 import { HomeDrawer } from "../../src/components/home/HomeDrawer";
+import { HomeExploreFooter } from "../../src/components/home/HomeExploreFooter";
 import { Icon } from "../../src/components/Icon";
 import { ListingCard } from "../../src/components/home/ListingCard";
 import { ProfileCompletionBanner } from "../../src/components/home/ProfileCompletionBanner";
@@ -182,7 +183,15 @@ export default function HomeScreen() {
         onEndReachedThreshold={0.5}
         viewabilityConfig={viewabilityConfig}
         onViewableItemsChanged={onViewableItemsChanged}
-        ListFooterComponent={isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: 20 }} color={colors.green} /> : null}
+        // While the next page loads, a spinner. Once the feed has run out (and there is something in
+        // it), the explanatory footer: an endless list would never have reached it.
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <ActivityIndicator style={{ marginVertical: 20 }} color={colors.green} />
+          ) : !hasNextPage && items.length > 0 ? (
+            <HomeExploreFooter />
+          ) : null
+        }
         // Only once the first page has actually resolved — otherwise this would flash the
         // "nothing found" card for every category/filter change while the new query is still
         // loading, which reads as a real (and wrong) answer instead of a loading state.

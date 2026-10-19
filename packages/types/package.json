@@ -189,6 +189,10 @@
       "types": "./dist/loginNudge.d.ts",
       "default": "./dist/loginNudge.js"
     },
+    "./homeContent": {
+      "types": "./dist/homeContent.d.ts",
+      "default": "./dist/homeContent.js"
+    },
     "./areaOverview": {
       "types": "./dist/areaOverview.d.ts",
       "default": "./dist/areaOverview.js"
