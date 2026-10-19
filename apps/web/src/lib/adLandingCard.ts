@@ -112,6 +112,11 @@ const AD_GROUP_INTENTS: Record<string, AdLandingIntentKey> = {
   "198875640605": "rent_furniture",
   "203420143351": "lease_commercial",
   "203420143191": "lease_home",
+  // Other-Metro-Lease Property-MaxConv, the active replacement for the paused campaign above. Its
+  // ad groups have their own ids, so without these a lease click got the generic "post your
+  // property" card instead of the lease one. Found in the 2026-10-19 final-URL audit.
+  "201054972699": "lease_commercial",
+  "201054972659": "lease_home",
 };
 
 /** `?adcard=<intent>` shows the card without an ad click — for checking the copy. Kept apart
