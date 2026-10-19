@@ -407,6 +407,12 @@ export function PostAdWizard({
   const [step, setStep] = useState<Step>("category");
   const [postedAs, setPostedAs] = useState<SellerType | null>(null);
   const [sellerTypeMissing, setSellerTypeMissing] = useState(false);
+  /** Photos already stored on an earlier attempt of this same submit, by the picked file and the
+   * slot (`photoNo`) it went into. When one photo of several fails (a weak connection, a damaged
+   * file), tapping Post ad again sends only the photos that did not make it, instead of every photo
+   * again. A different file, or the same file moved to another slot, is uploaded afresh. The
+   * wizard's `listingId` is fixed for its lifetime, so a stored photo is still the right one. */
+  const uploadedPhotosRef = useRef(new Map<File, { photoNo: number; hash: string; ext: string }>());
   const sellerTypeRef = useRef<HTMLDivElement | null>(null);
   const photoSectionRef = useRef<HTMLDivElement | null>(null);
   const [assistedSeller, setAssistedSeller] = useState<AssistedSeller>(EMPTY_ASSISTED_SELLER);
@@ -1699,6 +1705,12 @@ export function PostAdWizard({
     const photoResultsPromise = runWithConcurrency(photos, 3, async (picked, i) => {
       const photoNo = i + 1;
       if (photoFailure) return null;
+      const alreadyStored = uploadedPhotosRef.current.get(picked.file);
+      if (alreadyStored && alreadyStored.photoNo === photoNo) {
+        photosCompleted++;
+        setUploadProgress({ phase: "photos", current: photosCompleted, total: photos.length });
+        return alreadyStored;
+      }
       // Read up front so a photo whose file iOS has since deleted fails here, by number, instead
       // of being sent as a truncated upload.
       let file: File;
@@ -1723,7 +1735,9 @@ export function PostAdWizard({
       }
       photosCompleted++;
       setUploadProgress({ phase: "photos", current: photosCompleted, total: photos.length });
-      return { photoNo, hash: uploadResult.hash, ext: uploadResult.ext };
+      const stored = { photoNo, hash: uploadResult.hash, ext: uploadResult.ext };
+      uploadedPhotosRef.current.set(picked.file, stored);
+      return stored;
     });
 
     // Video never blocks the post — if a single upload fails, drop it and continue rather than
@@ -1782,7 +1796,14 @@ export function PostAdWizard({
       } else if (failure.kind === "unreadable") {
         setError(`Photo ${failure.photoNo} can no longer be read. Remove it, add it again, then tap Post ad.`);
       } else {
-        setError(failure.message ?? "Failed to upload a photo");
+        // A message written for the person (a damaged photo, say) is shown as is, with the photo
+        // named. Anything technical becomes a plain retry, which only resends what failed.
+        const friendly = failure.message && !failure.message.startsWith("BFF upload failed") ? failure.message : null;
+        setError(
+          friendly
+            ? `Photo ${failure.photoNo}: ${friendly}`
+            : `Photo ${failure.photoNo} didn't upload. Check your internet connection and tap Post ad again. Photos that already uploaded won't be sent twice.`,
+        );
       }
       return;
     }

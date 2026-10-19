@@ -1154,7 +1154,7 @@ describe('ListingsService', () => {
 
     it('accepts commercial brokerage: a ₹ amount on rent, either type on a sale', () => {
       const { service } = makeService();
-      const commercial = { sqft: '1200', purpose: 'office', fromBroker: 'yes', brokerageFeeApplicable: 'yes' };
+      const commercial = { sqft: '1200', purpose: 'office', fromBroker: 'yes', brokerageFeeApplicable: 'yes', furnished: 'unfurnished' };
       expect(() =>
         (service as any).assertValidAttributes('commercial', 'rent', {
           ...commercial,
@@ -2306,6 +2306,7 @@ describe('ListingsService.update — brokerage against the price', () => {
       floor: 'ground',
       totalFloors: 1,
       entranceFacing: 'east',
+      furnished: 'unfurnished',
       fromBroker: 'yes',
       brokerageFeeApplicable: 'yes',
       brokerageFeeType: 'fixed',
