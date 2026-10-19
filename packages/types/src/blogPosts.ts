@@ -481,6 +481,462 @@ export const POSTS: BlogPost[] = [
       },
     ],
   },
+  {
+    slug: "buying-a-plot-checklist",
+    title: "Buying a plot of land: documents and checks before you pay",
+    description:
+      "A plain checklist for buying a residential plot: ownership papers, approvals, boundaries and payment, so you know what to ask before you commit.",
+    published: "2026-10-19",
+    format: "Checklist",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "This is general information to help you ask better questions. It is not legal advice. Have a lawyer read the documents before you pay anything.",
+      },
+      {
+        type: "p",
+        text: "A plot looks simple: land, a boundary and a price. In practice, most plot problems are about paperwork you cannot see from the road. Work through these checks in order before you pay a token amount.",
+      },
+      { type: "h2", text: "Ownership" },
+      {
+        type: "ul",
+        items: [
+          "Ask the seller for the title documents and check that the seller's name is the one on them.",
+          "Ask how the seller came to own the land: purchase, inheritance, gift or allotment. Each leaves a different paper trail.",
+          "If there are several owners, every one of them must agree to the sale in writing.",
+          "Ask whether the plot is free of loans, disputes and court cases, and ask for that in writing.",
+        ],
+      },
+      { type: "h2", text: "Approvals and use of the land" },
+      {
+        type: "ul",
+        items: [
+          "Check that the layout is approved by the local authority and that the plot is meant for residential use.",
+          "Ask what you are allowed to build, including height and set-back rules, before you imagine the house.",
+          "Confirm that roads, drainage, water and power are in place, or who will provide them and by when.",
+        ],
+      },
+      { type: "h2", text: "The land itself" },
+      {
+        type: "ol",
+        items: [
+          "Visit the plot in person and walk its boundary.",
+          "Compare the actual size with the size in the documents.",
+          "Look for encroachment, a shared wall or a path that crosses the plot.",
+          "Visit after rain if you can, to see whether water collects there.",
+        ],
+      },
+      { type: "h2", text: "Payment and registration" },
+      {
+        type: "ul",
+        items: [
+          "Agree the terms in a written agreement before paying any large amount.",
+          "Pay by a method that leaves a record, and keep every receipt.",
+          "Complete the registration in the correct office and keep certified copies of everything.",
+        ],
+      },
+      {
+        type: "p",
+        text: "When you are ready to look, browse [plots for sale](/plot) and use the [area unit converter](/tools/area-unit-converter) if a listing quotes a size in a unit you do not use every day. Bhavano checks listings before they go live but does not verify land documents, so read [how we check listings and what we don't verify](/trust).",
+      },
+    ],
+  },
+  {
+    slug: "real-estate-investment-basics",
+    title: "Real estate investment basics: what first-time buyers should understand",
+    description:
+      "How property earns money (rent and value growth), what can go wrong, and the questions to ask before buying a flat or plot as an investment.",
+    published: "2026-10-19",
+    format: "Explainer",
+    readingMinutes: 7,
+    body: [
+      {
+        type: "note",
+        text: "This is general education, not investment or financial advice. Property can lose value and can be hard to sell. Talk to a qualified adviser about your own situation.",
+      },
+      {
+        type: "p",
+        text: "People buy property to live in, to earn rent, or to hold it as it grows in value. Many do a mix of these. Before treating a purchase as an investment, it helps to understand where the money comes from and where it can leak away.",
+      },
+      { type: "h2", text: "How property can earn money" },
+      {
+        type: "ul",
+        items: [
+          "Rent: regular income from a tenant, after costs such as maintenance, taxes and gaps between tenants.",
+          "Appreciation: the property may be worth more when you sell, but this is never guaranteed and can take years.",
+          "Use: living in it yourself can replace the rent you would otherwise pay.",
+        ],
+      },
+      { type: "h2", text: "Costs people forget" },
+      {
+        type: "ul",
+        items: [
+          "Registration, stamp duty and brokerage when you buy, and again when you sell.",
+          "Loan interest, if you borrow, which can be larger than the rent you collect.",
+          "Maintenance, repairs, society charges and property tax.",
+          "Months with no tenant, and the effort of finding a new one.",
+        ],
+      },
+      { type: "h2", text: "Risks to weigh" },
+      {
+        type: "ul",
+        items: [
+          "Liquidity: selling a property takes time, and you may not get the price you hoped for when you need the money.",
+          "Concentration: one property in one area puts a lot of your savings in a single place.",
+          "Project and legal risk: delays, disputes and missing approvals, especially with plots and under-construction homes.",
+          "Location risk: an area's rents and demand can change as jobs and transport change.",
+        ],
+      },
+      { type: "h2", text: "Questions to ask before you buy" },
+      {
+        type: "ol",
+        items: [
+          "Could I carry the costs if the property stayed empty for several months?",
+          "Is this area one where people actually want to rent or buy, and why?",
+          "What would I do if I needed my money back in a hurry?",
+          "Have I compared this with simply renting and investing the difference?",
+        ],
+      },
+      {
+        type: "p",
+        text: "Try the [rent vs buy calculator](/tools/rent-vs-buy-calculator) and the [EMI calculator](/tools/emi-calculator) with your own figures. When you are ready to look, browse [apartments for sale](/buy/apartment), and read our guide on [flat viewing](/blog/flat-viewing-checklist).",
+      },
+    ],
+  },
+  {
+    slug: "ready-to-move-vs-under-construction",
+    title: "Ready-to-move or under-construction flat: how to choose",
+    description:
+      "The trade-offs between buying a ready-to-move flat and an under-construction one: timing, risk, flexibility and what to verify for each.",
+    published: "2026-10-19",
+    format: "Comparison",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "p",
+        text: "When you shop for a flat to buy, you will see two kinds: ready-to-move homes you can see and occupy, and under-construction homes that are still being built. Neither is better in every case. The right one depends on how soon you need a home and how much uncertainty you can accept.",
+      },
+      { type: "h2", text: "Ready-to-move: what to expect" },
+      {
+        type: "ul",
+        items: [
+          "You see exactly what you are buying, including the view, the light and the neighbours.",
+          "You can move in, or start renting it out, soon after you finish the paperwork.",
+          "You are not paying rent somewhere else while you wait.",
+          "There is usually less choice of layout and fittings than in a new project.",
+        ],
+      },
+      { type: "h2", text: "Under-construction: what to expect" },
+      {
+        type: "ul",
+        items: [
+          "You buy from a plan, so you rely on the builder to deliver what was promised.",
+          "Payments are often spread over stages of construction, which can suit your cash flow.",
+          "Delays are possible, and during them you may pay rent and a loan at the same time.",
+          "You may get more choice of unit, floor and layout, and newer facilities.",
+        ],
+      },
+      { type: "h2", text: "What to check for each" },
+      {
+        type: "ol",
+        items: [
+          "For a ready home: the completion and occupancy papers, the society's dues, and who owns the parking space.",
+          "For an under-construction home: the project's approvals, the builder's earlier projects, and the promised handover date in writing.",
+          "For both: the payment schedule, what is included in the price, and what happens if either side cancels.",
+        ],
+      },
+      {
+        type: "note",
+        text: "Rules for builders and buyers differ by state and project. This is general information, not legal advice. Have a lawyer read the agreement.",
+      },
+      {
+        type: "p",
+        text: "Browse [apartments for sale](/buy/apartment) and compare the listings you shortlist. Our [flat viewing checklist](/blog/flat-viewing-checklist) covers what to inspect on a ready home, and the [home loan EMI guide](/blog/home-loan-emi-explained) helps you plan the payments.",
+      },
+    ],
+  },
+  {
+    slug: "how-to-sell-your-house-or-flat-online",
+    title: "How to sell your house or flat online: a step-by-step guide",
+    description:
+      "From preparing the paperwork to replying to buyers: how to sell a house or flat online safely, with the steps owners often skip.",
+    published: "2026-10-19",
+    format: "Guide",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "p",
+        text: "Selling a property yourself is possible, and many owners do it. It goes more smoothly when you prepare first and know what buyers will ask. Here is the order that tends to work.",
+      },
+      { type: "h2", text: "1. Get your papers in order" },
+      {
+        type: "ul",
+        items: [
+          "Collect the ownership documents, the latest tax receipts and any society or maintenance clearances.",
+          "If there is a loan on the property, ask your lender what is needed to release it when you sell.",
+          "Check that names and areas match across your documents, and fix any differences before a buyer notices them.",
+        ],
+      },
+      { type: "h2", text: "2. Decide how you want to sell" },
+      {
+        type: "p",
+        text: "Decide how quickly you need to sell and how flexible you are. A seller who is in no hurry can wait for the right buyer. A seller who is in a hurry should expect to negotiate more. Look at similar listings nearby to see how others describe and present their homes.",
+      },
+      { type: "h2", text: "3. Create a clear listing" },
+      {
+        type: "ul",
+        items: [
+          "Take bright photos of every room, the kitchen, the bathrooms and the building.",
+          "Describe the property honestly: size, floor, furnishing, parking, age and what is included.",
+          "State which kind of area your size refers to, so buyers can compare fairly.",
+        ],
+      },
+      { type: "h2", text: "4. Handle enquiries safely" },
+      {
+        type: "ul",
+        items: [
+          "Reply promptly and answer questions plainly.",
+          "Meet buyers at the property, and keep personal documents with you.",
+          "Be cautious of anyone who asks you to pay a fee first, or who offers to pay more than you asked without seeing the property.",
+        ],
+      },
+      { type: "h2", text: "5. Agree terms and complete the sale" },
+      {
+        type: "p",
+        text: "Put the price, the token amount, the timeline and the conditions in a written agreement. Complete the transfer through the proper registration process and keep copies of everything. Use a lawyer for this step. This is general information, not legal advice.",
+      },
+      {
+        type: "p",
+        text: "Ready to list? You can [post your property on Bhavano](/post). Our guide to [writing a listing that gets enquiries](/blog/write-a-property-listing-that-gets-enquiries) covers the listing step in more detail, and you can see how others present [houses for sale](/buy/house).",
+      },
+    ],
+  },
+  {
+    slug: "how-to-find-reliable-tenants",
+    title: "Renting out your house: how to find a reliable tenant",
+    description:
+      "How owners can attract good tenants and avoid common problems: pricing, screening, the agreement, the deposit and house rules.",
+    published: "2026-10-19",
+    format: "Guide",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not legal advice. Rules on rent, deposits and notice differ by state. Have a lawyer read your agreement.",
+      },
+      {
+        type: "p",
+        text: "A good tenant pays on time, looks after the home and leaves on good terms. You cannot guarantee that, but a careful process makes it far more likely.",
+      },
+      { type: "h2", text: "Before you list" },
+      {
+        type: "ul",
+        items: [
+          "Fix what is broken and make the home clean. It lets you ask for a fair rent and attracts better applicants.",
+          "Look at similar homes nearby and price yours alongside them, not far above or below.",
+          "Decide your rules in advance: who can live there, pets, sub-letting, visitors and smoking.",
+        ],
+      },
+      { type: "h2", text: "Screening an applicant" },
+      {
+        type: "ol",
+        items: [
+          "Meet the applicant in person, and meet everyone who will live there.",
+          "Ask about work or study, and ask for proof of identity.",
+          "Ask for a reference from a previous landlord and call them.",
+          "Trust your own sense. If the story keeps changing, move on.",
+        ],
+      },
+      { type: "h2", text: "The agreement and the deposit" },
+      {
+        type: "ul",
+        items: [
+          "Put the rent, due date, deposit, notice period, repairs and rules in a written agreement that both sides sign.",
+          "Record the condition of the home with dated photos, and have the tenant sign them.",
+          "Take payments by a method that leaves a record, and give a receipt.",
+        ],
+      },
+      { type: "h2", text: "During the tenancy" },
+      {
+        type: "p",
+        text: "Respond to repair requests promptly, give notice before you visit, and keep records of everything. Good communication prevents most disputes.",
+      },
+      {
+        type: "p",
+        text: "To find applicants, [post your property on Bhavano](/post). Look at [houses for rent](/rent-lease/house) and [apartments for rent](/rent-lease/apartment) to see how similar homes are presented, and share our [questions to ask before signing a rental agreement](/blog/rental-agreement-questions) with your tenant, since the agreement works best when both sides understand it.",
+      },
+    ],
+  },
+  {
+    slug: "commercial-space-for-rent-what-to-check",
+    title: "Shop, office or warehouse for rent: what to check before you sign",
+    description:
+      "How to choose and check a commercial space to rent: location, layout, running costs, the lease terms and the permissions your business needs.",
+    published: "2026-10-19",
+    format: "Checklist",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not legal advice. Commercial leases can be complex, so have a lawyer read yours before you sign.",
+      },
+      {
+        type: "p",
+        text: "Renting a commercial space is a bigger commitment than renting a home. The rent is only part of the cost, and a wrong choice can be expensive to leave. Start with what your business actually needs.",
+      },
+      { type: "h2", text: "Match the space to the business" },
+      {
+        type: "ul",
+        items: [
+          "Shop: footfall, visibility from the road, parking and the neighbours on either side.",
+          "Office: desk space, meeting rooms, internet, power backup and commute for your team.",
+          "Warehouse or storage: road access for large vehicles, loading space, floor strength and security.",
+        ],
+      },
+      { type: "h2", text: "Check the running costs" },
+      {
+        type: "ul",
+        items: [
+          "Ask what is included in the rent and what is billed separately: maintenance, electricity, water and parking.",
+          "Ask about the deposit, how it is held and when it is returned.",
+          "Ask how the rent can change over the lease term, and in writing.",
+        ],
+      },
+      { type: "h2", text: "Check the permissions" },
+      {
+        type: "ol",
+        items: [
+          "Confirm the property is allowed to be used for your kind of business.",
+          "Ask what licences you will need and whether the space qualifies.",
+          "Confirm who is responsible for fire safety, signage and approvals.",
+        ],
+      },
+      { type: "h2", text: "Read the lease carefully" },
+      {
+        type: "ul",
+        items: [
+          "The lease term, any lock-in period and what it costs to leave early.",
+          "The notice period each side must give.",
+          "Who pays for repairs and fit-out, and what happens to the fit-out when you leave.",
+          "Whether you may sub-let or share the space.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Browse [commercial space for rent](/rent-lease/commercial), or consider a [coworking desk or cabin](/coworking) if you want a shorter commitment. Our guide on [coworking or a small office](/blog/coworking-or-small-office) helps you compare. You can also [buy commercial property](/buy/commercial) if you plan to stay long term.",
+      },
+    ],
+  },
+  {
+    slug: "villa-or-apartment-which-to-choose",
+    title: "Villa or apartment: which is right for you?",
+    description:
+      "An honest comparison of living in a villa and in an apartment: space, upkeep, security, community, cost shape and who each suits best.",
+    published: "2026-10-19",
+    format: "Comparison",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "p",
+        text: "Both can be a good home. The choice is less about which is better and more about which fits how you live. Here is how they usually differ.",
+      },
+      { type: "h2", text: "Space and privacy" },
+      {
+        type: "ul",
+        items: [
+          "A villa usually gives you your own entrance, garden or terrace and more room to change things.",
+          "An apartment shares walls, a lift and common areas, but is often easier to keep and move around in.",
+        ],
+      },
+      { type: "h2", text: "Upkeep and cost" },
+      {
+        type: "ul",
+        items: [
+          "A villa can mean more to maintain: garden, roof, boundary and repairs are your job.",
+          "An apartment usually comes with a monthly maintenance charge that covers common areas, and sometimes security and amenities.",
+          "Ask for the full running costs of each, not only the rent or price.",
+        ],
+      },
+      { type: "h2", text: "Security and community" },
+      {
+        type: "ul",
+        items: [
+          "Gated apartment communities and villa communities often share security and amenities. Check what is actually provided.",
+          "A standalone villa gives you privacy but less shared security.",
+        ],
+      },
+      { type: "h2", text: "A simple way to decide" },
+      {
+        type: "ol",
+        items: [
+          "List the space you really need now and in the next few years.",
+          "List the upkeep you are willing to do or pay for.",
+          "Think about who lives with you: children, older relatives, pets.",
+          "Compare the full monthly cost of both, including maintenance and travel.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Browse [villas for sale](/buy/villa) and [apartments for sale](/buy/apartment), or look at [villas for rent](/rent-lease/villa) and [apartments for rent](/rent-lease/apartment) if you want to try an area first.",
+      },
+    ],
+  },
+  {
+    slug: "storage-space-for-rent",
+    title: "Storage space for rent: when to use it and what to ask",
+    description:
+      "When renting a storage unit makes sense, how to compare them, and the questions to ask about access, security, insurance and the contract.",
+    published: "2026-10-19",
+    format: "Guide",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "p",
+        text: "A storage space can solve a real problem: you are moving between homes, downsizing, running a small business from home, or just short on room. It works best when you know what you will store and for how long.",
+      },
+      { type: "h2", text: "When storage makes sense" },
+      {
+        type: "ul",
+        items: [
+          "Between homes, when your new place is not ready yet.",
+          "When you move to a smaller place and want to keep furniture for later.",
+          "For stock, tools or documents for a small business.",
+          "For seasonal items you do not want at home.",
+        ],
+      },
+      { type: "h2", text: "What to ask before you rent" },
+      {
+        type: "ul",
+        items: [
+          "Access: when can you get in, and is there a lift, a ramp or a place for a vehicle to stop?",
+          "Security: locks, CCTV, a guard, and who else has a key.",
+          "Conditions: is it dry and ventilated, and is there any risk of damp, pests or flooding?",
+          "Insurance: whether your items are covered, and who is responsible if something is damaged.",
+          "Rules: what you may not store, and whether you may use the space as a workshop or office.",
+        ],
+      },
+      { type: "h2", text: "Pack and protect your things" },
+      {
+        type: "ol",
+        items: [
+          "Clean and dry everything before it goes in.",
+          "Use strong boxes and label every one.",
+          "Raise items off the floor and leave a path so you can reach them.",
+          "Keep a list of what is inside, with photos.",
+        ],
+      },
+      { type: "h2", text: "Read the contract" },
+      {
+        type: "p",
+        text: "Check the monthly amount, the deposit, the notice period and what happens if you pay late. Keep a copy of the agreement and every receipt.",
+      },
+      {
+        type: "p",
+        text: "Browse [storage space for rent](/storage), and if you are moving city, our [moving checklist](/moving-to-a-new-city) covers the rest of the move.",
+      },
+    ],
+  },
 ];
 
 export function getPost(slug: string): BlogPost | undefined {
