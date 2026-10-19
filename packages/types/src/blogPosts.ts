@@ -31,8 +31,12 @@ export interface BlogPost {
   format: string;
   /** Roughly how long it takes to read, in minutes. */
   readingMinutes: number;
-  /** A real person's name and role, if one wrote or reviewed this post. */
+  /** A real person's name and role, if one wrote this post. */
   author?: { name: string; role?: string };
+  /** A real person who actually read and checked this post, shown as "Reviewed by". Set only after
+   * that person has confirmed they reviewed it, and describe their role honestly: a reviewer who is
+   * not a lawyer must not be presented as one, however legal the topic. */
+  reviewedBy?: { name: string; role?: string };
   body: BlogBlock[];
 }
 

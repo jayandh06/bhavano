@@ -96,6 +96,15 @@ describe("blog posts", () => {
     expect(POSTS.filter((p) => p.author)).toEqual([]);
   });
 
+  it("name only approved real people as reviewers", () => {
+    // A "Reviewed by" line is a claim that this person read the post. Add a name here only once they
+    // have agreed to it, and attach it only to posts they actually reviewed.
+    const APPROVED_REVIEWERS = new Set(["Jayandhan Rajasundaram", "Anitha Narayanasamy"]);
+    for (const post of POSTS) {
+      if (post.reviewedBy) expect(APPROVED_REVIEWERS.has(post.reviewedBy.name), post.slug).toBe(true);
+    }
+  });
+
   it("make no numeric claims about prices, rents or percentages", () => {
     for (const post of POSTS) {
       const all = post.body.flatMap(textsOf).join(" ");

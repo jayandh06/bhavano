@@ -35,7 +35,8 @@ export default function BlogPostScreen() {
     <StaticPageLayout title={post.title} updated={formatDate(post.updated ?? post.published)}>
       <Text style={{ fontSize: 13, color: colors.muted }}>
         {bylineFor(post)}
-        {post.author?.role ? `, ${post.author.role}` : ""} · {post.readingMinutes} min read
+        {post.author?.role ? `, ${post.author.role}` : ""}
+        {post.reviewedBy ? ` · Reviewed by ${post.reviewedBy.name}${post.reviewedBy.role ? `, ${post.reviewedBy.role}` : ""}` : ""} · {post.readingMinutes} min read
       </Text>
       <BlogBody blocks={post.body} />
       {more.length > 0 && (

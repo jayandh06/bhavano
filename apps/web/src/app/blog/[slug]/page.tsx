@@ -81,7 +81,15 @@ export default async function BlogPostPage({ params }: Props) {
 
       <p className="m-0 text-[13px] text-muted">
         {bylineFor(post)}
-        {post.author?.role ? `, ${post.author.role}` : ""} · {post.readingMinutes} min read ·{" "}
+        {post.author?.role ? `, ${post.author.role}` : ""}
+        {post.reviewedBy && (
+          <>
+            {" "}
+            · Reviewed by {post.reviewedBy.name}
+            {post.reviewedBy.role ? `, ${post.reviewedBy.role}` : ""}
+          </>
+        )}{" "}
+        · {post.readingMinutes} min read ·{" "}
         <Link href="/blog" className="text-green font-bold">
           All articles
         </Link>
