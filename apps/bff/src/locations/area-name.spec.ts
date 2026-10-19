@@ -27,4 +27,18 @@ describe('cleanAreaName', () => {
       BadRequestException,
     );
   });
+
+  it('capitalises a name typed entirely in lowercase, and leaves a mixed-case name alone', () => {
+    expect(cleanAreaName('kurasi road')).toBe('Kurasi Road');
+    expect(cleanAreaName("raju's colony")).toBe("Raju's Colony");
+    expect(cleanAreaName('HSR Layout')).toBe('HSR Layout');
+    expect(cleanAreaName('K P H B Phase 1')).toBe('K P H B Phase 1');
+  });
+
+  it('refuses a link and directions', () => {
+    expect(() => cleanAreaName('https://maps.app.goo.gl/91zcDPiV53FdMejy9')).toThrow(BadRequestException);
+    expect(() => cleanAreaName('Near Pani Tanki More (Clock Tower)')).toThrow(BadRequestException);
+    expect(() => cleanAreaName('Opposite City Mall')).toThrow(BadRequestException);
+    expect(cleanAreaName('Nearby Colony')).toBe('Nearby Colony');
+  });
 });
