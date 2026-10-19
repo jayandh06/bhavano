@@ -211,3 +211,19 @@ select {
   background-size: 12px 8px !important;
   padding-right: 34px !important;
 }
+
+/* A row ticked for a bulk action, and the row that was just clicked open (stays lit while the next
+   page loads). Classes, not inline backgrounds, so the hover rule above still works on them. */
+.admin-table-row.admin-table-row-selected {
+  background: color-mix(in srgb, var(--gold) 16%, var(--surface));
+}
+
+.admin-table-row.admin-table-row-active {
+  background: color-mix(in srgb, var(--green) 14%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.admin-table-row:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: -2px;
+}

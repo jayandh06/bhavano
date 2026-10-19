@@ -22,7 +22,6 @@ const COLUMNS: { label: string; field?: AreaOverviewSortField }[] = [
   { label: "Status", field: "status" },
   { label: "Reviewed by" },
   { label: "Updated", field: "updated" },
-  { label: "" },
 ];
 
 export function AreaOverviewsTable({
@@ -41,6 +40,8 @@ export function AreaOverviewsTable({
   const [panel, setPanel] = useState<"publish" | null>(null);
   const [ticked, setTicked] = useState<boolean[]>(AREA_OVERVIEW_REVIEW_CHECKLIST.map(() => false));
   const [busy, setBusy] = useState(false);
+  /** The row that was just clicked open: it stays highlighted while the editor page loads. */
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const [report, setReport] = useState<{ kind: "ok" | "error"; text: string; failures: string[] } | null>(null);
 
   // Only rows that have text can be published; a row with no text yet has nothing to approve.
@@ -54,6 +55,19 @@ export function AreaOverviewsTable({
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setSelected(next);
+  }
+
+  /** A plain click opens the editor in this tab; ctrl/cmd-click opens it in a new one. The checkbox
+   * cell stops its own clicks from reaching here. A plain handler rather than a stretched link,
+   * for the reason given in AdminListingsTable. */
+  function openRow(event: { metaKey: boolean; ctrlKey: boolean }, areaId: string) {
+    const href = `/area-overviews/${areaId}`;
+    if (event.metaKey || event.ctrlKey) {
+      window.open(href, "_blank");
+      return;
+    }
+    setOpeningId(areaId);
+    router.push(href);
   }
 
   async function run(status: "published" | "draft") {
@@ -177,8 +191,18 @@ export function AreaOverviewsTable({
           </thead>
           <tbody>
             {items.map((row) => (
-              <tr key={row.areaId} style={{ borderTop: "1px solid var(--border)" }}>
-                <td style={tdStyle}>
+              <tr
+                key={row.areaId}
+                className={`admin-table-row${selected.has(row.areaId) ? " admin-table-row-selected" : ""}${openingId === row.areaId ? " admin-table-row-active" : ""}`}
+                tabIndex={0}
+                aria-label={`Open ${row.areaName}, ${row.cityName}`}
+                onClick={(e) => openRow(e, row.areaId)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && e.target === e.currentTarget) openRow(e, row.areaId);
+                }}
+                style={{ borderTop: "1px solid var(--border)" }}
+              >
+                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     aria-label={`Select ${row.areaName}`}
@@ -198,11 +222,6 @@ export function AreaOverviewsTable({
                 </td>
                 <td style={tdStyle}>{row.reviewedByName ?? "—"}</td>
                 <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{row.updatedAt ? formatDateTime(row.updatedAt) : "—"}</td>
-                <td style={tdStyle}>
-                  <FullPageLink href={`/area-overviews/${row.areaId}`} style={{ color: "var(--green)", fontWeight: 700 }}>
-                    {row.status ? "Open" : "Write"}
-                  </FullPageLink>
-                </td>
               </tr>
             ))}
           </tbody>
