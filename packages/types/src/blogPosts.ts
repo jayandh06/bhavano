@@ -937,6 +937,463 @@ export const POSTS: BlogPost[] = [
       },
     ],
   },
+  {
+    slug: "property-approvals-documents-checklist",
+    title: "Approved property: the documents and approvals to check before you buy",
+    description:
+      "A plain guide to the papers that show a plot, flat or house is legal to buy: title, approvals, RERA, occupancy certificate and khata, and what each one proves.",
+    published: "2026-10-19",
+    format: "Checklist",
+    readingMinutes: 7,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not legal advice. Names, rules and offices differ by state and city, and they change. Have a lawyer read the documents for any purchase, and confirm each item with the issuing authority.",
+      },
+      {
+        type: "p",
+        text: "Two different questions sit behind every property purchase. First: does the seller really own it? Second: was it built or laid out with the permissions the law requires? Different papers answer each one, and a buyer needs both.",
+      },
+      { type: "h2", text: "Papers that show who owns it" },
+      {
+        type: "ul",
+        items: [
+          "The sale deed or title deed in the seller's name, and the earlier deeds that show how ownership reached them.",
+          "An encumbrance certificate, which shows whether the property has loans or other claims registered against it.",
+          "The property tax receipts and the local authority's own record of the owner, such as the khata or mutation entry.",
+        ],
+      },
+      { type: "h2", text: "Approvals that show the land is allowed to be developed" },
+      {
+        type: "ul",
+        items: [
+          "Land use: the land must be permitted for the use you intend, and farmland needs to have been converted for residential use.",
+          "Layout approval: for a plot, the layout should be sanctioned by the planning authority. Read about [DTCP approved plots](/blog/dtcp-approved-plots-explained) and [BDA approved sites in Bengaluru](/blog/bda-approved-sites-bengaluru).",
+        ],
+      },
+      { type: "h2", text: "Approvals that show the building is legal" },
+      {
+        type: "ul",
+        items: [
+          "A sanctioned building plan, and a commencement certificate that allowed construction to start.",
+          "A completion certificate and an [occupancy certificate](/blog/occupancy-certificate-and-completion-certificate) once the building is finished.",
+          "For new projects, a [RERA registration](/blog/rera-explained-for-home-buyers) and the number that goes with it.",
+        ],
+      },
+      { type: "h2", text: "A simple order to work through" },
+      {
+        type: "ol",
+        items: [
+          "Ask the seller for copies of every paper above before you pay a token amount.",
+          "Check each approval with the authority that issued it, not only on the copy you were given.",
+          "Check that names, plot or flat numbers and survey details match across every document.",
+          "Have a lawyer read the title and the approvals, and ask what is missing.",
+          "Pay only after the agreement spells out what you are buying and what happens if a paper turns out to be wrong.",
+        ],
+      },
+      { type: "h2", text: "What approvals can and cannot tell you" },
+      {
+        type: "p",
+        text: "An approval shows that an authority examined the plan or the building against its rules, which lowers the risk of buying something that cannot be built on, financed or sold. It does not prove that the seller owns the property, that the price is fair, or that the work is good. That is why the title papers and your own visit still matter.",
+      },
+      {
+        type: "p",
+        text: "Bhavano checks listings before they go live but does not verify land or building documents. Read [how we check listings and what we don't verify](/trust). Then browse [plots for sale](/plot) or [apartments for sale](/buy/apartment), and see our guides on [buying a plot](/blog/buying-a-plot-checklist) and on [ready-to-move or under-construction homes](/blog/ready-to-move-vs-under-construction).",
+      },
+    ],
+  },
+  {
+    slug: "rera-explained-for-home-buyers",
+    title: "RERA explained: what it is and what it means for a home buyer",
+    description:
+      "What the Real Estate (Regulation and Development) Act is, which projects must register, what you can check, and what a RERA number does and does not promise.",
+    published: "2026-10-19",
+    format: "Explainer",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not legal advice. Each state runs its own RERA authority with its own rules and website. Check the current rules with your state's authority or a lawyer.",
+      },
+      {
+        type: "p",
+        text: "RERA stands for the Real Estate (Regulation and Development) Act, 2016. It is a national law meant to make buying a home from a builder more transparent and to give buyers a place to complain. Each state sets up its own authority to register projects and handle disputes.",
+      },
+      { type: "h2", text: "What the law asks of builders" },
+      {
+        type: "ul",
+        items: [
+          "Register a project with the state authority before advertising or selling it, if it is above the size the law sets.",
+          "Publish key facts about the project: who the promoter is, the approvals held, the layout, the promised completion date and its progress.",
+          "Sell by carpet area, the usable floor area inside the walls, so that buyers can compare fairly.",
+          "Keep a large share of the money collected from buyers in a separate account for that project, so it is used for that project and not moved elsewhere.",
+          "Answer for delay and for defects: the law provides for interest or compensation when possession is late, and for fixing structural defects for a period after handover.",
+        ],
+      },
+      { type: "h2", text: "Why a registered project is more credible" },
+      {
+        type: "p",
+        text: "Registration means the builder has put the project's approvals, plans and timeline on a public record, and can be held to them. It gives you a number to check, a paper trail to compare against what you were told, and an authority to approach if things go wrong. A project that avoids registration when it should register is a warning sign.",
+      },
+      { type: "h2", text: "How to check a project" },
+      {
+        type: "ol",
+        items: [
+          "Ask for the RERA registration number. Genuine projects show it in their advertising.",
+          "Search the number on your state RERA authority's official website.",
+          "Compare the promoter's name, the project name and address, the completion date and the status with what you were told.",
+          "Read the approvals listed there, and check them against the [documents in our checklist](/blog/property-approvals-documents-checklist).",
+        ],
+      },
+      { type: "h2", text: "What RERA does not do" },
+      {
+        type: "ul",
+        items: [
+          "It does not guarantee quality, the price or that the project will finish on time. It gives you remedies if it does not.",
+          "Small projects and some older, completed ones can fall outside it, depending on the state's rules.",
+          "It covers the project, not the neighbourhood, and it does not replace checking the land's title.",
+        ],
+      },
+      {
+        type: "p",
+        text: "If a Bhavano listing shows a RERA number, still check it on the state's website. We do not verify it for you, as explained on our [Trust and Safety page](/trust). Browse [apartments for sale](/buy/apartment), and read our guide on [ready-to-move or under-construction flats](/blog/ready-to-move-vs-under-construction) before you decide.",
+      },
+    ],
+  },
+  {
+    slug: "dtcp-approved-plots-explained",
+    title: "DTCP approved plots: what the approval means and how to check it",
+    description:
+      "What DTCP approval means for a plot or layout, why buying in an approved layout lowers your risk, and how to check an approval before you pay.",
+    published: "2026-10-19",
+    format: "Explainer",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not legal advice. Which body approves layouts, and what it is called, differs by state. Confirm with the planning authority for the area and have a lawyer read the papers.",
+      },
+      {
+        type: "p",
+        text: "DTCP is the Directorate of Town and Country Planning, a state planning department. In several states, for example Tamil Nadu, Telangana and Haryana, it approves layouts and permits development, especially outside the area of a city's own development authority. In other states a different body does this job, so always ask which authority covers the plot you are looking at.",
+      },
+      { type: "h2", text: "What an approved layout is" },
+      {
+        type: "p",
+        text: "A layout is a piece of land divided into plots with roads, drains and shared open spaces. An approved layout is one whose plan the authority has examined and sanctioned: the roads and plot sizes follow its rules, space is set aside for common use, and the land is permitted for residential development.",
+      },
+      { type: "h2", text: "Why plots in an approved layout are more credible" },
+      {
+        type: "ul",
+        items: [
+          "You can usually get permission to build a house on the plot, which is not certain on an unapproved one.",
+          "Banks are more willing to lend against a plot or a house in an approved layout.",
+          "Water, power and road connections are easier to arrange and are planned into the layout.",
+          "Resale is easier, because the next buyer can check the same approval.",
+          "You avoid the risk of notices, penalties or demolition that can follow unapproved development.",
+        ],
+      },
+      { type: "h2", text: "How to check an approval" },
+      {
+        type: "ol",
+        items: [
+          "Ask the seller for the approved layout plan and the approval letter, with its number and date.",
+          "Check that your plot number, its size and its boundaries match the plan.",
+          "Confirm the approval with the planning authority's office or website, not only from the copy you were shown.",
+          "Check that the land was converted for residential use where that is required, and that the roads and open spaces shown in the plan are actually there.",
+          "Read the other papers in our [documents checklist](/blog/property-approvals-documents-checklist).",
+        ],
+      },
+      { type: "h2", text: "What approval does not tell you" },
+      {
+        type: "p",
+        text: "Approval shows the layout meets planning rules. It does not prove that the person selling the plot owns it, that the price is fair or that there is no dispute over the land. Check the title and the encumbrance certificate as well, and see our guide to [buying a plot of land](/blog/buying-a-plot-checklist).",
+      },
+      {
+        type: "p",
+        text: "Bhavano does not verify approvals or land documents; see our [Trust and Safety page](/trust). When you are ready, browse [plots for sale](/plot).",
+      },
+    ],
+  },
+  {
+    slug: "bda-approved-sites-bengaluru",
+    title: "BDA approved sites in Bengaluru: what the approval means for a buyer",
+    description:
+      "What a BDA approved layout or site is in Bengaluru, how it differs from other approvals, why it matters for building and loans, and how to check it.",
+    published: "2026-10-19",
+    format: "Explainer",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not legal advice. Bengaluru's civic and planning bodies, and their names, change over time. Confirm the current position with the authority and a lawyer.",
+      },
+      {
+        type: "p",
+        text: "BDA is the Bengaluru Development Authority, the body that plans the city's growth and forms or approves layouts of residential sites. A BDA approved site is one in a layout that the authority formed itself, or that a private developer built with its sanction. In Bengaluru this is one of the first things a site buyer is asked about.",
+      },
+      { type: "h2", text: "Why it matters in Bengaluru" },
+      {
+        type: "ul",
+        items: [
+          "A site in a sanctioned layout usually has an approved plan, defined roads and civic spaces, and is easier to get permission to build on.",
+          "It is also the usual route to an A khata, the municipal record that shows a property is fully approved. See [A khata and B khata](/blog/a-khata-b-khata-bengaluru).",
+          "Banks are more comfortable lending against a site or a house in an approved layout.",
+          "Sites carved out of farmland without layout approval, often sold as revenue sites, can run into trouble with building permission, loans and resale.",
+        ],
+      },
+      { type: "h2", text: "Do not mix up the different approvals" },
+      {
+        type: "ul",
+        items: [
+          "A BDA approved layout is about the land: whether the plots are sanctioned.",
+          "A sanctioned building plan is about the building you put on it, and the city's municipal authority handles that.",
+          "On the edges of the city, other planning bodies can be the relevant authority instead of the BDA, so ask which one covers the site.",
+        ],
+      },
+      { type: "h2", text: "How to check a BDA approved site" },
+      {
+        type: "ol",
+        items: [
+          "Ask for the layout approval and the approved plan, and match the site number and dimensions to it.",
+          "Check the allotment letter or sale deed, and the chain of ownership behind it.",
+          "Ask for the khata certificate and extract, the property tax receipts and an encumbrance certificate.",
+          "Confirm with the BDA office or its official records that the layout is approved, and that the land is not caught in an acquisition or a dispute.",
+          "Be careful with an advertisement that only says BDA approved. Ask for the paper and check it yourself.",
+        ],
+      },
+      { type: "h2", text: "What it does not tell you" },
+      {
+        type: "p",
+        text: "A layout approval does not prove the seller's title or the fairness of the price. Read our [documents checklist](/blog/property-approvals-documents-checklist) and the guide to [buying a plot](/blog/buying-a-plot-checklist). Bhavano does not verify approvals; see [how we check listings](/trust).",
+      },
+      {
+        type: "p",
+        text: "To look at what is listed, browse [Bengaluru](/bengaluru) or [plots for sale](/plot).",
+      },
+    ],
+  },
+  {
+    slug: "occupancy-certificate-and-completion-certificate",
+    title: "Occupancy certificate and completion certificate: why you should ask for them",
+    description:
+      "What a commencement, completion and occupancy certificate each prove, why an apartment without an occupancy certificate is risky, and what to ask for.",
+    published: "2026-10-19",
+    format: "Explainer",
+    readingMinutes: 6,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not legal advice. What these certificates are called, who issues them and how they are combined differs by state and city. Confirm with the local authority and a lawyer.",
+      },
+      {
+        type: "p",
+        text: "A new building passes through three official stages. Each one produces a paper, and each paper answers a different question. When you buy a ready-to-move flat or house, the last one matters most.",
+      },
+      { type: "h2", text: "The three certificates" },
+      {
+        type: "ul",
+        items: [
+          "Commencement certificate: the local authority's permission to start building under the sanctioned plan.",
+          "Completion certificate: confirms that the building was built according to the sanctioned plan.",
+          "Occupancy certificate: confirms the building is fit to be lived in, meaning it follows the plan and meets safety and service requirements such as fire safety and water and drainage.",
+        ],
+      },
+      {
+        type: "p",
+        text: "In some places the completion and occupancy certificates are issued together or under one name. What you want to see is the authority's written confirmation that the finished building can legally be occupied.",
+      },
+      { type: "h2", text: "Why a building with an occupancy certificate is more credible" },
+      {
+        type: "ul",
+        items: [
+          "It is proof that the authority has inspected the building and found it matches the approved plan.",
+          "Permanent water and electricity connections usually depend on it, and a builder can be asked for it by the society.",
+          "Banks often ask for it before lending on a ready home, and it makes later resale easier.",
+          "Without it you can face penalties, notices or refused services, and the risk can fall on the owners.",
+        ],
+      },
+      { type: "h2", text: "What to ask for" },
+      {
+        type: "ol",
+        items: [
+          "A copy of the occupancy certificate and the completion certificate, and the sanctioned plan they refer to.",
+          "Check the address, the tower or wing and the number of floors on the certificate against the one you are buying in. Some projects get partial certificates.",
+          "Ask whether the building has any deviations from the plan, and how they were handled.",
+          "Ask for the fire and lift clearances where they apply.",
+          "For a resale, ask the seller for the original certificate from the builder.",
+        ],
+      },
+      { type: "h2", text: "Under-construction and older buildings" },
+      {
+        type: "p",
+        text: "An under-construction project will not have an occupancy certificate yet, which is normal. Check its approvals and its [RERA registration](/blog/rera-explained-for-home-buyers) instead, and insist that the agreement says the builder must hand over with the certificate. Some older buildings were built before today's rules or never got one, so ask the local authority and a lawyer how that affects the property.",
+      },
+      {
+        type: "p",
+        text: "Our [flat viewing checklist](/blog/flat-viewing-checklist) covers what to inspect in person, and the [documents checklist](/blog/property-approvals-documents-checklist) lists every paper to ask for. Bhavano does not verify certificates; see [Trust and Safety](/trust). Browse [apartments for sale](/buy/apartment).",
+      },
+    ],
+  },
+  {
+    slug: "a-khata-b-khata-bengaluru",
+    title: "A khata and B khata in Bengaluru: what they mean when you buy",
+    description:
+      "What a khata is, how an A khata differs from a B khata, why it matters for loans, building and resale in Bengaluru, and what a khata does not prove.",
+    published: "2026-10-19",
+    format: "Explainer",
+    readingMinutes: 5,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not legal advice. Khata rules, the offices that issue it and the process of converting one kind to another change. Confirm the current position with the authority and a lawyer.",
+      },
+      {
+        type: "p",
+        text: "In Bengaluru, a khata is the city authority's record of a property, used mainly to collect property tax. You will hear buyers asked whether a site or flat has an A khata or a B khata. The difference says a lot about how the property is treated by the authority, by banks and by the next buyer.",
+      },
+      { type: "h2", text: "A khata" },
+      {
+        type: "ul",
+        items: [
+          "Generally given to a property that stands on an approved layout and meets the authority's rules.",
+          "Treated as fully legal in the authority's records.",
+          "Easier to get a bank loan against, to get a building plan sanctioned for, and to resell.",
+        ],
+      },
+      { type: "h2", text: "B khata" },
+      {
+        type: "ul",
+        items: [
+          "Generally given to properties that lack some approval, for example a site in an unapproved layout or a building with deviations.",
+          "The owner can usually still pay property tax, but the property is not treated as fully approved.",
+          "Banks may refuse to lend, new building permission can be hard to get, and resale is harder. Karnataka has run schemes to move some B khata properties to A khata, so ask what is possible for the one you are looking at.",
+        ],
+      },
+      { type: "h2", text: "Why this makes an approved property more credible" },
+      {
+        type: "p",
+        text: "A khata is a sign that the layout and the building have passed the authority's checks. That is why the questions about [BDA approved sites](/blog/bda-approved-sites-bengaluru), a sanctioned building plan and an [occupancy certificate](/blog/occupancy-certificate-and-completion-certificate) usually come together with the khata question.",
+      },
+      { type: "h2", text: "What a khata does not prove" },
+      {
+        type: "ul",
+        items: [
+          "It is a tax and records entry, not proof of ownership. Ownership comes from the sale deed and the chain of earlier deeds.",
+          "It does not show whether the property has loans or claims against it. That is what an encumbrance certificate is for.",
+          "A khata can be in someone else's name by mistake, so check the name against the sale deed.",
+        ],
+      },
+      { type: "h2", text: "What to ask for" },
+      {
+        type: "ol",
+        items: [
+          "The khata certificate and the khata extract, and check which kind it is.",
+          "The latest property tax receipts.",
+          "The sale deed and an encumbrance certificate.",
+          "The layout approval and, for a building, the sanctioned plan and occupancy certificate.",
+        ],
+      },
+      {
+        type: "p",
+        text: "See the full list in our [documents checklist](/blog/property-approvals-documents-checklist). Bhavano does not verify khata or other documents; read [how we check listings](/trust). To see what is listed, browse [Bengaluru](/bengaluru).",
+      },
+    ],
+  },
+  {
+    slug: "construction-stage-to-buy-from-builder",
+    title: "Which construction stage is best to buy an apartment or villa from a builder?",
+    description:
+      "Pre-launch, foundation, structure, finishing or ready to move: what each stage of a builder's project offers a buyer, what it risks, and what to check at each.",
+    published: "2026-10-19",
+    format: "Guide",
+    readingMinutes: 8,
+    body: [
+      {
+        type: "note",
+        text: "This is general information, not financial or legal advice. Rules for builders and buyers differ by state, and every project is different. Have a lawyer read the builder's agreement before you sign or pay.",
+      },
+      {
+        type: "p",
+        text: "There is no single best stage. Buying early usually means a lower price and more choice, but a longer wait and more risk. Buying late means certainty and a home you can see, but a higher price and fewer options. The right stage depends on how soon you need the home, how much risk you can carry and how well you can check the builder.",
+      },
+      { type: "h2", text: "The stages of a builder's project" },
+      {
+        type: "ol",
+        items: [
+          "Pre-launch: the project is announced, often before it has all its approvals.",
+          "Launch and early construction: approvals are in place and work is starting, with the site cleared and the foundation being laid.",
+          "Structure under way: the frame and floors are rising, tower by tower or villa by villa.",
+          "Finishing: the structure is complete and the walls, flooring, plumbing, wiring and fittings are going in.",
+          "Near handover: the building is finished and waiting for its final certificates.",
+          "Ready to move: the building has its occupancy certificate and you can take possession.",
+        ],
+      },
+      { type: "h2", text: "What each stage offers, and what it risks" },
+      {
+        type: "h2",
+        text: "Pre-launch",
+      },
+      {
+        type: "p",
+        text: "Prices and choice are at their best, but this is the riskiest point. Under the RERA law, a project above a certain size must be registered before it is advertised or sold, so be very cautious of an offer that asks for money before a registration number exists. Read [RERA explained](/blog/rera-explained-for-home-buyers).",
+      },
+      { type: "h2", text: "Launch and early construction" },
+      {
+        type: "p",
+        text: "Approvals and registration should now be in place, so you can check them. You still wait a long time, the project can slip, and the builder's later finances matter. This stage suits buyers who can wait, who have a safety margin and who have checked the builder's earlier projects.",
+      },
+      { type: "h2", text: "Structure under way" },
+      {
+        type: "p",
+        text: "Many cautious buyers prefer this middle ground. You can see real progress on site and compare it with the timeline the builder filed, and you still have time to pay in stages. Risk is lower than at the start, though delays in finishing and in getting certificates are still possible.",
+      },
+      { type: "h2", text: "Finishing, and near handover" },
+      {
+        type: "p",
+        text: "Uncertainty about whether the project will be built has mostly gone. Now the questions are quality and timing: whether the finishing matches what was promised, and when the final certificates will arrive. Inspect the actual unit, or a finished sample, and ask when the occupancy certificate is expected.",
+      },
+      { type: "h2", text: "Ready to move" },
+      {
+        type: "p",
+        text: "You can see exactly what you are buying, move in or rent it out soon, and check the [occupancy certificate](/blog/occupancy-certificate-and-completion-certificate) before you pay. The price is usually higher and the best units may be gone. For many families this is the lowest-stress choice.",
+      },
+      { type: "h2", text: "Apartment or villa: what changes" },
+      {
+        type: "ul",
+        items: [
+          "Apartment: you buy a unit and a share of the land. Progress is tower by tower, so check the stage of your own tower, not just the project. A big project may get certificates for some towers first, and shared facilities such as a clubhouse often finish last.",
+          "Villa: you are often buying a plot and a house together, sometimes under two agreements. Check the layout approval and what has been built on your own plot, because villas in one community are frequently built in phases. Promised roads, drains and shared facilities can lag behind the homes.",
+          "Villa customisation: an early stage may let you choose the layout or fittings. Get every change in writing, with its price and its effect on the delivery date.",
+        ],
+      },
+      { type: "h2", text: "Who should buy at which stage" },
+      {
+        type: "ul",
+        items: [
+          "You need a home soon, or want the least risk: ready to move, or finished and awaiting its final certificate.",
+          "You can wait and want to spread the payments: structure under way, in a registered project by a builder with a record of on-time delivery.",
+          "You want the best price and choice and accept real risk: an early stage, only with registration and approvals in place, a builder you have checked, and money to spare if delivery is late.",
+        ],
+      },
+      { type: "h2", text: "Checks that apply at every stage" },
+      {
+        type: "ol",
+        items: [
+          "Get the RERA registration number and check the project's page on the state authority's site, comparing its stated completion date and progress with what you were told.",
+          "Check the approvals, using our [documents checklist](/blog/property-approvals-documents-checklist).",
+          "Visit completed projects by the same builder and talk to the residents about delays and after-sales service.",
+          "Prefer a payment schedule tied to construction progress rather than to dates, and read what the agreement says happens if the builder is late.",
+          "If you borrow, ask the bank how it releases the loan. It usually pays out in stages as work progresses, and you pay interest on what has been released. See our [EMI guide](/blog/home-loan-emi-explained).",
+          "Visit the site yourself and take dated photographs, then compare them with the stage the builder claims.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Bhavano does not verify builders' approvals or progress, as explained on our [Trust and Safety page](/trust). To compare the options, browse [apartments for sale](/buy/apartment) and [villas for sale](/buy/villa), and read our shorter guide on [ready-to-move and under-construction flats](/blog/ready-to-move-vs-under-construction).",
+      },
+    ],
+  },
 ];
 
 export function getPost(slug: string): BlogPost | undefined {

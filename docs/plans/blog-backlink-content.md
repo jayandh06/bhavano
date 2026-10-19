@@ -40,3 +40,25 @@ Category routes checked live before linking: `/plot`, `/pg`, `/coworking` and `/
 national roots (`/buy/plot` and similar redirect to them); `/buy` and `/rent-lease` work for
 apartment, house, villa and commercial. The sitemap picks up new posts automatically. The mobile
 app bundles the same posts, so they reach the app with the next release.
+
+## Third batch (2026-10-19): approvals and documents
+Six explainers on what each approval or document is, why a property that has it is more credible,
+and what it does not prove. Written to the blog's rules (no figures, no legal advice, no invented
+author) and each opens with a "general information, not legal advice; rules differ by state" note.
+
+| Post | Covers |
+|---|---|
+| `property-approvals-documents-checklist` | the hub: title papers, land use, layout approval, building approvals, RERA; links to the rest |
+| `rera-explained-for-home-buyers` | what the Act requires of builders, how to check a registration number, its limits |
+| `dtcp-approved-plots-explained` | the state planning department's layout approval, why approved layouts are safer, how to check |
+| `bda-approved-sites-bengaluru` | Bengaluru Development Authority layouts, how they differ from building-plan approval |
+| `occupancy-certificate-and-completion-certificate` | commencement, completion and occupancy certificates, partial certificates, what to ask for |
+| `a-khata-b-khata-bengaluru` | the khata record, A versus B, and what a khata does not prove |
+| `construction-stage-to-buy-from-builder` | pre-launch to ready-to-move: what each stage offers and risks, apartment versus villa, who suits which stage, and the checks that apply at every stage |
+
+**These are regulatory topics and must be reviewed by a qualified person before publishing.**
+They were written from general knowledge, deliberately hedged, and the points most worth checking
+are: which states DTCP approves layouts in, how Bengaluru's civic and planning bodies are named now,
+what A and B khata mean in current practice and whether conversion schemes are open, and how
+completion and occupancy certificates are combined in each state. Add a real reviewer's name as a
+"reviewed by" line once one exists (see the authorship rules at the top of `blogPosts.ts`).
