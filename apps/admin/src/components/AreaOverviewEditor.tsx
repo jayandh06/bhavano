@@ -5,13 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   AREA_OVERVIEW_REVIEW_CHECKLIST,
   validateAreaOverviewContent,
-  type AdminAreaOverviewDetail,
   type AreaFaq,
   type AreaOverviewContent,
-  type AreaOverviewDto,
   type AreaOverviewStatus,
 } from "@bhavano/types/areaOverview";
-import { saveAreaOverviewAction, setAreaOverviewStatusAction } from "@/app/actions/area-overviews";
 import { formatDateTime } from "@/lib/formatDateTime";
 
 const STATUS_LABEL: Record<AreaOverviewStatus, string> = { draft: "Draft", in_review: "In review", published: "Published" };
@@ -21,12 +18,36 @@ const STATUS_COLOR: Record<AreaOverviewStatus, string> = { draft: "var(--muted)"
 const toText = (items: string[]) => items.join("\n\n");
 const fromText = (text: string) => text.split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean);
 
-export function AreaOverviewEditor({ detail }: { detail: AdminAreaOverviewDetail }) {
+/** What the editor needs to know about a saved overview. Area and city overviews both satisfy it,
+ * so one editor serves both. */
+export interface OverviewState extends AreaOverviewContent {
+  status: AreaOverviewStatus;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+}
+
+export type OverviewActionResult = { success: true; overview: OverviewState } | { success: false; error: string };
+
+/** Edits and reviews one overview, for an area or a city. The page supplies the server actions that
+ * save it and change its status, and the title the preview shows. */
+export function AreaOverviewEditor({
+  subjectId,
+  previewTitle,
+  overview,
+  save: saveAction,
+  setStatus: setStatusAction,
+}: {
+  subjectId: string;
+  previewTitle: string;
+  overview: OverviewState | null;
+  save: (id: string, content: AreaOverviewContent) => Promise<OverviewActionResult>;
+  setStatus: (id: string, status: AreaOverviewStatus, checklistConfirmed: boolean) => Promise<OverviewActionResult>;
+}) {
   const router = useRouter();
-  const [saved, setSaved] = useState<AreaOverviewDto | null>(detail.overview);
-  const [about, setAbout] = useState(toText(detail.overview?.about ?? []));
-  const [gettingAround, setGettingAround] = useState(toText(detail.overview?.gettingAround ?? []));
-  const [faqs, setFaqs] = useState<AreaFaq[]>(detail.overview?.faqs ?? [{ question: "", answer: "" }]);
+  const [saved, setSaved] = useState<OverviewState | null>(overview);
+  const [about, setAbout] = useState(toText(overview?.about ?? []));
+  const [gettingAround, setGettingAround] = useState(toText(overview?.gettingAround ?? []));
+  const [faqs, setFaqs] = useState<AreaFaq[]>(overview?.faqs ?? [{ question: "", answer: "" }]);
   const [ticked, setTicked] = useState<boolean[]>(AREA_OVERVIEW_REVIEW_CHECKLIST.map(() => false));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -45,7 +66,7 @@ export function AreaOverviewEditor({ detail }: { detail: AdminAreaOverviewDetail
   const status = saved?.status ?? null;
   const allTicked = ticked.every(Boolean);
 
-  async function run(task: () => Promise<{ success: true; overview: AreaOverviewDto } | { success: false; error: string }>, done: string) {
+  async function run(task: () => Promise<OverviewActionResult>, done: string) {
     setBusy(true);
     setMessage(null);
     const result = await task();
@@ -60,9 +81,9 @@ export function AreaOverviewEditor({ detail }: { detail: AdminAreaOverviewDetail
     router.refresh();
   }
 
-  const save = () => run(() => saveAreaOverviewAction(detail.areaId, content), "Saved as a draft.");
+  const save = () => run(() => saveAction(subjectId, content), "Saved as a draft.");
   const changeStatus = (next: AreaOverviewStatus, done: string) =>
-    run(() => setAreaOverviewStatusAction(detail.areaId, next, allTicked), done);
+    run(() => setStatusAction(subjectId, next, allTicked), done);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -156,7 +177,7 @@ export function AreaOverviewEditor({ detail }: { detail: AdminAreaOverviewDetail
       <Section title="Preview">
         <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 16, background: "var(--surface)", maxWidth: 720 }}>
           <h2 style={{ fontSize: 18, margin: "0 0 8px" }}>
-            About {detail.areaName}, {detail.cityName}
+            {previewTitle}
           </h2>
           {content.about.map((t, i) => (
             <p key={i} style={previewP}>{t}</p>

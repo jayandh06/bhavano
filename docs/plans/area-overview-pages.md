@@ -62,3 +62,30 @@ reviewed and published in the admin app under **Area overviews** (`/area-overvie
    a block that shows it only above a minimum count.
 3. Write 30 to 50 more areas for the cities with the most listings. Measure impressions and clicks
    on those URLs before widening.
+
+## City overviews (2026-10-19)
+The same review system, for a city's own page (`/{city}`), in its own table so an area's rules and
+a city's cannot get tangled.
+
+- **Data:** `CityOverview` (one row per city; same fields, `AreaOverviewStatus` and approval record
+  as `AreaOverview`). Migration `20261019120000_city_overview`.
+- **BFF:** `CityOverviewsService` (reuses `cleanContent`, `sameContent`, `toFaqs` from the area
+  service and the same shared validator). Public `GET /city-overviews/:cityId` returns published
+  text only. Admin `GET/PUT /admin/city-overviews`, `PATCH .../:cityId/status`. No bulk endpoint:
+  there are only a few dozen cities.
+- **Admin:** **City overviews** under Moderation. `AreaOverviewEditor` is now generic (the page
+  passes the id, the preview title and the two server actions), so one editor serves both.
+- **Web:** `CityOverview.tsx` on the plain city page only, page 1, below the listings, with
+  `FAQPage` markup. Hidden until a city overview is published.
+- **First content:** eight city drafts (Bengaluru, Delhi NCR, Mumbai, Hyderabad, Pune, Chennai,
+  Kolkata, Ahmedabad) in `apps/bff/scripts/city-overview-drafts.ts`, loaded as drafts by the same
+  seed script. All unreviewed.
+
+## Homepage Popular areas, and Area filter on All (2026-10-19)
+- **Popular areas:** `GET /area-overviews` lists areas with a *published* overview, busiest first.
+  The plain homepage shows them as links under "Popular areas" and hides the block while none are
+  published, so a link never leads to a page with nothing extra on it. Cached for an hour.
+- **Area filter on the All tab:** inside a chosen city (the city page and the homepage) the All tab
+  now shows a strip with the Area filter only. The other filters stay off All, because transaction,
+  type, price and BHK do not mean one thing across a mixed grid; a place means the same thing
+  whatever is listed.

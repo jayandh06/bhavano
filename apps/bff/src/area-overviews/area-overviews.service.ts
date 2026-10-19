@@ -8,6 +8,7 @@ import {
   type AreaOverviewSortField,
   type BulkAreaOverviewItemResult,
   type BulkAreaOverviewResult,
+  type PublishedAreaOverviewLink,
   type AreaFaq,
   type AreaOverviewContent,
   type AreaOverviewDto,
@@ -30,7 +31,7 @@ export interface AreaOverviewListOptions {
   limit: number;
 }
 
-function toFaqs(value: Prisma.JsonValue): AreaFaq[] {
+export function toFaqs(value: Prisma.JsonValue): AreaFaq[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     if (item && typeof item === 'object' && 'question' in item && 'answer' in item) {
@@ -79,6 +80,23 @@ export class AreaOverviewsService {
   async getPublished(areaId: string): Promise<AreaOverviewDto | null> {
     const row = await this.prisma.areaOverview.findFirst({ where: { areaId, status: 'published' } });
     return row ? toDto(row) : null;
+  }
+
+  /** Areas whose overview is published, busiest first, for the homepage's "Popular areas" links. Only
+   * published text counts, so a link never leads to a page that has nothing extra to show. */
+  async listPublished(limit: number): Promise<PublishedAreaOverviewLink[]> {
+    return this.prisma.$queryRaw<PublishedAreaOverviewLink[]>`
+      SELECT a.id AS "areaId", c."name" AS "cityName", a."name" AS "areaName",
+             COUNT(l.id) FILTER (WHERE l."status" = 'active' AND l."publishState" = 'live')::int AS "activeListings"
+      FROM "AreaOverview" o
+      JOIN "Area" a ON a.id = o."areaId"
+      JOIN "City" c ON c.id = a."cityId"
+      LEFT JOIN "Listing" l ON l."areaId" = a.id
+      WHERE o."status" = 'published'
+      GROUP BY a.id, c."name", a."name"
+      HAVING COUNT(l.id) FILTER (WHERE l."status" = 'active' AND l."publishState" = 'live') > 0
+      ORDER BY "activeListings" DESC, c."name", a."name"
+      LIMIT ${limit}`;
   }
 
   /** Every area that has active listings or already has an overview, filtered and sorted for the

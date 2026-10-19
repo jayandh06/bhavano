@@ -26,6 +26,14 @@ export interface AreaOverviewDto extends AreaOverviewContent {
   updatedAt: string;
 }
 
+/** An area with a published overview, for the homepage's "Popular areas" links. */
+export interface PublishedAreaOverviewLink {
+  areaId: string;
+  cityName: string;
+  areaName: string;
+  activeListings: number;
+}
+
 /** One row of the admin list: every area with listings, with its overview status if it has one. */
 export interface AdminAreaOverviewRow {
   areaId: string;
@@ -118,4 +126,35 @@ export function validateAreaOverviewContent(content: AreaOverviewContent): strin
     problems.push("Remove web addresses and email addresses.");
   }
   return problems;
+}
+
+/** City overviews share the area overview's content, statuses, checklist and validator. */
+export interface CityOverviewDto extends AreaOverviewContent {
+  cityId: string;
+  status: AreaOverviewStatus;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
+export interface AdminCityOverviewRow {
+  cityId: string;
+  cityName: string;
+  activeListings: number;
+  status: AreaOverviewStatus | null;
+  updatedAt: string | null;
+  reviewedByName: string | null;
+}
+
+export interface AdminCityOverviewsPage {
+  items: AdminCityOverviewRow[];
+  total: number;
+}
+
+export interface AdminCityOverviewDetail {
+  cityId: string;
+  cityName: string;
+  activeListings: number;
+  overview: CityOverviewDto | null;
 }

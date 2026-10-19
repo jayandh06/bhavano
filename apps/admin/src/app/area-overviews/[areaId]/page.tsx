@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { fetchAreaOverview } from "@/lib/bff";
 import { FullPageLink } from "@/components/FullPageLink";
 import { AreaOverviewEditor } from "@/components/AreaOverviewEditor";
+import { saveAreaOverviewAction, setAreaOverviewStatusAction } from "@/app/actions/area-overviews";
 
 export default async function AreaOverviewEditPage({ params }: { params: Promise<{ areaId: string }> }) {
   const { accessToken } = await requireAdmin();
@@ -21,7 +22,13 @@ export default async function AreaOverviewEditPage({ params }: { params: Promise
           {detail.activeListings} active listing{detail.activeListings === 1 ? "" : "s"}. Editing approved or in-review
           text sends it back to draft, so it needs another review before it goes live.
         </p>
-        <AreaOverviewEditor detail={detail} />
+        <AreaOverviewEditor
+          subjectId={detail.areaId}
+          previewTitle={`About ${detail.areaName}, ${detail.cityName}`}
+          overview={detail.overview}
+          save={saveAreaOverviewAction}
+          setStatus={setAreaOverviewStatusAction}
+        />
       </div>
     </div>
   );

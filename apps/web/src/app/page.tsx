@@ -4,7 +4,15 @@ import type { ListingCategory } from "@bhavano/types";
 import { slugify } from "@bhavano/types/slugify";
 import { auth } from "@/auth";
 import { platformFeeFor } from "@bhavano/types/platformFeePricing";
-import { BffAuthError, fetchAreaListingCounts, fetchAreas, fetchCities, fetchListings, fetchPlanPricing } from "@/lib/bff";
+import {
+  BffAuthError,
+  fetchAreaListingCounts,
+  fetchAreas,
+  fetchCities,
+  fetchListings,
+  fetchPlanPricing,
+  fetchPublishedAreaOverviewLinks,
+} from "@/lib/bff";
 import { rankAreasForLinks } from "@/lib/areaRanking";
 import { AD_LANDING_INTENTS, resolveAdLandingIntent } from "@/lib/adLandingCard";
 import { AdLandingCard, LISTINGS_ANCHOR_ID } from "@/components/home/AdLandingCard";
@@ -251,6 +259,8 @@ export default async function HomePage({
     !(bedrooms && bedrooms.length > 0) &&
     !(areaIds && areaIds.length > 0) &&
     !noAreaSelected;
+  // Only the plain homepage shows the block, so only it pays for the lookup.
+  const popularAreas = isPlainRoot ? await fetchPublishedAreaOverviewLinks(12) : [];
   const displayHeading = isPlainRoot ? "Buy, rent and list property across India" : heading;
 
   function buildPageHref(nextPage: number): string {
@@ -311,10 +321,18 @@ export default async function HomePage({
           <AdLandingCard intent={adLanding.intent} preview={adLanding.preview} freeToPost={freeToPost} />
         )}
         {showFeaturedRail && <FeaturedRail items={featuredRailItems} />}
-        {/* The All tab mixes every category together, so none of these filters mean one
-          * consistent thing across a PG, a plot, and a sofa in the same grid — same reasoning as
-          * BrowseListingsView's own filter row, which hides itself the same way. Picking a real
-          * tab is one tap away. */}
+        {/* The All tab mixes every category together, so the category filters don't mean one
+          * consistent thing across a PG, a plot and a sofa in the same grid — same reasoning as
+          * BrowseListingsView's own filter row. Area is the exception, and is offered on its own
+          * once a city is chosen. */}
+        {activeTab.value === "all" && resolvedCity && cityAreas.length > 1 && (
+          <div className="mb-3 flex gap-2.5 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
+            <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
+              <Icon name="filter" /> Filters
+            </span>
+            <AreaFilter cityName={resolvedCity.name} areas={cityAreas} />
+          </div>
+        )}
         {activeTab.value !== "all" && (
           // Same surface-alt/border/rounded/padding treatment as BrowseListingsView's filter row
           // (mb-3 there too) — this row used to be a bare, unstyled flex-wrap with no container
@@ -386,7 +404,7 @@ export default async function HomePage({
         {!noAreaSelected && (
           <Pagination currentPage={page} totalPages={Math.max(totalPages, 1)} buildHref={buildPageHref} />
         )}
-        {isPlainRoot && <HomeSeoSections popularCities={popularCities} />}
+        {isPlainRoot && <HomeSeoSections popularCities={popularCities} popularAreas={popularAreas} />}
       </main>
       <Footer currentCityName={resolvedCity?.name} cityAreas={linkAreas} allCities={allCities} />
     </div>

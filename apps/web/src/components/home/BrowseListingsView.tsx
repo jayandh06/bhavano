@@ -23,6 +23,7 @@ import { SortDropdown } from "./SortDropdown";
 import { Pagination } from "./Pagination";
 import { Footer } from "./Footer";
 import { AreaOverview } from "./AreaOverview";
+import { CityOverview } from "./CityOverview";
 import { BrowseSeoIntro } from "./BrowseSeoIntro";
 import { JsonLd } from "@/components/JsonLd";
 import { resolvePopularSearches } from "@/lib/popularSearches";
@@ -188,11 +189,20 @@ export async function BrowseListingsView({
             part="intro"
           />
         )}
-        {/* The All tab shows every category mixed together — none of these filters (transaction,
-          * asset type, price, BHK, facets) mean one consistent thing across a PG, a plot, and a
-          * sofa all in the same grid, so none of them are offered here. Area is the one exception
-          * that would still make sense, but it stays out too for a simpler rule: All means no
-          * filter row at all, not "some of them." Picking a real tab is one tap away. */}
+        {/* The All tab shows every category mixed together — transaction, asset type, price, BHK
+          * and facets don't mean one consistent thing across a PG, a plot and a sofa in one grid,
+          * so none of those are offered here. Area is the exception: a place means the same thing
+          * whatever is being listed, and without it a visitor on /{city} had no way to narrow to
+          * an area from this tab at all (the area pages were reachable only after choosing a real
+          * tab). So inside a city the All tab gets a strip with the Area filter alone. */}
+        {activeIntent === "all" && cityName && cityAreas.length > 1 && (
+          <div className="flex gap-2.5 mb-3 flex-wrap items-start bg-surface-alt border border-border rounded-xl p-2.5">
+            <span className="flex items-center gap-1.5 self-center pl-0.5 text-[13px] font-semibold text-muted" aria-hidden>
+              <Icon name="filter" /> Filters
+            </span>
+            <AreaFilter cityName={cityName} areas={cityAreas} currentSegments={currentSegments} />
+          </div>
+        )}
         {activeIntent !== "all" && (
           // Its own surface-alt panel rather than sitting directly on the page bg — this row is a
           // distinct control surface (narrowing the results below), not page content, and the flat
@@ -331,6 +341,9 @@ export async function BrowseListingsView({
           <div className="mt-6 text-center">
             <RequirementPrompt variant="inline" label={requirementLabel} criteria={requirementCriteria} cityName={cityName} />
           </div>
+        )}
+        {page === 1 && cityName && (
+          <CityOverview cityName={cityName} cityId={cityAreas[0]?.cityId} segments={currentSegments} />
         )}
         {page === 1 && cityName && (
           <AreaOverview

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { City, ListingCategory } from "@bhavano/types";
+import type { PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
 import { JsonLd } from "@/components/JsonLd";
 import { buildBrowsePath } from "@/lib/listingPath";
 import { CATEGORY_LABELS, type TransactionGroup } from "@/lib/seoRoute";
@@ -37,7 +38,14 @@ const TOOLS = [
  * They exist for people who scroll past the grid and for crawlers and answer engines, which need
  * real text and real links on the page rather than a grid alone. Shown only on the plain `/` view
  * (no filters, no city, page 1), where this content is true; filtered views stay as they are. */
-export function HomeSeoSections({ popularCities }: { popularCities: City[] }) {
+export function HomeSeoSections({
+  popularCities,
+  popularAreas = [],
+}: {
+  popularCities: City[];
+  /** Areas with a published overview, busiest first. The block is left out while there are none. */
+  popularAreas?: PublishedAreaOverviewLink[];
+}) {
   const faqs = homeFaqs(popularCities.map((c) => c.name));
 
   const guides = sortedPosts().slice(0, 4);
@@ -116,6 +124,23 @@ export function HomeSeoSections({ popularCities }: { popularCities: City[] }) {
             <Link href="/cities" className="px-3.5 py-2 text-[13.5px] font-bold text-green no-underline">
               See all cities
             </Link>
+          </div>
+        </section>
+      )}
+
+      {popularAreas.length > 0 && (
+        <section aria-label="Popular areas">
+          <h2 className={h2}>Popular areas</h2>
+          <div className="flex flex-wrap gap-2">
+            {popularAreas.map((area) => (
+              <Link
+                key={area.areaId}
+                href={buildBrowsePath({ cityName: area.cityName, areaName: area.areaName })}
+                className="bg-surface-alt border border-border rounded-[20px] px-4 py-2 text-[13.5px] text-text no-underline"
+              >
+                {area.areaName}, {area.cityName}
+              </Link>
+            ))}
           </div>
         </section>
       )}

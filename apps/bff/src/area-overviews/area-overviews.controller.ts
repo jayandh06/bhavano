@@ -5,6 +5,7 @@ import type {
   AreaOverviewDto,
   AreaOverviewStatus,
   BulkAreaOverviewResult,
+  PublishedAreaOverviewLink,
 } from '@bhavano/types/areaOverview';
 import { AREA_OVERVIEW_SORT_FIELDS, type AreaOverviewSortField } from '@bhavano/types/areaOverview';
 import { AdminGuard } from '../auth/guards/auth.guard';
@@ -19,6 +20,13 @@ import { BulkAreaOverviewStatusDto } from './dto/bulk-area-overview-status.dto';
 @Controller('area-overviews')
 export class AreaOverviewsPublicController {
   constructor(private readonly overviews: AreaOverviewsService) {}
+
+  /** Areas with a published overview, busiest first. Declared before `:areaId`. */
+  @Get()
+  @Header('Cache-Control', 'public, max-age=300')
+  listPublished(@Query('limit') limit?: string): Promise<PublishedAreaOverviewLink[]> {
+    return this.overviews.listPublished(Math.min(24, Math.max(1, Number(limit) || 12)));
+  }
 
   @Get(':areaId')
   @Header('Cache-Control', 'public, max-age=300')

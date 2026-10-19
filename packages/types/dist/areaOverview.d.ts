@@ -21,6 +21,13 @@ export interface AreaOverviewDto extends AreaOverviewContent {
     publishedAt: string | null;
     updatedAt: string;
 }
+/** An area with a published overview, for the homepage's "Popular areas" links. */
+export interface PublishedAreaOverviewLink {
+    areaId: string;
+    cityName: string;
+    areaName: string;
+    activeListings: number;
+}
 /** One row of the admin list: every area with listings, with its overview status if it has one. */
 export interface AdminAreaOverviewRow {
     areaId: string;
@@ -63,3 +70,30 @@ export declare const AREA_OVERVIEW_REVIEW_CHECKLIST: readonly ["Every fact is co
 /** Problems with the text that no reviewer should have to spot by eye. An empty array means the
  * content passes. The same rules run in the editor (live) and in the BFF (before saving). */
 export declare function validateAreaOverviewContent(content: AreaOverviewContent): string[];
+/** City overviews share the area overview's content, statuses, checklist and validator. */
+export interface CityOverviewDto extends AreaOverviewContent {
+    cityId: string;
+    status: AreaOverviewStatus;
+    reviewedByName: string | null;
+    reviewedAt: string | null;
+    publishedAt: string | null;
+    updatedAt: string;
+}
+export interface AdminCityOverviewRow {
+    cityId: string;
+    cityName: string;
+    activeListings: number;
+    status: AreaOverviewStatus | null;
+    updatedAt: string | null;
+    reviewedByName: string | null;
+}
+export interface AdminCityOverviewsPage {
+    items: AdminCityOverviewRow[];
+    total: number;
+}
+export interface AdminCityOverviewDetail {
+    cityId: string;
+    cityName: string;
+    activeListings: number;
+    overview: CityOverviewDto | null;
+}

@@ -1,4 +1,4 @@
-import type { AreaOverviewDto } from "@bhavano/types/areaOverview";
+import type { AreaOverviewDto, CityOverviewDto, PublishedAreaOverviewLink } from "@bhavano/types/areaOverview";
 import "server-only";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
@@ -267,6 +267,28 @@ export async function fetchPublishedAreaOverview(areaId: string): Promise<AreaOv
     });
   } catch {
     return null;
+  }
+}
+
+/** The published overview for a city, or null. Cached for an hour, nulls included, and a BFF failure
+ * counts as "none" rather than breaking the page. */
+export async function fetchPublishedCityOverview(cityId: string): Promise<CityOverviewDto | null> {
+  try {
+    return await bffFetch<CityOverviewDto | null>(`/city-overviews/${encodeURIComponent(cityId)}`, {
+      next: { revalidate: 3600 },
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Areas with a published overview, busiest first, for the homepage's Popular areas links. Empty on
+ * any failure or while nothing is published. Cached for an hour. */
+export async function fetchPublishedAreaOverviewLinks(limit = 12): Promise<PublishedAreaOverviewLink[]> {
+  try {
+    return await bffFetch<PublishedAreaOverviewLink[]>(`/area-overviews?limit=${limit}`, { next: { revalidate: 3600 } });
+  } catch {
+    return [];
   }
 }
 

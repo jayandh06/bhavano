@@ -267,6 +267,7 @@ model City {
   slugRedirects    CitySlugRedirect[]
 
   @@unique([name, state])
+  overview         CityOverview?
 }
 
 /// Old browse/listing URL slug for a city that was deleted after its listings moved onto a
@@ -340,6 +341,31 @@ model AreaOverview {
   publishedAt    DateTime?
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
+
+  @@index([status])
+}
+
+/**
+ * The reviewed text shown below the listings on a city's landing page (`/{city}`), with the same
+ * shape, statuses and review rules as `AreaOverview` (see that model). Only `published` rows reach
+ * the public site; editing in-review or published text sends it back to `draft`.
+ */
+model CityOverview {
+  id             String             @id @default(cuid())
+  cityId         String             @unique
+  city           City               @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  about          String[]
+  gettingAround  String[]
+  /// Array of `{ question, answer }`.
+  faqs           Json
+  status         AreaOverviewStatus @default(draft)
+  updatedById    String?
+  reviewedById   String?
+  reviewedByName String?
+  reviewedAt     DateTime?
+  publishedAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   @@index([status])
 }

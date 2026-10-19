@@ -8,7 +8,10 @@ import type { PostFunnelDto } from "@bhavano/types/postFunnel";
 import type {
   AdminAreaOverviewDetail,
   AdminAreaOverviewsPage,
+  AdminCityOverviewDetail,
+  AdminCityOverviewsPage,
   AreaOverviewContent,
+  CityOverviewDto,
   AreaOverviewDto,
   AreaOverviewStatus,
   BulkAreaOverviewResult,
@@ -1212,6 +1215,36 @@ export function setAreaOverviewStatus(
   checklistConfirmed: boolean,
 ): Promise<AreaOverviewDto> {
   return authedBffFetch(accessToken, `/admin/area-overviews/${encodeURIComponent(areaId)}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, checklistConfirmed }),
+  });
+}
+
+export function fetchCityOverviews(accessToken: string, query: { status?: string; q?: string } = {}): Promise<AdminCityOverviewsPage> {
+  const params = new URLSearchParams();
+  if (query.status) params.set("status", query.status);
+  if (query.q) params.set("q", query.q);
+  return authedBffFetch(accessToken, `/admin/city-overviews?${params.toString()}`, { cache: "no-store" });
+}
+
+export function fetchCityOverview(accessToken: string, cityId: string): Promise<AdminCityOverviewDetail> {
+  return authedBffFetch(accessToken, `/admin/city-overviews/${encodeURIComponent(cityId)}`, { cache: "no-store" });
+}
+
+export function saveCityOverview(accessToken: string, cityId: string, content: AreaOverviewContent): Promise<CityOverviewDto> {
+  return authedBffFetch(accessToken, `/admin/city-overviews/${encodeURIComponent(cityId)}`, {
+    method: "PUT",
+    body: JSON.stringify(content),
+  });
+}
+
+export function setCityOverviewStatus(
+  accessToken: string,
+  cityId: string,
+  status: AreaOverviewStatus,
+  checklistConfirmed: boolean,
+): Promise<CityOverviewDto> {
+  return authedBffFetch(accessToken, `/admin/city-overviews/${encodeURIComponent(cityId)}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status, checklistConfirmed }),
   });
