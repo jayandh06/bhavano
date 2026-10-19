@@ -17,7 +17,7 @@ export class NotificationLogQueryDto {
   to?: string;
 
   @IsOptional()
-  @IsIn(['email', 'whatsapp', 'push'])
+  @IsIn(['email', 'whatsapp', 'push', 'in_app'])
   channel?: string;
 
   @IsOptional()
