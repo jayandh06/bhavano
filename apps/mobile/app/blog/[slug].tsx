@@ -14,6 +14,12 @@ function formatDate(iso: string): string {
   });
 }
 
+/** "A", "A and B" or "A, B and C", each with their role when one is given. */
+function reviewersLine(reviewers: { name: string; role?: string }[]): string {
+  const parts = reviewers.map((r) => (r.role ? `${r.name}, ${r.role}` : r.name));
+  return parts.length <= 1 ? (parts[0] ?? "") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
 // Mirrors apps/web/src/app/blog/[slug]/page.tsx.
 export default function BlogPostScreen() {
   const { colors } = useAppTheme();
@@ -36,7 +42,7 @@ export default function BlogPostScreen() {
       <Text style={{ fontSize: 13, color: colors.muted }}>
         {bylineFor(post)}
         {post.author?.role ? `, ${post.author.role}` : ""}
-        {post.reviewedBy ? ` · Reviewed by ${post.reviewedBy.name}${post.reviewedBy.role ? `, ${post.reviewedBy.role}` : ""}` : ""} · {post.readingMinutes} min read
+        {post.reviewedBy && post.reviewedBy.length > 0 ? ` · Reviewed by ${reviewersLine(post.reviewedBy)}` : ""} · {post.readingMinutes} min read
       </Text>
       <BlogBody blocks={post.body} />
       {more.length > 0 && (

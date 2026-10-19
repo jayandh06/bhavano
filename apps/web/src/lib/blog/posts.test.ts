@@ -101,7 +101,7 @@ describe("blog posts", () => {
     // have agreed to it, and attach it only to posts they actually reviewed.
     const APPROVED_REVIEWERS = new Set(["Jayandhan Rajasundaram", "Anitha Narayanasamy"]);
     for (const post of POSTS) {
-      if (post.reviewedBy) expect(APPROVED_REVIEWERS.has(post.reviewedBy.name), post.slug).toBe(true);
+      for (const reviewer of post.reviewedBy ?? []) expect(APPROVED_REVIEWERS.has(reviewer.name), post.slug).toBe(true);
     }
   });
 

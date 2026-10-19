@@ -35,6 +35,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/** "A", "A and B" or "A, B and C", each with their role when one is given. */
+function reviewersLine(reviewers: { name: string; role?: string }[]): string {
+  const parts = reviewers.map((r) => (r.role ? `${r.name}, ${r.role}` : r.name));
+  return parts.length <= 1 ? (parts[0] ?? "") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -82,13 +88,7 @@ export default async function BlogPostPage({ params }: Props) {
       <p className="m-0 text-[13px] text-muted">
         {bylineFor(post)}
         {post.author?.role ? `, ${post.author.role}` : ""}
-        {post.reviewedBy && (
-          <>
-            {" "}
-            · Reviewed by {post.reviewedBy.name}
-            {post.reviewedBy.role ? `, ${post.reviewedBy.role}` : ""}
-          </>
-        )}{" "}
+        {post.reviewedBy && post.reviewedBy.length > 0 && <> · Reviewed by {reviewersLine(post.reviewedBy)}</>}{" "}
         · {post.readingMinutes} min read ·{" "}
         <Link href="/blog" className="text-green font-bold">
           All articles

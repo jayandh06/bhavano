@@ -907,6 +907,7 @@ exports.POSTS = [
         published: "2026-10-19",
         format: "Checklist",
         readingMinutes: 7,
+        reviewedBy: [{ name: "Jayandhan Rajasundaram" }, { name: "Anitha Narayanasamy" }],
         body: [
             {
                 type: "note",
@@ -971,6 +972,7 @@ exports.POSTS = [
         published: "2026-10-19",
         format: "Explainer",
         readingMinutes: 6,
+        reviewedBy: [{ name: "Jayandhan Rajasundaram" }, { name: "Anitha Narayanasamy" }],
         body: [
             {
                 type: "note",
@@ -1028,6 +1030,7 @@ exports.POSTS = [
         published: "2026-10-19",
         format: "Explainer",
         readingMinutes: 6,
+        reviewedBy: [{ name: "Jayandhan Rajasundaram" }, { name: "Anitha Narayanasamy" }],
         body: [
             {
                 type: "note",
@@ -1082,6 +1085,7 @@ exports.POSTS = [
         published: "2026-10-19",
         format: "Explainer",
         readingMinutes: 6,
+        reviewedBy: [{ name: "Jayandhan Rajasundaram" }, { name: "Anitha Narayanasamy" }],
         body: [
             {
                 type: "note",
@@ -1139,6 +1143,7 @@ exports.POSTS = [
         published: "2026-10-19",
         format: "Explainer",
         readingMinutes: 6,
+        reviewedBy: [{ name: "Jayandhan Rajasundaram" }, { name: "Anitha Narayanasamy" }],
         body: [
             {
                 type: "note",
@@ -1200,6 +1205,7 @@ exports.POSTS = [
         published: "2026-10-19",
         format: "Explainer",
         readingMinutes: 5,
+        reviewedBy: [{ name: "Jayandhan Rajasundaram" }, { name: "Anitha Narayanasamy" }],
         body: [
             {
                 type: "note",
@@ -1264,6 +1270,7 @@ exports.POSTS = [
         published: "2026-10-19",
         format: "Guide",
         readingMinutes: 8,
+        reviewedBy: [{ name: "Jayandhan Rajasundaram" }, { name: "Anitha Narayanasamy" }],
         body: [
             {
                 type: "note",
